@@ -19,6 +19,14 @@ const AUTONYM = {
   fr: "Français",
 };
 
+// "Share this page" labels — used by the share button on every page.
+const SHARE = {
+  en: { share: "Share this page", copied: "Link copied" },
+  es: { share: "Compartir esta página", copied: "Enlace copiado" },
+  pt: { share: "Compartilhar esta página", copied: "Link copiado" },
+  fr: { share: "Partager cette page", copied: "Lien copié" },
+};
+
 const T = {
   en: {
     ui: {
@@ -707,8 +715,6 @@ const POZ = {
         "An undetectable status isn't a warning — it's good news. No stigma, no transmission risk.",
       ],
     ],
-    share: "Share this page",
-    copied: "Link copied",
     fromHiv: "Undetectable? Share what U=U means →",
     disclaimer:
       "U=U is backed by large studies and public health agencies, including the U.S. CDC.",
@@ -736,8 +742,6 @@ const POZ = {
         "Un estado indetectable no es una advertencia: es una buena noticia. Sin estigma y sin riesgo de transmisión.",
       ],
     ],
-    share: "Compartir esta página",
-    copied: "Enlace copiado",
     fromHiv: "¿Indetectable? Comparte qué es I=I →",
     disclaimer:
       "I=I está respaldado por grandes estudios y por agencias de salud pública, incluidos los CDC de EE. UU.",
@@ -765,8 +769,6 @@ const POZ = {
         "Um status indetectável não é um aviso — é uma boa notícia. Sem estigma e sem risco de transmissão.",
       ],
     ],
-    share: "Compartilhar esta página",
-    copied: "Link copiado",
     fromHiv: "Indetectável? Compartilhe o que é I=I →",
     disclaimer:
       "O I=I é apoiado por grandes estudos e por agências de saúde pública, incluindo o CDC dos EUA.",
@@ -794,12 +796,10 @@ const POZ = {
         "Un statut indétectable n'est pas un avertissement — c'est une bonne nouvelle. Pas de stigmatisation, pas de risque de transmission.",
       ],
     ],
-    share: "Partager cette page",
-    copied: "Lien copié",
     fromHiv: "Indétectable ? Partage ce qu'est I=I →",
     disclaimer:
       "I=I s'appuie sur de grandes études et sur des agences de santé publique, dont le CDC (États-Unis).",
   },
 };
 
-export { LANGS, ORDER, STATUS, CDC, AUTONYM, T, C, SHAPES, DECO, POZ };
+export { LANGS, ORDER, STATUS, CDC, AUTONYM, SHARE, T, C, SHAPES, DECO, POZ };

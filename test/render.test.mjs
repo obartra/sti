@@ -6,6 +6,7 @@ import {
   ORDER,
   STATUS,
   T,
+  SHARE,
   SHAPES,
   DECO,
   POZ,
@@ -116,7 +117,23 @@ test("U=U page renders title, label, share button and back link", () => {
       `${lang} poz back link missing`,
     );
     assert.ok(html.includes("data-share"), `${lang} poz share button missing`);
-    assert.ok(html.includes(p.share), `${lang} poz share label missing`);
+  }
+});
+
+test("every page has a Share button", () => {
+  for (const lang of LANGS) {
+    const pages = [
+      home(lang),
+      pozPage(lang),
+      ...ORDER.map((k) => page(lang, k)),
+    ];
+    for (const html of pages) {
+      assert.ok(html.includes("data-share"), `${lang} missing share button`);
+      assert.ok(
+        html.includes(SHARE[lang].share),
+        `${lang} missing share label`,
+      );
+    }
   }
 });
 

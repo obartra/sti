@@ -209,12 +209,35 @@ h1 {
   transform: translate(3px, 3px);
   box-shadow: 1px 1px 0 var(--ink);
 }
-/* the share button reuses the .cta look but is a real <button> */
+/* "Share this page" button — appears on every page */
 .sharebtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
   width: 100%;
+  margin-top: 26px;
   font: inherit;
-  text-align: left;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--ink);
+  background: var(--card);
+  border: var(--bd);
+  border-radius: 14px;
+  padding: 13px 16px;
+  box-shadow: var(--sh-sm);
   cursor: pointer;
+  transition:
+    transform 0.1s,
+    box-shadow 0.1s;
+}
+.sharebtn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+.sharebtn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
 }
 .cta .ic {
   flex: 0 0 auto;
