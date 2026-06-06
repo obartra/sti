@@ -1,27 +1,44 @@
 # sti.care
 
-A tiny, single-file site that helps people find a place to get tested and read
-simple, judgment-free info on common STIs. Available in English, Spanish,
-Portuguese (Brazilian), and French.
+[![Netlify Status](https://api.netlify.com/api/v1/badges/56bdd737-fada-420f-8277-eb8edd5aa50a/deploy-status)](https://app.netlify.com/projects/sticare/deploys)
+
+A tiny site that helps people find a place to get tested and read simple,
+judgment-free info on common STIs. Available in English, Spanish, Portuguese
+(Brazilian), and French.
 
 ## Structure
 
-- `index.html` — the entire site (markup, styles, content, and router).
-- `netlify.toml` — Netlify deploy + routing config.
+The site is plain HTML/CSS/JS — **no build step, no framework**. Source lives in
+`public/`, which Netlify publishes as-is. Tooling lives at the repo root.
 
-There is **no build step**: the site runs straight from `index.html`.
+```
+public/
+  index.html        markup + <head> (SEO / social / favicon)
+  styles.css        all styles
+  favicon.svg
+  src/
+    data.js         content (all 4 languages) + decoration shape library/config
+    render.js       pure view functions (data in → HTML string out)
+    app.js          controller: state, routing, language toggle, DOM wiring
+netlify.toml        deploy + routing + security/HTTPS/cache headers
+test/               Node tests for the pure view layer
+```
+
+The split is deliberate: `data.js` and `render.js` have no DOM access, so they
+import and test cleanly in Node; `app.js` is the only file that touches the
+browser.
 
 ## URLs
 
 Routing uses real, shareable paths via the History API (no `#/` hash). The path
 encodes only the topic — **language is not in the URL**:
 
-| URL              | Shows                                   |
-| ---------------- | --------------------------------------- |
-| `/`              | Home                                    |
-| `/gonorrhea`     | Gonorrhea info                          |
-| `/hiv`           | HIV info                                |
-| `/herpes`        | Herpes info                             |
+| URL          | Shows          |
+| ------------ | -------------- |
+| `/`          | Home           |
+| `/gonorrhea` | Gonorrhea info |
+| `/hiv`       | HIV info       |
+| `/herpes`    | Herpes info    |
 
 Topics: `gonorrhea`, `chlamydia`, `syphilis`, `hiv`, `herpes`, `hpv`.
 
@@ -32,8 +49,8 @@ sees it in their own language.
 
 Language is chosen per visitor, in this order:
 
-1. `?lang=xx` query param, if present (handy for sharing a specific language,
-   e.g. `sti.care/hiv?lang=es`). It's remembered after the first visit.
+1. `?lang=xx` query param, if present (e.g. `sti.care/hiv?lang=es`). Remembered
+   after the first visit.
 2. A previously remembered choice (saved in `localStorage`).
 3. The browser's language.
 4. English, as a fallback.
@@ -41,35 +58,40 @@ Language is chosen per visitor, in this order:
 Switching language with the toggle updates the page in place and remembers the
 choice; it never changes the URL.
 
-## Deploying to Netlify (with autodeploy)
+## Development
 
-The repo is ready to deploy as-is — no build configuration needed.
+Requires Node 22+. There's nothing to build — the scripts are just checks.
 
-1. In Netlify: **Add new site → Import an existing project** and pick this
-   GitHub repo.
-2. Settings are read from `netlify.toml`, so leave the UI fields blank:
-   - **Branch to deploy:** `main` (production; PRs get Deploy Previews)
-   - **Base directory:** _(empty)_
-   - **Build command:** _(empty — no build)_
-   - **Publish directory:** `.` (repo root)
-3. **Deploy.** From then on, every push to `main` auto-deploys, and every PR
-   gets its own preview URL.
+```sh
+npm install
+npm run dev          # serve public/ locally
+npm run format       # apply Prettier
+npm run lint         # ESLint (JS) + Stylelint (CSS)
+npm test             # Node tests for the view layer
+npm run check        # format:check + lint + test (what CI runs)
+```
 
-### Custom domain: sti.care
+CI (GitHub Actions, `.github/workflows/ci.yml`) runs `npm run check` on every
+pull request.
 
-1. In Netlify: **Domain management → Add a domain → `sti.care`**.
-2. Point DNS at Netlify, either:
-   - **Netlify DNS (easiest):** at your registrar, change the nameservers to the
-     four Netlify nameservers shown in the dashboard. Netlify then manages the
-     apex (`sti.care`), `www`, and HTTPS automatically.
-   - **Keep your DNS:** add an `A` record for the apex `sti.care` →
-     `75.2.60.5` (Netlify's load balancer; or use an `ALIAS`/`ANAME` to
-     `apex-loadbalancer.netlify.com`), and a `CNAME` for `www` →
-     `<your-site>.netlify.app`.
-3. Set the primary domain and let Netlify redirect the other host to it
-   (e.g. `www.sti.care` → `sti.care`).
-4. Netlify auto-provisions a free Let's Encrypt certificate once DNS resolves —
-   `https://sti.care` works within minutes to a few hours.
+## Deploying to Netlify
+
+Connected for autodeploy: every push to `main` deploys to production, and every
+PR gets a Deploy Preview. Settings come from `netlify.toml`, so the dashboard
+fields can be left blank:
+
+- **Build command:** _(none)_
+- **Publish directory:** `public`
+
+### Custom domain + always-on HTTPS
+
+1. Netlify → **Domain management → Add `sti.care`**, then point DNS (switching
+   the registrar's nameservers to Netlify's is easiest; otherwise `A` apex →
+   `75.2.60.5` and `CNAME` `www` → the `*.netlify.app` site).
+2. Netlify auto-provisions a free Let's Encrypt certificate.
+3. Enable **Force HTTPS** in Netlify (redirects http → https). On top of that,
+   `netlify.toml` sends an HSTS header (`Strict-Transport-Security`) so browsers
+   refuse to connect over plain http after the first visit.
 
 ### Why the redirect in `netlify.toml` matters
 
@@ -82,14 +104,4 @@ The repo is ready to deploy as-is — no build configuration needed.
 
 Clean routes like `/gonorrhea` aren't real files, so this serves `index.html`
 for any unknown path and lets the in-page router render the topic. Real files
-(assets, etc.) are still served normally.
-
-## Local preview
-
-It's just a static file:
-
-```sh
-npx netlify-cli dev          # mimics Netlify's SPA fallback
-# or
-python3 -m http.server 8000  # quick look (deep links won't fall back)
-```
+(CSS, JS, the favicon) are still served normally.

@@ -1,19 +1,45 @@
-# Netlify configuration for the STI Testing site.
-# This is a static, single-file site with client-side routing, so there is
-# no build step — Netlify just publishes the repository root as-is.
+# Netlify configuration for sti.care.
+# Static site, no build step — the contents of public/ are published as-is.
 
 [build]
-  # No build command needed; serve the files directly from the repo root.
-  publish = "."
+  publish = "public"
+  command = ""
 
 # Single-Page-App fallback.
-# Real client-side routes look like /en, /es/hiv, /fr/gonorrhea. Those paths
-# don't exist as files on disk, so without this rule visiting them directly
-# (or refreshing) would 404. This serves index.html for any path that isn't a
-# real file, and the in-page router reads location.pathname to render the right
-# language/condition. Static assets that DO exist are still served normally,
-# because non-forced redirects never shadow existing files.
+# Client-side routes (/, /gonorrhea, /hiv, ...) aren't real files, so this
+# serves index.html for any path that isn't a real file and the in-page router
+# reads location.pathname to render the right topic. Real files (CSS, JS, the
+# favicon) are still served normally, because non-forced redirects never shadow
+# existing files.
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Security + always-HTTPS headers for every response.
+# HSTS tells browsers to only ever connect over HTTPS (Netlify also has a
+# "Force HTTPS" toggle in the dashboard that redirects http -> https).
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "DENY"
+    Permissions-Policy = "geolocation=(), camera=(), microphone=()"
+
+# Static assets can be cached and revalidated.
+[[headers]]
+  for = "/styles.css"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
+
+[[headers]]
+  for = "/src/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
+
+[[headers]]
+  for = "/favicon.svg"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
