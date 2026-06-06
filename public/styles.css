@@ -209,6 +209,13 @@ h1 {
   transform: translate(3px, 3px);
   box-shadow: 1px 1px 0 var(--ink);
 }
+/* the share button reuses the .cta look but is a real <button> */
+.sharebtn {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
 .cta .ic {
   flex: 0 0 auto;
   width: 40px;

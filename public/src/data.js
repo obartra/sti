@@ -688,121 +688,117 @@ const POZ = {
     label: "U=U",
     title: "Undetectable = Untransmittable",
     intro:
-      "Living with HIV today means a long, healthy life — and if you're on treatment, you can't pass HIV to your partners. Here's why.",
+      "A person with HIV who's on treatment and undetectable can't pass HIV through sex. Not lower risk — none. Share this page to say exactly that.",
     qa: [
       [
-        "What is U=U?",
-        "<b>Undetectable = Untransmittable.</b> When HIV medicine keeps the virus so low a test can't find it, you <b>cannot</b> pass HIV to sexual partners. Not less likely — zero.",
+        'What "undetectable" means',
+        "Daily HIV medicine lowers the virus until a test can't find it. Most people get there within about 6 months and stay there.",
       ],
       [
-        "How do I get to undetectable?",
-        "Take your HIV medicine every day. Most people get there within about 6 months. Keep taking it, and you stay undetectable.",
+        "Undetectable = Untransmittable",
+        "An undetectable person <b>cannot</b> pass HIV to sexual partners. Not lower risk — zero. This is settled science, backed by large studies and the U.S. CDC.",
       ],
       [
-        "What does it mean for my life?",
-        "Sex, relationships, kids — all still yours. With daily medicine, HIV is a manageable, long-term condition, not what it once was.",
+        "What it means for a partner",
+        "Sex with an undetectable partner carries <b>no</b> risk of HIV. (Condoms still help with other STIs and pregnancy.)",
       ],
       [
-        "You are not a risk",
-        "On treatment and undetectable, you can't transmit HIV. You're not \"dirty\" or dangerous. For a lot of people the stigma weighs more than the virus — and the stigma is the part that's wrong.",
+        "Sharing this is the responsible move",
+        "An undetectable status isn't a warning — it's good news. No stigma, no transmission risk.",
       ],
     ],
-    ctaTitle: "Find HIV care near you",
-    ctaSub: "Opens a map of clinics close to you",
-    mapsQuery: "HIV care clinic near me",
-    fromHiv: "Living with HIV? Read about U=U →",
+    share: "Share this page",
+    copied: "Link copied",
+    fromHiv: "Undetectable? Share what U=U means →",
     disclaimer:
-      "U=U is backed by large studies and public health agencies, including the U.S. CDC. If you were just diagnosed, you are not alone — care is available, and starting treatment early is best.",
+      "U=U is backed by large studies and public health agencies, including the U.S. CDC.",
   },
   es: {
     label: "I=I",
     title: "Indetectable = Intransmisible",
     intro:
-      "Vivir con VIH hoy es vivir una vida larga y sana. Y si estás en tratamiento, no puedes transmitir el VIH a tus parejas. Aquí te explicamos por qué.",
+      "Una persona con VIH que está en tratamiento e indetectable no transmite el VIH por vía sexual. No es menos riesgo: es ninguno. Comparte esta página para decir justo eso.",
     qa: [
       [
-        "¿Qué es I=I?",
-        '<b>Indetectable = Intransmisible.</b> Cuando el medicamento mantiene el virus tan bajo que una prueba no lo encuentra, <b>no puedes</b> transmitir el VIH por vía sexual. No es "menos probable": es cero.',
+        'Qué significa "indetectable"',
+        "El medicamento diario baja el virus hasta que una prueba no lo encuentra. La mayoría llega en unos 6 meses y se mantiene así.",
       ],
       [
-        "¿Cómo llego a indetectable?",
-        "Toma tu medicamento todos los días. La mayoría de las personas llega en unos 6 meses. Si sigues tomándolo, sigues indetectable.",
+        "Indetectable = Intransmisible",
+        "Una persona indetectable <b>no puede</b> transmitir el VIH a sus parejas sexuales. No es menos probable: es cero. Es ciencia confirmada por grandes estudios y los CDC de EE. UU.",
       ],
       [
-        "¿Qué significa para mi vida?",
-        "Sexo, relaciones, hijos: todo sigue siendo tuyo. Con el medicamento diario, el VIH es una condición crónica y manejable, no lo que era antes.",
+        "Qué significa para la pareja",
+        "Tener sexo con una persona indetectable no tiene <b>ningún</b> riesgo de VIH. (El condón sigue ayudando con otras ITS y el embarazo.)",
       ],
       [
-        "No eres un riesgo",
-        'En tratamiento e indetectable, no transmites el VIH. No estás "sucio" ni eres peligroso. Para muchas personas el estigma pesa más que el virus, y el estigma es la parte que está mal.',
+        "Compartir esto es lo responsable",
+        "Un estado indetectable no es una advertencia: es una buena noticia. Sin estigma y sin riesgo de transmisión.",
       ],
     ],
-    ctaTitle: "Busca atención para el VIH cerca de ti",
-    ctaSub: "Abre un mapa con clínicas cercanas",
-    mapsQuery: "atención VIH clínica cerca de mí",
-    fromHiv: "¿Vives con VIH? Conoce qué es I=I →",
+    share: "Compartir esta página",
+    copied: "Enlace copiado",
+    fromHiv: "¿Indetectable? Comparte qué es I=I →",
     disclaimer:
-      "I=I está respaldado por grandes estudios y por agencias de salud pública, incluidos los CDC de EE. UU. Si te acaban de diagnosticar, no estás solo: hay atención disponible y empezar el tratamiento pronto es lo mejor.",
+      "I=I está respaldado por grandes estudios y por agencias de salud pública, incluidos los CDC de EE. UU.",
   },
   pt: {
     label: "I=I",
     title: "Indetectável = Intransmissível",
     intro:
-      "Viver com HIV hoje é viver uma vida longa e saudável. E se você está em tratamento, não transmite o HIV para seus parceiros. Veja por quê.",
+      "Uma pessoa com HIV que está em tratamento e indetectável não transmite o HIV pelo sexo. Não é menos risco: é nenhum. Compartilhe esta página para dizer exatamente isso.",
     qa: [
       [
-        "O que é I=I?",
-        '<b>Indetectável = Intransmissível.</b> Quando o remédio mantém o vírus tão baixo que o teste não encontra, você <b>não</b> transmite o HIV pelo sexo. Não é "menos provável" — é zero.',
+        'O que significa "indetectável"',
+        "O remédio diário baixa o vírus até o teste não encontrar. A maioria chega lá em cerca de 6 meses e continua assim.",
       ],
       [
-        "Como chego a indetectável?",
-        "Tome o remédio todo dia. A maioria das pessoas chega lá em cerca de 6 meses. Continue tomando e você continua indetectável.",
+        "Indetectável = Intransmissível",
+        "Uma pessoa indetectável <b>não</b> transmite o HIV para parceiros sexuais. Não é menos provável — é zero. É ciência confirmada por grandes estudos e pelo CDC dos EUA.",
       ],
       [
-        "O que isso significa pra minha vida?",
-        "Sexo, relacionamentos, filhos — tudo continua sendo seu. Com o remédio diário, o HIV é uma condição crônica e controlável, não o que já foi um dia.",
+        "O que significa para o parceiro",
+        "Transar com uma pessoa indetectável não tem <b>nenhum</b> risco de HIV. (A camisinha continua ajudando com outras ISTs e a gravidez.)",
       ],
       [
-        "Você não é um risco",
-        'Em tratamento e indetectável, você não transmite o HIV. Você não é "sujo" nem perigoso. Pra muita gente o estigma pesa mais que o vírus — e o estigma é a parte errada.',
+        "Compartilhar isto é o certo a fazer",
+        "Um status indetectável não é um aviso — é uma boa notícia. Sem estigma e sem risco de transmissão.",
       ],
     ],
-    ctaTitle: "Encontre atendimento para HIV perto de você",
-    ctaSub: "Abre um mapa com clínicas próximas",
-    mapsQuery: "atendimento HIV perto de mim",
-    fromHiv: "Vive com HIV? Saiba o que é I=I →",
+    share: "Compartilhar esta página",
+    copied: "Link copiado",
+    fromHiv: "Indetectável? Compartilhe o que é I=I →",
     disclaimer:
-      "O I=I é apoiado por grandes estudos e por agências de saúde pública, incluindo o CDC dos EUA. Se você acabou de receber o diagnóstico, não está sozinho: há atendimento disponível, e começar o tratamento cedo é o melhor.",
+      "O I=I é apoiado por grandes estudos e por agências de saúde pública, incluindo o CDC dos EUA.",
   },
   fr: {
     label: "I=I",
     title: "Indétectable = Intransmissible",
     intro:
-      "Vivre avec le VIH aujourd'hui, c'est vivre longtemps et en bonne santé. Et si tu es sous traitement, tu ne peux pas transmettre le VIH à tes partenaires. Voici pourquoi.",
+      "Une personne séropositive sous traitement et indétectable ne transmet pas le VIH par voie sexuelle. Pas moins de risque : aucun. Partage cette page pour dire exactement ça.",
     qa: [
       [
-        "C'est quoi I=I ?",
-        '<b>Indétectable = Intransmissible.</b> Quand le traitement maintient le virus si bas qu\'un test ne le trouve pas, tu ne peux <b>pas</b> transmettre le VIH par voie sexuelle. Pas "moins de risque" — zéro.',
+        "Ce que veut dire « indétectable »",
+        "Le traitement quotidien fait baisser le virus jusqu'à ce qu'un test ne le trouve plus. La plupart des gens y arrivent en 6 mois environ et le restent.",
       ],
       [
-        "Comment devenir indétectable ?",
-        "Prends ton traitement tous les jours. La plupart des gens y arrivent en 6 mois environ. Continue, et tu restes indétectable.",
+        "Indétectable = Intransmissible",
+        "Une personne indétectable <b>ne peut pas</b> transmettre le VIH à ses partenaires sexuels. Pas moins de risque — zéro. C'est une science confirmée par de grandes études et le CDC (États-Unis).",
       ],
       [
-        "Qu'est-ce que ça change pour moi ?",
-        "Sexe, relations, enfants — tout reste possible. Avec un traitement quotidien, le VIH est une maladie chronique qui se gère, plus ce qu'il était avant.",
+        "Ce que ça veut dire pour un partenaire",
+        "Avoir des rapports avec une personne indétectable ne présente <b>aucun</b> risque de VIH. (Le préservatif protège toujours des autres IST et de la grossesse.)",
       ],
       [
-        "Tu n'es pas un danger",
-        "Sous traitement et indétectable, tu ne transmets pas le VIH. Tu n'es ni \"sale\" ni dangereux. Pour beaucoup, la stigmatisation pèse plus que le virus — et c'est elle qui a tort.",
+        "Partager ça, c'est responsable",
+        "Un statut indétectable n'est pas un avertissement — c'est une bonne nouvelle. Pas de stigmatisation, pas de risque de transmission.",
       ],
     ],
-    ctaTitle: "Trouve un suivi VIH près de toi",
-    ctaSub: "Ouvre une carte des cliniques proches",
-    mapsQuery: "consultation VIH près de moi",
-    fromHiv: "Tu vis avec le VIH ? Découvre I=I →",
+    share: "Partager cette page",
+    copied: "Lien copié",
+    fromHiv: "Indétectable ? Partage ce qu'est I=I →",
     disclaimer:
-      "I=I s'appuie sur de grandes études et sur des agences de santé publique, dont le CDC (États-Unis). Si tu viens d'être diagnostiqué, tu n'es pas seul : un suivi existe, et commencer le traitement tôt, c'est mieux.",
+      "I=I s'appuie sur de grandes études et sur des agences de santé publique, dont le CDC (États-Unis).",
   },
 };
 

@@ -121,10 +121,38 @@ function renderApp() {
   }
 }
 
+// Share the current page: native share sheet on mobile, copy-link fallback
+// elsewhere (with brief "copied" feedback on the button).
+function share(btn) {
+  const url = location.href;
+  if (navigator.share) {
+    navigator.share({ title: document.title, url }).catch(() => {});
+    return;
+  }
+  const done = () => {
+    const label = btn.querySelector(".t");
+    const copied = btn.getAttribute("data-copied");
+    if (!label || !copied) return;
+    const prev = label.textContent;
+    label.textContent = copied;
+    setTimeout(() => {
+      label.textContent = prev;
+    }, 1600);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(done, () => {});
+  }
+}
+
 document.addEventListener("click", function (e) {
   const l = e.target.closest("[data-lang]");
   if (l) {
     setLang(l.getAttribute("data-lang"));
+    return;
+  }
+  const s = e.target.closest("[data-share]");
+  if (s) {
+    share(s);
     return;
   }
   const a = e.target.closest("[data-nav]");

@@ -86,20 +86,14 @@ export function page(lang, key) {
     <footer>${ui.footer}</footer>`;
 }
 
-// Care-finder CTA for the U=U page (no "free" badge / CDC link).
-export function pozMapsURL(lang) {
-  return (
-    "https://www.google.com/maps/search/?api=1&query=" +
-    encodeURIComponent(POZ[lang].mapsQuery)
-  );
-}
-function pozCTA(lang) {
+// Share button for the U=U page — the whole point of the page is to be sent.
+function shareButton(lang) {
   const p = POZ[lang];
-  return `<a class="cta" href="${pozMapsURL(lang)}" target="_blank" rel="noopener">
-    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 20s-7-4.5-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.5-7 10-7 10z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/></svg></span>
-    <span class="body"><span class="t">${p.ctaTitle}</span><span class="s">${p.ctaSub}</span></span>
+  return `<button class="cta sharebtn" type="button" data-share data-copied="${p.copied}">
+    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="18" cy="5" r="2.6" stroke="#fff" stroke-width="1.7"/><circle cx="6" cy="12" r="2.6" stroke="#fff" stroke-width="1.7"/><circle cx="18" cy="19" r="2.6" stroke="#fff" stroke-width="1.7"/><path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3" stroke="#fff" stroke-width="1.7"/></svg></span>
+    <span class="body"><span class="t">${p.share}</span></span>
     <svg class="arrow" width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9h11M10 5l4 4-4 4" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-  </a>`;
+  </button>`;
 }
 
 export function pozPage(lang) {
@@ -116,7 +110,7 @@ export function pozPage(lang) {
     <h1 class="rise d1">${p.title}</h1>
     <p class="intro rise d2">${p.intro}</p>
     <div class="qa rise d2">${blocks}</div>
-    <section class="rise d3">${pozCTA(lang)}</section>
+    <section class="rise d3">${shareButton(lang)}</section>
     <div class="disclaimer rise d3">${p.disclaimer}</div>
     <footer>${ui.footer}</footer>`;
 }

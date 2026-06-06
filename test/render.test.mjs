@@ -105,7 +105,7 @@ test("every language defines the U=U page", () => {
   }
 });
 
-test("U=U page renders title, label, care CTA and back link", () => {
+test("U=U page renders title, label, share button and back link", () => {
   for (const lang of LANGS) {
     const html = pozPage(lang);
     const p = POZ[lang];
@@ -115,7 +115,8 @@ test("U=U page renders title, label, care CTA and back link", () => {
       html.includes('data-nav="home"'),
       `${lang} poz back link missing`,
     );
-    assert.ok(html.includes("google.com/maps"), `${lang} poz CTA missing`);
+    assert.ok(html.includes("data-share"), `${lang} poz share button missing`);
+    assert.ok(html.includes(p.share), `${lang} poz share label missing`);
   }
 });
 
