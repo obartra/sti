@@ -19,6 +19,14 @@ const AUTONYM = {
   fr: "Français",
 };
 
+// "Share this page" labels — used by the share button on every page.
+const SHARE = {
+  en: { share: "Share this page", copied: "Link copied" },
+  es: { share: "Compartir esta página", copied: "Enlace copiado" },
+  pt: { share: "Compartilhar esta página", copied: "Link copiado" },
+  fr: { share: "Partager cette page", copied: "Lien copié" },
+};
+
 const T = {
   en: {
     ui: {
@@ -672,6 +680,126 @@ const DECO = {
     { t: "coil", c: C.yellow, w: 140, bottom: 90, left: -46 },
     { t: "spark", c: C.pink, w: 66, bottom: 36, right: -6 },
   ],
+  poz: [
+    { t: "spark", c: C.purple, w: 74, top: 44, right: -10 },
+    { t: "wave", c: C.cyan, w: 150, top: 320, left: -50, r: -6 },
+    { t: "ring", c: C.lime, w: 110, bottom: 300, right: -22 },
+    { t: "star", c: C.pink, w: 92, bottom: 96, left: -22, r: 6 },
+    { t: "dots", c: C.yellow, w: 74, bottom: 40, right: -4 },
+  ],
 };
 
-export { LANGS, ORDER, STATUS, CDC, AUTONYM, T, C, SHAPES, DECO };
+// Standalone page for people living with HIV, centered on U=U
+// (Undetectable = Untransmittable). Built to be shared directly: sti.care/poz
+const POZ = {
+  en: {
+    label: "U=U",
+    title: "Undetectable = Untransmittable",
+    intro:
+      "A person with HIV who's on treatment and undetectable can't pass HIV through sex. Not lower risk — none. Share this page to say exactly that.",
+    qa: [
+      [
+        'What "undetectable" means',
+        "Daily HIV medicine lowers the virus until a test can't find it. Most people get there within about 6 months and stay there.",
+      ],
+      [
+        "Undetectable = Untransmittable",
+        "An undetectable person <b>cannot</b> pass HIV to sexual partners. Not lower risk — zero. This is settled science, backed by large studies and the U.S. CDC.",
+      ],
+      [
+        "What it means for a partner",
+        "Sex with an undetectable partner carries <b>no</b> risk of HIV. (Condoms still help with other STIs and pregnancy.)",
+      ],
+      [
+        "Sharing this is the responsible move",
+        "An undetectable status isn't a warning — it's good news. No stigma, no transmission risk.",
+      ],
+    ],
+    fromHiv: "Undetectable? Share what U=U means →",
+    disclaimer:
+      "U=U is backed by large studies and public health agencies, including the U.S. CDC.",
+  },
+  es: {
+    label: "I=I",
+    title: "Indetectable = Intransmisible",
+    intro:
+      "Una persona con VIH que está en tratamiento e indetectable no transmite el VIH por vía sexual. No es menos riesgo: es ninguno. Comparte esta página para decir justo eso.",
+    qa: [
+      [
+        'Qué significa "indetectable"',
+        "El medicamento diario baja el virus hasta que una prueba no lo encuentra. La mayoría llega en unos 6 meses y se mantiene así.",
+      ],
+      [
+        "Indetectable = Intransmisible",
+        "Una persona indetectable <b>no puede</b> transmitir el VIH a sus parejas sexuales. No es menos probable: es cero. Es ciencia confirmada por grandes estudios y los CDC de EE. UU.",
+      ],
+      [
+        "Qué significa para la pareja",
+        "Tener sexo con una persona indetectable no tiene <b>ningún</b> riesgo de VIH. (El condón sigue ayudando con otras ITS y el embarazo.)",
+      ],
+      [
+        "Compartir esto es lo responsable",
+        "Un estado indetectable no es una advertencia: es una buena noticia. Sin estigma y sin riesgo de transmisión.",
+      ],
+    ],
+    fromHiv: "¿Indetectable? Comparte qué es I=I →",
+    disclaimer:
+      "I=I está respaldado por grandes estudios y por agencias de salud pública, incluidos los CDC de EE. UU.",
+  },
+  pt: {
+    label: "I=I",
+    title: "Indetectável = Intransmissível",
+    intro:
+      "Uma pessoa com HIV que está em tratamento e indetectável não transmite o HIV pelo sexo. Não é menos risco: é nenhum. Compartilhe esta página para dizer exatamente isso.",
+    qa: [
+      [
+        'O que significa "indetectável"',
+        "O remédio diário baixa o vírus até o teste não encontrar. A maioria chega lá em cerca de 6 meses e continua assim.",
+      ],
+      [
+        "Indetectável = Intransmissível",
+        "Uma pessoa indetectável <b>não</b> transmite o HIV para parceiros sexuais. Não é menos provável — é zero. É ciência confirmada por grandes estudos e pelo CDC dos EUA.",
+      ],
+      [
+        "O que significa para o parceiro",
+        "Transar com uma pessoa indetectável não tem <b>nenhum</b> risco de HIV. (A camisinha continua ajudando com outras ISTs e a gravidez.)",
+      ],
+      [
+        "Compartilhar isto é o certo a fazer",
+        "Um status indetectável não é um aviso — é uma boa notícia. Sem estigma e sem risco de transmissão.",
+      ],
+    ],
+    fromHiv: "Indetectável? Compartilhe o que é I=I →",
+    disclaimer:
+      "O I=I é apoiado por grandes estudos e por agências de saúde pública, incluindo o CDC dos EUA.",
+  },
+  fr: {
+    label: "I=I",
+    title: "Indétectable = Intransmissible",
+    intro:
+      "Une personne séropositive sous traitement et indétectable ne transmet pas le VIH par voie sexuelle. Pas moins de risque : aucun. Partage cette page pour dire exactement ça.",
+    qa: [
+      [
+        "Ce que veut dire « indétectable »",
+        "Le traitement quotidien fait baisser le virus jusqu'à ce qu'un test ne le trouve plus. La plupart des gens y arrivent en 6 mois environ et le restent.",
+      ],
+      [
+        "Indétectable = Intransmissible",
+        "Une personne indétectable <b>ne peut pas</b> transmettre le VIH à ses partenaires sexuels. Pas moins de risque — zéro. C'est une science confirmée par de grandes études et le CDC (États-Unis).",
+      ],
+      [
+        "Ce que ça veut dire pour un partenaire",
+        "Avoir des rapports avec une personne indétectable ne présente <b>aucun</b> risque de VIH. (Le préservatif protège toujours des autres IST et de la grossesse.)",
+      ],
+      [
+        "Partager ça, c'est responsable",
+        "Un statut indétectable n'est pas un avertissement — c'est une bonne nouvelle. Pas de stigmatisation, pas de risque de transmission.",
+      ],
+    ],
+    fromHiv: "Indétectable ? Partage ce qu'est I=I →",
+    disclaimer:
+      "I=I s'appuie sur de grandes études et sur des agences de santé publique, dont le CDC (États-Unis).",
+  },
+};
+
+export { LANGS, ORDER, STATUS, CDC, AUTONYM, SHARE, T, C, SHAPES, DECO, POZ };

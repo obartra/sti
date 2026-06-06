@@ -3,7 +3,17 @@
 // touches the DOM / browser APIs.
 
 import { LANGS, T } from "./data.js";
-import { home, page, condPath, langbarHTML, decoHTML } from "./render.js";
+import {
+  home,
+  page,
+  pozPage,
+  condPath,
+  langbarHTML,
+  decoHTML,
+} from "./render.js";
+
+// A path segment maps to a view if it's a known condition or the U=U page.
+const isView = (seg) => Boolean(T[LANG].conditions[seg] || seg === "poz");
 
 let LANG = "en";
 let CUR = "";
@@ -85,8 +95,8 @@ function go(cond) {
   renderApp();
 }
 function route() {
-  const cond = parsePath();
-  CUR = cond && T[LANG].conditions[cond] ? cond : "";
+  const seg = parsePath();
+  CUR = seg && isView(seg) ? seg : "";
   document.documentElement.lang = LANG;
   renderLangbar();
   renderApp();
@@ -96,9 +106,13 @@ function renderLangbar() {
   document.getElementById("langbar").innerHTML = langbarHTML(LANG);
 }
 function renderApp() {
-  const key = CUR && T[LANG].conditions[CUR] ? CUR : "home";
+  const key = CUR && isView(CUR) ? CUR : "home";
   document.getElementById("app").innerHTML =
-    key === "home" ? home(LANG) : page(LANG, key);
+    key === "home"
+      ? home(LANG)
+      : key === "poz"
+        ? pozPage(LANG)
+        : page(LANG, key);
   document.getElementById("deco").innerHTML = decoHTML(key);
   try {
     window.scrollTo(0, 0);
@@ -107,10 +121,38 @@ function renderApp() {
   }
 }
 
+// Share the current page: native share sheet on mobile, copy-link fallback
+// elsewhere (with brief "copied" feedback on the button).
+function share(btn) {
+  const url = location.href;
+  if (navigator.share) {
+    navigator.share({ title: document.title, url }).catch(() => {});
+    return;
+  }
+  const done = () => {
+    const label = btn.querySelector(".t");
+    const copied = btn.getAttribute("data-copied");
+    if (!label || !copied) return;
+    const prev = label.textContent;
+    label.textContent = copied;
+    setTimeout(() => {
+      label.textContent = prev;
+    }, 1600);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(done, () => {});
+  }
+}
+
 document.addEventListener("click", function (e) {
   const l = e.target.closest("[data-lang]");
   if (l) {
     setLang(l.getAttribute("data-lang"));
+    return;
+  }
+  const s = e.target.closest("[data-share]");
+  if (s) {
+    share(s);
     return;
   }
   const a = e.target.closest("[data-nav]");
