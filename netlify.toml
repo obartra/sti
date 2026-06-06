@@ -28,16 +28,17 @@
     X-Frame-Options = "DENY"
     Permissions-Policy = "geolocation=(), camera=(), microphone=()"
 
-# Static assets can be cached and revalidated.
+# Static assets aren't fingerprinted, so revalidate them on every load (cheap
+# 304s) — this avoids serving a stale script/style after a deploy.
 [[headers]]
   for = "/styles.css"
   [headers.values]
-    Cache-Control = "public, max-age=3600, must-revalidate"
+    Cache-Control = "public, max-age=0, must-revalidate"
 
 [[headers]]
   for = "/src/*"
   [headers.values]
-    Cache-Control = "public, max-age=3600, must-revalidate"
+    Cache-Control = "public, max-age=0, must-revalidate"
 
 [[headers]]
   for = "/favicon.svg"
