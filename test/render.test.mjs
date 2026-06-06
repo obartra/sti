@@ -1,12 +1,21 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { LANGS, ORDER, STATUS, T, SHAPES, DECO } from "../public/src/data.js";
+import {
+  LANGS,
+  ORDER,
+  STATUS,
+  T,
+  SHAPES,
+  DECO,
+  POZ,
+} from "../public/src/data.js";
 import {
   condPath,
   mapsURL,
   home,
   page,
+  pozPage,
   langbarHTML,
   decoHTML,
 } from "../public/src/render.js";
@@ -81,5 +90,42 @@ test("every decoration references a defined shape", () => {
     for (const piece of DECO[key]) {
       assert.ok(SHAPES[piece.t], `${key} uses unknown shape ${piece.t}`);
     }
+  }
+});
+
+test("every language defines the U=U page", () => {
+  for (const lang of LANGS) {
+    const p = POZ[lang];
+    assert.ok(p && p.title && p.label && p.intro, `${lang} poz incomplete`);
+    assert.ok(Array.isArray(p.qa) && p.qa.length > 0, `${lang} poz no qa`);
+  }
+});
+
+test("U=U page renders title, label, care CTA and back link", () => {
+  for (const lang of LANGS) {
+    const html = pozPage(lang);
+    const p = POZ[lang];
+    assert.ok(html.includes(p.title), `${lang} poz title missing`);
+    assert.ok(html.includes(`pill poz`), `${lang} poz pill missing`);
+    assert.ok(
+      html.includes('data-nav="home"'),
+      `${lang} poz back link missing`,
+    );
+    assert.ok(html.includes("google.com/maps"), `${lang} poz CTA missing`);
+  }
+});
+
+test("U=U page has its own decoration set", () => {
+  assert.ok(DECO.poz && DECO.poz.length > 0);
+});
+
+test("the HIV page links to the U=U page", () => {
+  for (const lang of LANGS) {
+    assert.ok(
+      page(lang, "hiv").includes('data-nav="poz"'),
+      `${lang} HIV page missing poz link`,
+    );
+    // other condition pages should not
+    assert.ok(!page(lang, "hpv").includes('data-nav="poz"'));
   }
 });

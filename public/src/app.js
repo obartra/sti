@@ -3,7 +3,17 @@
 // touches the DOM / browser APIs.
 
 import { LANGS, T } from "./data.js";
-import { home, page, condPath, langbarHTML, decoHTML } from "./render.js";
+import {
+  home,
+  page,
+  pozPage,
+  condPath,
+  langbarHTML,
+  decoHTML,
+} from "./render.js";
+
+// A path segment maps to a view if it's a known condition or the U=U page.
+const isView = (seg) => Boolean(T[LANG].conditions[seg] || seg === "poz");
 
 let LANG = "en";
 let CUR = "";
@@ -85,8 +95,8 @@ function go(cond) {
   renderApp();
 }
 function route() {
-  const cond = parsePath();
-  CUR = cond && T[LANG].conditions[cond] ? cond : "";
+  const seg = parsePath();
+  CUR = seg && isView(seg) ? seg : "";
   document.documentElement.lang = LANG;
   renderLangbar();
   renderApp();
@@ -96,9 +106,13 @@ function renderLangbar() {
   document.getElementById("langbar").innerHTML = langbarHTML(LANG);
 }
 function renderApp() {
-  const key = CUR && T[LANG].conditions[CUR] ? CUR : "home";
+  const key = CUR && isView(CUR) ? CUR : "home";
   document.getElementById("app").innerHTML =
-    key === "home" ? home(LANG) : page(LANG, key);
+    key === "home"
+      ? home(LANG)
+      : key === "poz"
+        ? pozPage(LANG)
+        : page(LANG, key);
   document.getElementById("deco").innerHTML = decoHTML(key);
   try {
     window.scrollTo(0, 0);

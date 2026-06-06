@@ -150,8 +150,38 @@ h1 {
 .pill.treat {
   background: var(--orange);
 }
+.pill.poz {
+  background: var(--purple);
+  color: #fff;
+}
 .toppill {
   margin-bottom: 16px;
+}
+
+/* link from the HIV page to the U=U page */
+.pozlink {
+  display: block;
+  margin-top: 18px;
+  text-decoration: none;
+  background: var(--purple);
+  color: #fff;
+  font-weight: 600;
+  font-size: 16px;
+  border: var(--bd);
+  border-radius: 14px;
+  padding: 13px 16px;
+  box-shadow: var(--sh-sm);
+  transition:
+    transform 0.1s,
+    box-shadow 0.1s;
+}
+.pozlink:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+.pozlink:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
 }
 
 /* testing button */
