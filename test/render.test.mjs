@@ -57,6 +57,10 @@ test("home page lists every condition and the title", () => {
         `${lang} home missing ${key}`,
       );
     }
+    assert.ok(
+      html.includes('data-nav="poz"'),
+      `${lang} home missing the U=U link`,
+    );
   }
 });
 

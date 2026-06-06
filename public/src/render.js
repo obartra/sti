@@ -54,6 +54,7 @@ export function home(lang) {
     <p class="tagline rise d1">${ui.tagline}</p>
     <section class="rise d2">${cta(lang)}</section>
     <div class="others rise d3"><div class="lbl">${ui.othersLabel}</div><div class="grid">${tiles}</div></div>
+    <a class="pozlink rise d3" href="${condPath("poz")}" data-nav="poz">${POZ[lang].fromHiv}</a>
     <footer>${ui.footer}</footer>`;
 }
 
