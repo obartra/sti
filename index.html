@@ -132,6 +132,7 @@ const LANGS=["en","es","pt","fr"];
 const ORDER=["gonorrhea","chlamydia","syphilis","hiv","herpes","hpv"];
 const STATUS={gonorrhea:"curable",chlamydia:"curable",syphilis:"curable",hiv:"treat",herpes:"treat",hpv:"treat"};
 const CDC="https://gettested.cdc.gov/";
+const AUTONYM={en:"English",es:"Español",pt:"Português",fr:"Français"};
 
 const T={
   en:{
@@ -285,8 +286,17 @@ const T={
 };
 
 let LANG="en", CUR="";
+const LSKEY="sti.lang";
 
+// Language is chosen by the visitor, not encoded in the URL. Order of
+// preference: a remembered choice (localStorage) -> the browser's language
+// -> English. A ?lang=xx query param (handy for sharing a specific language)
+// overrides and is then remembered.
+function stored(){ try{ const v=localStorage.getItem(LSKEY); return LANGS.includes(v)?v:null; }catch(e){ return null; } }
+function remember(l){ try{ localStorage.setItem(LSKEY,l); }catch(e){} }
 function detect(){ try{ const l=(navigator.language||"en").slice(0,2).toLowerCase(); return LANGS.includes(l)?l:"en"; }catch(e){ return "en"; } }
+function queryLang(){ try{ const q=new URLSearchParams(location.search).get("lang"); return LANGS.includes(q)?q:null; }catch(e){ return null; } }
+function initialLang(){ return queryLang() || stored() || detect(); }
 
 function mapsURL(lang){ return "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(T[lang].ui.mapsQuery); }
 
@@ -304,7 +314,7 @@ function cta(lang){
 
 function home(lang){
   const t=T[lang], ui=t.ui;
-  const tiles=ORDER.map(k=>`<a class="tile" href="${condPath(lang,k)}" data-nav="${k}"><span class="nm">${t.conditions[k].name}</span><svg class="ar" width="15" height="15" viewBox="0 0 18 18" fill="none"><path d="M3 9h11M10 5l4 4-4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a>`).join("");
+  const tiles=ORDER.map(k=>`<a class="tile" href="${condPath(k)}" data-nav="${k}"><span class="nm">${t.conditions[k].name}</span><svg class="ar" width="15" height="15" viewBox="0 0 18 18" fill="none"><path d="M3 9h11M10 5l4 4-4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a>`).join("");
   return `<h1 class="rise d1">${ui.title}</h1>
     <p class="tagline rise d1">${ui.tagline}</p>
     <section class="rise d2">${cta(lang)}</section>
@@ -317,7 +327,7 @@ function page(lang,key){
   if(!c) return home(lang);
   const cls=STATUS[key]==="curable"?"curable":"treat";
   const blocks=c.qa.map(([q,a])=>`<div class="block"><div class="q">${q}</div><div class="a">${a}</div></div>`).join("");
-  return `<a class="back rise d1" href="${condPath(lang,"")}" data-nav="home"><svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M15 9H4M8 5L4 9l4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>${ui.back}</a>
+  return `<a class="back rise d1" href="${condPath("")}" data-nav="home"><svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M15 9H4M8 5L4 9l4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>${ui.back}</a>
     <span class="pill ${cls} toppill rise d1">${c.label}</span>
     <h1 class="rise d1">${c.name}</h1>
     <p class="intro rise d2">${c.intro}</p>
@@ -328,8 +338,8 @@ function page(lang,key){
 }
 
 function renderLangbar(){
-  const seg=LANGS.map(l=>`<button data-lang="${l}" class="${l===LANG?'active':''}">${l.toUpperCase()}</button>`).join("");
-  document.getElementById("langbar").innerHTML=`<div class="seg">${seg}</div>`;
+  const seg=LANGS.map(l=>`<button data-lang="${l}" lang="${l}" aria-label="${AUTONYM[l]}" aria-pressed="${l===LANG}" class="${l===LANG?'active':''}">${l.toUpperCase()}</button>`).join("");
+  document.getElementById("langbar").innerHTML=`<div class="seg" role="group" aria-label="Language">${seg}</div>`;
 }
 function renderApp(){
   const app=document.getElementById("app");
@@ -337,30 +347,32 @@ function renderApp(){
   try{ window.scrollTo(0,0); }catch(e){}
 }
 
-// ----- routing (real /lang/condition URLs via the History API) -----
-function condPath(lang,cond){ return "/"+lang+(cond?"/"+cond:""); }
-function currentPath(){ return condPath(LANG,CUR); }
+// ----- routing -----
+// The URL only ever encodes the condition: "/", "/gonorrhea", "/hiv", ...
+// Language is independent of the URL (see initialLang()), so a link like
+// sti.care/gonorrhea shows in each visitor's own preferred language.
+function condPath(cond){ return cond?"/"+cond:"/"; }
+function currentPath(){ return condPath(CUR); }
 function syncURL(push){
   try{
-    const path=currentPath();
-    if(location.pathname===path) return;
+    const path=currentPath()+location.search;
+    if(location.pathname+location.search===path) return;
     if(push) history.pushState(null,"",path);
     else history.replaceState(null,"",path);
   }catch(e){}
 }
 
-function setLang(l){ if(!LANGS.includes(l))return; LANG=l; document.documentElement.lang=l; syncURL(true); renderLangbar(); renderApp(); }
+// Switching language re-renders in place and remembers the choice; it does
+// not touch the URL.
+function setLang(l){ if(!LANGS.includes(l))return; LANG=l; remember(l); document.documentElement.lang=l; renderLangbar(); renderApp(); }
 function go(cond){ CUR=(cond==="home")?"":cond; syncURL(true); renderApp(); }
 
 function parsePath(){
   const parts=(location.pathname||"/").split("/").filter(Boolean);
-  let lang=null, cond="";
-  if(parts.length){ if(LANGS.includes(parts[0])){ lang=parts[0]; cond=parts[1]||""; } else { cond=parts[0]; } }
-  return {lang,cond};
+  return parts.length?parts[0]:"";
 }
 function route(){
-  const {lang,cond}=parsePath();
-  if(lang) LANG=lang;
+  const cond=parsePath();
   CUR=(cond && T[LANG].conditions[cond])?cond:"";
   document.documentElement.lang=LANG;
   renderLangbar();
@@ -376,9 +388,10 @@ document.addEventListener("click",function(e){
 });
 window.addEventListener("popstate",route);
 
-LANG=detect();
+LANG=initialLang();
+if(queryLang()) remember(LANG); // honor & persist a shared ?lang= link
 route();
-syncURL(false); // normalize the address bar on first load (e.g. "/" -> "/en")
+syncURL(false); // tidy the address bar (e.g. an unknown "/foo" -> "/")
 </script>
 </body>
 </html>
