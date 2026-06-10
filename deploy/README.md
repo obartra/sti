@@ -4,7 +4,7 @@
 that publishes a prototype zip to a custom subdomain via GitHub Pages, on the
 `gh-pages` branch.
 
-- **Custom domain:** [`lab.sti.care`](https://lab.sti.care/) (set in [`CNAME`](CNAME))
+- **Custom domain:** [`labs.sti.care`](https://labs.sti.care/) (set in [`CNAME`](CNAME))
 - **Branch:** `gh-pages` (orphan; every deploy replaces it entirely)
 - **Source of truth:** whatever zip you hand over. Nothing here is built from
   the repo; `main` and Netlify are untouched.
@@ -41,7 +41,7 @@ To deploy to a different branch once, set `DEPLOY_BRANCH=some-branch` in the env
 
 GitHub Pages serves static files and has **no rewrite engine** (unlike Netlify's
 `/* -> /index.html` rule). A direct hit on a client-side route such as
-`lab.sti.care/hiv` would otherwise 404. Copying the app shell to `404.html` lets
+`labs.sti.care/hiv` would otherwise 404. Copying the app shell to `404.html` lets
 the in-page router boot and render the right view. The status line is still 404,
 which is fine for a prototype; revisit if this graduates to production.
 
@@ -53,12 +53,12 @@ which is fine for a prototype; revisit if this graduates to production.
    nameservers point: `nse1-4.squarespacedns.com`; the Netlify apex is reached
    via an A record, but DNS itself is managed at Squarespace, not Netlify):
 
-   | Type  | Host  | Data / Value         |
-   | ----- | ----- | -------------------- |
-   | CNAME | `lab` | `obartra.github.io.` |
+   | Type  | Host   | Data / Value         |
+   | ----- | ------ | -------------------- |
+   | CNAME | `labs` | `obartra.github.io.` |
 
    Until that record exists and propagates, GitHub can't validate the domain or
-   issue the HTTPS certificate, so `lab.sti.care` won't resolve yet.
+   issue the HTTPS certificate, so `labs.sti.care` won't resolve yet.
 
 4. After the cert provisions, enable **Enforce HTTPS** in the repo's
    Settings -> Pages.
