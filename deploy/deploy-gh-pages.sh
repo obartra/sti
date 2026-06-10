@@ -3,9 +3,11 @@
 # Deploy a prototype zip to the GitHub Pages (gh-pages) branch.
 #
 # What it does, given a single zip:
-#   1. Extracts it to a temp dir and finds the folder that holds index.html
-#      (works whether the zip wraps the files in a folder or not).
-#   2. Strips macOS zip cruft (__MACOSX, .DS_Store).
+#   1. Extracts it to a temp dir and finds the site root: the folder that holds
+#      index.html (whether or not the zip wraps the files in a folder). If there
+#      is no index.html but exactly one HTML file (design-tool exports often name
+#      the entry "<Title>.html"), that file is promoted to index.html.
+#   2. Strips macOS zip cruft (__MACOSX, .DS_Store) and any --exclude paths.
 #   3. Adds the custom-domain CNAME, a .nojekyll marker, and an SPA 404 fallback.
 #   4. Force-pushes those files to the gh-pages branch as a single fresh commit,
 #      so each deploy fully replaces the branch and its history is disregarded.
@@ -15,10 +17,13 @@
 #
 # Usage:
 #   deploy/deploy-gh-pages.sh <path-to-zip>
-#   deploy/deploy-gh-pages.sh <path-to-zip> --dry-run        # build, don't push
-#   deploy/deploy-gh-pages.sh <path-to-zip> --no-spa-fallback
+#   deploy/deploy-gh-pages.sh <zip> --exclude docs --exclude uploads
+#   deploy/deploy-gh-pages.sh <zip> --dry-run            # build, don't push
+#   deploy/deploy-gh-pages.sh <zip> --no-spa-fallback
 #
-# The custom domain is read from deploy/CNAME (one host per deploy).
+# --exclude PATTERN (repeatable) removes paths relative to the site root (glob
+# allowed) before publishing, e.g. design-process folders in an export. The
+# custom domain is read from deploy/CNAME (one host per deploy).
 
 set -euo pipefail
 
@@ -28,31 +33,42 @@ DEPLOY_BRANCH="${DEPLOY_BRANCH:-gh-pages}"
 ZIP=""
 DRY_RUN=0
 SPA_FALLBACK=1
+EXCLUDES=()
 
-for arg in "$@"; do
-  case "$arg" in
+while [ $# -gt 0 ]; do
+  case "$1" in
     --dry-run) DRY_RUN=1 ;;
     --no-spa-fallback) SPA_FALLBACK=0 ;;
+    --exclude)
+      shift
+      [ $# -gt 0 ] || {
+        echo "--exclude needs a PATTERN" >&2
+        exit 2
+      }
+      EXCLUDES+=("$1")
+      ;;
+    --exclude=*) EXCLUDES+=("${1#--exclude=}") ;;
     -h | --help)
-      sed -n '2,30p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+      awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "${BASH_SOURCE[0]}"
       exit 0
       ;;
     -*)
-      echo "Unknown flag: $arg" >&2
+      echo "Unknown flag: $1" >&2
       exit 2
       ;;
     *)
       if [ -n "$ZIP" ]; then
-        echo "Only one zip can be deployed at a time (got '$ZIP' and '$arg')." >&2
+        echo "Only one zip can be deployed at a time (got '$ZIP' and '$1')." >&2
         exit 2
       fi
-      ZIP="$arg"
+      ZIP="$1"
       ;;
   esac
+  shift
 done
 
 if [ -z "$ZIP" ]; then
-  echo "Usage: deploy/deploy-gh-pages.sh <path-to-zip> [--dry-run] [--no-spa-fallback]" >&2
+  echo "Usage: deploy/deploy-gh-pages.sh <path-to-zip> [--exclude PATTERN]... [--dry-run] [--no-spa-fallback]" >&2
   exit 2
 fi
 if [ ! -f "$ZIP" ]; then
@@ -89,15 +105,46 @@ unzip -q "$ZIP" -d "$EXTRACT"
 find "$EXTRACT" -name '__MACOSX' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 find "$EXTRACT" -name '.DS_Store' -type f -delete 2>/dev/null || true
 
-# Site root = the shallowest directory containing an index.html.
+# Site root = the shallowest directory containing an index.html. If there is no
+# index.html but exactly one HTML file (design-tool exports often name the entry
+# "<Title>.html"), promote it so Pages serves it as the directory index.
 INDEX="$(find "$EXTRACT" -name index.html -type f \
   | awk -F/ '{print NF, $0}' | sort -n | head -1 | cut -d' ' -f2-)"
 if [ -z "$INDEX" ]; then
-  echo "No index.html found anywhere in the zip; nothing to publish." >&2
-  exit 1
+  HTML_LIST="$(find "$EXTRACT" -type f \( -iname '*.html' -o -iname '*.htm' \) ! -name '404.html')"
+  HTML_COUNT="$(printf '%s\n' "$HTML_LIST" | grep -c . || true)"
+  if [ "$HTML_COUNT" -eq 0 ]; then
+    echo "No HTML entry found anywhere in the zip; nothing to publish." >&2
+    exit 1
+  elif [ "$HTML_COUNT" -gt 1 ]; then
+    echo "No index.html, and multiple HTML files exist; can't pick the entry:" >&2
+    printf '%s\n' "$HTML_LIST" | sed "s#^$EXTRACT/#  #" >&2
+    echo "Rename the intended entry to index.html in the zip, then retry." >&2
+    exit 1
+  fi
+  INDEX="$(dirname "$HTML_LIST")/index.html"
+  cp "$HTML_LIST" "$INDEX"
+  echo "Promoted '$(basename "$HTML_LIST")' -> index.html (no index.html in the zip)."
 fi
 PUBLISH_DIR="$(dirname "$INDEX")"
-echo "Publish root: ${PUBLISH_DIR#"$EXTRACT"/}  (index.html found)"
+if [ "$PUBLISH_DIR" = "$EXTRACT" ]; then REL="(zip root)"; else REL="${PUBLISH_DIR#"$EXTRACT"/}"; fi
+echo "Publish root: $REL"
+
+# Drop any --exclude paths (relative to the site root) before publishing.
+if [ "${#EXCLUDES[@]}" -gt 0 ]; then
+  shopt -s nullglob dotglob
+  for pat in "${EXCLUDES[@]}"; do
+    hit=0
+    for match in "$PUBLISH_DIR"/$pat; do
+      [ -e "$match" ] || continue
+      rm -rf "$match"
+      echo "Excluded: ${match#"$PUBLISH_DIR"/}"
+      hit=1
+    done
+    [ "$hit" -eq 1 ] || echo "Exclude '$pat' matched nothing."
+  done
+  shopt -u nullglob dotglob
+fi
 
 # Custom domain + disable Jekyll (so paths like /src and _underscore files survive).
 printf '%s\n' "$DOMAIN" >"$PUBLISH_DIR/CNAME"

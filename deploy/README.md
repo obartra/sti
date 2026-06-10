@@ -17,11 +17,14 @@ deploy/deploy-gh-pages.sh path/to/prototype.zip
 
 That single command:
 
-1. Extracts the zip and finds the folder containing `index.html` (it doesn't
-   matter whether the zip wraps the files in a top-level folder).
-2. Strips macOS zip cruft (`__MACOSX`, `.DS_Store`).
+1. Extracts the zip and finds the site root: the folder containing `index.html`
+   (it doesn't matter whether the zip wraps the files in a top-level folder). If
+   there's **no `index.html` but exactly one HTML file** (design-tool exports
+   often name the entry `<Title>.html`), it's promoted to `index.html`.
+2. Strips macOS zip cruft (`__MACOSX`, `.DS_Store`) and any `--exclude` paths.
 3. Adds the `CNAME` (custom domain), a `.nojekyll` marker (so `/src` and any
-   `_underscore` files survive), and a `404.html` SPA fallback.
+   `_underscore` folders survive — Jekyll hides leading-underscore paths), and a
+   `404.html` SPA fallback.
 4. Force-pushes the result to `gh-pages` as one fresh commit, so the **prior
    `gh-pages` history is discarded** every time.
 
@@ -30,12 +33,28 @@ your working tree and every other branch are left alone.
 
 Useful flags:
 
-| Flag                | Effect                                                       |
-| ------------------- | ------------------------------------------------------------ |
-| `--dry-run`         | Prepare the tree and print it, but don't push.               |
-| `--no-spa-fallback` | Don't synthesize `404.html` (use for true multi-page sites). |
+| Flag                | Effect                                                                         |
+| ------------------- | ------------------------------------------------------------------------------ |
+| `--exclude PATTERN` | Drop paths (relative to the site root, glob ok) before publishing. Repeatable. |
+| `--dry-run`         | Prepare the tree and print it, but don't push.                                 |
+| `--no-spa-fallback` | Don't synthesize `404.html` (use for true multi-page sites).                   |
 
 To deploy to a different branch once, set `DEPLOY_BRANCH=some-branch` in the env.
+
+### Napkin-style design-tool exports
+
+The export bundles the running app (an entry `<Title>.html` that loads React +
+Babel from a CDN and transpiles the `.jsx` in the browser, plus `app/`, `_ds/`,
+`assets/`) alongside design-process files that aren't part of the app. Exclude
+those so they don't end up on a public URL:
+
+```sh
+deploy/deploy-gh-pages.sh path/to/prototype.zip \
+  --exclude docs --exclude scraps --exclude uploads --exclude .thumbnail
+```
+
+The entry is promoted to `index.html` automatically, and `.nojekyll` keeps the
+`_ds/` design-system folder from being hidden by Jekyll.
 
 ## Why the SPA 404 fallback
 
