@@ -1,6 +1,7 @@
 # sti.care
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/56bdd737-fada-420f-8277-eb8edd5aa50a/deploy-status)](https://app.netlify.com/projects/sticare/deploys)
+[![labs.sti.care](https://img.shields.io/website?url=https%3A%2F%2Flabs.sti.care%2F&up_message=live&down_message=down&label=labs.sti.care)](https://labs.sti.care/)
 
 A tiny site that helps people find a place to get tested and read simple,
 judgment-free info on common STIs. Available in English, Spanish, Portuguese
