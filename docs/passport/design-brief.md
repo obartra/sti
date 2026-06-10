@@ -35,7 +35,7 @@ These are the decisions that make the product good. Don't lose them.
    **color + icon + distinct shape + word.** Status must survive a grayscale
    screenshot. (WCAG 2.2 AA minimum.)
 
-4. **Honest about "self-reported."** The UI must *never* imply a result was
+4. **Honest about "self-reported."** The UI must _never_ imply a result was
    verified. A calm, persistent "self-reported" marker lives on the card.
    Roadmap: a higher "clinic-verified" badge tier — design the card so a verified
    tier can slot in later without a redesign.
@@ -50,15 +50,15 @@ These are the decisions that make the product good. Don't lose them.
    existing `/poz` card. Never pathologize a managed condition.
 
 7. **Partner notification is consent-gated and ethically guarded.** It is
-   *prompted* automatically on a positive report, but a human always confirms
+   _prompted_ automatically on a positive report, but a human always confirms
    before anything sends. It is genuinely anonymous, non-accusatory, and
    shame-free on both ends. Guardrail: warn / soften when the recipient set is so
    small that "anonymous" wouldn't actually be anonymous (k-anonymity).
 
 8. **Guidance is contextual.** The "next best action" changes with the status:
-   red → *get tested* (clinic map + Heymistr), yellow → *finish treatment / when
-   you'll be clear*, green → *stay current, here's your reminder*, exposed →
-   *book a test now.* Never a dead end.
+   red → _get tested_ (clinic map + Heymistr), yellow → _finish treatment / when
+   you'll be clear_, green → _stay current, here's your reminder_, exposed →
+   _book a test now._ Never a dead end.
 
 9. **Designed for the roadmap, scoped for the MVP.** Reserve the nav slot and the
    social-graph primitives (a partner/contact list already exists implicitly for
@@ -73,12 +73,12 @@ The **public** card can only ever be in one of these states. It is a pure
 function of: freshness of last full panel, any active treatment, and whether the
 owner shared anything. It **never** names a condition.
 
-| State | Color (semantic) | Icon / shape | Headline | Subline (examples) | Means |
-|---|---|---|---|---|---|
-| 🟢 **Current & clear** | green (lime) | shield + check, rounded | "Up to date" | "All clear · fresh for 23 more days" | Full panel within the freshness window, nothing active. Includes U=U "managed · untransmittable." |
-| 🟡 **In treatment** | amber (yellow) | clock / plus, hexagon | "On the mend" | "In treatment · clear by Jun 13" | A curable positive with treatment logged; shows a countdown to the clear date. |
-| 🔴 **Out of date** | red (dedicated alert red) | refresh / bang, octagon | "Needs a fresh test" | "Last results expired" | Last test older than the freshness window. |
-| ⚪ **No status** | gray | dash / question, square | "No status shared" | "Hasn't shared a status yet" | Account exists but nothing reported, or owner set the card private. |
+| State                  | Color (semantic)          | Icon / shape            | Headline             | Subline (examples)                   | Means                                                                                             |
+| ---------------------- | ------------------------- | ----------------------- | -------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| 🟢 **Current & clear** | green (lime)              | shield + check, rounded | "Up to date"         | "All clear · fresh for 23 more days" | Full panel within the freshness window, nothing active. Includes U=U "managed · untransmittable." |
+| 🟡 **In treatment**    | amber (yellow)            | clock / plus, hexagon   | "On the mend"        | "In treatment · clear by Jun 13"     | A curable positive with treatment logged; shows a countdown to the clear date.                    |
+| 🔴 **Out of date**     | red (dedicated alert red) | refresh / bang, octagon | "Needs a fresh test" | "Last results expired"               | Last test older than the freshness window.                                                        |
+| ⚪ **No status**       | gray                      | dash / question, square | "No status shared"   | "Hasn't shared a status yet"         | Account exists but nothing reported, or owner set the card private.                               |
 
 **Important product/ethics decision to confirm (flagged for the team):** there is
 deliberately **no public state that announces "currently positive / contagious"
@@ -109,7 +109,7 @@ logged-in core (the MVP). Group D is roadmap — design-aware, do not build.
   own." Nothing else. This is the screen people screenshot — make it beautiful.
 - **A3 — Exposure alert landing.** Where an anonymous "one of your recent
   partners tested positive — worth getting checked" link points. Calm, zero
-  blame, zero panic. Leads with *what to do* (find testing / Heymistr), explains
+  blame, zero panic. Leads with _what to do_ (find testing / Heymistr), explains
   it's anonymous and may be a precaution, and offers "claim your own passport."
   This page does the most emotional work in the app — design it with the most
   care.
@@ -127,7 +127,7 @@ logged-in core (the MVP). Group D is roadmap — design-aware, do not build.
 
 - **C1 — Home / dashboard.** Your big status light front and center, plain-English
   "what this means," the single **next best action** for your state, and quick
-  actions: *Report a result*, *Share my card*, *Get care*.
+  actions: _Report a result_, _Share my card_, _Get care_.
 - **C2 — Report a result** (the engine that drives the whole state machine).
   Pick condition(s), result (negative / positive / undetectable), date tested.
   If positive → treatment status + expected clear date (→ drives yellow + the
