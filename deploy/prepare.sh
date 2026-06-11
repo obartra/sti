@@ -13,15 +13,16 @@
 #
 # Usage:
 #   deploy/prepare.sh [zip] [--out DIR] [--exclude PATTERN]...
-#                     [--no-default-excludes] [--transpile] [--build "CMD"]
+#                     [--no-default-excludes] [--no-transpile] [--build "CMD"]
 #
 # Default excludes (design-process files common in napkin-style exports):
 #   docs scraps uploads .thumbnail
 # Pass --no-default-excludes to keep them, or --exclude to drop more.
 #
-# --transpile runs napkin-build.sh: pre-compiles the JSX so the export drops the
-# ~3MB in-browser Babel compiler (deterministic, see that script). --build runs
-# an arbitrary CMD inside the site dir for any other build need.
+# JSX is pre-compiled by default (napkin-build.sh: drops the ~3MB in-browser
+# Babel compiler; deterministic, see that script; a no-op on non-napkin zips).
+# Pass --no-transpile to serve the export verbatim. --build runs an arbitrary
+# CMD inside the site dir for any other build need.
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -34,7 +35,7 @@ ZIP=""
 OUT=""
 BUILD_CMD=""
 USE_DEFAULTS=1
-TRANSPILE=0
+TRANSPILE=1
 EXCLUDES=()
 
 while [ $# -gt 0 ]; do
@@ -53,6 +54,7 @@ while [ $# -gt 0 ]; do
     --exclude=*) EXCLUDES+=("${1#--exclude=}") ;;
     --no-default-excludes) USE_DEFAULTS=0 ;;
     --transpile) TRANSPILE=1 ;;
+    --no-transpile) TRANSPILE=0 ;;
     --build)
       shift
       [ $# -gt 0 ] || die "--build needs a CMD"

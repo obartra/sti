@@ -23,6 +23,13 @@ SITE="$(cd "$SITE" && pwd)"
 HTML="$SITE/index.html"
 [ -f "$HTML" ] || die "No index.html in $SITE (run prepare.sh first)."
 
+# Only act on actual napkin exports (entry loads JSX via text/babel). This keeps
+# the transpile a safe no-op when it runs by default on some other kind of zip.
+if ! grep -q 'type="text/babel"' "$HTML"; then
+  log "No text/babel tags in index.html; not a napkin export, skipping transpile."
+  exit 0
+fi
+
 # Collect the JSX files (current shell, so the array survives the loop).
 jsx=()
 while IFS= read -r f; do jsx+=("$f"); done < <(find "$SITE" -type f -name '*.jsx')

@@ -8,11 +8,12 @@
 #
 # Usage:
 #   deploy/deploy.sh [zip] [--exclude PATTERN]... [--no-default-excludes]
-#                    [--transpile] [--build "CMD"] [--no-spa-fallback] [--dry-run]
+#                    [--no-transpile] [--build "CMD"] [--no-spa-fallback] [--dry-run]
 #
 # With no zip, the newest *.zip in the repo root is used. Design-process files
-# (docs, scraps, uploads, .thumbnail) are excluded by default. --transpile
-# pre-compiles the JSX (drops the in-browser Babel compiler).
+# (docs, scraps, uploads, .thumbnail) are excluded by default, and the JSX is
+# pre-compiled by default (drops the in-browser Babel). Pass --no-transpile to
+# serve the export verbatim.
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,6 +34,7 @@ while [ $# -gt 0 ]; do
     --exclude=*) PREP_ARGS+=("$1") ;;
     --no-default-excludes) PREP_ARGS+=(--no-default-excludes) ;;
     --transpile) PREP_ARGS+=(--transpile) ;;
+    --no-transpile) PREP_ARGS+=(--no-transpile) ;;
     --build)
       shift
       [ $# -gt 0 ] || die "--build needs a CMD"

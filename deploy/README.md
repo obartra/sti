@@ -21,7 +21,9 @@ deploy/deploy.sh path/to/x.zip   # or name one explicitly
 deploy/deploy.sh --dry-run       # build the tree and print it, don't push
 ```
 
-That picks the zip, prepares it, and publishes it to `gh-pages` in one shot.
+That picks the zip, prepares it, and publishes it to `gh-pages` in one shot. For
+napkin exports it also pre-compiles the JSX by default (see `--no-transpile`
+below); add `--no-transpile` to serve the export verbatim.
 
 ## The three scripts
 
@@ -60,7 +62,7 @@ Flags:
 | ----------------------- | ----------------------------------------------------------------------------- |
 | `--exclude PATTERN`     | Drop paths relative to the site root (glob ok). Repeatable; adds to defaults. |
 | `--no-default-excludes` | Keep the default-excluded design-process files.                               |
-| `--transpile`           | Pre-compile the JSX so the export drops the in-browser Babel (see below).     |
+| `--no-transpile`        | Skip the default JSX pre-compile; serve the export verbatim (see below).      |
 | `--build "CMD"`         | Run `CMD` in the site dir for any other build need.                           |
 | `--out DIR`             | Stage into `DIR` instead of a temp dir.                                       |
 
@@ -86,15 +88,17 @@ defaults already handle this shape: the entry is promoted to `index.html`,
 `_ds/` design-system folder from being hidden by Jekyll. So a plain
 `deploy/deploy.sh` is all it takes.
 
-### `--transpile`: drop the in-browser Babel (recommended)
+### JSX pre-compile (on by default)
 
-By default the export loads React, ReactDOM, and **Babel-standalone (~2.9 MB)**
+As exported, the entry loads React, ReactDOM, and **Babel-standalone (~2.9 MB)**
 from a CDN and transpiles its 16 `.jsx` files in the browser on every page load.
-`--transpile` (which runs [`napkin-build.sh`](napkin-build.sh)) moves that
-compile to deploy time:
+By default the pipeline moves that compile to deploy time via
+[`napkin-build.sh`](napkin-build.sh); pass `--no-transpile` to keep the runtime
+Babel instead:
 
 ```sh
-deploy/deploy.sh --transpile      # same output, no runtime Babel
+deploy/deploy.sh                  # pre-compiled, no runtime Babel (default)
+deploy/deploy.sh --no-transpile   # serve the export verbatim
 ```
 
 It's a deterministic, 1:1 transform, **not** a bundler: each `app/*.jsx` is
@@ -103,10 +107,10 @@ compiled to a minified `app/*.js` with esbuild's classic JSX transform (the same
 src=...jsx>` tags become plain `<script src=...js>`, and the Babel-standalone
 `<script>` is removed. React/ReactDOM stay as globals, load order and `window.*`
 sharing are untouched, and nothing is reordered, tree-shaken, or module-ified.
-It needs `npx esbuild` (auto-fetched). Left off by default so the base pipeline
-stays dependency-free; turn it on when load speed matters. A full Vite/module
-bundle is deliberately avoided: the source shares state through globals, so
-converting it to ES modules would be a brittle, export-specific rewrite.
+It needs `npx esbuild` (auto-fetched), and it's a no-op on any zip whose entry
+has no `text/babel` tags. A full Vite/module bundle is deliberately avoided: the
+source shares state through globals, so converting it to ES modules would be a
+brittle, export-specific rewrite.
 
 ## Why `.nojekyll` and the SPA 404 fallback
 
