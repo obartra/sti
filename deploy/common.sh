@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared helpers for the deploy scripts. Sourced, not executed.
 # Every function writes human output to stderr so callers can capture stdout.
 

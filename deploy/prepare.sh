@@ -13,13 +13,15 @@
 #
 # Usage:
 #   deploy/prepare.sh [zip] [--out DIR] [--exclude PATTERN]...
-#                     [--no-default-excludes] [--build "CMD"]
+#                     [--no-default-excludes] [--transpile] [--build "CMD"]
 #
 # Default excludes (design-process files common in napkin-style exports):
 #   docs scraps uploads .thumbnail
-# Pass --no-default-excludes to keep them, or --exclude to drop more. --build
-# runs CMD inside the site dir (napkin exports need no build; they transpile
-# their JSX in the browser at runtime).
+# Pass --no-default-excludes to keep them, or --exclude to drop more.
+#
+# --transpile runs napkin-build.sh: pre-compiles the JSX so the export drops the
+# ~3MB in-browser Babel compiler (deterministic, see that script). --build runs
+# an arbitrary CMD inside the site dir for any other build need.
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -32,6 +34,7 @@ ZIP=""
 OUT=""
 BUILD_CMD=""
 USE_DEFAULTS=1
+TRANSPILE=0
 EXCLUDES=()
 
 while [ $# -gt 0 ]; do
@@ -49,6 +52,7 @@ while [ $# -gt 0 ]; do
       ;;
     --exclude=*) EXCLUDES+=("${1#--exclude=}") ;;
     --no-default-excludes) USE_DEFAULTS=0 ;;
+    --transpile) TRANSPILE=1 ;;
     --build)
       shift
       [ $# -gt 0 ] || die "--build needs a CMD"
@@ -128,6 +132,11 @@ if [ "${#EX[@]}" -gt 0 ]; then
     done
   done
   shopt -u nullglob dotglob
+fi
+
+# Pre-transpile JSX so the export drops the in-browser Babel compiler.
+if [ "$TRANSPILE" -eq 1 ]; then
+  "$SCRIPT_DIR/napkin-build.sh" "$SITE"
 fi
 
 # Optional build step (none needed for runtime-Babel napkin exports).
