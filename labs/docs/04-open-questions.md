@@ -59,9 +59,7 @@ commitment), so two groups can't reach it even if diligent:
   publicly commit to condoms is gray even if they test constantly. A real PrEP-normative tilt.
 
 **Question:** is rewarding active HIV protection the right call mid-epidemic, or does it throw
-the newly-diagnosed and the PrEP-decliners under the bus? One data point I think *supports*
-building this: poz guys already write "on PrEP" in bios as a lie to pass — a shared honest
-label lets them stop lying. Does that match what you see?
+the newly-diagnosed and the PrEP-decliners under the bus?
 
 ### 2. Grouping condoms with PrEP and U=U
 
