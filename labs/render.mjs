@@ -119,7 +119,7 @@ function crossnav(currentSlug) {
   ];
   for (const d of config.docs) {
     if (d.slug === currentSlug) continue;
-    links.push(`<a href="/docs/${esc(d.slug)}.html">${esc(d.title)}</a>`);
+    links.push(`<a href="/docs/${esc(d.slug)}">${esc(d.title)}</a>`);
   }
   return `      <nav class="crossnav">
         ${links.join("\n        ")}
@@ -174,7 +174,7 @@ ${d.feedback ? feedbackBlock() : ""}${crossnav(d.slug)}      ${FOOTER}`;
 const p = config.prototype;
 const tiles = config.docs
   .map(
-    (d, i) => `        <a class="doctile" href="/docs/${esc(d.slug)}.html">
+    (d, i) => `        <a class="doctile" href="/docs/${esc(d.slug)}">
           <span class="dt-n">${i + 1}</span>
           <span>
             <span class="dt-title">${esc(d.title)}</span>

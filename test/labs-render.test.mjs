@@ -31,8 +31,10 @@ test("landing has one tile per published doc and links the prototype", () => {
   assert.equal(tiles.length, config.docs.length);
   assert.match(html, new RegExp(`href="${config.prototype.path}"`));
   for (const d of config.docs) {
-    assert.match(html, new RegExp(`href="/docs/${d.slug}\\.html"`));
+    // Links are extensionless (clean URLs); GitHub Pages serves the .html file.
+    assert.match(html, new RegExp(`href="/docs/${d.slug}"`));
   }
+  assert.doesNotMatch(html, /href="\/docs\/[^"]+\.html"/);
 });
 
 test("no unpublished source doc leaks into the output", () => {
