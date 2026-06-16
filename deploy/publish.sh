@@ -76,16 +76,24 @@ if [ "$DRY_RUN" -eq 1 ]; then
   exit 0
 fi
 
-# Throwaway single-commit repo in the temp copy, force-pushed to gh-pages.
+# One fresh root commit (no parent, so prior gh-pages history is discarded),
+# force-pushed. Built with plumbing INSIDE this repo — using its object store and
+# commit-signing config via an isolated index + work-tree — so signed-commit
+# setups keep working while your checkout, index, and branches stay untouched.
+# (A throwaway repo elsewhere can't reach the signing config, so we don't use one;
+#  --force on the add means .gitignore/excludes never drop a published file.)
 MSG="Deploy $DOMAIN at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-git -C "$PUB" init -q
-git -C "$PUB" add -A
-git -C "$PUB" \
-  -c user.name="labs.sti.care deploy" \
-  -c user.email="deploy@users.noreply.github.com" \
-  commit -q -m "$MSG"
+SIGN=""
+[ "$(git -C "$REPO_ROOT" config --bool commit.gpgsign 2>/dev/null)" = "true" ] && SIGN="-S"
+export GIT_DIR="$(git -C "$REPO_ROOT" rev-parse --absolute-git-dir)"
+export GIT_WORK_TREE="$PUB"
+export GIT_INDEX_FILE="$WORK/deploy-index"
+git add --all --force
+TREE="$(git write-tree)"
+COMMIT="$(git commit-tree $SIGN "$TREE" -m "$MSG")"
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 log "Force-pushing to $DEPLOY_BRANCH (replacing any prior history) ..."
-git -C "$PUB" push --force "$ORIGIN_URL" "HEAD:$DEPLOY_BRANCH"
+git -C "$REPO_ROOT" push --force "$ORIGIN_URL" "$COMMIT:refs/heads/$DEPLOY_BRANCH"
 
 log ""
 log "Deployed. Live (after DNS + cert) at: https://$DOMAIN/"

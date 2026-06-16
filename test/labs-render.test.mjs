@@ -100,6 +100,14 @@ test("decisions doc gets status pills + a single legend; other docs don't", () =
   assert.doesNotMatch(philosophy, /class="pill/);
 });
 
+test("emits an honest 404 page, distinct from the landing", () => {
+  const notFound = read("404.html");
+  assert.match(notFound, /404/);
+  assert.match(notFound, /not found/i);
+  // It must be a real not-found page, not an SPA-style copy of the landing.
+  assert.notEqual(notFound, read("index.html"));
+});
+
 test("feedback page renders a live button to the configured form", () => {
   const fb = config.docs.find((d) => d.feedback);
   assert.ok(fb, "expected a doc flagged feedback:true");
