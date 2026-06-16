@@ -1,0 +1,42 @@
+{
+  "title": "sti.care labs",
+  "tagline": "Works in progress, and the thinking behind them.",
+  "intro": "A place for prototypes and the design rationale they came from. Not medical advice.",
+  "prototype": {
+    "label": "STI Passport",
+    "blurb": "The working design prototype: a shareable passport that shows one honest thing, whether someone is up to date on testing and actively protecting against HIV.",
+    "path": "/passport/",
+    "cta": "Open the prototype"
+  },
+  "feedbackUrl": "https://forms.gle/SSw4bUUixd8Bruw1A",
+  "feedbackLabel": "Share feedback",
+  "docsHeading": "The thinking",
+  "docsIntro": "The why, the what, and the how, plus the open questions I most want outside eyes on.",
+  "docs": [
+    {
+      "file": "01-philosophy.md",
+      "slug": "philosophy",
+      "title": "Philosophy",
+      "blurb": "The why. What the product is for, and the lines it won't cross."
+    },
+    {
+      "file": "02-decisions.md",
+      "slug": "decisions",
+      "title": "Decisions",
+      "blurb": "The what. A scannable log of locked choices and rejected options."
+    },
+    {
+      "file": "03-design.md",
+      "slug": "design",
+      "title": "Design",
+      "blurb": "The how. The full product and technical spec for the build."
+    },
+    {
+      "file": "04-open-questions.md",
+      "slug": "open-questions",
+      "title": "Open questions",
+      "blurb": "The hard calls I want outside eyes on. Tell me what I'm missing.",
+      "feedback": true
+    }
+  ]
+}

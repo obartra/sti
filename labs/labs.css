@@ -1,0 +1,526 @@
+/* labs.sti.care — shared styling for the landing page and the doc pages.
+   Same sticker aesthetic as the main sti.care site (tokens duplicated here so
+   labs deploys stand alone; keep in sync with public/styles.css if the palette
+   changes). */
+:root {
+  --ink: #181433;
+  --paper: #fbf2dd;
+  --card: #fffdf6;
+  --pink: #ff5d8f;
+  --cyan: #37cfdb;
+  --yellow: #ffce2e;
+  --lime: #9ada3e;
+  --purple: #9b6dff;
+  --orange: #ff8a3d;
+  --bd: 3px solid var(--ink);
+  --sh: 5px 5px 0 var(--ink);
+  --sh-sm: 3px 3px 0 var(--ink);
+}
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family:
+    "Fredoka",
+    -apple-system,
+    sans-serif;
+  line-height: 1.55;
+  font-size: 18px;
+  -webkit-font-smoothing: antialiased;
+  padding: 0 20px;
+  overflow-x: hidden;
+  position: relative;
+  background-image: radial-gradient(var(--ink) 1.3px, transparent 1.3px);
+  background-size: 26px 26px;
+  background-position: -13px -13px;
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: var(--paper);
+  opacity: 0.86;
+  z-index: -2;
+  pointer-events: none;
+}
+
+.wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 30px 0 70px;
+}
+.wrap.doc {
+  max-width: 720px;
+}
+
+a {
+  color: inherit;
+}
+
+/* ---------- shared bits ---------- */
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  text-decoration: none;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 22px;
+  cursor: pointer;
+  background: var(--cyan);
+  border: var(--bd);
+  border-radius: 99px;
+  padding: 7px 15px;
+  box-shadow: var(--sh-sm);
+  transition:
+    transform 0.1s,
+    box-shadow 0.1s;
+}
+.back:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+.back:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+footer {
+  margin-top: 48px;
+  padding-top: 20px;
+  border-top: 3px dashed #d9d0b8;
+  font-size: 13px;
+  font-weight: 400;
+  color: #4a456a;
+  text-align: center;
+  line-height: 1.65;
+}
+footer a {
+  color: #4a456a;
+  text-decoration: none;
+  border-bottom: 2px solid var(--cyan);
+}
+
+/* ---------- landing ---------- */
+h1 {
+  font-family: "Bungee", cursive;
+  font-weight: 400;
+  font-size: clamp(34px, 9.5vw, 52px);
+  line-height: 0.98;
+  letter-spacing: -0.01em;
+  margin-bottom: 14px;
+  color: var(--ink);
+  text-shadow:
+    3px 3px 0 var(--yellow),
+    6px 6px 0 rgba(24, 20, 51, 0.18);
+}
+.tagline {
+  font-size: 19px;
+  font-weight: 600;
+  max-width: 34ch;
+}
+.lead {
+  font-size: 16px;
+  font-weight: 500;
+  color: #2c2750;
+  margin-top: 6px;
+  max-width: 44ch;
+}
+
+.seclabel {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #6a648c;
+  margin-bottom: 14px;
+}
+section {
+  margin-top: 40px;
+}
+
+/* prominent prototype feature card */
+.feature {
+  position: relative;
+  display: block;
+  text-decoration: none;
+  background: var(--lime);
+  color: var(--ink);
+  border: var(--bd);
+  border-radius: 20px;
+  padding: 22px 22px 20px;
+  box-shadow: var(--sh);
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
+}
+.feature:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 8px 8px 0 var(--ink);
+}
+.feature:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+.feature .badge {
+  position: absolute;
+  top: -13px;
+  right: 16px;
+  background: var(--yellow);
+  border: var(--bd);
+  border-radius: 99px;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  transform: rotate(6deg);
+  box-shadow: var(--sh-sm);
+}
+.feature .ftitle {
+  font-family: "Bungee", cursive;
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1.05;
+}
+.feature .fblurb {
+  font-size: 16px;
+  font-weight: 500;
+  margin-top: 12px;
+  max-width: 46ch;
+}
+.feature .fcta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 16px;
+  margin-top: 16px;
+}
+
+/* doc tiles */
+.doclist {
+  display: grid;
+  gap: 14px;
+}
+.doctile {
+  text-decoration: none;
+  color: var(--ink);
+  border: var(--bd);
+  border-radius: 16px;
+  padding: 16px 18px;
+  box-shadow: var(--sh-sm);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--card);
+  transition:
+    transform 0.12s,
+    box-shadow 0.12s;
+}
+.doctile:hover {
+  transform: translate(-2px, -2px) rotate(-0.6deg);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+.doctile:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+.doctile:nth-child(1) {
+  background: var(--pink);
+  color: #fff;
+}
+.doctile:nth-child(2) {
+  background: var(--cyan);
+}
+.doctile:nth-child(3) {
+  background: var(--yellow);
+}
+.doctile:nth-child(4) {
+  background: var(--purple);
+  color: #fff;
+}
+.doctile .dt-n {
+  font-family: "Bungee", cursive;
+  font-size: 20px;
+  flex: 0 0 auto;
+  width: 34px;
+  text-align: center;
+  opacity: 0.85;
+}
+.doctile .dt-title {
+  font-weight: 700;
+  font-size: 18px;
+}
+.doctile .dt-blurb {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.85;
+  margin-top: 1px;
+}
+.doctile .dt-ar {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+/* ---------- doc pages (rendered markdown) ---------- */
+.prose {
+  background: var(--card);
+  border: var(--bd);
+  border-radius: 20px;
+  padding: 30px 30px 36px;
+  box-shadow: var(--sh);
+}
+.prose > *:first-child {
+  margin-top: 0;
+}
+.prose h1 {
+  font-family: "Bungee", cursive;
+  font-weight: 400;
+  font-size: clamp(28px, 6.5vw, 38px);
+  line-height: 1.04;
+  margin-bottom: 12px;
+  text-shadow:
+    2px 2px 0 var(--yellow),
+    4px 4px 0 rgba(24, 20, 51, 0.16);
+}
+.prose h2 {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 1.15;
+  margin-top: 36px;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 3px solid var(--cyan);
+}
+.prose h3 {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 700;
+  font-size: 19px;
+  margin-top: 26px;
+  margin-bottom: 8px;
+}
+.prose h4 {
+  font-weight: 700;
+  font-size: 16.5px;
+  margin-top: 20px;
+  margin-bottom: 6px;
+}
+.prose p {
+  font-size: 17px;
+  margin: 12px 0;
+  color: #221d44;
+}
+.prose ul,
+.prose ol {
+  margin: 12px 0 12px 2px;
+  padding-left: 22px;
+}
+.prose li {
+  font-size: 17px;
+  margin: 7px 0;
+  color: #221d44;
+}
+.prose li::marker {
+  color: var(--pink);
+  font-weight: 700;
+}
+.prose strong {
+  font-weight: 700;
+  color: var(--ink);
+}
+.prose em {
+  font-style: italic;
+}
+.prose a {
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 2px solid var(--pink);
+  font-weight: 600;
+}
+.prose a:hover {
+  background: var(--yellow);
+}
+.prose code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.86em;
+  background: #fff4d6;
+  border: 1.5px solid var(--ink);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+.prose pre {
+  background: var(--ink);
+  color: #f3eede;
+  border-radius: 14px;
+  padding: 16px 18px;
+  overflow-x: auto;
+  margin: 16px 0;
+  box-shadow: var(--sh-sm);
+}
+.prose pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.prose blockquote {
+  margin: 16px 0;
+  padding: 4px 18px;
+  border-left: 5px solid var(--purple);
+  background: #f6f1ff;
+  border-radius: 0 12px 12px 0;
+  font-style: italic;
+  color: #2c2750;
+}
+.prose hr {
+  border: none;
+  border-top: 3px dashed #d9d0b8;
+  margin: 28px 0;
+}
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 15.5px;
+}
+.prose th,
+.prose td {
+  border: 2px solid var(--ink);
+  padding: 8px 11px;
+  text-align: left;
+}
+.prose th {
+  background: var(--yellow);
+  font-weight: 700;
+}
+
+/* the leading "_Reviewed.._" / descriptive italic intro lines */
+.prose h1 + p em,
+.prose .docmeta {
+  color: #6a648c;
+}
+
+/* table of contents */
+.toc {
+  background: var(--card);
+  border: var(--bd);
+  border-radius: 16px;
+  padding: 16px 20px;
+  box-shadow: var(--sh-sm);
+  margin-bottom: 24px;
+}
+.toc .toc-h {
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6a648c;
+  margin-bottom: 8px;
+}
+.toc ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+.toc a {
+  text-decoration: none;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 14px;
+  border-bottom: 2px solid var(--cyan);
+}
+.toc a:hover {
+  background: var(--yellow);
+}
+
+.crossnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+.crossnav a {
+  text-decoration: none;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 14px;
+  background: var(--card);
+  border: var(--bd);
+  border-radius: 99px;
+  padding: 7px 14px;
+  box-shadow: var(--sh-sm);
+  transition:
+    transform 0.1s,
+    box-shadow 0.1s;
+}
+.crossnav a:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+/* feedback call-to-action on the open-questions page */
+.feedbackcta {
+  margin-top: 26px;
+  background: var(--purple);
+  color: #fff;
+  border: var(--bd);
+  border-radius: 18px;
+  padding: 20px 22px;
+  box-shadow: var(--sh);
+}
+.feedbackcta p {
+  font-size: 17px;
+  font-weight: 500;
+  margin-bottom: 14px;
+}
+.feedbackcta .feedback-note {
+  margin-bottom: 0;
+  opacity: 0.9;
+}
+.feedbackbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--ink);
+  background: var(--yellow);
+  border: var(--bd);
+  border-radius: 14px;
+  padding: 12px 18px;
+  box-shadow: var(--sh-sm);
+  transition:
+    transform 0.1s,
+    box-shadow 0.1s;
+}
+.feedbackbtn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+.feedbackbtn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+@media (max-width: 480px) {
+  .prose {
+    padding: 22px 18px 26px;
+  }
+}

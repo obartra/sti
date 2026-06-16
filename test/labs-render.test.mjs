@@ -1,0 +1,86 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, readdirSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const LABS = join(ROOT, "labs");
+const config = JSON.parse(readFileSync(join(LABS, "labs.config.json"), "utf8"));
+
+// Render once into a temp dir; every test reads from this output.
+const OUT = mkdtempSync(join(tmpdir(), "labs-render-"));
+execFileSync("node", [join(LABS, "render.mjs"), "--out", OUT], {
+  stdio: ["ignore", "ignore", "inherit"],
+});
+
+const read = (rel) => readFileSync(join(OUT, rel), "utf8");
+
+test("emits the landing and exactly the published docs", () => {
+  assert.ok(existsSync(join(OUT, "index.html")), "no index.html");
+  const emitted = readdirSync(join(OUT, "docs")).sort();
+  const expected = config.docs.map((d) => `${d.slug}.html`).sort();
+  assert.deepEqual(emitted, expected);
+});
+
+test("landing has one tile per published doc and links the prototype", () => {
+  const html = read("index.html");
+  const tiles = html.match(/class="doctile"/g) || [];
+  assert.equal(tiles.length, config.docs.length);
+  assert.match(html, new RegExp(`href="${config.prototype.path}"`));
+  for (const d of config.docs) {
+    assert.match(html, new RegExp(`href="/docs/${d.slug}\\.html"`));
+  }
+});
+
+test("no unpublished source doc leaks into the output", () => {
+  const publishedFiles = new Set(config.docs.map((d) => d.file));
+  const sources = readdirSync(join(LABS, "docs")).filter((f) =>
+    f.endsWith(".md"),
+  );
+  const unpublished = sources.filter((f) => !publishedFiles.has(f));
+  assert.ok(unpublished.length > 0, "expected some unpublished docs to exist");
+  // The unpublished filenames must never appear as emitted pages.
+  const emitted = readdirSync(join(OUT, "docs"));
+  for (const f of unpublished) {
+    const slug = f.replace(/\.md$/, "");
+    assert.ok(
+      !emitted.includes(`${slug}.html`),
+      `unpublished ${f} was emitted`,
+    );
+  }
+});
+
+test("privacy guard: no real names appear in any emitted page", () => {
+  const files = [
+    "index.html",
+    ...config.docs.map((d) => `docs/${d.slug}.html`),
+  ];
+  for (const f of files) {
+    const html = read(f);
+    assert.doesNotMatch(html, /donja|brandon/i, `name found in ${f}`);
+  }
+});
+
+test("heading ids are clean and the TOC is not double-escaped", () => {
+  for (const d of config.docs) {
+    const html = read(`docs/${d.slug}.html`);
+    // ids never carry leftover HTML entities (e.g. &#39; from an apostrophe).
+    const ids = [...html.matchAll(/id="([^"]+)"/g)].map((m) => m[1]);
+    for (const id of ids) {
+      assert.doesNotMatch(id, /&|#\d/, `bad id "${id}" in ${d.slug}`);
+    }
+    // TOC links must not be escaped twice (&amp;#39; instead of ').
+    assert.doesNotMatch(html, /&amp;#/, `double-escaped entity in ${d.slug}`);
+  }
+});
+
+test("feedback page renders a live button to the configured form", () => {
+  const fb = config.docs.find((d) => d.feedback);
+  assert.ok(fb, "expected a doc flagged feedback:true");
+  const html = read(`docs/${fb.slug}.html`);
+  assert.match(html, /class="feedbackbtn"/);
+  assert.match(html, new RegExp(config.feedbackUrl.replace(/[/.]/g, "\\$&")));
+});
