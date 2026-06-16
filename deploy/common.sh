@@ -18,10 +18,12 @@ web_url() {
     | sed -E -e 's#^git@github\.com:#https://github.com/#' -e 's#\.git$##'
 }
 
-# Newest top-level *.zip in the given dir (by mtime), or empty if none.
+# Newest top-level *.zip in the given dir (by mtime), or empty if none. Always
+# exits 0 (the trailing `|| true` keeps a no-match `ls` from tripping a caller's
+# `set -e`/`pipefail` on the command substitution).
 find_latest_zip() {
   # shellcheck disable=SC2012  # ls -t is the simplest mtime sort; names are controlled.
-  ls -t "$1"/*.zip 2>/dev/null | head -1
+  ls -t "$1"/*.zip 2>/dev/null | head -1 || true
 }
 
 # Print the leading comment block of a script as help text (line-number free).

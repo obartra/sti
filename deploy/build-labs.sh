@@ -13,9 +13,13 @@
 # Usage:
 #   deploy/build-labs.sh [zip] [--no-transpile] [--dry-run]
 #
-# With no zip, the newest *.zip in the repo root is used for the prototype. JSX is
-# pre-compiled by default (drops the in-browser Babel); --no-transpile serves the
-# export verbatim. --dry-run builds the tree and prints it without pushing.
+# The prototype source is resolved in order: an explicit zip arg, else the newest
+# *.zip in the repo root, else the /passport already published on gh-pages. That
+# last fallback means a docs- or landing-only redeploy needs no zip at all — every
+# deploy republishes the passport, so the most recent export is reused as-is. JSX
+# is pre-compiled by default (drops the in-browser Babel); --no-transpile serves
+# the export verbatim (ignored when reusing the published passport, which is
+# already built). --dry-run builds the tree and prints it without pushing.
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,6 +28,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 REPO_ROOT="$(repo_root "$SCRIPT_DIR")"
 LABS_DIR="$REPO_ROOT/labs"
+DEPLOY_BRANCH="${DEPLOY_BRANCH:-gh-pages}"
 
 ZIP=""
 PREP_ARGS=()
@@ -59,34 +64,53 @@ fi
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
-# 1. Prototype -> /passport (prepare.sh clears only its own --out subdir).
-log "Preparing prototype into /passport ..."
-"$SCRIPT_DIR/prepare.sh" ${ZIP:+"$ZIP"} --out "$STAGE/passport" \
-  ${PREP_ARGS[@]+"${PREP_ARGS[@]}"} >/dev/null
-
-# Strip the internal "Edition B" period name from the export so nothing user- or
-# source-visible leaks it: the page title, the `appB/` code path, and any comments
-# or copy. A re-export under a neutral name is the clean long-term fix; this keeps
-# every published build clean meanwhile.
+# 1. Prototype -> /passport. Resolve the source in priority order:
+#      a) an explicit zip arg, b) the newest *.zip in the repo root, else
+#      c) reuse the /passport already published on $DEPLOY_BRANCH. Every deploy
+#         republishes the passport there, so the most recent export is always
+#         available — a docs- or landing-only redeploy needs no zip.
 PASSPORT="$STAGE/passport"
-if [ -d "$PASSPORT" ]; then
-  # Rename the `appB/` code path to a neutral `app/` and fix every reference.
-  if [ -d "$PASSPORT/appB" ]; then
-    mv "$PASSPORT/appB" "$PASSPORT/app"
-    grep -rlF 'appB/' "$PASSPORT" | while IFS= read -r f; do
-      tmp="$(mktemp)" && sed 's#appB/#app/#g' "$f" >"$tmp" && mv "$tmp" "$f"
-    done
-    log "Renamed prototype 'appB/' → 'app/'."
+ZIP_RESOLVED="${ZIP:-$(find_latest_zip "$REPO_ROOT")}"
+
+if [ -n "$ZIP_RESOLVED" ]; then
+  log "Preparing prototype into /passport ..."  # (prepare.sh clears its own --out)
+  "$SCRIPT_DIR/prepare.sh" "$ZIP_RESOLVED" --out "$PASSPORT" \
+    ${PREP_ARGS[@]+"${PREP_ARGS[@]}"} >/dev/null
+
+  # Strip the internal "Edition B" period name from the export so nothing user- or
+  # source-visible leaks it: the page title, the `appB/` code path, and any comments
+  # or copy. A re-export under a neutral name is the clean long-term fix; this keeps
+  # every published build clean meanwhile.
+  if [ -d "$PASSPORT" ]; then
+    # Rename the `appB/` code path to a neutral `app/` and fix every reference.
+    if [ -d "$PASSPORT/appB" ]; then
+      mv "$PASSPORT/appB" "$PASSPORT/app"
+      grep -rlF 'appB/' "$PASSPORT" | while IFS= read -r f; do
+        tmp="$(mktemp)" && sed 's#appB/#app/#g' "$f" >"$tmp" && mv "$tmp" "$f"
+      done
+      log "Renamed prototype 'appB/' → 'app/'."
+    fi
+    # Drop the "Edition B" name from any text (title, comments, copy).
+    if grep -rlF 'Edition B' "$PASSPORT" >/dev/null 2>&1; then
+      grep -rlF 'Edition B' "$PASSPORT" | while IFS= read -r f; do
+        tmp="$(mktemp)" &&
+          sed -E 's/ ?\(Edition B\)//g; s/ ?(—|-) ?Edition B//g; s/ ?Edition B//g' "$f" >"$tmp" &&
+          mv "$tmp" "$f"
+      done
+      log "Scrubbed 'Edition B' from the prototype."
+    fi
   fi
-  # Drop the "Edition B" name from any text (title, comments, copy).
-  if grep -rlF 'Edition B' "$PASSPORT" >/dev/null 2>&1; then
-    grep -rlF 'Edition B' "$PASSPORT" | while IFS= read -r f; do
-      tmp="$(mktemp)" &&
-        sed -E 's/ ?\(Edition B\)//g; s/ ?(—|-) ?Edition B//g; s/ ?Edition B//g' "$f" >"$tmp" &&
-        mv "$tmp" "$f"
-    done
-    log "Scrubbed 'Edition B' from the prototype."
-  fi
+else
+  # No zip anywhere: reuse the last published passport from $DEPLOY_BRANCH. It was
+  # already prepared and scrubbed on its way up, so it ships back out as-is.
+  ORIGIN_URL="$(git -C "$REPO_ROOT" remote get-url origin)"
+  log "No prototype zip given; reusing /passport from $DEPLOY_BRANCH ..."
+  git -C "$REPO_ROOT" fetch --quiet --depth=1 "$ORIGIN_URL" "$DEPLOY_BRANCH" \
+    || die "Couldn't fetch $DEPLOY_BRANCH to reuse its /passport. Pass a prototype zip instead."
+  git -C "$REPO_ROOT" ls-tree --name-only FETCH_HEAD passport | grep -q . \
+    || die "No /passport on $DEPLOY_BRANCH yet — deploy once with a prototype zip first."
+  git -C "$REPO_ROOT" archive FETCH_HEAD passport | tar -x -C "$STAGE"
+  log "Reused $(find "$PASSPORT" -type f | wc -l | tr -d ' ') files from the last published /passport."
 fi
 
 # 2. Landing + docs, rendered from the repo.
