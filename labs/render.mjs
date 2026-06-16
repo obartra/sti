@@ -311,3 +311,29 @@ writeFileSync(
   }),
 );
 console.error("  index.html  (landing)");
+
+// ---- 404 page ----
+// Labs has no client-side URL routing (docs are real files; the prototype
+// navigates in-app), so an unknown path is a genuine miss — serve an honest,
+// branded "not found" rather than the SPA-style copy of the landing page.
+// publish.sh sees this file exists and skips its SPA fallback.
+const notFoundBody = `      <h1>404</h1>
+      <p class="tagline">Page not found</p>
+      <p class="lead">That page isn't here — it may have moved, or the link may be off.</p>
+      <nav class="crossnav" style="margin-top: 22px">
+        <a href="/">${esc(config.title)}</a>
+        <a href="${esc(p.path)}">${esc(p.label)} prototype</a>
+      </nav>
+
+      ${FOOTER}`;
+
+writeFileSync(
+  join(OUT, "404.html"),
+  page({
+    title: `Page not found — ${config.title}`,
+    description: "That page isn't here.",
+    bodyClass: "",
+    body: notFoundBody,
+  }),
+);
+console.error("  404.html  (not found)");
