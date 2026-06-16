@@ -57,9 +57,8 @@ export function cta(lang) {
 export function labsLink(lang) {
   const ui = T[lang].ui;
   return `<a class="labslink rise d3" href="https://labs.sti.care/" target="_blank" rel="noopener">
-    <svg class="flask" width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.7 14.5h8.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+    <svg class="flask" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.7 14.5h8.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
     <span class="t">${ui.labs}</span>
-    <svg class="ar" width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M3 9h11M10 5l4 4-4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </a>`;
 }
 
@@ -75,8 +74,7 @@ export function home(lang) {
     <section class="rise d2">${cta(lang)}</section>
     <div class="others rise d3"><div class="lbl">${ui.othersLabel}</div><div class="grid">${tiles}</div></div>
     <a class="pozlink rise d3" href="${condPath("poz")}" data-nav="poz">${POZ[lang].fromHiv}</a>
-    ${shareButton(lang)}
-    <div class="labswrap rise d3">${labsLink(lang)}</div>
+    <div class="linkrow">${shareButton(lang)}${labsLink(lang)}</div>
     <footer>${ui.footer}</footer>`;
 }
 
