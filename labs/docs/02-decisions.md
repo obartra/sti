@@ -2,7 +2,7 @@
 
 _Reviewed for consistency: June 15, 2026. Reflects the feature-complete build._
 
-*Scannable record of locked decisions and rejected options. Mechanics live in the Design doc; rationale in the Philosophy doc. Open items at the bottom.*
+*Scannable record of decisions — each tagged with a status (see the key below). Mechanics live in the Design doc; rationale in the Philosophy doc. Open items at the bottom.*
 
 ---
 
@@ -24,7 +24,8 @@ _Reviewed for consistency: June 15, 2026. Reflects the feature-complete build._
 - **LOCKED — Syphilis serofast vs reinfection:** prior-treated syphilis serology (serofast) does NOT break "clear"; a genuine reinfection (rising titer) does. Captured as an input distinction at report time.
 - **REJECTED — Green** ("safe/go"). **Yellow/red** (warning states decode to "has something now"). **Platinum / any rank above blue** (implies "best," re-creates sorting, and a visible "protected set" tier leaks). **A "recently-tested ⇒ low viral load" route** (scientifically false — acute infection is the *highest* viral-load window).
 - **REJECTED — Gating blue on PrEP *adherence* ("consistent PrEP" vs "sometimes PrEP").** Tempting by analogy to "condoms always," but wrong: (a) self-reported adherence is among the most biased measures in HIV research — gating the trust signal on an unverifiable, aspirational number makes blue mean *less*; (b) it collects a sensitive behavioral-adherence data point we can't verify and don't need; (c) "condoms always" is a *boundary/intention* a user can honestly declare, while "doses missed" is a *clinical-adherence claim* users can't correctly translate into protection (the math differs by exposure type); (d) it re-creates the within-umbrella *tier* the whole model rejects, and worse, splits the "On HIV prevention" umbrella that MUST stay uniform (undetectable sails through, PrEP-with-gaps fails — breaking the camouflage invariant). **"On PrEP" qualifies, full stop**, exactly as "undetectable" does — both are the person's honest declaration; efficacy nuance is **education**. Adherence is used to *help* the user (PEP-relevance, optional on-device support), never to *rank* them.
-- **OPEN — for outside review:** (a) detectable-poz-in-care can't reach blue until suppressed — and a near-universal positive state may make non-qualifiers *more* conspicuous; (b) PrEP-choice-normativity — someone who declines PrEP for autonomy reasons must use the condom route or be gray. **OPEN — label-display residual:** showing "condoms always" without the umbrella weakly implies HIV-negative-not-on-PrEP — a negative-status inference, accepted as far less harmful than any positive leak; confirm.
+- **OPEN — For outside review:** (a) detectable-poz-in-care can't reach blue until suppressed — and a near-universal positive state may make non-qualifiers *more* conspicuous; (b) PrEP-choice-normativity — someone who declines PrEP for autonomy reasons must use the condom route or be gray.
+- **OPEN — Label-display residual:** showing "condoms always" without the umbrella weakly implies HIV-negative-not-on-PrEP — a negative-status inference, accepted as far less harmful than any positive leak; confirm.
 
 ## Pause
 
@@ -46,7 +47,7 @@ _Reviewed for consistency: June 15, 2026. Reflects the feature-complete build._
 
 - **LOCKED (MVP) — Entirely self-reported; NO "verified"/"unverified"/"self-reported" mark.** Any mark implies a missing tier and is itself a status signal. Honesty is plain descriptive copy.
 - **REJECTED — Viewer-visible verification** (encodes privilege via who has EHR-connected care; a sorting signal).
-- **DEFERRED (Post-MVP) — Verification as INPUT-ONLY:** may improve the owner's own app (auto-pause accuracy, less data entry); must never change the viewer-facing output in any version.
+- **DEFERRED — Verification as INPUT-ONLY:** may improve the owner's own app (auto-pause accuracy, less data entry); must never change the viewer-facing output in any version.
 
 ## Circles (groups)
 
@@ -56,7 +57,8 @@ _Reviewed for consistency: June 15, 2026. Reflects the feature-complete build._
 - **LOCKED — Membership disclosure is per-person; revealing a group's existence never reveals its members.**
 - **LOCKED — The individual controls their own status disclosure in a group; the group never overrides it.** No group-level switch makes members' statuses visible (it would expose a member beyond their own choice). Each member's in-group visibility is the member's own setting; any group display preference operates only within what each member already shares (hides, never reveals). The min-group-5 rule is a separate hide-only floor. (Build: remove the group "what members see" status toggle, it's drift.)
 - **LOCKED — Discovery = member-initiated, link-scoped** (only someone you've already paired with can reveal a group). No open search, no stranger discovery, no contact intersection.
-- **LOCKED — Anti-spam via consensual pull + sticky declines + outbound rate-limiting.** **REJECTED — max-group caps** (punish legitimate organizers more than abusers).
+- **LOCKED — Anti-spam via consensual pull + sticky declines + outbound rate-limiting.**
+- **REJECTED — Max-group caps** (punish legitimate organizers more than abusers).
 - **LOCKED — No testing "bar" / cadence requirement for groups.** A 14/30/90-day "tested within X" group requirement implies a *verifiable* testing standard the system cannot provide (everything is self-reported; blue already encodes testing recency). It's false rigor. Groups are simply **mutually-linked shared spaces**, not a gate that enforces a cadence. (Removed from the build in Pass 5 fixes.)
 - **OPEN — Is the group construct a care tool or a serosorting gate?** → for outside review.
 
@@ -126,8 +128,8 @@ _Reviewed for consistency: June 15, 2026. Reflects the feature-complete build._
 - **LOCKED — Two separate timing jobs:** the draft window = user-facing edit grace (deterministic); the post-lock send cycle = server-side anonymity timing (cross-user batching). Don't conflate; the send cycle is never surfaced.
 - **LOCKED — Content: anonymous, contentless** ("a contact suggests getting tested"); never who/when/what/count; never labeled 1:1-vs-circle. **Batched, server controls timing.**
 - **LOCKED — A "get screened" nudge, not a real-time PEP alarm;** PEP urgency via always-on education; every notification routes to immediate testing + PEP info.
-- **LOCKED — Reachability (MVP scope): push (primary) + pull "go get tested" page (fallback),** both identity-free. **Accepted limit:** a fully-disengaged recipient can't be force-notified. **DEFERRED (Post-MVP) — opt-in, off-by-default, blind-routed email** (content-free "go check"); phone banned.
-- **ACCEPTED LIMITS (state honestly, don't overclaim):** (a) targeted push reveals to the *server* which handles received an exposure ping — mitigation direction is a generic broadcast/cover wake + a uniform "anything for me?" poll so recipients and non-recipients look identical [eng follow-up]; (b) notification anonymity is bounded by the *recipient's* in-window contact count and degrades toward deanonymizing at one contact — unfixable without not sending; distinct from the min-group-size-5 rule, which protects group status *viewing*.
+- **LOCKED — Reachability (MVP scope): push (primary) + pull "go get tested" page (fallback),** both identity-free. **Accepted limit:** a fully-disengaged recipient can't be force-notified. **DEFERRED — opt-in, off-by-default, blind-routed email** (content-free "go check"); phone banned.
+- **LIMIT — Accepted tradeoffs, stated honestly:** (a) targeted push reveals to the *server* which handles received an exposure ping — mitigation direction is a generic broadcast/cover wake + a uniform "anything for me?" poll so recipients and non-recipients look identical [eng follow-up]; (b) notification anonymity is bounded by the *recipient's* in-window contact count and degrades toward deanonymizing at one contact — unfixable without not sending; distinct from the min-group-size-5 rule, which protects group status *viewing*.
 
 ## Testing reminders
 
@@ -137,8 +139,8 @@ _Reviewed for consistency: June 15, 2026. Reflects the feature-complete build._
 
 - **LOCKED (MVP) — Passkey / Face ID / fingerprint primary; passphrase (Argon2id) fallback.** Key derived locally, never transmitted.
 - **LOCKED (MVP) — A user-saved RECOVERY PASSPHRASE is REQUIRED, not optional** — it is the only no-PII recovery path. With no email/phone and on-device encryption, a saved recovery phrase (shown once at signup, save-confirmed) is the sole way back into an account after losing the device. Framed honestly: "the only way back in, we cannot recover it for you." A server-side reset is impossible by design. (The Signal / password-manager / crypto-wallet pattern.)
-- **DEFERRED (Post-MVP) — Apple SSO > Google SSO** as recovery anchors (`hash(sub) → ciphertext`, decryption still gated by the user's key).
-- **REJECTED / BANNED — Phone as identity, permanently.** (Smallest entropy, strongest real-identity link, universal cross-app join key.)
+- **DEFERRED — Apple SSO > Google SSO** as recovery anchors (`hash(sub) → ciphertext`, decryption still gated by the user's key).
+- **REJECTED — Phone as identity, permanently banned.** (Smallest entropy, strongest real-identity link, universal cross-app join key.)
 
 ## Resources (US-only launch)
 
@@ -168,9 +170,9 @@ _Reviewed for consistency: June 15, 2026. Reflects the feature-complete build._
 ## Still open
 
 1. Badge equity — **for outside review** (see [Open questions](/docs/open-questions)): detectable-poz can't reach blue until suppressed (and a near-universal positive state may make non-qualifiers *more* conspicuous); and PrEP-choice-normativity (declining PrEP forces the condom route or gray).
-2. Syphilis serofast vs reinfection is captured as an input distinction (serofast keeps clear; rising titer breaks it). The broader "current active infection" question is resolved by the current-state-not-history rule: chronic HSV/HPV → education (never grays); transient HSV outbreak → pause. (See the LOCKED clinical block.)
-3. Label-display residual — "condoms always" without the umbrella weakly implies HIV-negative-not-on-PrEP; accepted as lesser harm (3-state softens it vs. a binary); confirm.
-4. Notification: push-recipient-set mitigation (broadcast wake + uniform poll); draft-window length (~30 min) and send-cycle cadence.
-5. Shared-view date granularity; minimum group size (~5); scan-to-autolink auto-share default.
-6. Knock endpoint timing — the production knock/notify endpoint must do constant-time work across the whole write/dedupe path (not just return a uniform string); the in-memory prototype mock doesn't model this.
-7. Account deletion and data export — a self-serve way to delete your account and everything tied to it, and to download what's held about you. Worth pinning down what (if anything) is personal enough to export, since the server holds only ciphertext and opaque tokens.
+2. Label-display residual — "condoms always" without the umbrella weakly implies HIV-negative-not-on-PrEP; accepted as lesser harm (3-state softens it vs. a binary); confirm.
+3. Notification: push-recipient-set mitigation (broadcast wake + uniform poll); draft-window length (~30 min) and send-cycle cadence.
+4. Shared-view date granularity; minimum group size (~5); scan-to-autolink auto-share default.
+5. Knock endpoint timing — the production knock/notify endpoint must do constant-time work across the whole write/dedupe path (not just return a uniform string); the in-memory prototype mock doesn't model this.
+6. Account deletion and data export — a self-serve way to delete your account and everything tied to it, and to download what's held about you. Worth pinning down what (if anything) is personal enough to export, since the server holds only ciphertext and opaque tokens.
+7. Testing-window honesty — a complete, recently-tested panel earns blue even though syphilis (and the HIV early window) may not have had time to seroconvert; today that residual is explainer-only, not in the badge. Whether to factor per-result dates / a "not back yet" input into blue — on-device, never displayed — is **for outside review** (see [Open questions](/docs/open-questions)).

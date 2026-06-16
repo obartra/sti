@@ -133,6 +133,25 @@ device as a private confidence aid, never shown to anyone and never a separate b
 **Question:** is a private-only verification check worth building, or does even an optional one
 start dragging the product back toward proof and ranking?
 
-### 9. Anything I'm not seeing
+### 9. Is a fresh "all clear" too frictionless? (the testing window)
+
+Blue wants a core-panel test (HIV, syphilis, gonorrhea, chlamydia) within 90 days, all clear —
+but the panel isn't one moment. Results land on different clocks, and every test has a *window
+period* where a recent infection won't show yet. Syphilis is the sharp case: you can truly know
+you're negative for HIV/gonorrhea/chlamydia today while the syphilis result is still pending, or
+test so soon after an exposure that "clear" is false reassurance. An *incomplete* panel already
+stays gray — you can log what's back and add syphilis when it arrives — but a *complete,
+just-tested* panel flips blue even when the slowest result hasn't had time to mean anything. Right
+now that residual is left to explainer copy, not the badge. Any sharper handling has to stay
+on-device and never show — a visible "syphilis pending" would be exactly the tell the two-state
+badge exists to prevent.
+
+**Question:** is a frictionless "all clear" too generous? Should the testing *date* — and which
+result came back, and when — factor into blue more honestly (capture per-result dates or a "not
+back yet" input, and hold blue until the slowest-seroconverting piece is both in and past its
+window), or does that pile on friction and a leak surface for a nuance most people won't model
+correctly anyway?
+
+### 10. Anything I'm not seeing
 
 If you live closer to this than I do, **what's the question I haven't thought to ask?**
