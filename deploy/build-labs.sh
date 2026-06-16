@@ -64,15 +64,29 @@ log "Preparing prototype into /passport ..."
 "$SCRIPT_DIR/prepare.sh" ${ZIP:+"$ZIP"} --out "$STAGE/passport" \
   ${PREP_ARGS[@]+"${PREP_ARGS[@]}"} >/dev/null
 
-# "Edition B" is the internal name for this passport period; keep it off the
-# user-visible page title. (It also lingers in the export's code comments, which
-# aren't user-visible; a re-export with the new period name is the clean fix.)
-PROTO_INDEX="$STAGE/passport/index.html"
-if [ -f "$PROTO_INDEX" ] && grep -q 'Edition B' "$PROTO_INDEX"; then
-  tmp="$(mktemp)"
-  sed -E 's/ ?(—|-) ?Edition B//g; s/ Edition B//g' "$PROTO_INDEX" >"$tmp"
-  mv "$tmp" "$PROTO_INDEX"
-  log "Scrubbed 'Edition B' from the prototype page title."
+# Strip the internal "Edition B" period name from the export so nothing user- or
+# source-visible leaks it: the page title, the `appB/` code path, and any comments
+# or copy. A re-export under a neutral name is the clean long-term fix; this keeps
+# every published build clean meanwhile.
+PASSPORT="$STAGE/passport"
+if [ -d "$PASSPORT" ]; then
+  # Rename the `appB/` code path to a neutral `app/` and fix every reference.
+  if [ -d "$PASSPORT/appB" ]; then
+    mv "$PASSPORT/appB" "$PASSPORT/app"
+    grep -rlF 'appB/' "$PASSPORT" | while IFS= read -r f; do
+      tmp="$(mktemp)" && sed 's#appB/#app/#g' "$f" >"$tmp" && mv "$tmp" "$f"
+    done
+    log "Renamed prototype 'appB/' → 'app/'."
+  fi
+  # Drop the "Edition B" name from any text (title, comments, copy).
+  if grep -rlF 'Edition B' "$PASSPORT" >/dev/null 2>&1; then
+    grep -rlF 'Edition B' "$PASSPORT" | while IFS= read -r f; do
+      tmp="$(mktemp)" &&
+        sed -E 's/ ?\(Edition B\)//g; s/ ?(—|-) ?Edition B//g; s/ ?Edition B//g' "$f" >"$tmp" &&
+        mv "$tmp" "$f"
+    done
+    log "Scrubbed 'Edition B' from the prototype."
+  fi
 fi
 
 # 2. Landing + docs, rendered from the repo.
