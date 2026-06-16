@@ -40,6 +40,7 @@ const T = {
       mapsQuery: "free STI testing near me",
       official: "Or see the official CDC testing list",
       back: "Testing & other STIs",
+      labs: "Peek at the labs",
       footer:
         "This is general info, not medical advice. A clinic or doctor can tell you what is right for you. Based on U.S. CDC guidance.",
       disclaimer:
@@ -183,6 +184,7 @@ const T = {
       mapsQuery: "prueba de ITS gratis cerca de mí",
       official: "O consulta la lista oficial de los CDC",
       back: "Pruebas y otras ITS",
+      labs: "Echa un vistazo a labs",
       footer:
         "Esta es información general, no consejo médico. Una clínica o un médico puede decirte qué es lo mejor para ti. Basado en las guías de los CDC de EE. UU.",
       disclaimer:
@@ -324,6 +326,7 @@ const T = {
       mapsQuery: "teste de IST gratuito perto de mim",
       official: "",
       back: "Testes e outras IST",
+      labs: "Dê uma olhada no labs",
       footer:
         "Esta é uma informação geral, não um conselho médico. Uma clínica ou médico pode dizer o que é melhor para você. Baseado nas diretrizes do CDC dos EUA.",
       disclaimer:
@@ -464,6 +467,7 @@ const T = {
       mapsQuery: "dépistage IST gratuit près de moi",
       official: "",
       back: "Dépistage et autres IST",
+      labs: "Jette un œil au labo",
       footer:
         "Ce sont des infos générales, pas un avis médical. Une clinique ou un médecin peut te dire ce qui te convient. D'après les recommandations du CDC (États-Unis).",
       disclaimer:

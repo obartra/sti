@@ -456,6 +456,46 @@ section {
   padding: 15px 17px;
   box-shadow: var(--sh-sm);
 }
+/* sticker link out to labs.sti.care */
+.labswrap {
+  margin-top: 34px;
+  text-align: center;
+}
+.labslink {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--card);
+  border: var(--bd);
+  border-radius: 99px;
+  padding: 9px 16px;
+  box-shadow: var(--sh-sm);
+  transform: rotate(-2deg);
+  transition:
+    transform 0.12s,
+    box-shadow 0.12s;
+}
+.labslink:hover {
+  transform: rotate(0deg) translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+.labslink:active {
+  transform: rotate(0deg) translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+.labslink .flask {
+  color: var(--purple);
+}
+.labslink .ar {
+  color: var(--ink);
+  opacity: 0.7;
+}
+
 footer {
   margin-top: 40px;
   padding-top: 20px;

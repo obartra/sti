@@ -62,6 +62,14 @@ test("home page lists every condition and the title", () => {
       html.includes('data-nav="poz"'),
       `${lang} home missing the U=U link`,
     );
+    assert.ok(
+      html.includes('href="https://labs.sti.care/"'),
+      `${lang} home missing the labs link`,
+    );
+    assert.ok(
+      T[lang].ui.labs && html.includes(T[lang].ui.labs),
+      `${lang} home missing the labs label`,
+    );
   }
 });
 
