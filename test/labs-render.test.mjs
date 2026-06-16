@@ -79,6 +79,27 @@ test("heading ids are clean and the TOC is not double-escaped", () => {
   }
 });
 
+test("decisions doc gets status pills + a single legend; other docs don't", () => {
+  const decisions = read("docs/decisions.html");
+  // One legend, placed after the intro rule (before the first section heading).
+  assert.equal(
+    (decisions.match(/class="legend"/g) || []).length,
+    1,
+    "expected exactly one status legend",
+  );
+  assert.ok(
+    decisions.indexOf('class="legend"') < decisions.indexOf("<h2"),
+    "legend should sit above the first section",
+  );
+  // The status lead-ins became pills, so the raw "LOCKED — " text is gone.
+  assert.match(decisions, /class="pill pill-locked"/);
+  assert.doesNotMatch(decisions, /<strong>\s*LOCKED\s*—/);
+  // A doc that doesn't use the vocabulary gets neither pills nor a legend.
+  const philosophy = read("docs/philosophy.html");
+  assert.doesNotMatch(philosophy, /class="legend"/);
+  assert.doesNotMatch(philosophy, /class="pill/);
+});
+
 test("feedback page renders a live button to the configured form", () => {
   const fb = config.docs.find((d) => d.feedback);
   assert.ok(fb, "expected a doc flagged feedback:true");

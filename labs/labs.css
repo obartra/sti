@@ -519,8 +519,109 @@ section {
   box-shadow: 1px 1px 0 var(--ink);
 }
 
+/* ---------- decision status pills + legend ---------- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 700;
+  font-size: 11.5px;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-radius: 99px;
+  padding: 4px 9px;
+  box-shadow: 2px 2px 0 var(--ink);
+  vertical-align: middle;
+  white-space: nowrap;
+  cursor: help; /* hints the hover definition (native title) */
+}
+.pill .pill-i {
+  font-size: 11px;
+  line-height: 1;
+}
+/* space stacked pills (e.g. Locked + Built, or a status + scope chip) */
+.pill + .pill {
+  margin-left: 5px;
+}
+/* keep a pill legible even when it lands inside a bold headline run */
+.prose strong .pill {
+  font-weight: 700;
+}
+.pill-locked {
+  background: var(--lime);
+}
+.pill-built {
+  background: var(--cyan);
+}
+.pill-rejected {
+  background: var(--pink);
+  color: #fff;
+}
+.pill-deferred {
+  background: var(--yellow);
+}
+.pill-open {
+  background: var(--purple);
+  color: #fff;
+}
+.pill-limit {
+  background: var(--orange);
+}
+/* scope qualifier (MVP / Post-MVP): quieter, secondary to the status */
+.pill-scope {
+  background: var(--card);
+  box-shadow: none;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  background: var(--card);
+  border: var(--bd);
+  border-radius: 16px;
+  padding: 16px 18px;
+  box-shadow: var(--sh-sm);
+  margin: 0 0 26px;
+}
+.legend-h {
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6a648c;
+  margin-bottom: 2px;
+}
+.legend .lg-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.legend .lg-row .pill {
+  flex: 0 0 auto;
+  min-width: 92px;
+  justify-content: center;
+  cursor: default;
+}
+.legend .lg-def {
+  font-size: 14px;
+  font-weight: 500;
+  color: #2c2750;
+}
+
 @media (max-width: 480px) {
   .prose {
     padding: 22px 18px 26px;
+  }
+  .legend .lg-row {
+    align-items: flex-start;
   }
 }

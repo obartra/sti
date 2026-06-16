@@ -97,6 +97,98 @@ function addAnchors(html) {
   return { html: out, toc };
 }
 
+// Decision-status pills. The decisions doc tags each bullet with a status word
+// (LOCKED, REJECTED, …) as a bold lead-in: `**LOCKED — headline.**`. We turn that
+// lead-in into a hoverable icon+word pill and keep the headline bold, then drop a
+// legend at the top so the icons are never cryptic. Pure string rewrite on the
+// rendered HTML; no JS ships to the page (the tooltip is a native `title`).
+const STATUS = {
+  LOCKED: {
+    label: "Locked",
+    icon: "🔒",
+    cls: "locked",
+    def: "Decided — won't reopen without a strong new reason.",
+  },
+  BUILT: {
+    label: "Built",
+    icon: "✅",
+    cls: "built",
+    def: "Locked and already implemented in the prototype.",
+  },
+  REJECTED: {
+    label: "Rejected",
+    icon: "⛔",
+    cls: "rejected",
+    def: "Considered and deliberately ruled out.",
+  },
+  DEFERRED: {
+    label: "Deferred",
+    icon: "⏳",
+    cls: "deferred",
+    def: "Decided, but intentionally not in the MVP.",
+  },
+  OPEN: {
+    label: "Open",
+    icon: "❓",
+    cls: "open",
+    def: "Not yet decided — wants outside input.",
+  },
+  LIMIT: {
+    label: "Limit",
+    icon: "⚖️",
+    cls: "limit",
+    def: "A known tradeoff we accept rather than solve.",
+  },
+};
+
+const SCOPE_DEF = {
+  MVP: "In the MVP build scope.",
+  "Post-MVP": "Planned after the MVP.",
+};
+
+const pill = (key) => {
+  const s = STATUS[key];
+  return `<span class="pill pill-${s.cls}" title="${esc(s.def)}"><span class="pill-i" aria-hidden="true">${s.icon}</span>${esc(s.label)}</span>`;
+};
+
+const scopeChip = (scope) =>
+  `<span class="pill pill-scope" title="${esc(SCOPE_DEF[scope] || scope)}">${esc(scope)}</span>`;
+
+// Match a bold lead-in that *starts* with a known status word: an optional
+// `+ BUILT` companion, an optional `(MVP)` / `(Post-MVP)` scope, then an em dash.
+// Anchored on the status keyword, so ordinary bold headlines are left untouched.
+const STATUS_RE =
+  /<strong>\s*(LOCKED|BUILT|REJECTED|DEFERRED|OPEN|LIMIT)(?:\s*\+\s*(BUILT))?(?:\s*\((MVP|Post-MVP)\))?\s*—\s*/g;
+
+function legend() {
+  const rows = Object.values(STATUS)
+    .map(
+      (s) =>
+        `<div class="lg-row"><span class="pill pill-${s.cls}"><span class="pill-i" aria-hidden="true">${s.icon}</span>${esc(s.label)}</span><span class="lg-def">${esc(s.def)}</span></div>`,
+    )
+    .join("\n        ");
+  return `<aside class="legend" aria-label="What the status labels mean">
+        <div class="legend-h">Status key</div>
+        ${rows}
+      </aside>`;
+}
+
+// Rewrite status lead-ins into pills. Returns the html unchanged (and adds no
+// legend) for docs that don't use the vocabulary.
+function statusPills(html) {
+  let n = 0;
+  const out = html.replace(STATUS_RE, (_m, s1, s2, scope) => {
+    n++;
+    const parts = [pill(s1)];
+    if (s2) parts.push(pill(s2));
+    if (scope) parts.push(scopeChip(scope));
+    return `${parts.join("")} <strong>`;
+  });
+  // Inject the legend after the intro rule so it sits below the title/blurb and
+  // above the first section. String replace touches only the first `<hr>`.
+  return n ? out.replace("<hr>", `<hr>\n      ${legend()}`) : out;
+}
+
 function tocBlock(toc) {
   if (toc.length < 3) return "";
   // t.text is already HTML-escaped (it comes from marked's rendered heading with
@@ -152,7 +244,7 @@ for (const d of config.docs) {
   const md = readFileSync(join(HERE, "docs", d.file), "utf8");
   const h1 = md.match(/^#\s+(.+)$/m);
   const pageTitle = `${d.title} — ${config.title}`;
-  const rendered = addAnchors(marked.parse(md));
+  const rendered = addAnchors(statusPills(marked.parse(md)));
   const body = `      <a class="back" href="/">← ${esc(config.title)}</a>
 ${tocBlock(rendered.toc)}      <article class="prose">
 ${rendered.html}
