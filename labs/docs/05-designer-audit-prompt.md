@@ -177,9 +177,13 @@ cadence, streak, or "test more = better" framing.
 
 13. LANGUAGE & THE STRANGER EXPLAINER.
 Ban: clean, dirty, clear, healthy (as status identity), safe, disease-free, verified,
-unverified, "protected" (reads as "you're safe"), and "negative" as identity. Blue displayed
-label = "Tested & on HIV prevention" (names both halves, avoids safe/protected/cleared); gray =
-"No status shared right now." ("Up to date" is an internal concept word, not the displayed label.)
+unverified, "protected" (reads as "you're safe"), and "negative" as identity. The blue headline
+STATES THE ROUTE the person already made public to earn blue: "Tested & on HIV prevention" for the
+PrEP/undetectable umbrella (which ALWAYS wins and never distinguishes the two), or "Tested & always
+uses condoms" ONLY when condoms-always is the route (legitimate because that preference is already
+shown publicly — it discloses nothing new; a PrEP/U=U person's condom use never changes it). This
+route-statement is intended and is NOT a "sharpening" of the condom residual — do not flag it. gray
+= "No status shared right now." ("Up to date" is an internal concept word, not a displayed label.)
 Gray / no badge / declining to share must never read as a bad result (no "expired," "needs a
 fresh test," "waiting"). "Negative" is fine as a clinical RESULT INPUT, never viewer-facing.
 STRANGER EXPLAINER: a logged-out first-timer landing on a shared card must be able to learn what
