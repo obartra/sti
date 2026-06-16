@@ -1,7 +1,7 @@
 {
   "title": "sti.care labs",
   "tagline": "Works in progress, and the thinking behind them.",
-  "intro": "A place for prototypes and the design rationale they came from. Not medical advice.",
+  "intro": "A place for prototypes and the design rationale they came from.",
   "prototype": {
     "label": "STI Passport",
     "blurb": "The working design prototype: a shareable passport that shows one honest thing, whether someone is up to date on testing and actively protecting against HIV.",
