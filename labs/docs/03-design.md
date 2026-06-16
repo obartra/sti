@@ -1,7 +1,5 @@
 # sti.care — Design Doc
 
-_Reviewed for consistency: June 15, 2026. Reflects the feature-complete build._
-
 *The "how." Complete product + technical spec for the MVP. Pairs with Philosophy (why) and Decisions (what). Not legal advice. Absorbs the earlier aliases/linking spec.*
 
 ---

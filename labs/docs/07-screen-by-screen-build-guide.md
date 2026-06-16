@@ -1,7 +1,5 @@
 # sti.care — Screen-by-Screen Build Guide
 
-_Reviewed for consistency: June 15, 2026. Reflects the feature-complete build._
-
 *The badge states are signed off (the proposal nailed it — two-state model, the four label
 permutations, gray-carries-protection, uniform private/nonexistent resolution, and good calls
 on all three open items). This document takes that approved card and walks **every real screen

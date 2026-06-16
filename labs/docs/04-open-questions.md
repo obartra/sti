@@ -1,7 +1,5 @@
 # Open questions
 
-_Reviewed for consistency: June 15, 2026. Reflects the feature-complete build._
-
 *The honest calls I don't want to make alone. The first part is a quick description of what
 the thing is, so we're working from the same picture; the rest is the set of questions I most
 want outside eyes on. Take them as "help me see what I can't," not "approve my work." If any
@@ -152,6 +150,32 @@ back yet" input, and hold blue until the slowest-seroconverting piece is both in
 window), or does that pile on friction and a leak surface for a nuance most people won't model
 correctly anyway?
 
-### 10. Anything I'm not seeing
+### 10. Should detectable-HIV-in-care reach blue through the condom route?
+
+Today detectable HIV is an active infection on the clearance axis, so no route reaches blue until
+suppressed. But the app already treats condoms as equal-tier HIV prevention (question 2), and blue
+is defined as "actively protecting," not "no transmissible virus" and explicitly not "clean." By
+that logic a detectable person who publicly commits to condoms is actively protecting, and the same
+condom route is already the only road to blue for HIV-negative PrEP-decliners (question 1, second
+group). The condom preference is worn by a broad mixed population, so requiring it for this subgroup
+wouldn't out them; it's the same camouflage the PrEP-decliner already relies on. Allowing it would
+also erase the "tests yet never blue" inference from question 1. So refusing it arguably puts the
+clean/dirty line back on the clearance axis, the one place blue can't be reached by behavior at all.
+
+The reason I lean no: U=U neutralizes the source biologically and continuously, while condoms over a
+detectable person leave live, uncontrolled virus behind a per-act barrier and a self-reported
+commitment. That's the largest difference of degree anywhere on the route axis, and it means blue
+would be sitting on top of uncontrolled live virus. There's also a knock-on cost: saying yes would
+force partner-notification (question 7) to stop being uniformly gentle. A condom failure with a
+detectable partner is a real possible-HIV-exposure, which argues for a sharper, faster, less
+content-free "get tested now, consider PEP" alert, in direct tension with the calm, batched,
+anonymous design I chose in question 7. So the badge change wouldn't stay contained to the badge.
+
+**Question:** is treating detectable HIV as an absolute clearance blocker the right call, or is it
+the clean/dirty line sneaking back in? If condoms genuinely count as prevention, can the app justify
+accepting them for negatives but not for a detectable person in care? I lean toward keeping the
+blocker, but I want outside eyes on whether that's principled or just fear.
+
+### 11. Anything I'm not seeing
 
 If you live closer to this than I do, **what's the question I haven't thought to ask?**

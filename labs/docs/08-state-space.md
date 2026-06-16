@@ -1,7 +1,5 @@
 # sti.care — State Space
 
-_Reviewed for consistency: June 15, 2026. Reflects the feature-complete build._
-
 *The complete enumeration of every configurable dimension, the values it can take, and how those
 combine into what a viewer or the owner actually sees. This is the source of truth for "what
 states exist," which the Tweaks/dev panel should mirror (it currently doesn't — see the gap list
