@@ -251,6 +251,9 @@ section {
   background: var(--purple);
   color: #fff;
 }
+.doctile:nth-child(5) {
+  background: var(--orange);
+}
 .doctile .dt-n {
   font-family: "Bungee", cursive;
   font-size: 20px;

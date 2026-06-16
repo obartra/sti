@@ -234,6 +234,21 @@ passes only; QR/URL encode an ALIAS, never a cross-linking account id. Flag any 
 QR-format face, any Live format on a private alias, any stale-blue or distinct stale state, any
 date/freshness/streak/name on a pass, or a private-status assertion on a pass face.
 
+18. ERROR, EMPTY, LOADING & OFFLINE STATES.
+Every async or fallible surface needs a defined non-happy state, and NONE may leak. (a) A
+render/runtime crash shows a calm, branded "something went wrong — try again" with a retry/reload,
+SCOPED (an error boundary per major screen) so one failure never blanks the whole app; never a raw
+stack or white screen. (b) Resolving a shared card that fails (bad key, decrypt error, network)
+must FAIL CLOSED to the SAME uniform gray-nothing as a nonexistent id — never "couldn't decrypt,"
+"this passport is unavailable," or any message that distinguishes broken-real from nonexistent (an
+existence leak). (c) Stale or unreachable wallet/live card → gray, never stale-blue, with NO
+owner-facing "couldn't refresh" text (consistent with the wallet rule). (d) Loading states must be
+uniform in shape AND timing for real vs miss (no spinner that appears only for real aliases).
+(e) Empty states (no results yet, no circles, no notifications) read supportively, never as a bad
+result. Flag any error/empty/offline state that names a condition, distinguishes broken-real from
+nonexistent, reveals a decrypt/network reason on a resolution surface, shows stale-blue, or dumps a
+raw error.
+
 FINAL SECTION — flag every: badge that exposes method/status; any rank/tier above blue;
 warning state; never-tested rendered as anything but gray; any way to distinguish PrEP from
 undetectable, or the umbrella label being forced/suppressed by the condom choice; label tied
@@ -247,7 +262,9 @@ shown to the user, or any notification revealing
 source/content/count; linking that reveals the logger; a main handle / cleartext handle /
 searchable directory / vanity-as-default; viewer-visible testing cadence/streak; missing or
 buried PrEP/condom/testing access ramp; banned language; gate or shaming copy (door/bouncer/
-the-bar); privacy leak / tracker / server-side plaintext; and open decisions for the human
+the-bar); privacy leak / tracker / server-side plaintext; any error/empty/offline state that leaks
+(names a condition, distinguishes broken-real from nonexistent, reveals a decrypt/network reason on
+a resolution surface, shows stale-blue, or dumps a raw error); and open decisions for the human
 (each with options + your recommendation — e.g. exact date vs "as of [month]" vs boolean on
 the shared view).
 

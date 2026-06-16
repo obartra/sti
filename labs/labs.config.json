@@ -32,6 +32,12 @@
       "blurb": "The how. The full product and technical spec for the build."
     },
     {
+      "file": "09-data-and-storage.md",
+      "slug": "data",
+      "title": "Data & storage",
+      "blurb": "What we store, what we can't see, and the one part that isn't blind yet."
+    },
+    {
       "file": "04-open-questions.md",
       "slug": "open-questions",
       "title": "Open questions",
