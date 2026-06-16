@@ -181,7 +181,7 @@ never on the anonymous view (it would confirm existence).
 - **Status and access are orthogonal:** pausing changes what you show; revoking changes who
   can see you via that path; neither moves the other, nothing auto-rejoins.
 - **Access changes are visible to the affected person** (they can tell their own access ended),
-  but to **other group members, "left" and "was kicked" look identical** — no public removal
+  but to **other group members, "left" and "was removed" look identical** — no public removal
   mark, no reason ever stated. The app never auto-revokes from a health event.
 
 ---

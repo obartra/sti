@@ -221,7 +221,7 @@ This guide is the propagation plan.
   - **CircleTransparency:** drop per-circle counts; **merge circle exposure into the same
     contentless partner-notification pipeline** rather than a separate channel.
   - Leave/kick: the affected person can tell their own access ended, but **"left" and "was
-    kicked" look identical to other members** (no public removal mark, no reason).
+    removed" look identical to other members** (no public removal mark, no reason).
 - **Action:** Big one. Swap the status atoms to blue/gray (DROP-IN), REMOVE Door mode + counts +
   rollup, NEW "private members" notice, EDIT transparency into the main pipeline.
 

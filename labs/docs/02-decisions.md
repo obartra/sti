@@ -85,7 +85,7 @@ _Reviewed for consistency: June 15, 2026. Reflects the feature-complete build._
 - **LOCKED — Grants can be point-in-time, durational, or until-revoked, for individuals or groups.** "Revoke" = no future reads, not "unsee."
 - **LOCKED — Visibility and revocation are per-token / per-capability; there is NO global access state.** What a viewer sees depends on which token/alias they hold. If you're linked to someone through two paths (a group token and a separate alias) and you leave the group, they still see whatever the other token grants — leaving one path doesn't touch the others. Removal from one path just makes that path go dark; it says nothing about the rest.
 - **LOCKED — Status and access are orthogonal** (pause changes what you show; revoke changes who sees via that path; nothing auto-rejoins).
-- **LOCKED — Access changes are visible to the affected person, indistinguishable to others.** You can tell your own access ended (a group stops resolving for you); to other members, "left" and "was kicked" look identical (no public removal mark). The app never states a reason and never auto-revokes from a health event.
+- **LOCKED — Access changes are visible to the affected person, indistinguishable to others.** You can tell your own access ended (a group stops resolving for you); to other members, "left" and "was removed" look identical (no public removal mark). The app never states a reason and never auto-revokes from a health event.
 - **LOCKED — Prefer routine expiry as the default** so a path going quiet is mundane background, not a pointed event.
 
 ## Linking
@@ -165,37 +165,12 @@ _Reviewed for consistency: June 15, 2026. Reflects the feature-complete build._
 
 ---
 
-## Final whole-artifact audit (passed)
+## Still open
 
-The cleaned build was run end-to-end against all 9 invariants (doc 05 rubric). **Result: zero
-P0 invariant breaks** in the reachable user-facing product. Inv 2 (PrEP/undetectable both resolve
-to the "On HIV prevention" umbrella) and Inv 1 (badge is derived, no direct setter; impossible
-combos unreachable) independently re-verified in code. Two items were deliberately ACCEPTED rather
-than fixed:
-
-- **Knock timing (Inv-6 edge), ACCEPTED as a prototype limit.** `knock.js` runs `dedupe` only on
-  the accept branch, so the real/under-limit path does observably more work than the fake/over-
-  limit path. Shape is identical; timing is not strictly constant. This is unfixable-meaningfully
-  in an in-memory JS mock (the timing model bears no relation to production). The real fix is the
-  server-side requirement, already noted: **the production knock endpoint must do constant-time
-  work across the whole write/dedupe path**, not just return a uniform string.
-- **`recency:"lapsed"` overload, ACCEPTED.** An incomplete-but-clear core panel is modeled by
-  writing `recency:"lapsed"` to force gray. Viewer outcome is correct (gray either way) and it's
-  invisible to users; only a dev-panel reviewer toggling recency could be misled. A dedicated
-  `panelIncomplete` input is a possible future refinement, not a defect.
-
-Everything else the audit flagged was dead code/copy or a greeting, addressed in the final fix
-pass (`prompt-final-fix.md`): the dead V1 contact-reach path removed as out-of-scope PII handling;
-the dead four-light `StatusPill`/`ResultOption` removed to close an Inv-1 foothold; orphaned copy
-pruned; home greeting de-named. *(That fix pass is deletions plus one greeting string only;
-verify in code on application.)*
-
----
-
-## Still open (see the Questions doc and clinical/eng follow-ups)
-
-1. Badge equity — **for outside review:** detectable-poz can't reach blue until suppressed (and a near-universal positive state may make non-qualifiers *more* conspicuous); and PrEP-choice-normativity (declining PrEP forces the condom route or gray).
+1. Badge equity — **for outside review** (see [Open questions](/docs/open-questions)): detectable-poz can't reach blue until suppressed (and a near-universal positive state may make non-qualifiers *more* conspicuous); and PrEP-choice-normativity (declining PrEP forces the condom route or gray).
 2. Syphilis serofast vs reinfection is captured as an input distinction (serofast keeps clear; rising titer breaks it). The broader "current active infection" question is resolved by the current-state-not-history rule: chronic HSV/HPV → education (never grays); transient HSV outbreak → pause. (See the LOCKED clinical block.)
 3. Label-display residual — "condoms always" without the umbrella weakly implies HIV-negative-not-on-PrEP; accepted as lesser harm (3-state softens it vs. a binary); confirm.
 4. Notification: push-recipient-set mitigation (broadcast wake + uniform poll); draft-window length (~30 min) and send-cycle cadence.
 5. Shared-view date granularity; minimum group size (~5); scan-to-autolink auto-share default.
+6. Knock endpoint timing — the production knock/notify endpoint must do constant-time work across the whole write/dedupe path (not just return a uniform string); the in-memory prototype mock doesn't model this.
+7. Account deletion and data export — a self-serve way to delete your account and everything tied to it, and to download what's held about you. Worth pinning down what (if anything) is personal enough to export, since the server holds only ciphertext and opaque tokens.

@@ -30,9 +30,11 @@ How it works:
   treatment, in care but not yet undetectable) so a single look never decodes to a diagnosis.
 - It protects people **during treatment** without exposing why — mid-treatment just shows
   gray, identical to every other reason for gray.
-- **No "verified" badges.** Letting people verify with lab results would quietly punish those
-  without easy healthcare access and rebuild the hierarchy this exists to dismantle.
-  Everyone's badge is the same kind of badge, openly self-reported.
+- **No "verified" badges.** A verified tier next to a self-reported one re-creates the ranking
+  this exists to dismantle, and trustworthy verification would mean linking a real medical
+  record to your identity, which the privacy model forbids (and it would privilege documented
+  healthcare over anonymous or at-home testing). Everyone's badge is the same kind, openly
+  self-reported.
 - It points people to **free testing, free condoms, and free/low-cost PrEP** nearby, and it's
   built so the server literally can't read anyone's health data or see who's connected to
   whom.
@@ -121,6 +123,16 @@ making it hard just pushes people toward telling no one.
 **Question:** does that feel supportive or accusatory on the *receiving* end? Could a content-
 free "go get tested" from an unknown source land as *more* alarming than a direct conversation?
 
-### 8. Anything I'm not seeing
+### 8. Verification, as a private check
+
+There are no "verified" badges: a verified tier re-creates ranking, and trustworthy
+verification would mean linking a real medical record to an identity the model deliberately
+doesn't hold. One middle path is to let someone optionally check a lab result on their own
+device as a private confidence aid, never shown to anyone and never a separate badge.
+
+**Question:** is a private-only verification check worth building, or does even an optional one
+start dragging the product back toward proof and ranking?
+
+### 9. Anything I'm not seeing
 
 If you live closer to this than I do, **what's the question I haven't thought to ask?**

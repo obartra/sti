@@ -132,7 +132,7 @@ A private alias can be **advertised** (its link put on a dating profile / bio) w
 - **"Revoke" = "no future reads," not "unsee."**
 - **Visibility and revocation are per-token / per-capability — there is NO global access state.** What a viewer sees depends on which token/alias they hold. If you're linked through two paths (a group token and a separate alias) and you leave the group, they still see whatever the other token grants; one path going dark says nothing about the others.
 - **Status and access are orthogonal.** Pause changes only *what you show* to your existing audience (unpause reverses it — nothing "rejoins"). Revoke/leave changes only *who can see you via that path* (re-grant/re-join reverses it — status untouched).
-- **Access changes are visible to the affected person, indistinguishable to others.** You can tell your own access ended (a group stops resolving for you); to other members, "left" and "was kicked" look identical — no public removal mark, no reason ever stated. The app never auto-revokes from a health event.
+- **Access changes are visible to the affected person, indistinguishable to others.** You can tell your own access ended (a group stops resolving for you); to other members, "left" and "was removed" look identical — no public removal mark, no reason ever stated. The app never auto-revokes from a health event.
 - **Prefer routine expiry** (short TTLs, re-sharing as the norm) so a path going quiet is mundane and timing-independent of any health state.
 
 ## 9. Linking
@@ -176,7 +176,7 @@ gating would require a lookup that leaks.
 
 - **Local/on-device only** (from the user's cadence + last-test date, both already on-device); the server never learns whose window is lapsing.
 - **Supportive framing,** routing to the testing finder; never nagging or shaming.
-- **No frequency gamification** (no "monthly = better"); sensible cadence options only.
+- **No frequency gamification** (no "monthly = better"). v0 ships a single 3-month cadence (it matches the badge window); finer cadence options are a later refinement.
 - **Pause-aware:** suppressed during a treatment pause, resume after.
 - **Optional, discreet, disableable** (lock-screen privacy).
 

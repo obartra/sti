@@ -126,10 +126,10 @@ depends on which token/alias they hold, so leaving one group/path doesn't change
 via another token or alias. STATUS and ACCESS are orthogonal: pause changes what you show
 (unpause reverses, nothing rejoins); revoke/leave changes who can see you via that path
 (re-grant reverses, status untouched). Access changes are visible to the AFFECTED PERSON (they
-can tell their own access ended) but "left" and "was kicked" look IDENTICAL to other members
+can tell their own access ended) but "left" and "was removed" look IDENTICAL to other members
 (no public removal mark, no reason ever stated); the app never AUTO-revokes from a health
 event. Flag any global access state, any coupling of status and access, any public "left vs
-kicked" or "ACCESS REVOKED" distinction that reveals a reason, or any automated access change
+removed" or "ACCESS REVOKED" distinction that reveals a reason, or any automated access change
 triggered by a health event.
 
 10. LINKING.
@@ -241,7 +241,7 @@ to badge color or any visible "undetectable"; any person-NAME display or name fi
 (not 3-state) condom control; stale-blue or any distinct stale wallet state, Live wallet on a
 private alias, or status shown on a QR-carrier face; verification/self-reported mark; leaky third
 resolution state; existence leak via response shape/timing; global access state or status↔
-access coupling or auto-revoke from a health event; public "left vs kicked" distinction;
+access coupling or auto-revoke from a health event; public "left vs removed" distinction;
 FRICTION on removing a draft notification contact, any post-lock delivery/timing/count readout
 shown to the user, or any notification revealing
 source/content/count; linking that reveals the logger; a main handle / cleartext handle /
