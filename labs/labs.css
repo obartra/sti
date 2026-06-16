@@ -35,7 +35,10 @@ body {
   font-size: 18px;
   -webkit-font-smoothing: antialiased;
   padding: 0 20px;
-  overflow-x: hidden;
+  /* Wrap long tokens and headings instead of letting them overflow. No
+     overflow-x:hidden here on purpose: that would silently CLIP an overflow
+     (e.g. under browser zoom or a forced minimum font size) rather than wrap. */
+  overflow-wrap: break-word;
   position: relative;
   background-image: radial-gradient(var(--ink) 1.3px, transparent 1.3px);
   background-size: 26px 26px;
