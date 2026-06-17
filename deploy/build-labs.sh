@@ -2,8 +2,8 @@
 #
 # Build and deploy the full labs.sti.care site to gh-pages.
 #
-# Unlike deploy.sh (which ships a prototype zip as the whole site), this assembles
-# a composite:
+# This is the deploy entrypoint for labs.sti.care. A prototype zip only ever holds
+# the passport, so this is what you run: it assembles the composite the site is.
 #   /                 a sti.care-styled landing page (generated)
 #   /docs/<slug>.html the published design docs, rendered from labs/docs/*.md
 #   /passport/        the prototype export (the newest, or given, *.zip)
