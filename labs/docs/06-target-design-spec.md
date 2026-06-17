@@ -1,7 +1,5 @@
 # sti.care — Target Design Spec (build toward this)
 
-_Reviewed for consistency: June 15, 2026. Reflects the feature-complete build._
-
 *For the design agent. This is the **target state**, written positively so you can build
 toward it — not a list of removals. It is self-contained: you should not need the audit or the
 rubric to act on it. Where the current build conflicts, this document wins. Fork the status +

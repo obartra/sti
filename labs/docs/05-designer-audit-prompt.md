@@ -1,7 +1,5 @@
 # Designer-agent audit prompt
 
-_Reviewed for consistency: June 15, 2026. Reflects the feature-complete build._
-
 *Standalone. The design agent has not seen the rationale — this is the full rubric. Paste as
 is.*
 

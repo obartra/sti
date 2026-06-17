@@ -1,7 +1,5 @@
 # sti.care — Philosophy
 
-_Reviewed for consistency: June 15, 2026. Reflects the feature-complete build._
-
 *The "why" behind the product. Pairs with the Decisions log (what we chose) and the Design doc (how it works). Not legal advice.*
 
 ---

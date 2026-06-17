@@ -1,7 +1,5 @@
 # sti.care — Decisions Log
 
-_Reviewed for consistency: June 15, 2026. Reflects the feature-complete build._
-
 *Scannable record of decisions — each tagged with a status (see the key below). Mechanics live in the Design doc; rationale in the Philosophy doc. Open items at the bottom.*
 
 ---
