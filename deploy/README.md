@@ -1,40 +1,47 @@
-# Prototype deploys to GitHub Pages
+# Deploying labs.sti.care to GitHub Pages
 
 `sti.care` (the apex) stays on Netlify. This folder is a **separate** pipeline
-that publishes a prototype zip to [`labs.sti.care`](https://labs.sti.care/) via
-GitHub Pages, on the `gh-pages` branch.
+that publishes [`labs.sti.care`](https://labs.sti.care/) via GitHub Pages, on the
+`gh-pages` branch.
+
+The live site is a **composite**: a generated landing page, the published design
+docs, and the prototype under `/passport/`. A prototype zip only ever holds the
+passport, so a deploy always rebuilds the whole composite around it.
+[`build-labs.sh`](build-labs.sh) is the one entrypoint.
 
 - **Custom domain:** `labs.sti.care` (set in [`CNAME`](CNAME))
 - **Branch:** `gh-pages` (orphan; every deploy replaces it and its history)
-- **Source of truth:** whatever zip you drop in the repo root. Nothing here is
-  built from the repo; `main` and Netlify are untouched.
+- **What ships:** the landing + docs rendered from `labs/`, plus the prototype
+  from a zip in the repo root (or the one already published). `main` and Netlify
+  are untouched.
 
 Zips in the repo root are gitignored (`/*.zip`), so they never get committed.
 
 ## Quick start
 
-Drop a zip in the repo root and run:
+Drop the prototype zip in the repo root and run:
 
 ```sh
-deploy/deploy.sh                 # uses the newest *.zip in the repo root
-deploy/deploy.sh path/to/x.zip   # or name one explicitly
-deploy/deploy.sh --dry-run       # build the tree and print it, don't push
+deploy/build-labs.sh                 # newest *.zip in the repo root
+deploy/build-labs.sh path/to/x.zip   # or name one explicitly
+deploy/build-labs.sh --dry-run       # build the tree and print it, don't push
 ```
 
-That picks the zip, prepares it, and publishes it to `gh-pages` in one shot. For
-napkin exports it also pre-compiles the JSX by default (see `--no-transpile`
-below); add `--no-transpile` to serve the export verbatim.
+That renders the landing + docs, prepares the prototype into `/passport/`, and
+publishes the lot to `gh-pages` in one shot. With no zip anywhere it reuses the
+`/passport` already live, so a docs- or landing-only change needs no zip. JSX is
+pre-compiled by default (see `--no-transpile` below).
 
-## The three scripts
+## The scripts
 
-The work is split so unzipping and publishing can run independently (inspect or
-tweak the staged site in between):
+`build-labs.sh` is the entrypoint; it composes the site from two helpers you can
+also run directly (to inspect or tweak the staged site between steps):
 
-| Script           | Input             | Output                  | Does                                                                          |
-| ---------------- | ----------------- | ----------------------- | ----------------------------------------------------------------------------- |
-| **`prepare.sh`** | a zip (or newest) | a clean site dir (path) | extract, promote entry to `index.html`, drop cruft + excludes, optional build |
-| **`publish.sh`** | a prepared dir    | a `gh-pages` deploy     | add `CNAME` + `.nojekyll` + `404.html`, force-push as one fresh commit        |
-| **`deploy.sh`**  | a zip (or newest) | a `gh-pages` deploy     | `prepare.sh` then `publish.sh`                                                |
+| Script              | Input                                  | Output                  | Does                                                                          |
+| ------------------- | -------------------------------------- | ----------------------- | ----------------------------------------------------------------------------- |
+| **`build-labs.sh`** | a zip (or newest, or live `/passport`) | a `gh-pages` deploy     | render landing + docs, prepare the prototype into `/passport/`, then publish  |
+| **`prepare.sh`**    | a zip (or newest)                      | a clean site dir (path) | extract, promote entry to `index.html`, drop cruft + excludes, optional build |
+| **`publish.sh`**    | a prepared dir                         | a `gh-pages` deploy     | add `CNAME` + `.nojekyll` + `404.html`, force-push as one fresh commit        |
 
 `prepare.sh` prints **only the prepared directory path** on stdout (everything
 else is on stderr), so you can capture it:
@@ -86,7 +93,7 @@ Babel from a CDN and transpiles the `.jsx` in the browser, plus `app/`, `_ds/`,
 defaults already handle this shape: the entry is promoted to `index.html`,
 `docs`/`scraps`/`uploads`/`.thumbnail` are excluded, and `.nojekyll` keeps the
 `_ds/` design-system folder from being hidden by Jekyll. So a plain
-`deploy/deploy.sh` is all it takes.
+`deploy/build-labs.sh` is all it takes.
 
 ### JSX pre-compile (on by default)
 
@@ -97,8 +104,8 @@ By default the pipeline moves that compile to deploy time via
 Babel instead:
 
 ```sh
-deploy/deploy.sh                  # pre-compiled, no runtime Babel (default)
-deploy/deploy.sh --no-transpile   # serve the export verbatim
+deploy/build-labs.sh                  # pre-compiled, no runtime Babel (default)
+deploy/build-labs.sh --no-transpile   # serve the export verbatim
 ```
 
 It's a deterministic, 1:1 transform, **not** a bundler: each `app/*.jsx` is
