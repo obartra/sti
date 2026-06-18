@@ -200,7 +200,8 @@ explainer being account-gated / unreachable by a logged-out stranger.
 14. ANTI-GATE / HARM REDUCTION.
 Not sharing or not having a badge must be indistinguishable from any other reason; the badge
 is deliberately too blunt to sort people. Education states risk plainly and points to RAMPS
-(free testing, PrEP, doxy-PEP, condoms) — NEVER abstinence verdicts like "you shouldn't be
+(the four first-class finders: free testing, condoms, PrEP, PEP; doxy-PEP is a flat attribute,
+not a ramp) — NEVER abstinence verdicts like "you shouldn't be
 having sex," never pathologizing the not-up-to-date user.
 
 15. PRIVACY / ARCHITECTURE (UX-level).
@@ -218,9 +219,9 @@ Four first-class "find near you" ramps, framed as tools (not verdicts): "free te
 hardcoded national link); "free/low-cost PrEP" (HeyMistr + PrEP assistance programs); and "PEP"
 (CDC "Let's Stop HIV Together" locator). PEP urgency is contextual: the standing finder states
 only when it applies ("after a possible HIV exposure"), never a permanent "go now" alarm.
-Confirm all three present and prominent. The PrEP ramp is load-bearing — the badge rewards
+Confirm all four present and prominent. The PrEP ramp is load-bearing — the badge rewards
 active HIV protection, so PrEP must be reachable or the app rewards privilege. Flag if any of
-the three is missing or buried.
+the four is missing or buried.
 
 17. WALLET / QR / SHAREABLE CARD.
 All shareable artifacts (Apple Wallet pass, Google Wallet pass, standalone shareable card)

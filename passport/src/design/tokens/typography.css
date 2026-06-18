@@ -1,0 +1,43 @@
+/* ===========================================================================
+   sti.care · Typography tokens
+   One clean humanist sans (Hanken Grotesk) throughout. Calm, legible, warm.
+   Mobile-first scale; generous line-height for reassurance and readability.
+   =========================================================================== */
+
+:root {
+  /* --- Families ----------------------------------------------------------- */
+  --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system,
+               "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display: var(--font-sans);
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* --- Weights ------------------------------------------------------------ */
+  --weight-regular: 400;
+  --weight-medium:  500;
+  --weight-semibold: 600;
+  --weight-bold:    700;
+  --weight-extrabold: 800;
+
+  /* --- Type scale (px values; mobile-first) ------------------------------- */
+  --text-display:  40px;  /* hero numerals, big reassuring statements         */
+  --text-h1:       30px;  /* screen titles                                    */
+  --text-h2:       24px;  /* section titles                                   */
+  --text-h3:       20px;  /* card titles                                      */
+  --text-lg:       18px;  /* lead paragraph / prominent body                  */
+  --text-base:     16px;  /* default body                                     */
+  --text-sm:       14px;  /* secondary / dense                                */
+  --text-xs:       13px;  /* labels, captions                                 */
+  --text-2xs:      11px;  /* eyebrows, overline (use sparingly)               */
+
+  /* --- Line heights ------------------------------------------------------- */
+  --leading-tight:   1.15;  /* display / large numerals                       */
+  --leading-snug:    1.3;   /* headings                                       */
+  --leading-normal:  1.5;   /* body                                           */
+  --leading-relaxed: 1.65;  /* long-form reassurance copy                     */
+
+  /* --- Letter spacing ----------------------------------------------------- */
+  --tracking-tight:  -0.02em;  /* large display / headings                    */
+  --tracking-snug:   -0.01em;  /* sub-heads                                   */
+  --tracking-normal: 0;        /* body                                        */
+  --tracking-wide:   0.06em;   /* eyebrows / overline, uppercase              */
+}

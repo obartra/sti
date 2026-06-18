@@ -48,7 +48,11 @@ No sub-labels, no "expired," no "needs a fresh test," no color or glyph that dis
 
 **Visual:**
 - Blue: a calm filled fill + a **neutral mark** (a filled dot or "in-window" ring — **not a
-  checkmark**, which whispers "pass") + the label **"Tested & on HIV prevention"** (names both halves; avoids "safe/protected").
+  checkmark**, which whispers "pass") + the **route-specific headline**: **"Tested & on HIV
+  prevention"** when the qualifying route is PrEP or undetectable (the umbrella), or **"Tested &
+  always uses condoms"** when the route is the public condoms-always commitment (names both
+  halves; avoids "safe/protected"). The umbrella headline must never render for a condom-only
+  blue, or it collides with the PrEP/U=U camouflage invariant (§1).
 - Gray: a neutral dash + **"No status shared right now."** Never reads as a failure.
 - Keep two distinct shapes (not color alone) for accessibility.
 
@@ -293,7 +297,7 @@ is **not** a new sharing mode — it's what *private* does for a link-holder-wit
 - **Ban from viewer surfaces:** clean, dirty, clear, "all clear," healthy (as status), safe,
   disease-free, "green light," verified, unverified, "negative" as an identity, "expired,"
   "needs a fresh test," "waiting on shares," "on the mend."
-- **Use behavioral framing:** "Tested & on HIV prevention" (blue), "On HIV prevention," "No status shared right now" (gray).
+- **Use behavioral framing:** "Tested & on HIV prevention" or "Tested & always uses condoms" (blue, route-specific headline), "On HIV prevention," "No status shared right now" (gray).
 - "Negative" is fine as a clinical **result input**; "healthy" is fine inside **clinical
   education** copy ("treatment lets you live a long, healthy life") — just never as a
   status-identity word on a card.
@@ -335,7 +339,7 @@ that implies a server-side who-is-who, no "always findable."
 
 ## Decided (you can build on these)
 
-- **Blue label (displayed):** "Tested & on HIV prevention" (names both halves; avoids "safe/protected/cleared"). "Up to date" is an internal concept word only.
+- **Blue label (displayed), route-specific:** "Tested & on HIV prevention" for the PrEP/undetectable umbrella; "Tested & always uses condoms" for the public condoms-always route (names both halves; avoids "safe/protected/cleared"). The umbrella headline never applies to a condom-only blue, or it collides with the PrEP/U=U camouflage invariant. "Up to date" is an internal concept word only.
 - **Blue glyph:** neutral mark (dot/ring), not a checkmark.
 - **Streak:** removed from all viewer surfaces (not recolored).
 - **Door mode / "the bar":** cut entirely.
@@ -344,14 +348,14 @@ that implies a server-side who-is-who, no "always findable."
 - **Linking:** fully silent; no add-back suggestion.
 - **Design-system conflict:** local fork of status + identity; DS for type/spacing/surface.
 - **Public default:** OFF (private by default).
+- **Temporal precision on the shared view:** boolean ("in window / not shared") to anonymous
+  viewers, "as of [month]" on the owner-chosen public view, exact dates owner-only (signed off in
+  the build guide).
 
 ## Still open — propose, don't block **[OPEN]**
 
-1. **Temporal precision on the shared view:** leaning boolean ("in window / not shared") to
-   anonymous viewers, "as of [month]" on the owner-chosen public view, exact dates owner-only.
-   Confirm.
-2. **Notification draft-window length (~30 min) + send-cycle cadence** — propose a default.
-3. **Label-display residual:** "condoms always" shown *without* the umbrella weakly implies
+1. **Notification draft-window length (~30 min) + send-cycle cadence** — propose a default.
+2. **Label-display residual:** "condoms always" shown *without* the umbrella weakly implies
    HIV-negative-not-on-PrEP. Accepted as far less harmful than any positive-status leak — flag
    if any layout sharpens it, but don't try to engineer it away.
 

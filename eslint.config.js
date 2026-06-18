@@ -2,7 +2,17 @@ import js from "@eslint/js";
 import globals from "globals";
 
 export default [
-  { ignores: ["node_modules/**"] },
+  // passport/ and server/ are self-contained packages with their own toolchains
+  // (tsc, go). Root ESLint only covers the vanilla public/ site and tooling.
+  {
+    ignores: [
+      "node_modules/**",
+      "**/dist/**",
+      "**/coverage/**",
+      "passport/**",
+      "server/**",
+    ],
+  },
   js.configs.recommended,
   {
     // Browser app code (ES modules).

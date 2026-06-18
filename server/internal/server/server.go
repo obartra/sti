@@ -1,0 +1,423 @@
+// Package server is the HTTP layer over the blind store. It enforces the wire
+// contract, makes alias resolution and knocks existence-uniform, and sheds load
+// without ever leaking existence through a status code.
+package server
+
+import (
+	_ "embed"
+
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"io"
+	"log/slog"
+	"math/rand/v2"
+	"net"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"sti.care/api/internal/contract"
+	"sti.care/api/internal/store"
+)
+
+//go:embed landing.html
+var landingHTML []byte
+
+// Config tunes the server. DecoySecret is required (>= 32 bytes); everything else
+// has sane defaults.
+type Config struct {
+	DecoySecret    []byte
+	KnockTTL       time.Duration // default 4 days
+	SendMaxJitter  time.Duration // default 2 min; spreads wake timing
+	MaxInflight    int           // global concurrency cap; default 256
+	SensitiveWait  time.Duration // max wait for a slot on /a, /knock; default 5s
+	IPRatePerSec   float64       // non-sensitive endpoints; default 5
+	IPBurst        float64       // default 20
+	KnockRatePerID float64       // silent cap on /knock; default 1/sec
+	KnockBurst     float64       // default 10
+}
+
+func (c *Config) withDefaults() {
+	if c.KnockTTL == 0 {
+		c.KnockTTL = 4 * 24 * time.Hour
+	}
+	if c.SendMaxJitter == 0 {
+		c.SendMaxJitter = 2 * time.Minute
+	}
+	if c.MaxInflight == 0 {
+		c.MaxInflight = 256
+	}
+	if c.SensitiveWait == 0 {
+		c.SensitiveWait = 5 * time.Second
+	}
+	if c.IPRatePerSec == 0 {
+		c.IPRatePerSec = 5
+	}
+	if c.IPBurst == 0 {
+		c.IPBurst = 20
+	}
+	if c.KnockRatePerID == 0 {
+		c.KnockRatePerID = 1
+	}
+	if c.KnockBurst == 0 {
+		c.KnockBurst = 10
+	}
+}
+
+// Server is the HTTP handler set.
+type Server struct {
+	st       *store.Store
+	cfg      Config
+	log      *slog.Logger
+	now      func() int64 // unix millis; injectable for tests
+	ipLimit  *limiter     // visible 429 on non-sensitive endpoints
+	knockLim *limiter     // silent cap on /knock (never a 429)
+	inflight chan struct{}
+	mux      *http.ServeMux
+}
+
+// New builds a Server. now may be nil (defaults to the wall clock).
+func New(st *store.Store, cfg Config, log *slog.Logger, now func() int64) *Server {
+	cfg.withDefaults()
+	if now == nil {
+		now = func() int64 { return time.Now().UnixMilli() }
+	}
+	s := &Server{
+		st:       st,
+		cfg:      cfg,
+		log:      log,
+		now:      now,
+		ipLimit:  newLimiter(cfg.IPRatePerSec, cfg.IPBurst),
+		knockLim: newLimiter(cfg.KnockRatePerID, cfg.KnockBurst),
+		inflight: make(chan struct{}, cfg.MaxInflight),
+		mux:      http.NewServeMux(),
+	}
+	s.routes()
+	return s
+}
+
+func (s *Server) routes() {
+	s.mux.HandleFunc("GET /a/{id}", s.handleAliasGet)
+	s.mux.HandleFunc("PUT /a/{id}", s.handleAliasPut)
+	s.mux.HandleFunc("GET /acct/{id}", s.handleAccountGet)
+	s.mux.HandleFunc("PUT /acct/{id}", s.handleAccountPut)
+	s.mux.HandleFunc("POST /notify", s.handleNotify)
+	s.mux.HandleFunc("POST /push/register", s.handlePushRegister)
+	s.mux.HandleFunc("POST /knock/{id}", s.handleKnock)
+	s.mux.HandleFunc("GET /healthz", s.handleHealth)
+	s.mux.HandleFunc("GET /{$}", s.handleRoot) // exactly "/", a public landing
+}
+
+// Handler returns the http.Handler with the load-shedding middleware applied.
+func (s *Server) Handler() http.Handler { return s.shed(s.mux) }
+
+// sensitivePath reports whether a request must stay existence-uniform: it never
+// receives a visible 429/503. Only the existence-revealing READS qualify, GET /a
+// and POST /knock. PUT /a is a write (visible 403/204, rate-limited) and is
+// sheddable, so a write flood cannot ride the never-shed path.
+func sensitivePath(method, p string) bool {
+	return (method == http.MethodGet && strings.HasPrefix(p, contract.PathAliasPrefix)) ||
+		(method == http.MethodPost && strings.HasPrefix(p, contract.PathKnockPrefix))
+}
+
+// shed caps global concurrency. Non-sensitive endpoints get a 503 when the cap is
+// full. Sensitive reads are never shed with a visible status: they wait up to
+// SensitiveWait for a slot, and if none frees they get the uniform existence-blind
+// fallback (a decoy / the fixed knock reply). That bounds both concurrency AND
+// queue time without ever leaking existence, even under sustained overload.
+func (s *Server) shed(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if sensitivePath(r.Method, r.URL.Path) {
+			t := time.NewTimer(s.cfg.SensitiveWait)
+			select {
+			case s.inflight <- struct{}{}:
+				t.Stop()
+				defer func() { <-s.inflight }()
+				next.ServeHTTP(w, r)
+			case <-t.C:
+				s.uniformOverload(w, r)
+			}
+			return
+		}
+		select {
+		case s.inflight <- struct{}{}:
+			defer func() { <-s.inflight }()
+			next.ServeHTTP(w, r)
+		default:
+			s.writeError(w, http.StatusServiceUnavailable, contract.ErrInternal, "overloaded")
+		}
+	})
+}
+
+// uniformOverload is the catastrophic-overload fallback for a sensitive read: the
+// same response a normal miss produces, so saturation is indistinguishable from a
+// nonexistent id. A real alias served this way decodes to gray client-side, which
+// is the accepted degradation (unreachable, then gray).
+func (s *Server) uniformOverload(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, contract.PathKnockPrefix) {
+		s.writeJSON(w, http.StatusOK, contract.KnockResponse{Status: contract.KnockStatus})
+		return
+	}
+	id := strings.TrimPrefix(r.URL.Path, contract.PathAliasPrefix)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write(decoyBytes(s.cfg.DecoySecret, id, contract.AliasPayloadSize))
+}
+
+// --- Alias (the hot, existence-uniform read) --------------------------------
+
+func (s *Server) handleAliasGet(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	payload := s.aliasPayload(r, id)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write(payload)
+}
+
+// aliasPayload always returns exactly AliasPayloadSize bytes: the stored
+// ciphertext if it exists, otherwise a deterministic decoy. Invalid ids and even
+// internal errors fall through to a decoy, so nothing about existence leaks.
+func (s *Server) aliasPayload(r *http.Request, id string) []byte {
+	if contract.ValidID(id) {
+		if ct, found, err := s.st.GetAlias(r.Context(), id); err != nil {
+			s.log.Error("alias get", "err", err)
+		} else if found {
+			return ct
+		}
+	}
+	return decoyBytes(s.cfg.DecoySecret, id, contract.AliasPayloadSize)
+}
+
+func (s *Server) handleAliasPut(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if !contract.ValidID(id) {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed id")
+		return
+	}
+	if !s.ipLimit.allow(clientIP(r), s.now()) {
+		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
+		return
+	}
+	token := r.Header.Get(contract.HeaderWriteToken)
+	if token == "" {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "missing write token")
+		return
+	}
+	body, err := io.ReadAll(io.LimitReader(r.Body, contract.AliasPayloadSize+1))
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "read body")
+		return
+	}
+	if len(body) != contract.AliasPayloadSize {
+		// The client pre-pads alias payloads to exactly the fixed size.
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "alias payload must be exactly the fixed size")
+		return
+	}
+	authHash := hashToken(token)
+	ok, err := s.st.WriteAlias(r.Context(), id, body, authHash, s.now())
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	if !ok {
+		// PUT is deliberately NOT existence-uniform (unlike GET /a and POST /knock):
+		// 403 here distinguishes "exists, wrong token" from a 204 create. That is
+		// acceptable, the read id is already shared with viewers, so holding it
+		// already implies you may learn it exists, and 256-bit ids are unguessable.
+		s.writeError(w, http.StatusForbidden, contract.ErrBadRequest, "write token does not match")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// --- Account sync -----------------------------------------------------------
+
+func (s *Server) handleAccountGet(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if !contract.ValidID(id) {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed id")
+		return
+	}
+	if !s.ipLimit.allow(clientIP(r), s.now()) {
+		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
+		return
+	}
+	ct, version, found, err := s.st.GetAccount(r.Context(), id)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	if !found {
+		// 404-on-miss is a deliberate, accepted carve-out (unlike GET /a, which is
+		// existence-uniform). Account ids are 256-bit owner-key-derived and never
+		// shared, so a 404 only tells a caller who already holds the id that no
+		// blob exists there yet, which the owner needs to know to start syncing.
+		s.writeError(w, http.StatusNotFound, contract.ErrNotFound, "")
+		return
+	}
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set(contract.HeaderVersion, strconv.FormatInt(version, 10))
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write(ct)
+}
+
+func (s *Server) handleAccountPut(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if !contract.ValidID(id) {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed id")
+		return
+	}
+	if !s.ipLimit.allow(clientIP(r), s.now()) {
+		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
+		return
+	}
+	body, err := io.ReadAll(io.LimitReader(r.Body, contract.AccountBlobMaxSize+1))
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "read body")
+		return
+	}
+	if len(body) > contract.AccountBlobMaxSize {
+		s.writeError(w, http.StatusRequestEntityTooLarge, contract.ErrTooLarge, "")
+		return
+	}
+	version, err := s.st.PutAccount(r.Context(), id, body, s.now())
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	w.Header().Set(contract.HeaderVersion, strconv.FormatInt(version, 10))
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// --- Notify + push ----------------------------------------------------------
+
+func (s *Server) handleNotify(w http.ResponseWriter, r *http.Request) {
+	if !s.ipLimit.allow(clientIP(r), s.now()) {
+		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
+		return
+	}
+	var req contract.NotifyRequest
+	if err := decodeJSON(r, &req); err != nil || req.TokenHash == "" {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "")
+		return
+	}
+	if ep, found, err := s.st.GetNotifyRoute(r.Context(), req.TokenHash); err == nil && found {
+		// Jittered single-send: spread wake timing to decorrelate from the event.
+		jitter := time.Duration(rand.Int64N(int64(s.cfg.SendMaxJitter) + 1))
+		at := s.now() + jitter.Milliseconds()
+		if err := s.st.EnqueueSend(r.Context(), ep, at, s.now()); err != nil {
+			s.log.Error("enqueue send", "err", err)
+		}
+	}
+	// Always 202, whether or not a route existed. The *response* is uniform, but a
+	// found route enqueues a send while a miss does no work, so timing is not yet
+	// equalized; constant-time work is a carried open item (doc 10 §F).
+	w.WriteHeader(http.StatusAccepted)
+}
+
+func (s *Server) handlePushRegister(w http.ResponseWriter, r *http.Request) {
+	if !s.ipLimit.allow(clientIP(r), s.now()) {
+		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
+		return
+	}
+	var req contract.PushRegisterRequest
+	if err := decodeJSON(r, &req); err != nil || req.RoutingEndpointID == "" || req.Subscription.Endpoint == "" {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "")
+		return
+	}
+	t := store.PushTarget{
+		Endpoint: req.Subscription.Endpoint,
+		P256dh:   req.Subscription.Keys.P256dh,
+		Auth:     req.Subscription.Keys.Auth,
+	}
+	if err := s.st.RegisterPush(r.Context(), req.RoutingEndpointID, t, s.now()); err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// --- Knock (contentless, existence-uniform) ---------------------------------
+
+func (s *Server) handleKnock(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var req contract.KnockRequest
+	_ = decodeJSON(r, &req)
+	// Record unconditionally for a well-formed (id, requester), whether or not the
+	// alias exists, so the work is the same either way. The owner only ever reads
+	// knocks for their own ids; knocks against non-existent ids are never read and
+	// get purged. Over-limit is silent: it never becomes a visible 429.
+	if contract.ValidID(id) && req.RequesterHash != "" {
+		// Key per (id, requester) so a single flooder only exhausts its own bucket
+		// and can't silently suppress other requesters' knocks for the same id.
+		if s.knockLim.allow(id+"\x00"+req.RequesterHash, s.now()) {
+			now := s.now()
+			expires := now + s.cfg.KnockTTL.Milliseconds()
+			if _, err := s.st.RecordKnock(r.Context(), id, req.RequesterHash, now, expires); err != nil {
+				s.log.Error("record knock", "err", err)
+			}
+		}
+	}
+	// The single response, identical for every id.
+	s.writeJSON(w, http.StatusOK, contract.KnockResponse{Status: contract.KnockStatus})
+}
+
+func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
+	s.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// handleRoot serves a small public landing page so api.sti.care is not a bare
+// 404, and reinforces the privacy story. Nothing sensitive; safe to be public.
+func (s *Server) handleRoot(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	_, _ = w.Write(landingHTML)
+}
+
+// --- helpers ----------------------------------------------------------------
+
+func hashToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+
+func decodeJSON(r *http.Request, v any) error {
+	dec := json.NewDecoder(io.LimitReader(r.Body, 1<<16))
+	return dec.Decode(v)
+}
+
+func (s *Server) writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+func (s *Server) writeError(w http.ResponseWriter, status int, code, msg string) {
+	s.writeJSON(w, status, contract.ErrorResponse{Error: contract.ErrorBody{Code: code, Message: msg}})
+}
+
+// clientIP returns the address the rate limiter keys on. The origin is reachable
+// ONLY through the local Caddy reverse proxy, which sets X-Real-IP to the true
+// client address and overwrites any client-supplied value. We therefore trust
+// only that one header. We deliberately do NOT read X-Forwarded-For or
+// CF-Connecting-IP: both are client-spoofable here (there is no Cloudflare), and
+// trusting them would make the limit bypassable.
+func clientIP(r *http.Request) string {
+	if ip := r.Header.Get("X-Real-IP"); ip != "" {
+		return ip
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+// SweepLimiters drops idle rate-limit buckets (call periodically).
+func (s *Server) SweepLimiters(now int64) {
+	cutoff := now - (10 * time.Minute).Milliseconds()
+	s.ipLimit.sweep(cutoff)
+	s.knockLim.sweep(cutoff)
+}
