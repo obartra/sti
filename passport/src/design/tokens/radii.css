@@ -1,0 +1,38 @@
+/* ===========================================================================
+   sti.care · Radii, shadows, motion
+   Soft rounded cards, gentle shadows (no harsh outlines). Calm easing.
+   =========================================================================== */
+
+:root {
+  /* --- Corner radii ------------------------------------------------------- */
+  --radius-xs:   8px;    /* chips, small controls                            */
+  --radius-sm:   12px;   /* inputs, buttons                                  */
+  --radius-md:   16px;   /* cards                                            */
+  --radius-lg:   20px;   /* large feature cards                              */
+  --radius-xl:   28px;   /* sheets, the passport card                        */
+  --radius-pill: 999px;  /* status pills, avatars, segmented controls        */
+
+  /* --- Shadows · soft and warm-tinted, never harsh ------------------------ */
+  /* Ambient lift for resting cards */
+  --shadow-sm: 0 1px 2px rgba(27, 27, 47, 0.04),
+               0 2px 6px rgba(27, 27, 47, 0.05);
+  /* Standard card */
+  --shadow-md: 0 2px 4px rgba(27, 27, 47, 0.04),
+               0 8px 20px rgba(27, 27, 47, 0.06);
+  /* Raised / hover */
+  --shadow-lg: 0 6px 14px rgba(27, 27, 47, 0.07),
+               0 18px 40px rgba(27, 27, 47, 0.09);
+  /* Floating sheets, dialogs */
+  --shadow-xl: 0 12px 28px rgba(27, 27, 47, 0.10),
+               0 32px 64px rgba(27, 27, 47, 0.14);
+  /* Accent glow for the primary passport card */
+  --shadow-accent: 0 10px 30px rgba(47, 155, 179, 0.20);
+
+  /* --- Motion ------------------------------------------------------------- */
+  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);   /* @kind other */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);   /* @kind other */
+  --ease-gentle: cubic-bezier(0.4, 0, 0.2, 1);     /* @kind other */
+  --dur-fast:   120ms;  /* @kind other */
+  --dur-base:   200ms;  /* @kind other */
+  --dur-slow:   320ms;  /* @kind other */
+}

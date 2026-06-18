@@ -1,6 +1,11 @@
 node_modules
 package-lock.json
 LICENSE
+**/coverage
+**/dist
 
 # Authored design docs: source of truth for the rendered labs pages, left verbatim.
 labs/docs
+
+# Design system, kept verbatim in sync with the source zip.
+passport/src/design

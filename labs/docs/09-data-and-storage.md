@@ -12,8 +12,9 @@ Pairs with the Design doc (mechanics) and Philosophy (why). Not legal advice.*
 
 Everything sensitive — diagnoses, dates, who you're linked to, your groups, your handles — lives
 **on your device**, inside an encrypted blob whose key never reaches us. Our server stores
-**ciphertext and opaque routing tokens, nothing else.** It can't read your status, and it can't
-see who knows whom.
+**ciphertext and opaque routing tokens, nothing else.** It can't read your status, and the stored
+contact graph is unreadable to us. The one honest exception is partner-notification routing, which
+isn't fully blind yet; it's called out in full below, not buried.
 
 ## What lives where
 

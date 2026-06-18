@@ -1,0 +1,74 @@
+name: Deploy backend
+
+# Ships the Go origin to the VPS on merge to main (or manually). Inert until the
+# deploy secrets exist, so it is safe to commit before they are configured.
+#
+# Secrets to enable:
+#   DEPLOY_SSH_HOST  a DNS-only host resolving directly to the box (e.g.
+#                    origin.sti.care). NOT the Cloudflare-proxied api.sti.care,
+#                    which doesn't carry SSH.
+#   DEPLOY_USER      a restricted deploy user (not root).
+#   DEPLOY_SSH_KEY   the deploy private key (authorized for that user).
+#   DEPLOY_HOST_KEY  the box's SSH host-key line, pinned into known_hosts.
+#   DEPLOY_URL       public URL for the read-only smoke check (https://api.sti.care).
+
+on:
+  push:
+    branches: [main]
+    paths: ["server/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-server
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Gate on deploy secrets
+        id: gate
+        env:
+          HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+        run: |
+          if [ -z "$HOST" ]; then
+            echo "DEPLOY_SSH_HOST not set; skipping (configure secrets to enable)."
+            echo "enabled=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        if: steps.gate.outputs.enabled == 'true'
+        with:
+          go-version: "1.26.4"
+          cache-dependency-path: server/go.sum
+
+      - name: Build static binary
+        if: steps.gate.outputs.enabled == 'true'
+        working-directory: server
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o /tmp/stiapi ./cmd/stiapi
+
+      - name: Ship binary and restart (restricted)
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          HOSTKEY: ${{ secrets.DEPLOY_HOST_KEY }}
+        run: |
+          install -m 600 /dev/stdin /tmp/deploy_key <<<"$KEY"
+          install -m 600 /dev/stdin /tmp/known_hosts <<<"$HOSTKEY"
+          SSH="ssh -i /tmp/deploy_key -o UserKnownHostsFile=/tmp/known_hosts -o StrictHostKeyChecking=yes -o BatchMode=yes"
+          scp -i /tmp/deploy_key -o UserKnownHostsFile=/tmp/known_hosts -o StrictHostKeyChecking=yes /tmp/stiapi "$USER@$HOST:/tmp/stiapi.new"
+          # The deploy user may run ONLY this one command, with NO args (sudoers-locked).
+          $SSH "$USER@$HOST" 'sudo /usr/local/bin/stiapi-deploy'
+
+      - name: Smoke test (read-only; no writes to prod)
+        if: steps.gate.outputs.enabled == 'true'
+        run: bash server/deploy/smoke.sh --read-only "${{ secrets.DEPLOY_URL }}"

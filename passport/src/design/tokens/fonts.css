@@ -1,0 +1,10 @@
+/* ===========================================================================
+   sti.care · Webfonts
+   Hanken Grotesk — a warm, humanist grotesque. Friendly and approachable,
+   yet credible enough to hold sensitive health data. Used throughout.
+
+   NOTE: served from Google Fonts. To fully self-host, drop woff2 files in
+   assets/fonts/ and replace the @import with explicit @font-face rules.
+   =========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap');

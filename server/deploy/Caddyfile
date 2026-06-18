@@ -1,0 +1,31 @@
+# Caddy fronts the Go origin for api.sti.care. The origin listens only on
+# loopback; Caddy is the public face. TLS uses a Cloudflare Origin Certificate
+# (15-year, CF-trusted) rather than Let's Encrypt: the origin firewall is locked
+# to Cloudflare IPs and `always_use_https` is on at the edge, so an ACME HTTP-01
+# / TLS-ALPN challenge could never complete here. Cloudflare connects with
+# "Full (strict)" and trusts this cert. The cert + key live on the box only
+# (the key is generated on-box via openssl and never leaves it); they are not
+# in the repo.
+api.sti.care {
+	tls /etc/caddy/tls/origin.crt /etc/caddy/tls/origin.key {
+		# Authenticated Origin Pulls: only Cloudflare holds a client cert signed
+		# by this CA, so the origin refuses any TLS client that isn't Cloudflare.
+		# Defense in depth on top of the CF-only IP firewall.
+		client_auth {
+			mode require_and_verify
+			trust_pool file /etc/caddy/tls/cf-origin-pull-ca.pem
+		}
+	}
+	reverse_proxy 127.0.0.1:8080 {
+		# Caddy is the only trusted hop. X-Real-IP is set to the immediate peer
+		# (the Cloudflare edge), which overwrites any client-supplied value. The
+		# blind origin intentionally never sees the real client IP; per-client
+		# rate-limiting lives at the Cloudflare edge. Strip headers a client
+		# could otherwise spoof to influence the origin.
+		header_up X-Real-IP {http.request.remote.host}
+		header_up -X-Forwarded-For
+		header_up -CF-Connecting-IP
+	}
+	encode zstd gzip
+	header -Server
+}

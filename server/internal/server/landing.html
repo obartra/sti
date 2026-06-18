@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>sti.care API</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: #fbf9f4;
+        color: #1b1b2f;
+        font:
+          16px/1.6 -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+      }
+      main {
+        max-width: 32rem;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin: 0 0 0.6rem;
+        letter-spacing: -0.01em;
+      }
+      h1 span {
+        color: #2f9bb3;
+      }
+      p {
+        color: #5c5c6e;
+      }
+      a {
+        color: #1f6e80;
+      }
+      code {
+        background: #f4f1e9;
+        padding: 2px 6px;
+        border-radius: 6px;
+        font-size: 0.9em;
+      }
+      ul {
+        color: #5c5c6e;
+        padding-left: 1.1rem;
+      }
+      li {
+        margin: 0.3rem 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>sti.care <span>API</span></h1>
+      <p>
+        This is the blind backend for <a href="https://sti.care">sti.care</a>.
+        It stores only
+        <strong>encrypted blobs and opaque routing tokens</strong>, so it can’t
+        read your status, your diagnoses, or who you’re connected to. The keys
+        that decrypt anything never reach it.
+      </p>
+      <p>
+        Nothing here is meant to be browsed. The app talks to it; you don’t need
+        to.
+      </p>
+      <ul>
+        <li>
+          What we store, and what we provably can’t see:
+          <a href="https://labs.sti.care/docs/data">Data &amp; storage</a>
+        </li>
+        <li>Health: <code>/healthz</code></li>
+      </ul>
+    </main>
+  </body>
+</html>

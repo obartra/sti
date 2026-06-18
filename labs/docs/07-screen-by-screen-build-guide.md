@@ -39,7 +39,10 @@ This guide is the propagation plan.
 - **Action:** DROP-IN the approved resolution states + REMOVE the locked-card branch entirely.
   The cold/anonymous/guessed view stays button-free. A *link-holder* who isn't authorized may see
   a **knock** affordance (see the Knock cross-cutting item) — the link is what reveals existence to
-  them; the cold view never shows it. Coarsen any date to **boolean** here ("in window / not
+  them; the cold view never shows it. The button is gated on a **knock token in the link's URL
+  fragment** (`#k=...`), so it renders for link-holders client-side with no server query that could
+  leak existence; a bare `/p/<id>` with no fragment shows no button. Coarsen any date to
+  **boolean** here ("in window / not
   shared"). **NEW: every rendered card (blue or gray) carries an identical "What does this mean?"
   tap** opening the no-account **stranger explainer** (design §12c) — this is the highest-traffic
   education surface (logged-out first-timers from shared links); it must live on this resolution
@@ -203,7 +206,7 @@ This guide is the propagation plan.
 - **Action:** REMOVE the bar + EDIT anti-spam.
 
 ### CircleDetail / CircleManage / CircleCheckin / CircleTransparency / CircleLeave (`Circles2`)
-- **Now (status atoms):** Circle status math maps to the **four-light** set (ready=green,
+- **Now (status atoms):** Circle status math maps to the **four-light** set (`clear`=green,
   treat=amber...). Aggregate banner prints **exact counts** ("7 ready · 1 in treatment · 2 not
   shared") and a **worst-of room rollup.** **Door/check-in mode** is a bouncer screen with a room
   "Ready/Waiting" verdict. **CircleTransparency** prints per-circle **"N people notified."** No
@@ -262,7 +265,7 @@ This guide is the propagation plan.
 - **Ban (viewer-facing):** clear, all clear, green, "stays green," safe, healthy (as status),
   disease-free, on the mend, needs a fresh test, results expired, waiting, verified, "negative"
   as identity.
-- **Use:** "Tested & on HIV prevention" (blue label), "On HIV prevention," the 3-state condom preference, "No status shared right now" (gray).
+- **Use:** "Tested & on HIV prevention" or "Tested & always uses condoms" (route-specific blue headline), "On HIV prevention," the 3-state condom preference, "No status shared right now" (gray).
 - **Keep allowed:** "negative" as a clinical result **input**; "healthy" inside clinical
   **education** copy (the UU explainer's "live a long, healthy life" is fine).
 - **Action:** EDIT the STATUS/statusCopy strings + all headlines.
@@ -312,7 +315,9 @@ This guide is the propagation plan.
    request was sent" — identical for real/fake/guessed ids). Requester gets no pending/granted/
    denied signal. Owner alerting = quiet persistent indicator on the alias (no per-knock push).
    Knocks are contentless, rate-limited, auto-expire ~4 days, with a "clear all." The cold/guessed
-   view shows no knock affordance. (Its own pass, propose-first.)
+   view shows no knock affordance; the button is gated client-side on a **knock token in the link's
+   URL fragment** (`#k=...`), so a link-holder sees it with no server query and a bare `/p/<id>`
+   does not (Design §Knock). (Its own pass, propose-first.)
 
 ---
 

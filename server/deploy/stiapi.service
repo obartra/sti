@@ -1,0 +1,53 @@
+[Unit]
+Description=sti.care blind API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=stiapi
+Group=stiapi
+EnvironmentFile=/etc/stiapi.env
+ExecStart=/usr/local/bin/stiapi
+Restart=on-failure
+RestartSec=2
+
+# Hardening: the process needs nothing but its state dir and a loopback port.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+SystemCallArchitectures=native
+SystemCallErrorNumber=EPERM
+# No devices, no kernel log, hidden process tree: the API needs none of them.
+PrivateDevices=true
+ProtectKernelLogs=true
+ProtectProc=invisible
+ProcSubset=pid
+RemoveIPC=true
+UMask=0077
+# Egress lockdown: the blind API makes no outbound connections (it only
+# accepts from Caddy on loopback), so deny everything but localhost. A
+# compromised process then cannot exfiltrate or call out. Widen this only if
+# outbound push delivery is ever implemented.
+IPAddressDeny=any
+IPAddressAllow=localhost
+StateDirectory=stiapi
+CapabilityBoundingSet=
+AmbientCapabilities=
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

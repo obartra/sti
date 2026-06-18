@@ -50,7 +50,15 @@ viewer-facing fact (it would leak behavior: pharyngeal⇒oral, rectal⇒receptiv
   This is the condom route.
 - `none` — no qualifying route. → gray.
 
-**Blue = (A1 `tested_in_window`) AND (A2 `clear`) AND (A3 ≠ `none`). Everything else = gray.**
+**On-device PrEP-coverage reliability (never viewer-facing, never badge-affecting).** Separate from
+the `prep` route flag, the app holds an on-device sense of PrEP-coverage reliability (reliably
+covered vs possible recent adherence gaps), used **only** to compose the PEP-urgency card after a
+possible exposure (07 §A3, the suppress / soft / show branch). It never ranks the user, never
+changes the badge (on-PrEP qualifies full stop, per Decisions' rejection of adherence-gating), and
+is never shown to a viewer. Listed here so the enumeration is genuinely complete.
+
+**Blue = (A1 `tested_in_window`) AND (A2 `clear`, with detectable HIV a hard blocker regardless of
+route) AND (A3 ≠ `none`). Everything else = gray.**
 
 ---
 
@@ -59,9 +67,16 @@ viewer-facing fact (it would leak behavior: pharyngeal⇒oral, rectal⇒receptiv
 These show on blue AND gray, to authorized viewers only. They never change the badge color
 (except where a value is also an A3 route, below).
 
-### B1. HIV-prevention umbrella label
-- `show` — displays "On HIV prevention" (identical for PrEP and undetectable).
-- `hide` — legitimate; a PrEP user can stay blue while hiding the umbrella.
+### B1. HIV-prevention umbrella (the route headline, not an optional pill)
+- When PrEP or undetectable is the route that earns blue, "On HIV prevention" is stated **once, in
+  the blue headline**, and is **not independently hideable** — it states the route that earned blue
+  (Decisions; Design §Displayed labels). You cannot be blue-via-PrEP/U=U and surface no route.
+- There is no separate redundant umbrella pill to toggle: by the precedence rule, whenever PrEP/U=U
+  is present it takes the headline (the umbrella wins over a condoms-always headline), so the
+  umbrella appears exactly once, as that headline. (It stays identical for PrEP and undetectable,
+  the camouflage invariant.)
+- A user who wants blue *without* surfacing "On HIV prevention" must qualify via the public
+  condoms-always route instead; the route you display is the route you earned.
 
 ### B2. Condom preference (3-state + off) — DECOUPLED from badge computation
 - `off` — not shown.
@@ -97,7 +112,9 @@ other gray. The owner chooses *whether* to pause.
 
 ## D. Sharing / visibility mode (per ALIAS, not global)
 
-This is the dimension most out of date in the current dev panel. Each alias is one of:
+This is the dimension most out of date in the current dev panel. Each alias is one of **two modes**,
+private or public (matching Decisions' "two modes, two states each"); **vanity is a public
+sub-option, not a third mode**:
 
 ### D1. Private (existence-hidden) — DEFAULT
 - Cold/anonymous/guessed viewer → **uniform gray-nothing = nonexistent** (no name, avatar,
@@ -110,11 +127,13 @@ This is the dimension most out of date in the current dev panel. Each alias is o
 - Anyone with the link decrypts → badge + attributes visible. Existence waived. Scrapeable /
   watchable over time (mitigated, never fully solved).
 
-### D3. Vanity / findable (a public alias that also answers to a human handle)
-- Opt-in, public-only, never default. Resolve-only namespace (no enumerate/search; no
-  availability oracle at claim).
+### D3. Vanity / findable — a public sub-option, not a separate mode
+- A Public (D2) alias plus a human-handle resolver; everything in D2 still applies. Opt-in,
+  public-only, never default. Resolve-only namespace (no enumerate/search; no availability oracle
+  at claim).
 
-*(Private is the default. Public and Vanity carry the "watchable over time" warning at opt-in.)*
+*(Two modes: private (default) and public; vanity is public + findable. Public and vanity carry the
+"watchable over time" warning at opt-in.)*
 
 ---
 

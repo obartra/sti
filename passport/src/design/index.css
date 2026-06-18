@@ -1,0 +1,9 @@
+/* sti.care design system, extracted from the Napkin _ds bundle (tokens + components).
+   The source of truth for matching the comps. Imported once at app entry. */
+@import "./tokens/base.css";
+@import "./tokens/colors.css";
+@import "./tokens/fonts.css";
+@import "./tokens/typography.css";
+@import "./tokens/spacing.css";
+@import "./tokens/radii.css";
+@import "./components.css";
