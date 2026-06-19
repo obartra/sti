@@ -106,10 +106,7 @@ describe("api client against a live blind store", () => {
   });
 
   it("round-trips the account-sync blob and reports a version", async () => {
-    const master = await deriveMasterKey(
-      "recovery phrase",
-      utf8ToBytes("salt"),
-    );
+    const master = await deriveMasterKey("recovery phrase");
     const accountId = await deriveAccountId(master);
     const key = await importAesKey(await deriveAccountKey(master));
 

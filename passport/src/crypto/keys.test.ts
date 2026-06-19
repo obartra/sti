@@ -27,32 +27,21 @@ describe("random ids", () => {
 });
 
 describe("master key + account derivation", () => {
-  const salt = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
-
-  it("derives the same master key for the same passphrase + salt", async () => {
-    const a = await deriveMasterKey("correct horse battery staple", salt);
-    const b = await deriveMasterKey("correct horse battery staple", salt);
+  it("derives the same master key for the same passphrase", async () => {
+    const a = await deriveMasterKey("correct horse battery staple");
+    const b = await deriveMasterKey("correct horse battery staple");
     expect(a).toEqual(b);
     expect(a).toHaveLength(32);
   });
 
   it("a different passphrase yields a different master key", async () => {
-    const a = await deriveMasterKey("passphrase one", salt);
-    const b = await deriveMasterKey("passphrase two", salt);
-    expect(a).not.toEqual(b);
-  });
-
-  it("a different salt yields a different master key", async () => {
-    const a = await deriveMasterKey("same passphrase", salt);
-    const b = await deriveMasterKey(
-      "same passphrase",
-      new Uint8Array(8).fill(9),
-    );
+    const a = await deriveMasterKey("passphrase one");
+    const b = await deriveMasterKey("passphrase two");
     expect(a).not.toEqual(b);
   });
 
   it("account id is deterministic, 43-char, and recoverable from the key alone", async () => {
-    const master = await deriveMasterKey("recovery", salt);
+    const master = await deriveMasterKey("recovery");
     const id1 = await deriveAccountId(master);
     const id2 = await deriveAccountId(master);
     expect(id1).toBe(id2);
@@ -60,7 +49,7 @@ describe("master key + account derivation", () => {
   });
 
   it("account id and account key are distinct derivations from the same master", async () => {
-    const master = await deriveMasterKey("recovery", salt);
+    const master = await deriveMasterKey("recovery");
     const id = await deriveAccountId(master);
     const key = await deriveAccountKey(master);
     expect(key).toHaveLength(32);
@@ -69,7 +58,7 @@ describe("master key + account derivation", () => {
   });
 
   it("the derived account key actually decrypts a blob sealed under it", async () => {
-    const master = await deriveMasterKey("recovery", salt);
+    const master = await deriveMasterKey("recovery");
     const aesKey = await importAesKey(await deriveAccountKey(master));
     const blob = utf8ToBytes(JSON.stringify({ aliases: [], circles: [] }));
     const ct = await seal(aesKey, blob);
@@ -78,10 +67,10 @@ describe("master key + account derivation", () => {
 
   it("a master from a wrong passphrase cannot open the blob (recovery is key-bound)", async () => {
     const right = await importAesKey(
-      await deriveAccountKey(await deriveMasterKey("right", salt)),
+      await deriveAccountKey(await deriveMasterKey("right")),
     );
     const wrong = await importAesKey(
-      await deriveAccountKey(await deriveMasterKey("wrong", salt)),
+      await deriveAccountKey(await deriveMasterKey("wrong")),
     );
     const ct = await seal(right, utf8ToBytes("device blob"));
     await expect(open(wrong, ct)).rejects.toThrow();

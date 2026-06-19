@@ -3,9 +3,8 @@ import { describe, it, expect } from "vitest";
 import { createAccountSync } from "./accountSync.ts";
 import type { ApiClient } from "../api/client.ts";
 import type { AccountBlob } from "./accountBlob.ts";
-import { deriveMasterKey, utf8ToBytes, type Bytes } from "../crypto/index.ts";
+import { deriveMasterKey, type Bytes } from "../crypto/index.ts";
 
-const SALT = utf8ToBytes("salt");
 const blob: AccountBlob = {
   handle: "robin",
   aliases: [
@@ -48,21 +47,21 @@ function fakeAccountApi(): ApiClient {
 describe("account sync", () => {
   it("saves and loads the blob for the same master key", async () => {
     const sync = createAccountSync(fakeAccountApi());
-    const master = await deriveMasterKey("phrase-a", SALT);
+    const master = await deriveMasterKey("phrase-a");
     await sync.save(master, blob);
     expect(await sync.load(master)).toEqual(blob);
   });
 
   it("returns null for a master with no saved account", async () => {
     const sync = createAccountSync(fakeAccountApi());
-    const master = await deriveMasterKey("never-saved", SALT);
+    const master = await deriveMasterKey("never-saved");
     expect(await sync.load(master)).toBeNull();
   });
 
   it("a different master derives a different id, so it sees no account (null)", async () => {
     const sync = createAccountSync(fakeAccountApi());
-    await sync.save(await deriveMasterKey("phrase-a", SALT), blob);
-    const other = await deriveMasterKey("phrase-b", SALT);
+    await sync.save(await deriveMasterKey("phrase-a"), blob);
+    const other = await deriveMasterKey("phrase-b");
     expect(await sync.load(other)).toBeNull();
   });
 });

@@ -37,20 +37,25 @@ export interface AccountSync {
 }
 
 export function createAccountSync(api: ApiClient): AccountSync {
+  // The account id and the blob key are independent derivations from the master,
+  // so derive them together rather than serially.
+  const derive = (master: Bytes) =>
+    Promise.all([
+      deriveAccountId(master),
+      deriveAccountKey(master).then(importAesKey),
+    ]);
+
   return {
     async load(master) {
-      const id = await deriveAccountId(master);
+      const [id, key] = await derive(master);
       const got = await api.getAccount(id);
       if (got === null) return null; // 404: no account yet
-      const key = await importAesKey(await deriveAccountKey(master));
       return parseAccountBlob(await open(key, got.blob));
     },
 
     async save(master, blob) {
-      const id = await deriveAccountId(master);
-      const key = await importAesKey(await deriveAccountKey(master));
-      const sealed = await seal(key, serializeAccountBlob(blob));
-      await api.putAccount(id, sealed);
+      const [id, key] = await derive(master);
+      await api.putAccount(id, await seal(key, serializeAccountBlob(blob)));
     },
   };
 }

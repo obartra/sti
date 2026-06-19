@@ -13,11 +13,11 @@
  * are added in later slices; the version guards that growth.
  */
 
-import { utf8ToBytes, bytesToUtf8, type Bytes } from "../crypto/index.ts";
+import { utf8ToBytes, type Bytes } from "../crypto/index.ts";
+import { validId } from "../api/contract.ts";
+import { decodeVersioned, isValidHandle } from "./codec.ts";
 
 const SCHEMA_VERSION = 1;
-const MAX_HANDLE_LEN = 64;
-const ID_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -41,11 +41,11 @@ function isAliasRecord(x: unknown): x is AliasRecord {
   const r = x as Record<string, unknown>;
   return (
     typeof r.id === "string" &&
-    ID_PATTERN.test(r.id) &&
+    validId(r.id) &&
     typeof r.writeToken === "string" &&
-    ID_PATTERN.test(r.writeToken) &&
+    validId(r.writeToken) &&
     typeof r.key === "string" &&
-    ID_PATTERN.test(r.key) &&
+    validId(r.key) &&
     typeof r.isPublic === "boolean"
   );
 }
@@ -61,19 +61,8 @@ export function serializeAccountBlob(blob: AccountBlob): Bytes {
 
 /** Parse decrypted bytes into an AccountBlob, validating strictly (throws). */
 export function parseAccountBlob(bytes: Bytes): AccountBlob {
-  const raw: unknown = JSON.parse(bytesToUtf8(bytes));
-  if (typeof raw !== "object" || raw === null) {
-    throw new Error("account blob: not an object");
-  }
-  const o = raw as Record<string, unknown>;
-  if (o.v !== SCHEMA_VERSION) {
-    throw new Error(`account blob: unsupported version ${String(o.v)}`);
-  }
-  if (
-    typeof o.handle !== "string" ||
-    o.handle.length === 0 ||
-    o.handle.length > MAX_HANDLE_LEN
-  ) {
+  const o = decodeVersioned(bytes, SCHEMA_VERSION);
+  if (!isValidHandle(o.handle)) {
     throw new Error("account blob: invalid handle");
   }
   if (!Array.isArray(o.aliases) || !o.aliases.every(isAliasRecord)) {

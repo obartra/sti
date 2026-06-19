@@ -11,10 +11,10 @@
 
 import type { BadgeState, ProtectionLabel, Route } from "../ui/badge-card.tsx";
 import type { ResolvedView } from "../ui/public/PublicResolution.tsx";
-import { utf8ToBytes, bytesToUtf8, type Bytes } from "../crypto/index.ts";
+import { utf8ToBytes, type Bytes } from "../crypto/index.ts";
+import { decodeVersioned, isValidHandle } from "./codec.ts";
 
 const SCHEMA_VERSION = 1;
-const MAX_HANDLE_LEN = 64;
 
 const BADGE_STATES: readonly BadgeState[] = ["blue", "gray"];
 const PROTECTION_LABELS: readonly ProtectionLabel[] = [
@@ -62,22 +62,11 @@ export function serializePublicCard(card: ResolvedView): Bytes {
  * anything unexpected so the caller can fail closed to the uniform null state.
  */
 export function parsePublicCard(bytes: Bytes): ResolvedView {
-  const raw: unknown = JSON.parse(bytesToUtf8(bytes));
-  if (typeof raw !== "object" || raw === null) {
-    throw new Error("public card: not an object");
-  }
-  const o = raw as Record<string, unknown>;
-  if (o.v !== SCHEMA_VERSION) {
-    throw new Error(`public card: unsupported version ${String(o.v)}`);
-  }
+  const o = decodeVersioned(bytes, SCHEMA_VERSION);
   if (!isBadgeState(o.state)) {
     throw new Error("public card: invalid state");
   }
-  if (
-    typeof o.handle !== "string" ||
-    o.handle.length === 0 ||
-    o.handle.length > MAX_HANDLE_LEN
-  ) {
+  if (!isValidHandle(o.handle)) {
     throw new Error("public card: invalid handle");
   }
   if (!Array.isArray(o.labels) || !o.labels.every(isLabel)) {

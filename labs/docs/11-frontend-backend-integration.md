@@ -156,11 +156,21 @@ the "contract is locked" rule. Two ways to resolve it, to settle before slice 2:
 Leaning the server allowlist. Either way it lands with a test before slice 2 resolves anything in a
 real browser.
 
+## Decisions
+
+- **No per-user KDF salt.** The account id is derived from the master key, so a per-user salt could
+  never be fetched before deriving that id (it is circular). Instead the passphrase path uses a
+  fixed domain-separation salt, and the blind-store guarantee rests on the recovery passphrase being
+  **app-generated with high entropy** (>= 128 bits, shown once at signup), so it is globally unique
+  and unguessable. The onboarding flow (slice 3 part 2) must generate the phrase, never accept a
+  user-chosen one; a user-chosen passphrase would need a memory-hard KDF (Argon2id) and a different
+  account-addressing scheme.
+
 ## Open questions
 
-- **Key storage and the passkey flow.** Exact WebAuthn (PRF) vs passphrase derivation boundaries,
-  and where the derived key material is held in the browser, are detailed in slice 3 and may want
-  their own short doc.
+- **Key storage and the passkey flow.** The exact WebAuthn (PRF) path and where the derived key
+  material is held in the browser are detailed in slice 3 part 2 and may want their own short doc.
+  Either path (PRF or passphrase) produces the same 32-byte master key.
 - **Deletion and export** remain open product items (Data & storage), unchanged by this seam.
 
 ---

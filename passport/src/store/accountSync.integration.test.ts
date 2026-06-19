@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApiClient } from "../api/client.ts";
 import { createAccountSync } from "./accountSync.ts";
 import type { AccountBlob } from "./accountBlob.ts";
-import { deriveMasterKey, utf8ToBytes } from "../crypto/index.ts";
+import { deriveMasterKey } from "../crypto/index.ts";
 import {
   startApi,
   randomHex,
@@ -27,7 +27,7 @@ describe("account sync against a live blind store", () => {
   it("saves and loads the device blob", async () => {
     // Unique passphrase per run so reruns against a persistent server do not
     // collide on the derived account id.
-    const master = await deriveMasterKey(randomHex(16), utf8ToBytes("salt"));
+    const master = await deriveMasterKey(randomHex(16));
     const blob: AccountBlob = {
       handle: "robin",
       aliases: [
@@ -46,7 +46,7 @@ describe("account sync against a live blind store", () => {
   });
 
   it("a fresh master sees no account", async () => {
-    const master = await deriveMasterKey(randomHex(16), utf8ToBytes("salt"));
+    const master = await deriveMasterKey(randomHex(16));
     expect(await sync.load(master)).toBeNull();
   });
 });

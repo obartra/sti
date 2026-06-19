@@ -33,9 +33,17 @@ export function PublicResolutionScreen({
   useEffect(() => {
     let active = true;
     setResolved(null);
-    void store.resolveAlias({ id, key }).then((r) => {
-      if (active) setResolved(r);
-    });
+    void store
+      .resolveAlias({ id, key })
+      .then((r) => {
+        if (active) setResolved(r);
+      })
+      .catch(() => {
+        // Pin the fail-closed guarantee at the call site: any store impl that
+        // rejects (against the contract) still lands on the uniform gray state,
+        // never an unhandled rejection.
+        if (active) setResolved(null);
+      });
     return () => {
       active = false;
     };

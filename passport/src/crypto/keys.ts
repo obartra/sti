@@ -25,6 +25,17 @@ const PBKDF2_ITERATIONS = 600_000; // OWASP 2023 floor for PBKDF2-HMAC-SHA256
 const HKDF_ACCOUNT_ID_INFO = "sti.care/account-id/v1";
 const HKDF_ACCOUNT_KEY_INFO = "sti.care/account-blob-key/v1";
 
+// A fixed domain-separation salt, deliberately NOT a per-user anti-rainbow salt.
+// The account id is itself derived from the master key, so a per-user salt could
+// never be fetched before deriving that id (it would be circular). The
+// blind-store guarantee for the passphrase path therefore rests on the recovery
+// passphrase being APP-GENERATED with high entropy (>= 128 bits, shown once at
+// signup), so it is globally unique and unguessable, which is what makes a
+// per-user salt unnecessary. User-CHOSEN passphrases are out of scope here: they
+// would need a memory-hard KDF (Argon2id) and a different account-addressing
+// scheme.
+const MASTER_KEY_SALT = "sti.care/master-key/v1";
+
 function randomOpaqueId(): string {
   return bytesToBase64url(crypto.getRandomValues(new Uint8Array(ID_BYTES)));
 }
@@ -40,13 +51,11 @@ export function randomWriteToken(): string {
 }
 
 /**
- * Derive a 32-byte master key from a recovery passphrase and a per-account salt.
- * The salt is stored alongside the (encrypted) account blob; it is not secret.
+ * Derive a 32-byte master key from a recovery passphrase. The passphrase must be
+ * app-generated and high-entropy (see {@link MASTER_KEY_SALT}); there is no
+ * per-user salt by design.
  */
-export async function deriveMasterKey(
-  passphrase: string,
-  salt: Bytes,
-): Promise<Bytes> {
+export async function deriveMasterKey(passphrase: string): Promise<Bytes> {
   const base = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(passphrase),
@@ -55,7 +64,12 @@ export async function deriveMasterKey(
     ["deriveBits"],
   );
   const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations: PBKDF2_ITERATIONS },
+    {
+      name: "PBKDF2",
+      hash: "SHA-256",
+      salt: new TextEncoder().encode(MASTER_KEY_SALT),
+      iterations: PBKDF2_ITERATIONS,
+    },
     base,
     ID_BYTES * 8,
   );

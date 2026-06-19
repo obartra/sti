@@ -189,14 +189,18 @@ describe("notify, knock, health", () => {
     );
   });
 
-  it("health reflects res.ok", async () => {
+  it("health reflects res.ok and is false (not a rejection) when unreachable", async () => {
     const ok = createApiClient(BASE, () =>
       Promise.resolve(new Response(null, { status: 200 })),
     );
     const down = createApiClient(BASE, () =>
       Promise.resolve(new Response(null, { status: 500 })),
     );
+    const unreachable = createApiClient(BASE, () =>
+      Promise.reject(new Error("connection refused")),
+    );
     expect(await ok.health()).toBe(true);
     expect(await down.health()).toBe(false);
+    expect(await unreachable.health()).toBe(false);
   });
 });

@@ -194,8 +194,14 @@ export function createApiClient(
     },
 
     async health() {
-      const res = await call(PATHS.health, { method: "GET" });
-      return res.ok;
+      // A liveness probe is a boolean: an unreachable server (a thrown fetch, or
+      // a shed 503) is "not healthy", not an error to propagate.
+      try {
+        const res = await call(PATHS.health, { method: "GET" });
+        return res.ok;
+      } catch {
+        return false;
+      }
     },
   };
 }

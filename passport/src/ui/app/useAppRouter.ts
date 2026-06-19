@@ -60,16 +60,20 @@ export function useAppRouter(initial: Route = START): Router {
   const [shareOpen, setShareOpen] = useState(false);
 
   // Reflect the current screen in the URL hash so it is shareable and
-  // refresh-stable, without polluting browser history. Skipped on a real shared
-  // link (/a/{id}#k=...): rewriting the hash would clobber the decryption key,
-  // and that URL is already the canonical shareable one.
+  // refresh-stable, without polluting browser history. While actually showing a
+  // resolved shared link (a2-public carrying the key), leave the URL alone:
+  // rewriting it would clobber the `#k=` decryption key, and it is already the
+  // canonical shareable URL. Once navigated elsewhere, normalize back to the
+  // hash-routed root so a refresh restores that screen instead of re-resolving
+  // the now-stale `/a/{id}` link.
   useEffect(() => {
-    if (window.location.pathname.startsWith("/a/")) return;
-    const next = `#${route.screen}`;
-    if (window.location.hash !== next) {
-      window.history.replaceState(null, "", next);
+    const onAliasLink = route.screen === "a2-public" && route.data?.key != null;
+    if (onAliasLink) return;
+    const target = `/#${route.screen}`;
+    if (window.location.pathname + window.location.hash !== target) {
+      window.history.replaceState(null, "", target);
     }
-  }, [route.screen]);
+  }, [route.screen, route.data]);
 
   const go = useCallback(
     (screen: Screen, data?: RouteData) => {
