@@ -1,6 +1,5 @@
 import type { Preview } from "@storybook/react-vite";
 import "../src/design/index.css";
-import "./visual-reset.css";
 import { StoryMounted } from "./StoryMounted.tsx";
 
 // Every story renders on the real app surface so fidelity matches the comps.
