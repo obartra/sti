@@ -22,6 +22,10 @@ if [ ! -f /etc/stiapi.env ]; then
 STI_ADDR=127.0.0.1:8080
 STI_DB_PATH=/var/lib/stiapi/sti.db
 STI_DECOY_SECRET=$secret
+# Browser origins allowed to call the api cross-origin (the passport app). Exact
+# match, comma-separated. Add deploy-preview origins here if they should resolve
+# against production.
+STI_ALLOWED_ORIGINS=https://sti.care
 EOF
 	chown root:stiapi /etc/stiapi.env
 	chmod 0640 /etc/stiapi.env

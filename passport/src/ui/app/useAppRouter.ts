@@ -7,6 +7,7 @@ import {
   type RouteData,
   type Screen,
 } from "./routes.ts";
+import { parseAliasLink } from "../../store/aliasLink.ts";
 
 export interface Nav {
   // Navigate to a screen, pushing the current one onto the history stack.
@@ -28,26 +29,51 @@ const HOME: Route = { screen: "home", group: "app", data: null };
 const START: Route = { screen: "a1-landing", group: "public", data: null };
 
 // A screen can be deep-linked via the URL hash (#wallet, #circle-detail). Used
-// for shareable links and for the per-screen capture sweep.
+// for internal shareable links and for the per-screen capture sweep.
 function routeFromHash(): Route | null {
   if (typeof window === "undefined") return null;
   const id = window.location.hash.replace(/^#\/?/, "");
   return isScreen(id) ? { screen: id, group: groupOf(id), data: null } : null;
 }
 
+// A real shared passport link is `/a/{id}#k={key}` (the SPA fallback serves the
+// app at that path). It resolves to a2-public carrying the id + key; the hash
+// here holds the decryption key, not a screen name.
+function routeFromLocation(): Route | null {
+  if (typeof window === "undefined") return null;
+  const link = parseAliasLink(window.location.pathname, window.location.hash);
+  if (link) {
+    return {
+      screen: "a2-public",
+      group: "public",
+      data: { id: link.id, key: link.key },
+    };
+  }
+  return routeFromHash();
+}
+
 export function useAppRouter(initial: Route = START): Router {
-  const [route, setRoute] = useState<Route>(() => routeFromHash() ?? initial);
+  const [route, setRoute] = useState<Route>(
+    () => routeFromLocation() ?? initial,
+  );
   const [, setHistory] = useState<Route[]>([]);
   const [shareOpen, setShareOpen] = useState(false);
 
   // Reflect the current screen in the URL hash so it is shareable and
-  // refresh-stable, without polluting browser history.
+  // refresh-stable, without polluting browser history. While actually showing a
+  // resolved shared link (a2-public carrying the key), leave the URL alone:
+  // rewriting it would clobber the `#k=` decryption key, and it is already the
+  // canonical shareable URL. Once navigated elsewhere, normalize back to the
+  // hash-routed root so a refresh restores that screen instead of re-resolving
+  // the now-stale `/a/{id}` link.
   useEffect(() => {
-    const next = `#${route.screen}`;
-    if (window.location.hash !== next) {
-      window.history.replaceState(null, "", next);
+    const onAliasLink = route.screen === "a2-public" && route.data?.key != null;
+    if (onAliasLink) return;
+    const target = `/#${route.screen}`;
+    if (window.location.pathname + window.location.hash !== target) {
+      window.history.replaceState(null, "", target);
     }
-  }, [route.screen]);
+  }, [route.screen, route.data]);
 
   const go = useCallback(
     (screen: Screen, data?: RouteData) => {

@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { execSync } from "node:child_process";
 import { defineConfig } from "vite";
+import { configDefaults } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
 // Repo-scoped version, derived at build time. `git describe` reports the nearest
@@ -27,6 +28,9 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["src/test-setup.ts"],
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    // Integration tests boot the Go server and run via vitest.integration.config.ts
+    // (npm run test:integration), so they stay out of the default jsdom run.
+    exclude: [...configDefaults.exclude, "src/**/*.integration.test.ts"],
     coverage: {
       provider: "v8",
       // The pure core stays fully covered; UI is covered by component tests and

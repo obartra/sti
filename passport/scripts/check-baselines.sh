@@ -18,8 +18,14 @@ if [[ ! -f storybook-static/index.json ]]; then
   exit 1
 fi
 
+# Exclude the "Design System" styleguide, matching lostpixel.config.cjs: it is a
+# reference catalogue (browsable at /design), not product UI, so it is not
+# captured and must not be expected as a baseline.
 expected=$(
-  jq -r '.entries | to_entries[] | select(.value.type=="story") | .key + ".png"' storybook-static/index.json | sort -u
+  jq -r '.entries | to_entries[]
+    | select(.value.type=="story")
+    | select(.value.title | startswith("Design System") | not)
+    | .key + ".png"' storybook-static/index.json | sort -u
 )
 actual=$(
   find visual-baselines -maxdepth 1 -name '*.png' -print0 2>/dev/null | xargs -0 -n1 basename 2>/dev/null | sort -u

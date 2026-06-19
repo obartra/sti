@@ -26,6 +26,13 @@ let stories = Object.values(indexJson.entries).filter(
   (entry) => entry.type === "story",
 );
 
+// Skip the "Design System" styleguide (tokens, component galleries, avatar/QR
+// demos). It stays browsable in Storybook at /design, but it is a reference
+// catalogue, not product UI, so there is nothing to visually regress; capturing
+// it only slows the gate. check-baselines.sh applies the SAME filter so the
+// baseline corpus matches what is captured.
+stories = stories.filter((entry) => !entry.title.startsWith("Design System"));
+
 // Targeted re-capture: when set, shoot only these story ids. A heavy story very
 // occasionally blanks under full-suite capture (resource race), and re-running
 // the whole suite just relocates the blank. The update guard in

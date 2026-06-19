@@ -47,6 +47,8 @@ export type Group = "public" | "onboard" | "app";
 // login/self/preview flags). Kept loose; each screen reads only what it needs.
 export interface RouteData {
   id?: string;
+  // The alias decryption key from a shared link's `#k=` fragment (a2-public).
+  key?: string;
   isLogin?: boolean;
   self?: boolean;
   preview?: boolean;

@@ -37,6 +37,10 @@ type Config struct {
 	IPBurst        float64       // default 20
 	KnockRatePerID float64       // silent cap on /knock; default 1/sec
 	KnockBurst     float64       // default 10
+	// AllowedOrigins are the exact browser origins permitted to call the api
+	// cross-origin (e.g. https://sti.care). Empty means no CORS, which is correct
+	// for same-origin or non-browser callers. No wildcard: each origin is listed.
+	AllowedOrigins []string
 }
 
 func (c *Config) withDefaults() {
@@ -110,8 +114,10 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /{$}", s.handleRoot) // exactly "/", a public landing
 }
 
-// Handler returns the http.Handler with the load-shedding middleware applied.
-func (s *Server) Handler() http.Handler { return s.shed(s.mux) }
+// Handler returns the http.Handler with the CORS and load-shedding middleware
+// applied. CORS is outermost so a preflight is answered without taking an
+// inflight slot.
+func (s *Server) Handler() http.Handler { return s.cors(s.shed(s.mux)) }
 
 // sensitivePath reports whether a request must stay existence-uniform: it never
 // receives a visible 429/503. Only the existence-revealing READS qualify, GET /a

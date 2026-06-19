@@ -10,11 +10,13 @@ import { isTab, sectionOf, type Route, type Tab } from "./routes.ts";
 import type { Nav } from "./useAppRouter.ts";
 import type { OwnerFixture } from "./fixtures.ts";
 import type { ScreenCtx } from "./screens/context.ts";
+import type { PassportStore } from "../../store/index.ts";
 
 export interface ChromeProps {
   route: Route;
   nav: Nav;
   owner: OwnerFixture;
+  store: PassportStore;
   desktop: boolean;
   shareOpen: boolean;
   setShareOpen: (open: boolean) => void;
@@ -67,12 +69,13 @@ function ShareOverlay({
 }
 
 function AppChrome(props: ChromeProps) {
-  const { route, nav, owner, desktop, setShareOpen } = props;
+  const { route, nav, owner, store, desktop, setShareOpen } = props;
   const tab: Tab = sectionOf(route.screen);
   const ctx: ScreenCtx = {
     nav,
     owner,
     openShare: () => setShareOpen(true),
+    store,
     data: route.data,
   };
   const content = (
@@ -132,6 +135,7 @@ function PublicChrome({
   route,
   nav,
   owner,
+  store,
   desktop,
   setShareOpen,
 }: ChromeProps) {
@@ -149,6 +153,7 @@ function PublicChrome({
     nav,
     owner,
     openShare: () => setShareOpen(true),
+    store,
     data: route.data,
   };
   return (
