@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "test:report": "vitest run --reporter=html --reporter=default",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
