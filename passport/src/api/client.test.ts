@@ -19,7 +19,9 @@ interface Recorded {
 }
 
 /** A fetch that records the last call and returns a scripted response. */
-function mockFetch(responder: (rec: Recorded) => Response | Promise<Response>): {
+function mockFetch(
+  responder: (rec: Recorded) => Response | Promise<Response>,
+): {
   fetch: FetchLike;
   last: () => Recorded;
 } {
@@ -68,14 +70,18 @@ describe("error mapping", () => {
   }
 
   it("maps a thrown fetch (network failure) to unreachable", async () => {
-    const api = createApiClient(BASE, () => Promise.reject(new Error("offline")));
+    const api = createApiClient(BASE, () =>
+      Promise.reject(new Error("offline")),
+    );
     await expect(api.getAlias(GOOD_ID)).rejects.toMatchObject({
       kind: "unreachable",
     });
   });
 
   it("flags a wrong-size alias body as a protocol error", async () => {
-    const m = mockFetch(() => new Response(new Uint8Array(10), { status: 200 }));
+    const m = mockFetch(
+      () => new Response(new Uint8Array(10), { status: 200 }),
+    );
     const api = createApiClient(BASE, m.fetch);
     await expect(api.getAlias(GOOD_ID)).rejects.toMatchObject({
       kind: "protocol",
@@ -91,9 +97,7 @@ describe("alias write", () => {
     const { url, init } = m.last();
     expect(url).toBe(`${BASE}/a/${GOOD_ID}`);
     expect(init?.method).toBe("PUT");
-    expect(
-      new Headers(init?.headers).get(HEADER_WRITE_TOKEN),
-    ).toBe("tok123");
+    expect(new Headers(init?.headers).get(HEADER_WRITE_TOKEN)).toBe("tok123");
   });
 
   it("maps 403 to forbidden (write-token mismatch)", async () => {
@@ -135,7 +139,9 @@ describe("account sync", () => {
   });
 
   it("treats a missing version header as a protocol error", async () => {
-    const m = mockFetch(() => new Response(new Uint8Array([1]), { status: 200 }));
+    const m = mockFetch(
+      () => new Response(new Uint8Array([1]), { status: 200 }),
+    );
     const api = createApiClient(BASE, m.fetch);
     await expect(api.getAccount(GOOD_ID)).rejects.toMatchObject({
       kind: "protocol",
@@ -144,7 +150,8 @@ describe("account sync", () => {
 
   it("sends ifVersion as the version header when provided", async () => {
     const m = mockFetch(
-      () => new Response(null, { status: 204, headers: { [HEADER_VERSION]: "8" } }),
+      () =>
+        new Response(null, { status: 204, headers: { [HEADER_VERSION]: "8" } }),
     );
     const api = createApiClient(BASE, m.fetch);
     const res = await api.putAccount(GOOD_ID, new Uint8Array([9]), "7");
@@ -171,12 +178,15 @@ describe("notify, knock, health", () => {
 
   it("posts knock to the id with the requester hash", async () => {
     const m = mockFetch(
-      () => new Response(JSON.stringify({ status: "received" }), { status: 200 }),
+      () =>
+        new Response(JSON.stringify({ status: "received" }), { status: 200 }),
     );
     const api = createApiClient(BASE, m.fetch);
     await api.knock(GOOD_ID, "req123");
     expect(m.last().url).toBe(`${BASE}/knock/${GOOD_ID}`);
-    expect(m.last().init?.body).toBe(JSON.stringify({ requesterHash: "req123" }));
+    expect(m.last().init?.body).toBe(
+      JSON.stringify({ requesterHash: "req123" }),
+    );
   });
 
   it("health reflects res.ok", async () => {

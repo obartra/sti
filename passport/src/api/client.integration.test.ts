@@ -169,7 +169,9 @@ describe("api client against a live blind store", () => {
     // A real payload opened with the wrong key fails the same way, so a viewer
     // cannot tell "does not exist" from "exists, not for me".
     const id = randomAliasId();
-    const realKey = await importAesKey(crypto.getRandomValues(new Uint8Array(32)));
+    const realKey = await importAesKey(
+      crypto.getRandomValues(new Uint8Array(32)),
+    );
     await api.putAlias(
       id,
       await sealToSize(realKey, utf8ToBytes("real"), ALIAS_PAYLOAD_SIZE),
@@ -183,7 +185,11 @@ describe("api client against a live blind store", () => {
   it("rejects an overwrite with the wrong write token", async () => {
     const id = randomAliasId();
     const key = await importAesKey(crypto.getRandomValues(new Uint8Array(32)));
-    const payload = await sealToSize(key, utf8ToBytes("v1"), ALIAS_PAYLOAD_SIZE);
+    const payload = await sealToSize(
+      key,
+      utf8ToBytes("v1"),
+      ALIAS_PAYLOAD_SIZE,
+    );
     await api.putAlias(id, payload, randomWriteToken());
 
     const err = await api
@@ -194,7 +200,10 @@ describe("api client against a live blind store", () => {
   });
 
   it("round-trips the account-sync blob and reports a version", async () => {
-    const master = await deriveMasterKey("recovery phrase", utf8ToBytes("salt"));
+    const master = await deriveMasterKey(
+      "recovery phrase",
+      utf8ToBytes("salt"),
+    );
     const accountId = await deriveAccountId(master);
     const key = await importAesKey(await deriveAccountKey(master));
 

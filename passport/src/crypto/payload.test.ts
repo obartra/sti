@@ -63,7 +63,11 @@ describe("fixed-size seal (alias payload)", () => {
   });
 
   it("a wrong key fails closed (the uniform null path)", async () => {
-    const out = await sealToSize(await freshKey(), utf8ToBytes("hi"), ALIAS_SIZE);
+    const out = await sealToSize(
+      await freshKey(),
+      utf8ToBytes("hi"),
+      ALIAS_SIZE,
+    );
     // A decoy or another user's payload decrypts to a GCM failure, never a leak.
     await expect(openSized(await freshKey(), out)).rejects.toThrow();
   });

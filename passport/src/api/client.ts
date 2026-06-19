@@ -104,7 +104,10 @@ export function createApiClient(
       if (!res.ok) throw new ApiError(statusToKind(res.status), "alias get");
       const body = await bytes(res);
       if (body.length !== ALIAS_PAYLOAD_SIZE) {
-        throw new ApiError("protocol", `alias payload was ${body.length} bytes`);
+        throw new ApiError(
+          "protocol",
+          `alias payload was ${body.length} bytes`,
+        );
       }
       return body;
     },
@@ -126,7 +129,8 @@ export function createApiClient(
     },
 
     async getAccount(id) {
-      if (!validId(id)) throw new ApiError("badRequest", "malformed account id");
+      if (!validId(id))
+        throw new ApiError("badRequest", "malformed account id");
       const res = await call(PATHS.accountPrefix + id, {
         method: "GET",
         cache: "no-store",
@@ -141,7 +145,8 @@ export function createApiClient(
     },
 
     async putAccount(id, blob, ifVersion) {
-      if (!validId(id)) throw new ApiError("badRequest", "malformed account id");
+      if (!validId(id))
+        throw new ApiError("badRequest", "malformed account id");
       const headers: Record<string, string> = { "Content-Type": OCTET_STREAM };
       // Advisory today (the server is last-write-wins); sent for forward-compat
       // with optimistic concurrency.
@@ -184,7 +189,8 @@ export function createApiClient(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(req),
       });
-      if (!res.ok) throw new ApiError(statusToKind(res.status), "push register");
+      if (!res.ok)
+        throw new ApiError(statusToKind(res.status), "push register");
     },
 
     async health() {

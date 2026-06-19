@@ -44,7 +44,10 @@ describe("master key + account derivation", () => {
 
   it("a different salt yields a different master key", async () => {
     const a = await deriveMasterKey("same passphrase", salt);
-    const b = await deriveMasterKey("same passphrase", new Uint8Array(8).fill(9));
+    const b = await deriveMasterKey(
+      "same passphrase",
+      new Uint8Array(8).fill(9),
+    );
     expect(a).not.toEqual(b);
   });
 
