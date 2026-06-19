@@ -51,6 +51,16 @@ export function randomWriteToken(): string {
 }
 
 /**
+ * A high-entropy recovery phrase (256-bit): the single secret that unlocks an
+ * account. It MUST be app-generated, not user-chosen (see {@link MASTER_KEY_SALT}).
+ * A human-friendly word encoding is a UX follow-up; the crypto only needs the
+ * entropy, and {@link deriveMasterKey} accepts any string.
+ */
+export function randomRecoveryPhrase(): string {
+  return randomOpaqueId();
+}
+
+/**
  * Derive a 32-byte master key from a recovery passphrase. The passphrase must be
  * app-generated and high-entropy (see {@link MASTER_KEY_SALT}); there is no
  * per-user salt by design.

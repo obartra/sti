@@ -24,6 +24,7 @@ export {
 export {
   randomAliasId,
   randomWriteToken,
+  randomRecoveryPhrase,
   deriveMasterKey,
   deriveAccountId,
   deriveAccountKey,

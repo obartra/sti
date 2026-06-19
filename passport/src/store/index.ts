@@ -13,3 +13,9 @@ export type { AccountBlob, AliasRecord } from "./accountBlob.ts";
 export { serializeAccountBlob, parseAccountBlob } from "./accountBlob.ts";
 export type { PublishedAlias } from "./publish.ts";
 export { publishCard, republishCard, aliasLinkUrl } from "./publish.ts";
+export type {
+  AccountManager,
+  NewAccount,
+  RecoveredAccount,
+} from "./account.ts";
+export { createAccountManager } from "./account.ts";
