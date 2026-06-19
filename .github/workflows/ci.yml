@@ -35,8 +35,18 @@ jobs:
           cache: npm
           cache-dependency-path: passport/package-lock.json
       - run: npm ci
+      - run: npm run lint
       - run: npm run typecheck
       - run: npm run test:cov
+      # Browsable report of the spec/Gherkin scenarios (and every unit test),
+      # uploaded so reviewers can open it from the run's Artifacts.
+      - run: npm run test:report
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: passport-test-report
+          path: passport/html
+          if-no-files-found: error
 
   server:
     runs-on: ubuntu-latest

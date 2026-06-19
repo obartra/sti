@@ -1,0 +1,14 @@
+/* Visual-capture determinism: lost-pixel's beforeScreenshot hook emulates
+   prefers-reduced-motion, which this reset turns into a hard stop on all
+   animations/transitions so captures are byte-stable across runs. Scoped to
+   the Storybook preview, so it never affects the shipped app. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

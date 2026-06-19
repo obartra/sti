@@ -1,0 +1,75 @@
+/* App chrome, reproduced from the prototype's shell.jsx bars but driven by
+   layout instead of a phone frame: a flex column with fixed top/tab bars and a
+   scrolling content area. The design-tool phone frame and scene-launcher panel
+   are intentionally gone. Centered column on wider screens per the DS
+   (content max-width ~440px); the >=992px desktop layout is a separate layer. */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--surface-app);
+}
+.app-shell__content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5);
+}
+
+.app-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px 10px;
+  flex: none;
+}
+.app-topbar__actions {
+  display: flex;
+  gap: 2px;
+}
+
+.app-backbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 8px;
+  flex: none;
+}
+.app-backbar__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.app-tabbar {
+  display: flex;
+  padding: 8px 10px 12px;
+  flex: none;
+  background: var(--surface-card);
+  border-top: 1px solid var(--divider);
+}
+.app-tab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 0;
+  color: var(--text-subtle);
+}
+.app-tab--active {
+  color: var(--text-accent);
+}
+.app-tab__label {
+  font-size: 11px;
+  font-weight: 600;
+}
+.app-tab--active .app-tab__label {
+  font-weight: 700;
+}

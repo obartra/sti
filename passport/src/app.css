@@ -1,11 +1,10 @@
-.app-preview {
-  min-height: 100vh;
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
   margin: 0;
   background: var(--surface-app);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: center;
-  gap: var(--space-6);
-  padding: var(--space-8);
 }

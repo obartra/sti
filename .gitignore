@@ -5,3 +5,9 @@ node_modules/
 
 # Prototype zips dropped in the repo root for deploy/ — never commit these.
 /*.zip
+
+# Local preview tooling
+.claude/launch.json
+
+# Generated at deploy time (npm run promises); never committed.
+public/promises/

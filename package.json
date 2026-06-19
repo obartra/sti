@@ -10,8 +10,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint:js": "eslint .",
-    "lint:css": "stylelint \"public/**/*.css\" \"labs/**/*.css\"",
+    "lint:css": "stylelint \"public/**/*.css\"",
     "lint": "npm run lint:js && npm run lint:css",
+    "promises": "node deploy/build-promises.mjs",
     "test": "node --test 'test/**/*.test.mjs'",
     "check": "npm run format:check && npm run lint && npm test"
   },
