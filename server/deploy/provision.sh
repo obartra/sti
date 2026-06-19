@@ -26,6 +26,11 @@ STI_DECOY_SECRET=$secret
 # match, comma-separated. Add deploy-preview origins here if they should resolve
 # against production.
 STI_ALLOWED_ORIGINS=https://sti.care
+# Blind self-telemetry: aggregate counters/gauges/histograms in Prometheus text
+# format, loopback only. NOT fronted by Caddy and not in the ufw allow rules, so
+# it stays local to the box (scrape over an SSH tunnel). Set to "off" to disable.
+# Never expose this port publicly. See labs/docs/12-observability-and-metrics.md.
+STI_METRICS_ADDR=127.0.0.1:9090
 EOF
 	chown root:stiapi /etc/stiapi.env
 	chmod 0640 /etc/stiapi.env

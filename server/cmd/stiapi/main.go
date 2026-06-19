@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"sti.care/api/internal/metrics"
 	"sti.care/api/internal/server"
 	"sti.care/api/internal/store"
 )
@@ -23,6 +24,10 @@ func main() {
 
 	addr := env("STI_ADDR", ":8080")
 	dbPath := env("STI_DB_PATH", "sti.db")
+	// Metrics listen address: loopback only, never public (doc 12 §5). It is a
+	// SEPARATE listener, not fronted by Caddy, so it is never proxied to the
+	// internet; the loopback bind plus ufw keep it local. Set "off" to disable.
+	metricsAddr := env("STI_METRICS_ADDR", "127.0.0.1:9090")
 
 	secretHex := os.Getenv("STI_DECOY_SECRET")
 	if secretHex == "" {
@@ -71,11 +76,30 @@ func main() {
 		}
 	}()
 
+	// Blind self-telemetry on a separate loopback listener. It exposes only
+	// aggregate counters, gauges, and histograms (no id, IP, body, or token) and
+	// must never be public.
+	var metricsSrv *http.Server
+	if metricsAddr != "" && metricsAddr != "off" {
+		mux := http.NewServeMux()
+		mux.Handle("GET /metrics", srv.Metrics().Handler())
+		metricsSrv = &http.Server{Addr: metricsAddr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+		go func() {
+			log.Info("metrics listening", "addr", metricsAddr)
+			if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Error("metrics serve", "err", err)
+			}
+		}()
+	}
+
 	<-ctx.Done()
 	log.Info("shutting down")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = httpSrv.Shutdown(shutdownCtx)
+	if metricsSrv != nil {
+		_ = metricsSrv.Shutdown(shutdownCtx)
+	}
 }
 
 // background runs the periodic janitors: expire knocks, drain due wakes, and trim
@@ -92,25 +116,28 @@ func background(ctx context.Context, st *store.Store, srv *server.Server, log *s
 		case <-ticker.C:
 			now := time.Now().UnixMilli()
 			if n, err := st.PurgeExpiredKnocks(ctx, now); err != nil {
+				srv.Metrics().Error(metrics.ErrJanitor)
 				log.Error("purge knocks", "err", err)
 			} else if n > 0 {
 				log.Info("purged expired knocks", "count", n)
 			}
-			drainSends(ctx, st, now, log)
+			drainSends(ctx, st, srv, now, log)
 			srv.SweepLimiters(now)
 		}
 	}
 }
 
-func drainSends(ctx context.Context, st *store.Store, now int64, log *slog.Logger) {
+func drainSends(ctx context.Context, st *store.Store, srv *server.Server, now int64, log *slog.Logger) {
 	sends, err := st.DueSends(ctx, now, 256)
 	if err != nil {
+		srv.Metrics().Error(metrics.ErrJanitor)
 		log.Error("due sends", "err", err)
 		return
 	}
 	for _, s := range sends {
 		// TODO(push): deliver a contentless Web Push wake here once subscriptions exist.
 		if err := st.DeleteSend(ctx, s.ID); err != nil {
+			srv.Metrics().Error(metrics.ErrJanitor)
 			log.Error("delete send", "err", err)
 		}
 	}

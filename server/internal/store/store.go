@@ -289,3 +289,50 @@ func (s *Store) PurgeExpiredKnocks(ctx context.Context, now int64) (int64, error
 	}
 	return res.RowsAffected()
 }
+
+// --- Blind aggregate stats (for system telemetry only) ----------------------
+//
+// These return aggregate counts and sizes of OPAQUE rows. They name no subject:
+// a row count is "how many ciphertext blobs exist", never whose, and the byte
+// size is the file, not any value. They back the loopback-only metrics endpoint
+// (see labs/docs/12-observability-and-metrics.md); nothing here is ever served
+// to a client or attributable to a person, device, or card.
+
+// Stats is a point-in-time snapshot of blind aggregate counts. Every field is a
+// count of opaque rows or a file size: no id, token, or value is exposed.
+type Stats struct {
+	DBSizeBytes    int64 // logical SQLite size (page_count * page_size)
+	AliasRows      int64 // distinct alias blobs (rough "passports exist" proxy)
+	AccountRows    int64 // distinct account blobs (rough "syncing devices" proxy)
+	KnockRows      int64 // live knock rows (auto-expiring)
+	SendQueueDepth int64 // wake jobs awaiting drain
+}
+
+// Stats samples the blind aggregate counts in one pass. It is cheap (small COUNTs
+// and two pragmas) and intended to be called at metrics-scrape time, not per
+// request.
+func (s *Store) Stats(ctx context.Context) (Stats, error) {
+	var st Stats
+	var pageCount, pageSize int64
+	if err := s.db.QueryRowContext(ctx, `PRAGMA page_count`).Scan(&pageCount); err != nil {
+		return st, err
+	}
+	if err := s.db.QueryRowContext(ctx, `PRAGMA page_size`).Scan(&pageSize); err != nil {
+		return st, err
+	}
+	st.DBSizeBytes = pageCount * pageSize
+	for _, q := range []struct {
+		sql string
+		dst *int64
+	}{
+		{`SELECT COUNT(*) FROM alias`, &st.AliasRows},
+		{`SELECT COUNT(*) FROM account`, &st.AccountRows},
+		{`SELECT COUNT(*) FROM knock`, &st.KnockRows},
+		{`SELECT COUNT(*) FROM send_queue`, &st.SendQueueDepth},
+	} {
+		if err := s.db.QueryRowContext(ctx, q.sql).Scan(q.dst); err != nil {
+			return st, err
+		}
+	}
+	return st, nil
+}

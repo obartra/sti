@@ -1,0 +1,92 @@
+# Example capacity + error alerting rules for the sti.care blind backend.
+#
+# This is the "first deliverable" from labs/docs/12-observability-and-metrics.md
+# section 3a, encoded so the proposed thresholds live in version control rather
+# than in someone's head. It is an EXAMPLE: wire it to whatever scrapes the
+# loopback /metrics endpoint (STI_METRICS_ADDR, default 127.0.0.1:9090, reached
+# over an SSH tunnel since the port is never public). No alerting delivery infra
+# ships with the binary.
+#
+# Every series below is a blind aggregate (no id, IP, body, or token). The
+# latency thresholds are PLACEHOLDERS until a load benchmark sets the real
+# baseline on the chosen box (doc 10 section C, "no perf claim without a test");
+# the structural thresholds (shed, inflight ratio) reference MaxInflight and can
+# be used as-is.
+
+groups:
+  - name: sti-capacity
+    rules:
+      # Any visible shed means real callers are being turned away. The non-zero
+      # signal is the alert; tune the page threshold to the box.
+      - alert: StiShedRateNonZero
+        expr: sum(rate(sti_shed_total[5m])) > 0
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Non-sensitive endpoints are shedding (503). The box needs a deliberate resize."
+
+      - alert: StiRateLimitRejections
+        expr: sum(rate(sti_ratelimit_rejections_total[5m])) > 0
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Visible 429 rate-limit rejections are occurring."
+
+      # The sensitive reads never shed visibly; they fall back to the uniform
+      # decoy / fixed reply under saturation. That fallback is invisible to users
+      # by design, so it needs its own alert or saturation hides.
+      - alert: StiSensitiveOverload
+        expr: sum(rate(sti_sensitive_overload_total[5m])) > 0
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Sensitive reads (/a, /knock) are hitting the uniform-overload fallback. Saturation is hidden from users; resize."
+
+      # Windowed in-flight high-water vs the configured cap. inflight_highwater is
+      # peak-since-start (useful for capacity review); for alerting use the
+      # windowed current value so the ratio reflects now, not all-time.
+      - alert: StiInflightNearCapWarn
+        expr: max_over_time(sti_inflight_current[1m]) / sti_inflight_max > 0.80
+        for: 1m
+        labels: { severity: warning }
+        annotations:
+          summary: "In-flight requests above 80% of MaxInflight. Shedding is imminent."
+
+      - alert: StiInflightNearCapPage
+        expr: max_over_time(sti_inflight_current[1m]) / sti_inflight_max > 0.95
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "In-flight requests above 95% of MaxInflight."
+
+      # p99 latency on the hot read. PLACEHOLDER thresholds; replace with the
+      # benchmark baseline. Buckets are coarse by design (doc 12), so p99 here is
+      # a health trend, not a fine-grained timing oracle.
+      - alert: StiAliasP99LatencyWarn
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(sti_request_duration_seconds_bucket{endpoint="/a/{id}"}[5m])) by (le)
+          ) > 0.05
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "GET /a p99 latency above 50ms (placeholder; rebase on the benchmark)."
+
+      - alert: StiAliasP99LatencyPage
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(sti_request_duration_seconds_bucket{endpoint="/a/{id}"}[5m])) by (le)
+          ) > 0.2
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "GET /a p99 latency above 200ms (placeholder; rebase on the benchmark)."
+
+  - name: sti-errors
+    rules:
+      - alert: StiInternalErrors
+        expr: sum(rate(sti_errors_total[5m])) by (type) > 0
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Internal errors in subsystem {{ $labels.type }} (rate over 5m)."

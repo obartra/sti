@@ -46,8 +46,12 @@ For a miss — an id that doesn't exist, or one you can't decrypt — the server
 
 ## What we can — and can't — see
 
-**We can see:** that an alias or a push endpoint exists, that some tokens got pinged, and the
-size of a ciphertext. That's the list.
+**We can see:** that an alias or a push endpoint exists, that some tokens got pinged, the size of
+a ciphertext, and **aggregate operational telemetry about the service itself** (request rates and
+latencies per endpoint, error and shed counts, queue depth, total row counts). The telemetry is
+system-level only: it carries no id, IP, request body, or token, no per-request trail, and nothing
+that links a request to a person or to another request. That's the list. (How that stays true is
+spelled out in `12-observability-and-metrics.md`.)
 
 **We can't see:** your social graph, your group membership, any diagnosis, any test or treatment
 date, or how many contacts you have. None of it is readable without a key we never hold.

@@ -37,6 +37,11 @@ mcode="$(curl -s -o "$tmp/miss" -w '%{http_code}' "$BASE/a/$MISS")"
 [ "$mcode" = 200 ] || fail "miss status $mcode"
 [ "$(wc -c <"$tmp/miss")" -eq "$SIZE" ] || fail "miss length not $SIZE"
 
+# The blind self-telemetry endpoint is loopback only and must NEVER be reachable
+# through the public edge. A 2xx here means Caddy is wrongly proxying it (read-only).
+pcode="$(curl -s -o /dev/null -w '%{http_code}' "$BASE/metrics")"
+[ "$pcode" != 200 ] || fail "/metrics is publicly reachable (must be loopback only)"
+
 if [ "$READONLY" = 1 ]; then
 	echo "SMOKE OK (read-only)"
 	exit 0
