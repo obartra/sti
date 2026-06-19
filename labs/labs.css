@@ -1,7 +1,6 @@
-/* labs.sti.care — shared styling for the landing page and the doc pages.
-   Same sticker aesthetic as the main sti.care site (tokens duplicated here so
-   labs deploys stand alone; keep in sync with public/styles.css if the palette
-   changes). */
+/* labs.sti.care shared styling for the landing page and the doc pages.
+   Same sticker aesthetic as the main sti.care site; tokens are duplicated here
+   so labs deploys stand alone. */
 :root {
   --ink: #181433;
   --paper: #fbf2dd;
