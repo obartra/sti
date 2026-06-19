@@ -1,7 +1,7 @@
 // Build the public promises report: a themed, source-free page that shows the
 // product's trust promises (the Gherkin scenarios) and how each is asserted,
-// for anyone who wants to drill in. Output: public/promises/index.html, served
-// at sti.care/promises. Pure file-in / file-out, stdlib only.
+// for anyone who wants to drill in. Output: dist/promises/index.html (the
+// assembled publish dir), served at sti.care/promises. Stdlib only.
 //
 // Usage: node deploy/build-promises.mjs
 
@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
 const FEATURE_DIR = join(ROOT, "passport", "src", "core");
-const OUT_DIR = join(ROOT, "public", "promises");
+const OUT_DIR = join(ROOT, "dist", "promises");
 
 const MONTHS = [
   "Jan",

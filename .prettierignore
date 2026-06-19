@@ -7,10 +7,6 @@ LICENSE
 **/visual-baselines
 **/comps-reference
 
-# Generated at deploy time (npm run promises / design), gitignored.
-public/promises
-public/design
-
 # Authored design docs: source of truth for the rendered labs pages, left verbatim.
 labs/docs
 

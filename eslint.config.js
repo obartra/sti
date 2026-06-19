@@ -13,10 +13,6 @@ export default [
       "server/**",
       // labs is a throwaway prototype renderer, not production code.
       "labs/**",
-      // Generated at deploy time and gitignored: the promises report and the
-      // built Storybook. Not ours to lint.
-      "public/promises/**",
-      "public/design/**",
     ],
   },
   js.configs.recommended,

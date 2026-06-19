@@ -1,28 +1,22 @@
 # Netlify configuration for sti.care.
-# The contents of public/ are published as-is, plus two generated areas: the
-# promises report (public/promises/) and the Storybook design system
-# (public/design/), both rebuilt on every deploy.
+# deploy/build-site.sh assembles dist/: the passport app at the root, the
+# promises report at /promises, and Storybook at /design. The old info site
+# under public/ is no longer published.
 
 [build]
-  publish = "public"
-  # Fetch tags first so the report's version stamp reads as the release tag
-  # (git describe) rather than a bare sha on Netlify's shallow checkout.
-  command = "git fetch --tags --force 2>/dev/null || true; npm run promises && npm run design"
+  publish = "dist"
+  command = "bash deploy/build-site.sh"
 
-# Single-Page-App fallback.
-# Client-side routes (/, /gonorrhea, /hiv, ...) aren't real files, so this
-# serves index.html for any path that isn't a real file and the in-page router
-# reads location.pathname to render the right topic. Real files (CSS, JS, the
-# favicon) are still served normally, because non-forced redirects never shadow
-# existing files.
+# Single-Page-App fallback. The passport app is one page that routes by URL
+# hash, so any path that isn't a real file serves the app's index.html. Real
+# files (the report, Storybook, /assets/*) are served normally, because
+# non-forced redirects never shadow existing files.
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
 # Security + always-HTTPS headers for every response.
-# HSTS tells browsers to only ever connect over HTTPS (Netlify also has a
-# "Force HTTPS" toggle in the dashboard that redirects http -> https).
 [[headers]]
   for = "/*"
   [headers.values]
@@ -32,19 +26,14 @@
     X-Frame-Options = "DENY"
     Permissions-Policy = "geolocation=(), camera=(), microphone=()"
 
-# Static assets aren't fingerprinted, so revalidate them on every load (cheap
-# 304s) — this avoids serving a stale script/style after a deploy.
+# Vite fingerprints asset filenames, so they can be cached forever.
 [[headers]]
-  for = "/styles.css"
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# The app shell must revalidate so a deploy is picked up immediately.
+[[headers]]
+  for = "/index.html"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
-
-[[headers]]
-  for = "/src/*"
-  [headers.values]
-    Cache-Control = "public, max-age=0, must-revalidate"
-
-[[headers]]
-  for = "/favicon.svg"
-  [headers.values]
-    Cache-Control = "public, max-age=86400"
