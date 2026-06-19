@@ -85,10 +85,14 @@ module.exports = {
   // Self-hosted (non-platform) mode: without this the runner skips the
   // diff-aware non-zero exit and the gate degrades to "always passes".
   generateOnly: true,
-  // Determinism: serialize captures so heavy stories don't race for browser
-  // resources (concurrent capture was blanking random stories), give the
-  // post-mount paint a generous settle window, and retry any unstable shot.
-  shotConcurrency: 1,
+  // Determinism without the cost of full serialization. The mount-paint signal
+  // (waitForSelector body[data-story-mounted], set after a double rAF) is what
+  // actually guarantees a fully painted capture, so we can shoot a few stories
+  // in parallel; the rare blank that a resource race still produces is caught
+  // and re-shot in isolation by the guard in scripts/visual-regression.sh. No
+  // flakyness retries: every shot is deterministic, so re-shooting to compare
+  // just doubled the work. A generous settle window stays as belt-and-braces.
+  shotConcurrency: Number(process.env.LOST_PIXEL_CONCURRENCY) || 3,
   waitBeforeScreenshot: 1200,
-  flakynessRetries: 2,
+  flakynessRetries: 0,
 };

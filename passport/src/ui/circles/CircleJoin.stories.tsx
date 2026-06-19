@@ -14,8 +14,11 @@ type Story = StoryObj<typeof CircleJoin>;
 // Invite landing: event details and what you'll share.
 export const Invite: Story = { args: { initialStep: "invite" } };
 
-// Waiting: request sent, waiting for an organizer to approve.
-export const Waiting: Story = { args: { initialStep: "waiting" } };
+// Waiting: request sent, waiting for an organizer to approve. autoAdvance off so
+// the capture is deterministic (the live flow would move on to consent).
+export const Waiting: Story = {
+  args: { initialStep: "waiting", autoAdvance: false },
+};
 
 // Consent: approved, now confirming you'll share your status with the circle.
 export const Consent: Story = { args: { initialStep: "consent" } };
