@@ -137,3 +137,64 @@ export function resolveViewerBadge(s: OwnerState): ViewerBadge {
     : "Tested & always uses condoms";
   return { badge: "blue", headline };
 }
+
+/** A fresh owner: never tested, no routes, so the badge is gray. */
+export const INITIAL_OWNER_STATE: OwnerState = {
+  testing: {
+    hasEverTested: false,
+    lastPanelAgeDays: 0,
+    corePanelComplete: false,
+    exposedSitesCovered: false,
+  },
+  hiv: "negative",
+  activeNonHivSti: false,
+  onPrep: false,
+  condomPreference: "none",
+  condomPreferencePublic: false,
+  paused: false,
+};
+
+const HIV_STATUSES: readonly string[] = [
+  "negative",
+  "positive_undetectable",
+  "positive_detectable",
+];
+const CONDOM_PREFS: readonly string[] = [
+  "none",
+  "raw",
+  "either",
+  "condoms_always",
+];
+
+function isTestingInput(x: unknown): x is TestingInput {
+  if (typeof x !== "object" || x === null) return false;
+  const t = x as Record<string, unknown>;
+  return (
+    typeof t.hasEverTested === "boolean" &&
+    typeof t.lastPanelAgeDays === "number" &&
+    Number.isFinite(t.lastPanelAgeDays) &&
+    t.lastPanelAgeDays >= 0 &&
+    typeof t.corePanelComplete === "boolean" &&
+    typeof t.exposedSitesCovered === "boolean"
+  );
+}
+
+const isHivStatus = (x: unknown): x is HivStatus =>
+  typeof x === "string" && HIV_STATUSES.includes(x);
+const isCondomPref = (x: unknown): x is CondomPreference =>
+  typeof x === "string" && CONDOM_PREFS.includes(x);
+
+/** Strict runtime validation of OwnerState, for the synced account blob. */
+export function isOwnerState(x: unknown): x is OwnerState {
+  if (typeof x !== "object" || x === null) return false;
+  const s = x as Record<string, unknown>;
+  return (
+    isTestingInput(s.testing) &&
+    isHivStatus(s.hiv) &&
+    typeof s.activeNonHivSti === "boolean" &&
+    typeof s.onPrep === "boolean" &&
+    isCondomPref(s.condomPreference) &&
+    typeof s.condomPreferencePublic === "boolean" &&
+    typeof s.paused === "boolean"
+  );
+}

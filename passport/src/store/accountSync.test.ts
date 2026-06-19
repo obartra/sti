@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { createAccountSync } from "./accountSync.ts";
 import type { ApiClient } from "../api/client.ts";
 import type { AccountBlob } from "./accountBlob.ts";
+import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { deriveMasterKey, type Bytes } from "../crypto/index.ts";
 
 const blob: AccountBlob = {
@@ -15,6 +16,7 @@ const blob: AccountBlob = {
       isPublic: true,
     },
   ],
+  state: INITIAL_OWNER_STATE,
 };
 
 // A stateful fake of the account endpoints over a Map; everything else throws.

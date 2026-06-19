@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApiClient } from "../api/client.ts";
 import { createAccountSync } from "./accountSync.ts";
 import type { AccountBlob } from "./accountBlob.ts";
+import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { deriveMasterKey } from "../crypto/index.ts";
 import {
   startApi,
@@ -38,6 +39,7 @@ describe("account sync against a live blind store", () => {
           isPublic: true,
         },
       ],
+      state: INITIAL_OWNER_STATE,
     };
 
     expect(await sync.load(master)).toBeNull(); // no account yet

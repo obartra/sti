@@ -12,7 +12,9 @@ import {
   randomRecoveryPhrase,
   type Bytes,
 } from "../crypto/index.ts";
+import { INITIAL_OWNER_STATE, type OwnerState } from "../core/badge.ts";
 import { createAccountSync } from "./accountSync.ts";
+import { republishOwnerCard } from "./ownerCard.ts";
 import { isValidHandle } from "./codec.ts";
 import type { AccountBlob, AliasRecord } from "./accountBlob.ts";
 
@@ -35,6 +37,11 @@ export interface AccountManager {
   recover(phrase: string): Promise<RecoveredAccount | null>;
   /** Record a published alias into the account and persist it. */
   addAlias(master: Bytes, record: AliasRecord): Promise<AccountBlob>;
+  /**
+   * Update the owner's state (a reported result, a pause), persist it, and
+   * republish every alias so the new badge propagates to all shared links.
+   */
+  setOwnerState(master: Bytes, state: OwnerState): Promise<AccountBlob>;
 }
 
 export function createAccountManager(api: ApiClient): AccountManager {
@@ -49,7 +56,11 @@ export function createAccountManager(api: ApiClient): AccountManager {
       }
       const recoveryPhrase = randomRecoveryPhrase();
       const master = await deriveMasterKey(recoveryPhrase);
-      const blob: AccountBlob = { handle, aliases: [] };
+      const blob: AccountBlob = {
+        handle,
+        aliases: [],
+        state: INITIAL_OWNER_STATE,
+      };
       await sync.save(master, blob);
       return { recoveryPhrase, master, blob };
     },
@@ -76,6 +87,18 @@ export function createAccountManager(api: ApiClient): AccountManager {
         aliases: [...blob.aliases.filter((a) => a.id !== record.id), record],
       };
       await sync.save(master, next);
+      return next;
+    },
+
+    async setOwnerState(master, state) {
+      const blob = await sync.load(master);
+      if (blob === null) {
+        throw new Error("setOwnerState: no account exists for this key");
+      }
+      const next: AccountBlob = { ...blob, state };
+      await sync.save(master, next);
+      // Propagate the new badge to every shared link.
+      await republishOwnerCard(api, next.aliases, state, next.handle);
       return next;
     },
   };

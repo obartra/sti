@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { createAccountManager } from "./account.ts";
 import type { ApiClient } from "../api/client.ts";
 import type { AliasRecord } from "./accountBlob.ts";
+import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { deriveMasterKey, type Bytes } from "../crypto/index.ts";
 
 const record: AliasRecord = {
@@ -44,7 +45,11 @@ describe("account manager", () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
     const recovered = await accounts.recover(created.recoveryPhrase);
-    expect(recovered?.blob).toEqual({ handle: "robin", aliases: [] });
+    expect(recovered?.blob).toEqual({
+      handle: "robin",
+      aliases: [],
+      state: INITIAL_OWNER_STATE,
+    });
   });
 
   it("appends an alias and reflects it on recovery", async () => {
@@ -74,5 +79,15 @@ describe("account manager", () => {
     await accounts.addAlias(created.master, record);
     const next = await accounts.addAlias(created.master, record);
     expect(next.aliases).toEqual([record]); // not two copies
+  });
+
+  it("setOwnerState persists the new state", async () => {
+    const accounts = createAccountManager(fakeAccountApi());
+    const created = await accounts.create("robin");
+    const paused = { ...INITIAL_OWNER_STATE, paused: true };
+    const next = await accounts.setOwnerState(created.master, paused);
+    expect(next.state).toEqual(paused);
+    const recovered = await accounts.recover(created.recoveryPhrase);
+    expect(recovered?.blob.state).toEqual(paused);
   });
 });

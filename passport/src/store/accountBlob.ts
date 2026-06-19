@@ -15,9 +15,10 @@
 
 import { utf8ToBytes, type Bytes } from "../crypto/index.ts";
 import { validId } from "../api/contract.ts";
+import { isOwnerState, type OwnerState } from "../core/badge.ts";
 import { decodeVersioned, isValidHandle } from "./codec.ts";
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -30,9 +31,11 @@ export interface AliasRecord {
 export interface AccountBlob {
   readonly handle: string;
   readonly aliases: AliasRecord[];
+  /** The owner's private badge inputs, from which the public card is derived. */
+  readonly state: OwnerState;
 }
 
-interface AccountBlobV1 extends AccountBlob {
+interface AccountBlobV2 extends AccountBlob {
   readonly v: typeof SCHEMA_VERSION;
 }
 
@@ -51,10 +54,11 @@ function isAliasRecord(x: unknown): x is AliasRecord {
 }
 
 export function serializeAccountBlob(blob: AccountBlob): Bytes {
-  const wire: AccountBlobV1 = {
+  const wire: AccountBlobV2 = {
     v: SCHEMA_VERSION,
     handle: blob.handle,
     aliases: blob.aliases,
+    state: blob.state,
   };
   return utf8ToBytes(JSON.stringify(wire));
 }
@@ -68,5 +72,8 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
   if (!Array.isArray(o.aliases) || !o.aliases.every(isAliasRecord)) {
     throw new Error("account blob: invalid aliases");
   }
-  return { handle: o.handle, aliases: o.aliases };
+  if (!isOwnerState(o.state)) {
+    throw new Error("account blob: invalid state");
+  }
+  return { handle: o.handle, aliases: o.aliases, state: o.state };
 }
