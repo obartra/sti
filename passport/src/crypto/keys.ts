@@ -119,12 +119,13 @@ export function deriveAccountKey(master: Bytes): Promise<Bytes> {
 }
 
 /**
- * The master key from a passkey's PRF output. The PRF result is already a
- * high-entropy authenticator secret; HKDF domain-separates it from the raw
- * value so the master is bound to this app/version. The passkey re-derives the
- * same PRF output on demand, so the master is never stored, only re-minted.
+ * A 32-byte wrapping key from a passkey's PRF output. The PRF result is a
+ * high-entropy authenticator secret; HKDF domain-separates it. This wraps
+ * (encrypts) the account master for convenient local re-unlock, so the passkey
+ * is a SECOND credential over the same phrase-recoverable account, never a
+ * standalone master that would lock out on passkey loss (see auth/keyVault).
  */
-export function masterFromPrf(prfOutput: Bytes): Promise<Bytes> {
+export function wrapKeyFromPrf(prfOutput: Bytes): Promise<Bytes> {
   return hkdf(prfOutput, HKDF_PRF_MASTER_INFO, ID_BYTES);
 }
 

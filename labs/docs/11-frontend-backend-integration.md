@@ -168,12 +168,12 @@ real browser.
 
 ## Open questions
 
-- **Key storage and the passkey flow.** The WebAuthn PRF primitive (`masterFromPrf`, `PasskeyAuth`)
-  is built, but the onboarding wiring must preserve the recovery model: the account master stays
-  recoverable by the recovery PHRASE (the one substitute for a lost passkey, per Data & storage), so
-  the PRF must **wrap** a phrase-derived/random master, not derive a standalone one. A passkey-only
-  account is an unrecoverable lockout and must not be createable. The exact wrap scheme (where the
-  PRF-wrapped and phrase-wrapped copies of the master live) is the wiring slice's to pin.
+- **Key storage and the passkey flow.** The recovery model is now realized in code: the master is
+  phrase-derived (the recovery root), `PasskeyAuth` yields only the PRF output, and `auth/keyVault`
+  (`wrapMaster`/`unwrapMaster`) wraps the master under it, so a passkey is a second credential over
+  the same phrase-recoverable account, never standalone. What remains for the wiring slice: WHERE the
+  `{credentialId, wrappedMaster}` lives (local storage) and the enroll/unlock UX. A passkey-only
+  account must still never be createable.
 - **Sibling-alias decorrelation.** Republishing all of an owner's aliases on a state change
   (`republishOwnerCard`) does it in one window from the owner's device, which lets the edge correlate
   the opaque ids as one owner. The locked fix is server-mediated jittered/batched fan-out (the same
