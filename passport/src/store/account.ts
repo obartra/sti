@@ -12,7 +12,11 @@ import {
   randomRecoveryPhrase,
   type Bytes,
 } from "../crypto/index.ts";
-import { INITIAL_OWNER_STATE, type OwnerState } from "../core/badge.ts";
+import {
+  INITIAL_OWNER_STATE,
+  isOwnerState,
+  type OwnerState,
+} from "../core/badge.ts";
 import { createAccountSync } from "./accountSync.ts";
 import { republishOwnerCard } from "./ownerCard.ts";
 import { isValidHandle } from "./codec.ts";
@@ -91,13 +95,21 @@ export function createAccountManager(api: ApiClient): AccountManager {
     },
 
     async setOwnerState(master, state) {
+      // Guard at write time, symmetric to the strict read: persisting an invalid
+      // state would brick the account on the next load (parse fails closed).
+      if (!isOwnerState(state)) {
+        throw new Error("setOwnerState: invalid state");
+      }
       const blob = await sync.load(master);
       if (blob === null) {
         throw new Error("setOwnerState: no account exists for this key");
       }
       const next: AccountBlob = { ...blob, state };
       await sync.save(master, next);
-      // Propagate the new badge to every shared link.
+      // Propagate the new badge to every shared link. If this throws partway
+      // (some aliases republished, some not), it is self-healing: a retry
+      // reloads the already-saved state and republishes ALL aliases
+      // idempotently, so the links converge.
       await republishOwnerCard(api, next.aliases, state, next.handle);
       return next;
     },

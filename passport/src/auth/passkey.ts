@@ -1,21 +1,29 @@
 /**
  * Passkey-backed key source (WebAuthn PRF). A passkey re-derives the same PRF
- * output for a fixed salt every time, so the master key is never stored: it is
- * re-minted on demand from the authenticator. The credential id is non-secret
- * and kept locally; losing the passkey means falling back to the recovery
- * passphrase.
+ * output for a fixed salt every time, so a key is never stored: it is re-minted
+ * on demand from the authenticator. The credential id is non-secret and kept
+ * locally.
+ *
+ * RECOVERY MODEL (must hold when this is wired into onboarding): the account
+ * master must stay recoverable by the recovery PHRASE, which the data doc makes
+ * the one substitute for a lost passkey. So onboarding must NOT create a
+ * passkey-only account; the PRF must unlock the SAME account a phrase recovers,
+ * e.g. by using the PRF output to wrap (encrypt) a phrase-derived/random master
+ * rather than to derive a standalone master. A passkey-only account is an
+ * unrecoverable lockout on passkey loss.
  *
  * The `navigator.credentials` calls are browser-only and cannot run in the test
  * harness; they are isolated behind {@link PasskeyAuth} so callers (and tests)
- * depend on the interface, and the derivation that turns a PRF output into the
- * master is the unit-tested part (crypto `masterFromPrf`). The concrete adapter
- * here needs verification in a real browser with an authenticator.
+ * depend on the interface, and the byte handling and PRF→key derivation are the
+ * unit-tested parts. The concrete adapter needs verification in a real browser
+ * with an authenticator.
  */
 
 import {
   masterFromPrf,
   bytesToBase64url,
   base64urlToBytes,
+  bufferSourceToBytes,
   type Bytes,
 } from "../crypto/index.ts";
 
@@ -26,7 +34,11 @@ export interface EnrolledPasskey {
 }
 
 export interface PasskeyAuth {
-  /** Whether passkeys with the PRF extension are usable in this environment. */
+  /**
+   * Whether WebAuthn is present at all. PRF support is authenticator-dependent
+   * and can't be feature-detected synchronously, so it is only confirmed at
+   * enroll time (a missing PRF result throws); callers must handle that.
+   */
   available(): boolean;
   /** Create a passkey and mint the master key. */
   enroll(userName: string): Promise<EnrolledPasskey>;
@@ -60,11 +72,7 @@ export function webAuthnPasskey(rpId?: string): PasskeyAuth {
     if (first === undefined) {
       throw new Error("passkey: authenticator returned no PRF result");
     }
-    const view = ArrayBuffer.isView(first)
-      ? new Uint8Array(first.buffer, first.byteOffset, first.byteLength)
-      : new Uint8Array(first);
-    // Copy into a fresh ArrayBuffer-backed array (the Bytes the crypto wants).
-    return masterFromPrf(new Uint8Array(view));
+    return masterFromPrf(bufferSourceToBytes(first));
   }
 
   return {

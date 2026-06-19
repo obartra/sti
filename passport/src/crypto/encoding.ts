@@ -42,6 +42,18 @@ export function bytesToBase64url(bytes: Bytes): string {
 }
 
 /**
+ * Copy any BufferSource (ArrayBuffer or a view, possibly offset) into a fresh
+ * ArrayBuffer-backed `Bytes`. Used at WebCrypto/WebAuthn boundaries that hand
+ * back a BufferSource which the typed crypto layer needs as owned bytes.
+ */
+export function bufferSourceToBytes(src: BufferSource): Bytes {
+  const view = ArrayBuffer.isView(src)
+    ? new Uint8Array(src.buffer, src.byteOffset, src.byteLength)
+    : new Uint8Array(src);
+  return new Uint8Array(view);
+}
+
+/**
  * Decode a base64url string (with or without padding) back to bytes. Throws on
  * input that is not valid base64url, so a malformed id fails loudly rather than
  * silently decoding to garbage.

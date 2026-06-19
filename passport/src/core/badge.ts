@@ -154,17 +154,19 @@ export const INITIAL_OWNER_STATE: OwnerState = {
   paused: false,
 };
 
-const HIV_STATUSES: readonly string[] = [
-  "negative",
-  "positive_undetectable",
-  "positive_detectable",
-];
-const CONDOM_PREFS: readonly string[] = [
-  "none",
-  "raw",
-  "either",
-  "condoms_always",
-];
+// Keyed by the union so a new variant fails to compile here (forcing the
+// validator to be updated) instead of being silently rejected as invalid.
+const HIV_STATUSES: Record<HivStatus, true> = {
+  negative: true,
+  positive_undetectable: true,
+  positive_detectable: true,
+};
+const CONDOM_PREFS: Record<CondomPreference, true> = {
+  none: true,
+  raw: true,
+  either: true,
+  condoms_always: true,
+};
 
 function isTestingInput(x: unknown): x is TestingInput {
   if (typeof x !== "object" || x === null) return false;
@@ -180,9 +182,9 @@ function isTestingInput(x: unknown): x is TestingInput {
 }
 
 const isHivStatus = (x: unknown): x is HivStatus =>
-  typeof x === "string" && HIV_STATUSES.includes(x);
+  typeof x === "string" && Object.hasOwn(HIV_STATUSES, x);
 const isCondomPref = (x: unknown): x is CondomPreference =>
-  typeof x === "string" && CONDOM_PREFS.includes(x);
+  typeof x === "string" && Object.hasOwn(CONDOM_PREFS, x);
 
 /** Strict runtime validation of OwnerState, for the synced account blob. */
 export function isOwnerState(x: unknown): x is OwnerState {

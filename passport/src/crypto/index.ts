@@ -7,6 +7,7 @@
 export {
   bytesToBase64url,
   base64urlToBytes,
+  bufferSourceToBytes,
   utf8ToBytes,
   bytesToUtf8,
   type Bytes,

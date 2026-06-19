@@ -27,6 +27,30 @@ describe("account blob codec", () => {
     expect(parseAccountBlob(serializeAccountBlob(empty))).toEqual(empty);
   });
 
+  it("round-trips a populated state (every field pinned, not just defaults)", () => {
+    const populated: AccountBlob = {
+      handle: "robin",
+      aliases: [],
+      state: {
+        testing: {
+          hasEverTested: true,
+          lastPanelAgeDays: 12,
+          corePanelComplete: true,
+          exposedSitesCovered: true,
+        },
+        hiv: "positive_undetectable",
+        activeNonHivSti: false,
+        onPrep: true,
+        condomPreference: "condoms_always",
+        condomPreferencePublic: true,
+        paused: false,
+      },
+    };
+    expect(parseAccountBlob(serializeAccountBlob(populated))).toEqual(
+      populated,
+    );
+  });
+
   const reject = (label: string, json: unknown) =>
     it(`rejects ${label}`, () => {
       expect(() =>
