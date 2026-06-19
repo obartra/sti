@@ -51,6 +51,16 @@ export function randomWriteToken(): string {
 }
 
 /**
+ * A high-entropy recovery phrase (256-bit): the single secret that unlocks an
+ * account. It MUST be app-generated, not user-chosen (see {@link MASTER_KEY_SALT}).
+ * A human-friendly word encoding is a UX follow-up; the crypto only needs the
+ * entropy, and {@link deriveMasterKey} accepts any string.
+ */
+export function randomRecoveryPhrase(): string {
+  return randomOpaqueId();
+}
+
+/**
  * Derive a 32-byte master key from a recovery passphrase. The passphrase must be
  * app-generated and high-entropy (see {@link MASTER_KEY_SALT}); there is no
  * per-user salt by design.
@@ -105,4 +115,11 @@ export async function deriveAccountId(master: Bytes): Promise<string> {
 /** Raw 32-byte AES key for the account-sync blob, separate from the id. */
 export function deriveAccountKey(master: Bytes): Promise<Bytes> {
   return hkdf(master, HKDF_ACCOUNT_KEY_INFO, 32);
+}
+
+/** SHA-256 of `data`, base64url-encoded. Used for opaque routing/requester
+ * hashes the server treats as plain string keys. */
+export async function sha256Base64url(data: Bytes): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return bytesToBase64url(new Uint8Array(digest));
 }

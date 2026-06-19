@@ -24,7 +24,9 @@ export {
 export {
   randomAliasId,
   randomWriteToken,
+  randomRecoveryPhrase,
   deriveMasterKey,
   deriveAccountId,
   deriveAccountKey,
+  sha256Base64url,
 } from "./keys.ts";
