@@ -168,9 +168,16 @@ real browser.
 
 ## Open questions
 
-- **Key storage and the passkey flow.** The exact WebAuthn (PRF) path and where the derived key
-  material is held in the browser are detailed in slice 3 part 2 and may want their own short doc.
-  Either path (PRF or passphrase) produces the same 32-byte master key.
+- **Key storage and the passkey flow.** The WebAuthn PRF primitive (`masterFromPrf`, `PasskeyAuth`)
+  is built, but the onboarding wiring must preserve the recovery model: the account master stays
+  recoverable by the recovery PHRASE (the one substitute for a lost passkey, per Data & storage), so
+  the PRF must **wrap** a phrase-derived/random master, not derive a standalone one. A passkey-only
+  account is an unrecoverable lockout and must not be createable. The exact wrap scheme (where the
+  PRF-wrapped and phrase-wrapped copies of the master live) is the wiring slice's to pin.
+- **Sibling-alias decorrelation.** Republishing all of an owner's aliases on a state change
+  (`republishOwnerCard`) does it in one window from the owner's device, which lets the edge correlate
+  the opaque ids as one owner. The locked fix is server-mediated jittered/batched fan-out (the same
+  deferred decorrelation work as the notify cover-wake), built-but-gated-off when it lands.
 - **Deletion and export** remain open product items (Data & storage), unchanged by this seam.
 
 ---

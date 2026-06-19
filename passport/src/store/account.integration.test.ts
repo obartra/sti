@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApiClient } from "../api/client.ts";
 import { createAccountManager } from "./index.ts";
 import type { AliasRecord } from "./accountBlob.ts";
+import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { startApi, type Harness } from "../test-support/serverHarness.ts";
 
 const record: AliasRecord = {
@@ -29,10 +30,18 @@ describe("account lifecycle against a live blind store", () => {
   it("creates an account and recovers it from the phrase", async () => {
     const created = await accounts.create("robin");
     expect(created.recoveryPhrase).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(created.blob).toEqual({ handle: "robin", aliases: [] });
+    expect(created.blob).toEqual({
+      handle: "robin",
+      aliases: [],
+      state: INITIAL_OWNER_STATE,
+    });
 
     const recovered = await accounts.recover(created.recoveryPhrase);
-    expect(recovered?.blob).toEqual({ handle: "robin", aliases: [] });
+    expect(recovered?.blob).toEqual({
+      handle: "robin",
+      aliases: [],
+      state: INITIAL_OWNER_STATE,
+    });
   });
 
   it("records an alias that survives a fresh recovery", async () => {

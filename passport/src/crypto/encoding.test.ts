@@ -2,9 +2,26 @@ import { describe, it, expect } from "vitest";
 import {
   bytesToBase64url,
   base64urlToBytes,
+  bufferSourceToBytes,
   utf8ToBytes,
   bytesToUtf8,
 } from "./encoding.ts";
+
+describe("bufferSourceToBytes", () => {
+  it("copies a raw ArrayBuffer", () => {
+    const out = bufferSourceToBytes(new Uint8Array([1, 2, 3]).buffer);
+    expect(Array.from(out)).toEqual([1, 2, 3]);
+  });
+
+  it("copies the right window of an offset view, as a detached copy", () => {
+    const base = new Uint8Array([0, 1, 2, 3, 4, 5]);
+    const view = new Uint8Array(base.buffer, 2, 3); // logically [2, 3, 4]
+    const out = bufferSourceToBytes(view);
+    expect(Array.from(out)).toEqual([2, 3, 4]);
+    out[0] = 99; // mutating the copy must not touch the source
+    expect(base[2]).toBe(2);
+  });
+});
 
 describe("base64url", () => {
   it("round-trips arbitrary bytes", () => {

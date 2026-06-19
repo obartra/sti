@@ -7,6 +7,7 @@
 export {
   bytesToBase64url,
   base64urlToBytes,
+  bufferSourceToBytes,
   utf8ToBytes,
   bytesToUtf8,
   type Bytes,
@@ -28,5 +29,6 @@ export {
   deriveMasterKey,
   deriveAccountId,
   deriveAccountKey,
+  masterFromPrf,
   sha256Base64url,
 } from "./keys.ts";

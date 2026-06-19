@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { createAccountManager } from "./account.ts";
 import type { ApiClient } from "../api/client.ts";
 import type { AliasRecord } from "./accountBlob.ts";
+import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { deriveMasterKey, type Bytes } from "../crypto/index.ts";
 
 const record: AliasRecord = {
@@ -44,7 +45,11 @@ describe("account manager", () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
     const recovered = await accounts.recover(created.recoveryPhrase);
-    expect(recovered?.blob).toEqual({ handle: "robin", aliases: [] });
+    expect(recovered?.blob).toEqual({
+      handle: "robin",
+      aliases: [],
+      state: INITIAL_OWNER_STATE,
+    });
   });
 
   it("appends an alias and reflects it on recovery", async () => {
@@ -74,5 +79,72 @@ describe("account manager", () => {
     await accounts.addAlias(created.master, record);
     const next = await accounts.addAlias(created.master, record);
     expect(next.aliases).toEqual([record]); // not two copies
+  });
+
+  it("setOwnerState persists the new state", async () => {
+    const accounts = createAccountManager(fakeAccountApi());
+    const created = await accounts.create("robin");
+    const paused = { ...INITIAL_OWNER_STATE, paused: true };
+    const next = await accounts.setOwnerState(created.master, paused);
+    expect(next.state).toEqual(paused);
+    const recovered = await accounts.recover(created.recoveryPhrase);
+    expect(recovered?.blob.state).toEqual(paused);
+  });
+
+  it("rejects an invalid state instead of bricking the account", async () => {
+    const accounts = createAccountManager(fakeAccountApi());
+    const created = await accounts.create("robin");
+    const bad = { ...INITIAL_OWNER_STATE, hiv: "maybe" } as never;
+    await expect(accounts.setOwnerState(created.master, bad)).rejects.toThrow();
+  });
+
+  it("saves state even if a republish fails, and a retry converges", async () => {
+    const accountStore = new Map<string, { blob: Bytes; version: number }>();
+    const aliasStore = new Map<string, Bytes>();
+    let aliasPutsAllowed = false;
+    const unused = () => {
+      throw new Error("not used");
+    };
+    const api: ApiClient = {
+      getAlias: unused,
+      notify: unused,
+      knock: unused,
+      registerPush: unused,
+      health: unused,
+      getAccount: (id) => {
+        const e = accountStore.get(id);
+        return Promise.resolve(
+          e ? { blob: e.blob, version: String(e.version) } : null,
+        );
+      },
+      putAccount: (id, body) => {
+        const version = (accountStore.get(id)?.version ?? 0) + 1;
+        accountStore.set(id, { blob: body, version });
+        return Promise.resolve({ version: String(version) });
+      },
+      putAlias: (id, payload) => {
+        if (!aliasPutsAllowed)
+          return Promise.reject(new Error("republish down"));
+        aliasStore.set(id, payload);
+        return Promise.resolve();
+      },
+    };
+    const accounts = createAccountManager(api);
+    const created = await accounts.create("robin");
+    await accounts.addAlias(created.master, record);
+    const paused = { ...INITIAL_OWNER_STATE, paused: true };
+
+    // Republish fails, so setOwnerState rejects, but the state is already saved.
+    await expect(
+      accounts.setOwnerState(created.master, paused),
+    ).rejects.toThrow();
+    expect(
+      (await accounts.recover(created.recoveryPhrase))?.blob.state,
+    ).toEqual(paused);
+
+    // A retry with a working alias write converges (republishes the link).
+    aliasPutsAllowed = true;
+    await accounts.setOwnerState(created.master, paused);
+    expect(aliasStore.has(record.id)).toBe(true);
   });
 });
