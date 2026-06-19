@@ -97,12 +97,12 @@ function detectableHivBlocks(s: OwnerState): boolean {
 }
 
 /** PrEP or undetectable: the shared "On HIV prevention" umbrella route. */
-function umbrellaRoutePresent(s: OwnerState): boolean {
+export function umbrellaRoutePresent(s: OwnerState): boolean {
   return s.onPrep || s.hiv === "positive_undetectable";
 }
 
 /** The public "condoms always" route. */
-function condomRoutePresent(s: OwnerState): boolean {
+export function condomRoutePresent(s: OwnerState): boolean {
   return s.condomPreference === "condoms_always" && s.condomPreferencePublic;
 }
 

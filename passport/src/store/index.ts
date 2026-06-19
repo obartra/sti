@@ -19,3 +19,4 @@ export type {
   RecoveredAccount,
 } from "./account.ts";
 export { createAccountManager } from "./account.ts";
+export { deriveOwnerCard, republishOwnerCard } from "./ownerCard.ts";
