@@ -74,10 +74,13 @@ We add two layers under that boundary:
   (notify, knock) are **hashes** of pairwise or per-requester secrets. Plaintext goes in here and
   never comes back out through the api layer.
 
-Screens consume a single `PassportStore` interface (resolve alias, publish card, sync account,
-report result then derive badge, knock, notify). The store composes api + crypto and reuses the
-existing `core/badge.ts` derivation rather than reimplementing it; the fixtures wire the same
-interface to in-memory data. Nothing above the boundary changes.
+Screens consume a `PassportStore` interface (resolve alias, publish card, report result then
+derive badge, knock, notify), which composes api + crypto and reuses the existing `core/badge.ts`
+derivation rather than reimplementing it; the fixtures wire the same interface to in-memory data.
+Device-state sync is a sibling surface, `AccountSync` (load/save the owner's encrypted account
+blob, keyed off the master key), kept separate because it is used at onboarding/login/recovery
+rather than per-screen and takes a master key the screen-facing store never needs. Nothing above
+the boundary changes.
 
 ## Integration order
 
