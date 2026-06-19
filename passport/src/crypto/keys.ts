@@ -116,3 +116,10 @@ export async function deriveAccountId(master: Bytes): Promise<string> {
 export function deriveAccountKey(master: Bytes): Promise<Bytes> {
   return hkdf(master, HKDF_ACCOUNT_KEY_INFO, 32);
 }
+
+/** SHA-256 of `data`, base64url-encoded. Used for opaque routing/requester
+ * hashes the server treats as plain string keys. */
+export async function sha256Base64url(data: Bytes): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return bytesToBase64url(new Uint8Array(digest));
+}

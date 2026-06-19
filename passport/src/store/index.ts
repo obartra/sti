@@ -20,3 +20,4 @@ export type {
 } from "./account.ts";
 export { createAccountManager } from "./account.ts";
 export { deriveOwnerCard, republishOwnerCard } from "./ownerCard.ts";
+export { knock, requesterHash } from "./knock.ts";

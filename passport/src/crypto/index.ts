@@ -28,4 +28,5 @@ export {
   deriveMasterKey,
   deriveAccountId,
   deriveAccountKey,
+  sha256Base64url,
 } from "./keys.ts";
