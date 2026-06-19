@@ -119,7 +119,7 @@ node "$LABS_DIR/render.mjs" --out "$STAGE"
 
 # 3. Shared assets.
 cp "$LABS_DIR/labs.css" "$STAGE/labs.css"
-cp "$REPO_ROOT/public/favicon.svg" "$STAGE/favicon.svg"
+cp "$LABS_DIR/favicon.svg" "$STAGE/favicon.svg"
 
 # 4. Ship it. 404 falls back to the landing page (publish.sh copies index.html).
 "$SCRIPT_DIR/publish.sh" "$STAGE" ${PUB_ARGS[@]+"${PUB_ARGS[@]}"}

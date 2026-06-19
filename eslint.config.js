@@ -3,7 +3,7 @@ import globals from "globals";
 
 export default [
   // passport/ and server/ are self-contained packages with their own toolchains
-  // (tsc, go). Root ESLint only covers the vanilla public/ site and tooling.
+  // (tsc, go). Root ESLint only covers the node tooling and tests.
   {
     ignores: [
       "node_modules/**",
@@ -16,21 +16,6 @@ export default [
     ],
   },
   js.configs.recommended,
-  {
-    // Browser app code (ES modules).
-    files: ["public/**/*.js"],
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: "module",
-      globals: { ...globals.browser },
-    },
-    rules: {
-      "no-unused-vars": [
-        "error",
-        { caughtErrors: "none", argsIgnorePattern: "^_" },
-      ],
-    },
-  },
   {
     // Node tooling + tests.
     files: ["**/*.mjs", "test/**/*.js", "eslint.config.js"],

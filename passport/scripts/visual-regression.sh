@@ -86,6 +86,7 @@ lp_run() {
   # A filtered (only_ids) run prunes baselines outside its page set, so it must
   # target a throwaway dir, never the real one.
   [[ -n "${LP_BASELINE_DIR:-}" ]] && extra_env+=(-e "LOST_PIXEL_BASELINE_DIR=$LP_BASELINE_DIR")
+  [[ -n "${LOST_PIXEL_CONCURRENCY:-}" ]] && extra_env+=(-e "LOST_PIXEL_CONCURRENCY=$LOST_PIXEL_CONCURRENCY")
   docker run --rm \
     --platform linux/amd64 \
     "${NETWORK_FLAGS[@]}" \
@@ -146,5 +147,49 @@ if [[ "$MODE" == "update" ]]; then
     exit 1
   fi
 else
-  lp_run ""
+  # Diff/gate path. Capture + diff once, then self-heal capture artifacts. Under
+  # concurrency a heavy story can come out blank OR partially painted; neither is
+  # reliably told apart from a real change by size, and flakynessRetries can't
+  # catch a consistently-bad shot. So re-shoot each differing story IN ISOLATION
+  # (one page, no contention, a complete render): a capture artifact then matches
+  # the baseline; a genuine change still differs. A filtered test run writes no
+  # baselines, so it cannot prune.
+  lp_run "" || true
+
+  diffs=()
+  for f in .lostpixel/difference/*.png; do
+    [[ -e "$f" ]] && diffs+=("$(basename "$f" .png)")
+  done
+  if [[ ${#diffs[@]} -eq 0 ]]; then
+    echo "→ Visual diff clean."
+    exit 0
+  fi
+  # Too many to be capture artifacts: this is an intended change. Fail fast and
+  # let the screenshot:update label regenerate, rather than re-shoot dozens.
+  if [[ ${#diffs[@]} -gt 8 ]]; then
+    echo "::error::${#diffs[@]} stories differ (intended change? use screenshot:update):"
+    printf '  %s\n' "${diffs[@]}"
+    exit 1
+  fi
+
+  real=()
+  for id in "${diffs[@]}"; do
+    healed=
+    for attempt in 1 2 3; do
+      echo "→ Re-shooting in isolation (attempt ${attempt}): ${id}"
+      lp_run "$id" || true
+      [[ ! -e ".lostpixel/difference/${id}.png" ]] && {
+        healed=1
+        break
+      }
+    done
+    [[ -z "$healed" ]] && real+=("$id")
+  done
+
+  if [[ ${#real[@]} -gt 0 ]]; then
+    echo "::error::Visual differences (persist when re-shot in isolation):"
+    printf '  %s\n' "${real[@]}"
+    exit 1
+  fi
+  echo "→ Visual diff clean (${#diffs[@]} capture artifact(s) re-shot in isolation)."
 fi

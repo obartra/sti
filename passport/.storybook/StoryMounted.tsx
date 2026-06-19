@@ -9,8 +9,10 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
  * error it renders a deterministic, readable fallback and still signals mounted,
  * so an errored story produces a captured <pre> instead of a blank screenshot.
  *
- * Animation determinism is handled separately by lost-pixel's beforeScreenshot
- * hook emulating prefers-reduced-motion against the reset in visual-reset.css.
+ * Animation determinism is handled separately: lost-pixel's beforeScreenshot
+ * hook emulates prefers-reduced-motion, which the app's own design system
+ * honours (tokens/base.css), so captures exercise the real a11y behaviour
+ * rather than a Storybook-only override.
  */
 export class StoryMounted extends Component<
   { children: ReactNode },

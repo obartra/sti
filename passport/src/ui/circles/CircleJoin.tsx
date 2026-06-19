@@ -280,12 +280,16 @@ function InviteStep({ circle: g, onRequest }: InviteStepProps) {
 
 export interface CircleJoinProps {
   initialStep?: JoinStep;
+  /** Auto-advance waiting -> consent after a beat (the live demo flow). The
+   *  waiting story turns this off so its capture is deterministic. */
+  autoAdvance?: boolean;
   onJoin?: (() => void) | undefined;
   onNotNow?: (() => void) | undefined;
 }
 
 export function CircleJoin({
   initialStep = "invite",
+  autoAdvance = true,
   onJoin,
   onNotNow,
 }: CircleJoinProps) {
@@ -293,10 +297,10 @@ export function CircleJoin({
   const g = circleById(makeCircleFixture(), "sol");
 
   useEffect(() => {
-    if (step !== "waiting") return;
+    if (step !== "waiting" || !autoAdvance) return;
     const id = setTimeout(() => setStep("consent"), 2600);
     return () => clearTimeout(id);
-  }, [step]);
+  }, [step, autoAdvance]);
 
   if (step === "waiting") {
     return <WaitingStep circleName={g.name} />;

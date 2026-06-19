@@ -1,7 +1,7 @@
 // Build the public promises report: a themed, source-free page that shows the
 // product's trust promises (the Gherkin scenarios) and how each is asserted,
-// for anyone who wants to drill in. Output: public/promises/index.html, served
-// at sti.care/promises. Pure file-in / file-out, stdlib only.
+// for anyone who wants to drill in. Output: dist/promises/index.html (the
+// assembled publish dir), served at sti.care/promises. Stdlib only.
 //
 // Usage: node deploy/build-promises.mjs
 
@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
 const FEATURE_DIR = join(ROOT, "passport", "src", "core");
-const OUT_DIR = join(ROOT, "public", "promises");
+const OUT_DIR = join(ROOT, "dist", "promises");
 
 const MONTHS = [
   "Jan",
@@ -133,7 +133,6 @@ function featureSection(feature) {
 }
 
 function render(features, ver, date) {
-  const count = features.reduce((n, f) => n + f.scenarios.length, 0);
   const sections = features.map(featureSection).join("\n  ");
   return `<!doctype html>
 <html lang="en">
@@ -296,8 +295,7 @@ function render(features, ver, date) {
     sti.care makes a small set of hard promises about what a status can and
     cannot reveal. Each one below is an executable specification: it runs as a
     test on every change, and the trust-critical rules are also proven
-    exhaustively by property-based tests. ${count} promises, no source code, just
-    the rules and how they are checked.
+    exhaustively by property-based tests.
   </p>
   <div class="stamp">Published <b>${esc(date)}</b> &middot; <b>${esc(ver)}</b></div>
 

@@ -46,8 +46,10 @@ if (onlyIds.length > 0) {
 // Real regressions (recolor, layout shift) are in the thousands of pixels.
 const PAGE_THRESHOLD = 50;
 
-// prefers-reduced-motion collapses animations/transitions to ~0ms (visual-reset.css),
-// so animated components capture deterministically across runs.
+// Emulate prefers-reduced-motion. The app's own design system honours it
+// (src/design/tokens/base.css collapses animations/transitions to ~0ms), so
+// captures are deterministic AND they exercise the real a11y behaviour rather
+// than a capture-only override.
 const emulateReducedMotion = async (page) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
 };
@@ -85,10 +87,14 @@ module.exports = {
   // Self-hosted (non-platform) mode: without this the runner skips the
   // diff-aware non-zero exit and the gate degrades to "always passes".
   generateOnly: true,
-  // Determinism: serialize captures so heavy stories don't race for browser
-  // resources (concurrent capture was blanking random stories), give the
-  // post-mount paint a generous settle window, and retry any unstable shot.
-  shotConcurrency: 1,
+  // Shoot stories in parallel for speed (env-tunable via LOST_PIXEL_CONCURRENCY).
+  // flakynessRetries re-takes a shot until two reads agree, which heals the rare
+  // blank a capture race produces at this moderate concurrency (its re-take comes
+  // back painted). The settle window stays generous, and as a backstop the guard
+  // in scripts/visual-regression.sh re-shoots any still-differing story in
+  // isolation: a capture artifact then matches, a real change still differs.
+  // The per-page threshold below absorbs sub-pixel antialiasing.
+  shotConcurrency: Number(process.env.LOST_PIXEL_CONCURRENCY) || 2,
   waitBeforeScreenshot: 1200,
   flakynessRetries: 2,
 };
