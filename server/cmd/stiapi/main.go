@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"syscall"
 	"time"
@@ -60,6 +62,14 @@ func main() {
 	allowedOrigins := splitList(os.Getenv("STI_ALLOWED_ORIGINS"))
 
 	srv := server.New(st, server.Config{DecoySecret: secret, AllowedOrigins: allowedOrigins}, log, nil)
+
+	// Host and process health gauges. All system facts, no subject data.
+	srv.Metrics().RegisterBuildInfo(buildVersion())
+	srv.Metrics().RegisterRuntime()
+	dbDir := filepath.Dir(dbPath)
+	srv.Metrics().RegisterGaugeFunc("sti_disk_free_bytes",
+		"Free bytes on the filesystem holding the database.",
+		func() int64 { return diskFreeBytes(dbDir) })
 
 	go background(ctx, st, srv, log)
 
@@ -127,6 +137,8 @@ func background(ctx context.Context, st *store.Store, srv *server.Server, log *s
 			}
 			drainSends(ctx, st, srv, now, log)
 			srv.SweepLimiters(now)
+			// Heartbeat: a stalled loop shows up as this gauge going stale.
+			srv.Metrics().JanitorRan(now / 1000)
 		}
 	}
 }
@@ -152,6 +164,34 @@ func env(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// buildVersion returns a short build identifier from the embedded VCS info, or
+// "unknown". It is a build fact, never anything about a subject.
+func buildVersion() string {
+	bi, ok := debug.ReadBuildInfo()
+	if !ok {
+		return "unknown"
+	}
+	for _, s := range bi.Settings {
+		if s.Key == "vcs.revision" {
+			if len(s.Value) > 12 {
+				return s.Value[:12]
+			}
+			return s.Value
+		}
+	}
+	return "unknown"
+}
+
+// diskFreeBytes reports free space on the filesystem at path (capacity signal for
+// the flat VPS, where a full disk is a real failure mode). Returns 0 on error.
+func diskFreeBytes(path string) int64 {
+	var st syscall.Statfs_t
+	if err := syscall.Statfs(path, &st); err != nil {
+		return 0
+	}
+	return int64(uint64(st.Bavail) * uint64(st.Bsize))
 }
 
 // splitList parses a comma-separated env value into trimmed, non-empty items.

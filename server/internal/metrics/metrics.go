@@ -16,6 +16,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"runtime"
 	"sort"
 	"strconv"
 	"sync"
@@ -94,6 +95,8 @@ type Metrics struct {
 	inflightCur *gauge
 	inflightHi  *gauge
 	inflightMax *gauge
+
+	janitorLastRun *gauge // unix seconds of the last background-loop tick
 }
 
 type seriesKey struct {
@@ -146,7 +149,58 @@ func New() *Metrics {
 	m.inflightCur = r.gauge("sti_inflight_current", "In-flight requests right now.", nil)
 	m.inflightHi = r.gauge("sti_inflight_highwater", "Peak in-flight requests since start.", nil)
 	m.inflightMax = r.gauge("sti_inflight_max", "Configured MaxInflight concurrency cap.", nil)
+	m.janitorLastRun = r.gauge("sti_janitor_last_run_seconds", "Unix time of the last background-loop tick (heartbeat).", nil)
 	return m
+}
+
+// JanitorRan records that the background loop completed a tick at unixSeconds. A
+// stalled loop shows up as this gauge going stale (now minus it grows without
+// bound), which an alert can catch before knock_rows or the send queue back up.
+func (m *Metrics) JanitorRan(unixSeconds int64) { m.janitorLastRun.Set(unixSeconds) }
+
+// RegisterBuildInfo exposes which binary is running as a single sti_build_info{version}
+// series valued 1. The version is a build identifier (e.g. a VCS revision), never
+// anything about a subject.
+func (m *Metrics) RegisterBuildInfo(version string) {
+	m.reg.gauge("sti_build_info", "Running binary, labeled by build version (value is always 1).",
+		labels{"version": version}).Set(1)
+}
+
+// RegisterRuntime wires Go runtime gauges (goroutines, heap, GC). They are pure
+// process health, no subject data. MemStats is sampled once per scrape because
+// runtime.ReadMemStats briefly stops the world.
+func (m *Metrics) RegisterRuntime() {
+	var (
+		mu sync.Mutex
+		ms runtime.MemStats
+		at uint64
+	)
+	// field refreshes MemStats at most once per scrape and returns one field under
+	// a single lock.
+	field := func(scrapeID uint64, pick func(*runtime.MemStats) int64) int64 {
+		mu.Lock()
+		defer mu.Unlock()
+		if scrapeID != at {
+			runtime.ReadMemStats(&ms)
+			at = scrapeID
+		}
+		return pick(&ms)
+	}
+	m.reg.gaugeFunc("sti_goroutines", "Current number of goroutines.", nil,
+		func(uint64) int64 { return int64(runtime.NumGoroutine()) })
+	m.reg.gaugeFunc("sti_memstats_heap_inuse_bytes", "Heap bytes in in-use spans.", nil,
+		func(id uint64) int64 { return field(id, func(s *runtime.MemStats) int64 { return int64(s.HeapInuse) }) })
+	m.reg.gaugeFunc("sti_memstats_heap_alloc_bytes", "Bytes of allocated heap objects.", nil,
+		func(id uint64) int64 { return field(id, func(s *runtime.MemStats) int64 { return int64(s.HeapAlloc) }) })
+	m.reg.gaugeFunc("sti_gc_cycles_total", "Completed GC cycles since start.", nil,
+		func(id uint64) int64 { return field(id, func(s *runtime.MemStats) int64 { return int64(s.NumGC) }) })
+}
+
+// RegisterGaugeFunc wires a single unlabeled gauge sampled at scrape time. Used
+// for host facts like free disk, computed by the caller (the metrics package does
+// no filesystem or syscall work itself).
+func (m *Metrics) RegisterGaugeFunc(name, help string, sample func() int64) {
+	m.reg.gaugeFunc(name, help, nil, func(uint64) int64 { return sample() })
 }
 
 // endpointFor maps a request onto the closed Endpoint set using only the method
@@ -248,11 +302,12 @@ func (m *Metrics) SetInflightMax(n int) { m.inflightMax.Set(int64(n)) }
 
 // StatsGauge is a blind aggregate count sampled at scrape time.
 type StatsGauge struct {
-	DBSizeBytes    int64
-	AliasRows      int64
-	AccountRows    int64
-	KnockRows      int64
-	SendQueueDepth int64
+	DBSizeBytes               int64
+	AliasRows                 int64
+	AccountRows               int64
+	KnockRows                 int64
+	SendQueueDepth            int64
+	SendQueueOldestAgeSeconds int64 // age of the oldest queued send, 0 if empty
 }
 
 // RegisterStats wires blind aggregate gauges that are sampled lazily when the
@@ -268,6 +323,7 @@ func (m *Metrics) RegisterStats(sample func(context.Context) (StatsGauge, error)
 		{"sti_account_rows", "Distinct account-sync ciphertext rows (blind count).", func(s StatsGauge) int64 { return s.AccountRows }},
 		{"sti_knock_rows", "Live knock rows (auto-expiring, blind count).", func(s StatsGauge) int64 { return s.KnockRows }},
 		{"sti_send_queue_depth", "Wake jobs awaiting drain.", func(s StatsGauge) int64 { return s.SendQueueDepth }},
+		{"sti_send_queue_oldest_age_seconds", "Age of the oldest queued send in seconds (0 if empty); a stuck queue grows this.", func(s StatsGauge) int64 { return s.SendQueueOldestAgeSeconds }},
 	}
 	// Memoize one sample per scrape: the first gaugeFunc invoked refreshes the
 	// shared snapshot, the rest read it. scrapeID increments per render pass.

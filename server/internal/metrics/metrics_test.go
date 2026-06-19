@@ -161,6 +161,43 @@ func TestExpositionHasHeadersAndIsDeterministic(t *testing.T) {
 	}
 }
 
+func TestRuntimeBuildAndHostGauges(t *testing.T) {
+	m := New()
+	m.RegisterBuildInfo("abc123def456")
+	m.RegisterRuntime()
+	m.RegisterGaugeFunc("sti_disk_free_bytes", "free disk", func() int64 { return 123456789 })
+	m.JanitorRan(1700000000)
+	out := scrape(t, m)
+	mustContain(t, out, `sti_build_info{version="abc123def456"} 1`)
+	mustContain(t, out, "# TYPE sti_goroutines gauge")
+	mustContain(t, out, "sti_memstats_heap_inuse_bytes ")
+	mustContain(t, out, "sti_gc_cycles_total ")
+	mustContain(t, out, "sti_disk_free_bytes 123456789")
+	mustContain(t, out, "sti_janitor_last_run_seconds 1700000000")
+}
+
+func TestRuntimeMemStatsReadOncePerScrape(t *testing.T) {
+	// Three memstats gauges share one ReadMemStats per scrape. We can't count
+	// ReadMemStats directly, but goroutines must stay bounded and the scrape must
+	// be internally consistent (all three present, deterministic structure).
+	m := New()
+	m.RegisterRuntime()
+	out := scrape(t, m)
+	for _, g := range []string{"sti_goroutines", "sti_memstats_heap_inuse_bytes", "sti_memstats_heap_alloc_bytes", "sti_gc_cycles_total"} {
+		mustContain(t, out, g+" ")
+	}
+}
+
+func TestSendQueueOldestAgeGauge(t *testing.T) {
+	m := New()
+	m.RegisterStats(func(_ context.Context) (StatsGauge, error) {
+		return StatsGauge{SendQueueDepth: 2, SendQueueOldestAgeSeconds: 42}, nil
+	})
+	out := scrape(t, m)
+	mustContain(t, out, "sti_send_queue_depth 2")
+	mustContain(t, out, "sti_send_queue_oldest_age_seconds 42")
+}
+
 func mustContain(t *testing.T, haystack, needle string) {
 	t.Helper()
 	if !strings.Contains(haystack, needle) {

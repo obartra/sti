@@ -82,6 +82,36 @@ groups:
         annotations:
           summary: "GET /a p99 latency above 200ms (placeholder; rebase on the benchmark)."
 
+      # Free disk on the database filesystem. A full disk corrupts SQLite/WAL and
+      # breaks backups, so this pages early. Tune to the box size.
+      - alert: StiDiskFreeLow
+        expr: sti_disk_free_bytes < 2e9
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "Less than ~2GB free on the database filesystem."
+
+  - name: sti-health
+    rules:
+      # The background loop sets janitor_last_run_seconds every tick (~1m). If it
+      # goes stale the loop stalled; knocks stop expiring and the send queue backs
+      # up silently.
+      - alert: StiJanitorStalled
+        # Guard the startup-zero state: only alert once the loop has ticked at least once.
+        expr: sti_janitor_last_run_seconds > 0 and time() - sti_janitor_last_run_seconds > 300
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "Background janitor has not ticked in over 5 minutes."
+
+      # A send queue with an old head is stuck even if depth looks normal.
+      - alert: StiSendQueueStuck
+        expr: sti_send_queue_oldest_age_seconds > 600
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Oldest queued send is over 10 minutes old; the drain may be stuck."
+
   - name: sti-errors
     rules:
       - alert: StiInternalErrors

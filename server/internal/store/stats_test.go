@@ -36,7 +36,11 @@ func TestStatsCountsOpaqueRows(t *testing.T) {
 	if _, err := st.RecordKnock(ctx, "alias-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "req", 1, 99); err != nil {
 		t.Fatal(err)
 	}
-	if err := st.EnqueueSend(ctx, "ep", 1, 1); err != nil {
+	// Two queued sends; the oldest created_at must be the one Stats reports.
+	if err := st.EnqueueSend(ctx, "ep", 5, 1000); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.EnqueueSend(ctx, "ep", 9, 3000); err != nil {
 		t.Fatal(err)
 	}
 
@@ -44,7 +48,10 @@ func TestStatsCountsOpaqueRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s1.AliasRows != 1 || s1.AccountRows != 1 || s1.KnockRows != 1 || s1.SendQueueDepth != 1 {
+	if s1.AliasRows != 1 || s1.AccountRows != 1 || s1.KnockRows != 1 || s1.SendQueueDepth != 2 {
 		t.Fatalf("after writes: %+v", s1)
+	}
+	if s1.OldestSendCreatedAt != 1000 {
+		t.Fatalf("oldest send created_at = %d, want 1000", s1.OldestSendCreatedAt)
 	}
 }

@@ -42,7 +42,8 @@ Two corollaries used throughout:
 ## 1. Goals, separated by purpose
 
 These are deliberately split, because they carry very different privacy risk. The first three are
-low-risk system facts. The fourth is the dangerous one and gets its own section.
+low-risk system facts. The fourth is the one that could go wrong, and the answer is a hard line, not
+a "for now": usage understanding stops at blind aggregates and never advances toward the subject.
 
 - **Operational debugging.** When something is wrong, answer "what, and roughly where" from aggregate
   signal: which endpoint class is erroring, whether the box is saturated, whether the database is
@@ -57,8 +58,10 @@ low-risk system facts. The fourth is the dangerous one and gets its own section.
   decode error, a janitor failure), so a regression surfaces in minutes rather than via a user
   report. Type and rate only, never the offending value.
 - **Product and usage understanding.** Understand, coarsely, whether the thing is used and growing.
-  This is the riskiest goal by far, because "usage" is exactly the dimension an attacker wants to map
-  back to people. It is quarantined in section 6 and treated as guilty until proven harmless.
+  "Usage" is exactly the dimension an attacker wants to map back to people, so the answer is fixed and
+  final: we read it only from blind aggregates we already hold (row counts and request rates), and we
+  do not build subject-level product analytics, now or later (section 6). There is no roadmap item, no
+  opt-in funnel, no "phase 2" that collects more about a person. The ceiling is permanent.
 
 ---
 
@@ -127,9 +130,13 @@ immediately.
 | `inflight_highwater` | gauge | none | Peak in-flight since last scrape. |
 | `inflight_max` | gauge | none | The configured `MaxInflight`, for ratio alerts. |
 | `db_size_bytes` | gauge | none | SQLite file size; growth and anomaly watch. |
+| `disk_free_bytes` | gauge | none | Free space on the database filesystem; a full disk is a real failure mode on the flat VPS. |
 | `send_queue_depth` | gauge | none | Rows in `send_queue` awaiting drain (push wake backlog). |
+| `send_queue_oldest_age_seconds` | gauge | none | Age of the oldest queued send; a stuck queue grows this even when depth looks normal. |
 | `knock_rows` | gauge | none | Rows in the `knock` table (capacity of the auto-expiring store). |
 | `errors_total` | counter | `type` (small fixed enum: `store`, `decode`, `enqueue`, `janitor`) | Error rate by subsystem, never by value. |
+| `janitor_last_run_seconds` | gauge | none | Heartbeat: unix time of the last background-loop tick. Going stale means the loop stalled. |
+| `goroutines`, `memstats_heap_*_bytes`, `gc_cycles_total` | gauge | none | Go runtime health (concurrency, memory, GC churn). |
 | `build_info` | gauge (value 1) | `version` | Which binary is running; one series. |
 
 Every one of these is a count or distribution. None names an id, an IP, a body, or a token. None can
@@ -205,66 +212,52 @@ the question.
    never by opening the port. The listener is **opt-in**: it is off unless `STI_METRICS_ADDR` is set,
    so the surface exists only where explicitly configured (provisioned boxes set the loopback address),
    and unconfigured contexts like the parallel integration-test harness never start it.
-3. **Optional self-hosted, scrubbed client error channel.** Client-side JavaScript errors are useful
-   for catching crypto or rendering regressions in the passport app, but the browser is where
-   plaintext lives, so this is the riskiest channel and is **optional and off until it earns its
-   place** (open question, section 10). If built, it must be: **self-hosted** on our own origin (no
-   third party); **scrubbed before storage** (strip any id from URLs and stack frames, never capture
-   request/response bodies, IndexedDB contents, keys, or breadcrumb values; allowlist a small set of
-   fields rather than denylisting); **aggregate-leaning** (error type and count over raw stacks where
-   possible); and **rate-limited**. If we cannot guarantee the scrub, we do not ship the channel and
-   stay on logs plus edge analytics.
+That is the whole list. There is no third source.
+
+**REJECTED: a client-side error/telemetry channel of any kind.** The browser is where plaintext
+lives, so any stream of client errors, stack traces, or breadcrumbs out of the app is a path for a
+decrypted value, a key handle, or an id-bearing URL to reach us. We do not collect it. Crash and
+error signal stays on the device. We catch client regressions with tests and Storybook before ship,
+not by watching users in production. This is not "deferred until we can scrub it well enough"; it is
+a line we do not cross, because no scrub is worth standing between the user's plaintext and a promise
+that we never see it.
 
 **REJECTED: any third-party SaaS telemetry processor.** No Sentry cloud, no Datadog RUM, no Google
 Analytics, no hosted APM. Each would become a **new data processor** that receives request metadata,
 stack traces, or behavioral events directly, which undercuts the "the server stores ciphertext and
 opaque tokens, nothing else" promise the moment a stack trace or a URL with an id reaches their
 servers. SaaS error tools also capture rich context (URLs, headers, local variables, breadcrumbs) **by
-default**, which is exactly the data we forbid. If error reporting is wanted, it is the self-hosted,
-scrubbed channel above, or nothing.
+default**, which is exactly the data we forbid. There is no configuration of a third-party processor
+we would accept.
 
 ---
 
-## 6. Product and usage metrics (the dangerous case)
+## 6. Product and usage metrics
 
-Treated as guilty until proven harmless. The order of preference is strict.
+Usage understanding comes from blind aggregates we already hold, and it stops there.
 
-**First, derive product signal from blind aggregates we already hold.** Several useful product
-questions can be answered with zero new collection, because a count of opaque rows names no one:
+**We read product signal only from counts that name no one:**
 
 - **Rough active/registered proxy:** the count of distinct account blobs (`account` table rows) is a
   coarse "how many devices sync with us" number. It is a row count of opaque, key-derived ids; it
   names no person and reveals no status.
 - **Rough reach proxy:** the count of distinct alias rows is a coarse "how many passports exist"
   number, with the same non-identifying property.
-- **Liveness:** request-rate trends from section 3 already show whether the system is used and
-  growing.
+- **Coarse feature mix:** the per-endpoint request rates from section 3 already show, in aggregate,
+  how often each operation happens (publish, sync, knock, notify). That is feature usage without a
+  single subject attached.
+- **Liveness:** request-rate trends show whether the system is used and growing.
 
-These are gauges in the safe set; they are the **preferred** usage signal precisely because they
-cannot be attributed to anyone.
+These are the safe-set gauges and counters; they are the **only** usage signal, precisely because
+they cannot be attributed to anyone.
 
-**Anything beyond a blind row count must clear every one of these gates, or it does not ship:**
-
-- **Client-side.** Computed in the app, not by watching server traffic (server-side behavioral
-  tracking is how you accidentally build the event trail section 4 forbids).
-- **Aggregate and identifier-free.** No device id, user id, cookie, or fingerprint. Counts of events,
-  not streams of events.
-- **Disclosed.** Named in [Data & storage](/docs/data) and visible to the user, not silent.
-- **Ideally opt-in, and off by default.** The default state collects nothing; a user turns it on.
-- **Gated behind a k-anonymity floor.** No cohort, bucket, or breakdown is reported unless it
-  contains at least **K = 50** distinct contributors, and **nothing is reported at all until the total
-  contributing population exceeds 500** (ten times the floor, so a reported bucket cannot be isolated
-  by differencing against the total). A bucket under the floor is suppressed entirely, not rounded or
-  bucketed-up. The product already uses a min-group-size of 5 to protect *group-status viewing*
-  ([Decisions log](/docs/decisions)); analytics buckets get a **higher** floor than that, because
-  analytics cohorts intersect and can be differenced against each other in ways a single group-view
-  cannot. The exact floor is flagged for sign-off (section 10); 50/500 is the proposed starting point,
-  not a unilateral decision.
-
-In practice, for the MVP population this means: report the global blind row counts, and **defer all
-finer usage analytics until the population comfortably clears the floor across every bucket we would
-report.** Recommendation: ship section 6's blind proxies only, and hold the opt-in client analytics
-until there is both a population that clears the floor and a signed-off floor.
+**Beyond that, we do not go.** No subject-level product analytics: no funnels, no retention cohorts,
+no per-user or per-device events, no client-side behavioral stream, no opt-in "help us improve"
+collection. This is not deferred and there is no floor that unlocks it later. We considered a
+k-anonymity-gated, opt-in client analytics path and rejected it: the moment usage is anything more
+than a blind count, it becomes a thing held about a person, and there is no version of the product
+that holds that. If a future product question genuinely needs more, it gets answered with user
+interviews and on-device, never-transmitted analysis, not by collecting more at the server.
 
 ---
 
@@ -274,16 +267,13 @@ Short, aggregate-only, with no raw event store anywhere.
 
 - **Edge analytics:** retained by Cloudflare on the free plan (roughly recent-window granular,
   longer-window aggregated). We add nothing to it and store none of it ourselves; we read it live.
-- **Origin counters:** live in process and **reset on restart**. If we ever persist them for trend
-  history, we persist **rolled-up aggregates only** (for example hourly summaries kept ~30 days),
-  never per-request rows. The rollup is counts and histogram buckets, nothing addressable.
-- **Client error channel (if built):** scrubbed aggregates kept a **short window (~14 to 30 days)**
-  then dropped or collapsed to type-counts. No indefinite raw-stack archive.
-- **Usage analytics (if ever built):** only floor-passing aggregates are stored, on the same short
-  window; the underlying per-event stream is never persisted.
+- **Origin counters:** live in process and **reset on restart**, which is the whole retention story
+  today. There is no event store, no per-request row, nothing to age out. If we ever persist them for
+  trend history, it would be **rolled-up aggregates only** (counts and histogram buckets, nothing
+  addressable), but that is a capacity convenience and is not built.
 
-The invariant across all four: **no raw event store, ever.** Retention windows are confirmable values
-for sign-off (section 10), not asserted here as final.
+The invariant: **no raw event store, ever.** Any persisted rollup window is a confirmable value for
+sign-off (section 10), not asserted here as final.
 
 ---
 
@@ -372,11 +362,9 @@ metric, loopback gauge, and log, but who follows the rules) abuse it? Anything t
   **Mitigation:** do not drill edge analytics to a granularity that isolates a single user (no
   per-country views while a country has one plausible user), and restrict who may view edge analytics.
   Flagged for sign-off. Conditional pass.
-- **The optional client error channel.** Highest risk: the browser holds plaintext, so a thrown error
-  can embed a decrypted value, an id from a URL, or a key handle, and a SaaS tool would capture all of
-  it by default. **Mitigation:** self-hosted only, strict allowlist scrub (no bodies, no URLs with
-  ids, no IndexedDB, no keys), aggregate-leaning, rate-limited; if the scrub cannot be guaranteed, do
-  not ship it. Conditional pass, and gated behind the section 10 sign-off.
+- **A client-side error channel.** The browser holds plaintext, so a thrown error can embed a
+  decrypted value, an id from a URL, or a key handle. No scrub is worth standing between the user's
+  plaintext and the promise that we never see it. Rejected outright (section 5), not mitigated.
 - **Compromised-but-honest operator, end to end.** Holding every counter, gauge, histogram, and log
   line at once, this operator sees: how much traffic, how fast, how many errors, how big the database,
   how deep the queue. Every one of those is a system fact. They never see an id, an IP, a body, a
@@ -404,38 +392,32 @@ metric, loopback gauge, and log, but who follows the rules) abuse it? Anything t
 - **User-agent or fine-grained geo/ASN labels on origin metrics.** High cardinality and
   near-identifying at small N. Rejected; edge geography stays at a coarse, non-isolating grain.
 - **Third-party SaaS telemetry/APM/RUM (Sentry cloud, Datadog, GA, etc.).** A new data processor that
-  undercuts the blind story and captures forbidden context by default. Rejected; self-hosted scrubbed
-  channel or nothing.
-- **Client-side analytics keyed by a stable device or user id** (any cookie, fingerprint, or persistent
-  analytics id). Builds the exact subject linkage the whole design forbids. Rejected; usage analytics,
-  if any, are identifier-free and floor-gated.
+  undercuts the blind story and captures forbidden context by default. Rejected; there is no
+  configuration of one we would accept.
+- **Any client-side error or behavioral telemetry**, with or without a stable id. The browser holds
+  plaintext, so the whole channel is rejected (not just the id-keyed form). Crash/error signal stays
+  on the device; client regressions are caught by tests and Storybook before ship.
+- **Subject-level product analytics** (funnels, retention cohorts, per-user/device events, opt-in
+  "help us improve" collection). Usage understanding is limited to blind aggregate counts and request
+  rates; there is no k-anonymity floor that unlocks more, because more is not on the table. Rejected.
 
 ---
 
 ## 10. Open questions for human sign-off
 
-These need a privacy/product judgment call and are **not** decided here.
+The big privacy-vs-collect-more questions are **decided, not open**: no client telemetry, no
+subject-level analytics, no future floor that unlocks them. What remains are narrow operational
+calls about the blind data we already keep.
 
-1. **The k-anonymity floor.** Is `K = 50` per bucket with a `500`-population report threshold the
-   right floor for usage analytics, and is "higher than the existing min-group-size of 5" the right
-   relationship? Owner of the privacy claim signs the number.
-2. **Whether to ship the client error channel at all for MVP.** Given the residual scrub risk in a
-   plaintext-holding browser, do we build the self-hosted scrubbed channel, or stay logs-plus-edge
-   only until there is a concrete need? Recommendation: defer.
-3. **Cloudflare analytics granularity and access policy.** Do we forbid country/ASN drill-downs that
+1. **Cloudflare analytics granularity and access policy.** Do we forbid country/ASN drill-downs that
    could isolate a single early user, and who is allowed to view edge analytics? Needs a stated policy.
-4. **Small-N aggregate gauges.** Should `db_size_bytes`, `knock_rows`, and `send_queue_depth` be
-   coarsened or withheld until the population exceeds a threshold, to deny a compromised-but-honest
-   operator a fine-grained activity timeline? They pass the attribution bar but are a coarse
-   liveness timeline at single-digit N.
-5. **Whether any usage analytics ship for MVP at all.** Recommendation: ship only the blind row-count
-   proxies (section 6) and defer all opt-in client analytics until both the floor is signed off and
-   the population clears it.
-6. **Exact retention windows.** Confirm the origin-rollup window (~30 days proposed), the error-channel
-   window (~14 to 30 days proposed), and reliance on Cloudflare's default edge retention.
-7. **Disclosure surface and default for opt-in usage telemetry.** Where it is disclosed (the data doc
-   and an in-app toggle) and that the default is off. Recommendation: disclosed in
-   [Data & storage](/docs/data), off by default.
+2. **Small-N aggregate gauges.** Should `db_size_bytes`, `knock_rows`, `send_queue_depth`, and the
+   row-count proxies be coarsened or withheld until the population exceeds a threshold, to deny a
+   compromised-but-honest operator a fine-grained activity timeline? They pass the attribution bar but
+   are a coarse liveness timeline at single-digit N.
+3. **Retention window if counters are ever persisted.** Today they are in-memory and reset on restart,
+   so there is nothing to set. If a rolled-up aggregate history is ever added for capacity trends,
+   confirm the window (~30 days proposed) and that it stays counts-only.
 
 ---
 

@@ -301,11 +301,12 @@ func (s *Store) PurgeExpiredKnocks(ctx context.Context, now int64) (int64, error
 // Stats is a point-in-time snapshot of blind aggregate counts. Every field is a
 // count of opaque rows or a file size: no id, token, or value is exposed.
 type Stats struct {
-	DBSizeBytes    int64 // logical SQLite size (page_count * page_size)
-	AliasRows      int64 // distinct alias blobs (rough "passports exist" proxy)
-	AccountRows    int64 // distinct account blobs (rough "syncing devices" proxy)
-	KnockRows      int64 // live knock rows (auto-expiring)
-	SendQueueDepth int64 // wake jobs awaiting drain
+	DBSizeBytes         int64 // logical SQLite size (page_count * page_size)
+	AliasRows           int64 // distinct alias blobs (rough "passports exist" proxy)
+	AccountRows         int64 // distinct account blobs (rough "syncing devices" proxy)
+	KnockRows           int64 // live knock rows (auto-expiring)
+	SendQueueDepth      int64 // wake jobs awaiting drain
+	OldestSendCreatedAt int64 // unix ms of the oldest queued send, 0 if empty
 }
 
 // Stats samples the blind aggregate counts in one pass. It is cheap (small COUNTs
@@ -329,6 +330,7 @@ func (s *Store) Stats(ctx context.Context) (Stats, error) {
 		{`SELECT COUNT(*) FROM account`, &st.AccountRows},
 		{`SELECT COUNT(*) FROM knock`, &st.KnockRows},
 		{`SELECT COUNT(*) FROM send_queue`, &st.SendQueueDepth},
+		{`SELECT COALESCE(MIN(created_at), 0) FROM send_queue`, &st.OldestSendCreatedAt},
 	} {
 		if err := s.db.QueryRowContext(ctx, q.sql).Scan(q.dst); err != nil {
 			return st, err

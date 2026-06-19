@@ -107,12 +107,19 @@ func New(st *store.Store, cfg Config, log *slog.Logger, now func() int64) *Serve
 	// sampled lazily at scrape time. They name no subject (doc 12 §3, §6).
 	s.metrics.RegisterStats(func(ctx context.Context) (metrics.StatsGauge, error) {
 		st, err := s.st.Stats(ctx)
+		var oldestAge int64
+		if st.OldestSendCreatedAt > 0 {
+			if d := s.now() - st.OldestSendCreatedAt; d > 0 {
+				oldestAge = d / 1000
+			}
+		}
 		return metrics.StatsGauge{
-			DBSizeBytes:    st.DBSizeBytes,
-			AliasRows:      st.AliasRows,
-			AccountRows:    st.AccountRows,
-			KnockRows:      st.KnockRows,
-			SendQueueDepth: st.SendQueueDepth,
+			DBSizeBytes:               st.DBSizeBytes,
+			AliasRows:                 st.AliasRows,
+			AccountRows:               st.AccountRows,
+			KnockRows:                 st.KnockRows,
+			SendQueueDepth:            st.SendQueueDepth,
+			SendQueueOldestAgeSeconds: oldestAge,
 		}, err
 	})
 	s.routes()
