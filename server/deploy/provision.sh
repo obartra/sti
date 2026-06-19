@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
 # Provision (idempotently) the sti.care API box. Run as root on the server.
-# Expects, staged in /tmp/stideploy: the `stiapi` binary, stiapi.service, Caddyfile.
+# Expects, staged in /tmp/stideploy: the `stiapi` binary, stiapi.service,
+# Caddyfile, backup.sh, alert.sh, stiapi-deploy.sh.
 #
 #   scp the staging dir, then: ssh root@host 'bash /tmp/stideploy/provision.sh'
 #
@@ -26,6 +27,16 @@ STI_DECOY_SECRET=$secret
 # match, comma-separated. Add deploy-preview origins here if they should resolve
 # against production.
 STI_ALLOWED_ORIGINS=https://sti.care
+# Blind self-telemetry: aggregate counters/gauges/histograms in Prometheus text
+# format, loopback only. NOT fronted by Caddy and not in the ufw allow rules, so
+# it stays local to the box (scrape over an SSH tunnel). Set to "off" to disable.
+# Never expose this port publicly. See labs/docs/12-observability-and-metrics.md.
+STI_METRICS_ADDR=127.0.0.1:9090
+# Minimal alerting (stiapi-alert.timer). Where to email, and the command used to
+# send. STI_ALERT_SENDER defaults to "sendmail -t"; install msmtp (Gmail app
+# password) to provide it, or point this at a webhook command that reads stdin.
+STI_ALERT_EMAIL=obartra@gmail.com
+# STI_ALERT_SENDER=msmtp -t
 EOF
 	chown root:stiapi /etc/stiapi.env
 	chmod 0640 /etc/stiapi.env
@@ -153,6 +164,39 @@ WantedBy=timers.target
 UNIT
 systemctl daemon-reload
 systemctl enable --now stiapi-backup.timer
+
+# 5c-bis. Minimal alerting: scrape the loopback metrics endpoint once a minute and
+# email on the "address it now" conditions (disk low, janitor stalled, queue
+# stuck, inflight saturated). No Prometheus. To actually send mail the box needs
+# an outbound mailer providing `sendmail -t` (e.g. msmtp with a Gmail app
+# password), or set STI_ALERT_SENDER to a webhook command in /etc/stiapi.env.
+# Until then the check still runs and logs to the journal.
+install -m 0755 "$STAGE/alert.sh" /usr/local/bin/stiapi-alert
+cat >/etc/systemd/system/stiapi-alert.service <<'UNIT'
+[Unit]
+Description=sti.care metrics alert check
+After=stiapi.service
+
+[Service]
+Type=oneshot
+User=stiapi
+Group=stiapi
+EnvironmentFile=-/etc/stiapi.env
+ExecStart=/usr/local/bin/stiapi-alert
+UNIT
+cat >/etc/systemd/system/stiapi-alert.timer <<'UNIT'
+[Unit]
+Description=Run the sti.care metrics alert check every minute
+
+[Timer]
+OnBootSec=120
+OnUnitActiveSec=60
+
+[Install]
+WantedBy=timers.target
+UNIT
+systemctl daemon-reload
+systemctl enable --now stiapi-alert.timer
 
 # 5d. Restricted CI deploy: a non-root `deploy` user that may run ONLY the
 # install-and-restart script as root, and only if a CI public key is staged.

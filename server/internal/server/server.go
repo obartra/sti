@@ -6,6 +6,7 @@ package server
 import (
 	_ "embed"
 
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -19,6 +20,7 @@ import (
 	"time"
 
 	"sti.care/api/internal/contract"
+	"sti.care/api/internal/metrics"
 	"sti.care/api/internal/store"
 )
 
@@ -80,6 +82,7 @@ type Server struct {
 	knockLim *limiter     // silent cap on /knock (never a 429)
 	inflight chan struct{}
 	mux      *http.ServeMux
+	metrics  *metrics.Metrics // blind aggregate self-telemetry (loopback only)
 }
 
 // New builds a Server. now may be nil (defaults to the wall clock).
@@ -97,10 +100,35 @@ func New(st *store.Store, cfg Config, log *slog.Logger, now func() int64) *Serve
 		knockLim: newLimiter(cfg.KnockRatePerID, cfg.KnockBurst),
 		inflight: make(chan struct{}, cfg.MaxInflight),
 		mux:      http.NewServeMux(),
+		metrics:  metrics.New(),
 	}
+	s.metrics.SetInflightMax(cfg.MaxInflight)
+	// Blind aggregate gauges: row counts of opaque rows and the db file size,
+	// sampled lazily at scrape time. They name no subject (doc 12 §3, §6).
+	s.metrics.RegisterStats(func(ctx context.Context) (metrics.StatsGauge, error) {
+		st, err := s.st.Stats(ctx)
+		var oldestAge int64
+		if st.OldestSendCreatedAt > 0 {
+			if d := s.now() - st.OldestSendCreatedAt; d > 0 {
+				oldestAge = d / 1000
+			}
+		}
+		return metrics.StatsGauge{
+			DBSizeBytes:               st.DBSizeBytes,
+			AliasRows:                 st.AliasRows,
+			AccountRows:               st.AccountRows,
+			KnockRows:                 st.KnockRows,
+			SendQueueDepth:            st.SendQueueDepth,
+			SendQueueOldestAgeSeconds: oldestAge,
+		}, err
+	})
 	s.routes()
 	return s
 }
+
+// Metrics returns the blind self-telemetry registry. Its Handler must be bound on
+// a loopback-only listener, never on the public mux (doc 12 §5).
+func (s *Server) Metrics() *metrics.Metrics { return s.metrics }
 
 func (s *Server) routes() {
 	s.mux.HandleFunc("GET /a/{id}", s.handleAliasGet)
@@ -114,10 +142,47 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /{$}", s.handleRoot) // exactly "/", a public landing
 }
 
-// Handler returns the http.Handler with the CORS and load-shedding middleware
-// applied. CORS is outermost so a preflight is answered without taking an
-// inflight slot.
-func (s *Server) Handler() http.Handler { return s.cors(s.shed(s.mux)) }
+// Handler returns the http.Handler with the CORS, metrics, and load-shedding
+// middleware applied. CORS is outermost so a preflight is answered without taking
+// an inflight slot or being counted; metrics wraps shed so a shed 503 is still
+// measured.
+func (s *Server) Handler() http.Handler { return s.cors(s.observe(s.shed(s.mux))) }
+
+// observe records one requests_total increment and one latency sample per
+// request, labeled by the route TEMPLATE only (never the concrete id). It runs
+// inside CORS (preflights are not counted) and outside shed (a shed 503 is
+// counted). It reads only the method, the template, and the final status code,
+// never the body or any header.
+func (s *Server) observe(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := s.now()
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(rec, r)
+		seconds := float64(s.now()-start) / 1000.0
+		s.metrics.Observe(r.Method, r.URL.Path, rec.status, seconds)
+	})
+}
+
+// statusRecorder captures the response status for metrics without buffering the
+// body. It records only the integer status, nothing about the payload.
+type statusRecorder struct {
+	http.ResponseWriter
+	status  int
+	written bool
+}
+
+func (r *statusRecorder) WriteHeader(code int) {
+	if !r.written {
+		r.status = code
+		r.written = true
+	}
+	r.ResponseWriter.WriteHeader(code)
+}
+
+func (r *statusRecorder) Write(b []byte) (int, error) {
+	r.written = true // an implicit 200 if WriteHeader was never called
+	return r.ResponseWriter.Write(b)
+}
 
 // sensitivePath reports whether a request must stay existence-uniform: it never
 // receives a visible 429/503. Only the existence-revealing READS qualify, GET /a
@@ -140,16 +205,19 @@ func (s *Server) shed(next http.Handler) http.Handler {
 			select {
 			case s.inflight <- struct{}{}:
 				t.Stop()
-				defer func() { <-s.inflight }()
+				s.metrics.IncInflight()
+				defer func() { <-s.inflight; s.metrics.DecInflight() }()
 				next.ServeHTTP(w, r)
 			case <-t.C:
+				s.metrics.SensitiveOverload(r.URL.Path)
 				s.uniformOverload(w, r)
 			}
 			return
 		}
 		select {
 		case s.inflight <- struct{}{}:
-			defer func() { <-s.inflight }()
+			s.metrics.IncInflight()
+			defer func() { <-s.inflight; s.metrics.DecInflight() }()
 			next.ServeHTTP(w, r)
 		default:
 			s.writeError(w, http.StatusServiceUnavailable, contract.ErrInternal, "overloaded")
@@ -188,6 +256,7 @@ func (s *Server) handleAliasGet(w http.ResponseWriter, r *http.Request) {
 func (s *Server) aliasPayload(r *http.Request, id string) []byte {
 	if contract.ValidID(id) {
 		if ct, found, err := s.st.GetAlias(r.Context(), id); err != nil {
+			s.metrics.Error(metrics.ErrStore)
 			s.log.Error("alias get", "err", err)
 		} else if found {
 			return ct
@@ -306,6 +375,9 @@ func (s *Server) handleNotify(w http.ResponseWriter, r *http.Request) {
 	}
 	var req contract.NotifyRequest
 	if err := decodeJSON(r, &req); err != nil || req.TokenHash == "" {
+		if err != nil {
+			s.metrics.Error(metrics.ErrDecode)
+		}
 		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "")
 		return
 	}
@@ -314,8 +386,11 @@ func (s *Server) handleNotify(w http.ResponseWriter, r *http.Request) {
 		jitter := time.Duration(rand.Int64N(int64(s.cfg.SendMaxJitter) + 1))
 		at := s.now() + jitter.Milliseconds()
 		if err := s.st.EnqueueSend(r.Context(), ep, at, s.now()); err != nil {
+			s.metrics.Error(metrics.ErrEnqueue)
 			s.log.Error("enqueue send", "err", err)
 		}
+	} else if err != nil {
+		s.metrics.Error(metrics.ErrStore)
 	}
 	// Always 202, whether or not a route existed. The *response* is uniform, but a
 	// found route enqueues a send while a miss does no work, so timing is not yet
@@ -330,6 +405,9 @@ func (s *Server) handlePushRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	var req contract.PushRegisterRequest
 	if err := decodeJSON(r, &req); err != nil || req.RoutingEndpointID == "" || req.Subscription.Endpoint == "" {
+		if err != nil {
+			s.metrics.Error(metrics.ErrDecode)
+		}
 		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "")
 		return
 	}
@@ -362,6 +440,7 @@ func (s *Server) handleKnock(w http.ResponseWriter, r *http.Request) {
 			now := s.now()
 			expires := now + s.cfg.KnockTTL.Milliseconds()
 			if _, err := s.st.RecordKnock(r.Context(), id, req.RequesterHash, now, expires); err != nil {
+				s.metrics.Error(metrics.ErrStore)
 				s.log.Error("record knock", "err", err)
 			}
 		}
