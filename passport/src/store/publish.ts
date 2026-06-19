@@ -11,7 +11,7 @@
  */
 
 import type { ApiClient } from "../api/client.ts";
-import { ALIAS_PAYLOAD_SIZE } from "../api/contract.ts";
+import { ALIAS_PAYLOAD_SIZE, PATHS } from "../api/contract.ts";
 import {
   importAesKey,
   sealToSize,
@@ -36,9 +36,24 @@ export interface PublishedAlias {
 }
 
 export function aliasLinkUrl(record: AliasRecord): string {
-  return record.isPublic
-    ? `${SHARE_ORIGIN}/a/${record.id}#k=${record.key}`
-    : `${SHARE_ORIGIN}/a/${record.id}`;
+  const base = `${SHARE_ORIGIN}${PATHS.aliasPrefix}${record.id}`;
+  return record.isPublic ? `${base}#k=${record.key}` : base;
+}
+
+// Seal `view` under `key` and write it to the alias. Shared by publish (new key)
+// and republish (the existing key), so both encode a card identically.
+async function sealAndPut(
+  api: ApiClient,
+  key: CryptoKey,
+  record: Pick<AliasRecord, "id" | "writeToken">,
+  view: ResolvedView,
+): Promise<void> {
+  const payload = await sealToSize(
+    key,
+    serializePublicCard(view),
+    ALIAS_PAYLOAD_SIZE,
+  );
+  await api.putAlias(record.id, payload, record.writeToken);
 }
 
 /** Mint a new alias and publish `view` to it. */
@@ -54,13 +69,7 @@ export async function publishCard(
     key: bytesToBase64url(raw),
     isPublic: opts.isPublic ?? true,
   };
-  const key = await importAesKey(raw);
-  const payload = await sealToSize(
-    key,
-    serializePublicCard(view),
-    ALIAS_PAYLOAD_SIZE,
-  );
-  await api.putAlias(record.id, payload, record.writeToken);
+  await sealAndPut(api, await importAesKey(raw), record, view);
   return { link: aliasLinkUrl(record), record };
 }
 
@@ -71,10 +80,5 @@ export async function republishCard(
   view: ResolvedView,
 ): Promise<void> {
   const key = await importAesKey(base64urlToBytes(record.key));
-  const payload = await sealToSize(
-    key,
-    serializePublicCard(view),
-    ALIAS_PAYLOAD_SIZE,
-  );
-  await api.putAlias(record.id, payload, record.writeToken);
+  await sealAndPut(api, key, record, view);
 }

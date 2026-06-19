@@ -61,4 +61,18 @@ describe("account manager", () => {
     const master = await deriveMasterKey("never-created");
     await expect(accounts.addAlias(master, record)).rejects.toThrow();
   });
+
+  it("rejects an invalid handle rather than create an unrecoverable account", async () => {
+    const accounts = createAccountManager(fakeAccountApi());
+    await expect(accounts.create("")).rejects.toThrow();
+    await expect(accounts.create("x".repeat(65))).rejects.toThrow();
+  });
+
+  it("addAlias is idempotent on a repeated record (no duplicate)", async () => {
+    const accounts = createAccountManager(fakeAccountApi());
+    const created = await accounts.create("robin");
+    await accounts.addAlias(created.master, record);
+    const next = await accounts.addAlias(created.master, record);
+    expect(next.aliases).toEqual([record]); // not two copies
+  });
 });

@@ -18,6 +18,13 @@ describe("requesterHash", () => {
     expect(await requesterHash("other", ID)).not.toBe(base);
     expect(await requesterHash("secret", "B".repeat(43))).not.toBe(base);
   });
+
+  it("does not collide when a secret contains the separator", async () => {
+    // ("a:b", "c") and ("a", "b:c") must not share a bucket.
+    expect(await requesterHash("a:b", "c")).not.toBe(
+      await requesterHash("a", "b:c"),
+    );
+  });
 });
 
 describe("knock", () => {

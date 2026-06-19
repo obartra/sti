@@ -13,6 +13,7 @@ import {
   type Bytes,
 } from "../crypto/index.ts";
 import { createAccountSync } from "./accountSync.ts";
+import { isValidHandle } from "./codec.ts";
 import type { AccountBlob, AliasRecord } from "./accountBlob.ts";
 
 export interface NewAccount {
@@ -40,6 +41,12 @@ export function createAccountManager(api: ApiClient): AccountManager {
   const sync = createAccountSync(api);
   return {
     async create(handle) {
+      // Validate up front: an invalid handle would seal fine but throw on
+      // parseAccountBlob during recovery, locking the owner out of an account
+      // that physically exists.
+      if (!isValidHandle(handle)) {
+        throw new Error("create: invalid handle");
+      }
       const recoveryPhrase = randomRecoveryPhrase();
       const master = await deriveMasterKey(recoveryPhrase);
       const blob: AccountBlob = { handle, aliases: [] };
@@ -61,9 +68,12 @@ export function createAccountManager(api: ApiClient): AccountManager {
       if (blob === null) {
         throw new Error("addAlias: no account exists for this key");
       }
+      // Upsert by id so a retry after a partially-succeeded save (PUT landed,
+      // response lost) does not record the same alias twice, which would orphan
+      // a write token and leave a link live after a revoke.
       const next: AccountBlob = {
         ...blob,
-        aliases: [...blob.aliases, record],
+        aliases: [...blob.aliases.filter((a) => a.id !== record.id), record],
       };
       await sync.save(master, next);
       return next;

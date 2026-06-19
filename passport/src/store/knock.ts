@@ -16,9 +16,12 @@ export function requesterHash(
   requesterSecret: string,
   aliasId: string,
 ): Promise<string> {
-  // Colon-separated; neither a base64url secret nor a base64url id contains a
-  // colon, so the framing is unambiguous.
-  return sha256Base64url(utf8ToBytes(requesterSecret + ":" + aliasId));
+  // Length-prefix the secret so the framing is unambiguous regardless of what
+  // the secret contains: distinct (secret, id) pairs can never hash the same
+  // input even if a secret happens to hold the separator.
+  return sha256Base64url(
+    utf8ToBytes(`${requesterSecret.length}:${requesterSecret}:${aliasId}`),
+  );
 }
 
 /** Knock on an alias. Resolves regardless of whether the alias exists. */
