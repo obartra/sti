@@ -27,19 +27,24 @@ var (
 // either reads the same uniform bytes or is blocked from reading them at all.
 func (s *Server) cors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// The response varies on Origin whether or not we allow it, so always
+		// signal that to caches; emitting Vary only on the allowed branch would
+		// let a shared cache serve the wrong CORS variant.
+		w.Header().Add("Vary", "Origin")
 		if origin := r.Header.Get("Origin"); origin != "" && s.originAllowed(origin) {
 			h := w.Header()
 			h.Set("Access-Control-Allow-Origin", origin)
-			h.Add("Vary", "Origin")
 			h.Set("Access-Control-Allow-Methods", corsAllowMethods)
 			h.Set("Access-Control-Allow-Headers", corsAllowHeaders)
 			h.Set("Access-Control-Expose-Headers", corsExposeHeaders)
 			h.Set("Access-Control-Max-Age", corsMaxAge)
 		}
-		if r.Method == http.MethodOptions {
-			// Preflight never reaches the mux or takes an inflight slot. It is a
-			// uniform 204 regardless of the path or whether the origin was allowed
-			// (a disallowed origin simply received no allow headers above).
+		// Answer only a genuine preflight here (it carries Access-Control-Request-
+		// Method), before shed, as a uniform 204 regardless of path or whether the
+		// origin was allowed. A bare OPTIONS without that header is not a preflight
+		// and falls through to the mux under the normal load-shedding path, so it
+		// cannot ride an un-shed, un-rate-limited shortcut.
+		if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}

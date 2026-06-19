@@ -61,6 +61,7 @@ func TestCORSDisallowedOriginGetsNoAllowHeaders(t *testing.T) {
 	h := newTestServerWithOrigins(t, allowedOrigin)
 	req := httptest.NewRequest("OPTIONS", contract.PathNotify, nil)
 	req.Header.Set("Origin", "https://evil.example")
+	req.Header.Set("Access-Control-Request-Method", "POST")
 	rec := do(h, req)
 
 	if rec.Code != http.StatusNoContent {
@@ -68,6 +69,24 @@ func TestCORSDisallowedOriginGetsNoAllowHeaders(t *testing.T) {
 	}
 	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
 		t.Fatalf("allow-origin leaked to a disallowed origin: %q", got)
+	}
+}
+
+// A bare OPTIONS (no Access-Control-Request-Method) is not a preflight, so it is
+// not short-circuited: it falls through to the mux under the normal shedding
+// path rather than riding an un-shed shortcut.
+func TestCORSBareOptionsFallsThrough(t *testing.T) {
+	h := newTestServerWithOrigins(t, allowedOrigin)
+	req := httptest.NewRequest("OPTIONS", contract.PathNotify, nil)
+	req.Header.Set("Origin", allowedOrigin)
+	rec := do(h, req)
+
+	if rec.Code == http.StatusNoContent {
+		t.Fatalf("bare OPTIONS was short-circuited to 204; expected a fall-through")
+	}
+	// Still carries the Vary: Origin signal even when not a preflight.
+	if got := rec.Header().Get("Vary"); got != "Origin" {
+		t.Fatalf("Vary: %q, want Origin", got)
 	}
 }
 
