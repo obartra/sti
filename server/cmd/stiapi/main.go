@@ -26,8 +26,12 @@ func main() {
 	dbPath := env("STI_DB_PATH", "sti.db")
 	// Metrics listen address: loopback only, never public (doc 12 §5). It is a
 	// SEPARATE listener, not fronted by Caddy, so it is never proxied to the
-	// internet; the loopback bind plus ufw keep it local. Set "off" to disable.
-	metricsAddr := env("STI_METRICS_ADDR", "127.0.0.1:9090")
+	// internet; the loopback bind plus ufw keep it local. OPT-IN: empty (the
+	// default) and "off" both disable it, so the observability surface exists only
+	// where explicitly configured (provisioned boxes set 127.0.0.1:9090). This
+	// also keeps unconfigured contexts, e.g. the parallel integration-test harness,
+	// from fighting over a fixed port.
+	metricsAddr := env("STI_METRICS_ADDR", "")
 
 	secretHex := os.Getenv("STI_DECOY_SECRET")
 	if secretHex == "" {

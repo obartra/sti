@@ -202,7 +202,9 @@ the question.
    never public, behind the existing Cloudflare-only firewall, mTLS, and `ufw` controls, and addressed
    only from the box itself by a local scraper. It exposes counts and distributions, never a per-request
    record. If a remote dashboard is ever wanted, it is reached over an SSH tunnel or a private network,
-   never by opening the port.
+   never by opening the port. The listener is **opt-in**: it is off unless `STI_METRICS_ADDR` is set,
+   so the surface exists only where explicitly configured (provisioned boxes set the loopback address),
+   and unconfigured contexts like the parallel integration-test harness never start it.
 3. **Optional self-hosted, scrubbed client error channel.** Client-side JavaScript errors are useful
    for catching crypto or rendering regressions in the passport app, but the browser is where
    plaintext lives, so this is the riskiest channel and is **optional and off until it earns its

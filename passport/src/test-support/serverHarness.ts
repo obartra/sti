@@ -64,6 +64,10 @@ function spawnServer(work: string, port: number): ChildProcess {
       STI_ADDR: `127.0.0.1:${port}`,
       STI_DB_PATH: join(work, "itest.db"),
       STI_DECOY_SECRET: randomHex(32),
+      // No metrics listener for integration servers: they run in parallel and
+      // would otherwise contend for the fixed metrics port. The metrics endpoint
+      // has its own Go-level coverage.
+      STI_METRICS_ADDR: "off",
     },
     stdio: "ignore",
   });
