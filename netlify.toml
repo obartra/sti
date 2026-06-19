@@ -1,13 +1,13 @@
 # Netlify configuration for sti.care.
-# The contents of public/ are published as-is, plus one generated page: the
-# promises report (public/promises/), rebuilt on every deploy so its version +
-# date stamp always matches what is live.
+# The contents of public/ are published as-is, plus two generated areas: the
+# promises report (public/promises/) and the Storybook design system
+# (public/design/), both rebuilt on every deploy.
 
 [build]
   publish = "public"
   # Fetch tags first so the report's version stamp reads as the release tag
   # (git describe) rather than a bare sha on Netlify's shallow checkout.
-  command = "git fetch --tags --force 2>/dev/null || true; npm run promises"
+  command = "git fetch --tags --force 2>/dev/null || true; npm run promises && npm run design"
 
 # Single-Page-App fallback.
 # Client-side routes (/, /gonorrhea, /hiv, ...) aren't real files, so this

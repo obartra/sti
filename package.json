@@ -10,9 +10,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint:js": "eslint .",
-    "lint:css": "stylelint \"public/**/*.css\"",
+    "lint:css": "stylelint \"public/**/*.css\" --ignore-pattern \"public/design/**\"",
     "lint": "npm run lint:js && npm run lint:css",
     "promises": "node deploy/build-promises.mjs",
+    "design": "cd passport && npm ci && npm run build-storybook && rm -rf ../public/design && cp -r storybook-static ../public/design",
     "test": "node --test 'test/**/*.test.mjs'",
     "check": "npm run format:check && npm run lint && npm test"
   },

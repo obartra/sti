@@ -9,5 +9,6 @@ node_modules/
 # Local preview tooling
 .claude/launch.json
 
-# Generated at deploy time (npm run promises); never committed.
+# Generated at deploy time (npm run promises / npm run design); never committed.
 public/promises/
+public/design/

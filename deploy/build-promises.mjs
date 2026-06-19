@@ -133,7 +133,6 @@ function featureSection(feature) {
 }
 
 function render(features, ver, date) {
-  const count = features.reduce((n, f) => n + f.scenarios.length, 0);
   const sections = features.map(featureSection).join("\n  ");
   return `<!doctype html>
 <html lang="en">
@@ -296,8 +295,7 @@ function render(features, ver, date) {
     sti.care makes a small set of hard promises about what a status can and
     cannot reveal. Each one below is an executable specification: it runs as a
     test on every change, and the trust-critical rules are also proven
-    exhaustively by property-based tests. ${count} promises, no source code, just
-    the rules and how they are checked.
+    exhaustively by property-based tests.
   </p>
   <div class="stamp">Published <b>${esc(date)}</b> &middot; <b>${esc(ver)}</b></div>
 
