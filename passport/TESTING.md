@@ -38,12 +38,33 @@ type lives at the right layer:
 
 ## Commands
 
-| Command              | Does                                                |
-| -------------------- | --------------------------------------------------- |
-| `npm test`           | Run unit + property + Gherkin specs (Vitest)        |
-| `npm run test:cov`   | Same, with coverage thresholds enforced             |
-| `npm run test:watch` | Watch mode                                          |
-| `npm run typecheck`  | `tsc --noEmit` (strict, `noUncheckedIndexedAccess`) |
+| Command               | Does                                                |
+| --------------------- | --------------------------------------------------- |
+| `npm test`            | Run unit + property + Gherkin specs (Vitest)        |
+| `npm run test:cov`    | Same, with coverage thresholds enforced             |
+| `npm run test:report` | Same, plus a browsable HTML report in `html/`       |
+| `npm run test:watch`  | Watch mode                                          |
+| `npm run lint`        | ESLint: strict type-checked rules + quality limits  |
+| `npm run typecheck`   | `tsc --noEmit` (strict, `noUncheckedIndexedAccess`) |
+
+## Viewing the Gherkin / cucumber report
+
+The `.feature` scenarios run through `@amiceli/vitest-cucumber` as ordinary
+Vitest tests, so every scenario shows up as a named test. `npm test` prints
+pass/fail per scenario in the terminal. For a browsable report, run
+`npm run test:report` and open `html/index.html` (or `npx vite preview --outDir html`):
+each feature, scenario, and step appears as a test you can drill into. CI runs
+this on every push and uploads it as the `passport-test-report` artifact, so the
+scenario report is reachable from the Actions run without checking anything out.
+
+## Code quality gate
+
+`npm run lint` enforces TypeScript-aware rules (typescript-eslint
+strict + stylistic, type-checked) on top of `strict` mode, plus hard ceilings on
+complexity, statement count, nesting, parameter count, and file/function length.
+Screens that outgrow a ceiling are decomposed into sub-components, never
+exempted; generated (icons), vendored (design tokens), story, and test files
+relax only the length/statement limits.
 
 ## Current state
 

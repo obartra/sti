@@ -1,39 +1,22 @@
-import { BadgeCard } from "./badge-card.tsx";
-import { blueEligible } from "../core/badge.fixtures.ts";
-import type { OwnerState } from "../core/badge.ts";
+import { useAppRouter } from "./app/useAppRouter.ts";
+import { useDesktop } from "./desktop/Desktop.tsx";
+import { OWNER } from "./app/fixtures.ts";
+import { Chrome } from "./app/Chrome.tsx";
 
-const condomsRoute: OwnerState = {
-  ...blueEligible(),
-  onPrep: false,
-  hiv: "negative",
-  condomPreference: "condoms_always",
-  condomPreferencePublic: true,
-};
-const gray: OwnerState = { ...blueEligible(), paused: true };
-
+// The wired app: a route + history model (useAppRouter), responsive chrome
+// (mobile shell / desktop sidebar / public canvas), and every screen rendered
+// with props mapped from local fixtures. No backend yet (fixtures only).
 export function App() {
+  const { route, nav, shareOpen, setShareOpen } = useAppRouter();
+  const desktop = useDesktop();
   return (
-    <main className="app-preview">
-      <BadgeCard
-        owner={blueEligible()}
-        labels={["hiv"]}
-        identity={{ handle: "robin" }}
-      />
-      <BadgeCard
-        owner={blueEligible()}
-        labels={["hiv", "condoms_always"]}
-        identity={{ handle: "kai" }}
-      />
-      <BadgeCard
-        owner={condomsRoute}
-        labels={["condoms_always"]}
-        identity={{ handle: "sam" }}
-      />
-      <BadgeCard
-        owner={gray}
-        labels={["condoms_always"]}
-        identity={{ handle: "alex" }}
-      />
-    </main>
+    <Chrome
+      route={route}
+      nav={nav}
+      owner={OWNER}
+      desktop={desktop}
+      shareOpen={shareOpen}
+      setShareOpen={setShareOpen}
+    />
   );
 }

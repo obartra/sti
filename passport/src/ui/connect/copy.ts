@@ -1,0 +1,33 @@
+// Verbatim copy from the connect object in copy.js, shared by Connect and its
+// extracted presentational sections.
+export const COPY = {
+  title: "Connect",
+  sub: "Linkups stay private and live only on your device. There’s no search, you connect by scanning each other or sharing a link.",
+  scanTile: "Scan to link",
+  scanTileSub: "Point at someone’s code, you both confirm",
+  shareTile: "Share my link",
+  shareTileSub: "Send or show your code for someone to scan",
+  linkupTile: "Linkup",
+  linkupTileSub: "Two phones close, a tap each, you’re together now",
+  waitingTitle: "Waiting on you",
+  waitingSub: "Someone you scanned wants to link. Confirm to add them.",
+  scannedAgo: "scanned",
+  suggestAdd: "Link",
+  suggestDismiss: "Not now",
+  favesTitle: "Faves",
+  favesSub: "Up to 9 · star anyone to keep them here",
+  favesFull: "Faves are full. Unstar someone to add another.",
+  pruneNote: "Linkups older than your 90-day window are removed automatically.",
+  menuDelete: "Delete linkup",
+  showMore: "Show more",
+  recentTitle: "Recent linkups",
+  todayChip: "Today",
+  privacyTitle: "How this stays private",
+  privacy: [
+    "No directory, no @-search, a stranger can’t look you up.",
+    "You only appear to people you’ve scanned or sent a link to, and a link always takes both confirmations.",
+    "Linkups are pairwise references stored on your device, never names. Delete any one anytime.",
+  ],
+  empty: "No linkups yet, scan someone to start.",
+  favesEmpty: "Star anyone in your linkups to keep them here.",
+} as const;

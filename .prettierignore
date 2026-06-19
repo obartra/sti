@@ -3,6 +3,9 @@ package-lock.json
 LICENSE
 **/coverage
 **/dist
+**/storybook-static
+**/visual-baselines
+**/comps-reference
 
 # Authored design docs: source of truth for the rendered labs pages, left verbatim.
 labs/docs

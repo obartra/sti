@@ -11,6 +11,8 @@ export default [
       "**/coverage/**",
       "passport/**",
       "server/**",
+      // labs is a throwaway prototype renderer, not production code.
+      "labs/**",
     ],
   },
   js.configs.recommended,

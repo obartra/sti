@@ -1,0 +1,107 @@
+name: Visual regression
+
+# Two paths driven by the `screenshot:update` label (mechanism copied from
+# centaur):
+#  1. Default (no label): the `visual` job runs `npm run test:visual` ->
+#     check-baselines (fail on missing/stale) + lost-pixel diff. The merge gate.
+#  2. With `screenshot:update` on the PR: the `update` job regenerates baselines,
+#     prunes stale, and the bot commits + pushes them back to the PR branch.
+#
+# Render path is the pinned lost-pixel Docker image (linux/amd64) so pixels are
+# stable between local Mac dev (Rosetta) and ubuntu-latest CI.
+
+on:
+  push:
+    branches: [main]
+    paths: ["passport/**", ".github/workflows/visual.yml"]
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Why baselines are being regenerated"
+        required: false
+        default: "Approved via workflow_dispatch"
+
+concurrency:
+  group: visual-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.event_name != 'workflow_dispatch' }}
+
+jobs:
+  visual:
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+        !contains(github.event.pull_request.labels.*.name, 'screenshot:update'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: passport
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: passport/package-lock.json
+      - run: npm ci
+      - run: npm run build-storybook
+      - run: npm run test:visual
+      - name: Upload diff artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: visual-regression-diff
+          path: |
+            passport/storybook-static/index.json
+            passport/.lostpixel/current/
+            passport/.lostpixel/difference/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  update:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+        contains(github.event.pull_request.labels.*.name, 'screenshot:update'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: passport
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: passport/package-lock.json
+      - run: npm ci
+      - run: npm run build-storybook
+      - run: npm run test:visual:update
+      - name: Commit + push updated baselines
+        env:
+          REASON: ${{ github.event.inputs.reason || 'screenshot:update label triggered regeneration' }}
+          ACTOR: ${{ github.actor }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A visual-baselines/
+          if git diff --staged --quiet; then
+            echo "No baseline changes."
+            exit 0
+          fi
+          git diff --staged --stat visual-baselines/ | tail -20
+          git commit -m "chore(visual): update baselines" -m "${REASON}" -m "Triggered by @${ACTOR} on ${BRANCH}."
+          git push origin "HEAD:${BRANCH}"
