@@ -6,6 +6,7 @@ import {
   deriveMasterKey,
   deriveAccountId,
   deriveAccountKey,
+  masterFromPrf,
 } from "./keys.ts";
 import { importAesKey, seal, open } from "./payload.ts";
 import { utf8ToBytes, bytesToUtf8 } from "./encoding.ts";
@@ -63,6 +64,18 @@ describe("master key + account derivation", () => {
     const blob = utf8ToBytes(JSON.stringify({ aliases: [], circles: [] }));
     const ct = await seal(aesKey, blob);
     expect(bytesToUtf8(await open(aesKey, ct))).toBe(bytesToUtf8(blob));
+  });
+
+  it("derives a stable 32-byte master from a passkey PRF output", async () => {
+    const prf = crypto.getRandomValues(new Uint8Array(32));
+    const a = await masterFromPrf(prf);
+    const b = await masterFromPrf(prf);
+    expect(a).toEqual(b);
+    expect(a).toHaveLength(32);
+    const other = await masterFromPrf(
+      crypto.getRandomValues(new Uint8Array(32)),
+    );
+    expect(a).not.toEqual(other);
   });
 
   it("a master from a wrong passphrase cannot open the blob (recovery is key-bound)", async () => {

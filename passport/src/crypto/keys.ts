@@ -24,6 +24,7 @@ const ID_BYTES = 32; // 256-bit, encodes to the contract's fixed 43-char id
 const PBKDF2_ITERATIONS = 600_000; // OWASP 2023 floor for PBKDF2-HMAC-SHA256
 const HKDF_ACCOUNT_ID_INFO = "sti.care/account-id/v1";
 const HKDF_ACCOUNT_KEY_INFO = "sti.care/account-blob-key/v1";
+const HKDF_PRF_MASTER_INFO = "sti.care/master-key/prf/v1";
 
 // A fixed domain-separation salt, deliberately NOT a per-user anti-rainbow salt.
 // The account id is itself derived from the master key, so a per-user salt could
@@ -115,6 +116,16 @@ export async function deriveAccountId(master: Bytes): Promise<string> {
 /** Raw 32-byte AES key for the account-sync blob, separate from the id. */
 export function deriveAccountKey(master: Bytes): Promise<Bytes> {
   return hkdf(master, HKDF_ACCOUNT_KEY_INFO, 32);
+}
+
+/**
+ * The master key from a passkey's PRF output. The PRF result is already a
+ * high-entropy authenticator secret; HKDF domain-separates it from the raw
+ * value so the master is bound to this app/version. The passkey re-derives the
+ * same PRF output on demand, so the master is never stored, only re-minted.
+ */
+export function masterFromPrf(prfOutput: Bytes): Promise<Bytes> {
+  return hkdf(prfOutput, HKDF_PRF_MASTER_INFO, ID_BYTES);
 }
 
 /** SHA-256 of `data`, base64url-encoded. Used for opaque routing/requester
