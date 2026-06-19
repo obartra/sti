@@ -120,8 +120,9 @@ So each slice lands with:
 - **A round-trip integration test against the real endpoints** (the running server, not a mock):
   publish then resolve, assert the decrypted value equals what was published, and assert the
   byte-level contract (id shape, 4096-byte alias payload, uniform miss).
-- **A Cypress E2E** for the user-visible flow (open a link and see the passport; onboard and see
-  the badge persist across a reload), asserting the screen reflects real data, not the fixture.
+- **A Testing Library render test** for the user-visible flow (the repo's UI test tool; there is
+  no Cypress). It drives the screen, or the whole app via its injectable store, with a stub store
+  and asserts the rendered DOM reflects the resolved data, or the uniform gray on a miss.
 - **An existence-uniformity assertion**: a missing id and an undecryptable id produce the same
   rendered state and no distinguishing client behavior.
 

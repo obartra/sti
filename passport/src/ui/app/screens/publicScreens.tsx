@@ -1,5 +1,6 @@
 import { Landing } from "../../public/Landing.tsx";
 import { PublicResolution } from "../../public/PublicResolution.tsx";
+import { PublicResolutionScreen } from "../../public/PublicResolutionScreen.tsx";
 import { Alert } from "../../public/Alert.tsx";
 import { SAMPLE_RESOLVED } from "../fixtures.ts";
 import type { ScreenCtx, ScreenRenderers } from "./context.ts";
@@ -23,14 +24,43 @@ export const publicRenderers: ScreenRenderers = {
     />
   ),
   "a2-public": (ctx) => {
-    const self = ctx.data?.self ?? false;
+    const onClaim = () => ctx.nav.go("b1-claim");
+    const onVerify = () => ctx.nav.go("learn");
+
+    // Self-preview ("what others see"): the owner's own card, computed locally.
+    if (ctx.data?.self) {
+      return (
+        <PublicResolution
+          resolved={selfCard(ctx)}
+          self
+          onBack={ctx.nav.back}
+          onClaim={onClaim}
+          onVerify={onVerify}
+        />
+      );
+    }
+
+    // A real shared link: resolve the id + key against the backend.
+    const { id, key } = ctx.data ?? {};
+    if (id !== undefined && key !== undefined) {
+      return (
+        <PublicResolutionScreen
+          store={ctx.store}
+          link={{ id, key }}
+          onBack={ctx.nav.back}
+          onClaim={onClaim}
+          onVerify={onVerify}
+        />
+      );
+    }
+
+    // No link (the landing's "see a sample" demo): a fixture card.
     return (
       <PublicResolution
-        resolved={self ? selfCard(ctx) : SAMPLE_RESOLVED}
-        self={self}
+        resolved={SAMPLE_RESOLVED}
         onBack={ctx.nav.back}
-        onClaim={() => ctx.nav.go("b1-claim")}
-        onVerify={() => ctx.nav.go("learn")}
+        onClaim={onClaim}
+        onVerify={onVerify}
       />
     );
   },
