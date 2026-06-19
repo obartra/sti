@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -44,7 +45,12 @@ func main() {
 	}
 	defer st.Close()
 
-	srv := server.New(st, server.Config{DecoySecret: secret}, log, nil)
+	// Comma-separated exact origins allowed to call the api from a browser
+	// (e.g. "https://sti.care"). Empty disables CORS, correct for same-origin or
+	// non-browser callers.
+	allowedOrigins := splitList(os.Getenv("STI_ALLOWED_ORIGINS"))
+
+	srv := server.New(st, server.Config{DecoySecret: secret, AllowedOrigins: allowedOrigins}, log, nil)
 
 	go background(ctx, st, srv, log)
 
@@ -115,4 +121,15 @@ func env(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// splitList parses a comma-separated env value into trimmed, non-empty items.
+func splitList(v string) []string {
+	var out []string
+	for _, p := range strings.Split(v, ",") {
+		if t := strings.TrimSpace(p); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
 }
