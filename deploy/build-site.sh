@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # Assemble the sti.care publish dir (dist/): the passport app at the root, plus
 # the promises report at /promises and Storybook at /design. Run by Netlify on
-# every deploy (see netlify.toml). The old info site under public/ is kept in
-# the repo (for its tests, the labs favicon, and the to-be-folded-in testing
-# finder) but is no longer published.
+# every deploy (see netlify.toml).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

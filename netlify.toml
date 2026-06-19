@@ -1,7 +1,6 @@
 # Netlify configuration for sti.care.
 # deploy/build-site.sh assembles dist/: the passport app at the root, the
-# promises report at /promises, and Storybook at /design. The old info site
-# under public/ is no longer published.
+# promises report at /promises, and Storybook at /design.
 
 [build]
   publish = "dist"
