@@ -3,17 +3,8 @@
 // The real round-trip: a typed client against a live instance of the Go blind
 // store, proving data actually flows (publish -> resolve -> decrypt equals what
 // was published), not just that the wiring compiles. Per doc 11, a mock would
-// prove nothing here.
-//
-// The server is booted in-process: we build the Go binary once and run it on a
-// free port against a throwaway SQLite db, then tear it down. Set
-// STI_API_BASE_URL to run against an already-running instance instead (e.g. if
-// CI starts the server out-of-band). Requires Go on PATH otherwise.
-import { execFileSync, spawn, type ChildProcess } from "node:child_process";
-import { createServer } from "node:net";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+// prove nothing here. The server harness is shared with the other integration
+// tests (src/test-support/serverHarness.ts).
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createApiClient, ApiError } from "./client.ts";
@@ -32,96 +23,11 @@ import {
   deriveAccountId,
   deriveAccountKey,
 } from "../crypto/index.ts";
-
-function freePort(): Promise<number> {
-  return new Promise((res, rej) => {
-    const srv = createServer();
-    srv.on("error", rej);
-    srv.listen(0, "127.0.0.1", () => {
-      const addr = srv.address();
-      if (addr === null || typeof addr === "string") {
-        rej(new Error("no port"));
-        return;
-      }
-      const { port } = addr;
-      srv.close(() => res(port));
-    });
-  });
-}
-
-function randomHex(bytes: number): string {
-  return Array.from(crypto.getRandomValues(new Uint8Array(bytes)), (b) =>
-    b.toString(16).padStart(2, "0"),
-  ).join("");
-}
-
-async function waitForHealth(baseUrl: string, attempts = 80): Promise<void> {
-  for (let i = 0; i < attempts; i++) {
-    try {
-      const res = await fetch(baseUrl + "/healthz");
-      if (res.ok) return;
-    } catch {
-      // not up yet
-    }
-    await new Promise((r) => setTimeout(r, 250));
-  }
-  throw new Error(`server at ${baseUrl} never became healthy`);
-}
-
-interface Harness {
-  baseUrl: string;
-  stop: () => void;
-}
-
-async function startApi(): Promise<Harness> {
-  const external = process.env.STI_API_BASE_URL;
-  if (external) {
-    await waitForHealth(external);
-    return {
-      baseUrl: external,
-      stop: () => {
-        /* external instance, nothing to tear down */
-      },
-    };
-  }
-
-  const serverDir = resolve(process.cwd(), "..", "server");
-  const work = mkdtempSync(join(tmpdir(), "sti-itest-"));
-  const bin = join(work, "stiapi");
-  execFileSync("go", ["build", "-o", bin, "./cmd/stiapi"], {
-    cwd: serverDir,
-    stdio: "inherit",
-  });
-
-  const port = await freePort();
-  const baseUrl = `http://127.0.0.1:${port}`;
-  let proc: ChildProcess | undefined = spawn(bin, [], {
-    env: {
-      ...process.env,
-      STI_ADDR: `127.0.0.1:${port}`,
-      STI_DB_PATH: join(work, "itest.db"),
-      STI_DECOY_SECRET: randomHex(32),
-    },
-    stdio: "ignore",
-  });
-
-  try {
-    await waitForHealth(baseUrl);
-  } catch (e) {
-    proc.kill("SIGKILL");
-    rmSync(work, { recursive: true, force: true });
-    throw e;
-  }
-
-  return {
-    baseUrl,
-    stop: () => {
-      proc?.kill("SIGKILL");
-      proc = undefined;
-      rmSync(work, { recursive: true, force: true });
-    },
-  };
-}
+import {
+  startApi,
+  randomHex,
+  type Harness,
+} from "../test-support/serverHarness.ts";
 
 describe("api client against a live blind store", () => {
   let harness: Harness | undefined;

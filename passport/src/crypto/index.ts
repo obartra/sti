@@ -9,6 +9,7 @@ export {
   base64urlToBytes,
   utf8ToBytes,
   bytesToUtf8,
+  type Bytes,
 } from "./encoding.ts";
 
 export {
