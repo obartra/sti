@@ -13,6 +13,7 @@ package metrics
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"math"
 	"net/http"
@@ -350,6 +351,85 @@ func (m *Metrics) RegisterStats(sample func(context.Context) (StatsGauge, error)
 	}
 }
 
+// --- Persistence (blind aggregates only) ------------------------------------
+//
+// Snapshot/Restore let the cumulative series survive a restart instead of
+// dropping to zero. ONLY counters and histograms are persisted: their values are
+// aggregate counts and bucket tallies with no id, IP, body, or token, so the
+// snapshot is as blind as the live metrics. Live gauges (inflight, runtime, the
+// store row counts, the janitor heartbeat) are recomputed fresh and are never
+// written. This is not a raw event store (doc 12 §7); it is the same blind totals,
+// made durable.
+
+type seriesDump struct {
+	Name    string            `json:"name"`
+	Labels  map[string]string `json:"labels,omitempty"`
+	Kind    string            `json:"kind"`
+	Value   int64             `json:"value,omitempty"`
+	Buckets []int64           `json:"buckets,omitempty"`
+	Sum     float64           `json:"sum,omitempty"`
+	Count   int64             `json:"count,omitempty"`
+}
+
+type dump struct {
+	Version int          `json:"version"`
+	Series  []seriesDump `json:"series"`
+}
+
+// Snapshot serializes the persistable (counter + histogram) series to JSON.
+func (m *Metrics) Snapshot() ([]byte, error) { return json.Marshal(m.reg.snapshot()) }
+
+// Restore loads a Snapshot back into the matching pre-registered series. Unknown
+// series and shape mismatches (e.g. changed histogram buckets) are skipped, so an
+// old or partial file never breaks startup.
+func (m *Metrics) Restore(b []byte) error {
+	var d dump
+	if err := json.Unmarshal(b, &d); err != nil {
+		return err
+	}
+	m.reg.restore(d)
+	return nil
+}
+
+func (r *registry) snapshot() dump {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	d := dump{Version: 1}
+	for _, mt := range r.metrics {
+		switch mt.kind {
+		case kindCounter:
+			d.Series = append(d.Series, seriesDump{Name: mt.name, Labels: mt.lbls, Kind: "counter", Value: mt.c.get()})
+		case kindHistogram:
+			d.Series = append(d.Series, seriesDump{
+				Name: mt.name, Labels: mt.lbls, Kind: "histogram",
+				Buckets: mt.h.bucketCounts(), Sum: math.Float64frombits(mt.h.sumBits.Load()), Count: mt.h.count.Load(),
+			})
+		}
+	}
+	return d
+}
+
+func (r *registry) restore(d dump) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	idx := make(map[string]*metric, len(r.metrics))
+	for _, mt := range r.metrics {
+		idx[mt.name+renderLabels(mt.lbls, "")] = mt
+	}
+	for _, s := range d.Series {
+		mt, ok := idx[s.Name+renderLabels(labels(s.Labels), "")]
+		if !ok {
+			continue
+		}
+		switch {
+		case s.Kind == "counter" && mt.kind == kindCounter:
+			mt.c.store(s.Value)
+		case s.Kind == "histogram" && mt.kind == kindHistogram && len(s.Buckets) == len(mt.h.counts):
+			mt.h.load(s.Buckets, s.Sum, s.Count)
+		}
+	}
+}
+
 // Handler exposes the registry in Prometheus text format. Bind it on a loopback
 // listener only; it must never be public (doc 12 §5).
 func (m *Metrics) Handler() http.Handler {
@@ -366,8 +446,9 @@ type labels map[string]string
 
 type counter struct{ v atomic.Int64 }
 
-func (c *counter) Inc()       { c.v.Add(1) }
-func (c *counter) get() int64 { return c.v.Load() }
+func (c *counter) Inc()          { c.v.Add(1) }
+func (c *counter) get() int64    { return c.v.Load() }
+func (c *counter) store(v int64) { c.v.Store(v) }
 
 // gauge holds a signed integer value (bytes or counts). Add returns the new value
 // so concurrency tracking needs no second load.
@@ -394,6 +475,25 @@ type histogram struct {
 
 func newHistogram(bounds []float64) *histogram {
 	return &histogram{bounds: bounds, counts: make([]atomic.Int64, len(bounds)+1)}
+}
+
+// bucketCounts returns the per-bucket (non-cumulative) tallies for a snapshot.
+func (h *histogram) bucketCounts() []int64 {
+	out := make([]int64, len(h.counts))
+	for i := range h.counts {
+		out[i] = h.counts[i].Load()
+	}
+	return out
+}
+
+// load restores a snapshot's per-bucket tallies, sum, and count. The caller has
+// already checked the bucket count matches.
+func (h *histogram) load(buckets []int64, sum float64, count int64) {
+	for i := range h.counts {
+		h.counts[i].Store(buckets[i])
+	}
+	h.sumBits.Store(math.Float64bits(sum))
+	h.count.Store(count)
 }
 
 func (h *histogram) Observe(v float64) {

@@ -267,13 +267,16 @@ Short, aggregate-only, with no raw event store anywhere.
 
 - **Edge analytics:** retained by Cloudflare on the free plan (roughly recent-window granular,
   longer-window aggregated). We add nothing to it and store none of it ourselves; we read it live.
-- **Origin counters:** live in process and **reset on restart**, which is the whole retention story
-  today. There is no event store, no per-request row, nothing to age out. If we ever persist them for
-  trend history, it would be **rolled-up aggregates only** (counts and histogram buckets, nothing
-  addressable), but that is a capacity convenience and is not built.
+- **Origin counters:** the cumulative counters and histograms are snapshotted to a small local file
+  (roughly once a minute and on shutdown) and restored on restart, so a restart continues the totals
+  instead of dropping them to zero. The snapshot holds **only aggregate values** (counts, histogram
+  bucket tallies, sums); it has no id, IP, body, token, or per-request row, so it is exactly as blind
+  as the live metrics. Live gauges (inflight, the store row counts, runtime, the janitor heartbeat)
+  are recomputed fresh and are never written. The file lives next to the database in the box's state
+  directory and is never served or shipped anywhere.
 
-The invariant: **no raw event store, ever.** Any persisted rollup window is a confirmable value for
-sign-off (section 10), not asserted here as final.
+The invariant holds: **no raw event store, ever.** Persisting the blind totals is durability for the
+aggregates, not a record of events. There is no per-request history to age out.
 
 ---
 
@@ -403,21 +406,29 @@ metric, loopback gauge, and log, but who follows the rules) abuse it? Anything t
 
 ---
 
-## 10. Open questions for human sign-off
+## 10. Decisions and the few remaining calls
 
 The big privacy-vs-collect-more questions are **decided, not open**: no client telemetry, no
-subject-level analytics, no future floor that unlocks them. What remains are narrow operational
-calls about the blind data we already keep.
+subject-level analytics, no future floor that unlocks them. The earlier operational questions are now
+settled too:
 
-1. **Cloudflare analytics granularity and access policy.** Do we forbid country/ASN drill-downs that
-   could isolate a single early user, and who is allowed to view edge analytics? Needs a stated policy.
-2. **Small-N aggregate gauges.** Should `db_size_bytes`, `knock_rows`, `send_queue_depth`, and the
-   row-count proxies be coarsened or withheld until the population exceeds a threshold, to deny a
-   compromised-but-honest operator a fine-grained activity timeline? They pass the attribution bar but
-   are a coarse liveness timeline at single-digit N.
-3. **Retention window if counters are ever persisted.** Today they are in-memory and reset on restart,
-   so there is nothing to set. If a rolled-up aggregate history is ever added for capacity trends,
-   confirm the window (~30 days proposed) and that it stays counts-only.
+- **Cloudflare analytics: decided.** We do not routinely look at edge traffic, and we never drill into
+  country or network detail; if we ever do, it is only to diagnose a specific incident. The real
+  control is access: the Cloudflare dashboard is gated to the owner alone, so there is no audience for
+  fine-grained traffic data in the first place.
+- **Small-N aggregate gauges: decided.** Kept as-is. They name no one and are needed to run the
+  service, and the metrics endpoint is loopback-only with no other viewer. Revisit only if dashboard
+  access is ever shared.
+- **Persisting counters: decided.** The blind totals are snapshotted to a local counts-only file and
+  restored on restart (section 7), so trends survive a restart. It stays in-memory-plus-snapshot;
+  there is no event history and nothing to age out.
+
+What is genuinely still open is small and operational, not a privacy judgment:
+
+- **Re-confirm the latency baseline on the production box.** The alert thresholds use a local load-test
+  baseline (~3ms p99); run `bench.sh` on the actual VPS once to confirm the numbers match its hardware.
+- **Wire the alert sender on the box.** The minute-by-minute check is built and emails the owner; it
+  needs an outbound mail command configured once (e.g. msmtp), or a webhook, to actually deliver.
 
 ---
 

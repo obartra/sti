@@ -71,7 +71,22 @@ func main() {
 		"Free bytes on the filesystem holding the database.",
 		func() int64 { return diskFreeBytes(dbDir) })
 
-	go background(ctx, st, srv, log)
+	// Metrics persistence: keep the cumulative counters/histograms across restarts
+	// instead of dropping to zero. Only enabled alongside the metrics listener, and
+	// the file holds blind aggregates only (no per-request data). Empty disables it.
+	metricsState := ""
+	if metricsAddr != "" && metricsAddr != "off" {
+		metricsState = env("STI_METRICS_STATE", filepath.Join(dbDir, "metrics.json"))
+		if b, err := os.ReadFile(metricsState); err == nil {
+			if err := srv.Metrics().Restore(b); err != nil {
+				log.Error("metrics restore", "err", err)
+			} else {
+				log.Info("metrics restored", "path", metricsState)
+			}
+		}
+	}
+
+	go background(ctx, st, srv, metricsState, log)
 
 	httpSrv := &http.Server{
 		Addr:              addr,
@@ -108,6 +123,7 @@ func main() {
 
 	<-ctx.Done()
 	log.Info("shutting down")
+	saveMetrics(metricsState, srv, log) // final snapshot before exit
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = httpSrv.Shutdown(shutdownCtx)
@@ -116,11 +132,32 @@ func main() {
 	}
 }
 
+// saveMetrics writes a blind-aggregate snapshot atomically (temp file + rename),
+// so a crash mid-write never leaves a corrupt file. A no-op when path is empty.
+func saveMetrics(path string, srv *server.Server, log *slog.Logger) {
+	if path == "" {
+		return
+	}
+	b, err := srv.Metrics().Snapshot()
+	if err != nil {
+		log.Error("metrics snapshot", "err", err)
+		return
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, b, 0o600); err != nil {
+		log.Error("metrics write", "err", err)
+		return
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		log.Error("metrics rename", "err", err)
+	}
+}
+
 // background runs the periodic janitors: expire knocks, drain due wakes, and trim
 // idle rate-limit buckets. The send drain currently just clears the queue (real
 // Web Push delivery is wired when client subscriptions exist); it proves the
 // queue mechanics end to end.
-func background(ctx context.Context, st *store.Store, srv *server.Server, log *slog.Logger) {
+func background(ctx context.Context, st *store.Store, srv *server.Server, metricsState string, log *slog.Logger) {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 	for {
@@ -139,6 +176,9 @@ func background(ctx context.Context, st *store.Store, srv *server.Server, log *s
 			srv.SweepLimiters(now)
 			// Heartbeat: a stalled loop shows up as this gauge going stale.
 			srv.Metrics().JanitorRan(now / 1000)
+			// Persist the blind aggregates roughly once a minute, so a restart
+			// continues the counters instead of resetting them to zero.
+			saveMetrics(metricsState, srv, log)
 		}
 	}
 }

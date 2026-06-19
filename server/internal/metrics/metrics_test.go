@@ -198,6 +198,49 @@ func TestSendQueueOldestAgeGauge(t *testing.T) {
 	mustContain(t, out, "sti_send_queue_oldest_age_seconds 42")
 }
 
+func TestSnapshotRestoreRoundTrip(t *testing.T) {
+	m1 := New()
+	// Drive some counters and a histogram.
+	for i := 0; i < 5; i++ {
+		m1.Observe("GET", "/a/"+randID43, 200, 0.002)
+	}
+	m1.Observe("GET", "/a/"+randID43, 503, 0.3)
+	m1.Error(ErrStore)
+	blob, err := m1.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// A fresh registry restores to the same values.
+	m2 := New()
+	if err := m2.Restore(blob); err != nil {
+		t.Fatal(err)
+	}
+	out := scrape(t, m2)
+	mustContain(t, out, `sti_requests_total{endpoint="/a/{id}",method="GET",status_class="2xx"} 5`)
+	mustContain(t, out, `sti_requests_total{endpoint="/a/{id}",method="GET",status_class="5xx"} 1`)
+	mustContain(t, out, `sti_shed_total{endpoint="/a/{id}"} 1`)
+	mustContain(t, out, `sti_errors_total{type="store"} 1`)
+	mustContain(t, out, `sti_request_duration_seconds_count{endpoint="/a/{id}"} 6`)
+	// The 0.002 sample is in le=0.005; the 0.3 sample is in le=0.5.
+	mustContain(t, out, `sti_request_duration_seconds_bucket{endpoint="/a/{id}",le="0.005"} 5`)
+	mustContain(t, out, `sti_request_duration_seconds_bucket{endpoint="/a/{id}",le="0.5"} 6`)
+}
+
+func TestRestoreIgnoresUnknownAndGarbage(t *testing.T) {
+	m := New()
+	// Unknown series are skipped, not an error.
+	if err := m.Restore([]byte(`{"version":1,"series":[{"name":"sti_nonexistent","kind":"counter","value":9}]}`)); err != nil {
+		t.Fatalf("unknown series should be skipped, got %v", err)
+	}
+	// Malformed JSON is an error, not a panic.
+	if err := m.Restore([]byte("not json")); err == nil {
+		t.Errorf("malformed snapshot should error")
+	}
+}
+
+const randID43 = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG"
+
 func mustContain(t *testing.T, haystack, needle string) {
 	t.Helper()
 	if !strings.Contains(haystack, needle) {

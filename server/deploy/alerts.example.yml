@@ -59,28 +59,31 @@ groups:
         annotations:
           summary: "In-flight requests above 95% of MaxInflight."
 
-      # p99 latency on the hot read. PLACEHOLDER thresholds; replace with the
-      # benchmark baseline. Buckets are coarse by design (doc 12), so p99 here is
-      # a health trend, not a fine-grained timing oracle.
+      # p99 latency on the hot read. Baseline from a local load test (~27k req/s,
+      # p99 ~3ms on a single indexed SQLite read). Warn at ~8x and page at ~30x
+      # that, so these only fire on real degradation (disk thrash, lock contention,
+      # saturation), with headroom for the slower prod box. Re-confirm on the box
+      # with bench.sh; buckets are coarse by design (doc 12), so p99 here is a
+      # health trend, not a fine-grained timing oracle.
       - alert: StiAliasP99LatencyWarn
         expr: |
           histogram_quantile(0.99,
             sum(rate(sti_request_duration_seconds_bucket{endpoint="/a/{id}"}[5m])) by (le)
-          ) > 0.05
+          ) > 0.025
         for: 5m
         labels: { severity: warning }
         annotations:
-          summary: "GET /a p99 latency above 50ms (placeholder; rebase on the benchmark)."
+          summary: "GET /a p99 latency above 25ms (baseline is ~3ms)."
 
       - alert: StiAliasP99LatencyPage
         expr: |
           histogram_quantile(0.99,
             sum(rate(sti_request_duration_seconds_bucket{endpoint="/a/{id}"}[5m])) by (le)
-          ) > 0.2
+          ) > 0.1
         for: 5m
         labels: { severity: critical }
         annotations:
-          summary: "GET /a p99 latency above 200ms (placeholder; rebase on the benchmark)."
+          summary: "GET /a p99 latency above 100ms (baseline is ~3ms)."
 
       # Free disk on the database filesystem. A full disk corrupts SQLite/WAL and
       # breaks backups, so this pages early. Tune to the box size.
