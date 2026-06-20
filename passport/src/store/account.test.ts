@@ -84,6 +84,21 @@ describe("account manager", () => {
     expect(next.aliases).toEqual([record]); // not two copies
   });
 
+  it("removeAlias drops the record and is idempotent on a missing id", async () => {
+    const accounts = createAccountManager(fakeAccountApi());
+    const created = await accounts.create("robin");
+    await accounts.addAlias(created.master, record);
+
+    const removed = await accounts.removeAlias(created.master, record.id);
+    expect(removed.aliases).toEqual([]);
+    const recovered = await accounts.recover(created.recoveryPhrase);
+    expect(recovered?.blob.aliases).toEqual([]);
+
+    // Removing an already-gone id is a no-op, not an error (retry-safe).
+    const again = await accounts.removeAlias(created.master, record.id);
+    expect(again.aliases).toEqual([]);
+  });
+
   it("setOwnerState persists the new state", async () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");

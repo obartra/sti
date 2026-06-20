@@ -29,6 +29,7 @@ export interface ChromeProps {
   /** The owner's real shareable link (null while preparing / logged out). */
   shareUrl: string | null;
   onCopyShareLink: () => void;
+  onRevokeShareLink: () => void;
 }
 
 function MobileSub({ nav, children }: { nav: Nav; children: ReactNode }) {
@@ -58,6 +59,7 @@ function ShareOverlay({
   setShareOpen,
   shareUrl,
   onCopyShareLink,
+  onRevokeShareLink,
 }: ChromeProps) {
   return (
     <ShareSheet
@@ -71,7 +73,7 @@ function ShareOverlay({
       avatarSrc={avatarSrc(owner.avatar)}
       url={shareUrl}
       onCopy={onCopyShareLink}
-      onRevoke={() => setShareOpen(false)}
+      onRevoke={onRevokeShareLink}
       onWallet={() => {
         setShareOpen(false);
         nav.go("wallet");

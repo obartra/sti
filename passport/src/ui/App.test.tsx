@@ -79,6 +79,9 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
             : base,
       });
     },
+    // Revoke & renew: a distinct id, so the surfaced link visibly changes.
+    renewLink: (session) =>
+      Promise.resolve({ session, url: `https://sti.care/a/${"w".repeat(43)}` }),
     forget: () => undefined,
   };
 }
@@ -214,6 +217,13 @@ describe("App onboarding flow", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/a7f3k9q2/)).toBeNull();
     expect(screen.queryByText(/#k=/)).toBeNull();
+
+    // Revoke & renew swaps the displayed link for the freshly-minted one.
+    await user.click(screen.getByRole("button", { name: /Revoke & renew/ }));
+    expect(
+      await screen.findByText(`sti.care/a/${"w".repeat(43)}`),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(`sti.care/a/${"z".repeat(43)}`)).toBeNull();
   });
 
   it("logs in on a new device with the recovery phrase (no passkey)", async () => {

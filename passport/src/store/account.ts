@@ -53,6 +53,8 @@ export interface AccountManager {
   recover(phrase: string): Promise<RecoveredAccount | null>;
   /** Record a published alias into the account and persist it. */
   addAlias(master: Bytes, record: AliasRecord): Promise<AccountBlob>;
+  /** Drop an alias record from the account (after its payload is revoked). */
+  removeAlias(master: Bytes, id: string): Promise<AccountBlob>;
   /**
    * Update the owner's state (a reported result, a pause), persist it, and
    * republish every alias so the new badge propagates to all shared links.
@@ -110,6 +112,21 @@ export function createAccountManager(api: ApiClient): AccountManager {
       const next: AccountBlob = {
         ...blob,
         aliases: [...blob.aliases.filter((a) => a.id !== record.id), record],
+      };
+      await sync.save(master, next);
+      return next;
+    },
+
+    async removeAlias(master, id) {
+      const blob = await sync.load(master);
+      if (blob === null) {
+        throw new Error("removeAlias: no account exists for this key");
+      }
+      // Idempotent: a retry after a partial save (the payload was revoked, the
+      // record already dropped) is a no-op rather than an error.
+      const next: AccountBlob = {
+        ...blob,
+        aliases: blob.aliases.filter((a) => a.id !== id),
       };
       await sync.save(master, next);
       return next;
