@@ -1,5 +1,7 @@
 import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
+import type { HivStatus } from "../../core/badge.ts";
+import type { ReportOutcome } from "../../core/report.ts";
 
 // C2 Report a result. Faithful port of comps-reference/app/core-flows.jsx
 // (Report + ReportSaved + the in-file Chip helper). Copy reproduced VERBATIM
@@ -275,6 +277,34 @@ function derive(
     touchedAny,
     anyEntered,
   };
+}
+
+// Map the report UI state to the badge-relevant outcome. "All negative" mode is
+// a one-tap full, clear core panel. In detail mode, HIV status comes from its
+// pick (Undetectable is the U=U route), the core panel is complete only when
+// every core infection is covered, and a core positive other than HIV is an
+// active non-HIV STI. Prior-history syphilis is NOT active; undetectable HIV is
+// not an active non-HIV STI.
+export function reportOutcome(s: ReportState): ReportOutcome {
+  if (!s.detail) {
+    return { hiv: "negative", corePanelComplete: true, activeNonHivSti: false };
+  }
+  const hivPick = s.val("hiv");
+  // Undefined when HIV was not tested, so applyReport preserves the prior status
+  // (a syph/gc/ct-only report must not wipe a recorded undetectable/U=U).
+  const hiv: HivStatus | undefined =
+    hivPick === POS
+      ? "positive_detectable"
+      : hivPick === "Undetectable"
+        ? "positive_undetectable"
+        : hivPick === NEG
+          ? "negative"
+          : undefined;
+  const activeNonHivSti =
+    s.val("syph") === POS ||
+    s.siteStatus("gc") === "positive" ||
+    s.siteStatus("ct") === "positive";
+  return { hiv, corePanelComplete: s.coreComplete, activeNonHivSti };
 }
 
 export function useReportState(): ReportState {

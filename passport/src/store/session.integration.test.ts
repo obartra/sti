@@ -12,6 +12,7 @@ import { createSessionController } from "./session.ts";
 import { createDeviceStore, type StorageLike } from "../auth/deviceStore.ts";
 import type { PasskeyAuth } from "../auth/passkey.ts";
 import { type Bytes } from "../crypto/index.ts";
+import type { OwnerState } from "../core/badge.ts";
 import { startApi, type Harness } from "../test-support/serverHarness.ts";
 
 // A fixed-PRF fake authenticator (the passkey contract), so unlock re-yields the
@@ -105,5 +106,26 @@ describe("owner session against a live blind store", () => {
     // A different authenticator over the same stored binding: unlock rejects.
     const { ctl: foreign } = controller(fakePasskey(), devices);
     expect(await foreign.resume()).toBeNull();
+  });
+
+  it("setOwnerState persists a reported result that survives recovery", async () => {
+    const { ctl } = controller(fakePasskey());
+    const { session, recoveryPhrase } = await ctl.signUp("blue");
+    const blueState: OwnerState = {
+      ...session.blob.state,
+      testing: {
+        hasEverTested: true,
+        lastPanelAgeDays: 0,
+        corePanelComplete: true,
+        exposedSitesCovered: true,
+      },
+      onPrep: true,
+    };
+    const updated = await ctl.setOwnerState(session, blueState);
+    expect(updated.blob.state).toEqual(blueState);
+
+    // The new state round-trips through the real /acct endpoint.
+    const recovered = await ctl.recover(recoveryPhrase);
+    expect(recovered?.blob.state).toEqual(blueState);
   });
 });
