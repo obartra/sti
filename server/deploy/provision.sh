@@ -32,10 +32,11 @@ STI_ALLOWED_ORIGINS=https://sti.care
 # it stays local to the box (scrape over an SSH tunnel). Set to "off" to disable.
 # Never expose this port publicly. See labs/docs/12-observability-and-metrics.md.
 STI_METRICS_ADDR=127.0.0.1:9090
-# Minimal alerting (stiapi-alert.timer). Where to email, and the command used to
-# send. STI_ALERT_SENDER defaults to "sendmail -t"; install msmtp (Gmail app
-# password) to provide it, or point this at a webhook command that reads stdin.
-STI_ALERT_EMAIL=obartra@gmail.com
+# Minimal alerting (stiapi-alert.timer). Set the recipient to receive emailed
+# alerts; left unset, alerts are logged to the journal instead (never silently
+# lost). STI_ALERT_SENDER defaults to "sendmail -t"; install msmtp (e.g. with a
+# Gmail app password) to provide it, or point it at a webhook command reading stdin.
+# STI_ALERT_EMAIL=ops@example.com
 # STI_ALERT_SENDER=msmtp -t
 EOF
 	chown root:stiapi /etc/stiapi.env

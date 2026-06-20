@@ -18,7 +18,10 @@
 set -euo pipefail
 
 METRICS_URL="${STI_METRICS_URL:-http://127.0.0.1:9090/metrics}"
-EMAIL="${STI_ALERT_EMAIL:-obartra@gmail.com}"
+# Recipient is operator-provided (set STI_ALERT_EMAIL on the box, e.g. in
+# /etc/stiapi.env); no address is baked into the repo. Unset means alerts are
+# logged to the journal instead of emailed, so a missing recipient is never silent.
+EMAIL="${STI_ALERT_EMAIL:-}"
 FROM="${STI_ALERT_FROM:-stiapi-alerts@sti.care}"
 SENDER="${STI_ALERT_SENDER:-sendmail -t}"
 HOST="$(hostname)"
@@ -79,11 +82,12 @@ Subject: [sti.care] ${#alerts[@]} alert(s) on ${HOST}
 
 ${body}"
 
-if command -v "${SENDER%% *}" >/dev/null 2>&1; then
+if [ -n "$EMAIL" ] && command -v "${SENDER%% *}" >/dev/null 2>&1; then
 	printf '%s\n' "$message" | $SENDER
 	echo "stiapi-alert: sent ${#alerts[@]} alert(s) to ${EMAIL}" >&2
 else
-	# No mailer configured: at least surface it in the journal.
-	echo "stiapi-alert: no sender (${SENDER%% *}); ${#alerts[@]} alert(s):" >&2
+	# No recipient or no mailer configured: at least surface it in the journal,
+	# so the check is never silently lost.
+	echo "stiapi-alert: not emailed (recipient=${EMAIL:-unset}, sender=${SENDER%% *}); ${#alerts[@]} alert(s):" >&2
 	printf '%s\n' "${alerts[@]}" >&2
 fi
