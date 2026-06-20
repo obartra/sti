@@ -10,8 +10,14 @@ import { BadgeCard } from "../badge-card.tsx";
 import type { BadgeState, ProtectionLabel, Route } from "../badge-card.tsx";
 import { avatarSrc, type AvatarConfigInput } from "../../lib/avatars.ts";
 import { Check, Lock, Users, Circles } from "../../design/icons.tsx";
-import { COPY, fieldLbl, useReportState } from "./Report.parts.tsx";
+import {
+  COPY,
+  fieldLbl,
+  reportOutcome,
+  useReportState,
+} from "./Report.parts.tsx";
 import type { ReportState } from "./Report.parts.tsx";
+import type { ReportOutcome } from "../../core/report.ts";
 import { AllClearCard, ChronicCard } from "./Report.cards.tsx";
 import { DetailEntry } from "./Report.infection.tsx";
 
@@ -26,6 +32,8 @@ export interface ReportProps {
   onLearn?: ((id: string) => void) | undefined;
   /** Persist the derived badge inputs (the prototype's setTweak). */
   onTweak?: ((tweak: Record<string, string>) => void) | undefined;
+  /** Apply the reported result to the real owner state (the wired app). */
+  onApply?: ((outcome: ReportOutcome) => void) | undefined;
   /** Pre-fill the date-tested field (the prototype's t.f.lastTestedLabel). */
   lastTestedLabel?: string;
 }
@@ -33,6 +41,7 @@ export interface ReportProps {
 interface SaveArgs {
   state: ReportState;
   onTweak?: ((tweak: Record<string, string>) => void) | undefined;
+  onApply?: ((outcome: ReportOutcome) => void) | undefined;
   onSavedPositive?: (() => void) | undefined;
   onSavedHome?: (() => void) | undefined;
 }
@@ -43,7 +52,13 @@ interface SaveArgs {
 // An all-clear panel that is core-INCOMPLETE does NOT earn blue: it isn't a
 // qualifying current test, so it stays gray (modelled as non-fresh recency),
 // never a half-blue. A complete clear core panel -> blue.
-function runSave({ state, onTweak, onSavedPositive, onSavedHome }: SaveArgs) {
+function runSave({
+  state,
+  onTweak,
+  onApply,
+  onSavedPositive,
+  onSavedHome,
+}: SaveArgs) {
   const { onPassport, anyPositive, detail, coreComplete } = state;
   if (onPassport) {
     if (anyPositive) onTweak?.({ clearance: "positive", pauseMode: "auto" });
@@ -51,6 +66,9 @@ function runSave({ state, onTweak, onSavedPositive, onSavedHome }: SaveArgs) {
       onTweak?.({ recency: "fresh", clearance: "clear", pauseMode: "none" });
     else
       onTweak?.({ recency: "lapsed", clearance: "clear", pauseMode: "none" });
+    // The wired app: apply the result to the real owner state (recomputes the
+    // badge and republishes shared links). Gated on onPassport like the badge.
+    onApply?.(reportOutcome(state));
   }
   if (anyPositive) onSavedPositive?.();
   else onSavedHome?.();
@@ -103,13 +121,14 @@ export function Report({
   onSavedHome,
   onLearn,
   onTweak,
+  onApply,
   lastTestedLabel = "7 Jun 2026",
 }: ReportProps) {
   const c = COPY;
   const state = useReportState();
   const { detail, anyPositive, anyChronicPositive, anyEntered } = state;
   const save = () => {
-    runSave({ state, onTweak, onSavedPositive, onSavedHome });
+    runSave({ state, onTweak, onApply, onSavedPositive, onSavedHome });
   };
   return (
     <div
@@ -155,6 +174,9 @@ export function Report({
         <ChronicCard herpesPositive={state.val("herpes") === "Positive"} />
       )}
 
+      {/* Display-only today: the value is never read, and applyReport records
+          the result as tested-today. If this becomes editable, applyReport must
+          derive lastPanelAgeDays from it (an old date must not read as fresh). */}
       <Field label={<span style={fieldLbl}>{c.dateLabel}</span>}>
         <Input defaultValue={lastTestedLabel} />
       </Field>

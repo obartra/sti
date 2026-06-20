@@ -27,12 +27,14 @@ function stubStore(to: ResolvedView | null): PassportStore {
 // A fake session controller standing in for the backend one (the real WebAuthn
 // adapter cannot run in jsdom). It records the created handle + profile so the
 // derived owner view can be asserted after onboarding.
-function fakeController(): SessionController {
+function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
   const master = new Uint8Array(32);
   let blob: AccountBlob = {
     handle: "",
     aliases: [],
-    state: INITIAL_OWNER_STATE,
+    // onPrep is a route the report can't set; preset it to exercise the
+    // report-turns-blue path (a clear panel + a route earns blue).
+    state: { ...INITIAL_OWNER_STATE, onPrep: opts.onPrep ?? false },
     avatar: DEFAULT_AVATAR,
     sharingMode: "link",
   };
@@ -53,6 +55,10 @@ function fakeController(): SessionController {
         avatar: profile.avatar,
         sharingMode: profile.sharingMode,
       };
+      return Promise.resolve({ master, blob } as OwnerSession);
+    },
+    setOwnerState: (_session, state) => {
+      blob = { ...blob, state };
       return Promise.resolve({ master, blob } as OwnerSession);
     },
     forget: () => undefined,
@@ -137,6 +143,44 @@ describe("App onboarding flow", () => {
 
     // The account was created (default handle "robin"), so the app still enters.
     expect((await screen.findAllByText("@robin")).length).toBeGreaterThan(0);
+  });
+
+  it("reports a result and the home badge turns blue (report -> setOwnerState -> derive)", async () => {
+    window.history.pushState({}, "", "/#b1-claim");
+    const user = userEvent.setup();
+    // A PrEP user: a clear, complete panel then earns blue (the route exists).
+    render(
+      <App
+        store={stubStore(null)}
+        controller={fakeController({ onPrep: true })}
+      />,
+    );
+
+    // Onboard through to home (still gray: never tested yet).
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(
+      await screen.findByRole("button", { name: /Tap to reveal/ }),
+    );
+    await user.click(screen.getByRole("button", { name: /saved it/i }));
+    await user.click(
+      await screen.findByRole("button", { name: /Enter my passport/ }),
+    );
+    // Home is reached (gray, never tested yet): its primary action adds a result.
+    const [addResult] = await screen.findAllByRole("button", {
+      name: /Add a result/,
+    });
+    if (!addResult) throw new Error("no 'Add a result' action on home");
+
+    // The all-negative one-tap is a clear, complete core panel.
+    await user.click(addResult);
+    await user.click(
+      await screen.findByRole("button", { name: /Save results/ }),
+    );
+
+    // Back home, the badge is blue on the HIV-prevention (PrEP) route.
+    expect(
+      (await screen.findAllByText("Tested & on HIV prevention")).length,
+    ).toBeGreaterThan(0);
   });
 
   it("keeps a logged-out visitor out of app screens (no owner data leaks)", async () => {

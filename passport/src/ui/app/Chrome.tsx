@@ -11,12 +11,14 @@ import type { Nav } from "./useAppRouter.ts";
 import type { OwnerView, PassportStore } from "../../store/index.ts";
 import type { ScreenCtx } from "./screens/context.ts";
 import type { OnboardingActions } from "./useOnboarding.ts";
+import type { ReportOutcome } from "../../core/report.ts";
 
 export interface ChromeProps {
   route: Route;
   nav: Nav;
   owner: OwnerView;
   onboarding: OnboardingActions;
+  onReport: (outcome: ReportOutcome) => void;
   store: PassportStore;
   desktop: boolean;
   shareOpen: boolean;
@@ -70,12 +72,22 @@ function ShareOverlay({
 }
 
 function AppChrome(props: ChromeProps) {
-  const { route, nav, owner, onboarding, store, desktop, setShareOpen } = props;
+  const {
+    route,
+    nav,
+    owner,
+    onboarding,
+    onReport,
+    store,
+    desktop,
+    setShareOpen,
+  } = props;
   const tab: Tab = sectionOf(route.screen);
   const ctx: ScreenCtx = {
     nav,
     owner,
     onboarding,
+    onReport,
     openShare: () => setShareOpen(true),
     store,
     data: route.data,
@@ -138,6 +150,7 @@ function PublicChrome({
   nav,
   owner,
   onboarding,
+  onReport,
   store,
   desktop,
   setShareOpen,
@@ -156,6 +169,7 @@ function PublicChrome({
     nav,
     owner,
     onboarding,
+    onReport,
     openShare: () => setShareOpen(true),
     store,
     data: route.data,

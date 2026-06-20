@@ -22,6 +22,7 @@ import {
   type StorageLike,
 } from "../auth/deviceStore.ts";
 import { webAuthnPasskey } from "../auth/passkey.ts";
+import { applyReport, type ReportOutcome } from "../core/report.ts";
 import { API_BASE_URL } from "../config.ts";
 
 // The real backend boundary: api transport + crypto. Created once; it opens no
@@ -73,6 +74,20 @@ export function App({
   );
   const onboarding = useOnboarding(controller, onSession);
 
+  // Apply a reported result to the owner's state and republish. Only meaningful
+  // logged in; a no-op otherwise. On a network failure the session is left
+  // unchanged (the badge keeps its prior value) and a retry re-applies.
+  const onReport = useCallback(
+    (outcome: ReportOutcome) => {
+      if (session === null) return;
+      void controller
+        .setOwnerState(session, applyReport(session.blob.state, outcome))
+        .then(setSession)
+        .catch(() => undefined);
+    },
+    [session, controller],
+  );
+
   const loggedIn = session !== null;
   const owner = session ? deriveOwnerView(session.blob) : OWNER;
 
@@ -90,6 +105,7 @@ export function App({
       nav={nav}
       owner={owner}
       onboarding={onboarding}
+      onReport={onReport}
       store={store}
       desktop={desktop}
       shareOpen={shareOpen}

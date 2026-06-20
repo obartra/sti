@@ -26,6 +26,7 @@ import type { DeviceStore } from "../auth/deviceStore.ts";
 import type { AccountManager, OwnerProfile } from "./account.ts";
 import type { AccountSync } from "./accountSync.ts";
 import type { AccountBlob } from "./accountBlob.ts";
+import type { OwnerState } from "../core/badge.ts";
 
 /** An unlocked session: the master (in memory only) and the loaded account. */
 export interface OwnerSession {
@@ -62,6 +63,14 @@ export interface SessionController {
   setProfile(
     session: OwnerSession,
     profile: OwnerProfile,
+  ): Promise<OwnerSession>;
+  /**
+   * Persist a new owner state (a reported result, a pause), republish every
+   * alias so the badge propagates, and return the session with the updated blob.
+   */
+  setOwnerState(
+    session: OwnerSession,
+    state: OwnerState,
   ): Promise<OwnerSession>;
   /** Forget this device's passkey binding. The phrase still recovers. */
   forget(): void;
@@ -132,6 +141,11 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
     async setProfile(session, profile) {
       const blob = await accounts.setProfile(session.master, profile);
+      return { master: session.master, blob };
+    },
+
+    async setOwnerState(session, state) {
+      const blob = await accounts.setOwnerState(session.master, state);
       return { master: session.master, blob };
     },
 
