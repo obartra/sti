@@ -23,10 +23,13 @@ import {
 import { wrapMaster, unwrapMaster } from "../auth/keyVault.ts";
 import type { PasskeyAuth } from "../auth/passkey.ts";
 import type { DeviceStore } from "../auth/deviceStore.ts";
+import type { ApiClient } from "../api/client.ts";
 import type { AccountManager, OwnerProfile } from "./account.ts";
 import type { AccountSync } from "./accountSync.ts";
 import type { AccountBlob } from "./accountBlob.ts";
 import type { OwnerState } from "../core/badge.ts";
+import { deriveOwnerCard } from "./ownerCard.ts";
+import { publishCard, republishCard, aliasLinkUrl } from "./publish.ts";
 
 /** An unlocked session: the master (in memory only) and the loaded account. */
 export interface OwnerSession {
@@ -72,8 +75,20 @@ export interface SessionController {
     session: OwnerSession,
     state: OwnerState,
   ): Promise<OwnerSession>;
+  /**
+   * Produce a shareable link to the owner's current card. Reuses the account's
+   * primary alias (republishing the current card to it so the link stays fresh)
+   * or mints one on first share and records it. Returns the (possibly updated)
+   * session and the URL.
+   */
+  shareLink(session: OwnerSession): Promise<ShareLinkResult>;
   /** Forget this device's passkey binding. The phrase still recovers. */
   forget(): void;
+}
+
+export interface ShareLinkResult {
+  readonly session: OwnerSession;
+  readonly url: string;
 }
 
 export interface SessionDeps {
@@ -81,10 +96,12 @@ export interface SessionDeps {
   readonly sync: AccountSync;
   readonly devices: DeviceStore;
   readonly passkey: PasskeyAuth;
+  /** Transport for publishing/republishing the owner's shareable alias. */
+  readonly api: ApiClient;
 }
 
 export function createSessionController(deps: SessionDeps): SessionController {
-  const { accounts, sync, devices, passkey } = deps;
+  const { accounts, sync, devices, passkey, api } = deps;
 
   return {
     async signUp(handle) {
@@ -147,6 +164,31 @@ export function createSessionController(deps: SessionDeps): SessionController {
     async setOwnerState(session, state) {
       const blob = await accounts.setOwnerState(session.master, state);
       return { master: session.master, blob };
+    },
+
+    async shareLink(session) {
+      const card = deriveOwnerCard(session.blob.state, session.blob.handle);
+      const wantPublic = session.blob.sharingMode === "public";
+      // One alias per visibility: reuse the alias whose visibility matches the
+      // owner's CURRENT sharing mode (republishing the current card so an
+      // already-shared link reflects the latest badge), or mint one on first
+      // share in this mode. Selecting by visibility, not array position, keeps
+      // the link's key-presence aligned with the mode the sheet shows: a public
+      // link carries the AES key in its `#k=` fragment, a private link never
+      // does. Reusing by position would otherwise hand out a key-bearing URL
+      // under a "private link" sheet after a public -> link switch.
+      const existing = session.blob.aliases.find(
+        (a) => a.isPublic === wantPublic,
+      );
+      if (existing !== undefined) {
+        await republishCard(api, existing, card);
+        return { session, url: aliasLinkUrl(existing) };
+      }
+      const { link, record } = await publishCard(api, card, {
+        isPublic: wantPublic,
+      });
+      const blob = await accounts.addAlias(session.master, record);
+      return { session: { master: session.master, blob }, url: link };
     },
 
     forget() {

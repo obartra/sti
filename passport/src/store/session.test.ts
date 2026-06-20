@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { createSessionController, type SessionDeps } from "./session.ts";
 import { createDeviceStore, type StorageLike } from "../auth/deviceStore.ts";
 import type { PasskeyAuth } from "../auth/passkey.ts";
+import type { ApiClient } from "../api/client.ts";
 import type { AccountManager } from "./account.ts";
 import type { AccountSync } from "./accountSync.ts";
 import type { AccountBlob } from "./accountBlob.ts";
@@ -87,10 +88,20 @@ function memoryStorage(): StorageLike {
   };
 }
 
+// The session controller's tested methods never touch the api (only shareLink
+// does, covered by the integration test), so a throwing stub is sufficient here.
+const stubApi = new Proxy({} as ApiClient, {
+  get() {
+    return () => {
+      throw new Error("api unused in this test");
+    };
+  },
+});
+
 function setup(passkey: PasskeyAuth = fakePasskey()) {
   const { accounts, sync } = fakeBackend();
   const devices = createDeviceStore(memoryStorage());
-  const deps: SessionDeps = { accounts, sync, devices, passkey };
+  const deps: SessionDeps = { accounts, sync, devices, passkey, api: stubApi };
   return { ctl: createSessionController(deps), devices, passkey };
 }
 
@@ -181,6 +192,7 @@ describe("session controller", () => {
       sync,
       devices,
       passkey: enrolled,
+      api: stubApi,
     });
     const { session } = await ctlA.signUp("robin");
     await ctlA.enrollPasskey(session, "robin");
@@ -190,6 +202,7 @@ describe("session controller", () => {
       sync,
       devices,
       passkey: fakePasskey(),
+      api: stubApi,
     });
     expect(await ctlB.resume()).toBeNull();
     // The binding is untouched: the original passkey still resumes.

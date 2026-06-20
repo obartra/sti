@@ -64,6 +64,11 @@ function spawnServer(work: string, port: number): ChildProcess {
       STI_ADDR: `127.0.0.1:${port}`,
       STI_DB_PATH: join(work, "itest.db"),
       STI_DECOY_SECRET: randomHex(32),
+      // The whole suite drives many writes from one loopback IP; the production
+      // per-IP budget (5/sec, burst 20) would throttle it. Rate limiting has its
+      // own Go-level coverage, so lift it here to keep these tests deterministic.
+      STI_IP_RATE_PER_SEC: "100000",
+      STI_IP_BURST: "100000",
       // No metrics listener for integration servers: they run in parallel and
       // would otherwise contend for the fixed metrics port. The metrics endpoint
       // has its own Go-level coverage.

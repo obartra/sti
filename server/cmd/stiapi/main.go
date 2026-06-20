@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -70,10 +71,19 @@ func main() {
 		log.Warn("STI_NOTIFY_ENABLED is set but no Web Push sender is configured; wakes are not delivered")
 	}
 
+	// Per-IP request limit on the non-sensitive endpoints. Zero leaves the
+	// server's defaults (5/sec, burst 20); raise it for load tests or an
+	// integration harness driving many writes from a single (loopback) IP, where
+	// the production budget would otherwise throttle the run.
+	ipRate := envFloat("STI_IP_RATE_PER_SEC", 0)
+	ipBurst := envFloat("STI_IP_BURST", 0)
+
 	srv := server.New(st, server.Config{
 		DecoySecret:    secret,
 		AllowedOrigins: allowedOrigins,
 		NotifyEnabled:  notifyEnabled,
+		IPRatePerSec:   ipRate,
+		IPBurst:        ipBurst,
 	}, log, nil)
 
 	// Host and process health gauges. All system facts, no subject data.
@@ -199,6 +209,16 @@ func background(ctx context.Context, st *store.Store, srv *server.Server, metric
 func env(key, def string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return def
+}
+
+// envFloat reads a float env var, falling back to def when unset or unparseable.
+func envFloat(key string, def float64) float64 {
+	if v := os.Getenv(key); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			return f
+		}
 	}
 	return def
 }
