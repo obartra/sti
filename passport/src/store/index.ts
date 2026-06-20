@@ -21,3 +21,10 @@ export type {
 export { createAccountManager } from "./account.ts";
 export { deriveOwnerCard, republishOwnerCard } from "./ownerCard.ts";
 export { knock, requesterHash } from "./knock.ts";
+export type {
+  OwnerSession,
+  SignUpResult,
+  SessionController,
+  SessionDeps,
+} from "./session.ts";
+export { createSessionController } from "./session.ts";
