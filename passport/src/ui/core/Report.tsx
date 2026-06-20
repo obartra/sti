@@ -8,7 +8,7 @@ import {
 } from "../../design/components/index.ts";
 import { BadgeCard } from "../badge-card.tsx";
 import type { BadgeState, ProtectionLabel, Route } from "../badge-card.tsx";
-import { avatarSrc } from "../../lib/avatars.ts";
+import { avatarSrc, type AvatarConfigInput } from "../../lib/avatars.ts";
 import { Check, Lock, Users, Circles } from "../../design/icons.tsx";
 import { COPY, fieldLbl, useReportState } from "./Report.parts.tsx";
 import type { ReportState } from "./Report.parts.tsx";
@@ -298,8 +298,8 @@ export interface ReportSavedProps {
   labels?: ProtectionLabel[];
   /** The blue-card route label. */
   blueRoute?: Route;
-  /** Avatar seed (the prototype's t.avatarId). */
-  avatarId?: number;
+  /** Avatar for the badge card (config or seed). */
+  avatar?: AvatarConfigInput;
   /** Handle shown on the badge card identity row. */
   handle?: string;
 }
@@ -310,7 +310,7 @@ export function ReportSaved({
   viewerBadge = "gray",
   labels = [],
   blueRoute = null,
-  avatarId = 0,
+  avatar = 0,
   handle = "robin",
 }: ReportSavedProps) {
   const c = COPY;
@@ -331,7 +331,7 @@ export function ReportSaved({
         labels={labels}
         route={blueRoute}
         identity={{ handle }}
-        avatarSrc={avatarSrc(avatarId)}
+        avatarSrc={avatarSrc(avatar)}
         width="100%"
       />
 

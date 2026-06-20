@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Segmented } from "../../design/components/index.ts";
-import { avatarSrc as avatarSrcFor } from "../../lib/avatars.ts";
+import {
+  avatarSrc as avatarSrcFor,
+  type AvatarConfigInput,
+} from "../../lib/avatars.ts";
 import type { BadgeState, ProtectionLabel, Route } from "../badge-card.tsx";
 import { COPY, HANDLE, WALLET_FRESH_HOURS, livePassState } from "./shared.tsx";
 import type { SharingMode, WalletFormat } from "./shared.tsx";
@@ -38,7 +41,7 @@ export interface WalletProps {
   viewerBadge?: BadgeState;
   labels?: ProtectionLabel[];
   blueRoute?: Route;
-  avatarId?: number;
+  avatar?: AvatarConfigInput;
   // Driven by the dev panel in the real app so a reviewer can reach the
   // QR-carrier, Live-fresh, and Live-stale→gray faces; in-screen controls write
   // back through onSetTweak.
@@ -62,7 +65,7 @@ interface WalletDerived {
 function useWalletDerived({
   sharingMode = "public",
   viewerBadge = "blue",
-  avatarId = 2,
+  avatar = 2,
   walletFormat = "qr",
   walletFresh = "fresh",
   onSetTweak,
@@ -105,7 +108,7 @@ function useWalletDerived({
     setFormat,
     setReachable,
     passState,
-    avatarSrc: avatarSrcFor(avatarId),
+    avatarSrc: avatarSrcFor(avatar),
   };
 }
 

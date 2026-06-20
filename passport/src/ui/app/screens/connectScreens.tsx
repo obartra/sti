@@ -18,7 +18,7 @@ export const connectRenderers: ScreenRenderers = {
     <ShareLink
       onDone={nav.back}
       sharingMode={owner.sharingMode === "public" ? "public" : "private"}
-      avatarId={owner.avatarId}
+      avatar={owner.avatar}
     />
   ),
 };

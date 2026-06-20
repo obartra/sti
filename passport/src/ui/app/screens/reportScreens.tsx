@@ -20,7 +20,7 @@ export const reportRenderers: ScreenRenderers = {
       viewerBadge={owner.viewerBadge}
       labels={owner.labels}
       blueRoute={owner.blueRoute}
-      avatarId={owner.avatarId}
+      avatar={owner.avatar}
       handle={owner.handle}
     />
   ),
@@ -43,7 +43,7 @@ export const reportRenderers: ScreenRenderers = {
       viewerBadge={owner.viewerBadge}
       labels={owner.labels}
       blueRoute={owner.blueRoute}
-      avatarId={owner.avatarId}
+      avatar={owner.avatar}
     />
   ),
 };
