@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { IconButton } from "../../design/components/index.ts";
+import { KnockDot } from "./KnockDot.tsx";
 import {
   Plus,
   Bell,
@@ -32,10 +33,12 @@ export function AppTopBar({
   onAdd,
   onBell,
   showAdd = true,
+  hasKnocks = false,
 }: {
   onAdd?: (() => void) | undefined;
   onBell?: (() => void) | undefined;
   showAdd?: boolean | undefined;
+  hasKnocks?: boolean | undefined;
 }) {
   return (
     <header className="app-topbar">
@@ -50,8 +53,16 @@ export function AppTopBar({
             <Plus size={20} />
           </IconButton>
         )}
-        <IconButton aria-label="Notifications" onClick={onBell}>
-          <Bell size={20} />
+        <IconButton
+          aria-label={
+            hasKnocks ? "Notifications (new activity)" : "Notifications"
+          }
+          onClick={onBell}
+        >
+          <span style={{ position: "relative", display: "inline-flex" }}>
+            <Bell size={20} />
+            {hasKnocks && <KnockDot />}
+          </span>
         </IconButton>
       </div>
     </header>
@@ -109,6 +120,7 @@ export interface AppShellProps {
   onAdd?: () => void;
   onBell?: () => void;
   showAdd?: boolean;
+  hasKnocks?: boolean;
   children: ReactNode;
 }
 
@@ -119,11 +131,17 @@ export function AppShell({
   onAdd,
   onBell,
   showAdd,
+  hasKnocks,
   children,
 }: AppShellProps) {
   return (
     <div className="app-shell">
-      <AppTopBar onAdd={onAdd} onBell={onBell} showAdd={showAdd} />
+      <AppTopBar
+        onAdd={onAdd}
+        onBell={onBell}
+        showAdd={showAdd}
+        hasKnocks={hasKnocks}
+      />
       <main className="app-shell__content">{children}</main>
       <TabBar tab={tab} onTab={onTab} />
     </div>

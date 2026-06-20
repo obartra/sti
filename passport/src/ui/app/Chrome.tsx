@@ -156,6 +156,7 @@ function AppChrome(props: ChromeProps) {
           onAdd={() => nav.go("report")}
           onBell={() => nav.go("notifications")}
           showAdd={route.screen === "results"}
+          hasKnocks={knockCount > 0}
         >
           {content}
         </AppShell>
