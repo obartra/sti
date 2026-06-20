@@ -47,6 +47,19 @@ const COPY = {
 const URL_PUBLIC = "sti.care/a/a7f3k9q2#k=Zr8";
 const URL_LINK = "sti.care/a/a7f3k9q2";
 
+// Resolve what the URL card renders: the real link when present (scheme stripped
+// for display), else the placeholder so Storybook renders without a session. The
+// QR seed tracks the alias id so it varies per link (the matrix is stylized).
+function displayLink(
+  realUrl: string | null | undefined,
+  link: boolean,
+): { url: string; seed: string } {
+  const display = realUrl ?? `https://${link ? URL_LINK : URL_PUBLIC}`;
+  const url = display.replace(/^https?:\/\//, "");
+  const seed = url.split("/a/")[1]?.split(/[#?]/)[0] ?? "a7f3k9q2";
+  return { url, seed };
+}
+
 export interface ShareSheetProps {
   open: boolean;
   onClose?: (() => void) | undefined;
@@ -56,6 +69,10 @@ export interface ShareSheetProps {
   route?: Route | undefined;
   identity: { handle: string };
   avatarSrc?: string | undefined;
+  /** The real shareable link. Null/absent falls back to a placeholder (Storybook). */
+  url?: string | null | undefined;
+  /** Copy the real link to the clipboard. */
+  onCopy?: (() => void) | undefined;
   onRevoke?: (() => void) | undefined;
   onWallet?: (() => void) | undefined;
   desktop?: boolean | undefined;
@@ -106,7 +123,17 @@ function SheetHeader({
   );
 }
 
-function UrlCard({ link, url }: { link: boolean; url: string }): ReactElement {
+function UrlCard({
+  link,
+  url,
+  seed,
+  onCopy,
+}: {
+  link: boolean;
+  url: string;
+  seed: string;
+  onCopy: (() => void) | undefined;
+}): ReactElement {
   return (
     <div
       style={{
@@ -119,7 +146,7 @@ function UrlCard({ link, url }: { link: boolean; url: string }): ReactElement {
         boxShadow: "var(--shadow-sm)",
       }}
     >
-      <Matrix seed="a7f3k9q2" size={64} color="var(--ink-900)" />
+      <Matrix seed={seed} size={64} color="var(--ink-900)" />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
@@ -158,7 +185,12 @@ function UrlCard({ link, url }: { link: boolean; url: string }): ReactElement {
           {link ? COPY.noteLink : COPY.notePublic}
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Button variant="secondary" size="sm" icon={<Copy size={15} />}>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Copy size={15} />}
+            onClick={onCopy}
+          >
             {COPY.copyLink}
           </Button>
           <Button
@@ -166,7 +198,7 @@ function UrlCard({ link, url }: { link: boolean; url: string }): ReactElement {
             size="sm"
             icon={<Download size={15} />}
             onClick={() => {
-              downloadPNG({ status: "logo", seed: "a7f3k9q2" });
+              downloadPNG({ status: "logo", seed });
             }}
           >
             {COPY.saveQr}
@@ -287,12 +319,14 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
     route = null,
     identity,
     avatarSrc,
+    url: realUrl,
+    onCopy,
     onRevoke,
     onWallet,
     desktop = false,
   } = props;
   const link = sharingMode === "link";
-  const url = link ? URL_LINK : URL_PUBLIC;
+  const { url, seed } = displayLink(realUrl, link);
 
   return (
     <div
@@ -351,7 +385,7 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
         >
           <Eye size={14} /> {COPY.reassurance}
         </div>
-        <UrlCard link={link} url={url} />
+        <UrlCard link={link} url={url} seed={seed} onCopy={onCopy} />
         <WalletRow onWallet={onWallet} />
         <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
           {link && (

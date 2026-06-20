@@ -66,6 +66,19 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       blob = { ...blob, state };
       return Promise.resolve({ master, blob } as OwnerSession);
     },
+    // Faithful to the controller contract: a public account's link carries the
+    // key in the fragment, a private ("link") account's does not.
+    shareLink: (session) => {
+      const id = "z".repeat(43);
+      const base = `https://sti.care/a/${id}`;
+      return Promise.resolve({
+        session,
+        url:
+          session.blob.sharingMode === "public"
+            ? `${base}#k=${"y".repeat(43)}`
+            : base,
+      });
+    },
     forget: () => undefined,
   };
 }
@@ -186,6 +199,21 @@ describe("App onboarding flow", () => {
     expect(
       (await screen.findAllByText("Tested & on HIV prevention")).length,
     ).toBeGreaterThan(0);
+
+    // Opening the share sheet asks the controller for the real link and surfaces
+    // it (scheme stripped), rather than the hardcoded placeholder.
+    const [share] = await screen.findAllByRole("button", {
+      name: /Share my passport/,
+    });
+    if (!share) throw new Error("no 'Share my passport' action on home");
+    await user.click(share);
+    // This is a private ("link") account, so the surfaced link is the bare
+    // /a/{id} with no key in the fragment, not the Storybook placeholder.
+    expect(
+      await screen.findByText(`sti.care/a/${"z".repeat(43)}`),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/a7f3k9q2/)).toBeNull();
+    expect(screen.queryByText(/#k=/)).toBeNull();
   });
 
   it("logs in on a new device with the recovery phrase (no passkey)", async () => {

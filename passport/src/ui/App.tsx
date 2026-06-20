@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { useAppRouter } from "./app/useAppRouter.ts";
 import { useDesktop } from "./desktop/Desktop.tsx";
 import { useOnboarding } from "./app/useOnboarding.ts";
+import { useShareLink } from "./app/useShareLink.ts";
 import { OWNER } from "./app/fixtures.ts";
 import { Chrome } from "./app/Chrome.tsx";
 import type { Route } from "./app/routes.ts";
@@ -51,6 +52,7 @@ const backendController = createSessionController({
   sync: createAccountSync(api),
   devices: browserDeviceStore() ?? createDeviceStore(volatileStorage()),
   passkey: webAuthnPasskey(),
+  api,
 });
 
 // The wired app: a route + history model (useAppRouter), responsive chrome, and
@@ -113,6 +115,14 @@ export function App({
     [setOwnerState],
   );
 
+  // The share sheet: opening it mints/refreshes the owner's primary alias and
+  // surfaces its real link; copy writes that link to the clipboard.
+  const {
+    shareUrl,
+    setShareOpen: handleSetShareOpen,
+    copyShareLink,
+  } = useShareLink(controller, sessionRef, setSession, setShareOpen);
+
   const loggedIn = session !== null;
   const owner = session ? deriveOwnerView(session.blob) : OWNER;
   const ownerState = session ? session.blob.state : INITIAL_OWNER_STATE;
@@ -137,7 +147,9 @@ export function App({
       store={store}
       desktop={desktop}
       shareOpen={shareOpen}
-      setShareOpen={setShareOpen}
+      setShareOpen={handleSetShareOpen}
+      shareUrl={shareUrl}
+      onCopyShareLink={copyShareLink}
     />
   );
 }
