@@ -18,6 +18,7 @@
 import {
   bytesToBase64url,
   base64urlToBytes,
+  randomAliasId,
   type Bytes,
 } from "../crypto/index.ts";
 import { wrapMaster, unwrapMaster } from "../auth/keyVault.ts";
@@ -26,7 +27,11 @@ import type { DeviceStore } from "../auth/deviceStore.ts";
 import type { ApiClient } from "../api/client.ts";
 import type { AccountManager, OwnerProfile } from "./account.ts";
 import type { AccountSync } from "./accountSync.ts";
-import type { AccountBlob } from "./accountBlob.ts";
+import {
+  MAX_CONTACT_LABEL,
+  type AccountBlob,
+  type ContactRecord,
+} from "./accountBlob.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { deriveOwnerCard } from "./ownerCard.ts";
 import { todayEpochDay } from "../core/clock.ts";
@@ -35,6 +40,7 @@ import {
   republishCard,
   revokeAlias,
   aliasLinkUrl,
+  keyedAliasLinkUrl,
 } from "./publish.ts";
 
 /** An unlocked session: the master (in memory only) and the loaded account. */
@@ -108,8 +114,34 @@ export interface SessionController {
    * failure shows "no knocks" rather than erroring the inbox.
    */
   reviewKnocks(session: OwnerSession): Promise<number>;
+  /**
+   * Mint a fresh PRIVATE link for one specific contact (a named, individually
+   * revocable link, default 7-day expiry), publish the current card to it, and
+   * record it. Returns the updated session, the new contact, and the link URL.
+   */
+  createContactLink(
+    session: OwnerSession,
+    label: string,
+  ): Promise<ContactLinkResult>;
+  /**
+   * Revoke one contact's link (its old URL stops resolving) and drop the record.
+   * A no-op if the contact id is unknown. Returns the updated session.
+   */
+  revokeContact(
+    session: OwnerSession,
+    contactId: string,
+  ): Promise<OwnerSession>;
   /** Forget this device's passkey binding. The phrase still recovers. */
   forget(): void;
+}
+
+/** A per-contact link's default lifetime before it lapses to gray-nothing (doc 13). */
+export const CONTACT_LINK_DAYS = 7;
+
+export interface ContactLinkResult {
+  readonly session: OwnerSession;
+  readonly contact: ContactRecord;
+  readonly url: string;
 }
 
 export interface ShareLinkResult {
@@ -124,6 +156,48 @@ export interface SessionDeps {
   readonly passkey: PasskeyAuth;
   /** Transport for publishing/republishing the owner's shareable alias. */
   readonly api: ApiClient;
+}
+
+// Mint a fresh private alias for one contact, publish the current card to it, and
+// record it with a default expiry. The alias is private (unadvertised) but the
+// returned link carries the key, so the one recipient opens it directly (one tap).
+async function mintContactLink(
+  api: ApiClient,
+  accounts: AccountManager,
+  session: OwnerSession,
+  label: string,
+): Promise<ContactLinkResult> {
+  const nowDay = todayEpochDay();
+  const card = deriveOwnerCard(session.blob.state, session.blob.handle, nowDay);
+  const { record } = await publishCard(api, card, { isPublic: false });
+  const contact: ContactRecord = {
+    id: randomAliasId(),
+    label: label.slice(0, MAX_CONTACT_LABEL),
+    createdDay: nowDay,
+    expiresDay: nowDay + CONTACT_LINK_DAYS,
+    alias: record,
+  };
+  const blob = await accounts.addContact(session.master, contact);
+  return {
+    session: { master: session.master, blob },
+    contact,
+    url: keyedAliasLinkUrl(record),
+  };
+}
+
+// Revoke one contact link: kill the payload first (overwrite to garbage), then
+// drop the record. Fail-safe order: a failed revoke leaves the record for a retry.
+async function revokeContactLink(
+  api: ApiClient,
+  accounts: AccountManager,
+  session: OwnerSession,
+  contactId: string,
+): Promise<OwnerSession> {
+  const contact = session.blob.contacts.find((c) => c.id === contactId);
+  if (contact === undefined) return session;
+  await revokeAlias(api, contact.alias);
+  const blob = await accounts.removeContact(session.master, contactId);
+  return { master: session.master, blob };
 }
 
 export function createSessionController(deps: SessionDeps): SessionController {
@@ -252,12 +326,24 @@ export function createSessionController(deps: SessionDeps): SessionController {
     },
 
     async reviewKnocks(session) {
+      // Knocks can land on any link the owner published: the public/casual
+      // aliases and every per-contact link.
+      const links = [
+        ...session.blob.aliases,
+        ...session.blob.contacts.map((c) => c.alias),
+      ];
       const counts = await Promise.all(
-        session.blob.aliases.map((a) =>
-          api.knockCount(a.id, a.writeToken).catch(() => 0),
-        ),
+        links.map((a) => api.knockCount(a.id, a.writeToken).catch(() => 0)),
       );
       return counts.reduce((sum, n) => sum + n, 0);
+    },
+
+    createContactLink(session, label) {
+      return mintContactLink(api, accounts, session, label);
+    },
+
+    revokeContact(session, contactId) {
+      return revokeContactLink(api, accounts, session, contactId);
     },
 
     forget() {

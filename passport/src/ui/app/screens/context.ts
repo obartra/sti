@@ -1,7 +1,12 @@
 import type { ReactNode } from "react";
 import type { Nav } from "../useAppRouter.ts";
 import type { RouteData, Screen } from "../routes.ts";
-import type { OwnerView, PassportStore } from "../../../store/index.ts";
+import type {
+  ContactLinkResult,
+  ContactRecord,
+  OwnerView,
+  PassportStore,
+} from "../../../store/index.ts";
 import type { OnboardingActions } from "../useOnboarding.ts";
 import type { ReportOutcome } from "../../../core/report.ts";
 import type { OwnerState } from "../../../core/badge.ts";
@@ -30,6 +35,12 @@ export interface ScreenCtx {
   knockCount: number;
   /** Re-pull the knock count (e.g. when the inbox opens). */
   refreshKnocks: () => void;
+  /** The owner's per-contact links (newest last); empty logged out. */
+  contacts: ContactRecord[];
+  /** Mint a new per-contact link for `label`; resolves with the contact + URL. */
+  onCreateContactLink: (label: string) => Promise<ContactLinkResult>;
+  /** Revoke one contact link by id. */
+  onRevokeContact: (id: string) => void;
   store: PassportStore;
   data: RouteData | null;
 }

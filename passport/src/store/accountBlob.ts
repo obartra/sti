@@ -19,14 +19,14 @@ import { isOwnerState, type OwnerState } from "../core/badge.ts";
 import { isAvatarConfig, type AvatarConfig } from "../lib/avatars.ts";
 import { decodeVersioned, isValidHandle } from "./codec.ts";
 
-// v4 changes the testing input from a relative `lastPanelAgeDays` to an absolute
-// `lastPanelDay` (epoch day) so freshness ages with the wall clock instead of
-// freezing at report time. There are no real older accounts in the wild, so the
-// current version is parsed exclusively: an older or otherwise malformed blob
-// fails the strict version check and parseAccountBlob THROWS (recovery surfaces
-// an error rather than silently restoring it). Only a genuine account miss (404)
-// maps to null/"no account".
-const SCHEMA_VERSION = 4;
+// v5 adds the per-contact links (`contacts`): a private, individually-revocable
+// link per person the owner has shared with (doc 13). v4 was the absolute-day
+// testing input. There are no real older accounts in the wild, so the current
+// version is parsed exclusively: an older or otherwise malformed blob fails the
+// strict version check and parseAccountBlob THROWS (recovery surfaces an error
+// rather than silently restoring it). Only a genuine account miss (404) maps to
+// null/"no account".
+const SCHEMA_VERSION = 5;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -34,6 +34,27 @@ export interface AliasRecord {
   readonly writeToken: string;
   readonly key: string;
   readonly isPublic: boolean;
+}
+
+/** A private nickname is the owner's own label; never sent, capped to keep blobs small. */
+export const MAX_CONTACT_LABEL = 64;
+
+/**
+ * A per-contact link: a private alias the owner published for one person, with a
+ * local nickname and an expiry. Individually revocable, so dropping one contact
+ * never touches another (the per-token/no-global-access model, doc 02/13).
+ */
+export interface ContactRecord {
+  /** A local opaque id for the pairing (stable across alias rotation). */
+  readonly id: string;
+  /** The owner's private nickname for this contact; may be empty. Never sent. */
+  readonly label: string;
+  /** Epoch day the link was created. */
+  readonly createdDay: number;
+  /** Epoch day the link expires, or null for until-revoked. */
+  readonly expiresDay: number | null;
+  /** The private alias this contact resolves; always isPublic=false. */
+  readonly alias: AliasRecord;
 }
 
 /** The account-level sharing default: a public profile, or link-only (private). */
@@ -46,6 +67,8 @@ export function isSharingMode(x: unknown): x is SharingMode {
 export interface AccountBlob {
   readonly handle: string;
   readonly aliases: AliasRecord[];
+  /** Private, individually-revocable links, one per contact the owner shared with. */
+  readonly contacts: ContactRecord[];
   /** The owner's private badge inputs, from which the public card is derived. */
   readonly state: OwnerState;
   /** The owner's chosen avatar (rendered in-app and on shared cards). */
@@ -54,7 +77,7 @@ export interface AccountBlob {
   readonly sharingMode: SharingMode;
 }
 
-interface AccountBlobV4 extends AccountBlob {
+interface AccountBlobV5 extends AccountBlob {
   readonly v: typeof SCHEMA_VERSION;
 }
 
@@ -72,11 +95,32 @@ function isAliasRecord(x: unknown): x is AliasRecord {
   );
 }
 
+function isDayOrNull(x: unknown): boolean {
+  return x === null || (typeof x === "number" && Number.isInteger(x) && x >= 0);
+}
+
+function isContactRecord(x: unknown): x is ContactRecord {
+  if (typeof x !== "object" || x === null) return false;
+  const r = x as Record<string, unknown>;
+  return (
+    typeof r.id === "string" &&
+    validId(r.id) &&
+    typeof r.label === "string" &&
+    r.label.length <= MAX_CONTACT_LABEL &&
+    typeof r.createdDay === "number" &&
+    Number.isInteger(r.createdDay) &&
+    r.createdDay >= 0 &&
+    isDayOrNull(r.expiresDay) &&
+    isAliasRecord(r.alias)
+  );
+}
+
 export function serializeAccountBlob(blob: AccountBlob): Bytes {
-  const wire: AccountBlobV4 = {
+  const wire: AccountBlobV5 = {
     v: SCHEMA_VERSION,
     handle: blob.handle,
     aliases: blob.aliases,
+    contacts: blob.contacts,
     state: blob.state,
     avatar: blob.avatar,
     sharingMode: blob.sharingMode,
@@ -93,6 +137,9 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
   if (!Array.isArray(o.aliases) || !o.aliases.every(isAliasRecord)) {
     throw new Error("account blob: invalid aliases");
   }
+  if (!Array.isArray(o.contacts) || !o.contacts.every(isContactRecord)) {
+    throw new Error("account blob: invalid contacts");
+  }
   if (!isOwnerState(o.state)) {
     throw new Error("account blob: invalid state");
   }
@@ -105,6 +152,7 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
   return {
     handle: o.handle,
     aliases: o.aliases,
+    contacts: o.contacts,
     state: o.state,
     avatar: o.avatar,
     sharingMode: o.sharingMode,

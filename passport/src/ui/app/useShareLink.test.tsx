@@ -24,6 +24,7 @@ const session: OwnerSession = {
   blob: {
     handle: "robin",
     aliases: [],
+    contacts: [],
     state: INITIAL_OWNER_STATE,
     avatar: DEFAULT_AVATAR,
     sharingMode: "link",
@@ -51,6 +52,8 @@ function stubController(over: Partial<SessionController>): SessionController {
     renewLink: unused,
     deleteAccount: unused,
     reviewKnocks: unused,
+    createContactLink: unused,
+    revokeContact: unused,
     forget: unused,
     ...over,
   };

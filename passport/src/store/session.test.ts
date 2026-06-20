@@ -29,6 +29,7 @@ function fakeBackend() {
       const blob: AccountBlob = {
         handle,
         aliases: [],
+        contacts: [],
         state: INITIAL_OWNER_STATE,
         avatar: DEFAULT_AVATAR,
         sharingMode: "link",
@@ -45,6 +46,8 @@ function fakeBackend() {
     },
     addAlias: () => Promise.reject(new Error("unused")),
     removeAlias: () => Promise.reject(new Error("unused")),
+    addContact: () => Promise.reject(new Error("unused")),
+    removeContact: () => Promise.reject(new Error("unused")),
     deleteAccount: (master) => {
       byMaster.delete(bytesToBase64url(master));
       return Promise.resolve();

@@ -12,6 +12,7 @@ import { startApi, type Harness } from "../test-support/serverHarness.ts";
 
 const FRESH = {
   aliases: [],
+  contacts: [],
   state: INITIAL_OWNER_STATE,
   avatar: DEFAULT_AVATAR,
   sharingMode: "link" as const,
