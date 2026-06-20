@@ -11,7 +11,11 @@
  * condoms-always). A negative panel with no route stays gray, by design.
  */
 
-import type { HivStatus, OwnerState } from "./badge.ts";
+import {
+  CLEARANCE_WINDOW_DAYS,
+  type HivStatus,
+  type OwnerState,
+} from "./badge.ts";
 
 /** The badge-relevant outcome of a reported test, derived from the report UI. */
 export interface ReportOutcome {
@@ -33,13 +37,22 @@ export interface ReportOutcome {
  * result-derived fields. Core-panel completeness also gates exposed-site
  * coverage here, since the report treats them together (a site left untested
  * leaves the panel incomplete). An untested HIV preserves the prior status.
- * PrEP, condom preference, and pause are untouched.
+ * PrEP, condom preference, and manual pause are untouched.
+ *
+ * A reported non-HIV positive also arms the clearance-window auto-pause from the
+ * report day (treatment day defaults to now), so the badge stays gray through the
+ * post-treatment window even after a later "cleared" report. The window only ever
+ * extends (max), never shortens, so it cannot be lifted before the guideline
+ * window. A clear report leaves any active window in place.
  */
 export function applyReport(
   prev: OwnerState,
   o: ReportOutcome,
   nowDay: number,
 ): OwnerState {
+  const clearUntilDay = o.activeNonHivSti
+    ? Math.max(prev.clearUntilDay ?? 0, nowDay + CLEARANCE_WINDOW_DAYS)
+    : prev.clearUntilDay;
   return {
     ...prev,
     testing: {
@@ -49,5 +62,16 @@ export function applyReport(
     },
     hiv: o.hiv ?? prev.hiv,
     activeNonHivSti: o.activeNonHivSti,
+    clearUntilDay,
   };
+}
+
+/**
+ * Extend the clearance-window auto-pause by one window (the "keep paused longer"
+ * affordance). Extends from the current end, or from now if none is active; the
+ * owner can hold the badge gray longer but never shorten the guideline window.
+ */
+export function extendClearance(prev: OwnerState, nowDay: number): OwnerState {
+  const from = Math.max(prev.clearUntilDay ?? nowDay, nowDay);
+  return { ...prev, clearUntilDay: from + CLEARANCE_WINDOW_DAYS };
 }

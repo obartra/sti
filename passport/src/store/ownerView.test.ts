@@ -82,8 +82,8 @@ describe("deriveOwnerView", () => {
   });
 
   it("treats the freshness window boundary the same as the badge core (age 90 vs 91)", () => {
-    // The badge uses age <= 90; autoPaused uses > 90. They must agree exactly at
-    // the edge, so a future drift in either is caught here.
+    // The badge uses age <= 90: blue at 90, gray at 91. A freshness lapse is NOT
+    // a clearance auto-pause (that is only a reported positive's window).
     const at90 = deriveOwnerView(blob(tested(90)), NOW_DAY);
     expect(at90.badge).toBe("blue"); // still in window
     expect(at90.autoPaused).toBe(false);
@@ -91,7 +91,7 @@ describe("deriveOwnerView", () => {
 
     const at91 = deriveOwnerView(blob(tested(91)), NOW_DAY);
     expect(at91.badge).toBe("gray"); // lapsed by one day
-    expect(at91.autoPaused).toBe(true);
+    expect(at91.autoPaused).toBe(false); // lapse grays, but is not auto-pause
     expect(at91.daysLeft).toBe(0);
   });
 
@@ -103,10 +103,10 @@ describe("deriveOwnerView", () => {
     expect(v.daysLeft).toBe(70);
   });
 
-  it("a lapsed freshness window auto-pauses to gray with zero days left", () => {
+  it("a lapsed freshness window is gray (not auto-pause) with zero days left", () => {
     const v = deriveOwnerView(blob(tested(120)), NOW_DAY);
     expect(v.badge).toBe("gray"); // out of the 90-day window
-    expect(v.autoPaused).toBe(true);
+    expect(v.autoPaused).toBe(false); // a lapse is not a clearance auto-pause
     expect(v.paused).toBe(false);
     expect(v.daysLeft).toBe(0); // clamped, not negative
     expect(v.lastTestedLabel).toBe("120 days ago");
@@ -119,5 +119,16 @@ describe("deriveOwnerView", () => {
     expect(deriveOwnerView(blob(tested(1)), NOW_DAY).lastTestedLabel).toBe(
       "Yesterday",
     );
+  });
+
+  it("auto-pauses (clearance) with a clear-by date while a window is active", () => {
+    // A reported positive's window is active: gray + autoPaused, distinct from a
+    // manual pause, and the clear-by date reflects clearUntilDay.
+    const state: OwnerState = { ...tested(5), clearUntilDay: NOW_DAY + 4 };
+    const v = deriveOwnerView(blob(state), NOW_DAY);
+    expect(v.badge).toBe("gray");
+    expect(v.autoPaused).toBe(true);
+    expect(v.paused).toBe(false);
+    expect(v.clearBy.getTime()).toBe((NOW_DAY + 4) * 86_400_000);
   });
 });

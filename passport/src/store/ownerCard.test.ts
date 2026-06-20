@@ -20,6 +20,7 @@ function state(over: Partial<OwnerState> = {}): OwnerState {
     condomPreferencePublic: false,
     onDoxyPep: false,
     paused: false,
+    clearUntilDay: null,
     ...over,
   };
 }

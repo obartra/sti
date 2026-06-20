@@ -4,6 +4,7 @@ import {
   computeBadge,
   GRAY_VIEW,
   resolveViewerBadge,
+  inClearanceWindow,
   type CondomPreference,
   type OwnerState,
 } from "./badge.ts";
@@ -29,6 +30,11 @@ const ownerStateArb: fc.Arbitrary<OwnerState> = fc.record({
   condomPreferencePublic: fc.boolean(),
   onDoxyPep: fc.boolean(),
   paused: fc.boolean(),
+  // A clearance window straddling NOW_DAY (some active, some past), or none.
+  clearUntilDay: fc.option(
+    fc.integer({ min: NOW_DAY - 30, max: NOW_DAY + 30 }),
+    { nil: null },
+  ),
 });
 
 const UMBRELLA_VIEW = {
@@ -66,6 +72,7 @@ function blueBase(b: {
     condomPreferencePublic: b.condomPreferencePublic,
     onDoxyPep: false,
     paused: false,
+    clearUntilDay: null,
   };
 }
 
@@ -96,24 +103,32 @@ describe("badge invariants (exhaustive)", () => {
     );
   });
 
+  // Every precondition blue requires, factored out so the property stays a flat
+  // check (and below the complexity cap).
+  const bluePreconditions = (s: OwnerState): boolean => {
+    const t = s.testing;
+    const hasRoute =
+      s.onPrep ||
+      s.hiv === "positive_undetectable" ||
+      (s.condomPreference === "condoms_always" && s.condomPreferencePublic);
+    const inWindow = t.lastPanelDay !== null && NOW_DAY - t.lastPanelDay <= 90;
+    return (
+      !s.paused &&
+      !inClearanceWindow(s, NOW_DAY) &&
+      s.hiv !== "positive_detectable" &&
+      inWindow &&
+      t.corePanelComplete &&
+      t.exposedSitesCovered &&
+      !s.activeNonHivSti &&
+      hasRoute
+    );
+  };
+
   it("blue implies every precondition held", () => {
     fc.assert(
       fc.property(ownerStateArb, (s) => {
         if (computeBadge(s, NOW_DAY) !== "blue") return true;
-        const hasRoute =
-          s.onPrep ||
-          s.hiv === "positive_undetectable" ||
-          (s.condomPreference === "condoms_always" && s.condomPreferencePublic);
-        return (
-          !s.paused &&
-          s.hiv !== "positive_detectable" &&
-          s.testing.lastPanelDay !== null &&
-          NOW_DAY - s.testing.lastPanelDay <= 90 &&
-          s.testing.corePanelComplete &&
-          s.testing.exposedSitesCovered &&
-          !s.activeNonHivSti &&
-          hasRoute
-        );
+        return bluePreconditions(s);
       }),
     );
   });
@@ -200,6 +215,7 @@ describe("badge invariants (exhaustive)", () => {
             condomPreferencePublic: true,
             onDoxyPep: false,
             paused: false,
+            clearUntilDay: null,
           };
           expect(resolveViewerBadge(s, NOW_DAY)).toEqual(CONDOM_VIEW);
           return true;

@@ -22,3 +22,8 @@ export function toEpochDay(epochMs: number): number {
 export function todayEpochDay(): number {
   return toEpochDay(Date.now());
 }
+
+/** The Date at the start (UTC midnight) of an epoch day, for display formatting. */
+export function epochDayToDate(day: number): Date {
+  return new Date(day * MS_PER_DAY);
+}

@@ -26,6 +26,8 @@ describe("isOwnerState", () => {
       testing: { ...blueEligible().testing, lastPanelDay: -1 },
     },
     "a non-boolean paused": { ...blueEligible(), paused: "yes" },
+    "a non-integer clearUntilDay": { ...blueEligible(), clearUntilDay: 1.5 },
+    "a negative clearUntilDay": { ...blueEligible(), clearUntilDay: -1 },
     "an invalid hiv status": { ...blueEligible(), hiv: "maybe" },
     "an invalid condom preference": {
       ...blueEligible(),
@@ -92,5 +94,15 @@ describe("badge boundaries", () => {
     // now is BEFORE the recorded panel day: age clamps to 0, still in window.
     expect(computeBadge(s, lastDay - 5)).toBe("blue");
     expect(panelAgeDays(s.testing, lastDay - 5)).toBe(0);
+  });
+
+  it("a clearance window grays an otherwise-blue owner until it passes", () => {
+    // Otherwise fully blue, but inside a reported positive's clearance window.
+    const s = { ...blueEligible(), clearUntilDay: NOW_DAY + 3 };
+    expect(computeBadge(s, NOW_DAY)).toBe("gray"); // inside the window
+    expect(computeBadge(s, NOW_DAY + 2)).toBe("gray"); // still inside
+    // The window is exclusive at its end day: on/after it, blue returns.
+    expect(computeBadge(s, NOW_DAY + 3)).toBe("blue");
+    expect(computeBadge(s, NOW_DAY + 4)).toBe("blue");
   });
 });

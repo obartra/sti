@@ -13,8 +13,10 @@
 import {
   TESTING_WINDOW_DAYS,
   panelAgeDays,
+  inClearanceWindow,
   type TestingInput,
 } from "../core/badge.ts";
+import { epochDayToDate } from "../core/clock.ts";
 import type { AvatarConfig } from "../lib/avatars.ts";
 import type { BadgeState, ProtectionLabel, Route } from "../ui/badge-card.tsx";
 import type { AccountBlob, SharingMode } from "./accountBlob.ts";
@@ -31,8 +33,14 @@ export interface OwnerView {
   readonly sharingMode: SharingMode;
   /** Manually paused (forces gray). */
   readonly paused: boolean;
-  /** Tested once, but the freshness window has lapsed (an automatic gray). */
+  /**
+   * Auto-paused through a reported positive's clearance window (an automatic
+   * gray the owner cannot lift early). Distinct from a lapsed freshness window,
+   * which is just gray + a re-test nudge, not a "recovering" pause.
+   */
   readonly autoPaused: boolean;
+  /** The day the clearance window lifts (only meaningful while autoPaused). */
+  readonly clearBy: Date;
   /** Days remaining in the 90-day freshness window (0 when untested or lapsed). */
   readonly daysLeft: number;
   readonly lastTestedLabel: string;
@@ -50,7 +58,6 @@ export function deriveOwnerView(blob: AccountBlob, nowDay: number): OwnerView {
   const card = deriveOwnerCard(blob.state, blob.handle, nowDay);
   const t = blob.state.testing;
   const age = panelAgeDays(t, nowDay);
-  const lapsed = age !== null && age > TESTING_WINDOW_DAYS;
 
   return {
     handle: blob.handle,
@@ -62,7 +69,8 @@ export function deriveOwnerView(blob: AccountBlob, nowDay: number): OwnerView {
     blueRoute: card.route ?? null,
     sharingMode: blob.sharingMode,
     paused: blob.state.paused,
-    autoPaused: lapsed,
+    autoPaused: inClearanceWindow(blob.state, nowDay),
+    clearBy: epochDayToDate(blob.state.clearUntilDay ?? nowDay),
     daysLeft: age !== null ? Math.max(0, TESTING_WINDOW_DAYS - age) : 0,
     lastTestedLabel: lastTestedLabel(t, nowDay),
   };

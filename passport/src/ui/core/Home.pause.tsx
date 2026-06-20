@@ -1,19 +1,12 @@
-import { useState } from "react";
 import { Button, Card } from "../../design/components/index.ts";
 import { EyeOff, Lock, Clock, Eye } from "../../design/icons.tsx";
-import { COPY, leadTile, fmtDate, addDays } from "./Home.parts.tsx";
+import { COPY, leadTile, fmtDate } from "./Home.parts.tsx";
 
 // Owner-only pause panel. A viewer NEVER sees this or anything but gray;
 // pausing renders identically to every other gray. Manual hide is liftable
 // anytime; auto-pause (from a logged positive's clearance window) can be
 // EXTENDED but not shortened below the guideline window.
-function AutoResumePanel({
-  untilLabel,
-  extra,
-}: {
-  untilLabel: string;
-  extra: number;
-}) {
+function AutoResumePanel({ untilLabel }: { untilLabel: string }) {
   const p = COPY.pause;
   return (
     <div
@@ -52,7 +45,6 @@ function AutoResumePanel({
           }}
         >
           {untilLabel}
-          {extra > 0 ? ` · ${p.extended}` : ""}
         </span>
       </div>
       <div
@@ -72,14 +64,17 @@ export function PauseBanner({
   autoPaused,
   clearBy,
   resume,
+  onExtend,
 }: {
   autoPaused: boolean;
   clearBy: Date;
   resume: (() => void) | undefined;
+  onExtend: (() => void) | undefined;
 }) {
   const p = COPY.pause;
-  const [extra, setExtra] = useState(0);
-  const untilLabel = fmtDate(addDays(clearBy, extra));
+  // The clearance date comes from owner state; extending persists it (clearBy
+  // advances on the next render) rather than living in local component state.
+  const untilLabel = fmtDate(clearBy);
   return (
     <Card
       variant="flat"
@@ -122,7 +117,7 @@ export function PauseBanner({
           </div>
         </div>
       </div>
-      {autoPaused && <AutoResumePanel untilLabel={untilLabel} extra={extra} />}
+      {autoPaused && <AutoResumePanel untilLabel={untilLabel} />}
       <div
         style={{
           fontSize: 12,
@@ -140,7 +135,7 @@ export function PauseBanner({
           size="md"
           block
           icon={<Clock size={16} />}
-          onClick={() => setExtra((x) => x + 7)}
+          onClick={onExtend}
         >
           {p.extend}
         </Button>

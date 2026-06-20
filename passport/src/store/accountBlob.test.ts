@@ -49,6 +49,7 @@ describe("account blob codec", () => {
         condomPreferencePublic: true,
         onDoxyPep: false,
         paused: false,
+        clearUntilDay: null,
       },
       avatar: { animal: 2, color: 3, hat: 1, glasses: 1, extra: 0 },
       sharingMode: "public",

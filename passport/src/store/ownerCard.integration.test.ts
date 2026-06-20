@@ -29,6 +29,7 @@ const blue: OwnerState = {
   condomPreferencePublic: false,
   onDoxyPep: false,
   paused: false,
+  clearUntilDay: null,
 };
 
 describe("badge derivation against a live blind store", () => {

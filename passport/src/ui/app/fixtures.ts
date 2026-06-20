@@ -21,6 +21,9 @@ export const OWNER: OwnerView = {
   sharingMode: "public",
   paused: false,
   autoPaused: false,
+  // Not in a clearance window (autoPaused is false), so this is never rendered;
+  // a fixed date keeps the fixture deterministic.
+  clearBy: new Date("2026-06-27T00:00:00Z"),
   daysLeft: 62,
   lastTestedLabel: "7 Jun 2026",
 };
