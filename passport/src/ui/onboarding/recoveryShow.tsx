@@ -11,13 +11,15 @@ import {
 import { TopBack } from "./TopBack.tsx";
 import { COPY } from "./recovery.copy.ts";
 
-// The phrase grid plus its tap-to-reveal cover.
-function PhraseGrid({
-  words,
+// The recovery token plus its tap-to-reveal cover. The phrase is a single
+// app-generated high-entropy token (not a word list), shown in a monospace
+// block so it copies cleanly.
+function PhraseToken({
+  phrase,
   revealed,
   onReveal,
 }: {
-  words: readonly string[];
+  phrase: string;
   revealed: boolean;
   onReveal: () => void;
 }) {
@@ -25,52 +27,24 @@ function PhraseGrid({
     <div style={{ position: "relative" }}>
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 8,
           background: "var(--surface-card)",
           borderRadius: "var(--radius-lg)",
-          padding: 14,
+          padding: 16,
+          minHeight: 72,
           boxShadow: "var(--shadow-sm)",
           filter: revealed ? "none" : "blur(6px)",
           userSelect: revealed ? "auto" : "none",
           transition: "filter var(--dur-base) var(--ease-gentle)",
+          fontFamily: "var(--font-mono)",
+          fontSize: 15,
+          fontWeight: 600,
+          lineHeight: 1.7,
+          letterSpacing: "0.02em",
+          color: "var(--text-strong)",
+          wordBreak: "break-all",
         }}
       >
-        {words.map((w, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "6px 4px",
-            }}
-          >
-            <span
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 11.5,
-                fontWeight: 700,
-                color: "var(--text-subtle)",
-                width: 18,
-                flex: "none",
-                textAlign: "right",
-              }}
-            >
-              {i + 1}
-            </span>
-            <span
-              style={{
-                fontSize: 14.5,
-                fontWeight: 600,
-                color: "var(--text-strong)",
-              }}
-            >
-              {w}
-            </span>
-          </div>
-        ))}
+        {phrase}
       </div>
       {!revealed && (
         <button
@@ -133,16 +107,16 @@ function WhyCard() {
   );
 }
 
-// The labeled phrase grid plus the copy/hide controls shown once revealed.
+// The labeled recovery token plus the copy/hide controls shown once revealed.
 function PhraseSection({
-  words,
+  phrase,
   revealed,
   copied,
   onReveal,
   onHide,
   onCopy,
 }: {
-  words: readonly string[];
+  phrase: string;
   revealed: boolean;
   copied: boolean;
   onReveal: () => void;
@@ -163,7 +137,7 @@ function PhraseSection({
       >
         {COPY.phraseLabel}
       </div>
-      <PhraseGrid words={words} revealed={revealed} onReveal={onReveal} />
+      <PhraseToken phrase={phrase} revealed={revealed} onReveal={onReveal} />
       {revealed && (
         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
           <Button
@@ -231,7 +205,7 @@ function SaveNotes() {
 // The phrase view: why-you-need-this, the reveal grid, copy/hide controls, and
 // the no-reset note.
 export function ShowPhase({
-  words,
+  phrase,
   revealed,
   copied,
   onReveal,
@@ -240,7 +214,7 @@ export function ShowPhase({
   onBack,
   onSaved,
 }: {
-  words: readonly string[];
+  phrase: string;
   revealed: boolean;
   copied: boolean;
   onReveal: () => void;
@@ -279,7 +253,7 @@ export function ShowPhase({
       <WhyCard />
 
       <PhraseSection
-        words={words}
+        phrase={phrase}
         revealed={revealed}
         copied={copied}
         onReveal={onReveal}

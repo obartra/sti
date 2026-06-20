@@ -1,59 +1,45 @@
 import { useState } from "react";
-import { COPY, ASK } from "./recovery.copy.ts";
-import { ConfirmPhase } from "./recoveryPhases.tsx";
 import { ShowPhase } from "./recoveryShow.tsx";
 
-// B2 recovery phrase. Faithful port of onboarding.jsx Recovery, copy verbatim
-// from copy.js (recovery). Passkey stays the primary unlock; this phrase is the
-// only no-PII way back in if the device is lost. No email/phone, no server reset.
+// B2 recovery phrase. The phrase is the app-generated, high-entropy recovery
+// token (the only no-PII way back in if the device is lost; no email/phone, no
+// server reset). It is shown once here, behind a tap-to-reveal, with copy. The
+// owner confirms they have saved it ("I've saved it") to continue; there is no
+// word-by-word check because the token is a single opaque string.
 
 export interface RecoveryProps {
+  /** The real recovery token to show once (from the just-created account). */
+  phrase: string;
   onBack?: (() => void) | undefined;
   onContinue?: (() => void) | undefined;
 }
 
-export function Recovery({ onBack, onContinue }: RecoveryProps) {
-  const words = COPY.words;
+export function Recovery({ phrase, onBack, onContinue }: RecoveryProps) {
   const [revealed, setRevealed] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [phase, setPhase] = useState<"show" | "confirm">("show");
-  const [picked, setPicked] = useState<string | null>(null);
-  const askWord = words[ASK];
-  const correct = picked !== null && picked === askWord;
-  // Fixed, deterministic option set: the correct word among three decoys.
-  const options = [words[3], words[ASK], words[10], words[1]];
+
   const copyPhrase = () => {
+    // Clipboard is absent in some environments (jsdom, insecure contexts):
+    // accessing it throws synchronously there. Copy is best-effort, non-fatal.
+    try {
+      void navigator.clipboard.writeText(phrase).catch(() => undefined);
+    } catch {
+      // no clipboard available
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
   };
 
-  if (phase === "confirm") {
-    return (
-      <ConfirmPhase
-        options={options}
-        picked={picked}
-        correct={correct}
-        onPick={setPicked}
-        onBack={onBack}
-        onReshow={() => {
-          setPhase("show");
-          setPicked(null);
-        }}
-        onContinue={onContinue}
-      />
-    );
-  }
-
   return (
     <ShowPhase
-      words={words}
+      phrase={phrase}
       revealed={revealed}
       copied={copied}
       onReveal={() => setRevealed(true)}
       onHide={() => setRevealed(false)}
       onCopy={copyPhrase}
       onBack={onBack}
-      onSaved={() => setPhase("confirm")}
+      onSaved={() => onContinue?.()}
     />
   );
 }

@@ -1,8 +1,16 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, it, expect } from "vitest";
 import { App } from "./App.tsx";
 import type { ResolvedView } from "./public/PublicResolution.tsx";
-import type { PassportStore } from "../store/index.ts";
+import type {
+  AccountBlob,
+  OwnerSession,
+  PassportStore,
+  SessionController,
+} from "../store/index.ts";
+import { INITIAL_OWNER_STATE } from "../core/badge.ts";
+import { DEFAULT_AVATAR } from "../lib/avatars.ts";
 
 // End-to-end of the UI wiring: a real shared link in the URL routes through
 // parseAliasLink -> useAppRouter -> Chrome -> the a2-public screen ->
@@ -14,6 +22,41 @@ const KEY = "B".repeat(43);
 
 function stubStore(to: ResolvedView | null): PassportStore {
   return { resolveAlias: () => Promise.resolve(to) };
+}
+
+// A fake session controller standing in for the backend one (the real WebAuthn
+// adapter cannot run in jsdom). It records the created handle + profile so the
+// derived owner view can be asserted after onboarding.
+function fakeController(): SessionController {
+  const master = new Uint8Array(32);
+  let blob: AccountBlob = {
+    handle: "",
+    aliases: [],
+    state: INITIAL_OWNER_STATE,
+    avatar: DEFAULT_AVATAR,
+    sharingMode: "link",
+  };
+  return {
+    signUp: (handle) => {
+      blob = { ...blob, handle };
+      return Promise.resolve({
+        session: { master, blob },
+        recoveryPhrase: "Ck9mq2Xb7wYt0Zr8Lv3Np6Aq1Ds4Gh5Jk8Mn2Pr7Tw0",
+      });
+    },
+    recover: () => Promise.resolve(null),
+    resume: () => Promise.resolve(null),
+    enrollPasskey: () => Promise.resolve(),
+    setProfile: (_session, profile) => {
+      blob = {
+        ...blob,
+        avatar: profile.avatar,
+        sharingMode: profile.sharingMode,
+      };
+      return Promise.resolve({ master, blob } as OwnerSession);
+    },
+    forget: () => undefined,
+  };
 }
 
 afterEach(() => {
@@ -42,5 +85,68 @@ describe("App routing of a shared passport link", () => {
       await screen.findByText("No status shared right now"),
     ).toBeInTheDocument();
     expect(screen.queryByText(/^@/)).toBeNull();
+  });
+});
+
+describe("App onboarding flow", () => {
+  it("creates a real account and enters the app as the derived owner", async () => {
+    // Start at b1-claim (the landing's claim target).
+    window.history.pushState({}, "", "/#b1-claim");
+    const user = userEvent.setup();
+    render(<App store={stubStore(null)} controller={fakeController()} />);
+
+    // b1: pick a handle distinct from the OWNER fixture ("robin") so reaching it
+    // at home proves the real session drives the view, not the placeholder.
+    const handle = screen.getByDisplayValue("robin");
+    await user.clear(handle);
+    await user.type(handle, "kai");
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+
+    // b2: the real recovery token is shown once; reveal then confirm saved.
+    await user.click(
+      await screen.findByRole("button", { name: /Tap to reveal/ }),
+    );
+    await user.click(screen.getByRole("button", { name: /saved it/i }));
+
+    // b3: enter the app.
+    await user.click(
+      await screen.findByRole("button", { name: /Enter my passport/ }),
+    );
+
+    // Home renders the derived owner: the chosen handle, not the fixture's.
+    expect((await screen.findAllByText("@kai")).length).toBeGreaterThan(0);
+    expect(screen.queryByText("@robin")).toBeNull();
+  });
+
+  it("enters even when binding a passkey fails (phrase stays the way back)", async () => {
+    window.history.pushState({}, "", "/#b1-claim");
+    const user = userEvent.setup();
+    const controller = fakeController();
+    // The authenticator declines: enrollment must not block entry.
+    controller.enrollPasskey = () => Promise.reject(new Error("declined"));
+    render(<App store={stubStore(null)} controller={controller} />);
+
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(
+      await screen.findByRole("button", { name: /Tap to reveal/ }),
+    );
+    await user.click(screen.getByRole("button", { name: /saved it/i }));
+    await user.click(
+      await screen.findByRole("button", { name: /Enter my passport/ }),
+    );
+
+    // The account was created (default handle "robin"), so the app still enters.
+    expect((await screen.findAllByText("@robin")).length).toBeGreaterThan(0);
+  });
+
+  it("keeps a logged-out visitor out of app screens (no owner data leaks)", async () => {
+    // A deep link to an app-group screen must clamp to the public landing when
+    // there is no session, never render the OWNER placeholder's data.
+    window.history.pushState({}, "", "/#home");
+    render(<App store={stubStore(null)} controller={fakeController()} />);
+
+    expect(await screen.findByText("Claim your passport")).toBeInTheDocument();
+    expect(screen.queryByText("@robin")).toBeNull();
+    expect(screen.queryByText("Good to see you,")).toBeNull();
   });
 });

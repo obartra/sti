@@ -1,27 +1,25 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Recovery } from "./Recovery.tsx";
 
-// B2: recovery phrase. The phrase view (generated, shown once, save-confirmed)
-// and the verify-a-word step are separate internal phases of one component.
+// B2: recovery phrase. The app-generated recovery token, shown once behind a
+// tap-to-reveal, with copy and an "I've saved it" confirm.
 const meta: Meta<typeof Recovery> = {
   title: "Passport/Onboarding/Recovery phrase",
   component: Recovery,
+  // A fixed sample token (43-char base64url shape), never a real one.
+  args: { phrase: "Ck9mq2Xb7wYt0Zr8Lv3Np6Aq1Ds4Gh5Jk8Mn2Pr7Tw0" },
 };
 export default meta;
 type Story = StoryObj<typeof Recovery>;
 
-// Phrase view: tap to reveal the 12 words, then confirm you've saved them.
-export const PhraseView: Story = {};
+// Covered (blurred) until the owner taps to reveal.
+export const PhraseHidden: Story = {};
 
-// Verify step: tap the asked word to prove the phrase is saved.
-export const VerifyStep: Story = {
+// Revealed: the token is shown with copy/hide controls and the save confirm.
+export const PhraseRevealed: Story = {
   play: ({ canvasElement }) => {
-    const byText = (text: string) =>
-      Array.from(
-        canvasElement.querySelectorAll<HTMLButtonElement>("button"),
-      ).find((b) => b.textContent.includes(text));
-    // Reveal the phrase, then advance to the verify step.
-    byText("Tap to reveal")?.click();
-    byText("I’ve saved it")?.click();
+    Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button"))
+      .find((b) => b.textContent.includes("Tap to reveal"))
+      ?.click();
   },
 };

@@ -15,19 +15,36 @@ function AvatarEditRoute({ nav, avatar }: { nav: Nav; avatar: AvatarConfig }) {
 }
 
 export const onboardRenderers: ScreenRenderers = {
-  "b1-claim": ({ nav, data }) => (
+  "b1-claim": ({ nav, data, onboarding }) => (
     <Claim
       isLogin={data?.isLogin ?? false}
+      busy={onboarding.busy}
+      error={onboarding.error}
       onBack={nav.back}
-      onContinue={() => nav.go("b2-recovery")}
-      onEnter={() => nav.jump("home")}
+      onClaim={(handle, avatar) => {
+        // Create the real account, then show its genuine recovery phrase. Stay
+        // put on failure (the hook surfaces the error).
+        void onboarding.claim(handle, avatar).then((ok) => {
+          if (ok) nav.go("b2-recovery");
+        });
+      }}
+      onLogin={() => void onboarding.loginPasskey()}
     />
   ),
-  "b2-recovery": ({ nav }) => (
-    <Recovery onBack={nav.back} onContinue={() => nav.go("b3-setup")} />
+  "b2-recovery": ({ nav, onboarding }) => (
+    <Recovery
+      phrase={onboarding.recoveryPhrase ?? ""}
+      onBack={nav.back}
+      onContinue={() => nav.go("b3-setup")}
+    />
   ),
-  "b3-setup": ({ nav }) => (
-    <FirstRunSetup onBack={nav.back} onEnter={() => nav.jump("home")} />
+  "b3-setup": ({ nav, onboarding }) => (
+    <FirstRunSetup
+      busy={onboarding.busy}
+      error={onboarding.error}
+      onBack={nav.back}
+      onEnter={(sharingMode) => void onboarding.finish(sharingMode)}
+    />
   ),
   "avatar-edit": ({ nav, owner }) => (
     <AvatarEditRoute nav={nav} avatar={owner.avatar} />

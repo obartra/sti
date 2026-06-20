@@ -64,7 +64,7 @@ function HomeHero({
             color: "var(--text-strong)",
           }}
         >
-          {h.name}
+          {`@${handle}`}
         </h1>
       </div>
 
