@@ -17,6 +17,7 @@ import {
   isOwnerState,
   type OwnerState,
 } from "../core/badge.ts";
+import { todayEpochDay } from "../core/clock.ts";
 import { DEFAULT_AVATAR, isAvatarConfig } from "../lib/avatars.ts";
 import { createAccountSync } from "./accountSync.ts";
 import { republishOwnerCard } from "./ownerCard.ts";
@@ -148,7 +149,11 @@ export function createAccountManager(api: ApiClient): AccountManager {
       // (some aliases republished, some not), it is self-healing: a retry
       // reloads the already-saved state and republishes ALL aliases
       // idempotently, so the links converge.
-      await republishOwnerCard(api, next.aliases, state, next.handle);
+      await republishOwnerCard(api, next.aliases, {
+        state,
+        handle: next.handle,
+        nowDay: todayEpochDay(),
+      });
       return next;
     },
 

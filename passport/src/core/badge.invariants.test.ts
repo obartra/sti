@@ -7,11 +7,14 @@ import {
   type CondomPreference,
   type OwnerState,
 } from "./badge.ts";
+import { NOW_DAY } from "./badge.fixtures.ts";
 
 const ownerStateArb: fc.Arbitrary<OwnerState> = fc.record({
   testing: fc.record({
-    hasEverTested: fc.boolean(),
-    lastPanelAgeDays: fc.integer({ min: 0, max: 400 }),
+    // An absolute epoch day around NOW_DAY, or null (never tested).
+    lastPanelDay: fc.option(fc.integer({ min: NOW_DAY - 400, max: NOW_DAY }), {
+      nil: null,
+    }),
     corePanelComplete: fc.boolean(),
     exposedSitesCovered: fc.boolean(),
   }),
@@ -42,20 +45,19 @@ const ALLOWED_VIEWS = [UMBRELLA_VIEW, CONDOM_VIEW, GRAY_VIEW];
 // test), so the blue branch is exercised on every run instead of the ~0.5% of
 // random inputs that happen to reach blue.
 const blueBaseArb = fc.record({
-  lastPanelAgeDays: fc.integer({ min: 0, max: 90 }),
+  lastPanelDay: fc.integer({ min: NOW_DAY - 90, max: NOW_DAY }),
   condomPreference: fc.constantFrom("none", "raw", "either", "condoms_always"),
   condomPreferencePublic: fc.boolean(),
 });
 
 function blueBase(b: {
-  lastPanelAgeDays: number;
+  lastPanelDay: number;
   condomPreference: CondomPreference;
   condomPreferencePublic: boolean;
 }): Omit<OwnerState, "onPrep" | "hiv"> {
   return {
     testing: {
-      hasEverTested: true,
-      lastPanelAgeDays: b.lastPanelAgeDays,
+      lastPanelDay: b.lastPanelDay,
       corePanelComplete: true,
       exposedSitesCovered: true,
     },
@@ -71,8 +73,8 @@ describe("badge invariants (exhaustive)", () => {
   it("never-tested is always gray", () => {
     fc.assert(
       fc.property(ownerStateArb, (s) => {
-        const state = { ...s, testing: { ...s.testing, hasEverTested: false } };
-        return computeBadge(state) === "gray";
+        const state = { ...s, testing: { ...s.testing, lastPanelDay: null } };
+        return computeBadge(state, NOW_DAY) === "gray";
       }),
     );
   });
@@ -81,7 +83,7 @@ describe("badge invariants (exhaustive)", () => {
     fc.assert(
       fc.property(ownerStateArb, (s) => {
         const state: OwnerState = { ...s, hiv: "positive_detectable" };
-        return computeBadge(state) === "gray";
+        return computeBadge(state, NOW_DAY) === "gray";
       }),
     );
   });
@@ -89,7 +91,7 @@ describe("badge invariants (exhaustive)", () => {
   it("pausing is always gray", () => {
     fc.assert(
       fc.property(ownerStateArb, (s) => {
-        return computeBadge({ ...s, paused: true }) === "gray";
+        return computeBadge({ ...s, paused: true }, NOW_DAY) === "gray";
       }),
     );
   });
@@ -97,7 +99,7 @@ describe("badge invariants (exhaustive)", () => {
   it("blue implies every precondition held", () => {
     fc.assert(
       fc.property(ownerStateArb, (s) => {
-        if (computeBadge(s) !== "blue") return true;
+        if (computeBadge(s, NOW_DAY) !== "blue") return true;
         const hasRoute =
           s.onPrep ||
           s.hiv === "positive_undetectable" ||
@@ -105,8 +107,8 @@ describe("badge invariants (exhaustive)", () => {
         return (
           !s.paused &&
           s.hiv !== "positive_detectable" &&
-          s.testing.hasEverTested &&
-          s.testing.lastPanelAgeDays <= 90 &&
+          s.testing.lastPanelDay !== null &&
+          NOW_DAY - s.testing.lastPanelDay <= 90 &&
           s.testing.corePanelComplete &&
           s.testing.exposedSitesCovered &&
           !s.activeNonHivSti &&
@@ -119,8 +121,8 @@ describe("badge invariants (exhaustive)", () => {
   it("non-decodability: every gray resolves to the one neutral view", () => {
     fc.assert(
       fc.property(ownerStateArb, (s) => {
-        if (computeBadge(s) !== "gray") return true;
-        expect(resolveViewerBadge(s)).toEqual(GRAY_VIEW);
+        if (computeBadge(s, NOW_DAY) !== "gray") return true;
+        expect(resolveViewerBadge(s, NOW_DAY)).toEqual(GRAY_VIEW);
         return true;
       }),
     );
@@ -135,8 +137,8 @@ describe("badge invariants (exhaustive)", () => {
           onPrep: false,
           hiv: "positive_undetectable",
         };
-        expect(resolveViewerBadge(viaPrep)).toEqual(
-          resolveViewerBadge(viaUndetectable),
+        expect(resolveViewerBadge(viaPrep, NOW_DAY)).toEqual(
+          resolveViewerBadge(viaUndetectable, NOW_DAY),
         );
         return true;
       }),
@@ -146,7 +148,7 @@ describe("badge invariants (exhaustive)", () => {
   it("a condom-only blue never shows the umbrella headline", () => {
     fc.assert(
       fc.property(ownerStateArb, (s) => {
-        const view = resolveViewerBadge(s);
+        const view = resolveViewerBadge(s, NOW_DAY);
         if (view.badge !== "blue") return true;
         const umbrella = s.onPrep || s.hiv === "positive_undetectable";
         return umbrella
@@ -171,8 +173,10 @@ describe("badge invariants (exhaustive)", () => {
           onPrep: false,
           hiv: "positive_undetectable",
         };
-        expect(resolveViewerBadge(viaPrep)).toEqual(UMBRELLA_VIEW);
-        expect(resolveViewerBadge(viaUndetectable)).toEqual(UMBRELLA_VIEW);
+        expect(resolveViewerBadge(viaPrep, NOW_DAY)).toEqual(UMBRELLA_VIEW);
+        expect(resolveViewerBadge(viaUndetectable, NOW_DAY)).toEqual(
+          UMBRELLA_VIEW,
+        );
         return true;
       }),
     );
@@ -180,32 +184,34 @@ describe("badge invariants (exhaustive)", () => {
 
   it("condom-only blue resolves to the exact condoms headline", () => {
     fc.assert(
-      fc.property(fc.integer({ min: 0, max: 90 }), (lastPanelAgeDays) => {
-        const s: OwnerState = {
-          testing: {
-            hasEverTested: true,
-            lastPanelAgeDays,
-            corePanelComplete: true,
-            exposedSitesCovered: true,
-          },
-          hiv: "negative",
-          activeNonHivSti: false,
-          onPrep: false,
-          condomPreference: "condoms_always",
-          condomPreferencePublic: true,
-          onDoxyPep: false,
-          paused: false,
-        };
-        expect(resolveViewerBadge(s)).toEqual(CONDOM_VIEW);
-        return true;
-      }),
+      fc.property(
+        fc.integer({ min: NOW_DAY - 90, max: NOW_DAY }),
+        (lastPanelDay) => {
+          const s: OwnerState = {
+            testing: {
+              lastPanelDay,
+              corePanelComplete: true,
+              exposedSitesCovered: true,
+            },
+            hiv: "negative",
+            activeNonHivSti: false,
+            onPrep: false,
+            condomPreference: "condoms_always",
+            condomPreferencePublic: true,
+            onDoxyPep: false,
+            paused: false,
+          };
+          expect(resolveViewerBadge(s, NOW_DAY)).toEqual(CONDOM_VIEW);
+          return true;
+        },
+      ),
     );
   });
 
   it("the viewer output is always one of exactly three shapes", () => {
     fc.assert(
       fc.property(ownerStateArb, (s) => {
-        const view = resolveViewerBadge(s);
+        const view = resolveViewerBadge(s, NOW_DAY);
         return ALLOWED_VIEWS.some(
           (allowed) =>
             allowed.badge === view.badge && allowed.headline === view.headline,

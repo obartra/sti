@@ -10,7 +10,11 @@
  * never reach a viewer.
  */
 
-import { TESTING_WINDOW_DAYS, type TestingInput } from "../core/badge.ts";
+import {
+  TESTING_WINDOW_DAYS,
+  panelAgeDays,
+  type TestingInput,
+} from "../core/badge.ts";
 import type { AvatarConfig } from "../lib/avatars.ts";
 import type { BadgeState, ProtectionLabel, Route } from "../ui/badge-card.tsx";
 import type { AccountBlob, SharingMode } from "./accountBlob.ts";
@@ -34,17 +38,19 @@ export interface OwnerView {
   readonly lastTestedLabel: string;
 }
 
-function lastTestedLabel(t: TestingInput): string {
-  if (!t.hasEverTested) return "Never tested";
-  if (t.lastPanelAgeDays <= 0) return "Today";
-  if (t.lastPanelAgeDays === 1) return "Yesterday";
-  return `${t.lastPanelAgeDays} days ago`;
+function lastTestedLabel(t: TestingInput, nowDay: number): string {
+  const age = panelAgeDays(t, nowDay);
+  if (age === null) return "Never tested";
+  if (age <= 0) return "Today";
+  if (age === 1) return "Yesterday";
+  return `${age} days ago`;
 }
 
-export function deriveOwnerView(blob: AccountBlob): OwnerView {
-  const card = deriveOwnerCard(blob.state, blob.handle);
+export function deriveOwnerView(blob: AccountBlob, nowDay: number): OwnerView {
+  const card = deriveOwnerCard(blob.state, blob.handle, nowDay);
   const t = blob.state.testing;
-  const lapsed = t.hasEverTested && t.lastPanelAgeDays > TESTING_WINDOW_DAYS;
+  const age = panelAgeDays(t, nowDay);
+  const lapsed = age !== null && age > TESTING_WINDOW_DAYS;
 
   return {
     handle: blob.handle,
@@ -57,9 +63,7 @@ export function deriveOwnerView(blob: AccountBlob): OwnerView {
     sharingMode: blob.sharingMode,
     paused: blob.state.paused,
     autoPaused: lapsed,
-    daysLeft: t.hasEverTested
-      ? Math.max(0, TESTING_WINDOW_DAYS - t.lastPanelAgeDays)
-      : 0,
-    lastTestedLabel: lastTestedLabel(t),
+    daysLeft: age !== null ? Math.max(0, TESTING_WINDOW_DAYS - age) : 0,
+    lastTestedLabel: lastTestedLabel(t, nowDay),
   };
 }

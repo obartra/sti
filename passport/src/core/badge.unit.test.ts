@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   computeBadge,
+  panelAgeDays,
   isOwnerState,
   INITIAL_OWNER_STATE,
   type OwnerState,
 } from "./badge.ts";
-import { blueEligible } from "./badge.fixtures.ts";
+import { blueEligible, daysAgo, NOW_DAY } from "./badge.fixtures.ts";
 
 describe("isOwnerState", () => {
   it("accepts well-formed states", () => {
@@ -16,13 +17,13 @@ describe("isOwnerState", () => {
   const bad: Record<string, unknown> = {
     "a non-object": 5,
     "a missing testing object": { ...blueEligible(), testing: undefined },
-    "a NaN lastPanelAgeDays": {
+    "a non-integer lastPanelDay": {
       ...blueEligible(),
-      testing: { ...blueEligible().testing, lastPanelAgeDays: NaN },
+      testing: { ...blueEligible().testing, lastPanelDay: 1.5 },
     },
-    "a negative lastPanelAgeDays": {
+    "a negative lastPanelDay": {
       ...blueEligible(),
-      testing: { ...blueEligible().testing, lastPanelAgeDays: -1 },
+      testing: { ...blueEligible().testing, lastPanelDay: -1 },
     },
     "a non-boolean paused": { ...blueEligible(), paused: "yes" },
     "an invalid hiv status": { ...blueEligible(), hiv: "maybe" },
@@ -42,14 +43,14 @@ describe("badge boundaries", () => {
   it("90 days is still in window; 91 is not", () => {
     const at90 = {
       ...blueEligible(),
-      testing: { ...blueEligible().testing, lastPanelAgeDays: 90 },
+      testing: { ...blueEligible().testing, lastPanelDay: daysAgo(90) },
     };
     const at91 = {
       ...blueEligible(),
-      testing: { ...blueEligible().testing, lastPanelAgeDays: 91 },
+      testing: { ...blueEligible().testing, lastPanelDay: daysAgo(91) },
     };
-    expect(computeBadge(at90)).toBe("blue");
-    expect(computeBadge(at91)).toBe("gray");
+    expect(computeBadge(at90, NOW_DAY)).toBe("blue");
+    expect(computeBadge(at91, NOW_DAY)).toBe("gray");
   });
 
   it("the condoms-always route only qualifies when shown publicly", () => {
@@ -59,20 +60,37 @@ describe("badge boundaries", () => {
       hiv: "negative",
       condomPreference: "condoms_always",
     };
-    expect(computeBadge({ ...base, condomPreferencePublic: false })).toBe(
-      "gray",
-    );
-    expect(computeBadge({ ...base, condomPreferencePublic: true })).toBe(
-      "blue",
-    );
+    expect(
+      computeBadge({ ...base, condomPreferencePublic: false }, NOW_DAY),
+    ).toBe("gray");
+    expect(
+      computeBadge({ ...base, condomPreferencePublic: true }, NOW_DAY),
+    ).toBe("blue");
   });
 
   it("a current active non-HIV STI grays; clearing it restores blue", () => {
-    expect(computeBadge({ ...blueEligible(), activeNonHivSti: true })).toBe(
-      "gray",
-    );
-    expect(computeBadge({ ...blueEligible(), activeNonHivSti: false })).toBe(
-      "blue",
-    );
+    expect(
+      computeBadge({ ...blueEligible(), activeNonHivSti: true }, NOW_DAY),
+    ).toBe("gray");
+    expect(
+      computeBadge({ ...blueEligible(), activeNonHivSti: false }, NOW_DAY),
+    ).toBe("blue");
+  });
+
+  it("the same stored state ages from blue to gray as time advances", () => {
+    // The point of the absolute-day model: a result frozen at report time does
+    // not stay fresh forever. One unchanged state, evaluated at two days.
+    const s = blueEligible(); // last panel on daysAgo(10)
+    const lastDay = s.testing.lastPanelDay ?? 0;
+    expect(computeBadge(s, lastDay + 90)).toBe("blue"); // last in-window day
+    expect(computeBadge(s, lastDay + 91)).toBe("gray"); // lapsed the next day
+  });
+
+  it("a future-dated panel (clock skew) reads as today, never negative age", () => {
+    const s = blueEligible();
+    const lastDay = s.testing.lastPanelDay ?? 0;
+    // now is BEFORE the recorded panel day: age clamps to 0, still in window.
+    expect(computeBadge(s, lastDay - 5)).toBe("blue");
+    expect(panelAgeDays(s.testing, lastDay - 5)).toBe(0);
   });
 });

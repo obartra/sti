@@ -174,9 +174,10 @@ export function Report({
         <ChronicCard herpesPositive={state.val("herpes") === "Positive"} />
       )}
 
-      {/* Display-only today: the value is never read, and applyReport records
-          the result as tested-today. If this becomes editable, applyReport must
-          derive lastPanelAgeDays from it (an old date must not read as fresh). */}
+      {/* Display-only today: the value is never read, and applyReport stamps the
+          result with today's epoch day. If this becomes editable, applyReport must
+          take the chosen day as nowDay's lastPanelDay (an old date must not read
+          as fresh). */}
       <Field label={<span style={fieldLbl}>{c.dateLabel}</span>}>
         <Input defaultValue={lastTestedLabel} />
       </Field>

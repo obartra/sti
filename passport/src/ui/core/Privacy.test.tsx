@@ -8,6 +8,7 @@ import {
   computeBadge,
   type OwnerState,
 } from "../../core/badge.ts";
+import { NOW_DAY, daysAgo } from "../../core/badge.fixtures.ts";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -90,15 +91,14 @@ describe("usePrivacyState card-attribute wiring", () => {
     const blueByCondoms: OwnerState = {
       ...INITIAL_OWNER_STATE,
       testing: {
-        hasEverTested: true,
-        lastPanelAgeDays: 10,
+        lastPanelDay: daysAgo(10),
         corePanelComplete: true,
         exposedSitesCovered: true,
       },
       condomPreference: "condoms_always",
       condomPreferencePublic: true,
     };
-    expect(computeBadge(blueByCondoms)).toBe("blue");
+    expect(computeBadge(blueByCondoms, NOW_DAY)).toBe("blue");
 
     const set = vi.fn();
     const { result } = renderHook(() => usePrivacyState(blueByCondoms, set));
@@ -107,7 +107,7 @@ describe("usePrivacyState card-attribute wiring", () => {
     // Both gating fields are cleared, so the route is gone and the badge is gray.
     expect(next.condomPreference).toBe("none");
     expect(next.condomPreferencePublic).toBe(false);
-    expect(computeBadge(next)).toBe("gray");
+    expect(computeBadge(next, NOW_DAY)).toBe("gray");
   });
 
   it("updaters compose: a second edit builds on the first, not on a stale snapshot", () => {

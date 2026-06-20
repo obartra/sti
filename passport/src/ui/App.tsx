@@ -26,6 +26,7 @@ import {
 import { webAuthnPasskey } from "../auth/passkey.ts";
 import { applyReport, type ReportOutcome } from "../core/report.ts";
 import { INITIAL_OWNER_STATE, type OwnerState } from "../core/badge.ts";
+import { todayEpochDay } from "../core/clock.ts";
 import { API_BASE_URL } from "../config.ts";
 
 // The real backend boundary: api transport + crypto. Created once; it opens no
@@ -111,9 +112,11 @@ export function App({
     [controller],
   );
 
-  // Apply a reported result on top of the current owner state.
+  // Apply a reported result on top of the current owner state, stamped with the
+  // report day so freshness ages from now.
   const onReport = useCallback(
-    (outcome: ReportOutcome) => setOwnerState((s) => applyReport(s, outcome)),
+    (outcome: ReportOutcome) =>
+      setOwnerState((s) => applyReport(s, outcome, todayEpochDay())),
     [setOwnerState],
   );
 
@@ -127,7 +130,9 @@ export function App({
   } = useShareLink(controller, sessionRef, setSession, setShareOpen);
 
   const loggedIn = session !== null;
-  const owner = session ? deriveOwnerView(session.blob) : OWNER;
+  const owner = session
+    ? deriveOwnerView(session.blob, todayEpochDay())
+    : OWNER;
   const ownerState = session ? session.blob.state : INITIAL_OWNER_STATE;
 
   // A logged-out visitor must never land on an app-group screen (e.g. a #home

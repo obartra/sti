@@ -19,13 +19,14 @@ import { isOwnerState, type OwnerState } from "../core/badge.ts";
 import { isAvatarConfig, type AvatarConfig } from "../lib/avatars.ts";
 import { decodeVersioned, isValidHandle } from "./codec.ts";
 
-// v3 adds the owner's presentation profile (avatar + sharing default) so a fresh
-// device restores the full owner-facing view, not just the badge inputs. There
-// are no real v2 accounts in the wild, so v3 is parsed exclusively: an older or
-// otherwise malformed blob fails the strict version check and parseAccountBlob
-// THROWS (recovery surfaces an error rather than silently restoring it). Only a
-// genuine account miss (404) maps to null/"no account".
-const SCHEMA_VERSION = 3;
+// v4 changes the testing input from a relative `lastPanelAgeDays` to an absolute
+// `lastPanelDay` (epoch day) so freshness ages with the wall clock instead of
+// freezing at report time. There are no real older accounts in the wild, so the
+// current version is parsed exclusively: an older or otherwise malformed blob
+// fails the strict version check and parseAccountBlob THROWS (recovery surfaces
+// an error rather than silently restoring it). Only a genuine account miss (404)
+// maps to null/"no account".
+const SCHEMA_VERSION = 4;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -53,7 +54,7 @@ export interface AccountBlob {
   readonly sharingMode: SharingMode;
 }
 
-interface AccountBlobV3 extends AccountBlob {
+interface AccountBlobV4 extends AccountBlob {
   readonly v: typeof SCHEMA_VERSION;
 }
 
@@ -72,7 +73,7 @@ function isAliasRecord(x: unknown): x is AliasRecord {
 }
 
 export function serializeAccountBlob(blob: AccountBlob): Bytes {
-  const wire: AccountBlobV3 = {
+  const wire: AccountBlobV4 = {
     v: SCHEMA_VERSION,
     handle: blob.handle,
     aliases: blob.aliases,

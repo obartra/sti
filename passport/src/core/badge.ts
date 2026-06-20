@@ -27,10 +27,13 @@ export type HivStatus =
 export type CondomPreference = "none" | "raw" | "either" | "condoms_always";
 
 export interface TestingInput {
-  /** Has a real result ever been entered? Never-tested is always gray. */
-  readonly hasEverTested: boolean;
-  /** Days since the most recent core-panel result. */
-  readonly lastPanelAgeDays: number;
+  /**
+   * Epoch day (UTC, see core/clock) of the most recent core-panel result, or
+   * null when never tested. Absolute, not a relative age, so freshness ages with
+   * the wall clock instead of freezing at report time; the relative age is
+   * derived as `nowDay - lastPanelDay`. Never-tested (null) is always gray.
+   */
+  readonly lastPanelDay: number | null;
   /** The standard core panel (HIV, syphilis, gonorrhea, chlamydia) was complete. */
   readonly corePanelComplete: boolean;
   /**
@@ -83,10 +86,21 @@ export const GRAY_VIEW: ViewerBadge = {
 
 export const TESTING_WINDOW_DAYS = 90;
 
-function testedInWindow(t: TestingInput): boolean {
+/**
+ * Days since the last complete panel as of `nowDay`, or null when never tested.
+ * Clamped at 0 so a future-dated result (clock skew across devices) reads as
+ * "today" rather than a negative age.
+ */
+export function panelAgeDays(t: TestingInput, nowDay: number): number | null {
+  if (t.lastPanelDay === null) return null;
+  return Math.max(0, nowDay - t.lastPanelDay);
+}
+
+function testedInWindow(t: TestingInput, nowDay: number): boolean {
+  const age = panelAgeDays(t, nowDay);
   return (
-    t.hasEverTested &&
-    t.lastPanelAgeDays <= TESTING_WINDOW_DAYS &&
+    age !== null &&
+    age <= TESTING_WINDOW_DAYS &&
     t.corePanelComplete &&
     t.exposedSitesCovered
   );
@@ -117,13 +131,14 @@ function hasQualifyingRoute(s: OwnerState): boolean {
 }
 
 /**
- * Blue requires ALL of: not paused; not detectable-HIV; tested in window;
- * clear; and at least one qualifying HIV-protection route. Else gray.
+ * Blue requires ALL of: not paused; not detectable-HIV; tested in window (as of
+ * `nowDay`); clear; and at least one qualifying HIV-protection route. Else gray.
+ * `nowDay` is supplied by the caller (core/clock) so this stays pure.
  */
-export function computeBadge(s: OwnerState): Badge {
+export function computeBadge(s: OwnerState, nowDay: number): Badge {
   if (s.paused) return "gray";
   if (detectableHivBlocks(s)) return "gray";
-  if (!testedInWindow(s.testing)) return "gray";
+  if (!testedInWindow(s.testing, nowDay)) return "gray";
   if (!isClear(s)) return "gray";
   if (!hasQualifyingRoute(s)) return "gray";
   return "blue";
@@ -136,8 +151,8 @@ export function computeBadge(s: OwnerState): Badge {
  * "On HIV prevention" never distinguishes the two and never appears for a
  * condom-only blue.
  */
-export function resolveViewerBadge(s: OwnerState): ViewerBadge {
-  if (computeBadge(s) === "gray") return GRAY_VIEW;
+export function resolveViewerBadge(s: OwnerState, nowDay: number): ViewerBadge {
+  if (computeBadge(s, nowDay) === "gray") return GRAY_VIEW;
   const headline: Headline = umbrellaRoutePresent(s)
     ? "Tested & on HIV prevention"
     : "Tested & always uses condoms";
@@ -147,8 +162,7 @@ export function resolveViewerBadge(s: OwnerState): ViewerBadge {
 /** A fresh owner: never tested, no routes, so the badge is gray. */
 export const INITIAL_OWNER_STATE: OwnerState = {
   testing: {
-    hasEverTested: false,
-    lastPanelAgeDays: 0,
+    lastPanelDay: null,
     corePanelComplete: false,
     exposedSitesCovered: false,
   },
@@ -178,11 +192,13 @@ const CONDOM_PREFS: Record<CondomPreference, true> = {
 function isTestingInput(x: unknown): x is TestingInput {
   if (typeof x !== "object" || x === null) return false;
   const t = x as Record<string, unknown>;
+  const dayOk =
+    t.lastPanelDay === null ||
+    (typeof t.lastPanelDay === "number" &&
+      Number.isInteger(t.lastPanelDay) &&
+      t.lastPanelDay >= 0);
   return (
-    typeof t.hasEverTested === "boolean" &&
-    typeof t.lastPanelAgeDays === "number" &&
-    Number.isFinite(t.lastPanelAgeDays) &&
-    t.lastPanelAgeDays >= 0 &&
+    dayOk &&
     typeof t.corePanelComplete === "boolean" &&
     typeof t.exposedSitesCovered === "boolean"
   );
