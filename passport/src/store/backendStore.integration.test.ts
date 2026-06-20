@@ -64,4 +64,22 @@ describe("public resolution against a live blind store", () => {
     const wrong = bytesToBase64url(crypto.getRandomValues(new Uint8Array(32)));
     expect(await store.resolveAlias({ id: link.id, key: wrong })).toBeNull();
   });
+
+  it("knock resolves the same on a real alias and a never-published one (existence-uniform)", async () => {
+    const link = await publish({ state: "gray", identity: { handle: "ash" } });
+    // A knock on a real alias and on an id that never existed both resolve
+    // without throwing: the server reveals nothing either way.
+    await expect(store.knock(link.id)).resolves.toBeUndefined();
+    await expect(store.knock(randomAliasId())).resolves.toBeUndefined();
+  });
+
+  it("a fixed requester secret dedupes repeated knocks on one alias", async () => {
+    // Same per-device secret -> same requesterHash -> the server can dedupe a
+    // repeat without learning who knocked. The client call resolves regardless.
+    const secret = bytesToBase64url(crypto.getRandomValues(new Uint8Array(32)));
+    const deduping = createBackendStore(api, secret);
+    const link = await publish({ state: "gray", identity: { handle: "ash" } });
+    await expect(deduping.knock(link.id)).resolves.toBeUndefined();
+    await expect(deduping.knock(link.id)).resolves.toBeUndefined();
+  });
 });

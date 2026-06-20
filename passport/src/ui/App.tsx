@@ -8,6 +8,7 @@ import { Chrome } from "./app/Chrome.tsx";
 import type { Route } from "./app/routes.ts";
 import { createApiClient } from "../api/client.ts";
 import {
+  browserRequesterSecret,
   createAccountManager,
   createAccountSync,
   createBackendStore,
@@ -28,9 +29,10 @@ import { INITIAL_OWNER_STATE, type OwnerState } from "../core/badge.ts";
 import { API_BASE_URL } from "../config.ts";
 
 // The real backend boundary: api transport + crypto. Created once; it opens no
-// connection until something is resolved or published.
+// connection until something is resolved or published. The store carries the
+// viewer's stable per-device requester secret so knocks dedupe across sessions.
 const api = createApiClient(API_BASE_URL);
-const backendStore = createBackendStore(api);
+const backendStore = createBackendStore(api, browserRequesterSecret());
 
 // A volatile device store for environments where localStorage is unavailable
 // (private mode). The passkey binding then lives only for the tab's lifetime;

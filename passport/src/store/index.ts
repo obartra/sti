@@ -5,6 +5,10 @@
 
 export type { AliasLink, PassportStore } from "./passportStore.ts";
 export { createBackendStore } from "./backendStore.ts";
+export {
+  createRequesterStore,
+  browserRequesterSecret,
+} from "./requesterStore.ts";
 export { serializePublicCard, parsePublicCard } from "./publicCard.ts";
 export { parseAliasLink } from "./aliasLink.ts";
 export type { AccountSync } from "./accountSync.ts";

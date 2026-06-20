@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { createBackendStore } from "./backendStore.ts";
 import { serializePublicCard } from "./publicCard.ts";
+import { requesterHash } from "./knock.ts";
 import { ApiError, type ApiClient } from "../api/client.ts";
 import { ALIAS_PAYLOAD_SIZE } from "../api/contract.ts";
 import {
@@ -93,5 +94,37 @@ describe("backend store resolveAlias", () => {
     const other = bytesToBase64url(crypto.getRandomValues(new Uint8Array(32)));
     const store = createBackendStore(stubApi(() => Promise.resolve(payload)));
     expect(await store.resolveAlias({ id: GOOD_ID, key: other })).toBeNull();
+  });
+});
+
+describe("backend store knock", () => {
+  it("sends the salted per-device hash for the alias, not the secret", async () => {
+    const calls: { id: string; requesterHash: string }[] = [];
+    const unused = () => {
+      throw new Error("not used in this test");
+    };
+    const api: ApiClient = {
+      getAlias: unused,
+      putAlias: unused,
+      getAccount: unused,
+      putAccount: unused,
+      notify: unused,
+      registerPush: unused,
+      health: unused,
+      knock: (id, hash) => {
+        calls.push({ id, requesterHash: hash });
+        return Promise.resolve();
+      },
+    };
+    const secret = "device-secret-xyz";
+    const store = createBackendStore(api, secret);
+
+    await store.knock(GOOD_ID);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.id).toBe(GOOD_ID);
+    // The wire value is the hash, never the raw secret.
+    expect(calls[0]?.requesterHash).toBe(await requesterHash(secret, GOOD_ID));
+    expect(calls[0]?.requesterHash).not.toContain(secret);
   });
 });
