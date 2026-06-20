@@ -6,8 +6,15 @@
 # and breaks the gate.
 #
 # Usage:
-#   scripts/visual-regression.sh           # diff against baselines, exit 1 on mismatch
-#   scripts/visual-regression.sh --update  # write/replace baselines, then prune orphans
+#   scripts/visual-regression.sh                  # diff against baselines, exit 1 on mismatch
+#   scripts/visual-regression.sh --update         # write/replace baselines, then prune orphans
+#   scripts/visual-regression.sh --shard I --of N # diff only shard I of N (1-based): CI fan-out
+#
+# Sharding splits the (expensive) capture+diff across N parallel CI jobs: each
+# shoots a deterministic 1/N slice of the story corpus. Valid for the diff gate
+# only, never --update (which writes + prunes across the WHOLE corpus). A
+# filtered diff run writes no baselines, so a shard cannot prune. check-baselines
+# still validates the full corpus shape in every shard (jq-only, cheap).
 #
 # Prereqs: Docker daemon running. On Apple Silicon, Rosetta 2 (preflighted).
 
@@ -15,7 +22,38 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 MODE=
-if [[ "${1:-}" == "--update" ]]; then MODE=update; fi
+SHARD=
+SHARDS=
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --update) MODE=update ;;
+    --shard) SHARD="${2:-}"; shift ;;
+    --of) SHARDS="${2:-}"; shift ;;
+    *) echo "::error::unknown argument: $1"; exit 2 ;;
+  esac
+  shift
+done
+
+if [[ -n "$MODE" && ( -n "$SHARD" || -n "$SHARDS" ) ]]; then
+  echo "::error::--shard/--of cannot be combined with --update"; exit 2
+fi
+if { [[ -n "$SHARD" ]] && [[ -z "$SHARDS" ]]; } ||
+   { [[ -z "$SHARD" ]] && [[ -n "$SHARDS" ]]; }; then
+  echo "::error::--shard and --of must be given together"; exit 2
+fi
+
+# The comma-separated story ids for shard I of N: the filtered corpus (same
+# filter as check-baselines.sh / lostpixel.config.cjs), partitioned round-robin
+# so each shard gets a balanced, deterministic slice.
+shard_ids() {
+  jq -r '.entries | to_entries[]
+    | select(.value.type=="story")
+    | select(.value.title | startswith("Design System") | not)
+    | .key' storybook-static/index.json \
+    | sort -u \
+    | awk -v i="$1" -v n="$2" '((NR - 1) % n) == (i - 1)' \
+    | paste -sd, -
+}
 
 LP_VERSION="v3.22.0"
 SERVER_PORT="${LOST_PIXEL_SB_PORT:-6066}"
@@ -154,7 +192,17 @@ else
   # (one page, no contention, a complete render): a capture artifact then matches
   # the baseline; a genuine change still differs. A filtered test run writes no
   # baselines, so it cannot prune.
-  lp_run "" || true
+  ONLY=""
+  if [[ -n "$SHARDS" ]]; then
+    ONLY="$(shard_ids "$SHARD" "$SHARDS")"
+    if [[ -z "$ONLY" ]]; then
+      echo "→ Shard ${SHARD}/${SHARDS} has no stories; nothing to diff."
+      exit 0
+    fi
+    count="$(printf '%s' "$ONLY" | tr ',' '\n' | grep -c .)"
+    echo "→ Shard ${SHARD}/${SHARDS}: diffing ${count} stories"
+  fi
+  lp_run "$ONLY" || true
 
   diffs=()
   for f in .lostpixel/difference/*.png; do
