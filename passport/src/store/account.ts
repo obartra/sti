@@ -21,6 +21,7 @@ import { todayEpochDay } from "../core/clock.ts";
 import { DEFAULT_AVATAR, isAvatarConfig } from "../lib/avatars.ts";
 import { createAccountSync } from "./accountSync.ts";
 import { republishOwnerCard } from "./ownerCard.ts";
+import { revokeAlias } from "./publish.ts";
 import { isValidHandle } from "./codec.ts";
 import {
   isSharingMode,
@@ -56,6 +57,12 @@ export interface AccountManager {
   addAlias(master: Bytes, record: AliasRecord): Promise<AccountBlob>;
   /** Drop an alias record from the account (after its payload is revoked). */
   removeAlias(master: Bytes, id: string): Promise<AccountBlob>;
+  /**
+   * Delete the account: revoke every published alias (so no shared link can ever
+   * resolve to a status again) and remove the account blob. "Working delete"
+   * (doc 01 data minimization). Idempotent and best-effort on the aliases.
+   */
+  deleteAccount(master: Bytes): Promise<void>;
   /**
    * Update the owner's state (a reported result, a pause), persist it, and
    * republish every alias so the new badge propagates to all shared links.
@@ -131,6 +138,17 @@ export function createAccountManager(api: ApiClient): AccountManager {
       };
       await sync.save(master, next);
       return next;
+    },
+
+    async deleteAccount(master) {
+      const blob = await sync.load(master);
+      // Revoke every alias FIRST (overwrite each to undecryptable bytes) so no
+      // shared link can resolve after the account is gone; only then drop the
+      // blob. If a revoke fails, the blob is left so a retry can finish the job.
+      if (blob !== null) {
+        await Promise.all(blob.aliases.map((a) => revokeAlias(api, a)));
+      }
+      await sync.remove(master);
     },
 
     async setOwnerState(master, state) {

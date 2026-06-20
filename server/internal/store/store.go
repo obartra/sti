@@ -136,6 +136,13 @@ func (s *Store) PutAccount(ctx context.Context, id string, ciphertext []byte, no
 	return version, err
 }
 
+// DeleteAccount removes the account blob. Idempotent: deleting a nonexistent id
+// is not an error (the owner's aliases are separate rows, revoked client-side).
+func (s *Store) DeleteAccount(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM account WHERE id = ?`, id)
+	return err
+}
+
 // GetAccount returns the account blob, its version, and whether it exists.
 func (s *Store) GetAccount(ctx context.Context, id string) (ciphertext []byte, version int64, found bool, err error) {
 	err = s.db.QueryRowContext(ctx, `SELECT ciphertext, version FROM account WHERE id = ?`, id).

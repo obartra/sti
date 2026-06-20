@@ -38,6 +38,7 @@ describe("knock", () => {
       putAlias: unused,
       getAccount: unused,
       putAccount: unused,
+      deleteAccount: unused,
       notify: unused,
       registerPush: unused,
       health: unused,

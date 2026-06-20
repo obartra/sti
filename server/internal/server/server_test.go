@@ -148,6 +148,36 @@ func TestAccountSyncRoundTrip(t *testing.T) {
 	}
 }
 
+func TestAccountDelete(t *testing.T) {
+	h := newTestServer(t)
+	id := randID(t)
+
+	put := httptest.NewRequest("PUT", contract.PathAccountPrefix+id, strings.NewReader("blob"))
+	if rec := do(h, put); rec.Code != http.StatusNoContent {
+		t.Fatalf("put: code=%d", rec.Code)
+	}
+
+	del := do(h, httptest.NewRequest("DELETE", contract.PathAccountPrefix+id, nil))
+	if del.Code != http.StatusNoContent {
+		t.Fatalf("delete: code=%d", del.Code)
+	}
+	// The blob is gone: GET now 404s like a never-existed account.
+	if get := do(h, httptest.NewRequest("GET", contract.PathAccountPrefix+id, nil)); get.Code != http.StatusNotFound {
+		t.Fatalf("get after delete: code=%d, want 404", get.Code)
+	}
+	// Idempotent: deleting again (or a never-existed id) still 204s, revealing nothing.
+	if again := do(h, httptest.NewRequest("DELETE", contract.PathAccountPrefix+id, nil)); again.Code != http.StatusNoContent {
+		t.Fatalf("delete again: code=%d", again.Code)
+	}
+	if miss := do(h, httptest.NewRequest("DELETE", contract.PathAccountPrefix+randID(t), nil)); miss.Code != http.StatusNoContent {
+		t.Fatalf("delete missing: code=%d", miss.Code)
+	}
+	// A malformed id is rejected.
+	if bad := do(h, httptest.NewRequest("DELETE", contract.PathAccountPrefix+"short", nil)); bad.Code != http.StatusBadRequest {
+		t.Fatalf("delete malformed: code=%d, want 400", bad.Code)
+	}
+}
+
 // Knock is byte-identical for a real id, a different id, and a malformed id.
 func TestKnockIsUniform(t *testing.T) {
 	h := newTestServer(t)

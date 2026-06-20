@@ -240,6 +240,24 @@ describe("owner session against a live blind store", () => {
     );
   });
 
+  it("deleteAccount removes the blob and revokes every shared link", async () => {
+    const { ctl, api } = controller(fakePasskey());
+    const store = createBackendStore(api);
+    const { session, recoveryPhrase } = await ctl.signUp("gone");
+
+    // Publish a link, confirm it resolves, then delete the whole account.
+    const shared = await ctl.shareLink(session);
+    const alias = shared.session.blob.aliases[0];
+    expect(await store.resolveAlias(caps(alias))).not.toBeNull();
+
+    await ctl.deleteAccount(shared.session);
+
+    // The account blob is gone: the phrase recovers nothing.
+    expect(await ctl.recover(recoveryPhrase)).toBeNull();
+    // The shared link no longer resolves to any status (revoked to gray-nothing).
+    expect(await store.resolveAlias(caps(alias))).toBeNull();
+  });
+
   it("renewLink: a failing revoke leaves the record and old link intact (retryable)", async () => {
     // The owner holds the write token; if the revoke PUT fails, nothing should
     // change: the old link must keep resolving (no false "it's gone") and the

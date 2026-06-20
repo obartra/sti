@@ -53,6 +53,7 @@ export interface ApiClient {
     blob: Bytes,
     ifVersion?: string,
   ): Promise<{ version: string }>;
+  deleteAccount(id: string): Promise<void>;
   notify(tokenHash: string): Promise<void>;
   knock(id: string, requesterHash: string): Promise<void>;
   registerPush(req: PushRegisterRequest): Promise<void>;
@@ -60,6 +61,16 @@ export interface ApiClient {
 }
 
 const OCTET_STREAM = "application/octet-stream";
+
+/** Reject a malformed account id before it hits the wire (shared by acct ops). */
+function assertAccountId(id: string): void {
+  if (!validId(id)) throw new ApiError("badRequest", "malformed account id");
+}
+
+/** Read a response body as raw bytes (captures nothing; hoisted out of the client). */
+async function readBytes(res: Response): Promise<Bytes> {
+  return new Uint8Array(await res.arrayBuffer());
+}
 
 /** Map a non-ok HTTP status to the typed error kind. */
 function statusToKind(status: number): ApiErrorKind {
@@ -90,10 +101,6 @@ export function createApiClient(
     }
   }
 
-  async function bytes(res: Response): Promise<Bytes> {
-    return new Uint8Array(await res.arrayBuffer());
-  }
-
   return {
     async getAlias(id) {
       if (!validId(id)) throw new ApiError("badRequest", "malformed alias id");
@@ -102,7 +109,7 @@ export function createApiClient(
         cache: "no-store",
       });
       if (!res.ok) throw new ApiError(statusToKind(res.status), "alias get");
-      const body = await bytes(res);
+      const body = await readBytes(res);
       if (body.length !== ALIAS_PAYLOAD_SIZE) {
         throw new ApiError(
           "protocol",
@@ -129,8 +136,7 @@ export function createApiClient(
     },
 
     async getAccount(id) {
-      if (!validId(id))
-        throw new ApiError("badRequest", "malformed account id");
+      assertAccountId(id);
       const res = await call(PATHS.accountPrefix + id, {
         method: "GET",
         cache: "no-store",
@@ -141,12 +147,11 @@ export function createApiClient(
       if (version === null) {
         throw new ApiError("protocol", "account get missing version header");
       }
-      return { blob: await bytes(res), version };
+      return { blob: await readBytes(res), version };
     },
 
     async putAccount(id, blob, ifVersion) {
-      if (!validId(id))
-        throw new ApiError("badRequest", "malformed account id");
+      assertAccountId(id);
       const headers: Record<string, string> = { "Content-Type": OCTET_STREAM };
       // Advisory today (the server is last-write-wins); sent for forward-compat
       // with optimistic concurrency.
@@ -162,6 +167,13 @@ export function createApiClient(
         throw new ApiError("protocol", "account put missing version header");
       }
       return { version };
+    },
+
+    async deleteAccount(id) {
+      assertAccountId(id);
+      const res = await call(PATHS.accountPrefix + id, { method: "DELETE" });
+      if (!res.ok)
+        throw new ApiError(statusToKind(res.status), "account delete");
     },
 
     async notify(tokenHash) {
@@ -194,8 +206,7 @@ export function createApiClient(
     },
 
     async health() {
-      // A liveness probe is a boolean: an unreachable server (a thrown fetch, or
-      // a shed 503) is "not healthy", not an error to propagate.
+      // A liveness probe is a boolean: unreachable/shed = not healthy, not error.
       try {
         const res = await call(PATHS.health, { method: "GET" });
         return res.ok;

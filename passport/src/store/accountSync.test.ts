@@ -46,6 +46,10 @@ function fakeAccountApi(): ApiClient {
       store.set(id, { blob: body, version });
       return Promise.resolve({ version: String(version) });
     },
+    deleteAccount: (id) => {
+      store.delete(id);
+      return Promise.resolve();
+    },
   };
 }
 
@@ -68,5 +72,15 @@ describe("account sync", () => {
     await sync.save(await deriveMasterKey("phrase-a"), blob);
     const other = await deriveMasterKey("phrase-b");
     expect(await sync.load(other)).toBeNull();
+  });
+
+  it("remove deletes the blob so a later load is null (idempotent)", async () => {
+    const sync = createAccountSync(fakeAccountApi());
+    const master = await deriveMasterKey("phrase-a");
+    await sync.save(master, blob);
+    await sync.remove(master);
+    expect(await sync.load(master)).toBeNull();
+    // Removing again is a no-op, not an error.
+    await expect(sync.remove(master)).resolves.toBeUndefined();
   });
 });
