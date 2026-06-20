@@ -41,4 +41,14 @@ describe("ShareSheet link wiring", () => {
     render(<ShareSheet {...base} sharingMode="link" />);
     expect(screen.getByText("sti.care/a/a7f3k9q2")).toBeInTheDocument();
   });
+
+  it("hides the wallet row when showWallet is false (feature gated off)", () => {
+    const wallet = "Add to Apple or Google Wallet";
+    // Default shows it (the component's full form, kept for Storybook)...
+    const { rerender } = render(<ShareSheet {...base} />);
+    expect(screen.getByText(wallet)).toBeInTheDocument();
+    // ...but the app passes showWallet=WALLET_ENABLED (false), hiding the path.
+    rerender(<ShareSheet {...base} showWallet={false} />);
+    expect(screen.queryByText(wallet)).toBeNull();
+  });
 });

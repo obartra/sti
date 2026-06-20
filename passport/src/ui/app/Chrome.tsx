@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { AppShell, BackBar } from "../shell/AppShell.tsx";
 import { DesktopShell, DesktopLanding } from "../desktop/Desktop.tsx";
 import { ShareSheet } from "../share/ShareSheet.tsx";
+import { WALLET_ENABLED } from "../../features.ts";
 import { avatarSrc } from "../../lib/avatars.ts";
 import { CanvasWrap } from "./CanvasWrap.tsx";
 import { VersionStamp } from "./VersionStamp.tsx";
@@ -79,6 +80,7 @@ function ShareOverlay({
         setShareOpen(false);
         nav.go("wallet");
       }}
+      showWallet={WALLET_ENABLED}
       desktop={desktop}
     />
   );
