@@ -3,27 +3,17 @@ import type {
   ProtectionLabel,
   Route as BadgeRoute,
 } from "../badge-card.tsx";
+import { randomAvatar } from "../../lib/avatars.ts";
+import type { OwnerView } from "../../store/index.ts";
 
-// The demo owner the wired app runs on (local fixtures, no backend). A coherent
-// blue owner: tested in window, clear, on an HIV-prevention route, public alias.
-// Stands in for the prototype's derived tweak state until the backend is wired.
-export interface OwnerFixture {
-  handle: string;
-  avatarId: number;
-  badge: BadgeState;
-  viewerBadge: BadgeState;
-  labels: ProtectionLabel[];
-  blueRoute: BadgeRoute;
-  sharingMode: "public" | "link";
-  paused: boolean;
-  autoPaused: boolean;
-  daysLeft: number;
-  lastTestedLabel: string;
-}
-
-export const OWNER: OwnerFixture = {
+// The demo owner the wired app runs on in Storybook and as the logged-out
+// placeholder. A coherent blue owner: tested in window, clear, on an
+// HIV-prevention route, public alias. The real app derives this same OwnerView
+// shape from the account blob via deriveOwnerView; this is the fixture binding.
+export const OWNER: OwnerView = {
   handle: "robin",
-  avatarId: 2,
+  // seed 2 keeps the rendered avatar byte-identical to the prior avatarId: 2.
+  avatar: randomAvatar(2),
   badge: "blue",
   viewerBadge: "blue",
   labels: ["hiv"],

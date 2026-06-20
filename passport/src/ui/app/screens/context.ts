@@ -1,14 +1,13 @@
 import type { ReactNode } from "react";
 import type { Nav } from "../useAppRouter.ts";
-import type { OwnerFixture } from "../fixtures.ts";
 import type { RouteData, Screen } from "../routes.ts";
-import type { PassportStore } from "../../../store/index.ts";
+import type { OwnerView, PassportStore } from "../../../store/index.ts";
 
-// What every routed screen gets: navigation, the demo owner state, the
+// What every routed screen gets: navigation, the owner's derived view, the
 // share-sheet opener, the backend boundary, and the current route's payload.
 export interface ScreenCtx {
   nav: Nav;
-  owner: OwnerFixture;
+  owner: OwnerView;
   openShare: () => void;
   store: PassportStore;
   data: RouteData | null;

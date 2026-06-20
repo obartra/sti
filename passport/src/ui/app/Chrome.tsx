@@ -2,20 +2,19 @@ import type { ReactNode } from "react";
 import { AppShell, BackBar } from "../shell/AppShell.tsx";
 import { DesktopShell, DesktopLanding } from "../desktop/Desktop.tsx";
 import { ShareSheet } from "../share/ShareSheet.tsx";
-import { avatarFor } from "../../lib/avatars.ts";
+import { avatarSrc } from "../../lib/avatars.ts";
 import { CanvasWrap } from "./CanvasWrap.tsx";
 import { VersionStamp } from "./VersionStamp.tsx";
 import { ScreenView } from "./screens/index.tsx";
 import { isTab, sectionOf, type Route, type Tab } from "./routes.ts";
 import type { Nav } from "./useAppRouter.ts";
-import type { OwnerFixture } from "./fixtures.ts";
+import type { OwnerView, PassportStore } from "../../store/index.ts";
 import type { ScreenCtx } from "./screens/context.ts";
-import type { PassportStore } from "../../store/index.ts";
 
 export interface ChromeProps {
   route: Route;
   nav: Nav;
-  owner: OwnerFixture;
+  owner: OwnerView;
   store: PassportStore;
   desktop: boolean;
   shareOpen: boolean;
@@ -57,7 +56,7 @@ function ShareOverlay({
       labels={owner.labels}
       route={owner.blueRoute}
       identity={{ handle: owner.handle }}
-      avatarSrc={avatarFor(owner.handle)}
+      avatarSrc={avatarSrc(owner.avatar)}
       onRevoke={() => setShareOpen(false)}
       onWallet={() => {
         setShareOpen(false);
@@ -97,7 +96,7 @@ function AppChrome(props: ChromeProps) {
           onBell={() => nav.go("notifications")}
           onReport={() => nav.go("report")}
           onViewAs={() => nav.go("a2-public", { self: true })}
-          avatarSrc={avatarFor(owner.handle)}
+          avatarSrc={avatarSrc(owner.avatar)}
         >
           {content}
         </DesktopShell>

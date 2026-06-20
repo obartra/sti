@@ -1,7 +1,11 @@
 import { Button } from "../../design/components/index.ts";
 import { BadgeCard } from "../badge-card.tsx";
 import type { ProtectionLabel, Route } from "../badge-card.tsx";
-import { avatarFor } from "../../lib/avatars.ts";
+import {
+  avatarFor,
+  avatarSrc,
+  type AvatarConfigInput,
+} from "../../lib/avatars.ts";
 import {
   COPY,
   TODAY,
@@ -26,6 +30,7 @@ export type { HomeBadge };
 
 function HomeHero({
   handle,
+  avatar,
   viewerBadge,
   labels,
   route,
@@ -35,6 +40,7 @@ function HomeHero({
   onResume,
 }: {
   handle: string;
+  avatar: AvatarConfigInput | undefined;
   viewerBadge: HomeBadge;
   labels: ProtectionLabel[];
   route: Route;
@@ -67,7 +73,7 @@ function HomeHero({
         labels={labels}
         route={route}
         identity={{ handle }}
-        avatarSrc={avatarFor(handle)}
+        avatarSrc={avatar !== undefined ? avatarSrc(avatar) : avatarFor(handle)}
         width="100%"
       />
 
@@ -89,8 +95,11 @@ export interface HomeProps {
   viewerBadge?: HomeBadge;
   labels?: ProtectionLabel[];
   route?: Route;
-  // Handle used for the owner's avatar on the hero card.
+  // Handle shown on the hero card; also the avatar fallback when no config is set.
   handle?: string;
+  // The owner's chosen avatar. Falls back to the handle-derived avatar in
+  // isolation (Storybook), so the real app threads the config and stories don't.
+  avatar?: AvatarConfigInput;
   paused?: boolean;
   autoPaused?: boolean;
   sharingMode?: "public" | "link";
@@ -112,6 +121,7 @@ export function Home({
   labels = ["hiv"],
   route = null,
   handle = "robin",
+  avatar,
   paused = false,
   autoPaused = false,
   sharingMode = "link",
@@ -146,6 +156,7 @@ export function Home({
     >
       <HomeHero
         handle={handle}
+        avatar={avatar}
         viewerBadge={viewerBadge}
         labels={labels}
         route={route}

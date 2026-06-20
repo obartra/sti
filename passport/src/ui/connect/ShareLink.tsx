@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button, Card, Avatar } from "../../design/components/index.ts";
 import { Check, Lock, Link } from "../../design/icons.tsx";
 import { Matrix } from "../../lib/qr.tsx";
-import { avatarSrc } from "../../lib/avatars.ts";
+import { avatarSrc, type AvatarConfigInput } from "../../lib/avatars.ts";
 
 // ShareLink: show this alias's code for someone to scan, or copy the link. Both
 // sides still confirm before a linkup binds. Faithful port of
@@ -18,7 +18,13 @@ const COPY = {
 } as const;
 
 // The shared-alias card: avatar + handle, the QR matrix, and the copyable URL.
-function ShareCard({ url, avatarId }: { url: string; avatarId: number }) {
+function ShareCard({
+  url,
+  avatar,
+}: {
+  url: string;
+  avatar: AvatarConfigInput;
+}) {
   const [copied, setCopied] = useState(false);
   return (
     <Card
@@ -34,7 +40,7 @@ function ShareCard({ url, avatarId }: { url: string; avatarId: number }) {
         <Avatar
           initials="robin"
           alt="robin"
-          src={avatarSrc(avatarId)}
+          src={avatarSrc(avatar)}
           size="md"
         />
         <span
@@ -102,14 +108,14 @@ export interface ShareLinkProps {
   onDone?: (() => void) | undefined;
   /** Which alias is being shared. A public alias carries a key fragment in the URL. */
   sharingMode?: "private" | "public";
-  /** Avatar config id for the shared alias (defaults to 2). */
-  avatarId?: number;
+  /** Avatar for the shared alias (config or seed; defaults to seed 2). */
+  avatar?: AvatarConfigInput;
 }
 
 export function ShareLink({
   onDone,
   sharingMode = "private",
-  avatarId = 2,
+  avatar = 2,
 }: ShareLinkProps) {
   // Default to the private/main alias; its URL carries NO key (handed at link
   // time). A public alias would carry #k=…, see Privacy → aliases.
@@ -146,7 +152,7 @@ export function ShareLink({
           {COPY.shareSub}
         </p>
 
-        <ShareCard url={url} avatarId={avatarId} />
+        <ShareCard url={url} avatar={avatar} />
 
         <Card variant="tint" style={{ display: "flex", gap: 11 }}>
           <span
