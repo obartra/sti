@@ -22,7 +22,8 @@ function fakeAccountApi(): ApiClient {
   };
   return {
     getAlias: unused,
-    putAlias: unused,
+    // A no-op so deleteAccount's alias revocation (PUT garbage) succeeds here.
+    putAlias: () => Promise.resolve(),
     notify: unused,
     knock: unused,
     registerPush: unused,
@@ -37,6 +38,10 @@ function fakeAccountApi(): ApiClient {
       const version = (store.get(id)?.version ?? 0) + 1;
       store.set(id, { blob: body, version });
       return Promise.resolve({ version: String(version) });
+    },
+    deleteAccount: (id) => {
+      store.delete(id);
+      return Promise.resolve();
     },
   };
 }
@@ -82,6 +87,62 @@ describe("account manager", () => {
     await accounts.addAlias(created.master, record);
     const next = await accounts.addAlias(created.master, record);
     expect(next.aliases).toEqual([record]); // not two copies
+  });
+
+  it("deleteAccount removes the blob so recovery finds nothing", async () => {
+    const accounts = createAccountManager(fakeAccountApi());
+    const created = await accounts.create("robin");
+    await accounts.addAlias(created.master, record);
+
+    await accounts.deleteAccount(created.master);
+    // The account is gone: the phrase no longer recovers anything.
+    expect(await accounts.recover(created.recoveryPhrase)).toBeNull();
+    // Idempotent: deleting again is a no-op, not an error.
+    await expect(
+      accounts.deleteAccount(created.master),
+    ).resolves.toBeUndefined();
+  });
+
+  it("deleteAccount leaves the blob intact if an alias revoke fails (retryable)", async () => {
+    // The core privacy ordering: revoke every alias FIRST, delete the blob only
+    // after. If a revoke fails, the account must survive so a retry can finish,
+    // never blob-deleted-but-links-live.
+    const accountStore = new Map<string, { blob: Bytes; version: number }>();
+    let deleted = false;
+    const unused = () => {
+      throw new Error("not used");
+    };
+    const api: ApiClient = {
+      getAlias: unused,
+      notify: unused,
+      knock: unused,
+      registerPush: unused,
+      health: unused,
+      getAccount: (id) => {
+        const e = accountStore.get(id);
+        return Promise.resolve(
+          e ? { blob: e.blob, version: String(e.version) } : null,
+        );
+      },
+      putAccount: (id, body) => {
+        const version = (accountStore.get(id)?.version ?? 0) + 1;
+        accountStore.set(id, { blob: body, version });
+        return Promise.resolve({ version: String(version) });
+      },
+      putAlias: () => Promise.reject(new Error("revoke down")),
+      deleteAccount: (id) => {
+        deleted = true;
+        accountStore.delete(id);
+        return Promise.resolve();
+      },
+    };
+    const accounts = createAccountManager(api);
+    const created = await accounts.create("robin");
+    await accounts.addAlias(created.master, record);
+
+    await expect(accounts.deleteAccount(created.master)).rejects.toThrow();
+    expect(deleted).toBe(false); // the blob delete never ran
+    expect(await accounts.recover(created.recoveryPhrase)).not.toBeNull();
   });
 
   it("removeAlias drops the record and is idempotent on a missing id", async () => {
@@ -170,6 +231,10 @@ describe("account manager", () => {
         if (!aliasPutsAllowed)
           return Promise.reject(new Error("republish down"));
         aliasStore.set(id, payload);
+        return Promise.resolve();
+      },
+      deleteAccount: (id) => {
+        accountStore.delete(id);
         return Promise.resolve();
       },
     };

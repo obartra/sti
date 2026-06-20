@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { App } from "./App.tsx";
 import type { ResolvedView } from "./public/PublicResolution.tsx";
 import type {
@@ -85,6 +85,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
     // Revoke & renew: a distinct id, so the surfaced link visibly changes.
     renewLink: (session) =>
       Promise.resolve({ session, url: `https://sti.care/a/${"w".repeat(43)}` }),
+    deleteAccount: () => Promise.resolve(),
     forget: () => undefined,
   };
 }
@@ -227,6 +228,38 @@ describe("App onboarding flow", () => {
       await screen.findByText(`sti.care/a/${"w".repeat(43)}`),
     ).toBeInTheDocument();
     expect(screen.queryByText(`sti.care/a/${"z".repeat(43)}`)).toBeNull();
+  });
+
+  it("deleting the account from the danger zone logs out to the landing", async () => {
+    window.history.pushState({}, "", "/#b1-claim");
+    const user = userEvent.setup();
+    const controller = fakeController();
+    const deleteAccount = vi.fn(() => Promise.resolve());
+    controller.deleteAccount = deleteAccount;
+    render(<App store={stubStore(null)} controller={controller} />);
+
+    // Onboard into the app.
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(
+      await screen.findByRole("button", { name: /Tap to reveal/ }),
+    );
+    await user.click(screen.getByRole("button", { name: /saved it/i }));
+    await user.click(
+      await screen.findByRole("button", { name: /Enter my passport/ }),
+    );
+    expect((await screen.findAllByText("@robin")).length).toBeGreaterThan(0);
+
+    // Open Privacy, then the danger zone's two-step delete.
+    await user.click(await screen.findByText("Privacy & sharing"));
+    await user.click(
+      await screen.findByRole("button", { name: "Delete everything" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Delete now" }));
+
+    // The account was really deleted and the app logged out to the landing.
+    expect(deleteAccount).toHaveBeenCalledOnce();
+    expect(await screen.findByText("Claim your passport")).toBeInTheDocument();
+    expect(screen.queryByText("@robin")).toBeNull();
   });
 
   it("logs in on a new device with the recovery phrase (no passkey)", async () => {

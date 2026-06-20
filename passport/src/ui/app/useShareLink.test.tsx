@@ -49,6 +49,7 @@ function stubController(over: Partial<SessionController>): SessionController {
     setOwnerState: unused,
     shareLink: unused,
     renewLink: unused,
+    deleteAccount: unused,
     forget: unused,
     ...over,
   };

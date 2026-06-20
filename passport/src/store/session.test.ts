@@ -45,6 +45,10 @@ function fakeBackend() {
     },
     addAlias: () => Promise.reject(new Error("unused")),
     removeAlias: () => Promise.reject(new Error("unused")),
+    deleteAccount: (master) => {
+      byMaster.delete(bytesToBase64url(master));
+      return Promise.resolve();
+    },
     setOwnerState: () => Promise.reject(new Error("unused")),
     setProfile: () => Promise.reject(new Error("unused")),
   };
@@ -53,6 +57,10 @@ function fakeBackend() {
       Promise.resolve(byMaster.get(bytesToBase64url(master)) ?? null),
     save: (master, blob) => {
       byMaster.set(bytesToBase64url(master), blob);
+      return Promise.resolve();
+    },
+    remove: (master) => {
+      byMaster.delete(bytesToBase64url(master));
       return Promise.resolve();
     },
   };
@@ -237,6 +245,18 @@ describe("session controller", () => {
     expect(await ctl.resume()).not.toBeNull();
 
     ctl.forget();
+    expect(await ctl.resume()).toBeNull();
+  });
+
+  it("deleteAccount removes the account AND forgets the device binding", async () => {
+    const { ctl } = setup();
+    const { session, recoveryPhrase } = await ctl.signUp("robin");
+    await ctl.enrollPasskey(session, "robin");
+    expect(await ctl.resume()).not.toBeNull();
+
+    await ctl.deleteAccount(session);
+    // The blob is gone (phrase recovers nothing) and the passkey can't resume.
+    expect(await ctl.recover(recoveryPhrase)).toBeNull();
     expect(await ctl.resume()).toBeNull();
   });
 });

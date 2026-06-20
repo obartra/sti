@@ -120,6 +120,17 @@ export function App({
     [setOwnerState],
   );
 
+  // Permanently delete the account: optimistically log out (which also clamps
+  // app routes to the landing), then revoke links + delete the blob in the
+  // background. Idempotent, so a dropped request just leaves a retryable remnant.
+  const onDeleteAccount = useCallback(() => {
+    const current = sessionRef.current;
+    if (current === null) return;
+    sessionRef.current = null;
+    setSession(null);
+    void controller.deleteAccount(current).catch(() => undefined);
+  }, [controller]);
+
   // The share sheet: opening it mints/refreshes the owner's primary alias and
   // surfaces its real link; copy writes that link to the clipboard.
   const {
@@ -129,7 +140,6 @@ export function App({
     revokeLink,
   } = useShareLink(controller, sessionRef, setSession, setShareOpen);
 
-  const loggedIn = session !== null;
   const owner = session
     ? deriveOwnerView(session.blob, todayEpochDay())
     : OWNER;
@@ -139,7 +149,7 @@ export function App({
   // deep link): clamp those to the public landing until they sign in. Public
   // screens (landing, a shared link, onboarding) are reachable either way.
   const effectiveRoute: Route =
-    !loggedIn && route.group === "app"
+    session === null && route.group === "app"
       ? { screen: "a1-landing", group: "public", data: null }
       : route;
 
@@ -159,6 +169,7 @@ export function App({
       shareUrl={shareUrl}
       onCopyShareLink={copyShareLink}
       onRevokeShareLink={revokeLink}
+      onDeleteAccount={onDeleteAccount}
     />
   );
 }

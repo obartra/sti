@@ -145,6 +145,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("PUT /a/{id}", s.handleAliasPut)
 	s.mux.HandleFunc("GET /acct/{id}", s.handleAccountGet)
 	s.mux.HandleFunc("PUT /acct/{id}", s.handleAccountPut)
+	s.mux.HandleFunc("DELETE /acct/{id}", s.handleAccountDelete)
 	s.mux.HandleFunc("POST /notify", s.handleNotify)
 	s.mux.HandleFunc("POST /push/register", s.handlePushRegister)
 	s.mux.HandleFunc("POST /knock/{id}", s.handleKnock)
@@ -373,6 +374,27 @@ func (s *Server) handleAccountPut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set(contract.HeaderVersion, strconv.FormatInt(version, 10))
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleAccountDelete removes the account blob. Like PUT, it is authorized by
+// holding the key-derived id (unguessable; only the master derives it), and it
+// is idempotent: a missing id still returns 204, revealing nothing. The owner's
+// aliases are separate rows the client revokes (overwrites) before calling this.
+func (s *Server) handleAccountDelete(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if !contract.ValidID(id) {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed id")
+		return
+	}
+	if !s.ipLimit.allow(clientIP(r), s.now()) {
+		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
+		return
+	}
+	if err := s.st.DeleteAccount(r.Context(), id); err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 

@@ -32,6 +32,7 @@ function recordingApi(): { api: ApiClient; puts: PutCall[] } {
       getAlias: unused,
       getAccount: unused,
       putAccount: unused,
+      deleteAccount: unused,
       notify: unused,
       knock: unused,
       registerPush: unused,

@@ -58,12 +58,17 @@ export const coreRenderers: ScreenRenderers = {
     />
   ),
   notifications: () => <Notifications />,
-  privacy: ({ nav, ownerState, setOwnerState }) => (
+  privacy: ({ nav, ownerState, setOwnerState, onDeleteAccount }) => (
     <Privacy
       ownerState={ownerState}
       setOwnerState={setOwnerState}
       onViewAs={() => nav.go("a2-public", { self: true })}
-      onDeleted={() => nav.jump("a1-landing", "public")}
+      onDeleted={() => {
+        // Really delete (revoke links + remove the blob, logs out), then reset
+        // the URL to the public landing.
+        onDeleteAccount();
+        nav.jump("a1-landing", "public");
+      }}
     />
   ),
 };

@@ -95,6 +95,12 @@ export interface SessionController {
    * no-op-with-mint when no alias exists yet (just produces a first link).
    */
   renewLink(session: OwnerSession): Promise<ShareLinkResult>;
+  /**
+   * Permanently delete the account: revoke every shared link and remove the
+   * account blob, then forget this device's passkey binding. After this the
+   * recovery phrase no longer recovers anything (the blob is gone).
+   */
+  deleteAccount(session: OwnerSession): Promise<void>;
   /** Forget this device's passkey binding. The phrase still recovers. */
   forget(): void;
 }
@@ -231,6 +237,11 @@ export function createSessionController(deps: SessionDeps): SessionController {
       // Mint a fresh link for the current card (this is now the only alias for
       // the mode, since the old record is gone).
       return shareLinkFor(working);
+    },
+
+    async deleteAccount(session) {
+      await accounts.deleteAccount(session.master);
+      devices.clear();
     },
 
     forget() {

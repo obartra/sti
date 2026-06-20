@@ -34,6 +34,8 @@ export interface AccountSync {
   load(master: Bytes): Promise<AccountBlob | null>;
   /** Encrypt and store the account blob for this master key. */
   save(master: Bytes, blob: AccountBlob): Promise<void>;
+  /** Delete the account blob for this master key (idempotent). */
+  remove(master: Bytes): Promise<void>;
 }
 
 export function createAccountSync(api: ApiClient): AccountSync {
@@ -56,6 +58,11 @@ export function createAccountSync(api: ApiClient): AccountSync {
     async save(master, blob) {
       const [id, key] = await derive(master);
       await api.putAccount(id, await seal(key, serializeAccountBlob(blob)));
+    },
+
+    async remove(master) {
+      // Only the account id is needed to delete; the blob key is irrelevant.
+      await api.deleteAccount(await deriveAccountId(master));
     },
   };
 }

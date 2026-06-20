@@ -24,6 +24,8 @@ export interface ScreenCtx {
    */
   setOwnerState: (update: (prev: OwnerState) => OwnerState) => void;
   openShare: () => void;
+  /** Permanently delete the account and return to the logged-out landing. */
+  onDeleteAccount: () => void;
   store: PassportStore;
   data: RouteData | null;
 }

@@ -30,6 +30,7 @@ export interface ChromeProps {
   shareUrl: string | null;
   onCopyShareLink: () => void;
   onRevokeShareLink: () => void;
+  onDeleteAccount: () => void;
 }
 
 function MobileSub({ nav, children }: { nav: Nav; children: ReactNode }) {
@@ -95,6 +96,7 @@ function AppChrome(props: ChromeProps) {
     store,
     desktop,
     setShareOpen,
+    onDeleteAccount,
   } = props;
   const tab: Tab = sectionOf(route.screen);
   const ctx: ScreenCtx = {
@@ -105,6 +107,7 @@ function AppChrome(props: ChromeProps) {
     onReport,
     setOwnerState,
     openShare: () => setShareOpen(true),
+    onDeleteAccount,
     store,
     data: route.data,
   };
@@ -172,6 +175,7 @@ function PublicChrome({
   store,
   desktop,
   setShareOpen,
+  onDeleteAccount,
 }: ChromeProps) {
   if (desktop && route.screen === "a1-landing") {
     return (
@@ -191,6 +195,7 @@ function PublicChrome({
     onReport,
     setOwnerState,
     openShare: () => setShareOpen(true),
+    onDeleteAccount,
     store,
     data: route.data,
   };
