@@ -75,6 +75,12 @@ export interface ShareSheetProps {
   onCopy?: (() => void) | undefined;
   onRevoke?: (() => void) | undefined;
   onWallet?: (() => void) | undefined;
+  /**
+   * Show the "Add to wallet" row. Defaults true (the component's full form, kept
+   * for Storybook); the app passes features.WALLET_ENABLED, which is currently
+   * false (wallet passes are built but gated off, pending signing certs).
+   */
+  showWallet?: boolean | undefined;
   desktop?: boolean | undefined;
 }
 
@@ -323,6 +329,7 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
     onCopy,
     onRevoke,
     onWallet,
+    showWallet = true,
     desktop = false,
   } = props;
   const link = sharingMode === "link";
@@ -386,7 +393,7 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
           <Eye size={14} /> {COPY.reassurance}
         </div>
         <UrlCard link={link} url={url} seed={seed} onCopy={onCopy} />
-        <WalletRow onWallet={onWallet} />
+        {showWallet && <WalletRow onWallet={onWallet} />}
         <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
           {link && (
             <Button

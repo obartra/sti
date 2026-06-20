@@ -271,6 +271,13 @@ This guide is the propagation plan.
 - **Action:** EDIT the STATUS/statusCopy strings + all headlines.
 
 ### Wallet — `Wallet.Wallet`
+- **STATUS (deferred / hidden, 2026-06-20):** the wallet screen + Apple/Google pass renditions are
+  built (`passport/src/ui/wallet/`) but the entry point is GATED OFF behind
+  `passport/src/features.ts` `WALLET_ENABLED = false` (the ShareSheet "Add to wallet" row is hidden
+  in the app; the component story still renders it). Reason: real passes need signing credentials we
+  do not have yet — an Apple PassKit pass-type certificate and a Google Wallet issuer account +
+  service-account key, plus a server-side signing step — so a shipped "pass" would be a
+  non-functional mock. Re-enable by flipping the flag and wiring the signer; no code was deleted.
 - **Now:** Apple/Google Wallet renditions of the four-light pass with the scannable status QR.
 - **Target:** **Format choice gated by privacy mode.** **QR format** (any alias) shows **no
   status** on the face — QR + handle + avatar + logo, a link carrier; resolution gates downstream.
