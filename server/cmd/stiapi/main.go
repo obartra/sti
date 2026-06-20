@@ -63,12 +63,19 @@ func main() {
 	allowedOrigins := splitList(os.Getenv("STI_ALLOWED_ORIGINS"))
 
 	// Targeted-wake delivery (notify/push) is OFF by default and stays off in prod
-	// until the cover-wake decorrelation fix lands (doc 10 §F). No Web Push sender
-	// is wired here yet, so enabling the gate alone still delivers nothing; the
-	// flag exists so the drain + queue mechanics can run once a Sender is provided.
+	// until the cover-wake decorrelation fix lands (doc 10 §F). Two independent
+	// gates must BOTH be on to deliver: STI_NOTIFY_ENABLED, and a configured Web
+	// Push sender (VAPID keys). Either alone delivers nothing.
 	notifyEnabled := os.Getenv("STI_NOTIFY_ENABLED") == "true"
-	if notifyEnabled {
-		log.Warn("STI_NOTIFY_ENABLED is set but no Web Push sender is configured; wakes are not delivered")
+	var sender server.Sender
+	if pub, priv := os.Getenv("STI_VAPID_PUBLIC_KEY"), os.Getenv("STI_VAPID_PRIVATE_KEY"); pub != "" && priv != "" {
+		sender = server.NewWebPushSender(pub, priv, env("STI_VAPID_SUBJECT", "https://sti.care"))
+	}
+	if notifyEnabled && sender == nil {
+		log.Warn("STI_NOTIFY_ENABLED is set but no VAPID keys are configured; wakes are not delivered")
+	}
+	if sender != nil && !notifyEnabled {
+		log.Warn("a Web Push sender is configured but STI_NOTIFY_ENABLED is off; delivery stays gated")
 	}
 
 	// Per-IP request limit on the non-sensitive endpoints. Zero leaves the
@@ -82,6 +89,7 @@ func main() {
 		DecoySecret:    secret,
 		AllowedOrigins: allowedOrigins,
 		NotifyEnabled:  notifyEnabled,
+		Sender:         sender,
 		IPRatePerSec:   ipRate,
 		IPBurst:        ipBurst,
 	}, log, nil)
