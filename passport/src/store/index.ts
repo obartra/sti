@@ -13,7 +13,12 @@ export { serializePublicCard, parsePublicCard } from "./publicCard.ts";
 export { parseAliasLink } from "./aliasLink.ts";
 export type { AccountSync } from "./accountSync.ts";
 export { createAccountSync } from "./accountSync.ts";
-export type { AccountBlob, AliasRecord, SharingMode } from "./accountBlob.ts";
+export type {
+  AccountBlob,
+  AliasRecord,
+  ContactRecord,
+  SharingMode,
+} from "./accountBlob.ts";
 export {
   serializeAccountBlob,
   parseAccountBlob,
@@ -38,5 +43,6 @@ export type {
   SessionController,
   SessionDeps,
   ShareLinkResult,
+  ContactLinkResult,
 } from "./session.ts";
 export { createSessionController } from "./session.ts";

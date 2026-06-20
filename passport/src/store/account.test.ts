@@ -55,6 +55,7 @@ describe("account manager", () => {
     expect(recovered?.blob).toEqual({
       handle: "robin",
       aliases: [],
+      contacts: [],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
       sharingMode: "link",
@@ -88,6 +89,77 @@ describe("account manager", () => {
     await accounts.addAlias(created.master, record);
     const next = await accounts.addAlias(created.master, record);
     expect(next.aliases).toEqual([record]); // not two copies
+  });
+
+  const contact = {
+    id: "D".repeat(43),
+    label: "Sam",
+    createdDay: 19_000,
+    expiresDay: 19_007,
+    alias: {
+      id: "E".repeat(43),
+      writeToken: "F".repeat(43),
+      key: "G".repeat(43),
+      isPublic: false,
+    },
+  };
+
+  it("addContact records a per-contact link; removeContact drops it (both idempotent)", async () => {
+    const accounts = createAccountManager(fakeAccountApi());
+    const created = await accounts.create("robin");
+
+    const withContact = await accounts.addContact(created.master, contact);
+    expect(withContact.contacts).toEqual([contact]);
+    // Upsert: re-adding the same id does not duplicate.
+    const again = await accounts.addContact(created.master, contact);
+    expect(again.contacts).toEqual([contact]);
+    expect(
+      (await accounts.recover(created.recoveryPhrase))?.blob.contacts,
+    ).toEqual([contact]);
+
+    const removed = await accounts.removeContact(created.master, contact.id);
+    expect(removed.contacts).toEqual([]);
+    // Removing an already-gone id is a no-op.
+    const noop = await accounts.removeContact(created.master, contact.id);
+    expect(noop.contacts).toEqual([]);
+  });
+
+  it("setOwnerState revokes + drops expired contacts and keeps live ones", async () => {
+    const accounts = createAccountManager(fakeAccountApi());
+    const created = await accounts.create("robin");
+    const live = {
+      id: "L".repeat(43),
+      label: "Live",
+      createdDay: 1,
+      expiresDay: 9_999_999, // far future
+      alias: {
+        id: "1".repeat(43),
+        writeToken: "2".repeat(43),
+        key: "3".repeat(43),
+        isPublic: false,
+      },
+    };
+    const expired = {
+      id: "X".repeat(43),
+      label: "Old",
+      createdDay: 1,
+      expiresDay: 1, // long past
+      alias: {
+        id: "4".repeat(43),
+        writeToken: "5".repeat(43),
+        key: "6".repeat(43),
+        isPublic: false,
+      },
+    };
+    await accounts.addContact(created.master, live);
+    await accounts.addContact(created.master, expired);
+
+    const next = await accounts.setOwnerState(created.master, {
+      ...INITIAL_OWNER_STATE,
+      onPrep: true,
+    });
+    // The expired link is dropped (and its payload revoked); the live one stays.
+    expect(next.contacts.map((c) => c.id)).toEqual([live.id]);
   });
 
   it("deleteAccount removes the blob so recovery finds nothing", async () => {

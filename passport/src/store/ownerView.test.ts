@@ -11,6 +11,7 @@ function blob(state: OwnerState, over: Partial<AccountBlob> = {}): AccountBlob {
   return {
     handle: "robin",
     aliases: [],
+    contacts: [],
     state,
     avatar: DEFAULT_AVATAR,
     sharingMode: "link",

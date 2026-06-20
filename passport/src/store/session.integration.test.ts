@@ -258,6 +258,31 @@ describe("owner session against a live blind store", () => {
     expect(await store.resolveAlias(caps(alias))).toBeNull();
   });
 
+  it("createContactLink mints a private, keyed, 7-day link that resolves, then revokes", async () => {
+    const { ctl, api } = controller(fakePasskey());
+    const store = createBackendStore(api);
+    const { session } = await ctl.signUp("nat");
+
+    const made = await ctl.createContactLink(session, "Sam");
+    expect(made.contact.label).toBe("Sam");
+    expect(made.contact.alias.isPublic).toBe(false);
+    // Default 7-day expiry.
+    expect(made.contact.expiresDay).toBe(made.contact.createdDay + 7);
+    expect(made.session.blob.contacts).toHaveLength(1);
+    // The link carries the key, so the one recipient can open it directly.
+    expect(made.url).toContain(`/a/${made.contact.alias.id}#k=`);
+
+    // It resolves to the owner's current card.
+    expect(await store.resolveAlias(caps(made.contact.alias))).toEqual(
+      deriveOwnerCard(session.blob.state, session.blob.handle, todayEpochDay()),
+    );
+
+    // Revoke: the contact is dropped and the link stops resolving.
+    const after = await ctl.revokeContact(made.session, made.contact.id);
+    expect(after.blob.contacts).toHaveLength(0);
+    expect(await store.resolveAlias(caps(made.contact.alias))).toBeNull();
+  });
+
   it("reviewKnocks counts knocks on the owner's aliases (deduped per requester)", async () => {
     const { ctl, api } = controller(fakePasskey());
     const { session } = await ctl.signUp("ivy");

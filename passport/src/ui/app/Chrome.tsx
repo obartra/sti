@@ -34,6 +34,9 @@ export interface ChromeProps {
   onDeleteAccount: () => void;
   knockCount: number;
   refreshKnocks: () => void;
+  contacts: ScreenCtx["contacts"];
+  onCreateContactLink: ScreenCtx["onCreateContactLink"];
+  onRevokeContact: ScreenCtx["onRevokeContact"];
 }
 
 function MobileSub({ nav, children }: { nav: Nav; children: ReactNode }) {
@@ -103,6 +106,9 @@ function AppChrome(props: ChromeProps) {
     onDeleteAccount,
     knockCount,
     refreshKnocks,
+    contacts,
+    onCreateContactLink,
+    onRevokeContact,
   } = props;
   const tab: Tab = sectionOf(route.screen);
   const ctx: ScreenCtx = {
@@ -116,6 +122,9 @@ function AppChrome(props: ChromeProps) {
     onDeleteAccount,
     knockCount,
     refreshKnocks,
+    contacts,
+    onCreateContactLink,
+    onRevokeContact,
     store,
     data: route.data,
   };
@@ -187,6 +196,9 @@ function PublicChrome({
   onDeleteAccount,
   knockCount,
   refreshKnocks,
+  contacts,
+  onCreateContactLink,
+  onRevokeContact,
 }: ChromeProps) {
   if (desktop && route.screen === "a1-landing") {
     return (
@@ -209,6 +221,9 @@ function PublicChrome({
     onDeleteAccount,
     knockCount,
     refreshKnocks,
+    contacts,
+    onCreateContactLink,
+    onRevokeContact,
     store,
     data: route.data,
   };

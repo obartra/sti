@@ -17,6 +17,7 @@ const blob: AccountBlob = {
       isPublic: true,
     },
   ],
+  contacts: [],
   state: INITIAL_OWNER_STATE,
   avatar: DEFAULT_AVATAR,
   sharingMode: "link",

@@ -40,6 +40,7 @@ describe("account sync against a live blind store", () => {
           isPublic: true,
         },
       ],
+      contacts: [],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
       sharingMode: "link",

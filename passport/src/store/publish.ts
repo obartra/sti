@@ -40,6 +40,16 @@ export function aliasLinkUrl(record: AliasRecord): string {
   return record.isPublic ? `${base}#k=${record.key}` : base;
 }
 
+/**
+ * A link that ALWAYS carries the key in the fragment, for a per-contact link
+ * handed to one specific person (one-tap open). Unlike aliasLinkUrl, this does
+ * not gate on isPublic: a per-contact alias stays private (unadvertised) but its
+ * recipient gets the key so they can resolve it directly rather than knocking.
+ */
+export function keyedAliasLinkUrl(record: AliasRecord): string {
+  return `${SHARE_ORIGIN}${PATHS.aliasPrefix}${record.id}#k=${record.key}`;
+}
+
 // Seal `view` under `key` and write it to the alias. Shared by publish (new key)
 // and republish (the existing key), so both encode a card identically.
 async function sealAndPut(

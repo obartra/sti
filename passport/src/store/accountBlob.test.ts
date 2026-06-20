@@ -11,6 +11,20 @@ const blob: AccountBlob = {
   aliases: [
     { id: ID, writeToken: "B".repeat(43), key: "C".repeat(43), isPublic: true },
   ],
+  contacts: [
+    {
+      id: "D".repeat(43),
+      label: "Sam",
+      createdDay: 19_000,
+      expiresDay: 19_007,
+      alias: {
+        id: "E".repeat(43),
+        writeToken: "F".repeat(43),
+        key: "G".repeat(43),
+        isPublic: false,
+      },
+    },
+  ],
   state: INITIAL_OWNER_STATE,
   avatar: DEFAULT_AVATAR,
   sharingMode: "link",
@@ -25,6 +39,7 @@ describe("account blob codec", () => {
     const empty: AccountBlob = {
       handle: "sam",
       aliases: [],
+      contacts: [],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
       sharingMode: "public",
@@ -36,6 +51,7 @@ describe("account blob codec", () => {
     const populated: AccountBlob = {
       handle: "robin",
       aliases: [],
+      contacts: [],
       state: {
         testing: {
           lastPanelDay: 19_000,
@@ -68,15 +84,40 @@ describe("account blob codec", () => {
 
   const S = INITIAL_OWNER_STATE;
   const A = DEFAULT_AVATAR;
-  const base = { v: 4, handle: "x", aliases: [], state: S, avatar: A };
+  const base = {
+    v: 5,
+    handle: "x",
+    aliases: [],
+    contacts: [],
+    state: S,
+    avatar: A,
+  };
   reject("a non-object", 7);
   reject("an unknown version", { ...base, v: 9 });
-  reject("a prior version (v3 is no longer accepted)", {
-    v: 3,
+  reject("a prior version (v4 is no longer accepted)", {
+    v: 4,
     handle: "x",
     aliases: [],
     state: S,
     avatar: A,
+  });
+  reject("a non-array contacts", {
+    ...base,
+    contacts: {},
+    sharingMode: "link",
+  });
+  reject("a contact with a malformed alias", {
+    ...base,
+    contacts: [
+      {
+        id: ID,
+        label: "x",
+        createdDay: 1,
+        expiresDay: null,
+        alias: { id: "short" },
+      },
+    ],
+    sharingMode: "link",
   });
   reject("an empty handle", { ...base, handle: "", sharingMode: "link" });
   reject("a non-array aliases", { ...base, aliases: {}, sharingMode: "link" });
@@ -90,16 +131,23 @@ describe("account blob codec", () => {
     aliases: [{ id: ID, writeToken: ID, key: ID }],
     sharingMode: "link",
   });
-  reject("a missing state", { v: 4, handle: "x", aliases: [], avatar: A });
+  reject("a missing state", {
+    v: 5,
+    handle: "x",
+    aliases: [],
+    contacts: [],
+    avatar: A,
+  });
   reject("an invalid hiv status", {
     ...base,
     state: { ...S, hiv: "maybe" },
     sharingMode: "link",
   });
   reject("a missing avatar", {
-    v: 4,
+    v: 5,
     handle: "x",
     aliases: [],
+    contacts: [],
     state: S,
     sharingMode: "link",
   });

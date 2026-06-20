@@ -27,6 +27,7 @@ import {
   isSharingMode,
   type AccountBlob,
   type AliasRecord,
+  type ContactRecord,
   type SharingMode,
 } from "./accountBlob.ts";
 
@@ -57,6 +58,10 @@ export interface AccountManager {
   addAlias(master: Bytes, record: AliasRecord): Promise<AccountBlob>;
   /** Drop an alias record from the account (after its payload is revoked). */
   removeAlias(master: Bytes, id: string): Promise<AccountBlob>;
+  /** Record a per-contact link into the account and persist it. */
+  addContact(master: Bytes, contact: ContactRecord): Promise<AccountBlob>;
+  /** Drop a contact record (after its alias payload is revoked). */
+  removeContact(master: Bytes, contactId: string): Promise<AccountBlob>;
   /**
    * Delete the account: revoke every published alias (so no shared link can ever
    * resolve to a status again) and remove the account blob. "Working delete"
@@ -77,6 +82,24 @@ export interface AccountManager {
 
 export function createAccountManager(api: ApiClient): AccountManager {
   const sync = createAccountSync(api);
+
+  // Load-modify-save for the synced blob. Single device today; multi-device
+  // concurrent edits are last-write-wins until X-Version is enforced. The list
+  // mutations below are upsert/filter by id, so a retry is idempotent (a partial
+  // save that landed but lost its response replays to the same result).
+  const modify = async (
+    master: Bytes,
+    fn: (blob: AccountBlob) => AccountBlob,
+  ): Promise<AccountBlob> => {
+    const blob = await sync.load(master);
+    if (blob === null) {
+      throw new Error("account does not exist for this key");
+    }
+    const next = fn(blob);
+    await sync.save(master, next);
+    return next;
+  };
+
   return {
     async create(handle) {
       // Validate up front: an invalid handle would seal fine but throw on
@@ -90,6 +113,7 @@ export function createAccountManager(api: ApiClient): AccountManager {
       const blob: AccountBlob = {
         handle,
         aliases: [],
+        contacts: [],
         state: INITIAL_OWNER_STATE,
         // A fresh account starts with the default avatar and the private (link)
         // sharing default; onboarding updates both via setProfile.
@@ -106,47 +130,47 @@ export function createAccountManager(api: ApiClient): AccountManager {
       return blob === null ? null : { master, blob };
     },
 
-    async addAlias(master, record) {
-      // Read-modify-write. Single device today; multi-device concurrent edits
-      // are last-write-wins until the X-Version optimistic-concurrency path is
-      // wired (the server reserves the header but does not yet enforce it).
-      const blob = await sync.load(master);
-      if (blob === null) {
-        throw new Error("addAlias: no account exists for this key");
-      }
-      // Upsert by id so a retry after a partially-succeeded save (PUT landed,
-      // response lost) does not record the same alias twice, which would orphan
-      // a write token and leave a link live after a revoke.
-      const next: AccountBlob = {
+    addAlias(master, record) {
+      // Upsert by id so a lost-response retry does not record the alias twice
+      // (which would orphan a write token and leave a link live after a revoke).
+      return modify(master, (blob) => ({
         ...blob,
         aliases: [...blob.aliases.filter((a) => a.id !== record.id), record],
-      };
-      await sync.save(master, next);
-      return next;
+      }));
     },
 
-    async removeAlias(master, id) {
-      const blob = await sync.load(master);
-      if (blob === null) {
-        throw new Error("removeAlias: no account exists for this key");
-      }
-      // Idempotent: a retry after a partial save (the payload was revoked, the
-      // record already dropped) is a no-op rather than an error.
-      const next: AccountBlob = {
+    removeAlias(master, id) {
+      return modify(master, (blob) => ({
         ...blob,
         aliases: blob.aliases.filter((a) => a.id !== id),
-      };
-      await sync.save(master, next);
-      return next;
+      }));
+    },
+
+    addContact(master, contact) {
+      return modify(master, (blob) => ({
+        ...blob,
+        contacts: [
+          ...blob.contacts.filter((c) => c.id !== contact.id),
+          contact,
+        ],
+      }));
+    },
+
+    removeContact(master, contactId) {
+      return modify(master, (blob) => ({
+        ...blob,
+        contacts: blob.contacts.filter((c) => c.id !== contactId),
+      }));
     },
 
     async deleteAccount(master) {
       const blob = await sync.load(master);
-      // Revoke every alias FIRST (overwrite each to undecryptable bytes) so no
-      // shared link can resolve after the account is gone; only then drop the
-      // blob. If a revoke fails, the blob is left so a retry can finish the job.
+      // Revoke every alias AND every per-contact link FIRST (overwrite each to
+      // undecryptable bytes) so nothing can resolve after the account is gone;
+      // only then drop the blob. A failed revoke leaves the blob for a retry.
       if (blob !== null) {
-        await Promise.all(blob.aliases.map((a) => revokeAlias(api, a)));
+        const all = [...blob.aliases, ...blob.contacts.map((c) => c.alias)];
+        await Promise.all(all.map((a) => revokeAlias(api, a)));
       }
       await sync.remove(master);
     },
@@ -161,16 +185,30 @@ export function createAccountManager(api: ApiClient): AccountManager {
       if (blob === null) {
         throw new Error("setOwnerState: no account exists for this key");
       }
-      const next: AccountBlob = { ...blob, state };
+      const nowDay = todayEpochDay();
+      const expired = blob.contacts.filter(
+        (c) => c.expiresDay !== null && nowDay >= c.expiresDay,
+      );
+      const live = blob.contacts.filter(
+        (c) => c.expiresDay === null || nowDay < c.expiresDay,
+      );
+      // Enforce expiry FIRST (overwrite each expired link to garbage so it stops
+      // resolving), THEN drop the expired records + save. Order matters: if a
+      // record were dropped before its revoke landed, the link would keep
+      // resolving with no capability left to revoke it. "Expired" therefore means
+      // "no future reads", enforced whenever the owner next acts. (A fully passive
+      // owner who never changes state leaves links live until a later app-load
+      // sweep; tracked as a follow-up.)
+      await Promise.all(expired.map((c) => revokeAlias(api, c.alias)));
+      const next: AccountBlob = { ...blob, state, contacts: live };
       await sync.save(master, next);
-      // Propagate the new badge to every shared link. If this throws partway
-      // (some aliases republished, some not), it is self-healing: a retry
-      // reloads the already-saved state and republishes ALL aliases
-      // idempotently, so the links converge.
-      await republishOwnerCard(api, next.aliases, {
+      // Propagate the new badge to every still-live shared link. Self-healing: a
+      // retry reloads the saved state and republishes idempotently.
+      const liveLinks = [...next.aliases, ...live.map((c) => c.alias)];
+      await republishOwnerCard(api, liveLinks, {
         state,
         handle: next.handle,
-        nowDay: todayEpochDay(),
+        nowDay,
       });
       return next;
     },

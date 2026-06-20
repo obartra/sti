@@ -35,6 +35,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
   let blob: AccountBlob = {
     handle: "",
     aliases: [],
+    contacts: [],
     // onPrep is a route the report can't set; preset it to exercise the
     // report-turns-blue path (a clear panel + a route earns blue).
     state: { ...INITIAL_OWNER_STATE, onPrep: opts.onPrep ?? false },
@@ -87,6 +88,33 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       Promise.resolve({ session, url: `https://sti.care/a/${"w".repeat(43)}` }),
     deleteAccount: () => Promise.resolve(),
     reviewKnocks: () => Promise.resolve(0),
+    createContactLink: (_session, label) => {
+      const contact = {
+        id: "c".repeat(43),
+        label,
+        createdDay: 0,
+        expiresDay: 7,
+        alias: {
+          id: "v".repeat(43),
+          writeToken: "w".repeat(43),
+          key: "x".repeat(43),
+          isPublic: false,
+        },
+      };
+      blob = { ...blob, contacts: [...blob.contacts, contact] };
+      return Promise.resolve({
+        session: { master, blob },
+        contact,
+        url: `https://sti.care/a/${"v".repeat(43)}#k=${"x".repeat(43)}`,
+      });
+    },
+    revokeContact: (_session, contactId) => {
+      blob = {
+        ...blob,
+        contacts: blob.contacts.filter((c) => c.id !== contactId),
+      };
+      return Promise.resolve({ master, blob });
+    },
     forget: () => undefined,
   };
 }
@@ -290,6 +318,39 @@ describe("App onboarding flow", () => {
     );
     expect(entry).toBeInTheDocument();
     expect(entry.textContent).not.toMatch(/\d/);
+  });
+
+  it("creates and revokes a per-contact link from the Connect screen", async () => {
+    window.history.pushState({}, "", "/#b1-claim");
+    const user = userEvent.setup();
+    render(<App store={stubStore(null)} controller={fakeController()} />);
+
+    // Onboard, then open Connect -> Share my link (the per-contact manager).
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(
+      await screen.findByRole("button", { name: /Tap to reveal/ }),
+    );
+    await user.click(screen.getByRole("button", { name: /saved it/i }));
+    await user.click(
+      await screen.findByRole("button", { name: /Enter my passport/ }),
+    );
+    await user.click(await screen.findByRole("button", { name: "Connect" }));
+    await user.click(await screen.findByText("Share my link"));
+
+    // Name a link and create it: the shareable URL appears and the link is listed.
+    await user.type(
+      await screen.findByPlaceholderText(/Who is this for/),
+      "Sam",
+    );
+    await user.click(screen.getByRole("button", { name: /Create a link/ }));
+    expect(
+      await screen.findByText(new RegExp(`a/${"v".repeat(43)}`)),
+    ).toBeInTheDocument();
+    expect((await screen.findAllByText("Sam")).length).toBeGreaterThan(0);
+
+    // Revoke it: the entry is gone.
+    await user.click(screen.getByRole("button", { name: /Revoke/ }));
+    expect(screen.queryByText("Sam")).toBeNull();
   });
 
   it("logs in on a new device with the recovery phrase (no passkey)", async () => {

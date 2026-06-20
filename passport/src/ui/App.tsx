@@ -4,6 +4,7 @@ import { useDesktop } from "./desktop/Desktop.tsx";
 import { useOnboarding } from "./app/useOnboarding.ts";
 import { useShareLink } from "./app/useShareLink.ts";
 import { useKnockReview } from "./app/useKnockReview.ts";
+import { useOwnerActions } from "./app/useOwnerActions.ts";
 import { OWNER } from "./app/fixtures.ts";
 import { Chrome } from "./app/Chrome.tsx";
 import type { Route } from "./app/routes.ts";
@@ -121,16 +122,10 @@ export function App({
     [setOwnerState],
   );
 
-  // Permanently delete the account: optimistically log out (which also clamps
-  // app routes to the landing), then revoke links + delete the blob in the
-  // background. Idempotent, so a dropped request just leaves a retryable remnant.
-  const onDeleteAccount = useCallback(() => {
-    const current = sessionRef.current;
-    if (current === null) return;
-    sessionRef.current = null;
-    setSession(null);
-    void controller.deleteAccount(current).catch(() => undefined);
-  }, [controller]);
+  // Account deletion + per-contact link create/revoke (each folds the result
+  // back into the session; delete logs out, clamping app routes to the landing).
+  const { onDeleteAccount, onCreateContactLink, onRevokeContact } =
+    useOwnerActions(controller, sessionRef, setSession);
 
   // The share sheet: opening it mints/refreshes the owner's primary alias and
   // surfaces its real link; copy writes that link to the clipboard.
@@ -178,6 +173,9 @@ export function App({
       onDeleteAccount={onDeleteAccount}
       knockCount={knockCount}
       refreshKnocks={refreshKnocks}
+      contacts={session ? session.blob.contacts : []}
+      onCreateContactLink={onCreateContactLink}
+      onRevokeContact={onRevokeContact}
     />
   );
 }
