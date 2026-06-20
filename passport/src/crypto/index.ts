@@ -32,3 +32,10 @@ export {
   wrapKeyFromPrf,
   sha256Base64url,
 } from "./keys.ts";
+
+export {
+  generateGrantKeyPair,
+  sealToPublicKey,
+  openFromPrivateKey,
+  type GrantKeyPair,
+} from "./grant.ts";
