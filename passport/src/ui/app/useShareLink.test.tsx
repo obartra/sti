@@ -50,6 +50,7 @@ function stubController(over: Partial<SessionController>): SessionController {
     shareLink: unused,
     renewLink: unused,
     deleteAccount: unused,
+    reviewKnocks: unused,
     forget: unused,
     ...over,
   };

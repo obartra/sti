@@ -91,6 +91,14 @@ type KnockResponse struct {
 	Status string `json:"status"`
 }
 
+// KnockReviewResponse is what GET /knock/{id} returns to the alias OWNER (who
+// proves ownership with the write token): the count of current knocks on that
+// alias. Contentless — it names no requester and carries no timing per knock; it
+// is the owner-pull "quiet indicator" (doc 02), never pushed.
+type KnockReviewResponse struct {
+	Count int `json:"count"`
+}
+
 // HeaderWriteToken authorizes a PUT to an alias. The owner holds it; viewers get
 // only the read id in the URL, so they can resolve an alias but never overwrite
 // it. The server stores hash(token) on first write and requires a match after.

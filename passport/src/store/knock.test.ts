@@ -40,6 +40,7 @@ describe("knock", () => {
       putAccount: unused,
       deleteAccount: unused,
       notify: unused,
+      knockCount: () => Promise.resolve(0),
       registerPush: unused,
       health: unused,
       knock: (id, hash) => {

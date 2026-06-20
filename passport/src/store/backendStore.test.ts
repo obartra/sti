@@ -34,6 +34,7 @@ function stubApi(getAlias: ApiClient["getAlias"]): ApiClient {
     putAccount: unused,
     deleteAccount: unused,
     notify: unused,
+    knockCount: () => Promise.resolve(0),
     knock: unused,
     registerPush: unused,
     health: unused,
@@ -111,6 +112,7 @@ describe("backend store knock", () => {
       putAccount: unused,
       deleteAccount: unused,
       notify: unused,
+      knockCount: () => Promise.resolve(0),
       registerPush: unused,
       health: unused,
       knock: (id, hash) => {

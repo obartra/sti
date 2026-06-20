@@ -56,6 +56,8 @@ export interface ApiClient {
   deleteAccount(id: string): Promise<void>;
   notify(tokenHash: string): Promise<void>;
   knock(id: string, requesterHash: string): Promise<void>;
+  /** Owner-only: the count of current knocks on an alias, authed by its token. */
+  knockCount(id: string, writeToken: string): Promise<number>;
   registerPush(req: PushRegisterRequest): Promise<void>;
   health(): Promise<boolean>;
 }
@@ -70,6 +72,23 @@ function assertAccountId(id: string): void {
 /** Read a response body as raw bytes (captures nothing; hoisted out of the client). */
 async function readBytes(res: Response): Promise<Bytes> {
   return new Uint8Array(await res.arrayBuffer());
+}
+
+/** The fixed-size alias body, or a protocol error (existence-uniformity invariant). */
+function requireAliasSize(body: Bytes): Bytes {
+  if (body.length !== ALIAS_PAYLOAD_SIZE) {
+    throw new ApiError("protocol", `alias payload was ${body.length} bytes`);
+  }
+  return body;
+}
+
+/** The X-Version header the account endpoints must return, or a protocol error. */
+function requireVersion(res: Response, op: string): string {
+  const version = res.headers.get(HEADER_VERSION);
+  if (version === null) {
+    throw new ApiError("protocol", `${op} missing version header`);
+  }
+  return version;
 }
 
 /** Map a non-ok HTTP status to the typed error kind. */
@@ -109,14 +128,7 @@ export function createApiClient(
         cache: "no-store",
       });
       if (!res.ok) throw new ApiError(statusToKind(res.status), "alias get");
-      const body = await readBytes(res);
-      if (body.length !== ALIAS_PAYLOAD_SIZE) {
-        throw new ApiError(
-          "protocol",
-          `alias payload was ${body.length} bytes`,
-        );
-      }
-      return body;
+      return requireAliasSize(await readBytes(res));
     },
 
     async putAlias(id, payload, writeToken) {
@@ -143,11 +155,10 @@ export function createApiClient(
       });
       if (res.status === 404) return null; // no sync blob yet (the empty case)
       if (!res.ok) throw new ApiError(statusToKind(res.status), "account get");
-      const version = res.headers.get(HEADER_VERSION);
-      if (version === null) {
-        throw new ApiError("protocol", "account get missing version header");
-      }
-      return { blob: await readBytes(res), version };
+      return {
+        blob: await readBytes(res),
+        version: requireVersion(res, "account get"),
+      };
     },
 
     async putAccount(id, blob, ifVersion) {
@@ -162,11 +173,7 @@ export function createApiClient(
         body: blob,
       });
       if (!res.ok) throw new ApiError(statusToKind(res.status), "account put");
-      const version = res.headers.get(HEADER_VERSION);
-      if (version === null) {
-        throw new ApiError("protocol", "account put missing version header");
-      }
-      return { version };
+      return { version: requireVersion(res, "account put") };
     },
 
     async deleteAccount(id) {
@@ -193,6 +200,17 @@ export function createApiClient(
       });
       // The body is uniform; a transport failure still surfaces as unreachable.
       if (!res.ok) throw new ApiError(statusToKind(res.status), "knock");
+    },
+
+    async knockCount(id, writeToken) {
+      const res = await call(PATHS.knockPrefix + id, {
+        method: "GET",
+        cache: "no-store",
+        headers: { [HEADER_WRITE_TOKEN]: writeToken },
+      });
+      if (!res.ok) throw new ApiError(statusToKind(res.status), "knock review");
+      const body = (await res.json()) as { count?: unknown };
+      return typeof body.count === "number" ? body.count : 0;
     },
 
     async registerPush(req) {

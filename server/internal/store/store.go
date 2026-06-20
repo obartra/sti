@@ -288,6 +288,30 @@ func (s *Store) RecentKnockCount(ctx context.Context, targetID string, since int
 	return n, err
 }
 
+// CurrentKnockCount counts a target's still-live knocks (not yet expired) as of
+// now. This is what the alias OWNER reads to see whether anyone has knocked.
+func (s *Store) CurrentKnockCount(ctx context.Context, targetID string, now int64) (int, error) {
+	var n int
+	err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM knock WHERE target_id = ? AND expires_at > ?`, targetID, now).Scan(&n)
+	return n, err
+}
+
+// VerifyAliasWrite reports whether writeAuth matches the alias's stored write
+// token (constant-time). False for both a wrong token and a nonexistent alias,
+// so a caller cannot distinguish the two (alias existence stays hidden).
+func (s *Store) VerifyAliasWrite(ctx context.Context, id, writeAuth string) (bool, error) {
+	var stored string
+	switch err := s.db.QueryRowContext(ctx, `SELECT write_auth FROM alias WHERE id = ?`, id).Scan(&stored); {
+	case errors.Is(err, sql.ErrNoRows):
+		return false, nil
+	case err != nil:
+		return false, err
+	default:
+		return subtle.ConstantTimeCompare([]byte(stored), []byte(writeAuth)) == 1, nil
+	}
+}
+
 // PurgeExpiredKnocks deletes knocks past their expiry and returns how many went.
 func (s *Store) PurgeExpiredKnocks(ctx context.Context, now int64) (int64, error) {
 	res, err := s.db.ExecContext(ctx, `DELETE FROM knock WHERE expires_at <= ?`, now)

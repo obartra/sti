@@ -101,6 +101,13 @@ export interface SessionController {
    * recovery phrase no longer recovers anything (the blob is gone).
    */
   deleteAccount(session: OwnerSession): Promise<void>;
+  /**
+   * Owner-pull knock review: the total count of current knocks across all the
+   * owner's aliases (each queried with its write token). Contentless — never who
+   * knocked. Best-effort: an unreachable alias counts as zero, so a transient
+   * failure shows "no knocks" rather than erroring the inbox.
+   */
+  reviewKnocks(session: OwnerSession): Promise<number>;
   /** Forget this device's passkey binding. The phrase still recovers. */
   forget(): void;
 }
@@ -242,6 +249,15 @@ export function createSessionController(deps: SessionDeps): SessionController {
     async deleteAccount(session) {
       await accounts.deleteAccount(session.master);
       devices.clear();
+    },
+
+    async reviewKnocks(session) {
+      const counts = await Promise.all(
+        session.blob.aliases.map((a) =>
+          api.knockCount(a.id, a.writeToken).catch(() => 0),
+        ),
+      );
+      return counts.reduce((sum, n) => sum + n, 0);
     },
 
     forget() {
