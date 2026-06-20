@@ -7,7 +7,15 @@ import { createApiClient } from "../api/client.ts";
 import { createAccountManager } from "./index.ts";
 import type { AliasRecord } from "./accountBlob.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
+import { DEFAULT_AVATAR } from "../lib/avatars.ts";
 import { startApi, type Harness } from "../test-support/serverHarness.ts";
+
+const FRESH = {
+  aliases: [],
+  state: INITIAL_OWNER_STATE,
+  avatar: DEFAULT_AVATAR,
+  sharingMode: "link" as const,
+};
 
 const record: AliasRecord = {
   id: "A".repeat(43),
@@ -30,18 +38,25 @@ describe("account lifecycle against a live blind store", () => {
   it("creates an account and recovers it from the phrase", async () => {
     const created = await accounts.create("robin");
     expect(created.recoveryPhrase).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(created.blob).toEqual({
-      handle: "robin",
-      aliases: [],
-      state: INITIAL_OWNER_STATE,
+    expect(created.blob).toEqual({ handle: "robin", ...FRESH });
+
+    const recovered = await accounts.recover(created.recoveryPhrase);
+    expect(recovered?.blob).toEqual({ handle: "robin", ...FRESH });
+  });
+
+  it("persists a profile change (avatar + sharing) across recovery", async () => {
+    const created = await accounts.create("robin");
+    const avatar = { animal: 2, color: 1, hat: 1, glasses: 0, extra: 0 };
+    await accounts.setProfile(created.master, {
+      avatar,
+      sharingMode: "public",
     });
 
     const recovered = await accounts.recover(created.recoveryPhrase);
-    expect(recovered?.blob).toEqual({
-      handle: "robin",
-      aliases: [],
-      state: INITIAL_OWNER_STATE,
-    });
+    expect(recovered?.blob.avatar).toEqual(avatar);
+    expect(recovered?.blob.sharingMode).toBe("public");
+    // The badge inputs are untouched by a profile change.
+    expect(recovered?.blob.state).toEqual(INITIAL_OWNER_STATE);
   });
 
   it("records an alias that survives a fresh recovery", async () => {

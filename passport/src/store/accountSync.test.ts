@@ -4,6 +4,7 @@ import { createAccountSync } from "./accountSync.ts";
 import type { ApiClient } from "../api/client.ts";
 import type { AccountBlob } from "./accountBlob.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
+import { DEFAULT_AVATAR } from "../lib/avatars.ts";
 import { deriveMasterKey, type Bytes } from "../crypto/index.ts";
 
 const blob: AccountBlob = {
@@ -17,6 +18,8 @@ const blob: AccountBlob = {
     },
   ],
   state: INITIAL_OWNER_STATE,
+  avatar: DEFAULT_AVATAR,
+  sharingMode: "link",
 };
 
 // A stateful fake of the account endpoints over a Map; everything else throws.

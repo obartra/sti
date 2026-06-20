@@ -16,9 +16,16 @@
 import { utf8ToBytes, type Bytes } from "../crypto/index.ts";
 import { validId } from "../api/contract.ts";
 import { isOwnerState, type OwnerState } from "../core/badge.ts";
+import { isAvatarConfig, type AvatarConfig } from "../lib/avatars.ts";
 import { decodeVersioned, isValidHandle } from "./codec.ts";
 
-const SCHEMA_VERSION = 2;
+// v3 adds the owner's presentation profile (avatar + sharing default) so a fresh
+// device restores the full owner-facing view, not just the badge inputs. There
+// are no real v2 accounts in the wild, so v3 is parsed exclusively: an older or
+// otherwise malformed blob fails the strict version check and parseAccountBlob
+// THROWS (recovery surfaces an error rather than silently restoring it). Only a
+// genuine account miss (404) maps to null/"no account".
+const SCHEMA_VERSION = 3;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -28,14 +35,25 @@ export interface AliasRecord {
   readonly isPublic: boolean;
 }
 
+/** The account-level sharing default: a public profile, or link-only (private). */
+export type SharingMode = "public" | "link";
+
+export function isSharingMode(x: unknown): x is SharingMode {
+  return x === "public" || x === "link";
+}
+
 export interface AccountBlob {
   readonly handle: string;
   readonly aliases: AliasRecord[];
   /** The owner's private badge inputs, from which the public card is derived. */
   readonly state: OwnerState;
+  /** The owner's chosen avatar (rendered in-app and on shared cards). */
+  readonly avatar: AvatarConfig;
+  /** The account-level sharing default chosen at onboarding. */
+  readonly sharingMode: SharingMode;
 }
 
-interface AccountBlobV2 extends AccountBlob {
+interface AccountBlobV3 extends AccountBlob {
   readonly v: typeof SCHEMA_VERSION;
 }
 
@@ -54,11 +72,13 @@ function isAliasRecord(x: unknown): x is AliasRecord {
 }
 
 export function serializeAccountBlob(blob: AccountBlob): Bytes {
-  const wire: AccountBlobV2 = {
+  const wire: AccountBlobV3 = {
     v: SCHEMA_VERSION,
     handle: blob.handle,
     aliases: blob.aliases,
     state: blob.state,
+    avatar: blob.avatar,
+    sharingMode: blob.sharingMode,
   };
   return utf8ToBytes(JSON.stringify(wire));
 }
@@ -75,5 +95,17 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
   if (!isOwnerState(o.state)) {
     throw new Error("account blob: invalid state");
   }
-  return { handle: o.handle, aliases: o.aliases, state: o.state };
+  if (!isAvatarConfig(o.avatar)) {
+    throw new Error("account blob: invalid avatar");
+  }
+  if (!isSharingMode(o.sharingMode)) {
+    throw new Error("account blob: invalid sharingMode");
+  }
+  return {
+    handle: o.handle,
+    aliases: o.aliases,
+    state: o.state,
+    avatar: o.avatar,
+    sharingMode: o.sharingMode,
+  };
 }

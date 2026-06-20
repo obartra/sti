@@ -7,6 +7,7 @@ import { createApiClient } from "../api/client.ts";
 import { createAccountSync } from "./accountSync.ts";
 import type { AccountBlob } from "./accountBlob.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
+import { DEFAULT_AVATAR } from "../lib/avatars.ts";
 import { deriveMasterKey } from "../crypto/index.ts";
 import {
   startApi,
@@ -40,6 +41,8 @@ describe("account sync against a live blind store", () => {
         },
       ],
       state: INITIAL_OWNER_STATE,
+      avatar: DEFAULT_AVATAR,
+      sharingMode: "link",
     };
 
     expect(await sync.load(master)).toBeNull(); // no account yet

@@ -7,6 +7,7 @@ import type { AccountManager } from "./account.ts";
 import type { AccountSync } from "./accountSync.ts";
 import type { AccountBlob } from "./accountBlob.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
+import { DEFAULT_AVATAR } from "../lib/avatars.ts";
 import {
   bytesToBase64url,
   base64urlToBytes,
@@ -28,6 +29,8 @@ function fakeBackend() {
         handle,
         aliases: [],
         state: INITIAL_OWNER_STATE,
+        avatar: DEFAULT_AVATAR,
+        sharingMode: "link",
       };
       byMaster.set(bytesToBase64url(master), blob);
       phraseToMaster.set(recoveryPhrase, master);
@@ -41,6 +44,7 @@ function fakeBackend() {
     },
     addAlias: () => Promise.reject(new Error("unused")),
     setOwnerState: () => Promise.reject(new Error("unused")),
+    setProfile: () => Promise.reject(new Error("unused")),
   };
   const sync: AccountSync = {
     load: (master) =>

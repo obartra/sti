@@ -17,10 +17,22 @@ import {
   isOwnerState,
   type OwnerState,
 } from "../core/badge.ts";
+import { DEFAULT_AVATAR, isAvatarConfig } from "../lib/avatars.ts";
 import { createAccountSync } from "./accountSync.ts";
 import { republishOwnerCard } from "./ownerCard.ts";
 import { isValidHandle } from "./codec.ts";
-import type { AccountBlob, AliasRecord } from "./accountBlob.ts";
+import {
+  isSharingMode,
+  type AccountBlob,
+  type AliasRecord,
+  type SharingMode,
+} from "./accountBlob.ts";
+
+/** The owner's presentation profile: avatar plus the account sharing default. */
+export interface OwnerProfile {
+  readonly avatar: AccountBlob["avatar"];
+  readonly sharingMode: SharingMode;
+}
 
 export interface NewAccount {
   /** Shown once to the owner; the only way back into the account. */
@@ -46,6 +58,11 @@ export interface AccountManager {
    * republish every alias so the new badge propagates to all shared links.
    */
   setOwnerState(master: Bytes, state: OwnerState): Promise<AccountBlob>;
+  /**
+   * Update the owner's presentation profile (avatar + sharing default) and
+   * persist it. Does not touch the badge, so no republish is needed.
+   */
+  setProfile(master: Bytes, profile: OwnerProfile): Promise<AccountBlob>;
 }
 
 export function createAccountManager(api: ApiClient): AccountManager {
@@ -64,6 +81,10 @@ export function createAccountManager(api: ApiClient): AccountManager {
         handle,
         aliases: [],
         state: INITIAL_OWNER_STATE,
+        // A fresh account starts with the default avatar and the private (link)
+        // sharing default; onboarding updates both via setProfile.
+        avatar: DEFAULT_AVATAR,
+        sharingMode: "link",
       };
       await sync.save(master, blob);
       return { recoveryPhrase, master, blob };
@@ -111,6 +132,28 @@ export function createAccountManager(api: ApiClient): AccountManager {
       // reloads the already-saved state and republishes ALL aliases
       // idempotently, so the links converge.
       await republishOwnerCard(api, next.aliases, state, next.handle);
+      return next;
+    },
+
+    async setProfile(master, profile) {
+      // Guard at write time, symmetric to the strict read, so a bad profile
+      // cannot brick the account on the next load.
+      if (!isAvatarConfig(profile.avatar)) {
+        throw new Error("setProfile: invalid avatar");
+      }
+      if (!isSharingMode(profile.sharingMode)) {
+        throw new Error("setProfile: invalid sharingMode");
+      }
+      const blob = await sync.load(master);
+      if (blob === null) {
+        throw new Error("setProfile: no account exists for this key");
+      }
+      const next: AccountBlob = {
+        ...blob,
+        avatar: profile.avatar,
+        sharingMode: profile.sharingMode,
+      };
+      await sync.save(master, next);
       return next;
     },
   };
