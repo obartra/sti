@@ -28,7 +28,11 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.event_name != 'workflow_dispatch' }}
 
 jobs:
-  visual:
+  # The expensive capture+diff, fanned out: each shard shoots a deterministic
+  # 1/N slice of the story corpus in parallel. Shards are self-contained (each
+  # builds storybook) so they all start at once with no serial build step. Bump
+  # SHARD_TOTAL and the matrix list together to add shards.
+  visual-shard:
     if: |
       github.event_name == 'push' ||
       github.event_name == 'workflow_dispatch' ||
@@ -38,6 +42,12 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      SHARD_TOTAL: 3
     defaults:
       run:
         working-directory: passport
@@ -50,18 +60,38 @@ jobs:
           cache-dependency-path: passport/package-lock.json
       - run: npm ci
       - run: npm run build-storybook
-      - run: npm run test:visual
+      - run: npm run test:visual -- --shard ${{ matrix.shard }} --of ${{ env.SHARD_TOTAL }}
       - name: Upload diff artifacts on failure
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: visual-regression-diff
+          name: visual-regression-diff-${{ matrix.shard }}
           path: |
             passport/storybook-static/index.json
             passport/.lostpixel/current/
             passport/.lostpixel/difference/
           if-no-files-found: ignore
           retention-days: 14
+
+  # Aggregate gate: keeps the required status check named "visual" stable while
+  # the work fans out above. Passes only when every shard passed; on the
+  # screenshot:update path it is skipped, exactly like the shards.
+  visual:
+    needs: visual-shard
+    if: |
+      always() && (
+        github.event_name == 'push' ||
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'pull_request' &&
+          !contains(github.event.pull_request.labels.*.name, 'screenshot:update'))
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every shard to pass
+        run: |
+          result='${{ needs.visual-shard.result }}'
+          echo "visual-shard result: ${result}"
+          test "${result}" = "success"
 
   update:
     if: |
