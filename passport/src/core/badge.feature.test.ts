@@ -1,7 +1,7 @@
 import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
 import { expect } from "vitest";
 import { resolveViewerBadge, type Headline, type OwnerState } from "./badge.ts";
-import { blueEligible } from "./badge.fixtures.ts";
+import { blueEligible, daysAgo, NOW_DAY } from "./badge.fixtures.ts";
 
 const feature = await loadFeature("src/core/badge.feature");
 
@@ -22,16 +22,16 @@ describeFeature(feature, ({ Background, Scenario }) => {
 
   Scenario("A fully eligible owner is blue", ({ Then }) => {
     Then("their badge is blue", () => {
-      expect(resolveViewerBadge(state).badge).toBe("blue");
+      expect(resolveViewerBadge(state, NOW_DAY).badge).toBe("blue");
     });
   });
 
   Scenario("Never-tested is always gray", ({ When, Then }) => {
     When("they have never tested", () => {
-      set({ testing: { ...state.testing, hasEverTested: false } });
+      set({ testing: { ...state.testing, lastPanelDay: null } });
     });
     Then("their badge is gray", () => {
-      expect(resolveViewerBadge(state).badge).toBe("gray");
+      expect(resolveViewerBadge(state, NOW_DAY).badge).toBe("gray");
     });
   });
 
@@ -48,7 +48,7 @@ describeFeature(feature, ({ Background, Scenario }) => {
         });
       });
       Then("their badge is gray", () => {
-        expect(resolveViewerBadge(state).badge).toBe("gray");
+        expect(resolveViewerBadge(state, NOW_DAY).badge).toBe("gray");
       });
     },
   );
@@ -58,7 +58,7 @@ describeFeature(feature, ({ Background, Scenario }) => {
       set({ activeNonHivSti: true });
     });
     Then("their badge is gray", () => {
-      expect(resolveViewerBadge(state).badge).toBe("gray");
+      expect(resolveViewerBadge(state, NOW_DAY).badge).toBe("gray");
     });
   });
 
@@ -68,7 +68,7 @@ describeFeature(feature, ({ Background, Scenario }) => {
       set({ activeNonHivSti: false });
     });
     Then("their badge is blue", () => {
-      expect(resolveViewerBadge(state).badge).toBe("blue");
+      expect(resolveViewerBadge(state, NOW_DAY).badge).toBe("blue");
     });
   });
 
@@ -78,16 +78,16 @@ describeFeature(feature, ({ Background, Scenario }) => {
       set({ activeNonHivSti: true });
     });
     Then("their badge is gray", () => {
-      expect(resolveViewerBadge(state).badge).toBe("gray");
+      expect(resolveViewerBadge(state, NOW_DAY).badge).toBe("gray");
     });
   });
 
   Scenario("An expired test is gray", ({ When, Then }) => {
     When("their last test was 120 days ago", () => {
-      set({ testing: { ...state.testing, lastPanelAgeDays: 120 } });
+      set({ testing: { ...state.testing, lastPanelDay: daysAgo(120) } });
     });
     Then("their badge is gray", () => {
-      expect(resolveViewerBadge(state).badge).toBe("gray");
+      expect(resolveViewerBadge(state, NOW_DAY).badge).toBe("gray");
     });
   });
 
@@ -96,7 +96,7 @@ describeFeature(feature, ({ Background, Scenario }) => {
       set({ testing: { ...state.testing, corePanelComplete: false } });
     });
     Then("their badge is gray", () => {
-      expect(resolveViewerBadge(state).badge).toBe("gray");
+      expect(resolveViewerBadge(state, NOW_DAY).badge).toBe("gray");
     });
   });
 
@@ -116,7 +116,7 @@ describeFeature(feature, ({ Background, Scenario }) => {
         },
       );
       Then("their badge is gray", () => {
-        expect(resolveViewerBadge(state).badge).toBe("gray");
+        expect(resolveViewerBadge(state, NOW_DAY).badge).toBe("gray");
       });
     },
   );
@@ -126,7 +126,7 @@ describeFeature(feature, ({ Background, Scenario }) => {
       set({ paused: true });
     });
     Then("their badge is gray", () => {
-      expect(resolveViewerBadge(state).badge).toBe("gray");
+      expect(resolveViewerBadge(state, NOW_DAY).badge).toBe("gray");
     });
   });
 
@@ -138,7 +138,7 @@ describeFeature(feature, ({ Background, Scenario }) => {
       },
     );
     Then("their badge is gray", () => {
-      expect(resolveViewerBadge(state).badge).toBe("gray");
+      expect(resolveViewerBadge(state, NOW_DAY).badge).toBe("gray");
     });
   });
 
@@ -197,6 +197,6 @@ describeFeature(feature, ({ Background, Scenario }) => {
   );
 
   function expectHeadline(expected: Headline): void {
-    expect(resolveViewerBadge(state).headline).toBe(expected);
+    expect(resolveViewerBadge(state, NOW_DAY).headline).toBe(expected);
   }
 });

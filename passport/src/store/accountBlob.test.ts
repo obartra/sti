@@ -38,8 +38,7 @@ describe("account blob codec", () => {
       aliases: [],
       state: {
         testing: {
-          hasEverTested: true,
-          lastPanelAgeDays: 12,
+          lastPanelDay: 19_000,
           corePanelComplete: true,
           exposedSitesCovered: true,
         },
@@ -68,14 +67,15 @@ describe("account blob codec", () => {
 
   const S = INITIAL_OWNER_STATE;
   const A = DEFAULT_AVATAR;
-  const base = { v: 3, handle: "x", aliases: [], state: S, avatar: A };
+  const base = { v: 4, handle: "x", aliases: [], state: S, avatar: A };
   reject("a non-object", 7);
   reject("an unknown version", { ...base, v: 9 });
-  reject("a prior version (v2 is no longer accepted)", {
-    v: 2,
+  reject("a prior version (v3 is no longer accepted)", {
+    v: 3,
     handle: "x",
     aliases: [],
     state: S,
+    avatar: A,
   });
   reject("an empty handle", { ...base, handle: "", sharingMode: "link" });
   reject("a non-array aliases", { ...base, aliases: {}, sharingMode: "link" });
@@ -89,14 +89,14 @@ describe("account blob codec", () => {
     aliases: [{ id: ID, writeToken: ID, key: ID }],
     sharingMode: "link",
   });
-  reject("a missing state", { v: 3, handle: "x", aliases: [], avatar: A });
+  reject("a missing state", { v: 4, handle: "x", aliases: [], avatar: A });
   reject("an invalid hiv status", {
     ...base,
     state: { ...S, hiv: "maybe" },
     sharingMode: "link",
   });
   reject("a missing avatar", {
-    v: 3,
+    v: 4,
     handle: "x",
     aliases: [],
     state: S,

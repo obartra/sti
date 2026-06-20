@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { deriveOwnerView } from "./ownerView.ts";
 import { deriveOwnerCard } from "./ownerCard.ts";
 import { INITIAL_OWNER_STATE, type OwnerState } from "../core/badge.ts";
+import { NOW_DAY, daysAgo } from "../core/badge.fixtures.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
 import type { AccountBlob } from "./accountBlob.ts";
 
@@ -17,11 +18,14 @@ function blob(state: OwnerState, over: Partial<AccountBlob> = {}): AccountBlob {
   };
 }
 
-const tested = (over: Partial<OwnerState["testing"]> = {}): OwnerState => ({
+// A tested, on-PrEP owner whose last panel was `ageDays` ago (as of NOW_DAY).
+const tested = (
+  ageDays = 10,
+  over: Partial<OwnerState["testing"]> = {},
+): OwnerState => ({
   ...INITIAL_OWNER_STATE,
   testing: {
-    hasEverTested: true,
-    lastPanelAgeDays: 10,
+    lastPanelDay: daysAgo(ageDays),
     corePanelComplete: true,
     exposedSitesCovered: true,
     ...over,
@@ -31,7 +35,7 @@ const tested = (over: Partial<OwnerState["testing"]> = {}): OwnerState => ({
 
 describe("deriveOwnerView", () => {
   it("a fresh, never-tested owner is gray with no freshness", () => {
-    const v = deriveOwnerView(blob(INITIAL_OWNER_STATE));
+    const v = deriveOwnerView(blob(INITIAL_OWNER_STATE), NOW_DAY);
     expect(v.badge).toBe("gray");
     expect(v.viewerBadge).toBe("gray");
     expect(v.labels).toEqual([]);
@@ -49,6 +53,7 @@ describe("deriveOwnerView", () => {
         avatar,
         sharingMode: "public",
       }),
+      NOW_DAY,
     );
     expect(v.handle).toBe("sam");
     expect(v.avatar).toEqual(avatar);
@@ -56,7 +61,7 @@ describe("deriveOwnerView", () => {
   });
 
   it("a tested, on-PrEP owner is blue on the HIV umbrella route", () => {
-    const v = deriveOwnerView(blob(tested({ lastPanelAgeDays: 30 })));
+    const v = deriveOwnerView(blob(tested(30)), NOW_DAY);
     expect(v.badge).toBe("blue");
     expect(v.labels).toEqual(["hiv"]);
     expect(v.blueRoute).toBe("hiv");
@@ -68,32 +73,30 @@ describe("deriveOwnerView", () => {
   it("matches the public card's badge, labels, and route (owner never disagrees with viewer)", () => {
     // Pin the invariant against deriveOwnerCard itself, not literals: if the
     // owner view stopped delegating, this fails.
-    const state = tested({ lastPanelAgeDays: 5 });
-    const v = deriveOwnerView(blob(state, { handle: "robin" }));
-    const card = deriveOwnerCard(state, "robin");
+    const state = tested(5);
+    const v = deriveOwnerView(blob(state, { handle: "robin" }), NOW_DAY);
+    const card = deriveOwnerCard(state, "robin", NOW_DAY);
     expect(v.badge).toBe(card.state);
     expect(v.labels).toEqual(card.labels ?? []);
     expect(v.blueRoute).toEqual(card.route ?? null);
   });
 
   it("treats the freshness window boundary the same as the badge core (age 90 vs 91)", () => {
-    // The badge uses lastPanelAgeDays <= 90; autoPaused uses > 90. They must
-    // agree exactly at the edge, so a future drift in either is caught here.
-    const at90 = deriveOwnerView(blob(tested({ lastPanelAgeDays: 90 })));
+    // The badge uses age <= 90; autoPaused uses > 90. They must agree exactly at
+    // the edge, so a future drift in either is caught here.
+    const at90 = deriveOwnerView(blob(tested(90)), NOW_DAY);
     expect(at90.badge).toBe("blue"); // still in window
     expect(at90.autoPaused).toBe(false);
     expect(at90.daysLeft).toBe(0);
 
-    const at91 = deriveOwnerView(blob(tested({ lastPanelAgeDays: 91 })));
+    const at91 = deriveOwnerView(blob(tested(91)), NOW_DAY);
     expect(at91.badge).toBe("gray"); // lapsed by one day
     expect(at91.autoPaused).toBe(true);
     expect(at91.daysLeft).toBe(0);
   });
 
   it("a manual pause forces gray but keeps freshness context", () => {
-    const v = deriveOwnerView(
-      blob({ ...tested({ lastPanelAgeDays: 20 }), paused: true }),
-    );
+    const v = deriveOwnerView(blob({ ...tested(20), paused: true }), NOW_DAY);
     expect(v.badge).toBe("gray");
     expect(v.paused).toBe(true);
     expect(v.autoPaused).toBe(false);
@@ -101,7 +104,7 @@ describe("deriveOwnerView", () => {
   });
 
   it("a lapsed freshness window auto-pauses to gray with zero days left", () => {
-    const v = deriveOwnerView(blob(tested({ lastPanelAgeDays: 120 })));
+    const v = deriveOwnerView(blob(tested(120)), NOW_DAY);
     expect(v.badge).toBe("gray"); // out of the 90-day window
     expect(v.autoPaused).toBe(true);
     expect(v.paused).toBe(false);
@@ -110,11 +113,11 @@ describe("deriveOwnerView", () => {
   });
 
   it("labels the most recent test relative to today", () => {
-    expect(
-      deriveOwnerView(blob(tested({ lastPanelAgeDays: 0 }))).lastTestedLabel,
-    ).toBe("Today");
-    expect(
-      deriveOwnerView(blob(tested({ lastPanelAgeDays: 1 }))).lastTestedLabel,
-    ).toBe("Yesterday");
+    expect(deriveOwnerView(blob(tested(0)), NOW_DAY).lastTestedLabel).toBe(
+      "Today",
+    );
+    expect(deriveOwnerView(blob(tested(1)), NOW_DAY).lastTestedLabel).toBe(
+      "Yesterday",
+    );
   });
 });

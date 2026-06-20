@@ -39,8 +39,9 @@ const CONDOM_LABEL: Record<
 export function deriveOwnerCard(
   state: OwnerState,
   handle: string,
+  nowDay: number,
 ): ResolvedView {
-  const badge = computeBadge(state);
+  const badge = computeBadge(state, nowDay);
 
   const labels: ProtectionLabel[] = [];
   if (umbrellaRoutePresent(state)) labels.push("hiv");
@@ -72,12 +73,18 @@ export function deriveOwnerCard(
  * timing (docs/10 §F), the same deferred decorrelation work as the notify
  * cover-wake; it is gated off / not built. Tracked in doc 11.
  */
+/** The inputs the owner's current card is derived from (see deriveOwnerCard). */
+export interface OwnerCardInputs {
+  readonly state: OwnerState;
+  readonly handle: string;
+  readonly nowDay: number;
+}
+
 export async function republishOwnerCard(
   api: ApiClient,
   records: readonly AliasRecord[],
-  state: OwnerState,
-  handle: string,
+  owner: OwnerCardInputs,
 ): Promise<void> {
-  const card = deriveOwnerCard(state, handle);
+  const card = deriveOwnerCard(owner.state, owner.handle, owner.nowDay);
   await Promise.all(records.map((r) => republishCard(api, r, card)));
 }

@@ -11,6 +11,7 @@ import { createAccountSync } from "./accountSync.ts";
 import { createBackendStore } from "./backendStore.ts";
 import { createSessionController } from "./session.ts";
 import { deriveOwnerCard } from "./ownerCard.ts";
+import { todayEpochDay } from "../core/clock.ts";
 import { createDeviceStore, type StorageLike } from "../auth/deviceStore.ts";
 import type { PasskeyAuth } from "../auth/passkey.ts";
 import type { AliasRecord } from "./accountBlob.ts";
@@ -126,8 +127,7 @@ describe("owner session against a live blind store", () => {
     const blueState: OwnerState = {
       ...session.blob.state,
       testing: {
-        hasEverTested: true,
-        lastPanelAgeDays: 0,
+        lastPanelDay: todayEpochDay(),
         corePanelComplete: true,
         exposedSitesCovered: true,
       },
@@ -157,7 +157,7 @@ describe("owner session against a live blind store", () => {
     // owner's current card, proving the real seal -> PUT -> GET -> open round-trip.
     const resolved = await store.resolveAlias(caps(record));
     expect(resolved).toEqual(
-      deriveOwnerCard(session.blob.state, session.blob.handle),
+      deriveOwnerCard(session.blob.state, session.blob.handle, todayEpochDay()),
     );
 
     // A second share reuses the same alias (one primary link per account) rather
@@ -173,7 +173,9 @@ describe("owner session against a live blind store", () => {
     const third = await ctl.shareLink(moved);
     expect(third.url).toBe(first.url);
     const after = await store.resolveAlias(caps(record));
-    expect(after).toEqual(deriveOwnerCard(blueState, session.blob.handle));
+    expect(after).toEqual(
+      deriveOwnerCard(blueState, session.blob.handle, todayEpochDay()),
+    );
   });
 
   it("share link's key-presence tracks the current sharing mode, not the first share", async () => {
@@ -219,7 +221,7 @@ describe("owner session against a live blind store", () => {
     expect(old).toBeDefined();
     // The first link resolves to the owner's card.
     expect(await store.resolveAlias(caps(old))).toEqual(
-      deriveOwnerCard(session.blob.state, session.blob.handle),
+      deriveOwnerCard(session.blob.state, session.blob.handle, todayEpochDay()),
     );
 
     const renewed = await ctl.renewLink(first.session);
@@ -234,7 +236,7 @@ describe("owner session against a live blind store", () => {
     expect(await store.resolveAlias(caps(old))).toBeNull();
     // The fresh link resolves to the current card.
     expect(await store.resolveAlias(caps(fresh))).toEqual(
-      deriveOwnerCard(session.blob.state, session.blob.handle),
+      deriveOwnerCard(session.blob.state, session.blob.handle, todayEpochDay()),
     );
   });
 
@@ -269,7 +271,7 @@ describe("owner session against a live blind store", () => {
     // Fail-safe: the record is untouched and the old link still resolves.
     expect(first.session.blob.aliases).toHaveLength(1);
     expect(await store.resolveAlias(caps(old))).toEqual(
-      deriveOwnerCard(session.blob.state, session.blob.handle),
+      deriveOwnerCard(session.blob.state, session.blob.handle, todayEpochDay()),
     );
 
     // A retry once the write recovers converges: old revoked, one fresh alias.
@@ -318,7 +320,7 @@ describe("owner session against a live blind store", () => {
     const fresh = renewed.session.blob.aliases[0];
     expect(fresh?.id).not.toBe(old?.id);
     expect(await store.resolveAlias(caps(fresh))).toEqual(
-      deriveOwnerCard(session.blob.state, session.blob.handle),
+      deriveOwnerCard(session.blob.state, session.blob.handle, todayEpochDay()),
     );
   });
 });

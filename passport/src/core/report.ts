@@ -28,18 +28,22 @@ export interface ReportOutcome {
 }
 
 /**
- * Merge a fresh report into the owner's state: marks tested-now (age 0) and sets
- * the result-derived fields. Core-panel completeness also gates exposed-site
+ * Merge a fresh report into the owner's state: stamps the panel with the report
+ * day (`nowDay`, from core/clock) so freshness ages from it, and sets the
+ * result-derived fields. Core-panel completeness also gates exposed-site
  * coverage here, since the report treats them together (a site left untested
  * leaves the panel incomplete). An untested HIV preserves the prior status.
  * PrEP, condom preference, and pause are untouched.
  */
-export function applyReport(prev: OwnerState, o: ReportOutcome): OwnerState {
+export function applyReport(
+  prev: OwnerState,
+  o: ReportOutcome,
+  nowDay: number,
+): OwnerState {
   return {
     ...prev,
     testing: {
-      hasEverTested: true,
-      lastPanelAgeDays: 0,
+      lastPanelDay: nowDay,
       corePanelComplete: o.corePanelComplete,
       exposedSitesCovered: o.corePanelComplete,
     },

@@ -12,12 +12,16 @@ import {
   deriveOwnerCard,
 } from "./index.ts";
 import type { OwnerState } from "../core/badge.ts";
+import { todayEpochDay } from "../core/clock.ts";
 import { startApi, type Harness } from "../test-support/serverHarness.ts";
+
+// This loop drives the real account manager, which republishes against the live
+// clock (todayEpochDay), so the panel day is anchored to the real today too.
+const TODAY = todayEpochDay();
 
 const blue: OwnerState = {
   testing: {
-    hasEverTested: true,
-    lastPanelAgeDays: 10,
+    lastPanelDay: TODAY - 10,
     corePanelComplete: true,
     exposedSitesCovered: true,
   },
@@ -50,7 +54,7 @@ describe("owner loop against a live blind store", () => {
     await accounts.setOwnerState(created.master, blue);
 
     // Publish the owner's (blue) card to an alias and record it.
-    const card = deriveOwnerCard(blue, "robin");
+    const card = deriveOwnerCard(blue, "robin", TODAY);
     const { record } = await publishCard(api, card);
     await accounts.addAlias(created.master, record);
     expect(
@@ -61,7 +65,7 @@ describe("owner loop against a live blind store", () => {
     const paused: OwnerState = { ...blue, paused: true };
     await accounts.setOwnerState(created.master, paused);
 
-    const grayCard = deriveOwnerCard(paused, "robin");
+    const grayCard = deriveOwnerCard(paused, "robin", TODAY);
     expect(grayCard.state).toBe("gray");
     expect(
       await store.resolveAlias({ id: record.id, key: record.key }),

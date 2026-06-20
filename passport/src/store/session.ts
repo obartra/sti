@@ -29,6 +29,7 @@ import type { AccountSync } from "./accountSync.ts";
 import type { AccountBlob } from "./accountBlob.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { deriveOwnerCard } from "./ownerCard.ts";
+import { todayEpochDay } from "../core/clock.ts";
 import {
   publishCard,
   republishCard,
@@ -126,7 +127,11 @@ export function createSessionController(deps: SessionDeps): SessionController {
   // would otherwise hand out a key-bearing URL under a "private link" sheet after
   // a public -> link switch.
   async function shareLinkFor(session: OwnerSession): Promise<ShareLinkResult> {
-    const card = deriveOwnerCard(session.blob.state, session.blob.handle);
+    const card = deriveOwnerCard(
+      session.blob.state,
+      session.blob.handle,
+      todayEpochDay(),
+    );
     const wantPublic = session.blob.sharingMode === "public";
     const existing = session.blob.aliases.find(
       (a) => a.isPublic === wantPublic,
