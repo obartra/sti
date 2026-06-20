@@ -258,6 +258,25 @@ describe("owner session against a live blind store", () => {
     expect(await store.resolveAlias(caps(alias))).toBeNull();
   });
 
+  it("reviewKnocks counts knocks on the owner's aliases (deduped per requester)", async () => {
+    const { ctl, api } = controller(fakePasskey());
+    const { session } = await ctl.signUp("ivy");
+    const shared = await ctl.shareLink(session);
+    const aliasId = shared.session.blob.aliases[0]?.id ?? "";
+
+    // No knocks yet.
+    expect(await ctl.reviewKnocks(shared.session)).toBe(0);
+
+    // Two distinct viewers knock (each its own device secret); a repeat dedupes.
+    const viewerA = createBackendStore(api, "secret-a");
+    const viewerB = createBackendStore(api, "secret-b");
+    await viewerA.knock(aliasId);
+    await viewerA.knock(aliasId); // same requester -> deduped
+    await viewerB.knock(aliasId);
+
+    expect(await ctl.reviewKnocks(shared.session)).toBe(2);
+  });
+
   it("renewLink: a failing revoke leaves the record and old link intact (retryable)", async () => {
     // The owner holds the write token; if the revoke PUT fails, nothing should
     // change: the old link must keep resolving (no false "it's gone") and the

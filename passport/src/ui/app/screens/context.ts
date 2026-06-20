@@ -26,6 +26,10 @@ export interface ScreenCtx {
   openShare: () => void;
   /** Permanently delete the account and return to the logged-out landing. */
   onDeleteAccount: () => void;
+  /** Count of current knocks across the owner's aliases (contentless; 0 logged out). */
+  knockCount: number;
+  /** Re-pull the knock count (e.g. when the inbox opens). */
+  refreshKnocks: () => void;
   store: PassportStore;
   data: RouteData | null;
 }

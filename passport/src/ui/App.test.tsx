@@ -86,6 +86,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
     renewLink: (session) =>
       Promise.resolve({ session, url: `https://sti.care/a/${"w".repeat(43)}` }),
     deleteAccount: () => Promise.resolve(),
+    reviewKnocks: () => Promise.resolve(0),
     forget: () => undefined,
   };
 }
@@ -260,6 +261,35 @@ describe("App onboarding flow", () => {
     expect(deleteAccount).toHaveBeenCalledOnce();
     expect(await screen.findByText("Claim your passport")).toBeInTheDocument();
     expect(screen.queryByText("@robin")).toBeNull();
+  });
+
+  it("shows a contentless knock entry in the inbox only when someone knocked", async () => {
+    window.history.pushState({}, "", "/#b1-claim");
+    const user = userEvent.setup();
+    const controller = fakeController();
+    controller.reviewKnocks = () => Promise.resolve(2); // two viewers knocked
+    render(<App store={stubStore(null)} controller={controller} />);
+
+    // Onboard, then open the inbox via the bell.
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(
+      await screen.findByRole("button", { name: /Tap to reveal/ }),
+    );
+    await user.click(screen.getByRole("button", { name: /saved it/i }));
+    await user.click(
+      await screen.findByRole("button", { name: /Enter my passport/ }),
+    );
+    await user.click(
+      await screen.findByRole("button", { name: "Notifications" }),
+    );
+
+    // The knock entry is shown, and it's contentless: the copy names no requester
+    // and carries no count (the "2" from reviewKnocks never reaches the wording).
+    const entry = await screen.findByText(
+      "Someone with your link asked to see your status",
+    );
+    expect(entry).toBeInTheDocument();
+    expect(entry.textContent).not.toMatch(/\d/);
   });
 
   it("logs in on a new device with the recovery phrase (no passkey)", async () => {

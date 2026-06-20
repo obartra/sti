@@ -149,6 +149,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /notify", s.handleNotify)
 	s.mux.HandleFunc("POST /push/register", s.handlePushRegister)
 	s.mux.HandleFunc("POST /knock/{id}", s.handleKnock)
+	s.mux.HandleFunc("GET /knock/{id}", s.handleKnockReview)
 	s.mux.HandleFunc("GET /healthz", s.handleHealth)
 	s.mux.HandleFunc("GET /{$}", s.handleRoot) // exactly "/", a public landing
 }
@@ -484,6 +485,44 @@ func (s *Server) handleKnock(w http.ResponseWriter, r *http.Request) {
 	}
 	// The single response, identical for every id.
 	s.writeJSON(w, http.StatusOK, contract.KnockResponse{Status: contract.KnockStatus})
+}
+
+// handleKnockReview lets the alias OWNER read the count of current knocks on one
+// of their aliases, authorized by the write token (the same capability that
+// authorizes PUT). Unlike POST /knock this is NOT existence-uniform — but a wrong
+// or missing token returns 403 for both a real and a nonexistent alias, so it
+// still never reveals whether an alias exists to someone who lacks the token.
+func (s *Server) handleKnockReview(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if !contract.ValidID(id) {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed id")
+		return
+	}
+	if !s.ipLimit.allow(clientIP(r), s.now()) {
+		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
+		return
+	}
+	token := r.Header.Get(contract.HeaderWriteToken)
+	if token == "" {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "missing write token")
+		return
+	}
+	ok, err := s.st.VerifyAliasWrite(r.Context(), id, hashToken(token))
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	if !ok {
+		// Wrong token or no such alias: uniform 403, so existence stays hidden.
+		s.writeError(w, http.StatusForbidden, contract.ErrBadRequest, "write token does not match")
+		return
+	}
+	count, err := s.st.CurrentKnockCount(r.Context(), id, s.now())
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	s.writeJSON(w, http.StatusOK, contract.KnockReviewResponse{Count: count})
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {

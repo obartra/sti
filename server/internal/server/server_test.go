@@ -70,6 +70,66 @@ func TestAliasWriteThenRead(t *testing.T) {
 	}
 }
 
+// The owner reads the count of current knocks on their alias with the write
+// token; everyone else (wrong token, no token, nonexistent alias) gets 403, so
+// the count is owner-only and alias existence stays hidden.
+func TestKnockReviewByOwner(t *testing.T) {
+	h := newTestServer(t)
+	id := randID(t)
+	payload := bytes.Repeat([]byte{0xAB}, contract.AliasPayloadSize)
+	put := httptest.NewRequest("PUT", contract.PathAliasPrefix+id, bytes.NewReader(payload))
+	put.Header.Set(contract.HeaderWriteToken, "owner-token")
+	if rec := do(h, put); rec.Code != http.StatusNoContent {
+		t.Fatalf("put: %d", rec.Code)
+	}
+
+	review := func(token string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest("GET", contract.PathKnockPrefix+id, nil)
+		if token != "" {
+			req.Header.Set(contract.HeaderWriteToken, token)
+		}
+		return do(h, req)
+	}
+	count := func(token string) int {
+		rec := review(token)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("review: code %d", rec.Code)
+		}
+		var got contract.KnockReviewResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		return got.Count
+	}
+
+	if n := count("owner-token"); n != 0 {
+		t.Fatalf("initial count = %d, want 0", n)
+	}
+	// Two distinct requesters knock; a repeat from one is deduped.
+	for _, rq := range []string{"req-a", "req-b", "req-a"} {
+		body, _ := json.Marshal(contract.KnockRequest{RequesterHash: rq})
+		if rec := do(h, httptest.NewRequest("POST", contract.PathKnockPrefix+id, bytes.NewReader(body))); rec.Code != http.StatusOK {
+			t.Fatalf("knock: %d", rec.Code)
+		}
+	}
+	if n := count("owner-token"); n != 2 {
+		t.Fatalf("count after knocks = %d, want 2", n)
+	}
+
+	// A wrong token, a missing token, and a never-existed alias all 403 (uniform).
+	if rec := review("wrong-token"); rec.Code != http.StatusForbidden {
+		t.Fatalf("wrong token: code %d, want 403", rec.Code)
+	}
+	if rec := review(""); rec.Code != http.StatusBadRequest {
+		t.Fatalf("missing token: code %d, want 400", rec.Code)
+	}
+	miss := httptest.NewRequest("GET", contract.PathKnockPrefix+randID(t), nil)
+	miss.Header.Set(contract.HeaderWriteToken, "owner-token")
+	if rec := do(h, miss); rec.Code != http.StatusForbidden {
+		t.Fatalf("nonexistent alias: code %d, want 403", rec.Code)
+	}
+}
+
 // The whole existence-hiding contract: a real read and a miss are the same status,
 // the same length, and a miss is stable across repeats.
 func TestAliasReadIsExistenceUniform(t *testing.T) {

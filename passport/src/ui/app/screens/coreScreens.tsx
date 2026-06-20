@@ -2,6 +2,7 @@ import { Home } from "../../core/Home.tsx";
 import { Results } from "../../core/Results.tsx";
 import { Care } from "../../core/Care.tsx";
 import { Notifications } from "../../core/Notifications.tsx";
+import type { NotificationItem } from "../../core/Notifications.tsx";
 import { Privacy } from "../../core/Privacy.tsx";
 import { extendClearance } from "../../../core/report.ts";
 import { todayEpochDay } from "../../../core/clock.ts";
@@ -21,6 +22,33 @@ function openResource(url: string): void {
   if (typeof window !== "undefined") {
     window.open(url, "_blank", "noopener,noreferrer");
   }
+}
+
+// The real inbox: a standing re-test nudge, plus a contentless knock entry only
+// when someone has actually knocked (no requester, no count, no per-knock time).
+// Circle/partner-notify entries are intentionally absent until those features
+// ship, so the inbox never shows a notification the owner can't act on.
+export function notificationItems(
+  knockCount: number,
+  go: (to: "report" | "privacy") => void,
+): NotificationItem[] {
+  const items: NotificationItem[] = [
+    {
+      icon: "bell",
+      title: "Time to re-test soon",
+      sub: "Keep your status up to date",
+      onOpen: () => go("report"),
+    },
+  ];
+  if (knockCount > 0) {
+    items.push({
+      icon: "users",
+      title: "Someone with your link asked to see your status",
+      sub: "Share an up-to-date link with people you choose",
+      onOpen: () => go("privacy"),
+    });
+  }
+  return items;
 }
 
 export const coreRenderers: ScreenRenderers = {
@@ -57,7 +85,12 @@ export const coreRenderers: ScreenRenderers = {
       onFindPrep={() => openResource(RESOURCES.prep)}
     />
   ),
-  notifications: () => <Notifications />,
+  notifications: ({ nav, knockCount, refreshKnocks }) => (
+    <Notifications
+      items={notificationItems(knockCount, (to) => nav.go(to))}
+      onView={refreshKnocks}
+    />
+  ),
   privacy: ({ nav, ownerState, setOwnerState, onDeleteAccount }) => (
     <Privacy
       ownerState={ownerState}

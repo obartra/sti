@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Card, Row } from "../../design/components/index.ts";
 import {
   Bell,
@@ -13,6 +13,11 @@ import {
 // Notifications, copy verbatim from copy.js (notifications). Each row is a
 // neutral prompt that never names a condition or a person in its own text;
 // the privacy-safe wording is the whole point of the screen.
+// The default items mirror what the app actually renders (see coreScreens
+// notificationItems): a standing re-test nudge and a CONTENTLESS knock entry —
+// no requester, no count, no per-knock timing. Circle/partner-notify rows are
+// intentionally absent until those features ship. Kept in sync so Storybook and
+// the privacy-invariant test model the real contract, not an older one.
 const COPY = {
   notifications: {
     title: "Notifications",
@@ -22,31 +27,13 @@ const COPY = {
         icon: "bell",
         title: "Time to re-test soon",
         sub: "Keep your status up to date",
-        when: "Today",
-        to: "report",
       },
       {
         icon: "users",
-        // Knock requests are contentless and never name the requester (silent
-        // linking, doc 06 §8/§9a); the owner approves or declines in Privacy.
+        // Contentless: never names the requester, never shows a count or a time
+        // (doc 02 — the owner-pull indicator carries none of that).
         title: "Someone with your link asked to see your status",
-        sub: "Approve or decline in Privacy & sharing",
-        when: "2h ago",
-        to: "privacy",
-      },
-      {
-        icon: "circle",
-        title: "2 people asked to join Solstice",
-        sub: "Review requests in the approvals queue",
-        when: "Yesterday",
-        to: "circle-approvals",
-      },
-      {
-        icon: "heart",
-        title: "A private heads-up",
-        sub: "A recent contact suggests getting tested",
-        when: "Last week",
-        to: "a3-alert",
+        sub: "Share an up-to-date link with people you choose",
       },
     ],
   },
@@ -58,7 +45,8 @@ export interface NotificationItem {
   icon: NotifIcon;
   title: string;
   sub: string;
-  when: string;
+  /** A coarse recency label. Omitted for knocks (no per-knock timing leaks). */
+  when?: string | undefined;
   /** Optional tap handler; the source navigates to a destination route. */
   onOpen?: (() => void) | undefined;
 }
@@ -74,15 +62,24 @@ const DEFAULT_ITEMS: NotificationItem[] = COPY.notifications.items.map((n) => ({
   icon: n.icon,
   title: n.title,
   sub: n.sub,
-  when: n.when,
 }));
 
 export interface NotificationsProps {
   items?: NotificationItem[];
+  /** Fired once when the inbox is shown, so the owner-pull knock count refreshes. */
+  onView?: (() => void) | undefined;
 }
 
-export function Notifications({ items = DEFAULT_ITEMS }: NotificationsProps) {
+export function Notifications({
+  items = DEFAULT_ITEMS,
+  onView,
+}: NotificationsProps) {
   const c = COPY.notifications;
+  useEffect(() => {
+    onView?.();
+    // Pull once on open; onView is stable enough and a re-pull per render is wrong.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <div
       style={{
@@ -127,7 +124,7 @@ export function Notifications({ items = DEFAULT_ITEMS }: NotificationsProps) {
               key={i}
               lead={iconFor(n.icon)}
               title={n.title}
-              sub={`${n.sub} · ${n.when}`}
+              sub={n.when ? `${n.sub} · ${n.when}` : n.sub}
               trail={<Chevron size={18} />}
               {...(n.onOpen ? { onClick: n.onOpen } : {})}
             />

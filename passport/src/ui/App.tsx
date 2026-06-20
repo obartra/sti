@@ -3,6 +3,7 @@ import { useAppRouter } from "./app/useAppRouter.ts";
 import { useDesktop } from "./desktop/Desktop.tsx";
 import { useOnboarding } from "./app/useOnboarding.ts";
 import { useShareLink } from "./app/useShareLink.ts";
+import { useKnockReview } from "./app/useKnockReview.ts";
 import { OWNER } from "./app/fixtures.ts";
 import { Chrome } from "./app/Chrome.tsx";
 import type { Route } from "./app/routes.ts";
@@ -140,10 +141,15 @@ export function App({
     revokeLink,
   } = useShareLink(controller, sessionRef, setSession, setShareOpen);
 
+  // Owner-pull knock review (the quiet inbox indicator).
+  const { knockCount, refresh: refreshKnocks } = useKnockReview(
+    controller,
+    session,
+  );
+
   const owner = session
     ? deriveOwnerView(session.blob, todayEpochDay())
     : OWNER;
-  const ownerState = session ? session.blob.state : INITIAL_OWNER_STATE;
 
   // A logged-out visitor must never land on an app-group screen (e.g. a #home
   // deep link): clamp those to the public landing until they sign in. Public
@@ -158,7 +164,7 @@ export function App({
       route={effectiveRoute}
       nav={nav}
       owner={owner}
-      ownerState={ownerState}
+      ownerState={session ? session.blob.state : INITIAL_OWNER_STATE}
       onboarding={onboarding}
       onReport={onReport}
       setOwnerState={setOwnerState}
@@ -170,6 +176,8 @@ export function App({
       onCopyShareLink={copyShareLink}
       onRevokeShareLink={revokeLink}
       onDeleteAccount={onDeleteAccount}
+      knockCount={knockCount}
+      refreshKnocks={refreshKnocks}
     />
   );
 }
