@@ -1,4 +1,5 @@
 import { COPY, usePrivacyState } from "./Privacy.parts.tsx";
+import type { OwnerState } from "../../core/badge.ts";
 import {
   AliasIntroCard,
   AliasList,
@@ -11,12 +12,19 @@ import {
 } from "./Privacy.sections.tsx";
 
 export interface PrivacyProps {
+  ownerState: OwnerState;
+  setOwnerState: (update: (prev: OwnerState) => OwnerState) => void;
   onViewAs?: (() => void) | undefined;
   onDeleted?: (() => void) | undefined;
 }
 
-export function Privacy({ onViewAs, onDeleted }: PrivacyProps) {
-  const state = usePrivacyState();
+export function Privacy({
+  ownerState,
+  setOwnerState,
+  onViewAs,
+  onDeleted,
+}: PrivacyProps) {
+  const state = usePrivacyState(ownerState, setOwnerState);
   return (
     <div style={{ display: "flex", justifyContent: "center" }}>
       <div

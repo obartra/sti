@@ -12,13 +12,16 @@ import type { OwnerView, PassportStore } from "../../store/index.ts";
 import type { ScreenCtx } from "./screens/context.ts";
 import type { OnboardingActions } from "./useOnboarding.ts";
 import type { ReportOutcome } from "../../core/report.ts";
+import type { OwnerState } from "../../core/badge.ts";
 
 export interface ChromeProps {
   route: Route;
   nav: Nav;
   owner: OwnerView;
+  ownerState: OwnerState;
   onboarding: OnboardingActions;
   onReport: (outcome: ReportOutcome) => void;
+  setOwnerState: (update: (prev: OwnerState) => OwnerState) => void;
   store: PassportStore;
   desktop: boolean;
   shareOpen: boolean;
@@ -76,8 +79,10 @@ function AppChrome(props: ChromeProps) {
     route,
     nav,
     owner,
+    ownerState,
     onboarding,
     onReport,
+    setOwnerState,
     store,
     desktop,
     setShareOpen,
@@ -86,8 +91,10 @@ function AppChrome(props: ChromeProps) {
   const ctx: ScreenCtx = {
     nav,
     owner,
+    ownerState,
     onboarding,
     onReport,
+    setOwnerState,
     openShare: () => setShareOpen(true),
     store,
     data: route.data,
@@ -149,8 +156,10 @@ function PublicChrome({
   route,
   nav,
   owner,
+  ownerState,
   onboarding,
   onReport,
+  setOwnerState,
   store,
   desktop,
   setShareOpen,
@@ -168,8 +177,10 @@ function PublicChrome({
   const ctx: ScreenCtx = {
     nav,
     owner,
+    ownerState,
     onboarding,
     onReport,
+    setOwnerState,
     openShare: () => setShareOpen(true),
     store,
     data: route.data,

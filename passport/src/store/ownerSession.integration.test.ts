@@ -26,6 +26,7 @@ const blue: OwnerState = {
   onPrep: true,
   condomPreference: "none",
   condomPreferencePublic: false,
+  onDoxyPep: false,
   paused: false,
 };
 

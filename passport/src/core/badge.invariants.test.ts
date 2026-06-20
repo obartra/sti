@@ -24,6 +24,7 @@ const ownerStateArb: fc.Arbitrary<OwnerState> = fc.record({
   onPrep: fc.boolean(),
   condomPreference: fc.constantFrom("none", "raw", "either", "condoms_always"),
   condomPreferencePublic: fc.boolean(),
+  onDoxyPep: fc.boolean(),
   paused: fc.boolean(),
 });
 
@@ -61,6 +62,7 @@ function blueBase(b: {
     activeNonHivSti: false,
     condomPreference: b.condomPreference,
     condomPreferencePublic: b.condomPreferencePublic,
+    onDoxyPep: false,
     paused: false,
   };
 }
@@ -191,6 +193,7 @@ describe("badge invariants (exhaustive)", () => {
           onPrep: false,
           condomPreference: "condoms_always",
           condomPreferencePublic: true,
+          onDoxyPep: false,
           paused: false,
         };
         expect(resolveViewerBadge(s)).toEqual(CONDOM_VIEW);

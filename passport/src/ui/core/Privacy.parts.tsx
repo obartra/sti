@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { Lock, Link, Globe } from "../../design/icons.tsx";
+import type { CondomPreference, OwnerState } from "../../core/badge.ts";
 
 // C6 privacy & sharing. Faithful port of core-flows.jsx Privacy (+ its CtrlRow
 // helper), copy verbatim from copy.js (privacy). Presentational only: the
@@ -65,6 +66,9 @@ export const COPY = {
   condomRaw: "No condoms",
   condomEither: "Condoms optional",
   condomAlways: "Condoms always",
+  doxyLabel: "On doxy-PEP",
+  doxyLabelSub:
+    "An optional fact you stand behind. It never counts toward blue.",
   pauseRow: "Hide my status",
   pauseRowSub: "Show plain gray to everyone, identical to any other gray.",
   dangerTitle: "Danger zone",
@@ -210,6 +214,8 @@ export interface PrivacyState {
   setLabelHiv: (v: boolean) => void;
   condoms: Condoms;
   setCondoms: (v: Condoms) => void;
+  doxy: boolean;
+  setDoxy: (v: boolean) => void;
   paused: boolean;
   setPaused: (v: boolean) => void;
   pendingCount: (id: string) => number;
@@ -251,6 +257,8 @@ type AliasSlice = Omit<
   | "setLabelHiv"
   | "condoms"
   | "setCondoms"
+  | "doxy"
+  | "setDoxy"
   | "paused"
   | "setPaused"
   | "confirmDelete"
@@ -376,22 +384,42 @@ function useAliasSlice(): AliasSlice {
   };
 }
 
-export function usePrivacyState(): PrivacyState {
+// The card attributes are derived from (and written back to) the real owner
+// state, so toggling them persists and republishes. The condom UI's 4th "off"
+// value maps to "not shown publicly"; the three shown values set the public flag.
+function condomsOf(s: OwnerState): Condoms {
+  if (!s.condomPreferencePublic || s.condomPreference === "none") return "off";
+  return s.condomPreference === "condoms_always"
+    ? "always"
+    : s.condomPreference;
+}
+function withCondoms(s: OwnerState, v: Condoms): OwnerState {
+  if (v === "off") {
+    return { ...s, condomPreference: "none", condomPreferencePublic: false };
+  }
+  const pref: CondomPreference = v === "always" ? "condoms_always" : v;
+  return { ...s, condomPreference: pref, condomPreferencePublic: true };
+}
+
+export function usePrivacyState(
+  ownerState: OwnerState,
+  setOwnerState: (update: (prev: OwnerState) => OwnerState) => void,
+): PrivacyState {
   const alias = useAliasSlice();
   const [confirmDelete, setConfirmDelete] = useState(false);
-  // Card attributes (self-declared, optional). Off / private by default.
-  const [labelHiv, setLabelHiv] = useState(false);
-  const [condoms, setCondoms] = useState<Condoms>("off");
-  const [paused, setPaused] = useState(false);
+  // Card attributes (self-declared, optional) read from the synced owner state;
+  // each setter persists via an updater so concurrent toggles compose.
   return {
     ...alias,
     confirmDelete,
     setConfirmDelete,
-    labelHiv,
-    setLabelHiv,
-    condoms,
-    setCondoms,
-    paused,
-    setPaused,
+    labelHiv: ownerState.onPrep,
+    setLabelHiv: (v) => setOwnerState((s) => ({ ...s, onPrep: v })),
+    condoms: condomsOf(ownerState),
+    setCondoms: (v) => setOwnerState((s) => withCondoms(s, v)),
+    doxy: ownerState.onDoxyPep,
+    setDoxy: (v) => setOwnerState((s) => ({ ...s, onDoxyPep: v })),
+    paused: ownerState.paused,
+    setPaused: (v) => setOwnerState((s) => ({ ...s, paused: v })),
   };
 }

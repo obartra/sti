@@ -18,6 +18,7 @@ function state(over: Partial<OwnerState> = {}): OwnerState {
     onPrep: true,
     condomPreference: "none",
     condomPreferencePublic: false,
+    onDoxyPep: false,
     paused: false,
     ...over,
   };
@@ -124,5 +125,23 @@ describe("deriveOwnerCard", () => {
     expect(card.state).toBe("gray");
     expect(card.labels).toEqual(["condoms_always"]);
     expect(card.route).toBeNull();
+  });
+
+  it("doxy-PEP shows as a flat label, never a route, and never affects the badge", () => {
+    // On a gray owner with no route, doxy-PEP still shows (labels are gated by
+    // sharing, not color) and does not earn blue.
+    const gray = deriveOwnerCard(
+      state({ onPrep: false, onDoxyPep: true }),
+      "robin",
+    );
+    expect(gray.state).toBe("gray");
+    expect(gray.labels).toEqual(["doxy_pep"]);
+    expect(gray.route).toBeNull();
+
+    // Alongside the umbrella it is an extra flat label; the route is unchanged.
+    const blue = deriveOwnerCard(state({ onDoxyPep: true }), "robin");
+    expect(blue.state).toBe("blue");
+    expect(blue.labels).toEqual(["hiv", "doxy_pep"]);
+    expect(blue.route).toBe("hiv");
   });
 });
