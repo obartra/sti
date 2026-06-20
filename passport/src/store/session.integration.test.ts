@@ -55,7 +55,10 @@ describe("owner session against a live blind store", () => {
 
   afterAll(() => harness?.stop());
 
-  function controller(passkey: PasskeyAuth, devices = createDeviceStore(memoryStorage())) {
+  function controller(
+    passkey: PasskeyAuth,
+    devices = createDeviceStore(memoryStorage()),
+  ) {
     const api = createApiClient(baseUrl);
     return {
       ctl: createSessionController({

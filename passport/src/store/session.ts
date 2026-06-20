@@ -99,7 +99,10 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
       let master: Bytes;
       try {
-        master = await unwrapMaster(base64urlToBytes(cred.wrappedMaster), prfOutput);
+        master = await unwrapMaster(
+          base64urlToBytes(cred.wrappedMaster),
+          prfOutput,
+        );
       } catch {
         // Wrong passkey or corrupt binding: GCM rejects. Leave the binding in
         // place (a later correct unlock still works) and fall back to the phrase.
