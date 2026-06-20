@@ -61,7 +61,56 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("apply schema: %w", err)
 	}
+	if err := migrate(ctx, db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("migrate: %w", err)
+	}
 	return &Store{db: db}, nil
+}
+
+// migrate applies additive schema changes that CREATE TABLE IF NOT EXISTS can't
+// reach on an already-created table. Each step is idempotent (guarded by a column
+// check) so it is safe to run on every Open, including a fresh database where the
+// embedded schema already has the final shape.
+func migrate(ctx context.Context, db *sql.DB) error {
+	// knock.pub_key: the opaque ephemeral grant key carried on a knock (doc 13).
+	// Older databases have a knock table without it; add it in place.
+	has, err := hasColumn(ctx, db, "knock", "pub_key")
+	if err != nil {
+		return err
+	}
+	if !has {
+		if _, err := db.ExecContext(ctx,
+			`ALTER TABLE knock ADD COLUMN pub_key TEXT NOT NULL DEFAULT ''`); err != nil {
+			return fmt.Errorf("add knock.pub_key: %w", err)
+		}
+	}
+	return nil
+}
+
+// hasColumn reports whether table has a column named col, via PRAGMA table_info.
+func hasColumn(ctx context.Context, db *sql.DB, table, col string) (bool, error) {
+	rows, err := db.QueryContext(ctx, fmt.Sprintf("PRAGMA table_info(%s)", table))
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			cid        int
+			name, typ  string
+			notNull    int
+			dflt       sql.NullString
+			primaryKey int
+		)
+		if err := rows.Scan(&cid, &name, &typ, &notNull, &dflt, &primaryKey); err != nil {
+			return false, err
+		}
+		if name == col {
+			return true, rows.Err()
+		}
+	}
+	return false, rows.Err()
 }
 
 // Close releases the database handle.
@@ -266,11 +315,21 @@ func (s *Store) DeleteSend(ctx context.Context, id int64) error {
 // RecordKnock records a contentless knock, deduplicated per (target, requester).
 // created reports whether a new row was written (an existing, unexpired knock is
 // a no-op). The caller equalizes total work regardless of this result.
-func (s *Store) RecordKnock(ctx context.Context, targetID, requesterHash string, now, expiresAt int64) (created bool, err error) {
+//
+// pubKey is the requester's opaque ephemeral grant key (or "" for a knock that
+// only wants the quiet indicator). It is written on the FIRST knock and left
+// untouched on a dedup'd repeat (ON CONFLICT DO NOTHING). This assumes a requester
+// reuses a stable per-alias key, so the stored value still matches the key it
+// holds. The assumption has two known gaps the owner-seal slice must handle: a
+// first contentless knock ("") is NOT upgraded by a later keyed re-knock (the
+// owner sees ""), and a device that regenerates its key (reinstall) leaves the
+// owner sealing to a key the requester no longer holds. Both degrade to "no grant
+// arrives", never to a wrong-recipient grant, so failing safe is preserved.
+func (s *Store) RecordKnock(ctx context.Context, targetID, requesterHash, pubKey string, now, expiresAt int64) (created bool, err error) {
 	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO knock (target_id, requester_hash, created_at, expires_at) VALUES (?, ?, ?, ?)
+		`INSERT INTO knock (target_id, requester_hash, pub_key, created_at, expires_at) VALUES (?, ?, ?, ?, ?)
 		 ON CONFLICT(target_id, requester_hash) DO NOTHING`,
-		targetID, requesterHash, now, expiresAt)
+		targetID, requesterHash, pubKey, now, expiresAt)
 	if err != nil {
 		return false, err
 	}
@@ -288,13 +347,33 @@ func (s *Store) RecentKnockCount(ctx context.Context, targetID string, since int
 	return n, err
 }
 
-// CurrentKnockCount counts a target's still-live knocks (not yet expired) as of
-// now. This is what the alias OWNER reads to see whether anyone has knocked.
-func (s *Store) CurrentKnockCount(ctx context.Context, targetID string, now int64) (int, error) {
-	var n int
-	err := s.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM knock WHERE target_id = ? AND expires_at > ?`, targetID, now).Scan(&n)
-	return n, err
+// Knock is one live knock as the owner sees it on review: the opaque requester
+// token and the optional ephemeral grant key. Both are opaque to the server.
+type Knock struct {
+	RequesterHash string
+	PubKey        string
+}
+
+// CurrentKnocks returns a target's still-live knocks (not yet expired) as of now,
+// oldest first, so the OWNER can seal an in-app grant to each requester's key.
+// Ordered by created_at for a stable review list; the order carries no identity.
+func (s *Store) CurrentKnocks(ctx context.Context, targetID string, now int64) ([]Knock, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT requester_hash, pub_key FROM knock
+		 WHERE target_id = ? AND expires_at > ? ORDER BY created_at`, targetID, now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Knock
+	for rows.Next() {
+		var k Knock
+		if err := rows.Scan(&k.RequesterHash, &k.PubKey); err != nil {
+			return nil, err
+		}
+		out = append(out, k)
+	}
+	return out, rows.Err()
 }
 
 // VerifyAliasWrite reports whether writeAuth matches the alias's stored write

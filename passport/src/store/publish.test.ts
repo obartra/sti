@@ -35,6 +35,7 @@ function recordingApi(): { api: ApiClient; puts: PutCall[] } {
       deleteAccount: unused,
       notify: unused,
       knockCount: () => Promise.resolve(0),
+      knockReview: () => Promise.resolve({ count: 0, pending: [] }),
       knock: unused,
       registerPush: unused,
       health: unused,

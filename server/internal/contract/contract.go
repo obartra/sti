@@ -28,6 +28,16 @@ var idPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`)
 // the id exists; existence is never revealed (see the sensitive endpoints).
 func ValidID(s string) bool { return idPattern.MatchString(s) }
 
+var pubKeyPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+
+// ValidPubKey reports whether s is a plausible knock grant key: non-empty,
+// base64url, and within PubKeyMaxLen. The server treats the bytes as opaque; this
+// only bounds storage and rejects junk. An empty string (no grant key) is not
+// "valid" here because callers use "" to mean "store no key".
+func ValidPubKey(s string) bool {
+	return s != "" && len(s) <= PubKeyMaxLen && pubKeyPattern.MatchString(s)
+}
+
 // --- Fixed sizes (the existence-hiding knobs) -------------------------------
 
 const (
@@ -80,8 +90,30 @@ type PushSubscriptionKey struct {
 
 // KnockRequest carries the opaque per-requester token (computed client-side) so
 // knocks can be deduped and rate-limited per requester. It names no one.
+//
+// PubKey is an optional per-requester ephemeral public key (raw P-256 point,
+// base64url) the requester keeps the private half of locally. It lets the owner
+// seal an in-app grant TO that key (doc 13, slice 2) without the server ever
+// learning the key's meaning: to the server it is opaque bytes, like any other
+// stored value. Omitted by clients that only want the contentless knock.
 type KnockRequest struct {
 	RequesterHash string `json:"requesterHash"`
+	PubKey        string `json:"pubKey,omitempty"`
+}
+
+// PubKeyMaxLen bounds a knock's PubKey. A raw uncompressed P-256 point is 65
+// bytes, which is 88 base64url chars; the cap leaves a little slack and keeps a
+// rogue client from parking large blobs on the contentless knock path. An
+// over-long or malformed key is dropped (the knock still succeeds uniformly), so
+// this never becomes a distinguishing rejection.
+const PubKeyMaxLen = 128
+
+// PendingKnock is one live knock as the alias OWNER sees it on review: the opaque
+// per-requester token plus the optional ephemeral key to seal a grant to. It
+// still names no one — both fields are opaque to the server.
+type PendingKnock struct {
+	RequesterHash string `json:"requesterHash"`
+	PubKey        string `json:"pubKey,omitempty"`
 }
 
 // KnockResponse is the ONLY response POST /knock ever returns, byte-identical for
@@ -93,10 +125,14 @@ type KnockResponse struct {
 
 // KnockReviewResponse is what GET /knock/{id} returns to the alias OWNER (who
 // proves ownership with the write token): the count of current knocks on that
-// alias. Contentless — it names no requester and carries no timing per knock; it
-// is the owner-pull "quiet indicator" (doc 02), never pushed.
+// alias, plus the opaque pending tokens needed to grant access. It names no
+// requester (a requesterHash is a hash, not an identity) and carries no per-knock
+// timing; it is the owner-pull "quiet indicator" (doc 02), never pushed. Pending
+// lets the owner seal an in-app grant to each waiting requester's PubKey (doc 13,
+// slice 2); Count stays as the cheap badge and equals len(Pending).
 type KnockReviewResponse struct {
-	Count int `json:"count"`
+	Count   int            `json:"count"`
+	Pending []PendingKnock `json:"pending,omitempty"`
 }
 
 // HeaderWriteToken authorizes a PUT to an alias. The owner holds it; viewers get

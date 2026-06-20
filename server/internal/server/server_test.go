@@ -102,18 +102,51 @@ func TestKnockReviewByOwner(t *testing.T) {
 		return got.Count
 	}
 
+	pending := func(token string) []contract.PendingKnock {
+		rec := review(token)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("review: code %d", rec.Code)
+		}
+		var got contract.KnockReviewResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if got.Count != len(got.Pending) {
+			t.Fatalf("count %d != len(pending) %d", got.Count, len(got.Pending))
+		}
+		return got.Pending
+	}
+
 	if n := count("owner-token"); n != 0 {
 		t.Fatalf("initial count = %d, want 0", n)
 	}
-	// Two distinct requesters knock; a repeat from one is deduped.
-	for _, rq := range []string{"req-a", "req-b", "req-a"} {
-		body, _ := json.Marshal(contract.KnockRequest{RequesterHash: rq})
+	// Two distinct requesters knock; a repeat from one is deduped. req-a carries an
+	// ephemeral grant key, req-b knocks contentless (no key).
+	knocks := []contract.KnockRequest{
+		{RequesterHash: "req-a", PubKey: "grantKeyA"},
+		{RequesterHash: "req-b"},
+		{RequesterHash: "req-a", PubKey: "grantKeyA"},
+	}
+	for _, k := range knocks {
+		body, _ := json.Marshal(k)
 		if rec := do(h, httptest.NewRequest("POST", contract.PathKnockPrefix+id, bytes.NewReader(body))); rec.Code != http.StatusOK {
 			t.Fatalf("knock: %d", rec.Code)
 		}
 	}
 	if n := count("owner-token"); n != 2 {
 		t.Fatalf("count after knocks = %d, want 2", n)
+	}
+	// The owner sees each waiting requester's opaque key so it can seal a grant.
+	got := pending("owner-token")
+	keys := map[string]string{}
+	for _, p := range got {
+		keys[p.RequesterHash] = p.PubKey
+	}
+	if keys["req-a"] != "grantKeyA" {
+		t.Fatalf("req-a pubkey = %q, want grantKeyA", keys["req-a"])
+	}
+	if keys["req-b"] != "" {
+		t.Fatalf("req-b pubkey = %q, want empty (knocked contentless)", keys["req-b"])
 	}
 
 	// A wrong token, a missing token, and a never-existed alias all 403 (uniform).
@@ -238,19 +271,26 @@ func TestAccountDelete(t *testing.T) {
 	}
 }
 
-// Knock is byte-identical for a real id, a different id, and a malformed id.
+// Knock is byte-identical for a real id, a different id, and a malformed id, and
+// carrying an ephemeral grant key changes nothing the requester can observe.
 func TestKnockIsUniform(t *testing.T) {
 	h := newTestServer(t)
 	want := `{"status":"received"}` + "\n"
 
+	bodies := []contract.KnockRequest{
+		{RequesterHash: "req"},
+		{RequesterHash: "req", PubKey: "anEphemeralGrantKey"},
+	}
 	for _, target := range []string{randID(t), randID(t), "not-a-valid-id"} {
-		body, _ := json.Marshal(contract.KnockRequest{RequesterHash: "req"})
-		rec := do(h, httptest.NewRequest("POST", contract.PathKnockPrefix+target, bytes.NewReader(body)))
-		if rec.Code != http.StatusOK {
-			t.Fatalf("knock %q: code %d", target, rec.Code)
-		}
-		if rec.Body.String() != want {
-			t.Fatalf("knock %q: body %q, want %q", target, rec.Body.String(), want)
+		for _, kr := range bodies {
+			body, _ := json.Marshal(kr)
+			rec := do(h, httptest.NewRequest("POST", contract.PathKnockPrefix+target, bytes.NewReader(body)))
+			if rec.Code != http.StatusOK {
+				t.Fatalf("knock %q: code %d", target, rec.Code)
+			}
+			if rec.Body.String() != want {
+				t.Fatalf("knock %q: body %q, want %q", target, rec.Body.String(), want)
+			}
 		}
 	}
 }

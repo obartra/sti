@@ -477,7 +477,14 @@ func (s *Server) handleKnock(w http.ResponseWriter, r *http.Request) {
 		if s.knockLim.allow(id+"\x00"+req.RequesterHash, s.now()) {
 			now := s.now()
 			expires := now + s.cfg.KnockTTL.Milliseconds()
-			if _, err := s.st.RecordKnock(r.Context(), id, req.RequesterHash, now, expires); err != nil {
+			// The grant key is opaque to us; drop anything malformed or over-bound
+			// rather than reject (the knock must still answer uniformly). A dropped
+			// key just means no in-app grant slot for this requester.
+			pubKey := req.PubKey
+			if !contract.ValidPubKey(pubKey) {
+				pubKey = ""
+			}
+			if _, err := s.st.RecordKnock(r.Context(), id, req.RequesterHash, pubKey, now, expires); err != nil {
 				s.metrics.Error(metrics.ErrStore)
 				s.log.Error("record knock", "err", err)
 			}
@@ -517,12 +524,16 @@ func (s *Server) handleKnockReview(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusForbidden, contract.ErrBadRequest, "write token does not match")
 		return
 	}
-	count, err := s.st.CurrentKnockCount(r.Context(), id, s.now())
+	knocks, err := s.st.CurrentKnocks(r.Context(), id, s.now())
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
 		return
 	}
-	s.writeJSON(w, http.StatusOK, contract.KnockReviewResponse{Count: count})
+	pending := make([]contract.PendingKnock, len(knocks))
+	for i, k := range knocks {
+		pending[i] = contract.PendingKnock{RequesterHash: k.RequesterHash, PubKey: k.PubKey}
+	}
+	s.writeJSON(w, http.StatusOK, contract.KnockReviewResponse{Count: len(pending), Pending: pending})
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {

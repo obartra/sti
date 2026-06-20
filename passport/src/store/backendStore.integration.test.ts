@@ -82,4 +82,33 @@ describe("public resolution against a live blind store", () => {
     await expect(deduping.knock(link.id)).resolves.toBeUndefined();
     await expect(deduping.knock(link.id)).resolves.toBeUndefined();
   });
+
+  it("a knock's grant pubkey reaches the owner's review intact", async () => {
+    // The owner needs the write token to review, so create the alias directly
+    // with one we keep (publish() throws its token away).
+    const id = randomAliasId();
+    const writeToken = randomWriteToken();
+    const raw = crypto.getRandomValues(new Uint8Array(32));
+    const key = await importAesKey(raw);
+    const payload = await sealToSize(
+      key,
+      serializePublicCard({ state: "gray", identity: { handle: "noor" } }),
+      ALIAS_PAYLOAD_SIZE,
+    );
+    await api.putAlias(id, payload, writeToken);
+
+    // One requester knocks with an ephemeral grant key, another knocks contentless.
+    const pubKey = bytesToBase64url(crypto.getRandomValues(new Uint8Array(65)));
+    await api.knock(id, "req-with-key", pubKey);
+    await api.knock(id, "req-no-key");
+
+    const review = await api.knockReview(id, writeToken);
+    expect(review.count).toBe(2);
+    const byHash = new Map(
+      review.pending.map((p) => [p.requesterHash, p.pubKey]),
+    );
+    expect(byHash.get("req-with-key")).toBe(pubKey);
+    // A contentless knock carries no key; it surfaces as undefined, not "".
+    expect(byHash.get("req-no-key")).toBeUndefined();
+  });
 });

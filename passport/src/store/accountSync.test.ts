@@ -34,6 +34,7 @@ function fakeAccountApi(): ApiClient {
     putAlias: unused,
     notify: unused,
     knockCount: () => Promise.resolve(0),
+    knockReview: () => Promise.resolve({ count: 0, pending: [] }),
     knock: unused,
     registerPush: unused,
     health: unused,

@@ -24,11 +24,23 @@ export function requesterHash(
   );
 }
 
-/** Knock on an alias. Resolves regardless of whether the alias exists. */
+/**
+ * Knock on an alias. Resolves regardless of whether the alias exists.
+ *
+ * pubKey is the requester's stable per-alias ephemeral public key (doc 13): when
+ * present, the owner can seal an in-app grant to it. It is reused across re-knocks
+ * so the owner always seals to a key the requester still holds; omit it for a
+ * knock that only wants the quiet indicator.
+ */
 export async function knock(
   api: ApiClient,
   aliasId: string,
   requesterSecret: string,
+  pubKey?: string,
 ): Promise<void> {
-  await api.knock(aliasId, await requesterHash(requesterSecret, aliasId));
+  await api.knock(
+    aliasId,
+    await requesterHash(requesterSecret, aliasId),
+    pubKey,
+  );
 }

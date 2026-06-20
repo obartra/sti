@@ -48,6 +48,48 @@ func TestKnockResponseGolden(t *testing.T) {
 	}
 }
 
+func TestValidPubKey(t *testing.T) {
+	cases := []struct {
+		name string
+		s    string
+		want bool
+	}{
+		{"empty is not valid (means no key)", "", false},
+		{"a raw P-256 point base64url", base64.RawURLEncoding.EncodeToString(make([]byte, 65)), true},
+		{"base64url charset ok", "abcABC012_-", true},
+		{"too long", string(make([]byte, 0)) + repeat("a", PubKeyMaxLen+1), false},
+		{"at the bound", repeat("a", PubKeyMaxLen), true},
+		{"padding char rejected", "abc=", false},
+		{"whitespace rejected", "abc def", false},
+	}
+	for _, c := range cases {
+		if got := ValidPubKey(c.s); got != c.want {
+			t.Errorf("%s: ValidPubKey(%q) = %v, want %v", c.name, c.s, got, c.want)
+		}
+	}
+}
+
+func repeat(s string, n int) string {
+	out := make([]byte, 0, len(s)*n)
+	for i := 0; i < n; i++ {
+		out = append(out, s...)
+	}
+	return string(out)
+}
+
+// A knock that carries a PubKey still serializes back to the same KnockRequest,
+// and the field is omitted entirely when empty (the contentless knock).
+func TestKnockRequestPubKeyRoundTrip(t *testing.T) {
+	withKey, _ := json.Marshal(KnockRequest{RequesterHash: "h", PubKey: "k"})
+	if got, want := string(withKey), `{"requesterHash":"h","pubKey":"k"}`; got != want {
+		t.Fatalf("with key = %s, want %s", got, want)
+	}
+	noKey, _ := json.Marshal(KnockRequest{RequesterHash: "h"})
+	if got, want := string(noKey), `{"requesterHash":"h"}`; got != want {
+		t.Fatalf("no key = %s, want %s", got, want)
+	}
+}
+
 func TestErrorResponseGolden(t *testing.T) {
 	b, err := json.Marshal(ErrorResponse{Error: ErrorBody{Code: ErrRateLimited, Message: "slow down"}})
 	if err != nil {
