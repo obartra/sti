@@ -1,17 +1,22 @@
 # Example capacity + error alerting rules for the sti.care blind backend.
 #
 # This is the "first deliverable" from labs/docs/12-observability-and-metrics.md
-# section 3a, encoded so the proposed thresholds live in version control rather
-# than in someone's head. It is an EXAMPLE: wire it to whatever scrapes the
+# section 3a, encoded so the thresholds live in version control rather than in
+# someone's head. It is the full Prometheus-style form for a real scraper of the
 # loopback /metrics endpoint (STI_METRICS_ADDR, default 127.0.0.1:9090, reached
-# over an SSH tunnel since the port is never public). No alerting delivery infra
-# ships with the binary.
+# over an SSH tunnel since the port is never public), with proper for:/rate
+# windows and history.
 #
-# Every series below is a blind aggregate (no id, IP, body, or token). The
-# latency thresholds are PLACEHOLDERS until a load benchmark sets the real
-# baseline on the chosen box (doc 10 section C, "no perf claim without a test");
-# the structural thresholds (shed, inflight ratio) reference MaxInflight and can
-# be used as-is.
+# The box's own minute-by-minute check (alert.sh via stiapi-alert.timer) already
+# evaluates every rule below: the stateless gauges from a single scrape, and the
+# rate/latency rules (shed, ratelimit, sensitive overload, errors, GET /a p99) by
+# diffing against the previous scrape over the ~1-minute gap. Keep the thresholds
+# here in step with alert.sh. A real Prometheus is still worth it for longer
+# windows, smoothing, and dashboards; this file is ready for that day.
+#
+# Every series below is a blind aggregate (no id, IP, body, or token). The latency
+# thresholds are grounded in a real bench.sh run on the prod box (see the p99 rule
+# comment); the structural thresholds (shed, inflight ratio) reference MaxInflight.
 
 groups:
   - name: sti-capacity
@@ -59,12 +64,13 @@ groups:
         annotations:
           summary: "In-flight requests above 95% of MaxInflight."
 
-      # p99 latency on the hot read. Baseline from a local load test (~27k req/s,
-      # p99 ~3ms on a single indexed SQLite read). Warn at ~8x and page at ~30x
-      # that, so these only fire on real degradation (disk thrash, lock contention,
-      # saturation), with headroom for the slower prod box. Re-confirm on the box
-      # with bench.sh; buckets are coarse by design (doc 12), so p99 here is a
-      # health trend, not a fine-grained timing oracle.
+      # p99 latency on the hot read. Baseline from bench.sh on the prod box (2 vCPU
+      # Hetzner): at realistic low concurrency p99 is single-digit ms; under
+      # saturating synthetic load (64 conns) the hot read holds ~4k req/s at p99
+      # ~77ms (healthz ~28k, PUT ~21k). Warn 25ms / page 100ms flag sustained
+      # degradation; saturation itself trips the shed and inflight alerts first.
+      # Buckets are coarse by design (doc 12), so p99 here is a health trend, not a
+      # fine-grained timing oracle.
       - alert: StiAliasP99LatencyWarn
         expr: |
           histogram_quantile(0.99,
@@ -73,7 +79,7 @@ groups:
         for: 5m
         labels: { severity: warning }
         annotations:
-          summary: "GET /a p99 latency above 25ms (baseline is ~3ms)."
+          summary: "GET /a p99 latency above 25ms (normal is single-digit ms)."
 
       - alert: StiAliasP99LatencyPage
         expr: |
@@ -83,7 +89,7 @@ groups:
         for: 5m
         labels: { severity: critical }
         annotations:
-          summary: "GET /a p99 latency above 100ms (baseline is ~3ms)."
+          summary: "GET /a p99 latency above 100ms (normal is single-digit ms)."
 
       # Free disk on the database filesystem. A full disk corrupts SQLite/WAL and
       # breaks backups, so this pages early. Tune to the box size.

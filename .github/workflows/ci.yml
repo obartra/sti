@@ -83,6 +83,8 @@ jobs:
       - run: test -z "$(gofmt -l .)" || { echo "gofmt:"; gofmt -l .; exit 1; }
       - run: go vet ./...
       - run: go test ./...
+      - name: Alert script logic tests
+        run: bash deploy/alert_test.sh
       - name: Vulnerability scan (stdlib + deps the code actually calls)
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@v1.4.0

@@ -108,20 +108,31 @@ signals and thresholds:
 | Visible shed rate (`429`/`503` on non-sensitive endpoints) | `shed_total`, `ratelimit_rejections_total` | any sustained `> 0` over 5 min | `> N`/sec over 1 min | A non-zero shed rate means real users are being turned away; the box needs a deliberate resize. |
 | Uniform-overload events on sensitive reads | `sensitive_overload_total` (count of the `SensitiveWait` timeout path firing) | any `> 0` over 5 min | rising over 1 min | `GET /a` and `POST /knock` never shed *visibly*; instead they fall back to the uniform decoy/fixed reply under saturation. That fallback is invisible to users by design, so it needs its own alert or saturation hides. |
 | Inflight high-water vs `MaxInflight` | `inflight_highwater` / `inflight_max` (default 256) | `> 80%` over 1 min | `> 95%` over 1 min | The concurrency cap is the real ceiling. Approaching it predicts shedding before it starts. |
-| `GET /a` p99 latency | `request_duration_seconds{endpoint="/a/{id}"}` | `> 50ms` | `> 200ms` | The hot read is a single indexed SQLite lookup; a rising p99 means disk, lock, or saturation pressure. Numbers are placeholders until a benchmark sets the baseline (see note). |
+| `GET /a` p99 latency | `request_duration_seconds{endpoint="/a/{id}"}` | `> 25ms` | `> 100ms` | The hot read is a single indexed SQLite lookup plus the decoy HMAC; a rising p99 means disk, lock, or saturation pressure. Grounded in a `bench.sh` run on the prod box (normal p99 is single-digit ms; ~4k req/s at p99 ~77ms only under full saturation). |
 
-These thresholds are **starting proposals, not asserted facts.** Per the repo's "no perf claim
-without a test" rule ([Build & Deployment](10-build-backend-and-deployment.md) §C), the p99 numbers
-are placeholders until the load benchmark establishes a real baseline on the chosen box; the alert
-then fires on deviation from that measured baseline, not from a guessed constant. The shed and
-inflight thresholds are structural (they reference `MaxInflight`, which is known) and can land
-immediately.
+The p99 thresholds are now **grounded in a real `bench.sh` run on the production box** (2 vCPU
+Hetzner), satisfying the repo's "no perf claim without a test" rule
+([Build & Deployment](10-build-backend-and-deployment.md) §C): at realistic low concurrency the hot
+read sits at single-digit ms, and only under full synthetic saturation (64 connections) does it reach
+~4k req/s at p99 ~77ms (healthz ~28k, PUT ~21k). So 25ms warns on sustained elevation and 100ms pages
+on genuine degradation, while saturation itself trips the shed and inflight alerts first. The shed and
+inflight thresholds are structural (they reference `MaxInflight`).
+
+These are not just documented for a future scraper: the box's minute-by-minute check (`alert.sh`,
+section 5) evaluates every row of this table directly off the loopback scrape. The stateless gauges
+(disk, janitor heartbeat, queue age, inflight ratio) read from a single scrape; the rate and latency
+rows (visible shed, the uniform-overload fallback, internal errors, and the GET /a p99) are diffed
+against the previous scrape over the ~1-minute gap. The p99 is read straight from the histogram
+buckets: because the bucket boundaries are exactly 25ms and 100ms, "p99 over threshold" is the same
+statement as "more than 1% of the window's reads were slower than the threshold", gated on a minimum
+window sample count so a couple of slow reads on an idle box never page. A full Prometheus over the
+same `/metrics` (`alerts.example.yml`) remains the path for longer-window smoothing and history.
 
 ### 3b. The full safe set
 
 | Metric | Type | Labels (all bounded) | Purpose |
 | --- | --- | --- | --- |
-| `requests_total` | counter | `endpoint` (route template), `status_class` (`2xx`/`4xx`/`5xx`) | Request rate by endpoint and outcome class. |
+| `requests_total` | counter | `endpoint` (route template), `method`, `status_class` (`2xx`/`4xx`/`5xx`) | Request rate by endpoint, method, and outcome class. |
 | `request_duration_seconds` | histogram | `endpoint` | Latency distribution per endpoint (coarse buckets; see audit). |
 | `shed_total` | counter | `endpoint` | Visible `503` load-shed on non-sensitive endpoints. |
 | `ratelimit_rejections_total` | counter | `endpoint` | Visible `429` from the per-IP limiter (non-sensitive endpoints). |
@@ -130,6 +141,8 @@ immediately.
 | `inflight_highwater` | gauge | none | Peak in-flight since last scrape. |
 | `inflight_max` | gauge | none | The configured `MaxInflight`, for ratio alerts. |
 | `db_size_bytes` | gauge | none | SQLite file size; growth and anomaly watch. |
+| `alias_rows` | gauge | none | Distinct alias ciphertext rows (blind reach proxy, section 6). |
+| `account_rows` | gauge | none | Distinct account-sync ciphertext rows (blind active-device proxy, section 6). |
 | `disk_free_bytes` | gauge | none | Free space on the database filesystem; a full disk is a real failure mode on the flat VPS. |
 | `send_queue_depth` | gauge | none | Rows in `send_queue` awaiting drain (push wake backlog). |
 | `send_queue_oldest_age_seconds` | gauge | none | Age of the oldest queued send; a stuck queue grows this even when depth looks normal. |
@@ -142,7 +155,8 @@ immediately.
 Every one of these is a count or distribution. None names an id, an IP, a body, or a token. None can
 be filtered down to a single subject, because there is no per-subject dimension to filter on. Edge
 volume, geography, threat, and cache stats come from Cloudflare for free (section 5) and are not
-re-collected here.
+re-collected here. (In the exposition every metric name carries an `sti_` prefix, e.g.
+`sti_requests_total`; the names are unprefixed here for readability.)
 
 ---
 
@@ -423,12 +437,21 @@ settled too:
   restored on restart (section 7), so trends survive a restart. It stays in-memory-plus-snapshot;
   there is no event history and nothing to age out.
 
-What is genuinely still open is small and operational, not a privacy judgment:
+Status: metrics are **live on production** (loopback only, the public edge 404s `/metrics`), the
+counters persist across restarts, and the minute-by-minute alert check is installed and running. The
+check evaluates the full section 3a set (the stateless gauges plus the windowed shed, overload, error,
+and GET /a p99 rules), with the latency thresholds confirmed against a `bench.sh` run on the box.
+The recipient is operator-set (no address is baked into the repo; an unset recipient logs to the
+journal rather than emailing). `provision.sh` sets it to `alerts@sti.care`, a Cloudflare Email Routing
+alias that forwards to the owner inbox, so the personal address stays on the box, never in git. One
+operational step remains:
 
-- **Re-confirm the latency baseline on the production box.** The alert thresholds use a local load-test
-  baseline (~3ms p99); run `bench.sh` on the actual VPS once to confirm the numbers match its hardware.
-- **Wire the alert sender on the box.** The minute-by-minute check is built and emails the owner; it
-  needs an outbound mail command configured once (e.g. msmtp), or a webhook, to actually deliver.
+- **Set the sender identity + secret on the box.** `provision.sh` installs `msmtp` and writes
+  `/etc/msmtprc` with placeholders. On the box, set the Gmail address (msmtp `user`/`from` and
+  `STI_ALERT_FROM` in `/etc/stiapi.env`, which must match) and a Gmail App Password (Google account >
+  Security > App passwords). Because `sti.care` is DMARC `p=reject`, the From has to be that Gmail
+  address; the alert check fails safe (logs the condition to the journal, never sends a bouncing
+  message) until `STI_ALERT_FROM` and the password are set, so nothing is lost in the meantime.
 
 ---
 
