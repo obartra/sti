@@ -29,6 +29,7 @@ export const onboardRenderers: ScreenRenderers = {
         });
       }}
       onLogin={() => void onboarding.loginPasskey()}
+      onRecover={(phrase) => void onboarding.recoverPhrase(phrase)}
     />
   ),
   "b2-recovery": ({ nav, onboarding }) => (

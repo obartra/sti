@@ -46,7 +46,12 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
         recoveryPhrase: "Ck9mq2Xb7wYt0Zr8Lv3Np6Aq1Ds4Gh5Jk8Mn2Pr7Tw0",
       });
     },
-    recover: () => Promise.resolve(null),
+    // Recovery by phrase loads a distinct account, to prove the recovered
+    // session (not the placeholder) drives the app.
+    recover: (phrase) =>
+      phrase === "RECOVER-ME-PHRASE"
+        ? Promise.resolve({ master, blob: { ...blob, handle: "rosa" } })
+        : Promise.resolve(null),
     resume: () => Promise.resolve(null),
     enrollPasskey: () => Promise.resolve(),
     setProfile: (_session, profile) => {
@@ -181,6 +186,24 @@ describe("App onboarding flow", () => {
     expect(
       (await screen.findAllByText("Tested & on HIV prevention")).length,
     ).toBeGreaterThan(0);
+  });
+
+  it("logs in on a new device with the recovery phrase (no passkey)", async () => {
+    window.history.pushState({}, "", "/");
+    const user = userEvent.setup();
+    render(<App store={stubStore(null)} controller={fakeController()} />);
+
+    // From the landing, take the login route, then recover with the phrase.
+    await user.click(await screen.findByRole("button", { name: "Log in" }));
+    // The login variant has a single text input: the recovery phrase.
+    await user.type(await screen.findByRole("textbox"), "RECOVER-ME-PHRASE");
+    await user.click(
+      await screen.findByRole("button", { name: /Recover account/ }),
+    );
+
+    // The recovered account drives the app (its handle, not the fixture's).
+    expect((await screen.findAllByText("@rosa")).length).toBeGreaterThan(0);
+    expect(screen.queryByText("@robin")).toBeNull();
   });
 
   it("keeps a logged-out visitor out of app screens (no owner data leaks)", async () => {

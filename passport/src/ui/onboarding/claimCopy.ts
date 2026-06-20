@@ -16,6 +16,11 @@ export const COPY = {
   keyLabel: "Your account key",
   passkeyHint:
     "Face or fingerprint is your account key, the anchor that unlocks every alias you make. Never shown, never in a link.",
+  recoverLabel: "On a new device?",
+  recoverHint:
+    "Enter the recovery phrase you saved at signup. It’s the only way back in without this device’s passkey.",
+  recoverPlaceholder: "Your recovery phrase",
+  recoverCta: "Recover account",
   aliasSection: "Your first alias",
   opaqueNote:
     "Your address is an opaque id, not your handle, so two aliases can’t be linked by their URL.",

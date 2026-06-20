@@ -26,6 +26,11 @@ export interface OnboardingActions {
   finish(sharingMode: SharingMode): Promise<void>;
   /** Login variant: unlock this device's passkey. Returns true on success. */
   loginPasskey(): Promise<boolean>;
+  /**
+   * Login/recovery on any device: load the account from its recovery phrase.
+   * Returns true on success (the only way back in with no passkey on this device).
+   */
+  recoverPhrase(phrase: string): Promise<boolean>;
 }
 
 export function useOnboarding(
@@ -117,5 +122,40 @@ export function useOnboarding(
     }
   }, [controller, onSession]);
 
-  return { recoveryPhrase, busy, error, claim, finish, loginPasskey };
+  const recoverPhrase = useCallback(
+    async (phrase: string) => {
+      if (inFlight.current) return false;
+      inFlight.current = true;
+      setBusy(true);
+      setError(null);
+      try {
+        const session = await controller.recover(phrase.trim());
+        if (session !== null) {
+          onSession(session);
+          return true;
+        }
+        setError(
+          "That phrase doesn't match an account. Check it and try again.",
+        );
+        return false;
+      } catch {
+        setError("Could not recover right now. Please try again.");
+        return false;
+      } finally {
+        setBusy(false);
+        inFlight.current = false;
+      }
+    },
+    [controller, onSession],
+  );
+
+  return {
+    recoveryPhrase,
+    busy,
+    error,
+    claim,
+    finish,
+    loginPasskey,
+    recoverPhrase,
+  };
 }
