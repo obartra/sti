@@ -4,6 +4,7 @@ import { createAccountManager } from "./account.ts";
 import type { ApiClient } from "../api/client.ts";
 import type { AliasRecord } from "./accountBlob.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
+import { DEFAULT_AVATAR } from "../lib/avatars.ts";
 import { deriveMasterKey, type Bytes } from "../crypto/index.ts";
 
 const record: AliasRecord = {
@@ -49,6 +50,8 @@ describe("account manager", () => {
       handle: "robin",
       aliases: [],
       state: INITIAL_OWNER_STATE,
+      avatar: DEFAULT_AVATAR,
+      sharingMode: "link",
     });
   });
 
@@ -96,6 +99,32 @@ describe("account manager", () => {
     const created = await accounts.create("robin");
     const bad = { ...INITIAL_OWNER_STATE, hiv: "maybe" } as never;
     await expect(accounts.setOwnerState(created.master, bad)).rejects.toThrow();
+  });
+
+  it("setProfile persists avatar + sharing and guards invalid input", async () => {
+    const accounts = createAccountManager(fakeAccountApi());
+    const created = await accounts.create("robin");
+    const avatar = { animal: 1, color: 2, hat: 0, glasses: 1, extra: 0 };
+    const next = await accounts.setProfile(created.master, {
+      avatar,
+      sharingMode: "public",
+    });
+    expect(next.avatar).toEqual(avatar);
+    expect(next.sharingMode).toBe("public");
+
+    // A bad avatar or sharing mode is rejected at write time, not persisted.
+    await expect(
+      accounts.setProfile(created.master, {
+        avatar: { ...avatar, animal: 999 },
+        sharingMode: "public",
+      }),
+    ).rejects.toThrow();
+    await expect(
+      accounts.setProfile(created.master, {
+        avatar,
+        sharingMode: "secret" as never,
+      }),
+    ).rejects.toThrow();
   });
 
   it("saves state even if a republish fails, and a retry converges", async () => {

@@ -23,7 +23,7 @@ import {
 import { wrapMaster, unwrapMaster } from "../auth/keyVault.ts";
 import type { PasskeyAuth } from "../auth/passkey.ts";
 import type { DeviceStore } from "../auth/deviceStore.ts";
-import type { AccountManager } from "./account.ts";
+import type { AccountManager, OwnerProfile } from "./account.ts";
 import type { AccountSync } from "./accountSync.ts";
 import type { AccountBlob } from "./accountBlob.ts";
 
@@ -55,6 +55,14 @@ export interface SessionController {
    * phrase. Stores only `{ credentialId, wrappedMaster }`.
    */
   enrollPasskey(session: OwnerSession, userName: string): Promise<void>;
+  /**
+   * Persist a profile change (avatar + sharing default) and return the session
+   * with the updated account blob.
+   */
+  setProfile(
+    session: OwnerSession,
+    profile: OwnerProfile,
+  ): Promise<OwnerSession>;
   /** Forget this device's passkey binding. The phrase still recovers. */
   forget(): void;
 }
@@ -120,6 +128,11 @@ export function createSessionController(deps: SessionDeps): SessionController {
         credentialId,
         wrappedMaster: bytesToBase64url(wrapped),
       });
+    },
+
+    async setProfile(session, profile) {
+      const blob = await accounts.setProfile(session.master, profile);
+      return { master: session.master, blob };
     },
 
     forget() {

@@ -251,6 +251,36 @@ const PARTS: AvatarParts = {
 
 export const avatarParts: AvatarParts = PARTS;
 
+// The first option of every layer: a plain animal, used as the default avatar a
+// fresh account starts with until the owner customizes it.
+export const DEFAULT_AVATAR: AvatarConfig = {
+  animal: 0,
+  color: 0,
+  hat: 0,
+  glasses: 0,
+  extra: 0,
+};
+
+/**
+ * Strict validation for a persisted AvatarConfig (the synced account blob): every
+ * field must be an in-range integer index. Unlike {@link normalize} (which is
+ * lenient for legacy/partial configs at render time) this fails closed, so a
+ * corrupt blob is rejected rather than silently coerced.
+ */
+export function isAvatarConfig(x: unknown): x is AvatarConfig {
+  if (typeof x !== "object" || x === null) return false;
+  const c = x as Record<string, unknown>;
+  const inRange = (v: unknown, n: number): boolean =>
+    typeof v === "number" && Number.isInteger(v) && v >= 0 && v < n;
+  return (
+    inRange(c.animal, ANIMALS.length) &&
+    inRange(c.color, COLORS.length) &&
+    inRange(c.hat, HATS.length) &&
+    inRange(c.glasses, GLASSES.length) &&
+    inRange(c.extra, EXTRAS.length)
+  );
+}
+
 function normalize(cfg: AvatarConfigInput): AvatarConfig {
   if (typeof cfg === "number") return randomAvatar(cfg);
   const c = cfg ?? {};

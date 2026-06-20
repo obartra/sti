@@ -9,14 +9,21 @@ export { serializePublicCard, parsePublicCard } from "./publicCard.ts";
 export { parseAliasLink } from "./aliasLink.ts";
 export type { AccountSync } from "./accountSync.ts";
 export { createAccountSync } from "./accountSync.ts";
-export type { AccountBlob, AliasRecord } from "./accountBlob.ts";
-export { serializeAccountBlob, parseAccountBlob } from "./accountBlob.ts";
+export type { AccountBlob, AliasRecord, SharingMode } from "./accountBlob.ts";
+export {
+  serializeAccountBlob,
+  parseAccountBlob,
+  isSharingMode,
+} from "./accountBlob.ts";
+export type { OwnerView } from "./ownerView.ts";
+export { deriveOwnerView } from "./ownerView.ts";
 export type { PublishedAlias } from "./publish.ts";
 export { publishCard, republishCard, aliasLinkUrl } from "./publish.ts";
 export type {
   AccountManager,
   NewAccount,
   RecoveredAccount,
+  OwnerProfile,
 } from "./account.ts";
 export { createAccountManager } from "./account.ts";
 export { deriveOwnerCard, republishOwnerCard } from "./ownerCard.ts";

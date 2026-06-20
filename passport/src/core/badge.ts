@@ -75,7 +75,7 @@ export const GRAY_VIEW: ViewerBadge = {
   headline: "No status shared right now",
 };
 
-const TESTING_WINDOW_DAYS = 90;
+export const TESTING_WINDOW_DAYS = 90;
 
 function testedInWindow(t: TestingInput): boolean {
   return (
