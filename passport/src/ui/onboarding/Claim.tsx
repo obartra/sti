@@ -1,5 +1,6 @@
-import { Button, Card } from "../../design/components/index.ts";
-import { Fingerprint } from "../../design/icons.tsx";
+import { useState } from "react";
+import { Button, Card, Field, Input } from "../../design/components/index.ts";
+import { Fingerprint, Key } from "../../design/icons.tsx";
 import { TopBack } from "./TopBack.tsx";
 import { CreateFlow } from "./ClaimCreateFlow.tsx";
 import { COPY, sectionLabel } from "./claimCopy.ts";
@@ -22,6 +23,63 @@ export interface ClaimProps {
   onClaim?: ((handle: string, avatar: AvatarConfig) => void) | undefined;
   /** Login variant: unlock with the device passkey. */
   onLogin?: (() => void) | undefined;
+  /** Login variant: recover the account from its phrase (new device). */
+  onRecover?: ((phrase: string) => void) | undefined;
+}
+
+// Recovery-phrase entry: the no-passkey way back in on any device.
+function RecoverFlow({
+  busy,
+  onRecover,
+}: {
+  busy: boolean;
+  onRecover?: ((phrase: string) => void) | undefined;
+}) {
+  const [phrase, setPhrase] = useState("");
+  const ok = phrase.trim().length > 0;
+  return (
+    <Card
+      variant="flat"
+      style={{ display: "flex", flexDirection: "column", gap: 12 }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ color: "var(--text-accent)", flex: "none" }}>
+          <Key size={18} />
+        </span>
+        <div
+          style={{
+            fontSize: 14.5,
+            fontWeight: 700,
+            color: "var(--text-strong)",
+          }}
+        >
+          {COPY.recoverLabel}
+        </div>
+      </div>
+      <div
+        style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}
+      >
+        {COPY.recoverHint}
+      </div>
+      <Field label={COPY.recoverPlaceholder}>
+        <Input
+          value={phrase}
+          onChange={(e) => setPhrase(e.target.value)}
+          autoComplete="off"
+          spellCheck={false}
+        />
+      </Field>
+      <Button
+        variant="secondary"
+        size="lg"
+        block
+        disabled={!ok || busy}
+        onClick={() => onRecover?.(phrase.trim())}
+      >
+        {COPY.recoverCta}
+      </Button>
+    </Card>
+  );
 }
 
 export function Claim({
@@ -31,6 +89,7 @@ export function Claim({
   onBack,
   onClaim,
   onLogin,
+  onRecover,
 }: ClaimProps) {
   return (
     <div
@@ -114,6 +173,7 @@ export function Claim({
           {error}
         </div>
       )}
+      {isLogin && <RecoverFlow busy={busy} onRecover={onRecover} />}
       {!isLogin && <CreateFlow busy={busy} onClaim={onClaim} />}
     </div>
   );
