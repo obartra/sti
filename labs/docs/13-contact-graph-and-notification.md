@@ -2,12 +2,12 @@
 
 _New, June 20, 2026._
 
-_DRAFT for review. This is the design doc for the contact graph (pairwise links and circles) and
-the partner-notification loop that rides on it. It synthesizes the locked choices in the
-[Decisions log](02-decisions.md) and [Design](03-design.md) into an implementable spec, reuses the
-blind-store primitives from [Build & Deployment](10-build-backend-and-deployment.md), and proposes
-answers for the items those docs left open (every proposed answer is flagged **PROPOSED** so it can
-be confirmed or changed before any code lands). Nothing here is built yet._
+_The design doc for the contact graph (pairwise links and circles) and the partner-notification
+loop that rides on it. It synthesizes the locked choices in the [Decisions log](02-decisions.md)
+and [Design](03-design.md) into an implementable spec, reuses the blind-store primitives from
+[Build & Deployment](10-build-backend-and-deployment.md), and records the six product decisions the
+owner confirmed on 2026-06-20 (see "Decisions" below). Built in tested slices; nothing implemented
+at the time of writing._
 
 ---
 
@@ -60,19 +60,31 @@ From the [Decisions log](02-decisions.md) and [Design](03-design.md):
   in-window contact count and degrades toward deanonymizing at one contact. Both are inherent and
   stated, not hidden. (02, 03, 10 §F)
 
-## Decisions this doc proposes (confirm before building)
+## Decisions (confirmed 2026-06-20)
 
-1. **Grant model: out-of-band only, in v1 (PROPOSED).** A link carries its own decryption key
-   (in the `#k=` fragment for public, handed alongside for private). You "grant" someone by
-   sharing a keyed link with them. A knock on a forwarded or keyless link is reviewed by the owner,
-   who responds in the real-world conversation ("send me a fresh link"), which the locked design
-   already names as the confirmation channel. **We do NOT build an in-app channel that delivers a
-   key to an anonymous remote knocker**, because there is no way to hand a key to an opaque
-   requester hash without either the server brokering it (breaks blindness) or the requester
-   exposing a public key the owner must fetch (a new identity surface). This keeps the model fully
-   blind and is strictly simpler. Re-grant after revoke = mint and share a new keyed link.
+1. **Grant model: in-app Approve, via an end-to-end-encrypted grant slot (DECIDED 2026-06-20).**
+   The owner gets an in-app "Approve" button on a knock, and approving silently delivers access to
+   that knocker, with the server still blind (it never sees the key). Mechanism:
+   - When a viewer knocks, the client generates a **per-knock ephemeral keypair** and sends its
+     PUBLIC key with the knock (alongside the existing `requesterHash`); it keeps the private key
+     locally, keyed by the alias id. The pubkey is ephemeral and names no one.
+   - The owner's knock review returns the pending `{requesterHash, requesterPubKey}` requests (the
+     owner is authed by the alias write token; today it returns only a count, so this extends it).
+   - On **Approve**, the owner encrypts the alias's key TO the requester's pubkey (ECIES: an
+     owner-side ephemeral ECDH to the requester pubkey, derive a symmetric key, seal the alias key)
+     and writes the sealed blob to a **grant slot**, an alias-shaped blind id derived
+     deterministically from `requesterHash` (so the requester can find it without the server linking
+     them). The payload is `{ownerEphemeralPubKey, sealedAliasKey}`.
+   - The requester **polls the grant slot** (existence-uniform, like any alias read), decrypts with
+     its stored ephemeral private key, obtains the alias key, and resolves the real alias, so the
+     status **silently resolves** exactly as the locked design requires. No granted/denied signal;
+     a not-yet-granted or declined request just stays gray-nothing.
+   - The server stores an opaque sealed blob at an opaque id and routes nothing readable; it never
+     learns who knocked, who was approved, or the key. Decline = the owner does nothing (no slot is
+     written; indistinguishable from not-yet-reviewed). Revoke later = the existing alias revoke.
+   This is more surface than an out-of-band grant, but it is fully blind and is the chosen UX.
 
-2. **Decorrelation cover-wake: full broadcast in v1 (PROPOSED).** When any real wake is due, the
+2. **Decorrelation cover-wake: full broadcast in v1 (DECIDED 2026-06-20).** When any real wake is due, the
    server fires a contentless wake to **every currently-registered push endpoint** inside a
    jittered window, so the woken set is the whole population rather than the recipients. Each woken
    client then polls its own blind notify-inbox (existence-uniform, see below); only a real
@@ -80,7 +92,7 @@ From the [Decisions log](02-decisions.md) and [Design](03-design.md):
    trivially cheap and maximally private; a sampled cover set is a later refinement if scale ever
    demands it. **This is the gate that lets notify/push turn on.**
 
-3. **Notify-inbox as a blind channel (PROPOSED, new server surface).** Today the server has
+3. **Notify-inbox as a blind channel (DECIDED 2026-06-20, new server surface).** Today the server has
    `notify_route` + `send_queue` + `push_endpoint`, but a contentless wake alone cannot tell a
    recipient "this one is for you" once cover-wakes go to everyone. So we add a per-device
    **notify-inbox**: an opaque id holding an existence-uniform encrypted payload, addressed and
@@ -90,20 +102,19 @@ From the [Decisions log](02-decisions.md) and [Design](03-design.md):
    broadcast, polls their inbox and decrypts. The server never learns which inboxes hold a real
    ping versus a decoy.
 
-4. **Circles are purely client-side bundles (PROPOSED, no new server surface).** A circle is a
+4. **Circles are purely client-side bundles (DECIDED 2026-06-20, no new server surface).** A circle is a
    local list of pairwise links plus a shared display preference. Group status sharing reuses the
    per-member pairwise channels; the server never learns a group exists. The min-group-5 rule is a
    client-side hide floor: a member's status is shown to the circle only when the circle has >=5
    members, else it hides (never reveals). No group token, no membership on the server.
 
-5. **New private links default to a 30-day expiry (PROPOSED).** Matches 06's "prefer routine
-   expiry over until-revoked." A durational grant re-serves a freshly rotated payload until expiry;
-   at expiry the client simply stops re-publishing, and the link resolves to gray-nothing. The
-   owner can choose until-revoked explicitly.
+5. **New private links default to a 7-day expiry (DECIDED 2026-06-20).** A durational grant
+   re-serves a freshly rotated payload until expiry; at expiry the client stops re-publishing and
+   the link resolves to gray-nothing. The owner can choose until-revoked explicitly.
 
-6. **scan-to-autolink auto-share default: OFF (PROPOSED).** A scan proposes a link both confirm;
-   the default is to link without auto-sharing status (each side opts in afterward), the least
-   surprising and most consent-preserving default. (02 leaves this open.)
+6. **scan-to-autolink auto-shares on link (DECIDED 2026-06-20).** A scan still proposes a link both
+   sides confirm (it never silently binds), but on confirm it shares status both ways by default,
+   for a fast in-person flow. The confirm step is where consent is given.
 
 ## Data model
 
@@ -175,13 +186,15 @@ mutual link; deferred until A is solid.
    inbox decrypts to nothing and the app shows its normal state. Contentless throughout: never who,
    when, or what.
 
-## Knock to grant (model a)
+## Knock to grant (in-app Approve)
 
-Unchanged from what shipped, plus the explicit grant story: the owner sees the quiet knock
-indicator + the contentless inbox entry. To grant, the owner mints a fresh per-contact keyed link
-(path A) and shares it out of band. There is no in-app "approve this knocker" button that delivers
-a key to an anonymous hash, by decision (1). A future revisit could add an authenticated-contact
-grant once a contact already holds an inbox capability, but v1 does not need it.
+Builds on what shipped (the quiet indicator + contentless inbox entry) by adding the encrypted
+grant slot from decision (1). Flow: viewer knocks (carrying an ephemeral pubkey, private key kept
+locally) -> owner sees the request and taps **Approve** -> owner seals the alias key to the
+requester's pubkey and writes it to the requester's grant slot -> requester polls the slot,
+decrypts, and the status silently resolves. The server only ever moves opaque sealed bytes; it
+never learns the pairing, the approval, or the key. Declining is doing nothing (no slot written),
+indistinguishable from not-yet-reviewed; there is never a denied signal.
 
 ## What is gated, and on what
 
@@ -197,17 +210,21 @@ grant once a contact already holds an inbox capability, but v1 does not need it.
 
 ## Proposed build slices (each its own tested PR)
 
-1. **Per-contact aliases** (data-model + mint/list/revoke a named link per contact). Reuses the
-   existing publish/revoke machinery; adds the contact records + a Connect-screen management UI.
-2. **Notify-inbox channel** (server `notify_inbox` alias-shaped table + handlers; client write/poll
+1. **Per-contact aliases** (data-model + mint/list/revoke a named link per contact, 7-day default
+   expiry). Reuses the existing publish/revoke machinery; adds the contact records + a Connect-
+   screen management UI.
+2. **In-app grant** (knock carries an ephemeral pubkey; review returns pending pubkeys; Approve
+   seals the alias key to the requester via the encrypted grant slot; requester polls + resolves).
+   Reuses the alias-shaped blind slot; ECIES on the client. Headlessly testable end to end.
+3. **Notify-inbox channel** (server `notify_inbox` alias-shaped table + handlers; client write/poll
    helpers; existence-uniform tests). No behavior change while gated.
-3. **Decorrelation cover-wake** (drain broadcasts to all push endpoints in a jittered window;
+4. **Decorrelation cover-wake** (drain broadcasts to all push endpoints in a jittered window;
    client uniform poll of its inbox). Go tests for the fan-out; this is the gate-opener.
-4. **Draft/lock partner-notify batch** (client compose/edit/delete within the window; lock writes
+5. **Draft/lock partner-notify batch** (client compose/edit/delete within the window; lock writes
    pings + queues wakes). Tested against the live store with the gate on in tests only.
-5. **Circles** (client-side bundles + min-group-5 hide floor + the Circles UI). No server surface.
-6. **scan-to-autolink UI** + **browser service worker / Push subscription** (real-device verify),
-   and **prod VAPID key provisioning**: the hardware-gated tail.
+6. **Circles** (client-side bundles + min-group-5 hide floor + the Circles UI). No server surface.
+7. **scan-to-autolink UI** (auto-share on confirm) + **browser service worker / Push subscription**
+   (real-device verify), and **prod VAPID key provisioning**: the hardware-gated tail.
 
 ## Honest limits (carried, stated)
 
