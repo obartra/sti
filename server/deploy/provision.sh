@@ -32,12 +32,16 @@ STI_ALLOWED_ORIGINS=https://sti.care
 # it stays local to the box (scrape over an SSH tunnel). Set to "off" to disable.
 # Never expose this port publicly. See labs/docs/12-observability-and-metrics.md.
 STI_METRICS_ADDR=127.0.0.1:9090
-# Minimal alerting (stiapi-alert.timer). Set the recipient to receive emailed
-# alerts; left unset, alerts are logged to the journal instead (never silently
-# lost). STI_ALERT_SENDER defaults to "sendmail -t"; install msmtp (e.g. with a
-# Gmail app password) to provide it, or point it at a webhook command reading stdin.
-# STI_ALERT_EMAIL=ops@example.com
-# STI_ALERT_SENDER=msmtp -t
+# Minimal alerting (stiapi-alert.timer). Recipient is the alerts@sti.care alias
+# (Cloudflare Email Routing forwards it to the owner inbox), so no personal
+# address lives in the repo. STI_ALERT_FROM must be the address msmtp
+# authenticates as (the Gmail account); it is personal, so set it here on the box
+# and leave it out of git. Until it (and the app password in /etc/msmtprc) is set,
+# the alert check fails safe: it logs to the journal instead of sending. Point
+# STI_ALERT_SENDER at a webhook that reads stdin instead if you prefer.
+STI_ALERT_EMAIL=alerts@sti.care
+STI_ALERT_SENDER=msmtp -t
+# STI_ALERT_FROM=you@gmail.com
 EOF
 	chown root:stiapi /etc/stiapi.env
 	chmod 0640 /etc/stiapi.env
@@ -166,12 +170,47 @@ UNIT
 systemctl daemon-reload
 systemctl enable --now stiapi-backup.timer
 
-# 5c-bis. Minimal alerting: scrape the loopback metrics endpoint once a minute and
-# email on the "address it now" conditions (disk low, janitor stalled, queue
-# stuck, inflight saturated). No Prometheus. To actually send mail the box needs
-# an outbound mailer providing `sendmail -t` (e.g. msmtp with a Gmail app
-# password), or set STI_ALERT_SENDER to a webhook command in /etc/stiapi.env.
-# Until then the check still runs and logs to the journal.
+# 5c-bis. Outbound mailer for alerts: msmtp sending via Gmail SMTP. The config is
+# written with a PLACEHOLDER app password; pasting the real one in is the only
+# manual alerting step. msmtp logs to the journal (logfile -), so until the
+# password is set the send fails there and the alert check still logs the
+# condition (nothing is lost).
+command -v msmtp &>/dev/null || { apt-get update -qq; DEBIAN_FRONTEND=noninteractive apt-get install -y -qq msmtp msmtp-mta; }
+if [ ! -f /etc/msmtprc ]; then
+	umask 077
+	cat >/etc/msmtprc <<'EOF'
+# Outbound mail for stiapi-alert, via Gmail SMTP. Manual step: replace the three
+# placeholders below with the Gmail address (user and from, which must match
+# STI_ALERT_FROM in /etc/stiapi.env) and a Gmail App Password (Google account >
+# Security > App passwords). Gmail sends as the authenticated account, and
+# sti.care is DMARC p=reject, so from must be that Gmail address.
+defaults
+auth on
+tls on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+logfile -
+
+account gmail
+host smtp.gmail.com
+port 587
+user REPLACE_WITH_GMAIL_ADDRESS
+from REPLACE_WITH_GMAIL_ADDRESS
+password REPLACE_WITH_GMAIL_APP_PASSWORD
+
+account default : gmail
+EOF
+	# Readable by the stiapi user (the alert service runs as stiapi); msmtp
+	# refuses a config writable by group/other, so 0640 root:stiapi is the cap.
+	chown root:stiapi /etc/msmtprc
+	chmod 0640 /etc/msmtprc
+	echo "wrote /etc/msmtprc (paste the Gmail App Password to enable delivery)"
+fi
+
+# Minimal alerting: scrape the loopback metrics endpoint once a minute and email
+# on the "address it now" conditions (disk low, janitor stalled, queue stuck,
+# inflight saturated) plus the windowed rate/latency rules (visible shed, the
+# uniform-overload fallback, internal errors, GET /a p99 vs the 25ms/100ms
+# thresholds). No Prometheus; the previous scrape is kept in /var/lib/stiapi.
 install -m 0755 "$STAGE/alert.sh" /usr/local/bin/stiapi-alert
 cat >/etc/systemd/system/stiapi-alert.service <<'UNIT'
 [Unit]
