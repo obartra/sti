@@ -6,7 +6,7 @@ import {
   deriveMasterKey,
   deriveAccountId,
   deriveAccountKey,
-  masterFromPrf,
+  wrapKeyFromPrf,
 } from "./keys.ts";
 import { importAesKey, seal, open } from "./payload.ts";
 import { utf8ToBytes, bytesToUtf8 } from "./encoding.ts";
@@ -66,13 +66,13 @@ describe("master key + account derivation", () => {
     expect(bytesToUtf8(await open(aesKey, ct))).toBe(bytesToUtf8(blob));
   });
 
-  it("derives a stable 32-byte master from a passkey PRF output", async () => {
+  it("derives a stable 32-byte wrapping key from a passkey PRF output", async () => {
     const prf = crypto.getRandomValues(new Uint8Array(32));
-    const a = await masterFromPrf(prf);
-    const b = await masterFromPrf(prf);
+    const a = await wrapKeyFromPrf(prf);
+    const b = await wrapKeyFromPrf(prf);
     expect(a).toEqual(b);
     expect(a).toHaveLength(32);
-    const other = await masterFromPrf(
+    const other = await wrapKeyFromPrf(
       crypto.getRandomValues(new Uint8Array(32)),
     );
     expect(a).not.toEqual(other);

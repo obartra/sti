@@ -4,13 +4,12 @@
  * on demand from the authenticator. The credential id is non-secret and kept
  * locally.
  *
- * RECOVERY MODEL (must hold when this is wired into onboarding): the account
- * master must stay recoverable by the recovery PHRASE, which the data doc makes
- * the one substitute for a lost passkey. So onboarding must NOT create a
- * passkey-only account; the PRF must unlock the SAME account a phrase recovers,
- * e.g. by using the PRF output to wrap (encrypt) a phrase-derived/random master
- * rather than to derive a standalone master. A passkey-only account is an
- * unrecoverable lockout on passkey loss.
+ * RECOVERY MODEL: the account master stays recoverable by the recovery PHRASE
+ * (the one substitute for a lost passkey, per the data doc). This adapter only
+ * yields the PRF output; auth/keyVault uses it to WRAP a phrase-derived master,
+ * so the passkey is a second credential over the same account, never a standalone
+ * one. Onboarding must never create a passkey-only account (an unrecoverable
+ * lockout on passkey loss).
  *
  * The `navigator.credentials` calls are browser-only and cannot run in the test
  * harness; they are isolated behind {@link PasskeyAuth} so callers (and tests)
@@ -20,7 +19,6 @@
  */
 
 import {
-  masterFromPrf,
   bytesToBase64url,
   base64urlToBytes,
   bufferSourceToBytes,
@@ -30,7 +28,8 @@ import {
 export interface EnrolledPasskey {
   /** base64url of the credential rawId; non-secret, stored locally. */
   readonly credentialId: string;
-  readonly master: Bytes;
+  /** The PRF output, used to wrap/unwrap the account master (auth/keyVault). */
+  readonly prfOutput: Bytes;
 }
 
 export interface PasskeyAuth {
@@ -40,14 +39,14 @@ export interface PasskeyAuth {
    * enroll time (a missing PRF result throws); callers must handle that.
    */
   available(): boolean;
-  /** Create a passkey and mint the master key. */
+  /** Create a passkey and return its PRF output. */
   enroll(userName: string): Promise<EnrolledPasskey>;
-  /** Re-mint the master from an existing passkey. */
+  /** Re-read the PRF output from an existing passkey. */
   unlock(credentialId: string): Promise<Bytes>;
 }
 
 // A fixed PRF evaluation input: the same passkey always returns the same PRF
-// output for it, which is what makes the master stable and re-derivable.
+// output for it, which is what makes the wrapping key stable and re-derivable.
 const PRF_SALT = new TextEncoder().encode("sti.care/prf-salt/v1");
 const RP_NAME = "sti.care";
 
@@ -72,7 +71,7 @@ export function webAuthnPasskey(rpId?: string): PasskeyAuth {
     if (first === undefined) {
       throw new Error("passkey: authenticator returned no PRF result");
     }
-    return masterFromPrf(bufferSourceToBytes(first));
+    return bufferSourceToBytes(first);
   }
 
   return {
@@ -109,7 +108,7 @@ export function webAuthnPasskey(rpId?: string): PasskeyAuth {
       const credentialId = bytesToBase64url(new Uint8Array(cred.rawId));
       // PRF output is not reliably returned at create across authenticators, so
       // read it via a follow-up get with the eval salt.
-      return { credentialId, master: await unlock(credentialId) };
+      return { credentialId, prfOutput: await unlock(credentialId) };
     },
 
     unlock,
