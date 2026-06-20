@@ -13,7 +13,8 @@ export type ProtectionLabel =
   | "hiv"
   | "condoms_always"
   | "condoms_either"
-  | "condoms_raw";
+  | "condoms_raw"
+  | "doxy_pep";
 export type Route = ProtectionLabel | null;
 
 // Blue = the DS teal accent family; gray = the DS neutral family, kept soft so
@@ -166,6 +167,14 @@ const LABELS: Record<
   },
   condoms_raw: {
     text: "No condoms",
+    icon: "shield",
+    bg: "var(--neutral-100)",
+    fg: "var(--neutral-600)",
+  },
+  // A self-declared flat attribute (doxycycline post-exposure prophylaxis for
+  // bacterial STIs). Never a route, never ranked; shown only when the owner opts in.
+  doxy_pep: {
+    text: "On doxy-PEP",
     icon: "shield",
     bg: "var(--neutral-100)",
     fg: "var(--neutral-600)",

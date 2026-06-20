@@ -14,6 +14,7 @@ export function blueEligible(): OwnerState {
     onPrep: true,
     condomPreference: "none",
     condomPreferencePublic: false,
+    onDoxyPep: false,
     paused: false,
   };
 }

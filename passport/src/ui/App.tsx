@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useAppRouter } from "./app/useAppRouter.ts";
 import { useDesktop } from "./desktop/Desktop.tsx";
 import { useOnboarding } from "./app/useOnboarding.ts";
@@ -23,6 +23,7 @@ import {
 } from "../auth/deviceStore.ts";
 import { webAuthnPasskey } from "../auth/passkey.ts";
 import { applyReport, type ReportOutcome } from "../core/report.ts";
+import { INITIAL_OWNER_STATE, type OwnerState } from "../core/badge.ts";
 import { API_BASE_URL } from "../config.ts";
 
 // The real backend boundary: api transport + crypto. Created once; it opens no
@@ -74,22 +75,47 @@ export function App({
   );
   const onboarding = useOnboarding(controller, onSession);
 
-  // Apply a reported result to the owner's state and republish. Only meaningful
-  // logged in; a no-op otherwise. On a network failure the session is left
-  // unchanged (the badge keeps its prior value) and a retry re-applies.
-  const onReport = useCallback(
-    (outcome: ReportOutcome) => {
-      if (session === null) return;
+  // The latest session, readable synchronously. setOwnerState applies its update
+  // against THIS (not a render-time capture), so rapid successive edits compose
+  // instead of clobbering each other while a write is in flight.
+  const sessionRef = useRef<OwnerSession | null>(null);
+  sessionRef.current = session;
+
+  // Apply an update to the owner state, optimistically (so a follow-up edit sees
+  // it immediately) and persist + republish in the background; the server's
+  // answer reconciles. A no-op logged out. On a network failure the optimistic
+  // state stands and a later edit re-persists, matching the report path.
+  const setOwnerState = useCallback(
+    (update: (prev: OwnerState) => OwnerState) => {
+      const current = sessionRef.current;
+      if (current === null) return;
+      const next = update(current.blob.state);
+      const optimistic: OwnerSession = {
+        ...current,
+        blob: { ...current.blob, state: next },
+      };
+      sessionRef.current = optimistic;
+      setSession(optimistic);
       void controller
-        .setOwnerState(session, applyReport(session.blob.state, outcome))
-        .then(setSession)
+        .setOwnerState(current, next)
+        .then((saved) => {
+          sessionRef.current = saved;
+          setSession(saved);
+        })
         .catch(() => undefined);
     },
-    [session, controller],
+    [controller],
+  );
+
+  // Apply a reported result on top of the current owner state.
+  const onReport = useCallback(
+    (outcome: ReportOutcome) => setOwnerState((s) => applyReport(s, outcome)),
+    [setOwnerState],
   );
 
   const loggedIn = session !== null;
   const owner = session ? deriveOwnerView(session.blob) : OWNER;
+  const ownerState = session ? session.blob.state : INITIAL_OWNER_STATE;
 
   // A logged-out visitor must never land on an app-group screen (e.g. a #home
   // deep link): clamp those to the public landing until they sign in. Public
@@ -104,8 +130,10 @@ export function App({
       route={effectiveRoute}
       nav={nav}
       owner={owner}
+      ownerState={ownerState}
       onboarding={onboarding}
       onReport={onReport}
+      setOwnerState={setOwnerState}
       store={store}
       desktop={desktop}
       shareOpen={shareOpen}

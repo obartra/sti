@@ -47,6 +47,8 @@ export function deriveOwnerCard(
   if (state.condomPreferencePublic && state.condomPreference !== "none") {
     labels.push(CONDOM_LABEL[state.condomPreference]);
   }
+  // doxy-PEP is a self-declared flat attribute (never a route): shown when set.
+  if (state.onDoxyPep) labels.push("doxy_pep");
 
   // The headline route exists only on blue; the umbrella wins so condom use
   // never re-headlines a PrEP/U=U person.

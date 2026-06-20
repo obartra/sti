@@ -53,6 +53,12 @@ export interface OwnerState {
   readonly condomPreference: CondomPreference;
   /** The condom preference is shown publicly (required for the condoms-always route). */
   readonly condomPreferencePublic: boolean;
+  /**
+   * On doxycycline post-exposure prophylaxis. A self-declared flat attribute
+   * (doc 03 §3): shown as an optional label when set, NEVER a route and never
+   * summed into the badge, so it does not affect computeBadge.
+   */
+  readonly onDoxyPep: boolean;
   /** Manual or auto pause; either forces gray, indistinguishable from any other gray. */
   readonly paused: boolean;
 }
@@ -151,6 +157,7 @@ export const INITIAL_OWNER_STATE: OwnerState = {
   onPrep: false,
   condomPreference: "none",
   condomPreferencePublic: false,
+  onDoxyPep: false,
   paused: false,
 };
 
@@ -197,6 +204,7 @@ export function isOwnerState(x: unknown): x is OwnerState {
     typeof s.onPrep === "boolean" &&
     isCondomPref(s.condomPreference) &&
     typeof s.condomPreferencePublic === "boolean" &&
+    typeof s.onDoxyPep === "boolean" &&
     typeof s.paused === "boolean"
   );
 }

@@ -48,6 +48,7 @@ describe("account blob codec", () => {
         onPrep: true,
         condomPreference: "condoms_always",
         condomPreferencePublic: true,
+        onDoxyPep: false,
         paused: false,
       },
       avatar: { animal: 2, color: 3, hat: 1, glasses: 1, extra: 0 },

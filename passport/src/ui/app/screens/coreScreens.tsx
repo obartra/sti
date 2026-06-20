@@ -34,8 +34,10 @@ export const coreRenderers: ScreenRenderers = {
     />
   ),
   notifications: () => <Notifications />,
-  privacy: ({ nav }) => (
+  privacy: ({ nav, ownerState, setOwnerState }) => (
     <Privacy
+      ownerState={ownerState}
+      setOwnerState={setOwnerState}
       onViewAs={() => nav.go("a2-public", { self: true })}
       onDeleted={() => nav.jump("a1-landing", "public")}
     />

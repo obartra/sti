@@ -49,6 +49,33 @@ export function AttributesCard({ state }: { state: PrivacyState }) {
         </div>
         <Switch checked={state.labelHiv} onChange={state.setLabelHiv} />
       </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          borderTop: "1px solid var(--divider)",
+          paddingTop: 12,
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              fontSize: 14.5,
+              fontWeight: 600,
+              color: "var(--text-strong)",
+            }}
+          >
+            {COPY.doxyLabel}
+          </div>
+          <div
+            style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 1 }}
+          >
+            {COPY.doxyLabelSub}
+          </div>
+        </div>
+        <Switch checked={state.doxy} onChange={state.setDoxy} />
+      </div>
       <div style={{ borderTop: "1px solid var(--divider)", paddingTop: 12 }}>
         <div
           style={{
