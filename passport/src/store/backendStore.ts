@@ -6,9 +6,19 @@
 import type { ApiClient } from "../api/client.ts";
 import { importAesKey, openSized, base64urlToBytes } from "../crypto/index.ts";
 import { parsePublicCard } from "./publicCard.ts";
+import { knock } from "./knock.ts";
+import { browserRequesterSecret } from "./requesterStore.ts";
 import type { AliasLink, PassportStore } from "./passportStore.ts";
 
-export function createBackendStore(api: ApiClient): PassportStore {
+/**
+ * @param requesterSecret the viewer's stable per-device knock secret. The app
+ * passes the persisted one; omitting it (tests, Storybook) uses a fresh volatile
+ * secret, which knocks fine but loses cross-session dedupe.
+ */
+export function createBackendStore(
+  api: ApiClient,
+  requesterSecret: string = browserRequesterSecret(),
+): PassportStore {
   return {
     async resolveAlias({ id, key }: AliasLink) {
       try {
@@ -23,6 +33,13 @@ export function createBackendStore(api: ApiClient): PassportStore {
         // card, or a malformed key fragment. None is distinguishable to a viewer.
         return null;
       }
+    },
+
+    knock(aliasId: string) {
+      // The salted per-device hash is derived here; the secret never leaves the
+      // device. The server response is existence-uniform, so this resolves the
+      // same whether or not the alias exists.
+      return knock(api, aliasId, requesterSecret);
     },
   };
 }

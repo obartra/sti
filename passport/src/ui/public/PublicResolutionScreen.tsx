@@ -49,6 +49,13 @@ export function PublicResolutionScreen({
     };
   }, [store, id, key]);
 
+  // The viewer holds the link, so they may knock when they land on gray-nothing.
+  // Fire-and-forget: the knock is existence-uniform and the UI flips to "sent"
+  // optimistically, so a failure is swallowed rather than revealing anything.
+  const onKnock = () => {
+    void store.knock(id).catch(() => undefined);
+  };
+
   return (
     <PublicResolution
       resolved={resolved}
@@ -56,6 +63,7 @@ export function PublicResolutionScreen({
       onBack={onBack}
       onClaim={onClaim}
       onVerify={onVerify}
+      onKnock={onKnock}
     />
   );
 }

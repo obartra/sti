@@ -21,7 +21,10 @@ const ID = "A".repeat(43);
 const KEY = "B".repeat(43);
 
 function stubStore(to: ResolvedView | null): PassportStore {
-  return { resolveAlias: () => Promise.resolve(to) };
+  return {
+    resolveAlias: () => Promise.resolve(to),
+    knock: () => Promise.resolve(),
+  };
 }
 
 // A fake session controller standing in for the backend one (the real WebAuthn

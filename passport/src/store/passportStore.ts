@@ -25,4 +25,11 @@ export interface PassportStore {
    * miss, a decrypt failure, a malformed card, or an unreachable server.
    */
   resolveAlias(link: AliasLink): Promise<ResolvedView | null>;
+  /**
+   * Knock on an alias: a link-holder who lands on the uniform gray state asks the
+   * owner for access. Existence-uniform (resolves whether or not the alias
+   * exists) and contentless: it carries only an opaque per-device hash, never who
+   * knocked. Resolves on success; callers treat any failure as a no-op.
+   */
+  knock(aliasId: string): Promise<void>;
 }
