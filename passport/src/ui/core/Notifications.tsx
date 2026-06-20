@@ -27,7 +27,9 @@ const COPY = {
       },
       {
         icon: "users",
-        title: "@marco asked to see your status",
+        // Knock requests are contentless and never name the requester (silent
+        // linking, doc 06 §8/§9a); the owner approves or declines in Privacy.
+        title: "Someone with your link asked to see your status",
         sub: "Approve or decline in Privacy & sharing",
         when: "2h ago",
         to: "privacy",

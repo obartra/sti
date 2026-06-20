@@ -5,6 +5,22 @@ import { Notifications } from "../../core/Notifications.tsx";
 import { Privacy } from "../../core/Privacy.tsx";
 import type { ScreenRenderers } from "./context.ts";
 
+// Care's resource finders open public, US/CDC-aligned locators (per doc 03 §12:
+// no single national condom program, so a maps search; clinic/testing via the
+// CDC finder; PrEP via the open PrEP locator). External, static, no user data.
+const RESOURCES = {
+  clinic: "https://gettested.cdc.gov/",
+  condoms:
+    "https://www.google.com/maps/search/?api=1&query=free+condoms+near+me",
+  prep: "https://preplocator.org/",
+} as const;
+
+function openResource(url: string): void {
+  if (typeof window !== "undefined") {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
+
 export const coreRenderers: ScreenRenderers = {
   home: ({ nav, owner, openShare }) => (
     <Home
@@ -31,6 +47,10 @@ export const coreRenderers: ScreenRenderers = {
       badge={owner.badge}
       onLearn={() => nav.go("learn")}
       onPartners={() => nav.go("partners")}
+      onFindClinic={() => openResource(RESOURCES.clinic)}
+      onLearnOfficial={() => openResource(RESOURCES.clinic)}
+      onFindCondoms={() => openResource(RESOURCES.condoms)}
+      onFindPrep={() => openResource(RESOURCES.prep)}
     />
   ),
   notifications: () => <Notifications />,
