@@ -58,7 +58,9 @@ async function deriveAesKey(
 /** Mint a per-knock keypair. The requester sends `publicKey`, keeps `privateKey`. */
 export async function generateGrantKeyPair(): Promise<GrantKeyPair> {
   const kp = await crypto.subtle.generateKey(CURVE, true, ["deriveBits"]);
-  const pub = new Uint8Array(await crypto.subtle.exportKey("raw", kp.publicKey));
+  const pub = new Uint8Array(
+    await crypto.subtle.exportKey("raw", kp.publicKey),
+  );
   const priv = new Uint8Array(
     await crypto.subtle.exportKey("pkcs8", kp.privateKey),
   );
