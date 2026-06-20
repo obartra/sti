@@ -61,7 +61,20 @@ func main() {
 	// non-browser callers.
 	allowedOrigins := splitList(os.Getenv("STI_ALLOWED_ORIGINS"))
 
-	srv := server.New(st, server.Config{DecoySecret: secret, AllowedOrigins: allowedOrigins}, log, nil)
+	// Targeted-wake delivery (notify/push) is OFF by default and stays off in prod
+	// until the cover-wake decorrelation fix lands (doc 10 §F). No Web Push sender
+	// is wired here yet, so enabling the gate alone still delivers nothing; the
+	// flag exists so the drain + queue mechanics can run once a Sender is provided.
+	notifyEnabled := os.Getenv("STI_NOTIFY_ENABLED") == "true"
+	if notifyEnabled {
+		log.Warn("STI_NOTIFY_ENABLED is set but no Web Push sender is configured; wakes are not delivered")
+	}
+
+	srv := server.New(st, server.Config{
+		DecoySecret:    secret,
+		AllowedOrigins: allowedOrigins,
+		NotifyEnabled:  notifyEnabled,
+	}, log, nil)
 
 	// Host and process health gauges. All system facts, no subject data.
 	srv.Metrics().RegisterBuildInfo(buildVersion())
@@ -154,9 +167,9 @@ func saveMetrics(path string, srv *server.Server, log *slog.Logger) {
 }
 
 // background runs the periodic janitors: expire knocks, drain due wakes, and trim
-// idle rate-limit buckets. The send drain currently just clears the queue (real
-// Web Push delivery is wired when client subscriptions exist); it proves the
-// queue mechanics end to end.
+// idle rate-limit buckets. The send drain delivers contentless Web Push wakes via
+// the server's Sender, gated off by default (Config.NotifyEnabled), so it is inert
+// until targeted-wake delivery is explicitly enabled.
 func background(ctx context.Context, st *store.Store, srv *server.Server, metricsState string, log *slog.Logger) {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
@@ -172,29 +185,13 @@ func background(ctx context.Context, st *store.Store, srv *server.Server, metric
 			} else if n > 0 {
 				log.Info("purged expired knocks", "count", n)
 			}
-			drainSends(ctx, st, srv, now, log)
+			srv.DrainSends(ctx, now)
 			srv.SweepLimiters(now)
 			// Heartbeat: a stalled loop shows up as this gauge going stale.
 			srv.Metrics().JanitorRan(now / 1000)
 			// Persist the blind aggregates roughly once a minute, so a restart
 			// continues the counters instead of resetting them to zero.
 			saveMetrics(metricsState, srv, log)
-		}
-	}
-}
-
-func drainSends(ctx context.Context, st *store.Store, srv *server.Server, now int64, log *slog.Logger) {
-	sends, err := st.DueSends(ctx, now, 256)
-	if err != nil {
-		srv.Metrics().Error(metrics.ErrJanitor)
-		log.Error("due sends", "err", err)
-		return
-	}
-	for _, s := range sends {
-		// TODO(push): deliver a contentless Web Push wake here once subscriptions exist.
-		if err := st.DeleteSend(ctx, s.ID); err != nil {
-			srv.Metrics().Error(metrics.ErrJanitor)
-			log.Error("delete send", "err", err)
 		}
 	}
 }

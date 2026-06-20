@@ -43,6 +43,14 @@ type Config struct {
 	// cross-origin (e.g. https://sti.care). Empty means no CORS, which is correct
 	// for same-origin or non-browser callers. No wildcard: each origin is listed.
 	AllowedOrigins []string
+	// NotifyEnabled gates targeted-wake delivery. Default false: the
+	// not-fully-blind targeted wake must not ship until the cover-wake
+	// decorrelation fix lands (doc 10 §F). Off => /notify enqueues nothing and the
+	// drain delivers nothing, so the feature is inert end to end.
+	NotifyEnabled bool
+	// Sender delivers contentless Web Push wakes. nil disables delivery (the
+	// default); set it only alongside NotifyEnabled.
+	Sender Sender
 }
 
 func (c *Config) withDefaults() {
@@ -83,6 +91,7 @@ type Server struct {
 	inflight chan struct{}
 	mux      *http.ServeMux
 	metrics  *metrics.Metrics // blind aggregate self-telemetry (loopback only)
+	sender   Sender           // contentless Web Push delivery; nil disables it
 }
 
 // New builds a Server. now may be nil (defaults to the wall clock).
@@ -101,6 +110,7 @@ func New(st *store.Store, cfg Config, log *slog.Logger, now func() int64) *Serve
 		inflight: make(chan struct{}, cfg.MaxInflight),
 		mux:      http.NewServeMux(),
 		metrics:  metrics.New(),
+		sender:   cfg.Sender,
 	}
 	s.metrics.SetInflightMax(cfg.MaxInflight)
 	// Blind aggregate gauges: row counts of opaque rows and the db file size,
@@ -381,16 +391,21 @@ func (s *Server) handleNotify(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "")
 		return
 	}
-	if ep, found, err := s.st.GetNotifyRoute(r.Context(), req.TokenHash); err == nil && found {
-		// Jittered single-send: spread wake timing to decorrelate from the event.
-		jitter := time.Duration(rand.Int64N(int64(s.cfg.SendMaxJitter) + 1))
-		at := s.now() + jitter.Milliseconds()
-		if err := s.st.EnqueueSend(r.Context(), ep, at, s.now()); err != nil {
-			s.metrics.Error(metrics.ErrEnqueue)
-			s.log.Error("enqueue send", "err", err)
+	// Gated off by default: enqueue nothing unless targeted-wake delivery is on,
+	// so the queue never builds (and so cannot flood when the gate flips). The
+	// response is uniform either way.
+	if s.cfg.NotifyEnabled {
+		if ep, found, err := s.st.GetNotifyRoute(r.Context(), req.TokenHash); err == nil && found {
+			// Jittered single-send: spread wake timing to decorrelate from the event.
+			jitter := time.Duration(rand.Int64N(int64(s.cfg.SendMaxJitter) + 1))
+			at := s.now() + jitter.Milliseconds()
+			if err := s.st.EnqueueSend(r.Context(), ep, at, s.now()); err != nil {
+				s.metrics.Error(metrics.ErrEnqueue)
+				s.log.Error("enqueue send", "err", err)
+			}
+		} else if err != nil {
+			s.metrics.Error(metrics.ErrStore)
 		}
-	} else if err != nil {
-		s.metrics.Error(metrics.ErrStore)
 	}
 	// Always 202, whether or not a route existed. The *response* is uniform, but a
 	// found route enqueues a send while a miss does no work, so timing is not yet
