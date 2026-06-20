@@ -29,7 +29,12 @@ import type { AccountSync } from "./accountSync.ts";
 import type { AccountBlob } from "./accountBlob.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { deriveOwnerCard } from "./ownerCard.ts";
-import { publishCard, republishCard, aliasLinkUrl } from "./publish.ts";
+import {
+  publishCard,
+  republishCard,
+  revokeAlias,
+  aliasLinkUrl,
+} from "./publish.ts";
 
 /** An unlocked session: the master (in memory only) and the loaded account. */
 export interface OwnerSession {
@@ -82,6 +87,13 @@ export interface SessionController {
    * session and the URL.
    */
   shareLink(session: OwnerSession): Promise<ShareLinkResult>;
+  /**
+   * Revoke the link for the current sharing mode (the old URL stops resolving to
+   * any status) and mint a fresh one for the same card. "Revoke" is no future
+   * reads, not "unsee" (doc 01). Returns the updated session and the new URL. A
+   * no-op-with-mint when no alias exists yet (just produces a first link).
+   */
+  renewLink(session: OwnerSession): Promise<ShareLinkResult>;
   /** Forget this device's passkey binding. The phrase still recovers. */
   forget(): void;
 }
@@ -102,6 +114,33 @@ export interface SessionDeps {
 
 export function createSessionController(deps: SessionDeps): SessionController {
   const { accounts, sync, devices, passkey, api } = deps;
+
+  // Produce a link for the owner's current sharing mode. Shared by shareLink and
+  // renewLink (a free function, not a `this` method, so it survives destructuring
+  // of the controller). One alias per visibility: reuse the alias whose
+  // visibility matches the CURRENT sharing mode (republishing the current card so
+  // an already-shared link reflects the latest badge), or mint one on first share
+  // in this mode. Selecting by visibility, not array position, keeps the link's
+  // key-presence aligned with the mode the sheet shows: a public link carries the
+  // AES key in its `#k=` fragment, a private link never does. Reusing by position
+  // would otherwise hand out a key-bearing URL under a "private link" sheet after
+  // a public -> link switch.
+  async function shareLinkFor(session: OwnerSession): Promise<ShareLinkResult> {
+    const card = deriveOwnerCard(session.blob.state, session.blob.handle);
+    const wantPublic = session.blob.sharingMode === "public";
+    const existing = session.blob.aliases.find(
+      (a) => a.isPublic === wantPublic,
+    );
+    if (existing !== undefined) {
+      await republishCard(api, existing, card);
+      return { session, url: aliasLinkUrl(existing) };
+    }
+    const { link, record } = await publishCard(api, card, {
+      isPublic: wantPublic,
+    });
+    const blob = await accounts.addAlias(session.master, record);
+    return { session: { master: session.master, blob }, url: link };
+  }
 
   return {
     async signUp(handle) {
@@ -166,29 +205,27 @@ export function createSessionController(deps: SessionDeps): SessionController {
       return { master: session.master, blob };
     },
 
-    async shareLink(session) {
-      const card = deriveOwnerCard(session.blob.state, session.blob.handle);
+    shareLink(session) {
+      return shareLinkFor(session);
+    },
+
+    async renewLink(session) {
       const wantPublic = session.blob.sharingMode === "public";
-      // One alias per visibility: reuse the alias whose visibility matches the
-      // owner's CURRENT sharing mode (republishing the current card so an
-      // already-shared link reflects the latest badge), or mint one on first
-      // share in this mode. Selecting by visibility, not array position, keeps
-      // the link's key-presence aligned with the mode the sheet shows: a public
-      // link carries the AES key in its `#k=` fragment, a private link never
-      // does. Reusing by position would otherwise hand out a key-bearing URL
-      // under a "private link" sheet after a public -> link switch.
       const existing = session.blob.aliases.find(
         (a) => a.isPublic === wantPublic,
       );
+      let working = session;
       if (existing !== undefined) {
-        await republishCard(api, existing, card);
-        return { session, url: aliasLinkUrl(existing) };
+        // Kill the old payload first, then drop the record. Order matters: if the
+        // record were dropped first and the revoke then failed, the old link would
+        // keep resolving with no capability left to revoke it.
+        await revokeAlias(api, existing);
+        const blob = await accounts.removeAlias(session.master, existing.id);
+        working = { master: session.master, blob };
       }
-      const { link, record } = await publishCard(api, card, {
-        isPublic: wantPublic,
-      });
-      const blob = await accounts.addAlias(session.master, record);
-      return { session: { master: session.master, blob }, url: link };
+      // Mint a fresh link for the current card (this is now the only alias for
+      // the mode, since the old record is gone).
+      return shareLinkFor(working);
     },
 
     forget() {

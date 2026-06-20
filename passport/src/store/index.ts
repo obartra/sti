@@ -33,5 +33,6 @@ export type {
   SignUpResult,
   SessionController,
   SessionDeps,
+  ShareLinkResult,
 } from "./session.ts";
 export { createSessionController } from "./session.ts";

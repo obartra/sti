@@ -82,3 +82,18 @@ export async function republishCard(
   const key = await importAesKey(base64urlToBytes(record.key));
   await sealAndPut(api, key, record, view);
 }
+
+/**
+ * Revoke an alias: overwrite its payload with random bytes (the owner holds the
+ * write token). The old link can never decrypt again, so it resolves to the same
+ * uniform gray-nothing as a never-existed link, honouring "revoke = no future
+ * reads" (doc 01) without a distinguishable delete. The account drops the record
+ * separately, so the orphaned row carries no recoverable content.
+ */
+export async function revokeAlias(
+  api: ApiClient,
+  record: Pick<AliasRecord, "id" | "writeToken">,
+): Promise<void> {
+  const garbage = crypto.getRandomValues(new Uint8Array(ALIAS_PAYLOAD_SIZE));
+  await api.putAlias(record.id, garbage, record.writeToken);
+}

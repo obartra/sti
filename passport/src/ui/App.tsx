@@ -121,6 +121,7 @@ export function App({
     shareUrl,
     setShareOpen: handleSetShareOpen,
     copyShareLink,
+    revokeLink,
   } = useShareLink(controller, sessionRef, setSession, setShareOpen);
 
   const loggedIn = session !== null;
@@ -150,6 +151,7 @@ export function App({
       setShareOpen={handleSetShareOpen}
       shareUrl={shareUrl}
       onCopyShareLink={copyShareLink}
+      onRevokeShareLink={revokeLink}
     />
   );
 }

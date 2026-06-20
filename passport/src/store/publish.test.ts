@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { publishCard, aliasLinkUrl } from "./publish.ts";
+import { publishCard, revokeAlias, aliasLinkUrl } from "./publish.ts";
 import { ALIAS_PAYLOAD_SIZE } from "../api/contract.ts";
 import type { ApiClient } from "../api/client.ts";
 import type { AliasRecord } from "./accountBlob.ts";
@@ -84,5 +84,28 @@ describe("publishCard", () => {
     };
     expect(aliasLinkUrl(rec)).toContain(`#k=${rec.key}`);
     expect(aliasLinkUrl({ ...rec, isPublic: false })).not.toContain("#k=");
+  });
+});
+
+describe("revokeAlias", () => {
+  it("overwrites with fixed-size, non-deterministic bytes using the write token", async () => {
+    const { api, puts } = recordingApi();
+    const { record } = await publishCard(api, view);
+    const sealed = puts[0]?.payload;
+
+    await revokeAlias(api, record);
+    await revokeAlias(api, record);
+
+    // Both revokes target the same alias with its write token, at the fixed size.
+    expect(puts).toHaveLength(3);
+    for (const put of puts.slice(1)) {
+      expect(put.id).toBe(record.id);
+      expect(put.writeToken).toBe(record.writeToken);
+      expect(put.payload.length).toBe(ALIAS_PAYLOAD_SIZE);
+    }
+    // The overwrite is random, not the sealed card and not a repeat of itself, so
+    // the old key can never decrypt it again (no future reads).
+    expect(puts[1]?.payload).not.toEqual(sealed);
+    expect(puts[1]?.payload).not.toEqual(puts[2]?.payload);
   });
 });

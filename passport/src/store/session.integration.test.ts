@@ -13,9 +13,17 @@ import { createSessionController } from "./session.ts";
 import { deriveOwnerCard } from "./ownerCard.ts";
 import { createDeviceStore, type StorageLike } from "../auth/deviceStore.ts";
 import type { PasskeyAuth } from "../auth/passkey.ts";
+import type { AliasRecord } from "./accountBlob.ts";
+import type { AliasLink } from "./passportStore.ts";
 import { type Bytes } from "../crypto/index.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { startApi, type Harness } from "../test-support/serverHarness.ts";
+
+// The read capabilities (id + key) of an alias record, for resolveAlias. Keeps
+// the round-trip assertions free of repeated optional-chaining noise.
+function caps(record: AliasRecord | undefined): AliasLink {
+  return { id: record?.id ?? "", key: record?.key ?? "" };
+}
 
 // A fixed-PRF fake authenticator (the passkey contract), so unlock re-yields the
 // exact PRF output enroll produced. The concrete WebAuthn adapter is browser-only.
@@ -147,10 +155,7 @@ describe("owner session against a live blind store", () => {
 
     // The published payload decrypts (via the alias capabilities) to exactly the
     // owner's current card, proving the real seal -> PUT -> GET -> open round-trip.
-    const resolved = await store.resolveAlias({
-      id: record?.id ?? "",
-      key: record?.key ?? "",
-    });
+    const resolved = await store.resolveAlias(caps(record));
     expect(resolved).toEqual(
       deriveOwnerCard(session.blob.state, session.blob.handle),
     );
@@ -167,10 +172,7 @@ describe("owner session against a live blind store", () => {
     const moved = await ctl.setOwnerState(second.session, blueState);
     const third = await ctl.shareLink(moved);
     expect(third.url).toBe(first.url);
-    const after = await store.resolveAlias({
-      id: record?.id ?? "",
-      key: record?.key ?? "",
-    });
+    const after = await store.resolveAlias(caps(record));
     expect(after).toEqual(deriveOwnerCard(blueState, session.blob.handle));
   });
 
@@ -205,5 +207,118 @@ describe("owner session against a live blind store", () => {
     const backShare = await ctl.shareLink(back);
     expect(backShare.url).toBe(linkShare.url);
     expect(backShare.url).not.toContain("#k=");
+  });
+
+  it("renewLink revokes the old link (no future reads) and mints a working fresh one", async () => {
+    const { ctl, api } = controller(fakePasskey());
+    const store = createBackendStore(api);
+    const { session } = await ctl.signUp("max");
+
+    const first = await ctl.shareLink(session);
+    const old = first.session.blob.aliases[0];
+    expect(old).toBeDefined();
+    // The first link resolves to the owner's card.
+    expect(await store.resolveAlias(caps(old))).toEqual(
+      deriveOwnerCard(session.blob.state, session.blob.handle),
+    );
+
+    const renewed = await ctl.renewLink(first.session);
+    // A distinct link, and the old record is gone (one alias for the mode).
+    expect(renewed.url).not.toBe(first.url);
+    expect(renewed.session.blob.aliases).toHaveLength(1);
+    const fresh = renewed.session.blob.aliases[0];
+    expect(fresh?.id).not.toBe(old?.id);
+
+    // Revoke = no future reads: the OLD capability now decrypts to nothing, so it
+    // resolves to the same uniform gray-nothing as a never-existed link.
+    expect(await store.resolveAlias(caps(old))).toBeNull();
+    // The fresh link resolves to the current card.
+    expect(await store.resolveAlias(caps(fresh))).toEqual(
+      deriveOwnerCard(session.blob.state, session.blob.handle),
+    );
+  });
+
+  it("renewLink: a failing revoke leaves the record and old link intact (retryable)", async () => {
+    // The owner holds the write token; if the revoke PUT fails, nothing should
+    // change: the old link must keep resolving (no false "it's gone") and the
+    // record must stay so a retry can revoke it.
+    const api = createApiClient(baseUrl);
+    const store = createBackendStore(api);
+    let failPut = false;
+    const gatedApi = {
+      ...api,
+      putAlias: (id: string, payload: Bytes, token: string) =>
+        failPut
+          ? Promise.reject(new Error("revoke put failed"))
+          : api.putAlias(id, payload, token),
+    };
+    const ctl = createSessionController({
+      accounts: createAccountManager(gatedApi),
+      sync: createAccountSync(gatedApi),
+      devices: createDeviceStore(memoryStorage()),
+      passkey: fakePasskey(),
+      api: gatedApi,
+    });
+
+    const { session } = await ctl.signUp("rae");
+    const first = await ctl.shareLink(session);
+    const old = first.session.blob.aliases[0];
+
+    failPut = true;
+    await expect(ctl.renewLink(first.session)).rejects.toThrow();
+    // Fail-safe: the record is untouched and the old link still resolves.
+    expect(first.session.blob.aliases).toHaveLength(1);
+    expect(await store.resolveAlias(caps(old))).toEqual(
+      deriveOwnerCard(session.blob.state, session.blob.handle),
+    );
+
+    // A retry once the write recovers converges: old revoked, one fresh alias.
+    failPut = false;
+    const renewed = await ctl.renewLink(first.session);
+    expect(renewed.session.blob.aliases).toHaveLength(1);
+    expect(await store.resolveAlias(caps(old))).toBeNull();
+  });
+
+  it("renewLink: revoke lands even if removeAlias fails, and a retry converges", async () => {
+    // Revoke-then-remove ordering: if the payload overwrite succeeds but dropping
+    // the record fails, "no future reads" must already hold (the old link is dead)
+    // and a retry must clean up the orphaned record.
+    const api = createApiClient(baseUrl);
+    const store = createBackendStore(api);
+    const realAccounts = createAccountManager(api);
+    let failRemove = true;
+    const accounts = {
+      ...realAccounts,
+      removeAlias: (master: Bytes, id: string) =>
+        failRemove
+          ? Promise.reject(new Error("remove failed"))
+          : realAccounts.removeAlias(master, id),
+    };
+    const ctl = createSessionController({
+      accounts,
+      sync: createAccountSync(api),
+      devices: createDeviceStore(memoryStorage()),
+      passkey: fakePasskey(),
+      api,
+    });
+
+    const { session } = await ctl.signUp("ola");
+    const first = await ctl.shareLink(session);
+    const old = first.session.blob.aliases[0];
+
+    await expect(ctl.renewLink(first.session)).rejects.toThrow();
+    // The overwrite landed before the record drop failed: no future reads already.
+    expect(await store.resolveAlias(caps(old))).toBeNull();
+
+    // Retry: renewLink finds the still-recorded (now-dead) alias, re-revokes
+    // idempotently, removes it, and mints a fresh working link.
+    failRemove = false;
+    const renewed = await ctl.renewLink(first.session);
+    expect(renewed.session.blob.aliases).toHaveLength(1);
+    const fresh = renewed.session.blob.aliases[0];
+    expect(fresh?.id).not.toBe(old?.id);
+    expect(await store.resolveAlias(caps(fresh))).toEqual(
+      deriveOwnerCard(session.blob.state, session.blob.handle),
+    );
   });
 });

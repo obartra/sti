@@ -44,6 +44,7 @@ function fakeBackend() {
       return Promise.resolve(blob ? { master, blob } : null);
     },
     addAlias: () => Promise.reject(new Error("unused")),
+    removeAlias: () => Promise.reject(new Error("unused")),
     setOwnerState: () => Promise.reject(new Error("unused")),
     setProfile: () => Promise.reject(new Error("unused")),
   };
