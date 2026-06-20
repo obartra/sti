@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { applyReport, type ReportOutcome } from "./report.ts";
-import { INITIAL_OWNER_STATE, computeBadge, type OwnerState } from "./badge.ts";
+import { applyReport, extendClearance, type ReportOutcome } from "./report.ts";
+import {
+  INITIAL_OWNER_STATE,
+  computeBadge,
+  CLEARANCE_WINDOW_DAYS,
+  type OwnerState,
+} from "./badge.ts";
 import { NOW_DAY, daysAgo } from "./badge.fixtures.ts";
 
 const onPrep: OwnerState = { ...INITIAL_OWNER_STATE, onPrep: true };
@@ -118,5 +123,53 @@ describe("applyReport", () => {
       NOW_DAY,
     );
     expect(computeBadge(next, NOW_DAY)).toBe("gray");
+  });
+
+  const positive: ReportOutcome = {
+    hiv: "negative",
+    corePanelComplete: true,
+    activeNonHivSti: true,
+  };
+
+  it("a reported positive arms the clearance window from the report day", () => {
+    const next = applyReport(onPrep, positive, NOW_DAY);
+    expect(next.clearUntilDay).toBe(NOW_DAY + CLEARANCE_WINDOW_DAYS);
+    expect(computeBadge(next, NOW_DAY)).toBe("gray");
+  });
+
+  it("a later cleared report keeps the badge gray until the window passes", () => {
+    // Report positive (day NOW), then report clear two days later.
+    const afterPositive = applyReport(onPrep, positive, NOW_DAY);
+    const afterClear = applyReport(afterPositive, clearNegative, NOW_DAY + 2);
+    // Treated/clear (activeNonHivSti false) but still inside the window: gray.
+    expect(afterClear.activeNonHivSti).toBe(false);
+    expect(afterClear.clearUntilDay).toBe(NOW_DAY + CLEARANCE_WINDOW_DAYS);
+    expect(computeBadge(afterClear, NOW_DAY + 2)).toBe("gray");
+    // Once the window passes, the clear + route earns blue.
+    expect(computeBadge(afterClear, NOW_DAY + CLEARANCE_WINDOW_DAYS)).toBe(
+      "blue",
+    );
+  });
+
+  it("a clear report never shortens an active clearance window", () => {
+    const armed: OwnerState = { ...onPrep, clearUntilDay: NOW_DAY + 5 };
+    const next = applyReport(armed, clearNegative, NOW_DAY);
+    expect(next.clearUntilDay).toBe(NOW_DAY + 5); // preserved, not cleared
+  });
+
+  it("extendClearance lengthens the window and never shortens it", () => {
+    const armed: OwnerState = { ...onPrep, clearUntilDay: NOW_DAY + 3 };
+    const extended = extendClearance(armed, NOW_DAY);
+    expect(extended.clearUntilDay).toBe(NOW_DAY + 3 + CLEARANCE_WINDOW_DAYS);
+
+    // With no active window, it extends from now.
+    const fresh = extendClearance(onPrep, NOW_DAY);
+    expect(fresh.clearUntilDay).toBe(NOW_DAY + CLEARANCE_WINDOW_DAYS);
+
+    // A stale (past) window extends from now, not from the past day.
+    const stale: OwnerState = { ...onPrep, clearUntilDay: NOW_DAY - 10 };
+    expect(extendClearance(stale, NOW_DAY).clearUntilDay).toBe(
+      NOW_DAY + CLEARANCE_WINDOW_DAYS,
+    );
   });
 });

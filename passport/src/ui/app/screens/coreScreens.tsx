@@ -3,6 +3,8 @@ import { Results } from "../../core/Results.tsx";
 import { Care } from "../../core/Care.tsx";
 import { Notifications } from "../../core/Notifications.tsx";
 import { Privacy } from "../../core/Privacy.tsx";
+import { extendClearance } from "../../../core/report.ts";
+import { todayEpochDay } from "../../../core/clock.ts";
 import type { ScreenRenderers } from "./context.ts";
 
 // Care's resource finders open public, US/CDC-aligned locators (per doc 03 §12:
@@ -22,7 +24,7 @@ function openResource(url: string): void {
 }
 
 export const coreRenderers: ScreenRenderers = {
-  home: ({ nav, owner, openShare }) => (
+  home: ({ nav, owner, openShare, setOwnerState }) => (
     <Home
       badge={owner.badge}
       viewerBadge={owner.viewerBadge}
@@ -32,6 +34,7 @@ export const coreRenderers: ScreenRenderers = {
       avatar={owner.avatar}
       paused={owner.paused}
       autoPaused={owner.autoPaused}
+      clearBy={owner.clearBy}
       sharingMode={owner.sharingMode}
       daysLeft={owner.daysLeft}
       onShare={openShare}
@@ -39,6 +42,7 @@ export const coreRenderers: ScreenRenderers = {
       onViewAs={() => nav.go("a2-public", { self: true })}
       onPrivacy={() => nav.go("privacy")}
       onContinueCare={() => nav.go("care")}
+      onExtend={() => setOwnerState((s) => extendClearance(s, todayEpochDay()))}
     />
   ),
   results: () => <Results />,

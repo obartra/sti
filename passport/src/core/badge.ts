@@ -62,8 +62,16 @@ export interface OwnerState {
    * summed into the badge, so it does not affect computeBadge.
    */
   readonly onDoxyPep: boolean;
-  /** Manual or auto pause; either forces gray, indistinguishable from any other gray. */
+  /** Manual pause; forces gray, indistinguishable from any other gray. */
   readonly paused: boolean;
+  /**
+   * Auto-pause through the post-treatment clearance window: the epoch day until
+   * which a reported positive holds the badge gray on its own (computed on-device
+   * from the result + treatment day, doc 02/03). null = no active window. It
+   * survives a later "cleared" report and can be EXTENDED but never shortened, so
+   * the owner cannot lift it before the guideline window passes.
+   */
+  readonly clearUntilDay: number | null;
 }
 
 export type Badge = "blue" | "gray";
@@ -85,6 +93,18 @@ export const GRAY_VIEW: ViewerBadge = {
 };
 
 export const TESTING_WINDOW_DAYS = 90;
+
+/**
+ * The standard post-treatment clearance window (days). After a reported positive,
+ * the badge auto-pauses for this long from the treatment day, matching the common
+ * "abstain ~7 days after treatment" guidance. A single flat window for v0.
+ */
+export const CLEARANCE_WINDOW_DAYS = 7;
+
+/** True while a reported positive's clearance window has not yet passed. */
+export function inClearanceWindow(s: OwnerState, nowDay: number): boolean {
+  return s.clearUntilDay !== null && nowDay < s.clearUntilDay;
+}
 
 /**
  * Days since the last complete panel as of `nowDay`, or null when never tested.
@@ -137,6 +157,7 @@ function hasQualifyingRoute(s: OwnerState): boolean {
  */
 export function computeBadge(s: OwnerState, nowDay: number): Badge {
   if (s.paused) return "gray";
+  if (inClearanceWindow(s, nowDay)) return "gray";
   if (detectableHivBlocks(s)) return "gray";
   if (!testedInWindow(s.testing, nowDay)) return "gray";
   if (!isClear(s)) return "gray";
@@ -173,6 +194,7 @@ export const INITIAL_OWNER_STATE: OwnerState = {
   condomPreferencePublic: false,
   onDoxyPep: false,
   paused: false,
+  clearUntilDay: null,
 };
 
 // Keyed by the union so a new variant fails to compile here (forcing the
@@ -189,16 +211,16 @@ const CONDOM_PREFS: Record<CondomPreference, true> = {
   condoms_always: true,
 };
 
+/** A non-negative integer epoch day, or null (the "absent" sentinel). */
+function isEpochDayOrNull(x: unknown): boolean {
+  return x === null || (typeof x === "number" && Number.isInteger(x) && x >= 0);
+}
+
 function isTestingInput(x: unknown): x is TestingInput {
   if (typeof x !== "object" || x === null) return false;
   const t = x as Record<string, unknown>;
-  const dayOk =
-    t.lastPanelDay === null ||
-    (typeof t.lastPanelDay === "number" &&
-      Number.isInteger(t.lastPanelDay) &&
-      t.lastPanelDay >= 0);
   return (
-    dayOk &&
+    isEpochDayOrNull(t.lastPanelDay) &&
     typeof t.corePanelComplete === "boolean" &&
     typeof t.exposedSitesCovered === "boolean"
   );
@@ -221,6 +243,7 @@ export function isOwnerState(x: unknown): x is OwnerState {
     isCondomPref(s.condomPreference) &&
     typeof s.condomPreferencePublic === "boolean" &&
     typeof s.onDoxyPep === "boolean" &&
-    typeof s.paused === "boolean"
+    typeof s.paused === "boolean" &&
+    isEpochDayOrNull(s.clearUntilDay)
   );
 }

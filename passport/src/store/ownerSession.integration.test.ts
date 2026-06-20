@@ -32,6 +32,7 @@ const blue: OwnerState = {
   condomPreferencePublic: false,
   onDoxyPep: false,
   paused: false,
+  clearUntilDay: null,
 };
 
 describe("owner loop against a live blind store", () => {

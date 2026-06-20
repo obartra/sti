@@ -38,6 +38,7 @@ function HomeHero({
   autoPaused,
   clearBy,
   onResume,
+  onExtend,
 }: {
   handle: string;
   avatar: AvatarConfigInput | undefined;
@@ -48,6 +49,7 @@ function HomeHero({
   autoPaused: boolean;
   clearBy: Date;
   onResume: (() => void) | undefined;
+  onExtend: (() => void) | undefined;
 }) {
   const h = COPY.home;
   return (
@@ -82,6 +84,7 @@ function HomeHero({
           autoPaused={autoPaused}
           clearBy={clearBy}
           resume={onResume}
+          onExtend={onExtend}
         />
       )}
     </>
@@ -113,6 +116,8 @@ export interface HomeProps {
   onPrivacy?: (() => void) | undefined;
   onContinueCare?: (() => void) | undefined;
   onResume?: (() => void) | undefined;
+  // Extend the clearance auto-pause by one window (persists; never shortens).
+  onExtend?: (() => void) | undefined;
 }
 
 export function Home({
@@ -133,6 +138,7 @@ export function Home({
   onPrivacy,
   onContinueCare,
   onResume,
+  onExtend,
 }: HomeProps) {
   const isPaused = paused || autoPaused;
   const act = nextAction({
@@ -164,6 +170,7 @@ export function Home({
         autoPaused={autoPaused}
         clearBy={clearBy}
         onResume={onResume}
+        onExtend={onExtend}
       />
 
       <Button
