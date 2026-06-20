@@ -44,6 +44,22 @@ export type FetchLike = (
   init?: RequestInit,
 ) => Promise<Response>;
 
+/**
+ * One waiting knock as the owner sees it on review: the opaque per-requester
+ * token, plus an optional ephemeral public key the owner can seal an in-app grant
+ * to (doc 13). Both are opaque; neither names anyone.
+ */
+export interface PendingKnock {
+  readonly requesterHash: string;
+  readonly pubKey?: string;
+}
+
+/** The owner's review of an alias: the live knock count and the pending list. */
+export interface KnockReview {
+  readonly count: number;
+  readonly pending: PendingKnock[];
+}
+
 export interface ApiClient {
   getAlias(id: string): Promise<Bytes>;
   putAlias(id: string, payload: Bytes, writeToken: string): Promise<void>;
@@ -55,9 +71,15 @@ export interface ApiClient {
   ): Promise<{ version: string }>;
   deleteAccount(id: string): Promise<void>;
   notify(tokenHash: string): Promise<void>;
-  knock(id: string, requesterHash: string): Promise<void>;
+  /**
+   * Knock on an alias. pubKey is an optional per-requester ephemeral public key
+   * the requester keeps the private half of, so the owner can seal a grant to it.
+   */
+  knock(id: string, requesterHash: string, pubKey?: string): Promise<void>;
   /** Owner-only: the count of current knocks on an alias, authed by its token. */
   knockCount(id: string, writeToken: string): Promise<number>;
+  /** Owner-only: the full review (count + pending requesters), authed by its token. */
+  knockReview(id: string, writeToken: string): Promise<KnockReview>;
   registerPush(req: PushRegisterRequest): Promise<void>;
   health(): Promise<boolean>;
 }
@@ -80,6 +102,47 @@ function requireAliasSize(body: Bytes): Bytes {
     throw new ApiError("protocol", `alias payload was ${body.length} bytes`);
   }
   return body;
+}
+
+/**
+ * Parse a knock-review JSON body defensively. An unexpected shape (or a missing
+ * pending list, e.g. an older server that only returns a count) degrades to a
+ * sensible value rather than throwing: the count falls back to 0 and pending to
+ * an empty list, and only well-formed `{requesterHash, pubKey?}` entries survive.
+ */
+function parseKnockReview(json: unknown): KnockReview {
+  const body = (json ?? {}) as { count?: unknown; pending?: unknown };
+  const count = typeof body.count === "number" ? body.count : 0;
+  const pending: PendingKnock[] = Array.isArray(body.pending)
+    ? body.pending.flatMap((entry): PendingKnock[] => {
+        const e = entry as { requesterHash?: unknown; pubKey?: unknown };
+        if (typeof e.requesterHash !== "string") return [];
+        return [
+          typeof e.pubKey === "string"
+            ? { requesterHash: e.requesterHash, pubKey: e.pubKey }
+            : { requesterHash: e.requesterHash },
+        ];
+      })
+    : [];
+  return { count, pending };
+}
+
+/** POST a JSON body and throw a mapped ApiError on a non-ok status (hoisted so the
+ * several POST-json endpoints share one shape). Returns the response for callers
+ * that read it. */
+async function postJson(
+  call: (path: string, init?: RequestInit) => Promise<Response>,
+  path: string,
+  body: unknown,
+  label: string,
+): Promise<Response> {
+  const res = await call(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new ApiError(statusToKind(res.status), label);
+  return res;
 }
 
 /** The X-Version header the account endpoints must return, or a protocol error. */
@@ -118,6 +181,21 @@ export function createApiClient(
       // A thrown fetch is a network failure: unreachable, which becomes gray.
       throw new ApiError("unreachable", `request to ${path} failed`, { cause });
     }
+  }
+
+  // Shared by knockReview and knockCount as a plain closure, so neither depends on
+  // `this` (which would break if a method were destructured off the client).
+  async function knockReview(
+    id: string,
+    writeToken: string,
+  ): Promise<KnockReview> {
+    const res = await call(PATHS.knockPrefix + id, {
+      method: "GET",
+      cache: "no-store",
+      headers: { [HEADER_WRITE_TOKEN]: writeToken },
+    });
+    if (!res.ok) throw new ApiError(statusToKind(res.status), "knock review");
+    return parseKnockReview(await res.json());
   }
 
   return {
@@ -184,43 +262,25 @@ export function createApiClient(
     },
 
     async notify(tokenHash) {
-      const res = await call(PATHS.notify, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tokenHash }),
-      });
-      if (!res.ok) throw new ApiError(statusToKind(res.status), "notify");
+      await postJson(call, PATHS.notify, { tokenHash }, "notify");
     },
 
-    async knock(id, requesterHash) {
-      const res = await call(PATHS.knockPrefix + id, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requesterHash }),
-      });
-      // The body is uniform; a transport failure still surfaces as unreachable.
-      if (!res.ok) throw new ApiError(statusToKind(res.status), "knock");
+    async knock(id, requesterHash, pubKey) {
+      // Omit pubKey entirely when absent, so a contentless knock is byte-for-byte
+      // the legacy shape and carries no empty field. The body is uniform; a
+      // transport failure still surfaces as unreachable.
+      const body = pubKey ? { requesterHash, pubKey } : { requesterHash };
+      await postJson(call, PATHS.knockPrefix + id, body, "knock");
     },
+
+    knockReview,
 
     async knockCount(id, writeToken) {
-      const res = await call(PATHS.knockPrefix + id, {
-        method: "GET",
-        cache: "no-store",
-        headers: { [HEADER_WRITE_TOKEN]: writeToken },
-      });
-      if (!res.ok) throw new ApiError(statusToKind(res.status), "knock review");
-      const body = (await res.json()) as { count?: unknown };
-      return typeof body.count === "number" ? body.count : 0;
+      return (await knockReview(id, writeToken)).count;
     },
 
     async registerPush(req) {
-      const res = await call(PATHS.pushRegister, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(req),
-      });
-      if (!res.ok)
-        throw new ApiError(statusToKind(res.status), "push register");
+      await postJson(call, PATHS.pushRegister, req, "push register");
     },
 
     async health() {

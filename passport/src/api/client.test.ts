@@ -189,6 +189,60 @@ describe("notify, knock, health", () => {
     );
   });
 
+  it("includes the grant pubkey in the knock body when given, omits it otherwise", async () => {
+    const m = mockFetch(
+      () =>
+        new Response(JSON.stringify({ status: "received" }), { status: 200 }),
+    );
+    const api = createApiClient(BASE, m.fetch);
+    await api.knock(GOOD_ID, "req123", "ephemeralPub");
+    expect(m.last().init?.body).toBe(
+      JSON.stringify({ requesterHash: "req123", pubKey: "ephemeralPub" }),
+    );
+    // No pubKey -> the legacy, contentless body shape (no empty field).
+    await api.knock(GOOD_ID, "req123");
+    expect(m.last().init?.body).toBe(
+      JSON.stringify({ requesterHash: "req123" }),
+    );
+  });
+
+  it("knockReview returns count + pending and keeps only well-formed entries", async () => {
+    const m = mockFetch(
+      () =>
+        new Response(
+          JSON.stringify({
+            count: 2,
+            pending: [
+              { requesterHash: "ra", pubKey: "ka" },
+              { requesterHash: "rb" }, // contentless knock: no key
+              { pubKey: "orphan" }, // malformed: dropped
+            ],
+          }),
+          { status: 200 },
+        ),
+    );
+    const api = createApiClient(BASE, m.fetch);
+    const review = await api.knockReview(GOOD_ID, "owner-token");
+    expect(m.last().init?.headers).toMatchObject({
+      [HEADER_WRITE_TOKEN]: "owner-token",
+    });
+    expect(review.count).toBe(2);
+    expect(review.pending).toEqual([
+      { requesterHash: "ra", pubKey: "ka" },
+      { requesterHash: "rb" },
+    ]);
+  });
+
+  it("knockCount delegates to the review and an older count-only body still parses", async () => {
+    const m = mockFetch(
+      () => new Response(JSON.stringify({ count: 3 }), { status: 200 }),
+    );
+    const api = createApiClient(BASE, m.fetch);
+    expect(await api.knockCount(GOOD_ID, "owner-token")).toBe(3);
+    // A review on the same count-only body degrades pending to an empty list.
+    expect((await api.knockReview(GOOD_ID, "owner-token")).pending).toEqual([]);
+  });
+
   it("health reflects res.ok and is false (not a rejection) when unreachable", async () => {
     const ok = createApiClient(BASE, () =>
       Promise.resolve(new Response(null, { status: 200 })),

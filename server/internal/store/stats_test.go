@@ -33,7 +33,7 @@ func TestStatsCountsOpaqueRows(t *testing.T) {
 	if _, err := st.PutAccount(ctx, "acct-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ct, 1); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.RecordKnock(ctx, "alias-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "req", 1, 99); err != nil {
+	if _, err := st.RecordKnock(ctx, "alias-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "req", "", 1, 99); err != nil {
 		t.Fatal(err)
 	}
 	// Two queued sends; the oldest created_at must be the one Stats reports.

@@ -40,6 +40,7 @@ CREATE INDEX IF NOT EXISTS idx_send_queue_available ON send_queue (available_at)
 CREATE TABLE IF NOT EXISTS knock (
     target_id       TEXT NOT NULL,         -- alias being knocked on
     requester_hash  TEXT NOT NULL,         -- opaque per-requester token
+    pub_key         TEXT NOT NULL DEFAULT '', -- opaque ephemeral grant key, or '' (doc 13)
     created_at      INTEGER NOT NULL,
     expires_at      INTEGER NOT NULL,      -- auto-expiry ~4 days
     PRIMARY KEY (target_id, requester_hash)

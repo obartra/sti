@@ -3,10 +3,13 @@ package store
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"fmt"
 	"path/filepath"
 	"sync"
 	"testing"
+
+	_ "modernc.org/sqlite"
 )
 
 // openTestStore opens a real on-disk SQLite database in a temp dir (WAL and all),
@@ -158,18 +161,35 @@ func TestKnockDedupeCountAndPurge(t *testing.T) {
 	s := openTestStore(t)
 
 	const day = 24 * 60 * 60 * 1000
-	created, err := s.RecordKnock(ctx, "target", "req1", 1000, 1000+4*day)
+	created, err := s.RecordKnock(ctx, "target", "req1", "pubA", 1000, 1000+4*day)
 	if err != nil || !created {
 		t.Fatalf("first knock: created=%v err=%v", created, err)
 	}
-	// Same (target, requester) is deduped.
-	created, err = s.RecordKnock(ctx, "target", "req1", 2000, 2000+4*day)
+	// Same (target, requester) is deduped, and the original pub_key is preserved
+	// (a dedup'd repeat with a different key must not clobber the stored one).
+	created, err = s.RecordKnock(ctx, "target", "req1", "pubA2", 2000, 2000+4*day)
 	if err != nil || created {
 		t.Fatalf("dup knock: created=%v err=%v, want created=false", created, err)
 	}
-	// A different requester is a new knock.
-	if created, _ := s.RecordKnock(ctx, "target", "req2", 3000, 3000+4*day); !created {
+	// A different requester is a new knock; it carries no grant key.
+	if created, _ := s.RecordKnock(ctx, "target", "req2", "", 3000, 3000+4*day); !created {
 		t.Fatal("second requester should create")
+	}
+
+	// CurrentKnocks returns the live knocks with their keys, oldest first, so the
+	// owner can seal a grant per requester.
+	knocks, err := s.CurrentKnocks(ctx, "target", 500)
+	if err != nil {
+		t.Fatalf("current knocks: %v", err)
+	}
+	if len(knocks) != 2 {
+		t.Fatalf("current knocks = %d, want 2", len(knocks))
+	}
+	if knocks[0].RequesterHash != "req1" || knocks[0].PubKey != "pubA" {
+		t.Fatalf("knock[0] = %+v, want {req1 pubA} (original key preserved)", knocks[0])
+	}
+	if knocks[1].RequesterHash != "req2" || knocks[1].PubKey != "" {
+		t.Fatalf("knock[1] = %+v, want {req2 ''}", knocks[1])
 	}
 
 	n, err := s.RecentKnockCount(ctx, "target", 0)
@@ -185,6 +205,94 @@ func TestKnockDedupeCountAndPurge(t *testing.T) {
 	if n, _ := s.RecentKnockCount(ctx, "target", 0); n != 0 {
 		t.Fatalf("after purge count = %d, want 0", n)
 	}
+}
+
+// TestKnockPubKeyNotUpgradedOnReknock pins the known dedup limitation: a first
+// contentless knock ("") is NOT upgraded by a later keyed re-knock. The owner
+// keeps seeing "" (no grant slot) rather than the new key; this is the safe
+// failure mode (no grant beats a wrong-recipient grant) and is documented on
+// RecordKnock, so it is pinned here rather than left to surprise a later slice.
+func TestKnockPubKeyNotUpgradedOnReknock(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+	const day = 24 * 60 * 60 * 1000
+
+	if _, err := s.RecordKnock(ctx, "t", "req", "", 1000, 1000+4*day); err != nil {
+		t.Fatal(err)
+	}
+	// A later knock from the same requester carrying a key is deduped away.
+	if _, err := s.RecordKnock(ctx, "t", "req", "laterKey", 2000, 2000+4*day); err != nil {
+		t.Fatal(err)
+	}
+	knocks, err := s.CurrentKnocks(ctx, "t", 1500)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(knocks) != 1 || knocks[0].PubKey != "" {
+		t.Fatalf("knock = %+v, want one with PubKey '' (contentless not upgraded)", knocks)
+	}
+}
+
+// TestMigrateAddsKnockPubKey pins the in-place migration for an existing
+// production database: a knock table created BEFORE pub_key existed must gain the
+// column on Open, keep its rows, and read back the old key as empty. Without this,
+// the deployed db would either fail to open or silently lose the knock history.
+func TestMigrateAddsKnockPubKey(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "legacy.db")
+
+	// Stand up a database with the OLD knock schema (no pub_key) and one row.
+	legacy, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := legacy.ExecContext(ctx, `CREATE TABLE knock (
+		target_id      TEXT NOT NULL,
+		requester_hash TEXT NOT NULL,
+		created_at     INTEGER NOT NULL,
+		expires_at     INTEGER NOT NULL,
+		PRIMARY KEY (target_id, requester_hash)
+	) WITHOUT ROWID;`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := legacy.ExecContext(ctx,
+		`INSERT INTO knock (target_id, requester_hash, created_at, expires_at) VALUES ('t', 'old-req', 10, 1000)`); err != nil {
+		t.Fatal(err)
+	}
+	legacy.Close()
+
+	// Open through the store: schema (CREATE TABLE IF NOT EXISTS is a no-op here)
+	// plus migrate must add pub_key and leave the row intact.
+	s, err := Open(ctx, path)
+	if err != nil {
+		t.Fatalf("open legacy db: %v", err)
+	}
+	t.Cleanup(func() { s.Close() })
+
+	knocks, err := s.CurrentKnocks(ctx, "t", 100)
+	if err != nil {
+		t.Fatalf("current knocks: %v", err)
+	}
+	if len(knocks) != 1 || knocks[0].RequesterHash != "old-req" || knocks[0].PubKey != "" {
+		t.Fatalf("migrated knock = %+v, want one {old-req ''}", knocks)
+	}
+
+	// A fresh knock can now store a key, proving the column is usable.
+	if _, err := s.RecordKnock(ctx, "t", "new-req", "newKey", 20, 1000); err != nil {
+		t.Fatalf("record after migrate: %v", err)
+	}
+	knocks, _ = s.CurrentKnocks(ctx, "t", 100)
+	if len(knocks) != 2 {
+		t.Fatalf("after new knock = %d rows, want 2", len(knocks))
+	}
+
+	// Open again: migrate is idempotent (the column already exists).
+	s.Close()
+	s2, err := Open(ctx, path)
+	if err != nil {
+		t.Fatalf("re-open: %v", err)
+	}
+	t.Cleanup(func() { s2.Close() })
 }
 
 // TestConcurrentWritesPersist fires many WriteAlias calls in parallel against a
