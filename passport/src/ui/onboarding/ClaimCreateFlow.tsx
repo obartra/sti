@@ -258,9 +258,11 @@ function PromiseCard() {
 // The create-account body shown when not in the login variant. Holds all the
 // alias-related state, which the login variant never touches.
 export function CreateFlow({
-  onContinue,
+  busy = false,
+  onClaim,
 }: {
-  onContinue?: (() => void) | undefined;
+  busy?: boolean;
+  onClaim?: ((handle: string, avatar: AvatarConfig) => void) | undefined;
 }) {
   const [handle, setHandle] = useState("robin");
   // First alias is opaque + PRIVATE by default; vanity is an explicit opt-in.
@@ -326,8 +328,8 @@ export function CreateFlow({
         variant="primary"
         size="lg"
         block
-        disabled={!ok}
-        onClick={onContinue}
+        disabled={!ok || busy}
+        onClick={() => onClaim?.(handle.trim(), avatar)}
       >
         {COPY.cta} <ArrowRight size={18} />
       </Button>

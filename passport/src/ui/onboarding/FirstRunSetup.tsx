@@ -222,10 +222,20 @@ function AnonCard() {
 
 export interface FirstRunSetupProps {
   onBack?: () => void;
-  onEnter?: () => void;
+  /** Enter the app with the chosen account-level sharing default. */
+  onEnter?: (sharingMode: "public" | "link") => void;
+  /** Finishing setup is in flight (account write + passkey enroll). */
+  busy?: boolean;
+  /** A user-facing error if finishing setup failed. */
+  error?: string | null;
 }
 
-export function FirstRunSetup({ onBack, onEnter }: FirstRunSetupProps) {
+export function FirstRunSetup({
+  onBack,
+  onEnter,
+  busy = false,
+  error = null,
+}: FirstRunSetupProps) {
   // Private by default; "Everyone" is the opt-in.
   const [sharing, setSharing] = useState<"public" | "link">("link");
   return (
@@ -260,7 +270,25 @@ export function FirstRunSetup({ onBack, onEnter }: FirstRunSetupProps) {
       <PrivacyCard sharing={sharing} onChange={setSharing} />
       <AnonCard />
 
-      <Button variant="primary" size="lg" block onClick={onEnter}>
+      {error !== null && (
+        <div
+          role="alert"
+          style={{
+            fontSize: 13,
+            lineHeight: 1.5,
+            color: "var(--status-expired-fg)",
+          }}
+        >
+          {error}
+        </div>
+      )}
+      <Button
+        variant="primary"
+        size="lg"
+        block
+        disabled={busy}
+        onClick={() => onEnter?.(sharing)}
+      >
         {COPY.cta} <ArrowRight size={18} />
       </Button>
     </div>

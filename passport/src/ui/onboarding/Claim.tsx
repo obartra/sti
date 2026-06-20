@@ -3,6 +3,7 @@ import { Fingerprint } from "../../design/icons.tsx";
 import { TopBack } from "./TopBack.tsx";
 import { CreateFlow } from "./ClaimCreateFlow.tsx";
 import { COPY, sectionLabel } from "./claimCopy.ts";
+import type { AvatarConfig } from "../../lib/avatars.ts";
 
 // B1 claim account. Faithful port of onboarding.jsx Claim + AvatarBuilder, copy
 // verbatim from copy.js (claim). Passkey is the one MVP unlock path: no email,
@@ -12,16 +13,24 @@ import { COPY, sectionLabel } from "./claimCopy.ts";
 export interface ClaimProps {
   /** When true, render the login (unlock) variant instead of the create flow. */
   isLogin?: boolean;
+  /** A sign-up / login request is in flight. */
+  busy?: boolean;
+  /** A user-facing error from the last attempt (sign-up or passkey login). */
+  error?: string | null;
   onBack?: (() => void) | undefined;
-  onContinue?: (() => void) | undefined;
-  onEnter?: (() => void) | undefined;
+  /** Create variant: the chosen handle + avatar, on continue. */
+  onClaim?: ((handle: string, avatar: AvatarConfig) => void) | undefined;
+  /** Login variant: unlock with the device passkey. */
+  onLogin?: (() => void) | undefined;
 }
 
 export function Claim({
   isLogin = false,
+  busy = false,
+  error = null,
   onBack,
-  onContinue,
-  onEnter,
+  onClaim,
+  onLogin,
 }: ClaimProps) {
   return (
     <div
@@ -87,12 +96,25 @@ export function Claim({
           size="lg"
           block
           icon={<Fingerprint size={18} />}
-          onClick={isLogin ? onEnter : undefined}
+          disabled={busy}
+          onClick={isLogin ? onLogin : undefined}
         >
           {isLogin ? COPY.usePasskeyLogin : COPY.usePasskey}
         </Button>
       </Card>
-      {!isLogin && <CreateFlow onContinue={onContinue} />}
+      {error !== null && (
+        <div
+          role="alert"
+          style={{
+            fontSize: 13,
+            lineHeight: 1.5,
+            color: "var(--status-expired-fg)",
+          }}
+        >
+          {error}
+        </div>
+      )}
+      {!isLogin && <CreateFlow busy={busy} onClaim={onClaim} />}
     </div>
   );
 }
