@@ -176,13 +176,16 @@ async function ensureMyNotifyOn(
 }
 
 /**
- * Republish the owner's current card (sealing the current badge AND avatar) to
- * every still-live shared link: every alias plus every non-expired contact link.
- * Shared by setOwnerState (a badge change) and setProfile (an avatar/profile
- * edit) so both propagate via one path. Callers differ only in expired-contact
- * handling (setOwnerState sweeps them first, setProfile does not); this helper
- * just skips expired contacts so a re-seal can never resurrect a dead link.
- * The decorrelation gap documented on republishOwnerCard applies to both callers.
+ * Republish the owner's current card (the current badge, plus each alias's own
+ * per-alias display identity, doc 15) to every still-live shared link: every alias
+ * plus every non-expired contact link. Shared by setOwnerState (a badge change) and
+ * setProfile (an avatar/profile edit) so both re-seal via one path. Callers differ
+ * only in expired-contact handling (setOwnerState sweeps them first, setProfile does
+ * not); this helper just skips expired contacts so a re-seal can never resurrect a
+ * dead link. The decorrelation gap documented on republishOwnerCard applies to both.
+ * Per-alias identity does not propagate from the account: an alias keeps its own
+ * face, so a main-identity edit re-seals each card with that card's unchanged
+ * identity (doc 15 non-goal).
  */
 async function republishLiveLinks(
   api: ApiClient,
@@ -193,12 +196,7 @@ async function republishLiveLinks(
     (c) => c.expiresDay === null || nowDay < c.expiresDay,
   );
   const liveLinks = [...blob.aliases, ...liveContacts.map((c) => c.alias)];
-  await republishOwnerCard(api, liveLinks, {
-    state: blob.state,
-    handle: blob.handle,
-    nowDay,
-    avatar: blob.avatar,
-  });
+  await republishOwnerCard(api, liveLinks, { state: blob.state, nowDay });
 }
 
 export function createAccountManager(api: ApiClient): AccountManager {
@@ -348,13 +346,11 @@ export function createAccountManager(api: ApiClient): AccountManager {
         sharingMode: profile.sharingMode,
       };
       await sync.save(master, next);
-      // The published card seals the owner's avatar, so an avatar edit must reach
-      // already-shared links the same way a badge change does (setOwnerState).
-      // Non-destructive: unlike setOwnerState this does not sweep expired
-      // contacts, but republishLiveLinks skips them so a re-seal never resurrects
-      // a dead link. Self-healing: a retry reloads the saved blob and republishes
-      // idempotently.
-      await republishLiveLinks(api, next, todayEpochDay());
+      // No republish: the account avatar/handle is the owner's main identity, NOT
+      // an alias's face. Each alias carries its own per-alias identity (doc 15), so
+      // editing the main identity changes Home and the mint pre-fill but not any
+      // already-published card. Re-sealing here would also needlessly republish
+      // every link in one window (the decorrelation-timing gap) for no change.
       return next;
     },
   };

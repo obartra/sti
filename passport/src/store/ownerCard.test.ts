@@ -1,7 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { deriveOwnerCard } from "./ownerCard.ts";
+import {
+  deriveOwnerCard,
+  deriveAliasCard,
+  resolveCardIdentity,
+} from "./ownerCard.ts";
 import { NOW_DAY, daysAgo } from "../core/badge.fixtures.ts";
+import { pseudonymFor, avatarSrc } from "../lib/avatars.ts";
 import type { OwnerState } from "../core/badge.ts";
+import type { AliasRecord } from "./accountBlob.ts";
 
 const tested = {
   lastPanelDay: daysAgo(10),
@@ -146,5 +152,58 @@ describe("deriveOwnerCard", () => {
     expect(blue.state).toBe("blue");
     expect(blue.labels).toEqual(["hiv", "doxy_pep"]);
     expect(blue.route).toBe("hiv");
+  });
+});
+
+const aliasRecord = (over: Partial<AliasRecord> = {}): AliasRecord => ({
+  id: "Z".repeat(43),
+  writeToken: "W".repeat(43),
+  key: "K".repeat(43),
+  isPublic: false,
+  ...over,
+});
+
+describe("resolveCardIdentity (doc 15 per-alias face)", () => {
+  it("with no override: id-derived pseudonym handle and no avatar (anonymous)", () => {
+    const r = aliasRecord();
+    expect(resolveCardIdentity(r)).toEqual({ handle: pseudonymFor(r.id) });
+  });
+
+  it("with a handle override: shows it, still no avatar", () => {
+    expect(resolveCardIdentity(aliasRecord({ handle: "meow" }))).toEqual({
+      handle: "meow",
+    });
+  });
+
+  it("with both overrides: shows the chosen handle and avatar", () => {
+    const avatar = { animal: 1, color: 2, hat: 0, glasses: 1, extra: 0 };
+    expect(
+      resolveCardIdentity(aliasRecord({ handle: "meow", avatar })),
+    ).toEqual({ handle: "meow", avatar });
+  });
+});
+
+describe("deriveAliasCard (badge + per-alias face)", () => {
+  it("anonymous alias: badge plus the id-derived pseudonym, no avatar", () => {
+    const r = aliasRecord();
+    expect(deriveAliasCard(state(), r, NOW_DAY)).toEqual({
+      state: "blue",
+      labels: ["hiv"],
+      route: "hiv",
+      identity: { handle: pseudonymFor(r.id) },
+    });
+  });
+
+  it("override alias: carries the chosen handle and avatar (with rendered src)", () => {
+    const avatar = { animal: 1, color: 2, hat: 0, glasses: 1, extra: 0 };
+    const r = aliasRecord({ handle: "meow", avatar });
+    expect(deriveAliasCard(state(), r, NOW_DAY)).toEqual({
+      state: "blue",
+      labels: ["hiv"],
+      route: "hiv",
+      identity: { handle: "meow" },
+      avatar,
+      avatarSrc: avatarSrc(avatar),
+    });
   });
 });

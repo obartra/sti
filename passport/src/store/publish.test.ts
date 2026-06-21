@@ -52,7 +52,7 @@ function recordingApi(): { api: ApiClient; puts: PutCall[] } {
 describe("publishCard", () => {
   it("mints distinct capabilities and PUTs a fixed-size payload", async () => {
     const { api, puts } = recordingApi();
-    const { record } = await publishCard(api, view);
+    const { record } = await publishCard(api, () => view);
 
     expect(record.id).toMatch(ID43);
     expect(record.writeToken).toMatch(ID43);
@@ -69,13 +69,15 @@ describe("publishCard", () => {
 
   it("builds a public link with the key in the fragment", async () => {
     const { api } = recordingApi();
-    const { link, record } = await publishCard(api, view);
+    const { link, record } = await publishCard(api, () => view);
     expect(link).toBe(`https://sti.care/a/${record.id}#k=${record.key}`);
   });
 
   it("omits the key fragment for a private alias", async () => {
     const { api } = recordingApi();
-    const { link, record } = await publishCard(api, view, { isPublic: false });
+    const { link, record } = await publishCard(api, () => view, {
+      isPublic: false,
+    });
     expect(record.isPublic).toBe(false);
     expect(link).toBe(`https://sti.care/a/${record.id}`);
   });
@@ -95,7 +97,7 @@ describe("publishCard", () => {
 describe("revokeAlias", () => {
   it("overwrites with fixed-size, non-deterministic bytes using the write token", async () => {
     const { api, puts } = recordingApi();
-    const { record } = await publishCard(api, view);
+    const { record } = await publishCard(api, () => view);
     const sealed = puts[0]?.payload;
 
     await revokeAlias(api, record);

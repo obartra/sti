@@ -8,7 +8,7 @@ import { createApiClient } from "../api/client.ts";
 import {
   createBackendStore,
   publishCard,
-  deriveOwnerCard,
+  deriveAliasCard,
   republishOwnerCard,
 } from "./index.ts";
 import type { OwnerState } from "../core/badge.ts";
@@ -46,29 +46,29 @@ describe("badge derivation against a live blind store", () => {
   afterAll(() => harness?.stop());
 
   it("republishes every alias when the owner's state changes to gray", async () => {
-    // Two public aliases, both published with the owner's blue card.
-    const blueCard = deriveOwnerCard(blue, "robin", NOW_DAY);
-    const a = await publishCard(api, blueCard);
-    const b = await publishCard(api, blueCard);
+    // Two public aliases, each published with its own per-alias card (the badge is
+    // shared; the display identity is derived per alias, doc 15).
+    const a = await publishCard(api, (rec) =>
+      deriveAliasCard(blue, rec, NOW_DAY),
+    );
+    const b = await publishCard(api, (rec) =>
+      deriveAliasCard(blue, rec, NOW_DAY),
+    );
     const records: AliasRecord[] = [a.record, b.record];
 
     for (const r of records) {
       expect(await store.resolveAlias({ id: r.id, key: r.key })).toEqual(
-        blueCard,
+        deriveAliasCard(blue, r, NOW_DAY),
       );
     }
 
     // The owner pauses: derive + republish every alias at once.
     const paused: OwnerState = { ...blue, paused: true };
-    await republishOwnerCard(api, records, {
-      state: paused,
-      handle: "robin",
-      nowDay: NOW_DAY,
-    });
+    await republishOwnerCard(api, records, { state: paused, nowDay: NOW_DAY });
 
-    const grayCard = deriveOwnerCard(paused, "robin", NOW_DAY);
-    expect(grayCard.state).toBe("gray");
     for (const r of records) {
+      const grayCard = deriveAliasCard(paused, r, NOW_DAY);
+      expect(grayCard.state).toBe("gray");
       expect(await store.resolveAlias({ id: r.id, key: r.key })).toEqual(
         grayCard,
       );

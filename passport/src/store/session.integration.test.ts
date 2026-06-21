@@ -11,6 +11,7 @@ import { createAccountSync } from "./accountSync.ts";
 import { createBackendStore } from "./backendStore.ts";
 import { createSessionController } from "./session.ts";
 import { deriveOwnerCard } from "./ownerCard.ts";
+import { pseudonymFor } from "../lib/avatars.ts";
 import { redeemGrant } from "./grant.ts";
 import { requesterHash } from "./knock.ts";
 import { parseContactInvite } from "./contactInvite.ts";
@@ -163,17 +164,15 @@ describe("owner session against a live blind store", () => {
     expect(await store.resolveAlias(bContact.theirStatusAlias)).toEqual(
       deriveOwnerCard(
         aSession.blob.state,
-        aSession.blob.handle,
+        pseudonymFor(bContact.theirStatusAlias.id),
         todayEpochDay(),
-        aSession.blob.avatar,
       ),
     );
     expect(await store.resolveAlias(aContact.theirStatusAlias)).toEqual(
       deriveOwnerCard(
         bSession.blob.state,
-        bSession.blob.handle,
+        pseudonymFor(aContact.theirStatusAlias.id),
         todayEpochDay(),
-        bSession.blob.avatar,
       ),
     );
 
@@ -376,9 +375,8 @@ describe("owner session against a live blind store", () => {
     expect(resolved).toEqual(
       deriveOwnerCard(
         session.blob.state,
-        session.blob.handle,
+        pseudonymFor(record?.id ?? ""),
         todayEpochDay(),
-        session.blob.avatar,
       ),
     );
 
@@ -398,9 +396,8 @@ describe("owner session against a live blind store", () => {
     expect(after).toEqual(
       deriveOwnerCard(
         blueState,
-        session.blob.handle,
+        pseudonymFor(record?.id ?? ""),
         todayEpochDay(),
-        session.blob.avatar,
       ),
     );
   });
@@ -440,9 +437,8 @@ describe("owner session against a live blind store", () => {
     expect(await store.resolveAlias({ id: aliasId, key })).toEqual(
       deriveOwnerCard(
         session.blob.state,
-        session.blob.handle,
+        pseudonymFor(aliasId),
         todayEpochDay(),
-        session.blob.avatar,
       ),
     );
   });
@@ -492,9 +488,8 @@ describe("owner session against a live blind store", () => {
     expect(await store.resolveAlias(caps(old))).toEqual(
       deriveOwnerCard(
         session.blob.state,
-        session.blob.handle,
+        pseudonymFor(old?.id ?? ""),
         todayEpochDay(),
-        session.blob.avatar,
       ),
     );
 
@@ -512,9 +507,8 @@ describe("owner session against a live blind store", () => {
     expect(await store.resolveAlias(caps(fresh))).toEqual(
       deriveOwnerCard(
         session.blob.state,
-        session.blob.handle,
+        pseudonymFor(fresh?.id ?? ""),
         todayEpochDay(),
-        session.blob.avatar,
       ),
     );
   });
@@ -555,9 +549,8 @@ describe("owner session against a live blind store", () => {
     expect(await store.resolveAlias(caps(made.contact.alias))).toEqual(
       deriveOwnerCard(
         session.blob.state,
-        session.blob.handle,
+        pseudonymFor(made.contact.alias.id),
         todayEpochDay(),
-        session.blob.avatar,
       ),
     );
 
@@ -627,9 +620,8 @@ describe("owner session against a live blind store", () => {
     expect(await store.resolveAlias(caps(old))).toEqual(
       deriveOwnerCard(
         session.blob.state,
-        session.blob.handle,
+        pseudonymFor(old?.id ?? ""),
         todayEpochDay(),
-        session.blob.avatar,
       ),
     );
 
@@ -681,9 +673,8 @@ describe("owner session against a live blind store", () => {
     expect(await store.resolveAlias(caps(fresh))).toEqual(
       deriveOwnerCard(
         session.blob.state,
-        session.blob.handle,
+        pseudonymFor(fresh?.id ?? ""),
         todayEpochDay(),
-        session.blob.avatar,
       ),
     );
   });

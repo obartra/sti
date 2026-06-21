@@ -30,7 +30,7 @@ describe("knock against a live blind store", () => {
       state: "gray",
       identity: { handle: "robin" },
     };
-    const { record } = await publishCard(api, view, { isPublic: false });
+    const { record } = await publishCard(api, () => view, { isPublic: false });
     const secret = randomHex(16);
 
     await expect(knock(api, record.id, secret)).resolves.toBeUndefined();

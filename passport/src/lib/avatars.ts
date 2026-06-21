@@ -342,3 +342,105 @@ export function avatarFor(handle: string): string {
     h = (h * 31 + str.charCodeAt(i)) & 0x7fffffff;
   return avatarSrc(randomAvatar(h));
 }
+
+// Wordlists for the id-derived pseudonym (doc 15). Lowercase [a-z] only, neutral,
+// and deliberately avoiding the avatar animal names (cat/bear/fox/frog/bunny/owl)
+// so the handle and the avatar do not read as one doubled signal.
+const PSEUDONYM_ADJECTIVES: readonly string[] = [
+  "swift",
+  "quiet",
+  "bright",
+  "calm",
+  "brave",
+  "clever",
+  "cosmic",
+  "dapper",
+  "eager",
+  "fancy",
+  "gentle",
+  "happy",
+  "jolly",
+  "keen",
+  "lively",
+  "lucky",
+  "mellow",
+  "merry",
+  "noble",
+  "plucky",
+  "proud",
+  "quick",
+  "royal",
+  "sandy",
+  "sleepy",
+  "snug",
+  "spry",
+  "sunny",
+  "tidy",
+  "vivid",
+  "witty",
+  "zesty",
+];
+const PSEUDONYM_NOUNS: readonly string[] = [
+  "maple",
+  "river",
+  "pebble",
+  "cloud",
+  "ember",
+  "meadow",
+  "harbor",
+  "lantern",
+  "willow",
+  "cedar",
+  "comet",
+  "dune",
+  "fern",
+  "garnet",
+  "hazel",
+  "isle",
+  "jade",
+  "kite",
+  "lake",
+  "moss",
+  "nimbus",
+  "opal",
+  "pine",
+  "quartz",
+  "reef",
+  "summit",
+  "thistle",
+  "umber",
+  "vale",
+  "wave",
+  "yarn",
+  "zephyr",
+];
+
+/**
+ * A deterministic, id-derived display handle for an alias with no chosen handle
+ * (doc 15). The same id always yields the same `adjective_noun_NN`, distinct ids
+ * differ, and it reveals nothing because the id is random per alias. The two-digit
+ * suffix lifts the space to ~10^5 (32 x 32 x 100) so collisions across one owner's
+ * aliases stay rare (see doc 15 limits). Output is in the handle charset, well
+ * under the 64-char cap.
+ */
+export function pseudonymFor(id: string): string {
+  // FNV-1a over the id, then an xorshift-multiply avalanche, so even ids that
+  // differ in one character spread across the whole space. The three fields are
+  // taken from HIGH-order bits (via division, not low-bit modulo) because an id's
+  // low bits are the least mixed.
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  h ^= h >>> 15;
+  h = Math.imul(h, 2246822519) >>> 0;
+  h ^= h >>> 13;
+  h = Math.imul(h, 3266489917) >>> 0;
+  h = (h ^ (h >>> 16)) >>> 0; // keep unsigned: `^` yields a signed int otherwise
+  const adj = PSEUDONYM_ADJECTIVES[h % PSEUDONYM_ADJECTIVES.length] ?? "swift";
+  const noun =
+    PSEUDONYM_NOUNS[Math.floor(h / 32) % PSEUDONYM_NOUNS.length] ?? "river";
+  const num = String(Math.floor(h / 1024) % 100).padStart(2, "0");
+  return `${adj}_${noun}_${num}`;
+}
