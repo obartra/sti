@@ -7,7 +7,7 @@
     "check": "GET /a returns exactly 4096 bytes and 200 for real and unwritten ids alike.",
     "status": "validated",
     "layer": "wire",
-    "docRef": "13 §6a",
+    "docRef": "14 §6a",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -18,7 +18,7 @@
     "check": "POST /knock returns 200 with the one fixed body for real and unwritten ids.",
     "status": "validated",
     "layer": "wire",
-    "docRef": "13 §6a",
+    "docRef": "14 §6a",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -29,7 +29,7 @@
     "check": "GET /a on the same unwritten id twice returns identical 4096-byte bodies.",
     "status": "validated",
     "layer": "wire",
-    "docRef": "13 §6a",
+    "docRef": "14 §6a",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -40,7 +40,7 @@
     "check": "GET /a with a malformed id returns 200 and 4096 decoy bytes, never a 400.",
     "status": "validated",
     "layer": "wire",
-    "docRef": "13 §6a",
+    "docRef": "14 §6a",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -62,7 +62,7 @@
     "check": "A hit and a miss move the same sti_requests_total series by +1; no hit/miss series exists.",
     "status": "validated",
     "layer": "telemetry",
-    "docRef": "13 §6e",
+    "docRef": "14 §6e",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -73,7 +73,7 @@
     "check": "The stress CLI times hit vs decoy reads and reports the gap; a measured number, gated only once constant-time reads land.",
     "status": "characterized",
     "layer": "wire",
-    "docRef": "13 §6c",
+    "docRef": "14 §6c",
     "pin": "src/loadlab/stress.ts"
   },
   {
@@ -117,7 +117,7 @@
     "check": "Concurrent PUT /acct yield distinct monotonic versions; the final blob is one whole write, never torn.",
     "status": "validated",
     "layer": "wire",
-    "docRef": "13 §6a",
+    "docRef": "14 §6a",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -128,8 +128,41 @@
     "check": "GET /acct for an unknown id returns 404 (the client maps it to null).",
     "status": "validated",
     "layer": "wire",
-    "docRef": "13 §3",
+    "docRef": "14 §3",
     "pin": "src/loadlab/loadlab.integration.test.ts"
+  },
+  {
+    "id": "account-deletion-removes-blob",
+    "category": "Account & recovery",
+    "title": "Deleting an account removes its blob",
+    "intent": "A self-serve delete actually erases the synced data; there is no soft-retain.",
+    "check": "After DELETE /acct, a GET for the same id returns 404 (the blob is gone).",
+    "status": "validated",
+    "layer": "wire",
+    "docRef": "09",
+    "pin": "src/loadlab/loadlab.integration.test.ts"
+  },
+  {
+    "id": "recovery-phrase-app-generated",
+    "category": "Account & recovery",
+    "title": "The recovery phrase is app-generated and high-entropy",
+    "intent": "The blind-store guarantee rests on the phrase being app-generated (256-bit), never user-chosen.",
+    "check": "randomRecoveryPhrase yields unique 43-char base64url (256-bit) secrets across draws.",
+    "status": "validated",
+    "layer": "crypto",
+    "docRef": "11",
+    "pin": "src/crypto/keys.test.ts"
+  },
+  {
+    "id": "passkey-second-credential",
+    "category": "Account & recovery",
+    "title": "A passkey is a second credential, never a lockout risk",
+    "intent": "A passkey wraps the phrase-derived master, so losing the passkey still leaves the phrase to recover; a wrong passkey cannot unwrap.",
+    "check": "wrapMaster/unwrapMaster round-trips under the same PRF output; a different PRF cannot unwrap.",
+    "status": "validated",
+    "layer": "crypto",
+    "docRef": "11",
+    "pin": "src/auth/keyVault.test.ts"
   },
   {
     "id": "no-lost-writes",
@@ -139,7 +172,7 @@
     "check": "Every seeded alias decrypts back to its exact published plaintext.",
     "status": "validated",
     "layer": "crypto",
-    "docRef": "13 §6a",
+    "docRef": "14 §6a",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -150,7 +183,7 @@
     "check": "Concurrent PUT /a both return 204 and the alias decrypts to one of the two written values.",
     "status": "validated",
     "layer": "wire",
-    "docRef": "13 §6a",
+    "docRef": "14 §6a",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -161,7 +194,7 @@
     "check": "PUT /a with the wrong write token is rejected with 403.",
     "status": "validated",
     "layer": "wire",
-    "docRef": "13 §3",
+    "docRef": "14 §3",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -172,7 +205,7 @@
     "check": "GET /acct with a malformed id returns 400.",
     "status": "validated",
     "layer": "wire",
-    "docRef": "13 §3",
+    "docRef": "14 §3",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -183,7 +216,7 @@
     "check": "PUT /a with a too-small body returns 400.",
     "status": "validated",
     "layer": "wire",
-    "docRef": "13 §3",
+    "docRef": "14 §3",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -194,7 +227,7 @@
     "check": "PUT /a with a body over 4096 bytes returns 400.",
     "status": "validated",
     "layer": "wire",
-    "docRef": "13 §3",
+    "docRef": "14 §3",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -205,7 +238,7 @@
     "check": "PUT /acct over 1 MiB returns 413.",
     "status": "validated",
     "layer": "wire",
-    "docRef": "13 §3",
+    "docRef": "14 §3",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -216,7 +249,7 @@
     "check": "20 rapid knocks from one requester all return 200 with the fixed body (the cap never surfaces as a 429).",
     "status": "validated",
     "layer": "wire",
-    "docRef": "13 §6a",
+    "docRef": "14 §6a",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -227,7 +260,7 @@
     "check": "After a flood, a second requester's knock for the same id still records (sti_knock_rows rises).",
     "status": "validated",
     "layer": "wire",
-    "docRef": "13 §6a",
+    "docRef": "14 §6a",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -238,8 +271,41 @@
     "check": "With default limits, a single IP over budget gets 429 on GET /acct.",
     "status": "validated",
     "layer": "wire",
-    "docRef": "13 §4",
+    "docRef": "14 §4",
     "pin": "src/loadlab/loadlab.integration.test.ts"
+  },
+  {
+    "id": "owner-knock-review-count",
+    "category": "Knocks & grants",
+    "title": "An owner reads the count of knocks on their alias",
+    "intent": "The owner can see how many people knocked, to act on it.",
+    "check": "After two distinct requesters knock, GET /knock with the write token reports count >= 2.",
+    "status": "validated",
+    "layer": "wire",
+    "docRef": "13",
+    "pin": "src/loadlab/loadlab.integration.test.ts"
+  },
+  {
+    "id": "knock-review-token-gated",
+    "category": "Knocks & grants",
+    "title": "Knock review needs the write token and never leaks existence",
+    "intent": "Only the owner reads knocks, and a wrong token reveals nothing about whether the alias exists.",
+    "check": "GET /knock with a wrong token returns 403 for a real id and a nonexistent id alike; the owner token returns the count.",
+    "status": "validated",
+    "layer": "wire",
+    "docRef": "13",
+    "pin": "src/loadlab/loadlab.integration.test.ts"
+  },
+  {
+    "id": "grant-seals-to-one-knocker",
+    "category": "Knocks & grants",
+    "title": "An in-app grant seals the alias key to one knocker",
+    "intent": "Approving a knocker shares the key with that knocker only; no one else can open the grant.",
+    "check": "ECIES seals to the knocker public key and opens only with the matching private key; the plaintext never appears in the sealed blob.",
+    "status": "validated",
+    "layer": "crypto",
+    "docRef": "13",
+    "pin": "src/crypto/grant.test.ts"
   },
   {
     "id": "no-silent-faults",
@@ -249,7 +315,7 @@
     "check": "Under light load, sti_errors_total stays 0 across every subsystem and no overload fires.",
     "status": "validated",
     "layer": "telemetry",
-    "docRef": "13 §6d",
+    "docRef": "14 §6d",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -260,7 +326,7 @@
     "check": "Under forced saturation, GET /a stays 200/decoy and sti_sensitive_overload_total rises.",
     "status": "validated",
     "layer": "wire",
-    "docRef": "13 §6b",
+    "docRef": "14 §6b",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -271,7 +337,7 @@
     "check": "With MaxInflight shrunk, a concurrent flood makes non-sensitive endpoints return 503.",
     "status": "validated",
     "layer": "wire",
-    "docRef": "13 §6b",
+    "docRef": "14 §6b",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -282,7 +348,7 @@
     "check": "sti_inflight_current returns to 0, sti_goroutines returns near baseline, and the janitor heartbeat advances.",
     "status": "validated",
     "layer": "telemetry",
-    "docRef": "13 §6b",
+    "docRef": "14 §6b",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -293,7 +359,7 @@
     "check": "The stress CLI ramps concurrency and reports the shed onset (npm run loadlab -- --mode stress); a measured number, not a gate.",
     "status": "characterized",
     "layer": "telemetry",
-    "docRef": "13 §4",
+    "docRef": "14 §4",
     "pin": "src/loadlab/stress.ts"
   },
   {
@@ -304,7 +370,7 @@
     "check": "After seeding N owners, sti_alias_rows and sti_account_rows each equal N.",
     "status": "validated",
     "layer": "telemetry",
-    "docRef": "13 §6d",
+    "docRef": "14 §6d",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -330,6 +396,28 @@
     "pin": "../server/internal/server/notify_test.go"
   },
   {
+    "id": "push-registration-stored",
+    "category": "Targeted wake (deferred)",
+    "title": "Registering a push subscription is accepted",
+    "intent": "A device can register for contentless wakes; the endpoint stores the routing without error.",
+    "check": "POST /push/register with a well-formed subscription returns 204.",
+    "status": "validated",
+    "layer": "wire",
+    "docRef": "13",
+    "pin": "src/loadlab/loadlab.integration.test.ts"
+  },
+  {
+    "id": "web-push-contentless-wake",
+    "category": "Targeted wake (deferred)",
+    "title": "A delivered wake carries no content",
+    "intent": "Even once wakes are turned on, a push reveals nothing; it is a contentless nudge.",
+    "check": "The Web Push sender posts an encrypted record of an empty payload (no plaintext content), with a TTL.",
+    "status": "validated",
+    "layer": "wire",
+    "docRef": "13",
+    "pin": "../server/internal/server/webpush_test.go"
+  },
+  {
     "id": "teardown-clears-datastore",
     "category": "Lifecycle & data isolation",
     "title": "A run clears everything it created",
@@ -337,7 +425,7 @@
     "check": "After teardown the database file and the work dir no longer exist.",
     "status": "validated",
     "layer": "lifecycle",
-    "docRef": "13 §8",
+    "docRef": "14 §8",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -348,7 +436,7 @@
     "check": "A knock past KnockTTL is purged by the janitor.",
     "status": "validated",
     "layer": "wire",
-    "docRef": "13 §8",
+    "docRef": "14 §8",
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
@@ -359,7 +447,7 @@
     "check": "Open /a/{id}#k=, observe a live GET /a 200, and the resolution screen shows the published state.",
     "status": "validated",
     "layer": "browser",
-    "docRef": "13 §6a",
+    "docRef": "14 §6a",
     "pin": "e2e/resolution.pw.spec.ts"
   },
   {
@@ -370,7 +458,7 @@
     "check": "A decoy link shows the gray 'no status' card, structurally the same as a real-but-gray one.",
     "status": "validated",
     "layer": "browser",
-    "docRef": "13 §6a",
+    "docRef": "14 §6a",
     "pin": "e2e/resolution.pw.spec.ts"
   },
   {
@@ -381,7 +469,7 @@
     "check": "Every journey ends with zero console errors, page errors, and failed app requests.",
     "status": "validated",
     "layer": "browser",
-    "docRef": "13 §6a",
+    "docRef": "14 §6a",
     "pin": "e2e/resolution.pw.spec.ts"
   },
   {
@@ -392,7 +480,7 @@
     "check": "With the api blocked, resolution renders gray rather than crashing.",
     "status": "validated",
     "layer": "browser",
-    "docRef": "13 §6b",
+    "docRef": "14 §6b",
     "pin": "e2e/resolution.pw.spec.ts"
   }
 ]

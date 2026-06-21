@@ -23,6 +23,8 @@ import {
   bytesToBase64url,
   randomAliasId,
   randomWriteToken,
+  deriveAccountId,
+  deriveAccountKey,
 } from "../crypto/index.ts";
 import { startApi, type Harness } from "../test-support/serverHarness.ts";
 import { scrapeMetrics } from "./metrics.ts";
@@ -441,6 +443,50 @@ describe("load & usage lab: behavior gates against a real blind store", () => {
     expect(after.gauge("sti_janitor_last_run_seconds")).toBeGreaterThan(
       janitorBefore,
     ); // the background loop kept ticking under load
+  });
+
+  behaviorIt("account-deletion-removes-blob", async () => {
+    const master = crypto.getRandomValues(new Uint8Array(32));
+    const accountId = await deriveAccountId(master);
+    const key = await importAesKey(await deriveAccountKey(master));
+    await api.putAccount(accountId, await seal(key, utf8ToBytes("blob")));
+    expect(await api.getAccount(accountId)).not.toBeNull();
+    await api.deleteAccount(accountId);
+    expect(await api.getAccount(accountId)).toBeNull(); // gone after DELETE
+  });
+
+  behaviorIt("owner-knock-review-count", async () => {
+    const o = ownerAt(5);
+    await api.knock(o.aliasId, "review-a");
+    await api.knock(o.aliasId, "review-b");
+    const review = await api.knockReview(o.aliasId, o.writeToken);
+    expect(review.count).toBeGreaterThanOrEqual(2); // two distinct requesters
+  });
+
+  behaviorIt("knock-review-token-gated", async () => {
+    const o = ownerAt(6);
+    const real = await fetch(`${baseUrl}/knock/${o.aliasId}`, {
+      headers: { [HEADER_WRITE_TOKEN]: "wrong-token" },
+    });
+    const fake = await fetch(`${baseUrl}/knock/${randomAliasId()}`, {
+      headers: { [HEADER_WRITE_TOKEN]: "wrong-token" },
+    });
+    expect(real.status).toBe(403); // wrong token is rejected
+    expect(fake.status).toBe(403); // a nonexistent alias looks identical: no leak
+    const ok = await api.knockReview(o.aliasId, o.writeToken);
+    expect(typeof ok.count).toBe("number"); // the owner's token works
+  });
+
+  behaviorIt("push-registration-stored", async () => {
+    await expect(
+      api.registerPush({
+        routingEndpointId: randomAliasId(),
+        subscription: {
+          endpoint: "https://push.example/endpoint",
+          keys: { p256dh: "p256dh-key", auth: "auth-secret" },
+        },
+      }),
+    ).resolves.toBeUndefined(); // 204, stored without error
   });
 
   // MUST be last: it tears the instance down, so nothing can run after it.
