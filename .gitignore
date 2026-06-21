@@ -11,3 +11,6 @@ node_modules/
 
 # The assembled publish dir (deploy/build-site.sh): app + /promises + /design.
 dist/
+
+# Internal-only generated reports (deploy/build-behaviors.mjs): never published.
+reports/

@@ -39,6 +39,10 @@ export default tseslint.config(
       // Vendored verbatim copy of the prototype/design bundle, for reference
       // only; not our code to lint.
       "comps-reference/**",
+      // Playwright behavioral specs + config: outside src/ and tsconfig, checked
+      // by Playwright's own toolchain (npm run test:e2e), not this lint pass.
+      "e2e/**",
+      "playwright.config.ts",
     ],
   },
 

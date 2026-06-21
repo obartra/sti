@@ -6,3 +6,5 @@ storybook-static/
 .lostpixel/
 comps-reference/
 html/
+test-results/
+playwright-report/

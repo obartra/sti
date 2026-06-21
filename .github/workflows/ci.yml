@@ -69,6 +69,29 @@ jobs:
       - run: npm run test:integration
         working-directory: passport
 
+  e2e:
+    # The real app driven by a browser against a throwaway server: build + preview
+    # the frontend, boot the Go store, seed a real card, and run the public
+    # resolution journeys. Needs Node, Go, and a Playwright browser.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: "1.26.4"
+          cache-dependency-path: server/go.sum
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: passport/package-lock.json
+      - run: npm ci
+        working-directory: passport
+      - run: npx playwright install --with-deps chromium
+        working-directory: passport
+      - run: npm run test:e2e
+        working-directory: passport
+
   server:
     runs-on: ubuntu-latest
     defaults:

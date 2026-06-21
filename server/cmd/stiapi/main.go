@@ -85,6 +85,16 @@ func main() {
 	ipRate := envFloat("STI_IP_RATE_PER_SEC", 0)
 	ipBurst := envFloat("STI_IP_BURST", 0)
 
+	// Concurrency cap, sensitive-read fallback timeout, and knock retention.
+	// Lowering MaxInflight and SensitiveWait lets a test drive the shed and
+	// uniform-overload paths deterministically; a short KnockTTL lets a test
+	// exercise expiry. Non-positive values are clamped to 0 so withDefaults applies
+	// (256, 5s, 4 days), rather than reaching server.New, where a negative cap
+	// would panic make(chan) and a negative wait would fire the timer immediately.
+	maxInflight := max(envInt("STI_MAX_INFLIGHT", 0), 0)
+	sensitiveWait := max(envDuration("STI_SENSITIVE_WAIT", 0), 0)
+	knockTTL := max(envDuration("STI_KNOCK_TTL", 0), 0)
+
 	srv := server.New(st, server.Config{
 		DecoySecret:    secret,
 		AllowedOrigins: allowedOrigins,
@@ -92,6 +102,9 @@ func main() {
 		Sender:         sender,
 		IPRatePerSec:   ipRate,
 		IPBurst:        ipBurst,
+		MaxInflight:    maxInflight,
+		SensitiveWait:  sensitiveWait,
+		KnockTTL:       knockTTL,
 	}, log, nil)
 
 	// Host and process health gauges. All system facts, no subject data.
@@ -117,7 +130,14 @@ func main() {
 		}
 	}
 
-	go background(ctx, st, srv, metricsState, log)
+	// Janitor cadence. Default 1 minute; a short value lets a test observe knock
+	// expiry without waiting a full minute. A non-positive value would panic
+	// time.NewTicker, so fall back to the default.
+	janitorInterval := envDuration("STI_JANITOR_INTERVAL", time.Minute)
+	if janitorInterval <= 0 {
+		janitorInterval = time.Minute
+	}
+	go background(ctx, st, srv, metricsState, janitorInterval, log)
 
 	httpSrv := &http.Server{
 		Addr:              addr,
@@ -188,8 +208,8 @@ func saveMetrics(path string, srv *server.Server, log *slog.Logger) {
 // idle rate-limit buckets. The send drain delivers contentless Web Push wakes via
 // the server's Sender, gated off by default (Config.NotifyEnabled), so it is inert
 // until targeted-wake delivery is explicitly enabled.
-func background(ctx context.Context, st *store.Store, srv *server.Server, metricsState string, log *slog.Logger) {
-	ticker := time.NewTicker(time.Minute)
+func background(ctx context.Context, st *store.Store, srv *server.Server, metricsState string, interval time.Duration, log *slog.Logger) {
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
 		select {
@@ -226,6 +246,27 @@ func envFloat(key string, def float64) float64 {
 	if v := os.Getenv(key); v != "" {
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
 			return f
+		}
+	}
+	return def
+}
+
+// envInt reads an int env var, falling back to def when unset or unparseable.
+func envInt(key string, def int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
+	}
+	return def
+}
+
+// envDuration reads a Go duration env var (e.g. "200ms", "1s"), falling back to
+// def when unset or unparseable.
+func envDuration(key string, def time.Duration) time.Duration {
+	if v := os.Getenv(key); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			return d
 		}
 	}
 	return def
