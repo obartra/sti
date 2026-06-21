@@ -46,12 +46,13 @@ interface PublishedCard {
   readonly labels: ProtectionLabel[];
   readonly route: Route;
   readonly handle: string;
-  // The owner's avatar config (one per account). The card is sealed, so carrying
-  // it leaks nothing to the blind server; it just lets a viewer see the look the
-  // owner built instead of a handle-derived stand-in. A viewer holding two of an
-  // owner's links can correlate them by avatar, the same as they already could by
-  // handle, so this adds no correlation surface (doc 13 limits). Optional: a card
-  // with no avatar resolves to a handle-derived stand-in.
+  // The owner's avatar config (one per account today). The card is sealed, so
+  // carrying it leaks nothing to the blind server; it just lets a viewer see the
+  // look the owner built instead of a handle-derived stand-in. Being one value per
+  // account, the avatar (like the account-wide handle) lets a viewer holding two of
+  // an owner's links correlate them: a real cross-alias correlation surface, interim
+  // until per-alias identity (doc 15) makes the face unlinkable by default. Optional:
+  // a card with no avatar resolves to a handle-derived stand-in.
   readonly avatar?: AvatarConfig;
 }
 
