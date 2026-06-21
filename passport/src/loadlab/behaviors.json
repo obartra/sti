@@ -319,6 +319,17 @@
     "pin": "src/crypto/grant.test.ts"
   },
   {
+    "id": "grant-redeem-in-app",
+    "category": "Knocks & grants",
+    "title": "An approved knocker redeems the grant in-app",
+    "intent": "Approving a knock seals the alias key to that requester, who redeems it and resolves the card without any link.",
+    "check": "approveKnocks seals the key; redeemGrant returns it to the requester, who then decrypts the owner current card.",
+    "status": "validated",
+    "layer": "crypto",
+    "docRef": "13",
+    "pin": "src/store/session.integration.test.ts"
+  },
+  {
     "id": "no-silent-faults",
     "category": "Degradation & capacity",
     "title": "No fault hides behind a uniform reply",
@@ -397,7 +408,7 @@
   },
   {
     "id": "notify-inert-while-gated",
-    "category": "Targeted wake (deferred)",
+    "category": "Notifications & wakes",
     "title": "Targeted wake stays inert while gated off",
     "intent": "Until the cover-wake decorrelation fix lands, notify must enqueue nothing and leak nothing.",
     "check": "POST /notify returns 202 for any token and the send queue stays empty while NotifyEnabled is off.",
@@ -408,7 +419,7 @@
   },
   {
     "id": "push-registration-stored",
-    "category": "Targeted wake (deferred)",
+    "category": "Notifications & wakes",
     "title": "Registering a push subscription is accepted",
     "intent": "A device can register for contentless wakes; the endpoint stores the routing without error.",
     "check": "POST /push/register with a well-formed subscription returns 204.",
@@ -419,7 +430,7 @@
   },
   {
     "id": "web-push-contentless-wake",
-    "category": "Targeted wake (deferred)",
+    "category": "Notifications & wakes",
     "title": "A delivered wake carries no content",
     "intent": "Even once wakes are turned on, a push reveals nothing; it is a contentless nudge.",
     "check": "The Web Push sender posts an encrypted record of an empty payload (no plaintext content), with a TTL.",
@@ -427,6 +438,39 @@
     "layer": "wire",
     "docRef": "13",
     "pin": "../server/internal/server/webpush_test.go"
+  },
+  {
+    "id": "inbox-read-uniform",
+    "category": "Notifications & wakes",
+    "title": "The notify inbox reads existence-uniformly and round-trips",
+    "intent": "An inbox is a blind, alias-shaped mailbox: a miss is a decoy, and a written ping round-trips for the holder.",
+    "check": "GET /inbox returns 4096 bytes for a real and an unwritten id alike; a written ping decrypts back.",
+    "status": "validated",
+    "layer": "wire",
+    "docRef": "13",
+    "pin": "src/loadlab/loadlab.integration.test.ts"
+  },
+  {
+    "id": "inbox-write-token-enforced",
+    "category": "Notifications & wakes",
+    "title": "Only the inbox write-token holder can write it",
+    "intent": "A contact given the inbox capability can notify; no one else can overwrite it.",
+    "check": "PUT /inbox with the wrong write token is rejected with 403.",
+    "status": "validated",
+    "layer": "wire",
+    "docRef": "13",
+    "pin": "src/loadlab/loadlab.integration.test.ts"
+  },
+  {
+    "id": "cover-wake-decorrelation",
+    "category": "Notifications & wakes",
+    "title": "A real wake hides inside a population-wide cover broadcast",
+    "intent": "Once wakes are on, a real send is decorrelated by broadcasting cover wakes to the whole population, so timing never fingers the recipient.",
+    "check": "Cover-wake broadcasts to the whole population, never double-wakes the recipient, collapses many real jobs into one broadcast, and stays inert while gated off.",
+    "status": "validated",
+    "layer": "wire",
+    "docRef": "13",
+    "pin": "../server/internal/server/notify_test.go"
   },
   {
     "id": "teardown-clears-datastore",

@@ -1,6 +1,6 @@
 // @vitest-environment node
 //
-// The load & usage lab (doc 13). It stands up a throwaway blind store with the
+// The load & usage lab (doc 14). It stands up a throwaway blind store with the
 // metrics endpoint on, seeds a synthetic owner population through the real client
 // + crypto, drives a realistic mix, and asserts the product behaviors a single
 // request test cannot reach. Each assertion is tagged with a behavior id from the
@@ -487,6 +487,38 @@ describe("load & usage lab: behavior gates against a real blind store", () => {
         },
       }),
     ).resolves.toBeUndefined(); // 204, stored without error
+  });
+
+  behaviorIt("inbox-read-uniform", async () => {
+    const id = randomAliasId();
+    const token = randomWriteToken();
+    const key = await importAesKey(crypto.getRandomValues(new Uint8Array(32)));
+    await api.putInbox(
+      id,
+      await sealToSize(key, utf8ToBytes("ping"), ALIAS_PAYLOAD_SIZE),
+      token,
+    );
+    const real = await api.getInbox(id);
+    expect(real.length).toBe(ALIAS_PAYLOAD_SIZE);
+    expect(bytesToUtf8(await openSized(key, real))).toBe("ping"); // round-trips
+    const decoy = await api.getInbox(randomAliasId()); // never written
+    expect(decoy.length).toBe(ALIAS_PAYLOAD_SIZE); // existence-uniform: a decoy
+  });
+
+  behaviorIt("inbox-write-token-enforced", async () => {
+    const id = randomAliasId();
+    const key = await importAesKey(crypto.getRandomValues(new Uint8Array(32)));
+    const payload = await sealToSize(
+      key,
+      utf8ToBytes("v0"),
+      ALIAS_PAYLOAD_SIZE,
+    );
+    await api.putInbox(id, payload, randomWriteToken()); // first write claims it
+    const err = await api
+      .putInbox(id, payload, randomWriteToken())
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    if (err instanceof ApiError) expect(err.kind).toBe("forbidden");
   });
 
   // MUST be last: it tears the instance down, so nothing can run after it.
