@@ -98,11 +98,6 @@ export const COPY = {
     "Having a herpes outbreak right now? Pausing your status for a bit is a considerate choice while it passes. It just shows gray, like any other reason, never why.",
   save: "Save results",
   cancel: "Cancel",
-  promptTitle: "Your recent partners will get an anonymous heads-up",
-  promptBody:
-    "That’s built into sti.care. We matched the linkups you logged in Connect. Review the list and add anyone we missed.",
-  promptYes: "Review who gets notified",
-  promptNo: "I’ll do this in a moment",
 } as const;
 
 // Cross-object copy the prototype pulls from the `learn` object (verbatim).

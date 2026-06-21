@@ -97,7 +97,6 @@ export const coreRenderers: ScreenRenderers = {
     <Care
       badge={owner.badge}
       onLearn={() => nav.go("learn")}
-      onPartners={() => nav.go("partners")}
       onFindClinic={() => openResource(RESOURCES.clinic)}
       onLearnOfficial={() => openResource(RESOURCES.clinic)}
       onFindCondoms={() => openResource(RESOURCES.condoms)}

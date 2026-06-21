@@ -76,8 +76,6 @@ export const SECTION: Record<string, string> = {
   learn: "care",
   "learn-detail": "care",
   "learn-uu": "care",
-  partners: "care",
-  "partners-sent": "care",
 };
 
 const TABS: readonly DesktopTab[] = [
