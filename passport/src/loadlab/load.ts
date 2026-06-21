@@ -1,7 +1,7 @@
 /**
  * Drive a weighted mix of wire operations to put the box under realistic load
  * while the assertions run. It does not assert; it just generates traffic across
- * a small worker pool, in the read-skewed shape from doc 13 §4 (mostly GET /a,
+ * a small worker pool, in the read-skewed shape from doc 14 §4 (mostly GET /a,
  * some decoy reads, some knocks, a few account reads). Failures are swallowed on
  * purpose: silent server faults are caught via the metrics endpoint, not here.
  */

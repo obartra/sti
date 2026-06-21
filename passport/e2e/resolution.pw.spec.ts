@@ -1,4 +1,4 @@
-// The behavioral plane (doc 13 §2 / §6). It boots a throwaway blind store, seeds
+// The behavioral plane (doc 14 §2 / §6). It boots a throwaway blind store, seeds
 // a real public passport card through the production crypto, builds and previews
 // the real app pointed at that server, and drives a browser through the public
 // resolution journeys, asserting the rendered state and a clean console. Each

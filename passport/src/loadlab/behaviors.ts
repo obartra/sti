@@ -76,7 +76,7 @@ export const CATEGORY_ORDER: readonly string[] = [
   "Knocks & grants",
   "Degradation & capacity",
   "Observability integrity",
-  "Targeted wake (deferred)",
+  "Notifications & wakes",
   "Lifecycle & data isolation",
   "Client behavior",
 ];
