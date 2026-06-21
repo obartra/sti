@@ -1,10 +1,7 @@
 import { COPY, usePrivacyState } from "./Privacy.parts.tsx";
 import type { OwnerState } from "../../core/badge.ts";
-import {
-  AliasIntroCard,
-  AliasList,
-  AliasFooterNotes,
-} from "./Privacy.aliases.tsx";
+import type { AliasRecord, ContactRecord } from "../../store/index.ts";
+import { LiveLinks } from "./Privacy.aliases.tsx";
 import {
   AttributesCard,
   ControlsCard,
@@ -14,13 +11,23 @@ import {
 export interface PrivacyProps {
   ownerState: OwnerState;
   setOwnerState: (update: (prev: OwnerState) => OwnerState) => void;
+  aliases?: AliasRecord[];
+  contacts?: ContactRecord[];
+  onRevokeAlias?: ((id: string) => void) | undefined;
+  onRevokeContact?: ((id: string) => void) | undefined;
   onViewAs?: (() => void) | undefined;
   onDeleted?: (() => void) | undefined;
 }
 
+const noop = (): void => undefined;
+
 export function Privacy({
   ownerState,
   setOwnerState,
+  aliases = [],
+  contacts = [],
+  onRevokeAlias = noop,
+  onRevokeContact = noop,
   onViewAs,
   onDeleted,
 }: PrivacyProps) {
@@ -47,10 +54,15 @@ export function Privacy({
           {COPY.title}
         </h1>
 
-        {/* Alias management: list / create / name / public-or-private / revoke. */}
-        <AliasIntroCard onViewAs={onViewAs} />
-        <AliasList state={state} />
-        <AliasFooterNotes state={state} />
+        {/* One unified list of every live link (public/casual aliases + contact
+            links), each individually revocable. */}
+        <LiveLinks
+          aliases={aliases}
+          contacts={contacts}
+          onRevokeAlias={onRevokeAlias}
+          onRevokeContact={onRevokeContact}
+          onViewAs={onViewAs}
+        />
 
         <AttributesCard state={state} />
         <ControlsCard state={state} />

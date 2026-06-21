@@ -146,6 +146,11 @@ export interface SessionController {
     contactId: string,
   ): Promise<OwnerSession>;
   /**
+   * Revoke one published alias (a public/casual link) by id: its URL stops
+   * resolving and the record is dropped. A no-op if unknown. Returns the session.
+   */
+  revokeAlias(session: OwnerSession, aliasId: string): Promise<OwnerSession>;
+  /**
    * Accept a contact invite (doc 13 path A): mint and publish my own alias for the
    * inviter, record a complete two-way contact, and return a RETURN invite to send
    * back so the inviter can complete their side.
@@ -368,6 +373,22 @@ async function revokeContactLink(
   return { master: session.master, blob };
 }
 
+// Revoke one published alias (a public/casual link) by id: kill the payload first,
+// then drop the record. Same fail-safe order as a contact link. A no-op for an
+// unknown id.
+async function revokeAliasLink(
+  api: ApiClient,
+  accounts: AccountManager,
+  session: OwnerSession,
+  aliasId: string,
+): Promise<OwnerSession> {
+  const alias = session.blob.aliases.find((a) => a.id === aliasId);
+  if (alias === undefined) return session;
+  await revokeAlias(api, alias);
+  const blob = await accounts.removeAlias(session.master, aliasId);
+  return { master: session.master, blob };
+}
+
 export function createSessionController(deps: SessionDeps): SessionController {
   const { accounts, sync, devices, passkey, api } = deps;
 
@@ -510,6 +531,10 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
     revokeContact(session, contactId) {
       return revokeContactLink(api, accounts, session, contactId);
+    },
+
+    revokeAlias(session, aliasId) {
+      return revokeAliasLink(api, accounts, session, aliasId);
     },
 
     acceptContactInvite(session, invite, label) {

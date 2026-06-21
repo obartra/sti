@@ -109,10 +109,23 @@ export const coreRenderers: ScreenRenderers = {
       onView={refreshKnocks}
     />
   ),
-  privacy: ({ nav, ownerState, setOwnerState, onDeleteAccount }) => (
+  privacy: ({
+    nav,
+    ownerState,
+    setOwnerState,
+    onDeleteAccount,
+    aliases,
+    contacts,
+    onRevokeAlias,
+    onRevokeContact,
+  }) => (
     <Privacy
       ownerState={ownerState}
       setOwnerState={setOwnerState}
+      aliases={aliases}
+      contacts={contacts}
+      onRevokeAlias={onRevokeAlias}
+      onRevokeContact={onRevokeContact}
       onViewAs={() => nav.go("a2-public", { self: true })}
       onDeleted={() => {
         // Really delete (revoke links + remove the blob, logs out), then reset
