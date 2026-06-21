@@ -269,6 +269,8 @@ limits below: the server can tell that a knock was answered, just not by or for 
   pre-grant requester does not share with the owner; accepted as a residual, not chased.
 - Avatar viewer-correlation: the published card carries the owner's avatar (sealed, so invisible to
   the server). It is one value per account today, so a VIEWER holding two of an owner's links can
-  correlate them by avatar. This is no worse than before, which derived the avatar from the handle
-  (also constant per owner); the owner can still mint distinct aliases, and a future per-alias avatar
-  would close it. Accepted.
+  correlate them by avatar. The account-wide handle correlates the same way; both the handle and the
+  avatar are a real cross-alias correlation surface, not a residual to accept (the handle doing it too
+  is the same bug, not a justification for the avatar). Tracked for removal by per-alias identity in
+  [doc 15](15-per-alias-identity.md): id-derived unlinkable faces by default, the main identity an
+  explicit opt-in.
