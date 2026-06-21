@@ -3,6 +3,7 @@ import { serializeAccountBlob, parseAccountBlob } from "./accountBlob.ts";
 import { utf8ToBytes } from "../crypto/index.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
+import { mintNotify } from "./notifyInbox.ts";
 import type { AccountBlob } from "./accountBlob.ts";
 
 const ID = "A".repeat(43);
@@ -33,6 +34,35 @@ const blob: AccountBlob = {
 describe("account blob codec", () => {
   it("round-trips", () => {
     expect(parseAccountBlob(serializeAccountBlob(blob))).toEqual(blob);
+  });
+
+  it("round-trips the v6 notify capabilities (myNotify + a contact's theirNotify)", () => {
+    const withNotify: AccountBlob = {
+      handle: "robin",
+      aliases: [],
+      contacts: [
+        {
+          id: "D".repeat(43),
+          label: "Sam",
+          createdDay: 19_000,
+          expiresDay: null,
+          alias: {
+            id: "E".repeat(43),
+            writeToken: "F".repeat(43),
+            key: "G".repeat(43),
+            isPublic: false,
+          },
+          theirNotify: mintNotify(),
+        },
+      ],
+      state: INITIAL_OWNER_STATE,
+      avatar: DEFAULT_AVATAR,
+      sharingMode: "link",
+      myNotify: mintNotify(),
+    };
+    expect(parseAccountBlob(serializeAccountBlob(withNotify))).toEqual(
+      withNotify,
+    );
   });
 
   it("round-trips an empty alias list", () => {
@@ -84,8 +114,9 @@ describe("account blob codec", () => {
 
   const S = INITIAL_OWNER_STATE;
   const A = DEFAULT_AVATAR;
+  const N = mintNotify();
   const base = {
-    v: 5,
+    v: 6,
     handle: "x",
     aliases: [],
     contacts: [],
@@ -94,12 +125,14 @@ describe("account blob codec", () => {
   };
   reject("a non-object", 7);
   reject("an unknown version", { ...base, v: 9 });
-  reject("a prior version (v4 is no longer accepted)", {
-    v: 4,
+  reject("a prior version (v5 is no longer accepted)", {
+    v: 5,
     handle: "x",
     aliases: [],
+    contacts: [],
     state: S,
     avatar: A,
+    sharingMode: "link",
   });
   reject("a non-array contacts", {
     ...base,
@@ -132,7 +165,7 @@ describe("account blob codec", () => {
     sharingMode: "link",
   });
   reject("a missing state", {
-    v: 5,
+    v: 6,
     handle: "x",
     aliases: [],
     contacts: [],
@@ -144,7 +177,7 @@ describe("account blob codec", () => {
     sharingMode: "link",
   });
   reject("a missing avatar", {
-    v: 5,
+    v: 6,
     handle: "x",
     aliases: [],
     contacts: [],
@@ -163,4 +196,23 @@ describe("account blob codec", () => {
   });
   reject("a missing sharingMode", base);
   reject("an invalid sharingMode", { ...base, sharingMode: "secret" });
+  reject("a malformed myNotify (missing routingToken)", {
+    ...base,
+    sharingMode: "link",
+    myNotify: { inboxId: ID, writeToken: ID, key: ID },
+  });
+  reject("a contact theirNotify with a short token", {
+    ...base,
+    sharingMode: "link",
+    contacts: [
+      {
+        id: ID,
+        label: "x",
+        createdDay: 1,
+        expiresDay: null,
+        alias: { id: ID, writeToken: ID, key: ID, isPublic: false },
+        theirNotify: { ...N, routingToken: "short" },
+      },
+    ],
+  });
 });

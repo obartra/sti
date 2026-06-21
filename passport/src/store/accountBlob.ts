@@ -18,15 +18,19 @@ import { validId } from "../api/contract.ts";
 import { isOwnerState, type OwnerState } from "../core/badge.ts";
 import { isAvatarConfig, type AvatarConfig } from "../lib/avatars.ts";
 import { decodeVersioned, isValidHandle } from "./codec.ts";
+import type { NotifyCapability } from "./notifyInbox.ts";
 
-// v5 adds the per-contact links (`contacts`): a private, individually-revocable
-// link per person the owner has shared with (doc 13). v4 was the absolute-day
+// v6 adds the pairwise notify capabilities (doc 13 slice 5): the account's own
+// `myNotify` (minted at signup; how contacts wake/notify the owner) and an optional
+// `theirNotify` per contact (the contact's capability, received at link exchange).
+// Both are optional so existing construction sites and a pre-exchange contact stay
+// valid. v5 added the per-contact links (`contacts`); v4 was the absolute-day
 // testing input. There are no real older accounts in the wild, so the current
 // version is parsed exclusively: an older or otherwise malformed blob fails the
 // strict version check and parseAccountBlob THROWS (recovery surfaces an error
 // rather than silently restoring it). Only a genuine account miss (404) maps to
 // null/"no account".
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -55,6 +59,11 @@ export interface ContactRecord {
   readonly expiresDay: number | null;
   /** The private alias this contact resolves; always isPublic=false. */
   readonly alias: AliasRecord;
+  /**
+   * The contact's notify capability, received when the link exchange completed.
+   * Present only once exchanged; absent means this contact cannot yet be notified.
+   */
+  readonly theirNotify?: NotifyCapability;
 }
 
 /** The account-level sharing default: a public profile, or link-only (private). */
@@ -75,9 +84,15 @@ export interface AccountBlob {
   readonly avatar: AvatarConfig;
   /** The account-level sharing default chosen at onboarding. */
   readonly sharingMode: SharingMode;
+  /**
+   * The owner's own notify capability: their inbox (where contacts write pings) and
+   * routing token (how a wake reaches them). Minted once at signup and stable.
+   * Optional so pre-v6 construction sites stay valid; minted lazily where needed.
+   */
+  readonly myNotify?: NotifyCapability;
 }
 
-interface AccountBlobV5 extends AccountBlob {
+interface AccountBlobV6 extends AccountBlob {
   readonly v: typeof SCHEMA_VERSION;
 }
 
@@ -99,6 +114,28 @@ function isDayOrNull(x: unknown): boolean {
   return x === null || (typeof x === "number" && Number.isInteger(x) && x >= 0);
 }
 
+// A notify capability is four base64url tokens (inbox id, write token, key, and
+// routing token), each id-shaped. Used for both myNotify and a contact's theirNotify.
+function isNotifyCapability(x: unknown): x is NotifyCapability {
+  if (typeof x !== "object" || x === null) return false;
+  const r = x as Record<string, unknown>;
+  return (
+    typeof r.inboxId === "string" &&
+    validId(r.inboxId) &&
+    typeof r.writeToken === "string" &&
+    validId(r.writeToken) &&
+    typeof r.key === "string" &&
+    validId(r.key) &&
+    typeof r.routingToken === "string" &&
+    validId(r.routingToken)
+  );
+}
+
+// A notify capability is optional on a contact (absent until the link exchange).
+function isOptionalNotify(x: unknown): boolean {
+  return x === undefined || isNotifyCapability(x);
+}
+
 function isContactRecord(x: unknown): x is ContactRecord {
   if (typeof x !== "object" || x === null) return false;
   const r = x as Record<string, unknown>;
@@ -111,12 +148,15 @@ function isContactRecord(x: unknown): x is ContactRecord {
     Number.isInteger(r.createdDay) &&
     r.createdDay >= 0 &&
     isDayOrNull(r.expiresDay) &&
-    isAliasRecord(r.alias)
+    isAliasRecord(r.alias) &&
+    isOptionalNotify(r.theirNotify)
   );
 }
 
 export function serializeAccountBlob(blob: AccountBlob): Bytes {
-  const wire: AccountBlobV5 = {
+  // theirNotify rides inside each contact and myNotify is omitted when absent, so a
+  // pre-exchange account stays byte-identical to its v5 shape plus the version bump.
+  const wire: AccountBlobV6 = {
     v: SCHEMA_VERSION,
     handle: blob.handle,
     aliases: blob.aliases,
@@ -124,13 +164,14 @@ export function serializeAccountBlob(blob: AccountBlob): Bytes {
     state: blob.state,
     avatar: blob.avatar,
     sharingMode: blob.sharingMode,
+    ...(blob.myNotify !== undefined ? { myNotify: blob.myNotify } : {}),
   };
   return utf8ToBytes(JSON.stringify(wire));
 }
 
-/** Parse decrypted bytes into an AccountBlob, validating strictly (throws). */
-export function parseAccountBlob(bytes: Bytes): AccountBlob {
-  const o = decodeVersioned(bytes, SCHEMA_VERSION);
+// Validate every field strictly, throwing on the first problem. Kept separate so
+// parseAccountBlob stays a thin decode-validate-return.
+function assertValidBlob(o: Record<string, unknown>): void {
   if (!isValidHandle(o.handle)) {
     throw new Error("account blob: invalid handle");
   }
@@ -149,12 +190,22 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
   if (!isSharingMode(o.sharingMode)) {
     throw new Error("account blob: invalid sharingMode");
   }
+  if (!isOptionalNotify(o.myNotify)) {
+    throw new Error("account blob: invalid myNotify");
+  }
+}
+
+/** Parse decrypted bytes into an AccountBlob, validating strictly (throws). */
+export function parseAccountBlob(bytes: Bytes): AccountBlob {
+  const o = decodeVersioned(bytes, SCHEMA_VERSION);
+  assertValidBlob(o);
   return {
-    handle: o.handle,
-    aliases: o.aliases,
-    contacts: o.contacts,
-    state: o.state,
-    avatar: o.avatar,
-    sharingMode: o.sharingMode,
+    handle: o.handle as string,
+    aliases: o.aliases as AccountBlob["aliases"],
+    contacts: o.contacts as AccountBlob["contacts"],
+    state: o.state as AccountBlob["state"],
+    avatar: o.avatar as AccountBlob["avatar"],
+    sharingMode: o.sharingMode as AccountBlob["sharingMode"],
+    ...(isNotifyCapability(o.myNotify) ? { myNotify: o.myNotify } : {}),
   };
 }

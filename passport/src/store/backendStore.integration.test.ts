@@ -15,9 +15,17 @@ import {
   requesterHash,
   deriveGrantSlotId,
   mintInbox,
+  mintNotify,
   writePing,
   pollInbox,
+  composeNotifyDraft,
+  lockNotifyDraft,
+  parsePartnerPing,
+  type AccountBlob,
+  type ContactRecord,
 } from "./index.ts";
+import { INITIAL_OWNER_STATE } from "../core/badge.ts";
+import { DEFAULT_AVATAR } from "../lib/avatars.ts";
 import { utf8ToBytes, bytesToUtf8 } from "../crypto/index.ts";
 import type { StorageLike } from "../auth/deviceStore.ts";
 import {
@@ -238,6 +246,62 @@ describe("public resolution against a live blind store", () => {
 
     // The viewer's store now redeems the grant into the real card.
     expect(await viewer.redeemGrant(aliasId)).toEqual(view);
+  });
+
+  it("locks a partner-notify batch: a ping lands in the contact's inbox and decodes", async () => {
+    // A contact the owner has exchanged notify capabilities with.
+    const theirNotify = mintNotify();
+    const nowDay = 19_000;
+    const contact: ContactRecord = {
+      id: randomAliasId(),
+      label: "sam",
+      createdDay: nowDay,
+      expiresDay: null,
+      alias: {
+        id: randomAliasId(),
+        writeToken: randomWriteToken(),
+        key: bytesToBase64url(crypto.getRandomValues(new Uint8Array(32))),
+        isPublic: false,
+      },
+      theirNotify,
+    };
+    const blob: AccountBlob = {
+      handle: "robin",
+      aliases: [],
+      contacts: [contact],
+      state: INITIAL_OWNER_STATE,
+      avatar: DEFAULT_AVATAR,
+      sharingMode: "link",
+      myNotify: mintNotify(),
+    };
+
+    // Before locking, the contact's inbox is an existence-uniform decoy: no ping.
+    expect(await pollInbox(api, theirNotify)).toBeNull();
+
+    // The default draft seeds the in-window notifiable contact.
+    const draft = composeNotifyDraft(blob, nowDay);
+    expect(draft.entries.map((e) => e.contactId)).toEqual([contact.id]);
+
+    const result = await lockNotifyDraft(
+      api,
+      blob,
+      draft.entries.map((e) => e.contactId),
+    );
+    expect(result.sent).toEqual([contact.id]);
+    expect(result.failed).toEqual([]);
+
+    // The recipient polls its inbox and decodes a contentless partner-notify ping.
+    const got = await pollInbox(api, theirNotify);
+    if (got === null) throw new Error("expected the partner-notify ping");
+    expect(parsePartnerPing(got)?.kind).toBe("partner-notify");
+
+    // Another contact's key cannot read this ping: same inbox id, wrong key decrypts
+    // to null (GCM auth fails closed), so one contact never reads another's.
+    const wrongKey = { inboxId: theirNotify.inboxId, key: mintNotify().key };
+    expect(await pollInbox(api, wrongKey)).toBeNull();
+
+    // A never-written inbox still polls null: the write was existence-uniform.
+    expect(await pollInbox(api, mintNotify())).toBeNull();
   });
 
   it("the notify inbox round-trips a ping and a never-written inbox polls null", async () => {

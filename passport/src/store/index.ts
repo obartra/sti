@@ -44,10 +44,23 @@ export { deriveOwnerCard, republishOwnerCard } from "./ownerCard.ts";
 export { knock, requesterHash } from "./knock.ts";
 export {
   mintInbox,
+  mintNotify,
   writePing,
   pollInbox,
   type InboxCapability,
+  type NotifyCapability,
 } from "./notifyInbox.ts";
+export {
+  composeNotifyDraft,
+  lockNotifyDraft,
+  encodePartnerPing,
+  parsePartnerPing,
+  NOTIFY_DEFAULT_LOOKBACK_DAYS,
+  type NotifyDraft,
+  type NotifyDraftEntry,
+  type NotifyLockResult,
+  type PartnerPing,
+} from "./partnerNotify.ts";
 export { deriveGrantSlotId, grantAccess, redeemGrant } from "./grant.ts";
 export type {
   OwnerSession,

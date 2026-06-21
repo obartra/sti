@@ -39,10 +39,19 @@ describe("account lifecycle against a live blind store", () => {
   it("creates an account and recovers it from the phrase", async () => {
     const created = await accounts.create("robin");
     expect(created.recoveryPhrase).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(created.blob).toEqual({ handle: "robin", ...FRESH });
+    // A fresh account mints a stable myNotify identity (doc 13 slice 5); the rest
+    // of the blob is the fresh default.
+    const { myNotify, ...rest } = created.blob;
+    expect(rest).toEqual({ handle: "robin", ...FRESH });
+    const cap = /^[A-Za-z0-9_-]{43}$/;
+    expect(myNotify?.inboxId).toMatch(cap);
+    expect(myNotify?.writeToken).toMatch(cap);
+    expect(myNotify?.key).toMatch(cap);
+    expect(myNotify?.routingToken).toMatch(cap);
 
+    // Recovery sees the same blob, myNotify included (it persists, not re-minted).
     const recovered = await accounts.recover(created.recoveryPhrase);
-    expect(recovered?.blob).toEqual({ handle: "robin", ...FRESH });
+    expect(recovered?.blob).toEqual(created.blob);
   });
 
   it("persists a profile change (avatar + sharing) across recovery", async () => {
