@@ -192,9 +192,10 @@ Builds on what shipped (the quiet indicator + contentless inbox entry) by adding
 grant slot from decision (1). Flow: viewer knocks (carrying an ephemeral pubkey, private key kept
 locally) -> owner sees the request and taps **Approve** -> owner seals the alias key to the
 requester's pubkey and writes it to the requester's grant slot -> requester polls the slot,
-decrypts, and the status silently resolves. The server only ever moves opaque sealed bytes; it
-never learns the pairing, the approval, or the key. Declining is doing nothing (no slot written),
-indistinguishable from not-yet-reviewed; there is never a denied signal.
+decrypts, and the status silently resolves. The server moves only opaque sealed bytes: it never
+learns an identity, the alias key, or the card. Declining is doing nothing (no slot written),
+indistinguishable from not-yet-reviewed; there is never a denied signal. (Metadata caveat in the
+limits below: the server can tell that a knock was answered, just not by or for whom.)
 
 ## What is gated, and on what
 
@@ -234,3 +235,8 @@ indistinguishable from not-yet-reviewed; there is never a denied signal.
   only ever generates ignorable knocks, never status. Accepted.
 - A full-broadcast cover-wake scales with the push population; fine at current (zero) scale, and a
   sampled cover set is the documented later refinement.
+- Grant-slot linkability: a knock is `POST /knock/{aliasId}` carrying the requesterHash, so the
+  server holds `(aliasId, requesterHash)` and can recompute the grant slot id and notice the owner's
+  PUT to it. It therefore learns "this knock was answered", but nothing more (both values are opaque
+  tokens, the key is ECIES-sealed, the card encrypted). Removing even this would need a secret the
+  pre-grant requester does not share with the owner; accepted as a residual, not chased.

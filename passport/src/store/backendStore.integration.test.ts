@@ -6,13 +6,21 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createApiClient } from "../api/client.ts";
 import { ALIAS_PAYLOAD_SIZE } from "../api/contract.ts";
-import { createBackendStore, serializePublicCard } from "./index.ts";
+import {
+  createBackendStore,
+  serializePublicCard,
+  grantAccess,
+  redeemGrant,
+  requesterHash,
+  deriveGrantSlotId,
+} from "./index.ts";
 import {
   importAesKey,
   sealToSize,
   bytesToBase64url,
   randomAliasId,
   randomWriteToken,
+  generateGrantKeyPair,
 } from "../crypto/index.ts";
 import type { AliasLink } from "./passportStore.ts";
 import type { ResolvedView } from "../ui/public/PublicResolution.tsx";
@@ -110,5 +118,70 @@ describe("public resolution against a live blind store", () => {
     expect(byHash.get("req-with-key")).toBe(pubKey);
     // A contentless knock carries no key; it surfaces as undefined, not "".
     expect(byHash.get("req-no-key")).toBeUndefined();
+  });
+
+  it("owner Approve grants a knocking requester access to a private alias", async () => {
+    // The owner owns a private alias and keeps its record (id + write token + key).
+    const view: ResolvedView = {
+      state: "blue",
+      labels: ["hiv"],
+      route: "hiv",
+      identity: { handle: "jules" },
+    };
+    const raw = crypto.getRandomValues(new Uint8Array(32));
+    const key = await importAesKey(raw);
+    const aliasId = randomAliasId();
+    const writeToken = randomWriteToken();
+    const payload = await sealToSize(
+      key,
+      serializePublicCard(view),
+      ALIAS_PAYLOAD_SIZE,
+    );
+    await api.putAlias(aliasId, payload, writeToken);
+    const aliasRecord = {
+      id: aliasId,
+      writeToken,
+      key: bytesToBase64url(raw),
+      isPublic: false,
+    };
+
+    // A requester device: a per-device secret + a knock-time keypair it keeps.
+    const requesterSecret = bytesToBase64url(
+      crypto.getRandomValues(new Uint8Array(32)),
+    );
+    const grantKeys = await generateGrantKeyPair();
+    const hash = await requesterHash(requesterSecret, aliasId);
+    await api.knock(aliasId, hash, grantKeys.publicKey);
+
+    // The grant slot is existence-uniform: a fixed 4096-byte body whether it
+    // holds a real grant or is still just a decoy.
+    const slotId = await deriveGrantSlotId(aliasId, hash);
+    expect((await api.getAlias(slotId)).length).toBe(ALIAS_PAYLOAD_SIZE);
+
+    // Before approval the grant slot is a decoy, so redeem is null (pending).
+    expect(
+      await redeemGrant(api, aliasId, requesterSecret, grantKeys.privateKey),
+    ).toBeNull();
+
+    // The owner reads the pending knock and approves it.
+    const review = await api.knockReview(aliasId, writeToken);
+    const pending = review.pending.find((p) => p.requesterHash === hash);
+    expect(pending?.pubKey).toBe(grantKeys.publicKey);
+    if (!pending) throw new Error("expected the pending knock to be present");
+    await grantAccess(api, aliasRecord, pending);
+    // Still exactly 4096 bytes once granted (no length tell vs the decoy).
+    expect((await api.getAlias(slotId)).length).toBe(ALIAS_PAYLOAD_SIZE);
+
+    // The requester redeems the alias key and resolves the real card with it.
+    const redeemedKey = await redeemGrant(
+      api,
+      aliasId,
+      requesterSecret,
+      grantKeys.privateKey,
+    );
+    if (redeemedKey === null) throw new Error("expected a granted key");
+    expect(await store.resolveAlias({ id: aliasId, key: redeemedKey })).toEqual(
+      view,
+    );
   });
 });

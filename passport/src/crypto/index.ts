@@ -37,5 +37,7 @@ export {
   generateGrantKeyPair,
   sealToPublicKey,
   openFromPrivateKey,
+  sealToPublicKeySized,
+  openFromPrivateKeySized,
   type GrantKeyPair,
 } from "./grant.ts";
