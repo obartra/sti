@@ -245,7 +245,12 @@ async function mintContactLink(
   label: string,
 ): Promise<ContactLinkResult> {
   const nowDay = todayEpochDay();
-  const card = deriveOwnerCard(session.blob.state, session.blob.handle, nowDay);
+  const card = deriveOwnerCard(
+    session.blob.state,
+    session.blob.handle,
+    nowDay,
+    session.blob.avatar,
+  );
   const { record } = await publishCard(api, card, { isPublic: false });
   const contact: ContactRecord = {
     id: randomAliasId(),
@@ -295,6 +300,7 @@ export function createSessionController(deps: SessionDeps): SessionController {
       session.blob.state,
       session.blob.handle,
       todayEpochDay(),
+      session.blob.avatar,
     );
     const wantPublic = session.blob.sharingMode === "public";
     const existing = session.blob.aliases.find(

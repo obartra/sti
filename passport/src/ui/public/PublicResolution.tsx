@@ -4,6 +4,7 @@ import {
   type ProtectionLabel,
   type Route,
 } from "../badge-card.tsx";
+import type { AvatarConfig } from "../../lib/avatars.ts";
 import {
   BackBar,
   SelfBanner,
@@ -25,6 +26,9 @@ export interface ResolvedView {
   labels?: ProtectionLabel[];
   route?: Route;
   identity: { handle: string };
+  /** The owner's chosen avatar (doc 13), rendered into the card; a card without one
+   * (a v1 payload) falls back to the handle-derived avatar. */
+  avatar?: AvatarConfig;
   avatarSrc?: string;
 }
 

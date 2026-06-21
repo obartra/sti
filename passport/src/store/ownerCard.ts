@@ -24,6 +24,7 @@ import type { ProtectionLabel, Route } from "../ui/badge-card.tsx";
 import type { ResolvedView } from "../ui/public/PublicResolution.tsx";
 import type { ApiClient } from "../api/client.ts";
 import type { AliasRecord } from "./accountBlob.ts";
+import { avatarSrc, type AvatarConfig } from "../lib/avatars.ts";
 import { republishCard } from "./publish.ts";
 
 // The condom preferences that have a public label ("none" shows nothing).
@@ -40,6 +41,7 @@ export function deriveOwnerCard(
   state: OwnerState,
   handle: string,
   nowDay: number,
+  avatar?: AvatarConfig,
 ): ResolvedView {
   const badge = computeBadge(state, nowDay);
 
@@ -58,7 +60,11 @@ export function deriveOwnerCard(
     route = umbrellaRoutePresent(state) ? "hiv" : "condoms_always";
   }
 
-  return { state: badge, labels, route, identity: { handle } };
+  // Carry the owner's avatar (config + its rendered src) so a viewer sees the look
+  // the owner built, not a handle-derived stand-in. Symmetric with parsePublicCard,
+  // so a published card round-trips to exactly this view.
+  const avatarFields = avatar ? { avatar, avatarSrc: avatarSrc(avatar) } : {};
+  return { state: badge, labels, route, identity: { handle }, ...avatarFields };
 }
 
 /**
@@ -78,6 +84,7 @@ export interface OwnerCardInputs {
   readonly state: OwnerState;
   readonly handle: string;
   readonly nowDay: number;
+  readonly avatar?: AvatarConfig;
 }
 
 export async function republishOwnerCard(
@@ -85,6 +92,11 @@ export async function republishOwnerCard(
   records: readonly AliasRecord[],
   owner: OwnerCardInputs,
 ): Promise<void> {
-  const card = deriveOwnerCard(owner.state, owner.handle, owner.nowDay);
+  const card = deriveOwnerCard(
+    owner.state,
+    owner.handle,
+    owner.nowDay,
+    owner.avatar,
+  );
   await Promise.all(records.map((r) => republishCard(api, r, card)));
 }

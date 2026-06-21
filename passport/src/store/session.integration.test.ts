@@ -160,7 +160,12 @@ describe("owner session against a live blind store", () => {
     // owner's current card, proving the real seal -> PUT -> GET -> open round-trip.
     const resolved = await store.resolveAlias(caps(record));
     expect(resolved).toEqual(
-      deriveOwnerCard(session.blob.state, session.blob.handle, todayEpochDay()),
+      deriveOwnerCard(
+        session.blob.state,
+        session.blob.handle,
+        todayEpochDay(),
+        session.blob.avatar,
+      ),
     );
 
     // A second share reuses the same alias (one primary link per account) rather
@@ -177,7 +182,12 @@ describe("owner session against a live blind store", () => {
     expect(third.url).toBe(first.url);
     const after = await store.resolveAlias(caps(record));
     expect(after).toEqual(
-      deriveOwnerCard(blueState, session.blob.handle, todayEpochDay()),
+      deriveOwnerCard(
+        blueState,
+        session.blob.handle,
+        todayEpochDay(),
+        session.blob.avatar,
+      ),
     );
   });
 
@@ -214,7 +224,12 @@ describe("owner session against a live blind store", () => {
     const key = await redeemGrant(api, aliasId, requesterSecret, kp.privateKey);
     if (key === null) throw new Error("expected a granted key");
     expect(await store.resolveAlias({ id: aliasId, key })).toEqual(
-      deriveOwnerCard(session.blob.state, session.blob.handle, todayEpochDay()),
+      deriveOwnerCard(
+        session.blob.state,
+        session.blob.handle,
+        todayEpochDay(),
+        session.blob.avatar,
+      ),
     );
   });
 
@@ -261,7 +276,12 @@ describe("owner session against a live blind store", () => {
     expect(old).toBeDefined();
     // The first link resolves to the owner's card.
     expect(await store.resolveAlias(caps(old))).toEqual(
-      deriveOwnerCard(session.blob.state, session.blob.handle, todayEpochDay()),
+      deriveOwnerCard(
+        session.blob.state,
+        session.blob.handle,
+        todayEpochDay(),
+        session.blob.avatar,
+      ),
     );
 
     const renewed = await ctl.renewLink(first.session);
@@ -276,7 +296,12 @@ describe("owner session against a live blind store", () => {
     expect(await store.resolveAlias(caps(old))).toBeNull();
     // The fresh link resolves to the current card.
     expect(await store.resolveAlias(caps(fresh))).toEqual(
-      deriveOwnerCard(session.blob.state, session.blob.handle, todayEpochDay()),
+      deriveOwnerCard(
+        session.blob.state,
+        session.blob.handle,
+        todayEpochDay(),
+        session.blob.avatar,
+      ),
     );
   });
 
@@ -314,7 +339,12 @@ describe("owner session against a live blind store", () => {
 
     // It resolves to the owner's current card.
     expect(await store.resolveAlias(caps(made.contact.alias))).toEqual(
-      deriveOwnerCard(session.blob.state, session.blob.handle, todayEpochDay()),
+      deriveOwnerCard(
+        session.blob.state,
+        session.blob.handle,
+        todayEpochDay(),
+        session.blob.avatar,
+      ),
     );
 
     // Revoke: the contact is dropped and the link stops resolving.
@@ -381,7 +411,12 @@ describe("owner session against a live blind store", () => {
     // Fail-safe: the record is untouched and the old link still resolves.
     expect(first.session.blob.aliases).toHaveLength(1);
     expect(await store.resolveAlias(caps(old))).toEqual(
-      deriveOwnerCard(session.blob.state, session.blob.handle, todayEpochDay()),
+      deriveOwnerCard(
+        session.blob.state,
+        session.blob.handle,
+        todayEpochDay(),
+        session.blob.avatar,
+      ),
     );
 
     // A retry once the write recovers converges: old revoked, one fresh alias.
@@ -430,7 +465,12 @@ describe("owner session against a live blind store", () => {
     const fresh = renewed.session.blob.aliases[0];
     expect(fresh?.id).not.toBe(old?.id);
     expect(await store.resolveAlias(caps(fresh))).toEqual(
-      deriveOwnerCard(session.blob.state, session.blob.handle, todayEpochDay()),
+      deriveOwnerCard(
+        session.blob.state,
+        session.blob.handle,
+        todayEpochDay(),
+        session.blob.avatar,
+      ),
     );
   });
 });

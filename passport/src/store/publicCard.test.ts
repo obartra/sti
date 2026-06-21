@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { serializePublicCard, parsePublicCard } from "./publicCard.ts";
 import { utf8ToBytes } from "../crypto/index.ts";
+import { avatarSrc, DEFAULT_AVATAR } from "../lib/avatars.ts";
 import type { ResolvedView } from "../ui/public/PublicResolution.tsx";
 
 const view: ResolvedView = {
@@ -13,6 +14,33 @@ const view: ResolvedView = {
 describe("public card codec", () => {
   it("round-trips a resolved card", () => {
     expect(parsePublicCard(serializePublicCard(view))).toEqual(view);
+  });
+
+  it("round-trips a card with an avatar and reconstructs its rendered src", () => {
+    const withAvatar: ResolvedView = {
+      ...view,
+      avatar: DEFAULT_AVATAR,
+      avatarSrc: avatarSrc(DEFAULT_AVATAR),
+    };
+    const parsed = parsePublicCard(serializePublicCard(withAvatar));
+    expect(parsed.avatar).toEqual(DEFAULT_AVATAR);
+    // The src is rebuilt from our template, not carried on the wire.
+    expect(parsed.avatarSrc).toBe(avatarSrc(DEFAULT_AVATAR));
+    expect(parsed).toEqual(withAvatar);
+  });
+
+  it("parses a v1 card (no avatar) — back-compat falls back to no avatar", () => {
+    const v1 = {
+      v: 1,
+      state: "blue",
+      labels: ["hiv"],
+      route: "hiv",
+      handle: "robin",
+    };
+    const parsed = parsePublicCard(utf8ToBytes(JSON.stringify(v1)));
+    expect(parsed.avatar).toBeUndefined();
+    expect(parsed.avatarSrc).toBeUndefined();
+    expect(parsed.identity.handle).toBe("robin");
   });
 
   it("normalizes a card with no labels or route", () => {
@@ -36,12 +64,27 @@ describe("public card codec", () => {
     });
 
   reject("non-object", 42);
-  reject("an unknown version", {
+  reject("a future version", {
+    v: 3,
+    state: "blue",
+    labels: [],
+    route: null,
+    handle: "x",
+  });
+  reject("a zero version", {
+    v: 0,
+    state: "blue",
+    labels: [],
+    route: null,
+    handle: "x",
+  });
+  reject("a malformed avatar", {
     v: 2,
     state: "blue",
     labels: [],
     route: null,
     handle: "x",
+    avatar: { animal: "cat" },
   });
   reject("an invalid state", {
     v: 1,
