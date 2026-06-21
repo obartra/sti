@@ -20,6 +20,7 @@ import type { ReportState } from "./Report.parts.tsx";
 import type { ReportOutcome } from "../../core/report.ts";
 import { AllClearCard, ChronicCard } from "./Report.cards.tsx";
 import { DetailEntry } from "./Report.infection.tsx";
+import { ShareHeadsUp } from "./Report.share.tsx";
 
 export interface ReportProps {
   /** Navigate back (the prototype's nav.back). */
@@ -285,10 +286,11 @@ export interface ReportSavedProps {
   handle?: string;
 }
 
-// After a report, this screen only affirms. Notifying linked contacts happens
-// quietly in the background; the report moment is the worst place to hand the user
-// a notification chore, so nothing here mentions or asks about it (positive
-// reinforcement only).
+// After a report this screen affirms first; notifying LINKED contacts happens
+// quietly in the background and is never mentioned (the report moment is the worst
+// place for a notification chore). The only optional action is a pre-written
+// heads-up the user can send to someone who ISN'T on sti.care, framed as an easy
+// favor, not a duty: Done sits below it so nothing here feels owed.
 export function ReportSaved({
   onDone,
   viewerBadge = "gray",
@@ -317,6 +319,10 @@ export function ReportSaved({
         avatarSrc={avatarSrc(avatar)}
         width="100%"
       />
+      <div
+        style={{ height: "0.5px", background: "var(--border-card)", margin: 0 }}
+      />
+      <ShareHeadsUp />
       <Button variant="primary" size="lg" block onClick={onDone}>
         Done
       </Button>
