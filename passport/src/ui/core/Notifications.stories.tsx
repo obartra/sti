@@ -15,3 +15,23 @@ export const Default: Story = {};
 
 // Empty: nothing to act on, shows the "All caught up" card.
 export const Empty: Story = { args: { items: [] } };
+
+// A grantable knock: the contentless "someone asked" row gains an Approve action
+// (in-app grant, doc 13). Still never names the requester or a count.
+export const Approvable: Story = {
+  args: {
+    items: [
+      {
+        icon: "bell",
+        title: "Time to re-test soon",
+        sub: "Keep your status up to date",
+      },
+      {
+        icon: "users",
+        title: "Someone with your link asked to see your status",
+        sub: "Approve to let them see your current status",
+        action: { label: "Approve", onAct: () => undefined },
+      },
+    ],
+  },
+};

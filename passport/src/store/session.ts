@@ -24,14 +24,16 @@ import {
 import { wrapMaster, unwrapMaster } from "../auth/keyVault.ts";
 import type { PasskeyAuth } from "../auth/passkey.ts";
 import type { DeviceStore } from "../auth/deviceStore.ts";
-import type { ApiClient } from "../api/client.ts";
+import type { ApiClient, PendingKnock } from "../api/client.ts";
 import type { AccountManager, OwnerProfile } from "./account.ts";
 import type { AccountSync } from "./accountSync.ts";
 import {
   MAX_CONTACT_LABEL,
   type AccountBlob,
+  type AliasRecord,
   type ContactRecord,
 } from "./accountBlob.ts";
+import { grantAccess } from "./grant.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { deriveOwnerCard } from "./ownerCard.ts";
 import { todayEpochDay } from "../core/clock.ts";
@@ -108,12 +110,24 @@ export interface SessionController {
    */
   deleteAccount(session: OwnerSession): Promise<void>;
   /**
-   * Owner-pull knock review: the total count of current knocks across all the
-   * owner's aliases (each queried with its write token). Contentless — never who
-   * knocked. Best-effort: an unreachable alias counts as zero, so a transient
-   * failure shows "no knocks" rather than erroring the inbox.
+   * Owner-pull knock review across all the owner's aliases (each queried with its
+   * write token) in ONE sweep: the total `count` of current knocks (contentless,
+   * never who) plus the grantable `pending` ones (those that carried an ephemeral
+   * key), each tagged with the alias they landed on so {@link approveKnocks} can
+   * seal that alias's key to them. Best-effort per alias: an unreachable one
+   * contributes nothing rather than erroring the inbox.
    */
-  reviewKnocks(session: OwnerSession): Promise<number>;
+  reviewKnocks(session: OwnerSession): Promise<OwnerKnocks>;
+  /**
+   * Approve grantable knocks: seal each alias's read key to the waiting requester
+   * via the in-app grant slot (doc 13). Idempotent and re-runnable; a partial
+   * failure leaves the rest granted and the failed one still pending for a retry.
+   * Returns how many grants were written.
+   */
+  approveKnocks(
+    session: OwnerSession,
+    approvals: PendingApproval[],
+  ): Promise<number>;
   /**
    * Mint a fresh PRIVATE link for one specific contact (a named, individually
    * revocable link, default 7-day expiry), publish the current card to it, and
@@ -149,6 +163,20 @@ export interface ShareLinkResult {
   readonly url: string;
 }
 
+/** A waiting knock the owner can grant: the requester's pending entry plus the
+ * alias it landed on (whose read key gets sealed to them on approve). */
+export interface PendingApproval {
+  readonly alias: AliasRecord;
+  readonly pending: PendingKnock;
+}
+
+/** One owner-pull knock review: the contentless total count plus the grantable
+ * pending knocks. `count >= pending.length` (some knocks carry no key). */
+export interface OwnerKnocks {
+  readonly count: number;
+  readonly pending: PendingApproval[];
+}
+
 export interface SessionDeps {
   readonly accounts: AccountManager;
   readonly sync: AccountSync;
@@ -156,6 +184,55 @@ export interface SessionDeps {
   readonly passkey: PasskeyAuth;
   /** Transport for publishing/republishing the owner's shareable alias. */
   readonly api: ApiClient;
+}
+
+// Every alias a knock can land on: the public/casual aliases plus every
+// per-contact link. Used by the owner-pull knock review and the approve flow.
+function ownerLinks(session: OwnerSession): AliasRecord[] {
+  return [
+    ...session.blob.aliases,
+    ...session.blob.contacts.map((c) => c.alias),
+  ];
+}
+
+// One knock-review sweep across every owner link: sum the contentless count and
+// collect the grantable knocks (those that carried a key), each tagged with its
+// alias. A single pass per alias, so count and pending can't read a torn pair.
+// Best-effort per alias: an unreachable one contributes nothing.
+async function gatherKnocks(
+  api: ApiClient,
+  session: OwnerSession,
+): Promise<OwnerKnocks> {
+  const perAlias = await Promise.all(
+    ownerLinks(session).map(async (alias) => {
+      const review = await api
+        .knockReview(alias.id, alias.writeToken)
+        .catch(() => ({ count: 0, pending: [] }));
+      return {
+        count: review.count,
+        pending: review.pending
+          .filter((p) => p.pubKey)
+          .map((pending) => ({ alias, pending })),
+      };
+    }),
+  );
+  return {
+    count: perAlias.reduce((sum, r) => sum + r.count, 0),
+    pending: perAlias.flatMap((r) => r.pending),
+  };
+}
+
+// Seal each approval's alias key to its waiting requester (the in-app grant).
+// Returns how many were granted. All-or-nothing for the caller: a single failure
+// rejects the whole call (so the UI marks none as granted and the owner retries
+// all); grantAccess is idempotent, so re-sealing the ones that already succeeded
+// is harmless.
+async function grantPending(
+  api: ApiClient,
+  approvals: PendingApproval[],
+): Promise<number> {
+  await Promise.all(approvals.map((x) => grantAccess(api, x.alias, x.pending)));
+  return approvals.length;
 }
 
 // Mint a fresh private alias for one contact, publish the current card to it, and
@@ -325,17 +402,14 @@ export function createSessionController(deps: SessionDeps): SessionController {
       devices.clear();
     },
 
-    async reviewKnocks(session) {
-      // Knocks can land on any link the owner published: the public/casual
-      // aliases and every per-contact link.
-      const links = [
-        ...session.blob.aliases,
-        ...session.blob.contacts.map((c) => c.alias),
-      ];
-      const counts = await Promise.all(
-        links.map((a) => api.knockCount(a.id, a.writeToken).catch(() => 0)),
-      );
-      return counts.reduce((sum, n) => sum + n, 0);
+    reviewKnocks(session) {
+      return gatherKnocks(api, session);
+    },
+
+    // The approvals already carry their alias + key, so the session is only in the
+    // signature for symmetry with the other owner actions.
+    approveKnocks(_session, approvals) {
+      return grantPending(api, approvals);
     },
 
     createContactLink(session, label) {

@@ -11,7 +11,10 @@ import { createAccountSync } from "./accountSync.ts";
 import { createBackendStore } from "./backendStore.ts";
 import { createSessionController } from "./session.ts";
 import { deriveOwnerCard } from "./ownerCard.ts";
+import { redeemGrant } from "./grant.ts";
+import { requesterHash } from "./knock.ts";
 import { todayEpochDay } from "../core/clock.ts";
+import { generateGrantKeyPair, bytesToBase64url } from "../crypto/index.ts";
 import { createDeviceStore, type StorageLike } from "../auth/deviceStore.ts";
 import type { PasskeyAuth } from "../auth/passkey.ts";
 import type { AliasRecord } from "./accountBlob.ts";
@@ -178,6 +181,43 @@ describe("owner session against a live blind store", () => {
     );
   });
 
+  it("pendingKnocks surfaces a knock's key, and approveKnocks grants it in-app", async () => {
+    const { ctl, api } = controller(fakePasskey());
+    const store = createBackendStore(api);
+    const { session } = await ctl.signUp("nova");
+
+    // The owner has a shareable alias; a requester device opens it but can't
+    // decrypt (no key), so it knocks with an ephemeral grant key.
+    const shared = await ctl.shareLink(session);
+    const aliasId = shared.session.blob.aliases[0]?.id ?? "";
+    const requesterSecret = bytesToBase64url(
+      crypto.getRandomValues(new Uint8Array(32)),
+    );
+    const kp = await generateGrantKeyPair();
+    await api.knock(
+      aliasId,
+      await requesterHash(requesterSecret, aliasId),
+      kp.publicKey,
+    );
+
+    // The owner sees exactly one grantable knock, tagged with the alias it hit,
+    // and the contentless count agrees.
+    const review = await ctl.reviewKnocks(shared.session);
+    expect(review.count).toBe(1);
+    expect(review.pending).toHaveLength(1);
+    expect(review.pending[0]?.alias.id).toBe(aliasId);
+    expect(review.pending[0]?.pending.pubKey).toBe(kp.publicKey);
+
+    // Approving seals the alias key to the requester; they redeem it and the
+    // status resolves to the owner's real card.
+    expect(await ctl.approveKnocks(shared.session, review.pending)).toBe(1);
+    const key = await redeemGrant(api, aliasId, requesterSecret, kp.privateKey);
+    if (key === null) throw new Error("expected a granted key");
+    expect(await store.resolveAlias({ id: aliasId, key })).toEqual(
+      deriveOwnerCard(session.blob.state, session.blob.handle, todayEpochDay()),
+    );
+  });
+
   it("share link's key-presence tracks the current sharing mode, not the first share", async () => {
     const { ctl } = controller(fakePasskey());
     const created = await ctl.signUp("pat"); // accounts default to link (private)
@@ -289,8 +329,12 @@ describe("owner session against a live blind store", () => {
     const shared = await ctl.shareLink(session);
     const aliasId = shared.session.blob.aliases[0]?.id ?? "";
 
-    // No knocks yet.
-    expect(await ctl.reviewKnocks(shared.session)).toBe(0);
+    // No knocks yet. These viewers knock contentlessly (no grant key), so they
+    // raise the count but never the grantable pending list.
+    expect(await ctl.reviewKnocks(shared.session)).toEqual({
+      count: 0,
+      pending: [],
+    });
 
     // Two distinct viewers knock (each its own device secret); a repeat dedupes.
     const viewerA = createBackendStore(api, "secret-a");
@@ -299,7 +343,9 @@ describe("owner session against a live blind store", () => {
     await viewerA.knock(aliasId); // same requester -> deduped
     await viewerB.knock(aliasId);
 
-    expect(await ctl.reviewKnocks(shared.session)).toBe(2);
+    const review = await ctl.reviewKnocks(shared.session);
+    expect(review.count).toBe(2);
+    expect(review.pending).toEqual([]); // contentless knocks aren't grantable
   });
 
   it("renewLink: a failing revoke leaves the record and old link intact (retryable)", async () => {

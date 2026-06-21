@@ -24,12 +24,20 @@ function openResource(url: string): void {
   }
 }
 
-// The real inbox: a standing re-test nudge, plus a contentless knock entry only
-// when someone has actually knocked (no requester, no count, no per-knock time).
-// Circle/partner-notify entries are intentionally absent until those features
-// ship, so the inbox never shows a notification the owner can't act on.
+// The real inbox: a standing re-test nudge, plus a knock entry only when someone
+// has actually knocked (no requester, no count, no per-knock time). When a knock
+// carried a key the entry becomes an Approve action (grant in-app); otherwise it
+// is the older contentless info row. Circle/partner-notify entries are absent
+// until those features ship, so the inbox never shows an unactionable item.
+export interface KnockInbox {
+  canApprove: boolean;
+  showInfo: boolean;
+  approve: () => void;
+  approving: boolean;
+}
+
 export function notificationItems(
-  knockCount: number,
+  knocks: KnockInbox,
   go: (to: "report" | "privacy") => void,
 ): NotificationItem[] {
   const items: NotificationItem[] = [
@@ -40,7 +48,18 @@ export function notificationItems(
       onOpen: () => go("report"),
     },
   ];
-  if (knockCount > 0) {
+  if (knocks.canApprove) {
+    items.push({
+      icon: "users",
+      title: "Someone with your link asked to see your status",
+      sub: "Approve to let them see your current status",
+      action: {
+        label: "Approve",
+        onAct: knocks.approve,
+        busy: knocks.approving,
+      },
+    });
+  } else if (knocks.showInfo) {
     items.push({
       icon: "users",
       title: "Someone with your link asked to see your status",
@@ -85,9 +104,24 @@ export const coreRenderers: ScreenRenderers = {
       onFindPrep={() => openResource(RESOURCES.prep)}
     />
   ),
-  notifications: ({ nav, knockCount, refreshKnocks }) => (
+  notifications: ({
+    nav,
+    canApproveKnocks,
+    showKnockInfo,
+    approveKnocks,
+    approvingKnocks,
+    refreshKnocks,
+  }) => (
     <Notifications
-      items={notificationItems(knockCount, (to) => nav.go(to))}
+      items={notificationItems(
+        {
+          canApprove: canApproveKnocks,
+          showInfo: showKnockInfo,
+          approve: approveKnocks,
+          approving: approvingKnocks,
+        },
+        (to) => nav.go(to),
+      )}
       onView={refreshKnocks}
     />
   ),

@@ -33,8 +33,16 @@ export interface ScreenCtx {
   onDeleteAccount: () => void;
   /** Count of current knocks across the owner's aliases (contentless; 0 logged out). */
   knockCount: number;
-  /** Re-pull the knock count (e.g. when the inbox opens). */
+  /** Re-pull the knock count + pending approvals (e.g. when the inbox opens). */
   refreshKnocks: () => void;
+  /** Whether any waiting knock can be granted in-app (it carried a key). */
+  canApproveKnocks: boolean;
+  /** Whether to show the contentless "someone asked" row (knocks with no key). */
+  showKnockInfo: boolean;
+  /** Grant every waiting knock (seals each alias key to its requester). */
+  approveKnocks: () => void;
+  /** An approve is in flight (disable the control). */
+  approvingKnocks: boolean;
   /** The owner's per-contact links (newest last); empty logged out. */
   contacts: ContactRecord[];
   /** Mint a new per-contact link for `label`; resolves with the contact + URL. */

@@ -34,6 +34,10 @@ export interface ChromeProps {
   onDeleteAccount: () => void;
   knockCount: number;
   refreshKnocks: () => void;
+  canApproveKnocks: boolean;
+  showKnockInfo: boolean;
+  approveKnocks: () => void;
+  approvingKnocks: boolean;
   contacts: ScreenCtx["contacts"];
   onCreateContactLink: ScreenCtx["onCreateContactLink"];
   onRevokeContact: ScreenCtx["onRevokeContact"];
@@ -91,43 +95,37 @@ function ShareOverlay({
   );
 }
 
-function AppChrome(props: ChromeProps) {
-  const {
-    route,
-    nav,
-    owner,
-    ownerState,
-    onboarding,
-    onReport,
-    setOwnerState,
-    store,
-    desktop,
-    setShareOpen,
-    onDeleteAccount,
-    knockCount,
-    refreshKnocks,
-    contacts,
-    onCreateContactLink,
-    onRevokeContact,
-  } = props;
-  const tab: Tab = sectionOf(route.screen);
-  const ctx: ScreenCtx = {
-    nav,
-    owner,
-    ownerState,
-    onboarding,
-    onReport,
-    setOwnerState,
+// The routed-screen context is identical for the app and public shells; build it
+// once from the props so neither shell drifts as ScreenCtx grows.
+function buildCtx(props: ChromeProps): ScreenCtx {
+  const { route, setShareOpen } = props;
+  return {
+    nav: props.nav,
+    owner: props.owner,
+    ownerState: props.ownerState,
+    onboarding: props.onboarding,
+    onReport: props.onReport,
+    setOwnerState: props.setOwnerState,
     openShare: () => setShareOpen(true),
-    onDeleteAccount,
-    knockCount,
-    refreshKnocks,
-    contacts,
-    onCreateContactLink,
-    onRevokeContact,
-    store,
+    onDeleteAccount: props.onDeleteAccount,
+    knockCount: props.knockCount,
+    refreshKnocks: props.refreshKnocks,
+    canApproveKnocks: props.canApproveKnocks,
+    showKnockInfo: props.showKnockInfo,
+    approveKnocks: props.approveKnocks,
+    approvingKnocks: props.approvingKnocks,
+    contacts: props.contacts,
+    onCreateContactLink: props.onCreateContactLink,
+    onRevokeContact: props.onRevokeContact,
+    store: props.store,
     data: route.data,
   };
+}
+
+function AppChrome(props: ChromeProps) {
+  const { route, nav, owner, desktop, setShareOpen, knockCount } = props;
+  const tab: Tab = sectionOf(route.screen);
+  const ctx: ScreenCtx = buildCtx(props);
   const content = (
     <>
       <ScreenView screen={route.screen} ctx={ctx} />
@@ -182,24 +180,8 @@ function AppChrome(props: ChromeProps) {
   );
 }
 
-function PublicChrome({
-  route,
-  nav,
-  owner,
-  ownerState,
-  onboarding,
-  onReport,
-  setOwnerState,
-  store,
-  desktop,
-  setShareOpen,
-  onDeleteAccount,
-  knockCount,
-  refreshKnocks,
-  contacts,
-  onCreateContactLink,
-  onRevokeContact,
-}: ChromeProps) {
+function PublicChrome(props: ChromeProps) {
+  const { route, nav, desktop } = props;
   if (desktop && route.screen === "a1-landing") {
     return (
       <DesktopLanding
@@ -210,23 +192,7 @@ function PublicChrome({
       />
     );
   }
-  const ctx: ScreenCtx = {
-    nav,
-    owner,
-    ownerState,
-    onboarding,
-    onReport,
-    setOwnerState,
-    openShare: () => setShareOpen(true),
-    onDeleteAccount,
-    knockCount,
-    refreshKnocks,
-    contacts,
-    onCreateContactLink,
-    onRevokeContact,
-    store,
-    data: route.data,
-  };
+  const ctx: ScreenCtx = buildCtx(props);
   return (
     <CanvasWrap
       desktop={desktop}

@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from "react";
-import { Card, Row } from "../../design/components/index.ts";
+import { Button, Card, Row } from "../../design/components/index.ts";
 import {
   Bell,
   Users,
@@ -49,6 +49,10 @@ export interface NotificationItem {
   when?: string | undefined;
   /** Optional tap handler; the source navigates to a destination route. */
   onOpen?: (() => void) | undefined;
+  /** Optional inline action (e.g. Approve a knock), shown as a button on the row. */
+  action?:
+    | { label: string; onAct: () => void; busy?: boolean | undefined }
+    | undefined;
 }
 
 function iconFor(k: NotifIcon): ReactNode {
@@ -119,16 +123,35 @@ export function Notifications({
           variant="flat"
           style={{ padding: 6, display: "flex", flexDirection: "column" }}
         >
-          {items.map((n, i) => (
-            <Row
-              key={i}
-              lead={iconFor(n.icon)}
-              title={n.title}
-              sub={n.when ? `${n.sub} · ${n.when}` : n.sub}
-              trail={<Chevron size={18} />}
-              {...(n.onOpen ? { onClick: n.onOpen } : {})}
-            />
-          ))}
+          {items.map((n, i) => {
+            const act = n.action;
+            const trail = act ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={act.busy}
+                onClick={act.onAct}
+              >
+                {act.busy ? `${act.label}…` : act.label}
+              </Button>
+            ) : (
+              <Chevron size={18} />
+            );
+            // A row with an action isn't itself tappable (only its button is), so
+            // it must NOT render as a <button> — that would nest a button in a
+            // button. It's interactive only when it navigates via onOpen.
+            return (
+              <Row
+                key={i}
+                lead={iconFor(n.icon)}
+                title={n.title}
+                sub={n.when ? `${n.sub} · ${n.when}` : n.sub}
+                trail={trail}
+                interactive={!!n.onOpen && !act}
+                {...(n.onOpen && !act ? { onClick: n.onOpen } : {})}
+              />
+            );
+          })}
         </Card>
       )}
       <div

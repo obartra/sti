@@ -87,7 +87,8 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
     renewLink: (session) =>
       Promise.resolve({ session, url: `https://sti.care/a/${"w".repeat(43)}` }),
     deleteAccount: () => Promise.resolve(),
-    reviewKnocks: () => Promise.resolve(0),
+    reviewKnocks: () => Promise.resolve({ count: 0, pending: [] }),
+    approveKnocks: () => Promise.resolve(0),
     createContactLink: (_session, label) => {
       const contact = {
         id: "c".repeat(43),
@@ -295,7 +296,8 @@ describe("App onboarding flow", () => {
     window.history.pushState({}, "", "/#b1-claim");
     const user = userEvent.setup();
     const controller = fakeController();
-    controller.reviewKnocks = () => Promise.resolve(2); // two viewers knocked
+    // Two viewers knocked, neither with a grant key (contentless info row).
+    controller.reviewKnocks = () => Promise.resolve({ count: 2, pending: [] });
     render(<App store={stubStore(null)} controller={controller} />);
 
     // Onboard, then open the inbox via the bell.
