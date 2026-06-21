@@ -99,6 +99,17 @@
     "pin": "src/store/publish.integration.test.ts"
   },
   {
+    "id": "per-contact-named-link",
+    "category": "Trust integrity & sharing",
+    "title": "A per-contact named link resolves, then revokes cleanly",
+    "intent": "An owner mints a private, named link for one contact; revoking it stops all future reads.",
+    "check": "createContactLink mints a private, keyed, 7-day link that resolves to the owner card; revokeContact drops it and the link then resolves to null.",
+    "status": "validated",
+    "layer": "wire",
+    "docRef": "13",
+    "pin": "src/store/session.integration.test.ts"
+  },
+  {
     "id": "recovery-phrase-login",
     "category": "Account & recovery",
     "title": "A new device recovers the account from the phrase",
