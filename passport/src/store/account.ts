@@ -30,6 +30,7 @@ import {
   type ContactRecord,
   type SharingMode,
 } from "./accountBlob.ts";
+import { mintNotify } from "./notifyInbox.ts";
 
 /** The owner's presentation profile: avatar plus the account sharing default. */
 export interface OwnerProfile {
@@ -80,6 +81,21 @@ export interface AccountManager {
   setProfile(master: Bytes, profile: OwnerProfile): Promise<AccountBlob>;
 }
 
+// A brand-new account: empty links, default avatar, private (link) sharing, and a
+// freshly minted notify identity (doc 13 slice 5). Onboarding updates the avatar
+// and sharing default via setProfile; myNotify is minted once here and stays put.
+function freshBlob(handle: string): AccountBlob {
+  return {
+    handle,
+    aliases: [],
+    contacts: [],
+    state: INITIAL_OWNER_STATE,
+    avatar: DEFAULT_AVATAR,
+    sharingMode: "link",
+    myNotify: mintNotify(),
+  };
+}
+
 export function createAccountManager(api: ApiClient): AccountManager {
   const sync = createAccountSync(api);
 
@@ -110,16 +126,7 @@ export function createAccountManager(api: ApiClient): AccountManager {
       }
       const recoveryPhrase = randomRecoveryPhrase();
       const master = await deriveMasterKey(recoveryPhrase);
-      const blob: AccountBlob = {
-        handle,
-        aliases: [],
-        contacts: [],
-        state: INITIAL_OWNER_STATE,
-        // A fresh account starts with the default avatar and the private (link)
-        // sharing default; onboarding updates both via setProfile.
-        avatar: DEFAULT_AVATAR,
-        sharingMode: "link",
-      };
+      const blob = freshBlob(handle);
       await sync.save(master, blob);
       return { recoveryPhrase, master, blob };
     },

@@ -129,8 +129,10 @@ contacts: [
     expiresOn?,               // for durational grants
     // what THEY can see of me: a per-contact alias I publish my card to
     myAlias: { id, writeToken, key, isPublic: false },
-    // how I notify THEM: their inbox capability, given to me at link time
-    theirNotify?: { inboxId, writeToken, key },
+    // how I notify THEM: their notify capability, given to me at link time. Carries
+    // the routing token too, so I can both write a ping (inbox) and ask for a wake
+    // (hash(routingToken)); absent until the exchange completes.
+    theirNotify?: { inboxId, writeToken, key, routingToken },
   }
 ]
 myNotify: { inboxId, writeToken, key, routingToken }  // my own inbox + push routing
@@ -223,6 +225,12 @@ limits below: the server can tell that a knock was answered, just not by or for 
    client uniform poll of its inbox). Go tests for the fan-out; this is the gate-opener.
 5. **Draft/lock partner-notify batch** (client compose/edit/delete within the window; lock writes
    pings + queues wakes). Tested against the live store with the gate on in tests only.
+   Built as the channel logic: account model v6 carries `myNotify` (minted at signup) and a
+   contact's `theirNotify`; `composeNotifyDraft` seeds the in-window notifiable contacts and
+   `lockNotifyDraft` writes a contentless ping to each plus a best-effort `notify(hash(routingToken))`.
+   The capability EXCHANGE that fills in `theirNotify` (mutual link / scan) and the wake actually
+   landing (push routing + the gate) are the later linking and slice-7 work; until then a contact
+   has no `theirNotify` so the batch is empty in the running app, exactly as tests simulate it.
 6. **Circles** (client-side bundles + min-group-5 hide floor + the Circles UI). No server surface.
 7. **scan-to-autolink UI** (auto-share on confirm) + **browser service worker / Push subscription**
    (real-device verify), and **prod VAPID key provisioning**: the hardware-gated tail.

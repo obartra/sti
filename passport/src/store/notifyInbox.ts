@@ -46,6 +46,23 @@ export function mintInbox(): InboxCapability {
 }
 
 /**
+ * A pairwise notify capability: an inbox plus the routing token used to wake the
+ * device that owns it. A device keeps its own as `myNotify` and hands a copy to
+ * each contact at link time; the contact stores it as `theirNotify` and uses it to
+ * write a ping (the inbox) and queue a wake (`hash(routingToken)`). The server only
+ * ever sees the hash of the routing token, never the token itself, so it cannot
+ * link a wake to an inbox or to a contact.
+ */
+export interface NotifyCapability extends InboxCapability {
+  readonly routingToken: string;
+}
+
+/** Mint a fresh notify capability (an inbox plus a routing token), all client-side. */
+export function mintNotify(): NotifyCapability {
+  return { ...mintInbox(), routingToken: randomWriteToken() };
+}
+
+/**
  * Write an encrypted ping into `inbox`, overwriting any previous one. `plaintext`
  * is the opaque ping payload (its meaning is a later slice). Sealed to the fixed
  * alias size so the write is indistinguishable from any other inbox write.

@@ -55,7 +55,10 @@ describe("account manager", () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
     const recovered = await accounts.recover(created.recoveryPhrase);
-    expect(recovered?.blob).toEqual({
+    // myNotify is minted per account (random), so pin the rest and assert recovery
+    // sees exactly what was created (myNotify persists, not re-minted).
+    const { myNotify, ...rest } = recovered?.blob ?? {};
+    expect(rest).toEqual({
       handle: "robin",
       aliases: [],
       contacts: [],
@@ -63,6 +66,7 @@ describe("account manager", () => {
       avatar: DEFAULT_AVATAR,
       sharingMode: "link",
     });
+    expect(myNotify).toEqual(created.blob.myNotify);
   });
 
   it("appends an alias and reflects it on recovery", async () => {
