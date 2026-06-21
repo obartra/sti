@@ -7,6 +7,7 @@ export const ALL_SCREENS = [
   "a1-landing",
   "a2-public",
   "a3-alert",
+  "exposed",
   "b1-claim",
   "b2-recovery",
   "b3-setup",
@@ -64,7 +65,7 @@ export interface Route {
   data: RouteData | null;
 }
 
-const PUBLIC: readonly Screen[] = ["a1-landing", "a2-public"];
+const PUBLIC: readonly Screen[] = ["a1-landing", "a2-public", "exposed"];
 const ONBOARD: readonly Screen[] = ["b1-claim", "b2-recovery", "b3-setup"];
 
 // The bottom tab bar (mobile) / sidebar (desktop) destinations.
