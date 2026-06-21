@@ -132,6 +132,17 @@
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
+    "id": "account-deletion-removes-blob",
+    "category": "Account & recovery",
+    "title": "Deleting an account removes its blob",
+    "intent": "A self-serve delete actually erases the synced data; there is no soft-retain.",
+    "check": "After DELETE /acct, a GET for the same id returns 404 (the blob is gone).",
+    "status": "validated",
+    "layer": "wire",
+    "docRef": "09",
+    "pin": "src/loadlab/loadlab.integration.test.ts"
+  },
+  {
     "id": "no-lost-writes",
     "category": "Durability & consistency",
     "title": "Published statuses round-trip exactly",
@@ -242,6 +253,39 @@
     "pin": "src/loadlab/loadlab.integration.test.ts"
   },
   {
+    "id": "owner-knock-review-count",
+    "category": "Knocks & grants",
+    "title": "An owner reads the count of knocks on their alias",
+    "intent": "The owner can see how many people knocked, to act on it.",
+    "check": "After two distinct requesters knock, GET /knock with the write token reports count >= 2.",
+    "status": "validated",
+    "layer": "wire",
+    "docRef": "13",
+    "pin": "src/loadlab/loadlab.integration.test.ts"
+  },
+  {
+    "id": "knock-review-token-gated",
+    "category": "Knocks & grants",
+    "title": "Knock review needs the write token and never leaks existence",
+    "intent": "Only the owner reads knocks, and a wrong token reveals nothing about whether the alias exists.",
+    "check": "GET /knock with a wrong token returns 403 for a real id and a nonexistent id alike; the owner token returns the count.",
+    "status": "validated",
+    "layer": "wire",
+    "docRef": "13",
+    "pin": "src/loadlab/loadlab.integration.test.ts"
+  },
+  {
+    "id": "grant-seals-to-one-knocker",
+    "category": "Knocks & grants",
+    "title": "An in-app grant seals the alias key to one knocker",
+    "intent": "Approving a knocker shares the key with that knocker only; no one else can open the grant.",
+    "check": "ECIES seals to the knocker public key and opens only with the matching private key; the plaintext never appears in the sealed blob.",
+    "status": "validated",
+    "layer": "crypto",
+    "docRef": "13",
+    "pin": "src/crypto/grant.test.ts"
+  },
+  {
     "id": "no-silent-faults",
     "category": "Degradation & capacity",
     "title": "No fault hides behind a uniform reply",
@@ -328,6 +372,17 @@
     "layer": "wire",
     "docRef": "10 §F",
     "pin": "../server/internal/server/notify_test.go"
+  },
+  {
+    "id": "web-push-contentless-wake",
+    "category": "Targeted wake (deferred)",
+    "title": "A delivered wake carries no content",
+    "intent": "Even once wakes are turned on, a push reveals nothing; it is a contentless nudge.",
+    "check": "The Web Push sender posts an encrypted record of an empty payload (no plaintext content), with a TTL.",
+    "status": "validated",
+    "layer": "wire",
+    "docRef": "13",
+    "pin": "../server/internal/server/webpush_test.go"
   },
   {
     "id": "teardown-clears-datastore",

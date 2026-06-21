@@ -73,6 +73,7 @@ export const CATEGORY_ORDER: readonly string[] = [
   "Durability & consistency",
   "Access control",
   "Fairness & abuse resistance",
+  "Knocks & grants",
   "Degradation & capacity",
   "Observability integrity",
   "Targeted wake (deferred)",
