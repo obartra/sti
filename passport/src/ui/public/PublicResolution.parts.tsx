@@ -10,6 +10,7 @@ import {
 import { BadgeCard } from "../badge-card.tsx";
 import type { ResolvedView } from "./PublicResolution.tsx";
 import { COPY, KNOCK_UNIFORM, backBtn } from "./PublicResolution.copy.ts";
+import { AcceptInviteSection } from "./PublicResolution.accept.tsx";
 
 export function BackBar({ onBack }: { onBack?: (() => void) | undefined }) {
   return (
@@ -254,5 +255,54 @@ export function ColdActions({
         {COPY.verify}
       </Button>
     </div>
+  );
+}
+
+// The action region below the card: a logged-in viewer with an invite adds the
+// inviter (path A); otherwise the link-holder knock prompt plus, for a resolved
+// stranger card, the claim/verify CTAs. Gray-nothing stays button-free.
+export function ResolutionActions({
+  self,
+  resolved,
+  linkHolder,
+  knockSent,
+  canAccept,
+  onAccept,
+  onKnock,
+  onBack,
+  onClaim,
+  onVerify,
+}: {
+  self: boolean;
+  resolved: ResolvedView | null;
+  linkHolder: boolean;
+  knockSent: boolean;
+  canAccept: boolean;
+  onAccept?: ((label: string) => Promise<string>) | undefined;
+  onKnock: () => void;
+  onBack?: (() => void) | undefined;
+  onClaim?: (() => void) | undefined;
+  onVerify?: (() => void) | undefined;
+}) {
+  if (resolved && canAccept && onAccept) {
+    return (
+      <AcceptInviteSection
+        handle={resolved.identity.handle}
+        onAccept={onAccept}
+      />
+    );
+  }
+  return (
+    <>
+      <KnockSection
+        linkHolder={linkHolder}
+        knockSent={knockSent}
+        onKnock={onKnock}
+        onBack={onBack}
+      />
+      {!self && resolved && (
+        <ColdActions onClaim={onClaim} onVerify={onVerify} />
+      )}
+    </>
   );
 }

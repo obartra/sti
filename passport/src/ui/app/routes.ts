@@ -1,6 +1,8 @@
 // The screen graph, ported from the prototype's main.jsx (screen ids, groups,
 // and the bottom-tab set). Every navigable screen has an id here.
 
+import type { NotifyCapability } from "../../store/index.ts";
+
 export const ALL_SCREENS = [
   "a1-landing",
   "a2-public",
@@ -49,6 +51,10 @@ export interface RouteData {
   id?: string;
   // The alias decryption key from a shared link's `#k=` fragment (a2-public).
   key?: string;
+  // A contact invite's extra fragment (doc 13 path A): the inviter's notify
+  // capability and, on a return invite, the inviter's alias id being answered.
+  notify?: NotifyCapability;
+  ref?: string;
   isLogin?: boolean;
   self?: boolean;
   preview?: boolean;

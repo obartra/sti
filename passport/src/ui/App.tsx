@@ -124,8 +124,12 @@ export function App({
 
   // Account deletion + per-contact link create/revoke (each folds the result
   // back into the session; delete logs out, clamping app routes to the landing).
-  const { onDeleteAccount, onCreateContactLink, onRevokeContact } =
-    useOwnerActions(controller, sessionRef, setSession);
+  const {
+    onDeleteAccount,
+    onCreateContactLink,
+    onRevokeContact,
+    onAcceptContactInvite,
+  } = useOwnerActions(controller, sessionRef, setSession);
 
   // The share sheet: opening it mints/refreshes the owner's primary alias and
   // surfaces its real link; copy writes that link to the clipboard.
@@ -184,6 +188,8 @@ export function App({
       contacts={session ? session.blob.contacts : []}
       onCreateContactLink={onCreateContactLink}
       onRevokeContact={onRevokeContact}
+      isLoggedIn={session !== null}
+      onAcceptContactInvite={onAcceptContactInvite}
     />
   );
 }

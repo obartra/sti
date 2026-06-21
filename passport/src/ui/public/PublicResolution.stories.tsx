@@ -35,6 +35,20 @@ export const ResolvedWithAvatar: Story = {
   },
 };
 
+// A logged-in viewer opened a contact invite: "Add to contacts" replaces the knock
+// prompt and the claim/verify CTAs (doc 13 path A).
+export const ContactInviteAccept: Story = {
+  args: {
+    resolved: {
+      state: "blue",
+      labels: ["hiv"],
+      identity: { handle: "alex" },
+    },
+    canAccept: true,
+    onAccept: () => Promise.resolve("https://sti.care/a/abc#k=def&n=ghi"),
+  },
+};
+
 // The owner previewing their own card ("this is what others see"): banner, no CTAs.
 export const SelfPreview: Story = {
   args: {

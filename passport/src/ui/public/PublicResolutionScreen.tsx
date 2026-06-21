@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { PublicResolution, type ResolvedView } from "./PublicResolution.tsx";
-import type { AliasLink, PassportStore } from "../../store/index.ts";
+import type {
+  AliasLink,
+  ContactInvite,
+  ContactLinkResult,
+  PassportStore,
+} from "../../store/index.ts";
 
 // Resolves a shared link through the store and renders the public card. While
 // resolving (and on any failure) `resolved` is null, which is the uniform gray
@@ -10,6 +15,12 @@ import type { AliasLink, PassportStore } from "../../store/index.ts";
 export interface PublicResolutionScreenProps {
   store: PassportStore;
   link: AliasLink;
+  // When a logged-in viewer opened a contact invite: the parsed invite + the
+  // accept action. "Add to contacts" then replaces the knock affordance.
+  invite?: ContactInvite | undefined;
+  onAcceptInvite?:
+    | ((invite: ContactInvite, label: string) => Promise<ContactLinkResult>)
+    | undefined;
   onBack?: () => void;
   onClaim?: () => void;
   onVerify?: () => void;
@@ -28,6 +39,8 @@ const GRANT_POLL_MAX_ATTEMPTS = 75;
 export function PublicResolutionScreen({
   store,
   link,
+  invite,
+  onAcceptInvite,
   onBack = noop,
   onClaim = noop,
   onVerify = noop,
@@ -101,10 +114,23 @@ export function PublicResolutionScreen({
       .finally(() => setRequested(true));
   };
 
+  // A logged-in viewer who opened an invite (not a return) can add the inviter as
+  // a two-way contact; the action resolves with the return link to send back.
+  const canAccept =
+    invite !== undefined &&
+    invite.ref === undefined &&
+    onAcceptInvite !== undefined;
+  const onAccept = canAccept
+    ? (label: string) =>
+        onAcceptInvite(invite, label).then((result) => result.url)
+    : undefined;
+
   return (
     <PublicResolution
       resolved={resolved}
       linkHolder
+      canAccept={canAccept}
+      onAccept={onAccept}
       onBack={onBack}
       onClaim={onClaim}
       onVerify={onVerify}
