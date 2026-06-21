@@ -63,6 +63,11 @@ export interface KnockReview {
 export interface ApiClient {
   getAlias(id: string): Promise<Bytes>;
   putAlias(id: string, payload: Bytes, writeToken: string): Promise<void>;
+  /** Read a notify inbox (doc 13): the same fixed-size, existence-uniform read as
+   * an alias, on the /inbox path. A miss is a decoy, indistinguishable from empty. */
+  getInbox(id: string): Promise<Bytes>;
+  /** Write a notify inbox, gated by its write token (the recipient's capability). */
+  putInbox(id: string, payload: Bytes, writeToken: string): Promise<void>;
   getAccount(id: string): Promise<{ blob: Bytes; version: string } | null>;
   putAccount(
     id: string,
@@ -154,6 +159,21 @@ function requireVersion(res: Response, op: string): string {
   return version;
 }
 
+/** The owner's review of a knock id: live count plus the well-formed pending list. */
+async function fetchKnockReview(
+  call: (path: string, init?: RequestInit) => Promise<Response>,
+  id: string,
+  writeToken: string,
+): Promise<KnockReview> {
+  const res = await call(PATHS.knockPrefix + id, {
+    method: "GET",
+    cache: "no-store",
+    headers: { [HEADER_WRITE_TOKEN]: writeToken },
+  });
+  if (!res.ok) throw new ApiError(statusToKind(res.status), "knock review");
+  return parseKnockReview(await res.json());
+}
+
 /** Map a non-ok HTTP status to the typed error kind. */
 function statusToKind(status: number): ApiErrorKind {
   if (status === 429) return "rateLimited";
@@ -183,46 +203,60 @@ export function createApiClient(
     }
   }
 
-  // Shared by knockReview and knockCount as a plain closure, so neither depends on
-  // `this` (which would break if a method were destructured off the client).
-  async function knockReview(
+  // The alias card and notify inbox are byte-for-byte the same blind,
+  // existence-uniform, write-token-gated fixed-size protocol, so they share one
+  // GET and one PUT keyed by a {prefix, label} target.
+  const ALIAS = { prefix: PATHS.aliasPrefix, label: "alias" };
+  const INBOX = { prefix: PATHS.inboxPrefix, label: "inbox" };
+
+  async function getFixed(t: { prefix: string; label: string }, id: string) {
+    if (!validId(id))
+      throw new ApiError("badRequest", `malformed ${t.label} id`);
+    const res = await call(t.prefix + id, { method: "GET", cache: "no-store" });
+    if (!res.ok) throw new ApiError(statusToKind(res.status), `${t.label} get`);
+    return requireAliasSize(await readBytes(res));
+  }
+
+  async function putFixed(
+    t: { prefix: string; label: string },
     id: string,
+    payload: Bytes,
     writeToken: string,
-  ): Promise<KnockReview> {
-    const res = await call(PATHS.knockPrefix + id, {
-      method: "GET",
-      cache: "no-store",
-      headers: { [HEADER_WRITE_TOKEN]: writeToken },
+  ) {
+    if (!validId(id))
+      throw new ApiError("badRequest", `malformed ${t.label} id`);
+    if (payload.length !== ALIAS_PAYLOAD_SIZE) {
+      throw new ApiError(
+        "protocol",
+        `${t.label} payload must be the fixed size`,
+      );
+    }
+    const res = await call(t.prefix + id, {
+      method: "PUT",
+      headers: {
+        "Content-Type": OCTET_STREAM,
+        [HEADER_WRITE_TOKEN]: writeToken,
+      },
+      body: payload,
     });
-    if (!res.ok) throw new ApiError(statusToKind(res.status), "knock review");
-    return parseKnockReview(await res.json());
+    if (!res.ok) throw new ApiError(statusToKind(res.status), `${t.label} put`);
   }
 
   return {
-    async getAlias(id) {
-      if (!validId(id)) throw new ApiError("badRequest", "malformed alias id");
-      const res = await call(PATHS.aliasPrefix + id, {
-        method: "GET",
-        cache: "no-store",
-      });
-      if (!res.ok) throw new ApiError(statusToKind(res.status), "alias get");
-      return requireAliasSize(await readBytes(res));
+    getAlias(id) {
+      return getFixed(ALIAS, id);
     },
 
-    async putAlias(id, payload, writeToken) {
-      if (!validId(id)) throw new ApiError("badRequest", "malformed alias id");
-      if (payload.length !== ALIAS_PAYLOAD_SIZE) {
-        throw new ApiError("protocol", "alias payload must be the fixed size");
-      }
-      const res = await call(PATHS.aliasPrefix + id, {
-        method: "PUT",
-        headers: {
-          "Content-Type": OCTET_STREAM,
-          [HEADER_WRITE_TOKEN]: writeToken,
-        },
-        body: payload,
-      });
-      if (!res.ok) throw new ApiError(statusToKind(res.status), "alias put");
+    putAlias(id, payload, writeToken) {
+      return putFixed(ALIAS, id, payload, writeToken);
+    },
+
+    getInbox(id) {
+      return getFixed(INBOX, id);
+    },
+
+    putInbox(id, payload, writeToken) {
+      return putFixed(INBOX, id, payload, writeToken);
     },
 
     async getAccount(id) {
@@ -273,10 +307,12 @@ export function createApiClient(
       await postJson(call, PATHS.knockPrefix + id, body, "knock");
     },
 
-    knockReview,
+    knockReview(id, writeToken) {
+      return fetchKnockReview(call, id, writeToken);
+    },
 
     async knockCount(id, writeToken) {
-      return (await knockReview(id, writeToken)).count;
+      return (await fetchKnockReview(call, id, writeToken)).count;
     },
 
     async registerPush(req) {

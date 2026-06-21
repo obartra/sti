@@ -55,6 +55,7 @@ const (
 
 const (
 	PathAliasPrefix   = "/a/"            // GET: resolve an alias (hot read)
+	PathInboxPrefix   = "/inbox/"        // GET/PUT: per-device notify inbox (alias-shaped)
 	PathAccountPrefix = "/acct/"         // GET/PUT: device-sync blob
 	PathNotify        = "/notify"        // POST: enqueue a contentless wake
 	PathPushRegister  = "/push/register" // POST: register a Web Push endpoint

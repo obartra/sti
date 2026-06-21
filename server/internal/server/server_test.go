@@ -196,6 +196,106 @@ func TestAliasReadIsExistenceUniform(t *testing.T) {
 	}
 }
 
+// The notify inbox is the same blind, fixed-size, write-token-gated, existence-
+// uniform protocol as alias, on its own /inbox path and table.
+func TestInboxRoundTripAndExistenceUniform(t *testing.T) {
+	h := newTestServer(t)
+	id := randID(t)
+	payload := bytes.Repeat([]byte{0x5A}, contract.AliasPayloadSize)
+
+	put := httptest.NewRequest("PUT", contract.PathInboxPrefix+id, bytes.NewReader(payload))
+	put.Header.Set(contract.HeaderWriteToken, "inbox-token")
+	if rec := do(h, put); rec.Code != http.StatusNoContent {
+		t.Fatalf("inbox put: %d", rec.Code)
+	}
+
+	// A stored inbox reads back exactly.
+	hit := do(h, httptest.NewRequest("GET", contract.PathInboxPrefix+id, nil))
+	if hit.Code != http.StatusOK || !bytes.Equal(hit.Body.Bytes(), payload) {
+		t.Fatalf("inbox get: code=%d match=%v", hit.Code, bytes.Equal(hit.Body.Bytes(), payload))
+	}
+
+	// A miss is a fixed-size decoy: same status + length, stable across repeats,
+	// and indistinguishable from a real read.
+	missing := randID(t)
+	miss := do(h, httptest.NewRequest("GET", contract.PathInboxPrefix+missing, nil))
+	if miss.Code != hit.Code || miss.Body.Len() != contract.AliasPayloadSize {
+		t.Fatalf("inbox miss: code=%d len=%d", miss.Code, miss.Body.Len())
+	}
+	miss2 := do(h, httptest.NewRequest("GET", contract.PathInboxPrefix+missing, nil))
+	if !bytes.Equal(miss.Body.Bytes(), miss2.Body.Bytes()) {
+		t.Fatal("inbox decoy not stable across repeats")
+	}
+
+	// A wrong token cannot overwrite the inbox.
+	evil := httptest.NewRequest("PUT", contract.PathInboxPrefix+id, bytes.NewReader(payload))
+	evil.Header.Set(contract.HeaderWriteToken, "not-owner")
+	if rec := do(h, evil); rec.Code != http.StatusForbidden {
+		t.Fatalf("inbox wrong-token write: %d, want 403", rec.Code)
+	}
+
+	// Wrong size is rejected.
+	short := httptest.NewRequest("PUT", contract.PathInboxPrefix+randID(t), strings.NewReader("too short"))
+	short.Header.Set(contract.HeaderWriteToken, "tok")
+	if rec := do(h, short); rec.Code != http.StatusBadRequest {
+		t.Fatalf("inbox short payload: %d, want 400", rec.Code)
+	}
+}
+
+// The alias and inbox namespaces are independent: writing an id as an alias does
+// not make it readable as an inbox (it reads back as a decoy, not the ciphertext).
+func TestInboxAndAliasNamespacesAreSeparate(t *testing.T) {
+	h := newTestServer(t)
+	id := randID(t)
+	payload := bytes.Repeat([]byte{0x33}, contract.AliasPayloadSize)
+	put := httptest.NewRequest("PUT", contract.PathAliasPrefix+id, bytes.NewReader(payload))
+	put.Header.Set(contract.HeaderWriteToken, "tok")
+	if rec := do(h, put); rec.Code != http.StatusNoContent {
+		t.Fatalf("alias put: %d", rec.Code)
+	}
+	// The same id on /inbox is a miss -> a decoy, never the alias ciphertext.
+	got := do(h, httptest.NewRequest("GET", contract.PathInboxPrefix+id, nil))
+	if got.Code != http.StatusOK || got.Body.Len() != contract.AliasPayloadSize {
+		t.Fatalf("inbox read of an alias id: code=%d len=%d", got.Code, got.Body.Len())
+	}
+	if bytes.Equal(got.Body.Bytes(), payload) {
+		t.Fatal("inbox leaked the alias ciphertext for a shared id")
+	}
+}
+
+// The catastrophic-overload fallback for a sensitive read MUST be byte-identical
+// to a normal miss, or saturation becomes a distinguishable signal (an existence
+// leak). This pins it for BOTH /a and /inbox, since uniformOverload's id-extraction
+// (trim both prefixes) is exactly the kind of code a refactor could silently break.
+func TestOverloadDecoyMatchesMiss(t *testing.T) {
+	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	secret := bytes.Repeat([]byte{0x42}, 32)
+	srv := New(st, Config{DecoySecret: secret}, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+	h := srv.Handler()
+	id := randID(t)
+
+	for _, prefix := range []string{contract.PathAliasPrefix, contract.PathInboxPrefix} {
+		canonical := decoyBytes(secret, id, contract.AliasPayloadSize)
+
+		// A normal miss through the handler.
+		miss := do(h, httptest.NewRequest("GET", prefix+id, nil))
+		if !bytes.Equal(miss.Body.Bytes(), canonical) {
+			t.Fatalf("%s normal miss != canonical decoy", prefix)
+		}
+
+		// The overload fallback for the same id+path.
+		rec := httptest.NewRecorder()
+		srv.uniformOverload(rec, httptest.NewRequest("GET", prefix+id, nil))
+		if !bytes.Equal(rec.Body.Bytes(), canonical) {
+			t.Fatalf("%s overload decoy != canonical (distinguishable from a miss)", prefix)
+		}
+	}
+}
+
 func TestAliasWriteTokenEnforced(t *testing.T) {
 	h := newTestServer(t)
 	id := randID(t)

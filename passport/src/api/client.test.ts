@@ -117,6 +117,44 @@ describe("alias write", () => {
   });
 });
 
+describe("notify inbox", () => {
+  it("GET/PUT use the /inbox path with the same fixed-size + token rules", async () => {
+    const m = mockFetch(
+      () => new Response(new Uint8Array(ALIAS_PAYLOAD_SIZE), { status: 200 }),
+    );
+    const api = createApiClient(BASE, m.fetch);
+
+    const body = await api.getInbox(GOOD_ID);
+    expect(m.last().url).toBe(`${BASE}/inbox/${GOOD_ID}`);
+    expect(body.length).toBe(ALIAS_PAYLOAD_SIZE);
+
+    await api.putInbox(GOOD_ID, aliasBody(), "inbox-tok");
+    expect(m.last().url).toBe(`${BASE}/inbox/${GOOD_ID}`);
+    expect(m.last().init?.method).toBe("PUT");
+    expect(new Headers(m.last().init?.headers).get(HEADER_WRITE_TOKEN)).toBe(
+      "inbox-tok",
+    );
+  });
+
+  it("a wrong-size inbox payload is a protocol error, and 403 is forbidden", async () => {
+    const ok = createApiClient(
+      BASE,
+      mockFetch(() => new Response(null, { status: 204 })).fetch,
+    );
+    await expect(
+      ok.putInbox(GOOD_ID, new Uint8Array(5), "tok"),
+    ).rejects.toMatchObject({ kind: "protocol" });
+
+    const denied = createApiClient(
+      BASE,
+      mockFetch(() => new Response(null, { status: 403 })).fetch,
+    );
+    await expect(
+      denied.putInbox(GOOD_ID, aliasBody(), "bad"),
+    ).rejects.toMatchObject({ kind: "forbidden" });
+  });
+});
+
 describe("account sync", () => {
   it("returns null on 404 (no blob yet), not an error", async () => {
     const m = mockFetch(() => new Response(null, { status: 404 }));

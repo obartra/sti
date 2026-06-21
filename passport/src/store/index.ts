@@ -42,6 +42,12 @@ export type {
 export { createAccountManager } from "./account.ts";
 export { deriveOwnerCard, republishOwnerCard } from "./ownerCard.ts";
 export { knock, requesterHash } from "./knock.ts";
+export {
+  mintInbox,
+  writePing,
+  pollInbox,
+  type InboxCapability,
+} from "./notifyInbox.ts";
 export { deriveGrantSlotId, grantAccess, redeemGrant } from "./grant.ts";
 export type {
   OwnerSession,

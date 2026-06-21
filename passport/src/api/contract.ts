@@ -17,6 +17,7 @@ export const ACCOUNT_BLOB_MAX_SIZE = 1 << 20;
 
 export const PATHS = {
   aliasPrefix: "/a/",
+  inboxPrefix: "/inbox/",
   accountPrefix: "/acct/",
   notify: "/notify",
   pushRegister: "/push/register",
