@@ -159,6 +159,21 @@ function requireVersion(res: Response, op: string): string {
   return version;
 }
 
+/** The owner's review of a knock id: live count plus the well-formed pending list. */
+async function fetchKnockReview(
+  call: (path: string, init?: RequestInit) => Promise<Response>,
+  id: string,
+  writeToken: string,
+): Promise<KnockReview> {
+  const res = await call(PATHS.knockPrefix + id, {
+    method: "GET",
+    cache: "no-store",
+    headers: { [HEADER_WRITE_TOKEN]: writeToken },
+  });
+  if (!res.ok) throw new ApiError(statusToKind(res.status), "knock review");
+  return parseKnockReview(await res.json());
+}
+
 /** Map a non-ok HTTP status to the typed error kind. */
 function statusToKind(status: number): ApiErrorKind {
   if (status === 429) return "rateLimited";
@@ -186,21 +201,6 @@ export function createApiClient(
       // A thrown fetch is a network failure: unreachable, which becomes gray.
       throw new ApiError("unreachable", `request to ${path} failed`, { cause });
     }
-  }
-
-  // Shared by knockReview and knockCount as a plain closure, so neither depends on
-  // `this` (which would break if a method were destructured off the client).
-  async function knockReview(
-    id: string,
-    writeToken: string,
-  ): Promise<KnockReview> {
-    const res = await call(PATHS.knockPrefix + id, {
-      method: "GET",
-      cache: "no-store",
-      headers: { [HEADER_WRITE_TOKEN]: writeToken },
-    });
-    if (!res.ok) throw new ApiError(statusToKind(res.status), "knock review");
-    return parseKnockReview(await res.json());
   }
 
   // The alias card and notify inbox are byte-for-byte the same blind,
@@ -307,10 +307,12 @@ export function createApiClient(
       await postJson(call, PATHS.knockPrefix + id, body, "knock");
     },
 
-    knockReview,
+    knockReview(id, writeToken) {
+      return fetchKnockReview(call, id, writeToken);
+    },
 
     async knockCount(id, writeToken) {
-      return (await knockReview(id, writeToken)).count;
+      return (await fetchKnockReview(call, id, writeToken)).count;
     },
 
     async registerPush(req) {
