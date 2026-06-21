@@ -38,26 +38,3 @@ export function decodeVersioned(
   }
   return o;
 }
-
-/**
- * Like {@link decodeVersioned} but accepts any integer version in 1..=maxVersion,
- * for a schema whose newer versions only ADD optional fields (so an older payload
- * still parses). The caller validates the version-specific fields. A version above
- * maxVersion, below 1, or non-integer throws (fail closed).
- */
-export function decodeVersionedUpTo(
-  bytes: Bytes,
-  maxVersion: number,
-): Record<string, unknown> {
-  const o = decodeObject(bytes);
-  const v = o.v;
-  if (
-    typeof v !== "number" ||
-    !Number.isInteger(v) ||
-    v < 1 ||
-    v > maxVersion
-  ) {
-    throw new Error(`wire: unsupported version ${String(v)}`);
-  }
-  return o;
-}

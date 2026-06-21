@@ -175,6 +175,32 @@ async function ensureMyNotifyOn(
   return { blob: next, myNotify };
 }
 
+/**
+ * Republish the owner's current card (sealing the current badge AND avatar) to
+ * every still-live shared link: every alias plus every non-expired contact link.
+ * Shared by setOwnerState (a badge change) and setProfile (an avatar/profile
+ * edit) so both propagate via one path. Callers differ only in expired-contact
+ * handling (setOwnerState sweeps them first, setProfile does not); this helper
+ * just skips expired contacts so a re-seal can never resurrect a dead link.
+ * The decorrelation gap documented on republishOwnerCard applies to both callers.
+ */
+async function republishLiveLinks(
+  api: ApiClient,
+  blob: AccountBlob,
+  nowDay: number,
+): Promise<void> {
+  const liveContacts = blob.contacts.filter(
+    (c) => c.expiresDay === null || nowDay < c.expiresDay,
+  );
+  const liveLinks = [...blob.aliases, ...liveContacts.map((c) => c.alias)];
+  await republishOwnerCard(api, liveLinks, {
+    state: blob.state,
+    handle: blob.handle,
+    nowDay,
+    avatar: blob.avatar,
+  });
+}
+
 export function createAccountManager(api: ApiClient): AccountManager {
   const sync = createAccountSync(api);
 
@@ -299,13 +325,7 @@ export function createAccountManager(api: ApiClient): AccountManager {
       await sync.save(master, next);
       // Propagate the new badge to every still-live shared link. Self-healing: a
       // retry reloads the saved state and republishes idempotently.
-      const liveLinks = [...next.aliases, ...live.map((c) => c.alias)];
-      await republishOwnerCard(api, liveLinks, {
-        state,
-        handle: next.handle,
-        nowDay,
-        avatar: next.avatar,
-      });
+      await republishLiveLinks(api, next, nowDay);
       return next;
     },
 
@@ -328,6 +348,13 @@ export function createAccountManager(api: ApiClient): AccountManager {
         sharingMode: profile.sharingMode,
       };
       await sync.save(master, next);
+      // The published card seals the owner's avatar, so an avatar edit must reach
+      // already-shared links the same way a badge change does (setOwnerState).
+      // Non-destructive: unlike setOwnerState this does not sweep expired
+      // contacts, but republishLiveLinks skips them so a re-seal never resurrects
+      // a dead link. Self-healing: a retry reloads the saved blob and republishes
+      // idempotently.
+      await republishLiveLinks(api, next, todayEpochDay());
       return next;
     },
   };

@@ -29,18 +29,29 @@ describe("public card codec", () => {
     expect(parsed).toEqual(withAvatar);
   });
 
-  it("parses a v1 card (no avatar) — back-compat falls back to no avatar", () => {
-    const v1 = {
-      v: 1,
+  it("parses a card with the avatar field omitted (falls back to no avatar)", () => {
+    const noAvatar = {
+      v: 2,
       state: "blue",
       labels: ["hiv"],
       route: "hiv",
       handle: "robin",
     };
-    const parsed = parsePublicCard(utf8ToBytes(JSON.stringify(v1)));
+    const parsed = parsePublicCard(utf8ToBytes(JSON.stringify(noAvatar)));
     expect(parsed.avatar).toBeUndefined();
     expect(parsed.avatarSrc).toBeUndefined();
     expect(parsed.identity.handle).toBe("robin");
+  });
+
+  it("round-trips the doxy_pep label (producer and validator stay in lockstep)", () => {
+    const withDoxy: ResolvedView = {
+      ...view,
+      labels: ["hiv", "doxy_pep"],
+    };
+    expect(parsePublicCard(serializePublicCard(withDoxy)).labels).toEqual([
+      "hiv",
+      "doxy_pep",
+    ]);
   });
 
   it("normalizes a card with no labels or route", () => {
@@ -71,6 +82,14 @@ describe("public card codec", () => {
     route: null,
     handle: "x",
   });
+  // Back-compat is intentionally dropped: the pre-avatar v1 shape no longer parses.
+  reject("a now-unsupported v1 card", {
+    v: 1,
+    state: "blue",
+    labels: ["hiv"],
+    route: "hiv",
+    handle: "robin",
+  });
   reject("a zero version", {
     v: 0,
     state: "blue",
@@ -87,28 +106,28 @@ describe("public card codec", () => {
     avatar: { animal: "cat" },
   });
   reject("an invalid state", {
-    v: 1,
+    v: 2,
     state: "platinum",
     labels: [],
     route: null,
     handle: "x",
   });
   reject("an empty handle", {
-    v: 1,
+    v: 2,
     state: "blue",
     labels: [],
     route: null,
     handle: "",
   });
   reject("an invalid label", {
-    v: 1,
+    v: 2,
     state: "blue",
     labels: ["diagnosis"],
     route: null,
     handle: "x",
   });
   reject("an invalid route", {
-    v: 1,
+    v: 2,
     state: "blue",
     labels: [],
     route: "secret",
