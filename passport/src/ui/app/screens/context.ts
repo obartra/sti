@@ -60,6 +60,8 @@ export interface ScreenCtx {
     invite: ContactInvite,
     label: string,
   ) => Promise<ContactLinkResult>;
+  /** Ingest a return invite a contact sent back, completing the pending link. */
+  onIngestContactReturn: (ret: ContactInvite) => void;
   store: PassportStore;
   data: RouteData | null;
 }

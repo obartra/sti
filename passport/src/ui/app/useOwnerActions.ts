@@ -18,6 +18,8 @@ export interface OwnerActions {
     invite: ContactInvite,
     label: string,
   ) => Promise<ContactLinkResult>;
+  /** Ingest a return invite, completing the matching pending contact (no-op if none). */
+  onIngestContactReturn: (ret: ContactInvite) => void;
 }
 
 /**
@@ -86,10 +88,26 @@ export function useOwnerActions(
     [controller, sessionRef, setSession],
   );
 
+  const onIngestContactReturn = useCallback(
+    (ret: ContactInvite) => {
+      const current = sessionRef.current;
+      if (current === null) return;
+      void controller
+        .ingestContactReturn(current, ret)
+        .then((updated) => {
+          sessionRef.current = updated;
+          setSession(updated);
+        })
+        .catch(() => undefined);
+    },
+    [controller, sessionRef, setSession],
+  );
+
   return {
     onDeleteAccount,
     onCreateContactLink,
     onRevokeContact,
     onAcceptContactInvite,
+    onIngestContactReturn,
   };
 }
