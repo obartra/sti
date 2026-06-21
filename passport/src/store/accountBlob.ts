@@ -20,17 +20,20 @@ import { isAvatarConfig, type AvatarConfig } from "../lib/avatars.ts";
 import { decodeVersioned, isValidHandle } from "./codec.ts";
 import type { NotifyCapability } from "./notifyInbox.ts";
 
-// v8 adds `theirStatusAlias` per contact (doc 13 path A): the contact's own alias
-// that I READ to see their status, captured when a mutual link exchange completes.
-// Read-only ({id,key}, no write token), distinct from `alias` (the alias I publish
-// for them). Optional until the exchange completes. v7 added `circles`; v6 added
-// the pairwise notify capabilities (`myNotify` + `theirNotify`); v5 added the
-// per-contact links (`contacts`); v4 was the absolute-day testing input. There are
-// no real older accounts in the wild, so the current version is parsed exclusively:
-// an older or otherwise malformed blob fails the strict version check and
-// parseAccountBlob THROWS (recovery surfaces an error rather than silently restoring
-// it). Only a genuine account miss (404) maps to null/"no account".
-const SCHEMA_VERSION = 8;
+// v9 adds the optional per-alias display override (`handle` + `avatar` on
+// AliasRecord, doc 15): a card's face is derived deterministically from the alias
+// id by default, and these override it when the owner opts into a recognizable
+// look. v8 added `theirStatusAlias` per contact (doc 13 path A): the contact's own
+// alias that I READ to see their status, captured when a mutual link exchange
+// completes. Read-only ({id,key}, no write token), distinct from `alias` (the alias
+// I publish for them). Optional until the exchange completes. v7 added `circles`;
+// v6 added the pairwise notify capabilities (`myNotify` + `theirNotify`); v5 added
+// the per-contact links (`contacts`); v4 was the absolute-day testing input. There
+// are no real older accounts in the wild, so the current version is parsed
+// exclusively: an older or otherwise malformed blob fails the strict version check
+// and parseAccountBlob THROWS (recovery surfaces an error rather than silently
+// restoring it). Only a genuine account miss (404) maps to null/"no account".
+const SCHEMA_VERSION = 9;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -38,6 +41,14 @@ export interface AliasRecord {
   readonly writeToken: string;
   readonly key: string;
   readonly isPublic: boolean;
+  /**
+   * Optional per-alias display override (doc 15). Absent means the card's face is
+   * derived deterministically from `id` (an unlinkable default); set means the
+   * owner opted this alias into a recognizable look. These are display values, not
+   * addresses: never unique, never in the URL.
+   */
+  readonly handle?: string;
+  readonly avatar?: AvatarConfig;
 }
 
 /**
@@ -135,6 +146,15 @@ interface AccountBlobWire extends AccountBlob {
   readonly v: typeof SCHEMA_VERSION;
 }
 
+// The optional per-alias display override (doc 15), each field validated only when
+// present, so a malformed override fails closed like any other field.
+function hasValidAliasOverride(r: Record<string, unknown>): boolean {
+  return (
+    (r.handle === undefined || isValidHandle(r.handle)) &&
+    (r.avatar === undefined || isAvatarConfig(r.avatar))
+  );
+}
+
 function isAliasRecord(x: unknown): x is AliasRecord {
   if (typeof x !== "object" || x === null) return false;
   const r = x as Record<string, unknown>;
@@ -145,7 +165,8 @@ function isAliasRecord(x: unknown): x is AliasRecord {
     validId(r.writeToken) &&
     typeof r.key === "string" &&
     validId(r.key) &&
-    typeof r.isPublic === "boolean"
+    typeof r.isPublic === "boolean" &&
+    hasValidAliasOverride(r)
   );
 }
 
