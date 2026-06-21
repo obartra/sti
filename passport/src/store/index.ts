@@ -22,8 +22,15 @@ export type {
   AccountBlob,
   AliasRecord,
   ContactRecord,
+  CircleRecord,
   SharingMode,
 } from "./accountBlob.ts";
+export {
+  MIN_CIRCLE_SIZE,
+  circleMeetsFloor,
+  visibleCircleStatuses,
+  normalizeCircleMembers,
+} from "./circles.ts";
 export {
   serializeAccountBlob,
   parseAccountBlob,

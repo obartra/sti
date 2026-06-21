@@ -65,6 +65,28 @@ describe("account blob codec", () => {
     );
   });
 
+  it("round-trips v7 circles (client-side bundles)", () => {
+    const withCircles: AccountBlob = {
+      handle: "robin",
+      aliases: [],
+      contacts: [],
+      state: INITIAL_OWNER_STATE,
+      avatar: DEFAULT_AVATAR,
+      sharingMode: "link",
+      circles: [
+        {
+          id: "H".repeat(43),
+          name: "close",
+          memberContactIds: ["D".repeat(43)],
+        },
+        { id: "I".repeat(43), name: "", memberContactIds: [] },
+      ],
+    };
+    expect(parseAccountBlob(serializeAccountBlob(withCircles))).toEqual(
+      withCircles,
+    );
+  });
+
   it("round-trips an empty alias list", () => {
     const empty: AccountBlob = {
       handle: "sam",
@@ -116,7 +138,7 @@ describe("account blob codec", () => {
   const A = DEFAULT_AVATAR;
   const N = mintNotify();
   const base = {
-    v: 6,
+    v: 7,
     handle: "x",
     aliases: [],
     contacts: [],
@@ -125,8 +147,8 @@ describe("account blob codec", () => {
   };
   reject("a non-object", 7);
   reject("an unknown version", { ...base, v: 9 });
-  reject("a prior version (v5 is no longer accepted)", {
-    v: 5,
+  reject("a prior version (v6 is no longer accepted)", {
+    v: 6,
     handle: "x",
     aliases: [],
     contacts: [],
@@ -165,7 +187,7 @@ describe("account blob codec", () => {
     sharingMode: "link",
   });
   reject("a missing state", {
-    v: 6,
+    v: 7,
     handle: "x",
     aliases: [],
     contacts: [],
@@ -177,7 +199,7 @@ describe("account blob codec", () => {
     sharingMode: "link",
   });
   reject("a missing avatar", {
-    v: 6,
+    v: 7,
     handle: "x",
     aliases: [],
     contacts: [],
@@ -214,5 +236,15 @@ describe("account blob codec", () => {
         theirNotify: { ...N, routingToken: "short" },
       },
     ],
+  });
+  reject("a circle with a non-array members", {
+    ...base,
+    sharingMode: "link",
+    circles: [{ id: ID, name: "x", memberContactIds: "nope" }],
+  });
+  reject("a circle with a malformed member id", {
+    ...base,
+    sharingMode: "link",
+    circles: [{ id: ID, name: "x", memberContactIds: ["short"] }],
   });
 });

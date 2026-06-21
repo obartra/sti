@@ -28,9 +28,11 @@ import {
   type AccountBlob,
   type AliasRecord,
   type ContactRecord,
+  type CircleRecord,
   type SharingMode,
 } from "./accountBlob.ts";
 import { mintNotify } from "./notifyInbox.ts";
+import { normalizeCircleMembers } from "./circles.ts";
 
 /** The owner's presentation profile: avatar plus the account sharing default. */
 export interface OwnerProfile {
@@ -61,8 +63,19 @@ export interface AccountManager {
   removeAlias(master: Bytes, id: string): Promise<AccountBlob>;
   /** Record a per-contact link into the account and persist it. */
   addContact(master: Bytes, contact: ContactRecord): Promise<AccountBlob>;
-  /** Drop a contact record (after its alias payload is revoked). */
+  /**
+   * Drop a contact record (after its alias payload is revoked). Also strips the
+   * contact from every circle, so a circle never references a contact that is gone.
+   */
   removeContact(master: Bytes, contactId: string): Promise<AccountBlob>;
+  /**
+   * Create or update a circle (doc 13 slice 6), upserting by id. Members are
+   * normalized against current contacts (unknown/removed ids dropped, deduped), so
+   * a circle never references a contact that does not exist.
+   */
+  upsertCircle(master: Bytes, circle: CircleRecord): Promise<AccountBlob>;
+  /** Drop a circle by id. Purely local; the server never knew it existed. */
+  removeCircle(master: Bytes, circleId: string): Promise<AccountBlob>;
   /**
    * Delete the account: revoke every published alias (so no shared link can ever
    * resolve to a status again) and remove the account blob. "Working delete"
@@ -93,6 +106,46 @@ function freshBlob(handle: string): AccountBlob {
     avatar: DEFAULT_AVATAR,
     sharingMode: "link",
     myNotify: mintNotify(),
+  };
+}
+
+// Drop a contact and strip it from every circle, so no circle dangles a member
+// that no longer exists.
+function withContactRemoved(blob: AccountBlob, contactId: string): AccountBlob {
+  return {
+    ...blob,
+    contacts: blob.contacts.filter((c) => c.id !== contactId),
+    ...(blob.circles !== undefined
+      ? {
+          circles: blob.circles.map((circle) => ({
+            ...circle,
+            memberContactIds: circle.memberContactIds.filter(
+              (id) => id !== contactId,
+            ),
+          })),
+        }
+      : {}),
+  };
+}
+
+// Upsert a circle by id, normalizing its members against current contacts so it
+// never references a contact that does not exist.
+function withCircleUpserted(
+  blob: AccountBlob,
+  circle: CircleRecord,
+): AccountBlob {
+  const normalized: CircleRecord = {
+    ...circle,
+    memberContactIds: normalizeCircleMembers(blob, circle.memberContactIds),
+  };
+  const others = (blob.circles ?? []).filter((c) => c.id !== circle.id);
+  return { ...blob, circles: [...others, normalized] };
+}
+
+function withCircleRemoved(blob: AccountBlob, circleId: string): AccountBlob {
+  return {
+    ...blob,
+    circles: (blob.circles ?? []).filter((c) => c.id !== circleId),
   };
 }
 
@@ -164,10 +217,15 @@ export function createAccountManager(api: ApiClient): AccountManager {
     },
 
     removeContact(master, contactId) {
-      return modify(master, (blob) => ({
-        ...blob,
-        contacts: blob.contacts.filter((c) => c.id !== contactId),
-      }));
+      return modify(master, (blob) => withContactRemoved(blob, contactId));
+    },
+
+    upsertCircle(master, circle) {
+      return modify(master, (blob) => withCircleUpserted(blob, circle));
+    },
+
+    removeCircle(master, circleId) {
+      return modify(master, (blob) => withCircleRemoved(blob, circleId));
     },
 
     async deleteAccount(master) {

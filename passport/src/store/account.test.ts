@@ -131,6 +131,59 @@ describe("account manager", () => {
     expect(noop.contacts).toEqual([]);
   });
 
+  const CIRCLE = "Z".repeat(43);
+
+  it("upsertCircle normalizes members and upserts by id; removeCircle drops it", async () => {
+    const accounts = createAccountManager(fakeAccountApi());
+    const created = await accounts.create("robin");
+    await accounts.addContact(created.master, contact);
+
+    // A ghost id (no such contact) is dropped and the duplicate deduped.
+    const saved = await accounts.upsertCircle(created.master, {
+      id: CIRCLE,
+      name: "close",
+      memberContactIds: [contact.id, "ghost", contact.id],
+    });
+    expect(saved.circles).toEqual([
+      { id: CIRCLE, name: "close", memberContactIds: [contact.id] },
+    ]);
+
+    // Upsert by id updates in place, never duplicates.
+    const renamed = await accounts.upsertCircle(created.master, {
+      id: CIRCLE,
+      name: "besties",
+      memberContactIds: [contact.id],
+    });
+    expect(renamed.circles).toEqual([
+      { id: CIRCLE, name: "besties", memberContactIds: [contact.id] },
+    ]);
+    expect(
+      (await accounts.recover(created.recoveryPhrase))?.blob.circles,
+    ).toEqual([
+      { id: CIRCLE, name: "besties", memberContactIds: [contact.id] },
+    ]);
+
+    const dropped = await accounts.removeCircle(created.master, CIRCLE);
+    expect(dropped.circles).toEqual([]);
+  });
+
+  it("removeContact strips the contact from every circle", async () => {
+    const accounts = createAccountManager(fakeAccountApi());
+    const created = await accounts.create("robin");
+    await accounts.addContact(created.master, contact);
+    await accounts.upsertCircle(created.master, {
+      id: CIRCLE,
+      name: "close",
+      memberContactIds: [contact.id],
+    });
+
+    const after = await accounts.removeContact(created.master, contact.id);
+    expect(after.contacts).toEqual([]);
+    expect(after.circles).toEqual([
+      { id: CIRCLE, name: "close", memberContactIds: [] },
+    ]);
+  });
+
   it("setOwnerState revokes + drops expired contacts and keeps live ones", async () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
