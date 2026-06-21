@@ -5,10 +5,10 @@
 //
 // Usage: node deploy/build-promises.mjs
 
-import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { repoVersion } from "./version.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
@@ -30,19 +30,8 @@ const MONTHS = [
   "Dec",
 ];
 
-function version() {
-  try {
-    return execSync("git describe --tags --always --dirty", {
-      cwd: ROOT,
-      encoding: "utf8",
-    }).trim();
-  } catch {
-    // Netlify's shallow checkout can lack git history; fall back to the commit
-    // ref it provides in the environment.
-    const ref = process.env.COMMIT_REF;
-    return ref ? ref.slice(0, 7) : "dev";
-  }
-}
+// Repo version + the COMMIT_REF fallback both live in the shared module now.
+const version = repoVersion;
 
 function today() {
   const d = new Date();
