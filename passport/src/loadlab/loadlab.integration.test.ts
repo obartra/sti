@@ -477,6 +477,18 @@ describe("load & usage lab: behavior gates against a real blind store", () => {
     expect(typeof ok.count).toBe("number"); // the owner's token works
   });
 
+  behaviorIt("push-registration-stored", async () => {
+    await expect(
+      api.registerPush({
+        routingEndpointId: randomAliasId(),
+        subscription: {
+          endpoint: "https://push.example/endpoint",
+          keys: { p256dh: "p256dh-key", auth: "auth-secret" },
+        },
+      }),
+    ).resolves.toBeUndefined(); // 204, stored without error
+  });
+
   // MUST be last: it tears the instance down, so nothing can run after it.
   behaviorIt("teardown-clears-datastore", () => {
     const h = harness;

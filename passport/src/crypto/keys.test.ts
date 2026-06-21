@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import {
   randomAliasId,
   randomWriteToken,
+  randomRecoveryPhrase,
   deriveMasterKey,
   deriveAccountId,
   deriveAccountKey,
@@ -24,6 +25,17 @@ describe("random ids", () => {
     const token = randomWriteToken();
     expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(token).not.toBe(id);
+  });
+
+  it("recovery phrases are app-generated 256-bit secrets, unique per draw", () => {
+    // 43-char base64url == 32 random bytes == 256 bits. The blind-store guarantee
+    // for the passphrase path rests on the phrase being app-generated and
+    // high-entropy (never user-chosen), so this pins that shape.
+    const phrases = new Set(
+      Array.from({ length: 50 }, () => randomRecoveryPhrase()),
+    );
+    expect(phrases.size).toBe(50); // no collisions across draws
+    for (const p of phrases) expect(p).toMatch(/^[A-Za-z0-9_-]{43}$/);
   });
 });
 
