@@ -117,6 +117,10 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       };
       return Promise.resolve({ master, blob });
     },
+    revokeAlias: (_session, aliasId) => {
+      blob = { ...blob, aliases: blob.aliases.filter((a) => a.id !== aliasId) };
+      return Promise.resolve({ master, blob });
+    },
     acceptContactInvite: () =>
       Promise.reject(new Error("not used in this test")),
     ingestContactReturn: (session) => Promise.resolve(session),

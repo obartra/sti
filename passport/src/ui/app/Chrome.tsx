@@ -38,6 +38,8 @@ export interface ChromeProps {
   showKnockInfo: boolean;
   approveKnocks: () => void;
   approvingKnocks: boolean;
+  aliases: ScreenCtx["aliases"];
+  onRevokeAlias: ScreenCtx["onRevokeAlias"];
   contacts: ScreenCtx["contacts"];
   onCreateContactLink: ScreenCtx["onCreateContactLink"];
   onRevokeContact: ScreenCtx["onRevokeContact"];
@@ -117,6 +119,8 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     showKnockInfo: props.showKnockInfo,
     approveKnocks: props.approveKnocks,
     approvingKnocks: props.approvingKnocks,
+    aliases: props.aliases,
+    onRevokeAlias: props.onRevokeAlias,
     contacts: props.contacts,
     onCreateContactLink: props.onCreateContactLink,
     onRevokeContact: props.onRevokeContact,

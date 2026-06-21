@@ -13,6 +13,8 @@ export interface OwnerActions {
   onCreateContactLink: (label: string) => Promise<ContactLinkResult>;
   /** Revoke one contact link by id. */
   onRevokeContact: (id: string) => void;
+  /** Revoke one published alias (public/casual link) by id. */
+  onRevokeAlias: (id: string) => void;
   /** Accept a contact invite; resolves with the return invite to send back. */
   onAcceptContactInvite: (
     invite: ContactInvite,
@@ -72,6 +74,21 @@ export function useOwnerActions(
     [controller, sessionRef, setSession],
   );
 
+  const onRevokeAlias = useCallback(
+    (id: string) => {
+      const current = sessionRef.current;
+      if (current === null) return;
+      void controller
+        .revokeAlias(current, id)
+        .then((updated) => {
+          sessionRef.current = updated;
+          setSession(updated);
+        })
+        .catch(() => undefined);
+    },
+    [controller, sessionRef, setSession],
+  );
+
   const onAcceptContactInvite = useCallback(
     async (invite: ContactInvite, label: string) => {
       const current = sessionRef.current;
@@ -107,6 +124,7 @@ export function useOwnerActions(
     onDeleteAccount,
     onCreateContactLink,
     onRevokeContact,
+    onRevokeAlias,
     onAcceptContactInvite,
     onIngestContactReturn,
   };

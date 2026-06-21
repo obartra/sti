@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Nav } from "../useAppRouter.ts";
 import type { RouteData, Screen } from "../routes.ts";
 import type {
+  AliasRecord,
   ContactInvite,
   ContactLinkResult,
   ContactRecord,
@@ -44,6 +45,10 @@ export interface ScreenCtx {
   approveKnocks: () => void;
   /** An approve is in flight (disable the control). */
   approvingKnocks: boolean;
+  /** The owner's published aliases (public/casual links); empty logged out. */
+  aliases: AliasRecord[];
+  /** Revoke one published alias by id (its link stops resolving). */
+  onRevokeAlias: (id: string) => void;
   /** The owner's per-contact links (newest last); empty logged out. */
   contacts: ContactRecord[];
   /** Mint a new per-contact link for `label`; resolves with the contact + URL. */

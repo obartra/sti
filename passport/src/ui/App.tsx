@@ -128,6 +128,7 @@ export function App({
     onDeleteAccount,
     onCreateContactLink,
     onRevokeContact,
+    onRevokeAlias,
     onAcceptContactInvite,
     onIngestContactReturn,
   } = useOwnerActions(controller, sessionRef, setSession);
@@ -186,6 +187,8 @@ export function App({
       showKnockInfo={showKnockInfo}
       approveKnocks={approveKnocks}
       approvingKnocks={approvingKnocks}
+      aliases={session ? session.blob.aliases : []}
+      onRevokeAlias={onRevokeAlias}
       contacts={session ? session.blob.contacts : []}
       onCreateContactLink={onCreateContactLink}
       onRevokeContact={onRevokeContact}
