@@ -20,16 +20,17 @@ import { isAvatarConfig, type AvatarConfig } from "../lib/avatars.ts";
 import { decodeVersioned, isValidHandle } from "./codec.ts";
 import type { NotifyCapability } from "./notifyInbox.ts";
 
-// v7 adds `circles` (doc 13 slice 6): purely client-side bundles of contacts with
-// a shared display, never seen by the server. Optional, so existing construction
-// sites stay valid. v6 added the pairwise notify capabilities (`myNotify` +
-// `theirNotify`); v5 added the per-contact links (`contacts`); v4 was the
-// absolute-day testing input. There are no real older accounts in the wild, so the
-// current version is parsed exclusively: an older or otherwise malformed blob fails
-// the strict version check and parseAccountBlob THROWS (recovery surfaces an error
-// rather than silently restoring it). Only a genuine account miss (404) maps to
-// null/"no account".
-const SCHEMA_VERSION = 7;
+// v8 adds `theirStatusAlias` per contact (doc 13 path A): the contact's own alias
+// that I READ to see their status, captured when a mutual link exchange completes.
+// Read-only ({id,key}, no write token), distinct from `alias` (the alias I publish
+// for them). Optional until the exchange completes. v7 added `circles`; v6 added
+// the pairwise notify capabilities (`myNotify` + `theirNotify`); v5 added the
+// per-contact links (`contacts`); v4 was the absolute-day testing input. There are
+// no real older accounts in the wild, so the current version is parsed exclusively:
+// an older or otherwise malformed blob fails the strict version check and
+// parseAccountBlob THROWS (recovery surfaces an error rather than silently restoring
+// it). Only a genuine account miss (404) maps to null/"no account".
+const SCHEMA_VERSION = 8;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -37,6 +38,16 @@ export interface AliasRecord {
   readonly writeToken: string;
   readonly key: string;
   readonly isPublic: boolean;
+}
+
+/**
+ * A read-only handle on someone else's alias: the id to fetch and the key to open
+ * it, with no write token (I can read their status, not overwrite it). This is the
+ * contact's own `myAlias` as seen from my side after a mutual exchange.
+ */
+export interface StatusAlias {
+  readonly id: string;
+  readonly key: string;
 }
 
 /** A private nickname is the owner's own label; never sent, capped to keep blobs small. */
@@ -63,6 +74,12 @@ export interface ContactRecord {
    * Present only once exchanged; absent means this contact cannot yet be notified.
    */
   readonly theirNotify?: NotifyCapability;
+  /**
+   * The contact's own alias that I read to see THEIR status (read-only, no write
+   * token). Present only once a mutual exchange completed; absent means I have
+   * shared my status with them but cannot yet see theirs.
+   */
+  readonly theirStatusAlias?: StatusAlias;
 }
 
 /** A circle name is the owner's own label for a bundle; never sent, capped small. */
@@ -114,7 +131,7 @@ export interface AccountBlob {
   readonly circles?: CircleRecord[];
 }
 
-interface AccountBlobV7 extends AccountBlob {
+interface AccountBlobWire extends AccountBlob {
   readonly v: typeof SCHEMA_VERSION;
 }
 
@@ -158,6 +175,31 @@ function isOptionalNotify(x: unknown): boolean {
   return x === undefined || isNotifyCapability(x);
 }
 
+function isStatusAlias(x: unknown): x is StatusAlias {
+  if (typeof x !== "object" || x === null) return false;
+  const r = x as Record<string, unknown>;
+  return (
+    typeof r.id === "string" &&
+    validId(r.id) &&
+    typeof r.key === "string" &&
+    validId(r.key)
+  );
+}
+
+// A read-only status alias is optional on a contact (absent until I can see theirs).
+function isOptionalStatusAlias(x: unknown): boolean {
+  return x === undefined || isStatusAlias(x);
+}
+
+// The alias plus the two optional exchange capabilities on a contact.
+function hasValidContactAliases(r: Record<string, unknown>): boolean {
+  return (
+    isAliasRecord(r.alias) &&
+    isOptionalNotify(r.theirNotify) &&
+    isOptionalStatusAlias(r.theirStatusAlias)
+  );
+}
+
 function isContactRecord(x: unknown): x is ContactRecord {
   if (typeof x !== "object" || x === null) return false;
   const r = x as Record<string, unknown>;
@@ -170,8 +212,7 @@ function isContactRecord(x: unknown): x is ContactRecord {
     Number.isInteger(r.createdDay) &&
     r.createdDay >= 0 &&
     isDayOrNull(r.expiresDay) &&
-    isAliasRecord(r.alias) &&
-    isOptionalNotify(r.theirNotify)
+    hasValidContactAliases(r)
   );
 }
 
@@ -195,8 +236,8 @@ function isOptionalCircles(x: unknown): boolean {
 
 export function serializeAccountBlob(blob: AccountBlob): Bytes {
   // theirNotify rides inside each contact; myNotify and circles are omitted when
-  // absent, so a pre-v7 account stays byte-identical plus the version bump.
-  const wire: AccountBlobV7 = {
+  // absent, so a contact-only account stays byte-identical plus the version bump.
+  const wire: AccountBlobWire = {
     v: SCHEMA_VERSION,
     handle: blob.handle,
     aliases: blob.aliases,

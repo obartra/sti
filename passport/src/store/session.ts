@@ -33,6 +33,7 @@ import {
   type AliasRecord,
   type ContactRecord,
 } from "./accountBlob.ts";
+import { contactInviteUrl, type ContactInvite } from "./contactInvite.ts";
 import { grantAccess } from "./grant.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { deriveOwnerCard } from "./ownerCard.ts";
@@ -42,7 +43,6 @@ import {
   republishCard,
   revokeAlias,
   aliasLinkUrl,
-  keyedAliasLinkUrl,
 } from "./publish.ts";
 
 /** An unlocked session: the master (in memory only) and the loaded account. */
@@ -145,6 +145,24 @@ export interface SessionController {
     session: OwnerSession,
     contactId: string,
   ): Promise<OwnerSession>;
+  /**
+   * Accept a contact invite (doc 13 path A): mint and publish my own alias for the
+   * inviter, record a complete two-way contact, and return a RETURN invite to send
+   * back so the inviter can complete their side.
+   */
+  acceptContactInvite(
+    session: OwnerSession,
+    invite: ContactInvite,
+    label: string,
+  ): Promise<ContactLinkResult>;
+  /**
+   * Ingest a return invite, completing the pending contact it answers. A no-op
+   * (unchanged session) when nothing matches. Returns the updated session.
+   */
+  ingestContactReturn(
+    session: OwnerSession,
+    ret: ContactInvite,
+  ): Promise<OwnerSession>;
   /** Forget this device's passkey binding. The phrase still recovers. */
   forget(): void;
 }
@@ -236,14 +254,16 @@ async function grantPending(
 }
 
 // Mint a fresh private alias for one contact, publish the current card to it, and
-// record it with a default expiry. The alias is private (unadvertised) but the
-// returned link carries the key, so the one recipient opens it directly (one tap).
+// record it with a default expiry. The alias is private (unadvertised); the link is
+// a contact INVITE (doc 13 path A) carrying the alias key plus the owner's notify
+// capability, so the one recipient can read the card AND, on accept, notify back.
 async function mintContactLink(
   api: ApiClient,
   accounts: AccountManager,
   session: OwnerSession,
   label: string,
 ): Promise<ContactLinkResult> {
+  const { myNotify } = await accounts.ensureMyNotify(session.master);
   const nowDay = todayEpochDay();
   const card = deriveOwnerCard(
     session.blob.state,
@@ -263,8 +283,74 @@ async function mintContactLink(
   return {
     session: { master: session.master, blob },
     contact,
-    url: keyedAliasLinkUrl(record),
+    url: contactInviteUrl(record, myNotify),
   };
+}
+
+// Accept an inviter's contact invite (doc 13 path A). The accepter mints its OWN
+// alias for the inviter, publishes its current card there, and records a COMPLETE
+// contact: the inviter's read-alias (to see their status) and notify capability (to
+// notify them). Returns a RETURN invite carrying the accepter's alias + notify and
+// `ref` = the inviter's alias id, so the inviter can match it to the pending side.
+async function acceptContactInvite(
+  api: ApiClient,
+  accounts: AccountManager,
+  session: OwnerSession,
+  opts: { invite: ContactInvite; label: string },
+): Promise<ContactLinkResult> {
+  const { invite, label } = opts;
+  // A return invite (it carries `ref`) is the inviter's to ingest, not to accept;
+  // accepting it would mint a dangling third side that nobody can match back.
+  if (invite.ref !== undefined) {
+    throw new Error("cannot accept a return invite");
+  }
+  const { myNotify } = await accounts.ensureMyNotify(session.master);
+  const nowDay = todayEpochDay();
+  const card = deriveOwnerCard(
+    session.blob.state,
+    session.blob.handle,
+    nowDay,
+    session.blob.avatar,
+  );
+  const { record } = await publishCard(api, card, { isPublic: false });
+  const contact: ContactRecord = {
+    id: randomAliasId(),
+    label: label.slice(0, MAX_CONTACT_LABEL),
+    createdDay: nowDay,
+    expiresDay: nowDay + CONTACT_LINK_DAYS,
+    alias: record,
+    theirNotify: invite.notify,
+    theirStatusAlias: invite.alias,
+  };
+  const blob = await accounts.addContact(session.master, contact);
+  return {
+    session: { master: session.master, blob },
+    contact,
+    url: contactInviteUrl(record, myNotify, invite.alias.id),
+  };
+}
+
+// Ingest a return invite, completing the pending contact the inviter created. The
+// return's `ref` names the inviter's alias id, so it matches the one pending contact
+// whose alias.id equals it and that has no status alias yet. A no-op (unchanged
+// session) when there is no `ref` or no matching pending contact.
+async function ingestContactReturn(
+  accounts: AccountManager,
+  session: OwnerSession,
+  ret: ContactInvite,
+): Promise<OwnerSession> {
+  if (ret.ref === undefined) return session;
+  const pending = session.blob.contacts.find(
+    (c) => c.alias.id === ret.ref && c.theirStatusAlias === undefined,
+  );
+  if (pending === undefined) return session;
+  const completed: ContactRecord = {
+    ...pending,
+    theirNotify: ret.notify,
+    theirStatusAlias: ret.alias,
+  };
+  const blob = await accounts.addContact(session.master, completed);
+  return { master: session.master, blob };
 }
 
 // Revoke one contact link: kill the payload first (overwrite to garbage), then
@@ -424,6 +510,14 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
     revokeContact(session, contactId) {
       return revokeContactLink(api, accounts, session, contactId);
+    },
+
+    acceptContactInvite(session, invite, label) {
+      return acceptContactInvite(api, accounts, session, { invite, label });
+    },
+
+    ingestContactReturn(session, ret) {
+      return ingestContactReturn(accounts, session, ret);
     },
 
     forget() {

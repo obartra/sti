@@ -246,7 +246,13 @@ limits below: the server can tell that a knock was answered, just not by or for 
 - One-contact deanonymization: if a recipient has exactly one in-window contact, a ping points at
   that contact. Inherent to partner notification; unfixable without not sending. Stated to users.
 - Forwarded private link: still forwardable, so a stranger can knock; reviewed + contentless, so it
-  only ever generates ignorable knocks, never status. Accepted.
+  only ever generates ignorable knocks, never status. Accepted. A contact INVITE link additionally
+  carries the owner's notify capability (inbox + routing token) in the fragment, so a forwarded
+  invite also lets a stranger write the owner's single (overwritten) inbox ping and request a wake.
+  Bounded and accepted: notify/push stays gated off until the cover-wake ships, the inbox holds one
+  fixed-size ping, and the worst case is a spurious "a recent contact suggests testing" on the next
+  poll. The owner can rotate myNotify to cut off a leaked invite; same trust boundary as the link
+  channel itself.
 - A full-broadcast cover-wake scales with the push population; fine at current (zero) scale, and a
   sampled cover set is the documented later refinement. Two facets of the same limit: the drain
   delivers covers in bounded batches per pass (backpressure so one pass cannot block the loop), so a

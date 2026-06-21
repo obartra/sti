@@ -19,7 +19,7 @@ import {
 } from "../core/badge.ts";
 import { todayEpochDay } from "../core/clock.ts";
 import { DEFAULT_AVATAR, isAvatarConfig } from "../lib/avatars.ts";
-import { createAccountSync } from "./accountSync.ts";
+import { createAccountSync, type AccountSync } from "./accountSync.ts";
 import { republishOwnerCard } from "./ownerCard.ts";
 import { revokeAlias } from "./publish.ts";
 import { isValidHandle } from "./codec.ts";
@@ -31,7 +31,7 @@ import {
   type CircleRecord,
   type SharingMode,
 } from "./accountBlob.ts";
-import { mintNotify } from "./notifyInbox.ts";
+import { mintNotify, type NotifyCapability } from "./notifyInbox.ts";
 import { normalizeCircleMembers } from "./circles.ts";
 
 /** The owner's presentation profile: avatar plus the account sharing default. */
@@ -76,6 +76,14 @@ export interface AccountManager {
   upsertCircle(master: Bytes, circle: CircleRecord): Promise<AccountBlob>;
   /** Drop a circle by id. Purely local; the server never knew it existed. */
   removeCircle(master: Bytes, circleId: string): Promise<AccountBlob>;
+  /**
+   * Return the account's notify capability, minting and persisting one if the
+   * account predates myNotify. The capability is stable once set. Used by the
+   * contact-link exchange, where both sides need a guaranteed myNotify.
+   */
+  ensureMyNotify(
+    master: Bytes,
+  ): Promise<{ blob: AccountBlob; myNotify: NotifyCapability }>;
   /**
    * Delete the account: revoke every published alias (so no shared link can ever
    * resolve to a status again) and remove the account blob. "Working delete"
@@ -147,6 +155,24 @@ function withCircleRemoved(blob: AccountBlob, circleId: string): AccountBlob {
     ...blob,
     circles: (blob.circles ?? []).filter((c) => c.id !== circleId),
   };
+}
+
+// Return the account's notify capability, minting and persisting one if absent.
+async function ensureMyNotifyOn(
+  sync: AccountSync,
+  master: Bytes,
+): Promise<{ blob: AccountBlob; myNotify: NotifyCapability }> {
+  const blob = await sync.load(master);
+  if (blob === null) {
+    throw new Error("account does not exist for this key");
+  }
+  if (blob.myNotify !== undefined) {
+    return { blob, myNotify: blob.myNotify };
+  }
+  const myNotify = mintNotify();
+  const next = { ...blob, myNotify };
+  await sync.save(master, next);
+  return { blob: next, myNotify };
 }
 
 export function createAccountManager(api: ApiClient): AccountManager {
@@ -226,6 +252,10 @@ export function createAccountManager(api: ApiClient): AccountManager {
 
     removeCircle(master, circleId) {
       return modify(master, (blob) => withCircleRemoved(blob, circleId));
+    },
+
+    ensureMyNotify(master) {
+      return ensureMyNotifyOn(sync, master);
     },
 
     async deleteAccount(master) {

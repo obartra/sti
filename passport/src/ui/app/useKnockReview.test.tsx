@@ -61,6 +61,8 @@ function stubController(
     approveKnocks,
     createContactLink: unused,
     revokeContact: unused,
+    acceptContactInvite: unused,
+    ingestContactReturn: unused,
     forget: unused,
   };
 }

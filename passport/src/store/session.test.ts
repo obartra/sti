@@ -50,6 +50,7 @@ function fakeBackend() {
     removeContact: () => Promise.reject(new Error("unused")),
     upsertCircle: () => Promise.reject(new Error("unused")),
     removeCircle: () => Promise.reject(new Error("unused")),
+    ensureMyNotify: () => Promise.reject(new Error("unused")),
     deleteAccount: (master) => {
       byMaster.delete(bytesToBase64url(master));
       return Promise.resolve();
