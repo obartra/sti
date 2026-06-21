@@ -15,9 +15,15 @@ import { redeemGrant } from "./grant.ts";
 import { requesterHash } from "./knock.ts";
 import { parseContactInvite } from "./contactInvite.ts";
 import { lockNotifyDraft, parsePartnerPing } from "./partnerNotify.ts";
-import { pollInbox } from "./notifyInbox.ts";
+import { pollInbox, mintNotify } from "./notifyInbox.ts";
 import { todayEpochDay } from "../core/clock.ts";
-import { generateGrantKeyPair, bytesToBase64url } from "../crypto/index.ts";
+import {
+  generateGrantKeyPair,
+  bytesToBase64url,
+  randomAliasId,
+  randomWriteToken,
+} from "../crypto/index.ts";
+import type { ContactRecord } from "./accountBlob.ts";
 import { createDeviceStore, type StorageLike } from "../auth/deviceStore.ts";
 import type { PasskeyAuth } from "../auth/passkey.ts";
 import type { AliasRecord } from "./accountBlob.ts";
@@ -235,6 +241,42 @@ describe("owner session against a live blind store", () => {
     expect(done.blob.contacts[0]?.theirStatusAlias).toEqual(ret.alias);
     const twice = await a.ctl.ingestContactReturn(done, ret);
     expect(twice.blob.contacts).toEqual(done.blob.contacts);
+  });
+
+  it("a reported positive silently notifies every linked contact", async () => {
+    const { ctl, api } = controller(fakePasskey());
+    const accounts = createAccountManager(createApiClient(baseUrl));
+    const { session } = await ctl.signUp("dana");
+
+    // A fully-linked contact (it holds a notify capability). The alias it resolves
+    // is irrelevant to notification, so random tokens are fine.
+    const theirNotify = mintNotify();
+    const contact: ContactRecord = {
+      id: randomAliasId(),
+      label: "the gym one",
+      createdDay: todayEpochDay(),
+      expiresDay: null,
+      alias: {
+        id: randomAliasId(),
+        writeToken: randomWriteToken(),
+        key: bytesToBase64url(crypto.getRandomValues(new Uint8Array(32))),
+        isPublic: false,
+      },
+      theirNotify,
+    };
+    const blob = await accounts.addContact(session.master, contact);
+    const linked = { master: session.master, blob };
+
+    // Before the report, the contact's inbox is an existence-uniform decoy.
+    expect(await pollInbox(api, theirNotify)).toBeNull();
+
+    const result = await ctl.notifyContactsOfPositive(linked);
+    expect(result.sent).toEqual([contact.id]);
+
+    // The contact's inbox now holds a contentless partner-notify ping.
+    const ping = await pollInbox(api, theirNotify);
+    if (ping === null) throw new Error("expected the partner-notify ping");
+    expect(parsePartnerPing(ping)?.kind).toBe("partner-notify");
   });
 
   it("recovers the same account from the phrase", async () => {

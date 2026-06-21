@@ -34,6 +34,7 @@ import {
   type ContactRecord,
 } from "./accountBlob.ts";
 import { contactInviteUrl, type ContactInvite } from "./contactInvite.ts";
+import { lockNotifyDraft, type NotifyLockResult } from "./partnerNotify.ts";
 import { grantAccess } from "./grant.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { deriveOwnerCard } from "./ownerCard.ts";
@@ -168,6 +169,14 @@ export interface SessionController {
     session: OwnerSession,
     ret: ContactInvite,
   ): Promise<OwnerSession>;
+  /**
+   * Silently notify every linked contact that a positive was reported (doc 13):
+   * write one contentless ping to each contact's inbox and queue a wake. The
+   * reporter chooses nothing and this is never surfaced at the report moment; it
+   * just happens. Returns the per-contact outcome (the caller ignores it). A no-op
+   * for contacts with no notify capability yet.
+   */
+  notifyContactsOfPositive(session: OwnerSession): Promise<NotifyLockResult>;
   /** Forget this device's passkey binding. The phrase still recovers. */
   forget(): void;
 }
@@ -358,6 +367,19 @@ async function ingestContactReturn(
   return { master: session.master, blob };
 }
 
+// Silently notify every linked contact (those with a notify capability) that a
+// positive was reported: a contentless ping to each inbox + a wake. No window and
+// no reporter choice, everyone you've linked with is told, automatically.
+function notifyLinkedContacts(
+  api: ApiClient,
+  session: OwnerSession,
+): Promise<NotifyLockResult> {
+  const ids = session.blob.contacts
+    .filter((c) => c.theirNotify !== undefined)
+    .map((c) => c.id);
+  return lockNotifyDraft(api, session.blob, ids);
+}
+
 // Revoke one contact link: kill the payload first (overwrite to garbage), then
 // drop the record. Fail-safe order: a failed revoke leaves the record for a retry.
 async function revokeContactLink(
@@ -533,9 +555,8 @@ export function createSessionController(deps: SessionDeps): SessionController {
       return revokeContactLink(api, accounts, session, contactId);
     },
 
-    revokeAlias(session, aliasId) {
-      return revokeAliasLink(api, accounts, session, aliasId);
-    },
+    revokeAlias: (session, aliasId) =>
+      revokeAliasLink(api, accounts, session, aliasId),
 
     acceptContactInvite(session, invite, label) {
       return acceptContactInvite(api, accounts, session, { invite, label });
@@ -544,6 +565,8 @@ export function createSessionController(deps: SessionDeps): SessionController {
     ingestContactReturn(session, ret) {
       return ingestContactReturn(accounts, session, ret);
     },
+
+    notifyContactsOfPositive: (session) => notifyLinkedContacts(api, session),
 
     forget() {
       devices.clear();
