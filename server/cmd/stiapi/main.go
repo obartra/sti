@@ -95,6 +95,10 @@ func main() {
 	sensitiveWait := max(envDuration("STI_SENSITIVE_WAIT", 0), 0)
 	knockTTL := max(envDuration("STI_KNOCK_TTL", 0), 0)
 
+	// Window over which the decorrelation cover broadcast spreads its per-route
+	// wakes (doc 13 §2). Default 2 min; only matters once notify delivery is on.
+	coverWindow := max(envDuration("STI_COVER_WINDOW", 2*time.Minute), 0)
+
 	srv := server.New(st, server.Config{
 		DecoySecret:    secret,
 		AllowedOrigins: allowedOrigins,
@@ -105,6 +109,7 @@ func main() {
 		MaxInflight:    maxInflight,
 		SensitiveWait:  sensitiveWait,
 		KnockTTL:       knockTTL,
+		CoverWindow:    coverWindow,
 	}, log, nil)
 
 	// Host and process health gauges. All system facts, no subject data.

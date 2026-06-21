@@ -234,7 +234,14 @@ limits below: the server can tell that a knock was answered, just not by or for 
 - Forwarded private link: still forwardable, so a stranger can knock; reviewed + contentless, so it
   only ever generates ignorable knocks, never status. Accepted.
 - A full-broadcast cover-wake scales with the push population; fine at current (zero) scale, and a
-  sampled cover set is the documented later refinement.
+  sampled cover set is the documented later refinement. Two facets of the same limit: the drain
+  delivers covers in bounded batches per pass (backpressure so one pass cannot block the loop), so a
+  population beyond one batch is woken across several passes, and its tail can land past the jitter
+  window. Cover wakes are mutually indistinguishable whenever they land, so this widens the smear
+  rather than leaking; it folds into the sampled-cover-set refinement.
+- A recipient with a notify route but no registered push subscription is absent from the broadcast
+  population, so its real wake is dropped (nobody to wake). This is a missed wake, not a leak, and
+  matches the pre-cover-wake drain, which also dropped a job with no subscription.
 - Grant-slot linkability: a knock is `POST /knock/{aliasId}` carrying the requesterHash, so the
   server holds `(aliasId, requesterHash)` and can recompute the grant slot id and notice the owner's
   PUT to it. It therefore learns "this knock was answered", but nothing more (both values are opaque

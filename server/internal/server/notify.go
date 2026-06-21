@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"math/rand/v2"
 
 	"sti.care/api/internal/metrics"
 	"sti.care/api/internal/store"
@@ -20,25 +21,85 @@ type Sender interface {
 // worked down steadily rather than in one unbounded sweep.
 const drainBatch = 256
 
-// DrainSends delivers due contentless wakes through the configured Sender and
-// removes each job once delivered. It is GATED OFF by default: with NotifyEnabled
-// false (or no Sender) it is a no-op, and since handleNotify enqueues nothing
-// while off, the queue stays empty. A job whose delivery fails is left queued so
-// the next pass retries it; a job with no subscriptions is dropped (nobody to
-// wake). Single-process: a job is read, delivered, then deleted, with no claim
-// step, which is correct for the one background loop that calls this.
+// DrainSends advances the two-stage wake pipeline (doc 13 §2). It is GATED OFF by
+// default: with NotifyEnabled false (or no Sender) it is a no-op, and since
+// handleNotify enqueues nothing while off, both queues stay empty.
+//
+// Stage 1 (fanOutCover): a real wake coming due never goes to its recipient
+// directly. Instead it fans out one cover wake per registered push route into the
+// cover queue, each at a jittered time inside CoverWindow, then drops the real
+// job. The recipient is woken only as one anonymous member of that broadcast.
+//
+// Stage 2 (deliverCovers): cover wakes whose time has arrived are delivered
+// contentlessly and removed. Failed deliveries are retained for the next pass.
+//
+// Single-process: read, deliver, delete, with no claim step, which is correct for
+// the one background loop that calls this.
 func (s *Server) DrainSends(ctx context.Context, now int64) {
 	if !s.cfg.NotifyEnabled || s.sender == nil {
 		return
 	}
-	sends, err := s.st.DueSends(ctx, now, drainBatch)
+	s.fanOutCover(ctx, now)
+	s.deliverCovers(ctx, now)
+}
+
+// fanOutCover turns every due real wake into a population-wide cover broadcast.
+// If scheduling the broadcast fails, the real jobs are left queued so a later pass
+// retries; a real wake is dropped only once its covers are safely scheduled (or
+// there is no one to wake at all, which is itself a clean drop).
+func (s *Server) fanOutCover(ctx context.Context, now int64) {
+	real, err := s.st.DueSends(ctx, now, drainBatch)
 	if err != nil {
 		s.metrics.Error(metrics.ErrJanitor)
 		s.log.Error("due sends", "err", err)
 		return
 	}
-	for _, snd := range sends {
-		targets, err := s.st.PushEndpoints(ctx, snd.RoutingEndpointID)
+	if len(real) == 0 {
+		return
+	}
+	routes, err := s.st.DistinctPushRoutes(ctx)
+	if err != nil {
+		// Leave the real jobs queued; without the population we cannot fan out.
+		s.metrics.Error(metrics.ErrJanitor)
+		s.log.Error("cover routes", "err", err)
+		return
+	}
+	for _, route := range routes {
+		// Jitter each cover independently across the window so the broadcast is a
+		// smear, not a synchronized burst. Window 0 means fire now (used in tests).
+		at := now + rand.Int64N(int64(s.cfg.CoverWindow.Milliseconds())+1)
+		if err := s.st.EnqueueCover(ctx, route, at, now); err != nil {
+			// A partial fan-out: leave the real jobs queued so the next pass redoes
+			// the whole broadcast. Duplicate contentless wakes are harmless.
+			s.metrics.Error(metrics.ErrJanitor)
+			s.log.Error("enqueue cover", "err", err)
+			return
+		}
+	}
+	// The broadcast is scheduled (or there were no push routes, nobody to wake), so
+	// the real jobs have served their only purpose: triggering it. Drop them.
+	for _, snd := range real {
+		if err := s.st.DeleteSend(ctx, snd.ID); err != nil {
+			s.metrics.Error(metrics.ErrJanitor)
+			s.log.Error("delete send", "err", err)
+		}
+	}
+}
+
+// deliverCovers sends every due cover wake and removes it on a clean pass. A
+// partial/failed delivery keeps the job, so the next pass re-sends ALL of its
+// targets; a duplicate contentless wake ("open the app and check") is idempotent
+// and leaks nothing, so at-least-once beats dropping a wake on a flake. A route
+// with no subscriptions counts as clean (nobody to wake).
+func (s *Server) deliverCovers(ctx context.Context, now int64) {
+	covers, err := s.st.DueCovers(ctx, now, drainBatch)
+	if err != nil {
+		s.metrics.Error(metrics.ErrJanitor)
+		s.log.Error("due covers", "err", err)
+		return
+	}
+	for _, cover := range covers {
+		targets, err := s.st.PushEndpoints(ctx, cover.RoutingEndpointID)
 		if err != nil {
 			// Leave the job queued; a later pass retries once the read recovers.
 			s.metrics.Error(metrics.ErrJanitor)
@@ -53,15 +114,10 @@ func (s *Server) DrainSends(ctx context.Context, now int64) {
 				s.log.Error("push send", "err", err)
 			}
 		}
-		// Delete only on a clean pass (no subscriptions counts as clean: there is
-		// nobody to wake). A partial/failed delivery keeps the job, so the next
-		// pass re-sends ALL of its targets, including any that already succeeded.
-		// A duplicate contentless wake ("open the app and check") is idempotent
-		// and leaks nothing, so at-least-once beats dropping a wake on a flake.
 		if delivered {
-			if err := s.st.DeleteSend(ctx, snd.ID); err != nil {
+			if err := s.st.DeleteCover(ctx, cover.ID); err != nil {
 				s.metrics.Error(metrics.ErrJanitor)
-				s.log.Error("delete send", "err", err)
+				s.log.Error("delete cover", "err", err)
 			}
 		}
 	}
