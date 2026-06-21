@@ -6,7 +6,6 @@ import {
   Shield,
   Heart,
   Chevron,
-  Users,
   Info,
   Phone,
 } from "../../design/icons.tsx";
@@ -37,7 +36,6 @@ const COPY = {
     finderCta: "Find nearby",
     learn: "Learn & talk",
     rows: [
-      ["How partner alerts work", "Automated and anonymous"],
       ["How your passport works", "What’s shared, what stays private"],
       ["Talk to someone", "CDC-INFO · free & confidential · 24/7"],
     ],
@@ -87,7 +85,6 @@ export interface CareProps {
   onFindCondoms?: (() => void) | undefined;
   onFindPrep?: (() => void) | undefined;
   onLearn?: (() => void) | undefined;
-  onPartners?: (() => void) | undefined;
 }
 
 function GetTestedCard({
@@ -223,17 +220,10 @@ function HeymistrCard({
   );
 }
 
-function LearnRows({
-  onLearn,
-  onPartners,
-}: {
-  onLearn?: (() => void) | undefined;
-  onPartners?: (() => void) | undefined;
-}) {
+function LearnRows({ onLearn }: { onLearn?: (() => void) | undefined }) {
   const c = COPY.care;
   const chevron = <Chevron size={18} />;
   const learnIcons: ReactNode[] = [
-    <Users key="users" size={20} />,
     <Shield key="shield" size={20} />,
     <Info key="info" size={20} />,
   ];
@@ -251,7 +241,6 @@ function LearnRows({
       />
       {c.rows.map((row, i) => {
         const isTalk = row[0] === "Talk to someone";
-        const isAlerts = row[0] === "How partner alerts work";
         const lead = isTalk ? <Phone size={20} /> : learnIcons[i];
         const trail: ReactNode = isTalk ? (
           <a
@@ -276,13 +265,11 @@ function LearnRows({
         ) : (
           chevron
         );
-        const onClick = isAlerts
-          ? onPartners
-          : isTalk
-            ? () => {
-                window.location.href = "tel:" + c.talkNumber;
-              }
-            : undefined;
+        const onClick = isTalk
+          ? () => {
+              window.location.href = "tel:" + c.talkNumber;
+            }
+          : undefined;
         return (
           <Row
             key={row[0]}
@@ -306,7 +293,6 @@ export function Care({
   onFindCondoms,
   onFindPrep,
   onLearn,
-  onPartners,
 }: CareProps) {
   const c = COPY.care;
   const chevron = <Chevron size={18} />;
@@ -360,7 +346,7 @@ export function Care({
       </Card>
 
       <div style={sectionLbl}>{c.learn}</div>
-      <LearnRows onLearn={onLearn} onPartners={onPartners} />
+      <LearnRows onLearn={onLearn} />
 
       <div
         style={{

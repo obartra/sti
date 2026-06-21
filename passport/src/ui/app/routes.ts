@@ -32,8 +32,6 @@ export const ALL_SCREENS = [
   "circle-leave",
   "report",
   "report-saved",
-  "partners",
-  "partners-sent",
   "privacy",
 ] as const;
 
@@ -105,8 +103,6 @@ const SECTION: Partial<Record<Screen, Tab>> = {
   learn: "care",
   "learn-detail": "care",
   "learn-uu": "care",
-  partners: "care",
-  "partners-sent": "care",
 };
 
 export function sectionOf(screen: Screen): Tab {

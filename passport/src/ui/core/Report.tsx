@@ -9,7 +9,7 @@ import {
 import { BadgeCard } from "../badge-card.tsx";
 import type { BadgeState, ProtectionLabel, Route } from "../badge-card.tsx";
 import { avatarSrc, type AvatarConfigInput } from "../../lib/avatars.ts";
-import { Check, Lock, Users, Circles } from "../../design/icons.tsx";
+import { Check, Lock } from "../../design/icons.tsx";
 import {
   COPY,
   fieldLbl,
@@ -270,50 +270,8 @@ function SavedHeader() {
   );
 }
 
-// circles are notified automatically too, transparency, not consent.
-// Circle exposure is merged into the same contentless pipeline, one plain
-// line, nothing to review, no scope view, no count.
-function CirclesNote() {
-  return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", alignItems: "flex-start", gap: 12 }}
-    >
-      <span
-        style={{
-          flex: "none",
-          width: 38,
-          height: 38,
-          borderRadius: "var(--radius-sm)",
-          background: "var(--accent-soft)",
-          color: "var(--text-accent)",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Circles size={19} />
-      </span>
-      <div
-        style={{
-          flex: 1,
-          minWidth: 0,
-          fontSize: 13.5,
-          lineHeight: 1.55,
-          color: "var(--text-body)",
-        }}
-      >
-        Recent contacts, including anyone you share a circle with, get the same
-        anonymous heads-up. There’s nothing to review or send.
-      </div>
-    </Card>
-  );
-}
-
 export interface ReportSavedProps {
-  /** Go to the partner-alert review (the prototype's nav("partners")). */
-  onReviewPartners?: (() => void) | undefined;
-  /** Skip for now, return home (nav("home", "app")). */
+  /** Return home (nav("home", "app")). */
   onDone?: (() => void) | undefined;
   /** The viewer-facing two-state badge to show after saving. */
   viewerBadge?: BadgeState;
@@ -327,8 +285,11 @@ export interface ReportSavedProps {
   handle?: string;
 }
 
+// After a report, this screen only affirms. Notifying linked contacts happens
+// quietly in the background; the report moment is the worst place to hand the user
+// a notification chore, so nothing here mentions or asks about it (positive
+// reinforcement only).
 export function ReportSaved({
-  onReviewPartners,
   onDone,
   viewerBadge = "gray",
   labels = [],
@@ -336,7 +297,6 @@ export function ReportSaved({
   avatar = 0,
   handle = "robin",
 }: ReportSavedProps) {
-  const c = COPY;
   return (
     <div
       style={{
@@ -357,37 +317,9 @@ export function ReportSaved({
         avatarSrc={avatarSrc(avatar)}
         width="100%"
       />
-
-      <CirclesNote />
-      <Card
-        variant="tint"
-        style={{ display: "flex", flexDirection: "column", gap: 10 }}
-      >
-        <div
-          style={{ fontSize: 16, fontWeight: 700, color: "var(--text-strong)" }}
-        >
-          {c.promptTitle}
-        </div>
-        <div
-          style={{ fontSize: 14, lineHeight: 1.55, color: "var(--text-body)" }}
-        >
-          {c.promptBody}
-        </div>
-      </Card>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <Button
-          variant="primary"
-          size="lg"
-          block
-          icon={<Users size={18} />}
-          onClick={onReviewPartners}
-        >
-          {c.promptYes}
-        </Button>
-        <Button variant="ghost" size="md" block onClick={onDone}>
-          {c.promptNo}
-        </Button>
-      </div>
+      <Button variant="primary" size="lg" block onClick={onDone}>
+        Done
+      </Button>
     </div>
   );
 }
