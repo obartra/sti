@@ -279,6 +279,46 @@ describe("owner session against a live blind store", () => {
     expect(parsePartnerPing(ping)?.kind).toBe("partner-notify");
   });
 
+  it("the recipient sees a partner-notify nudge once a contact reports positive", async () => {
+    const { ctl } = controller(fakePasskey());
+    const accounts = createAccountManager(createApiClient(baseUrl));
+
+    // The recipient: a fresh account mints its own notify inbox (myNotify).
+    const { session: recipient } = await ctl.signUp("ada");
+    const recipientNotify = recipient.blob.myNotify;
+    if (recipientNotify === undefined) {
+      throw new Error("expected a minted myNotify on a fresh account");
+    }
+
+    // Before any ping the recipient's own inbox poll is an existence-uniform decoy.
+    expect(await ctl.hasPartnerNudge(recipient)).toBe(false);
+
+    // The sender holds the recipient as a linked contact (its theirNotify IS the
+    // recipient's myNotify) and reports a positive.
+    const { session: sender } = await ctl.signUp("ben");
+    const contact: ContactRecord = {
+      id: randomAliasId(),
+      label: "from the app",
+      createdDay: todayEpochDay(),
+      expiresDay: null,
+      alias: {
+        id: randomAliasId(),
+        writeToken: randomWriteToken(),
+        key: bytesToBase64url(crypto.getRandomValues(new Uint8Array(32))),
+        isPublic: false,
+      },
+      theirNotify: recipientNotify,
+    };
+    const senderBlob = await accounts.addContact(sender.master, contact);
+    await ctl.notifyContactsOfPositive({
+      master: sender.master,
+      blob: senderBlob,
+    });
+
+    // The recipient now finds the contentless nudge on its own inbox poll.
+    expect(await ctl.hasPartnerNudge(recipient)).toBe(true);
+  });
+
   it("recovers the same account from the phrase", async () => {
     const { ctl } = controller(fakePasskey());
     const { session, recoveryPhrase } = await ctl.signUp("sam");

@@ -34,7 +34,12 @@ import {
   type ContactRecord,
 } from "./accountBlob.ts";
 import { contactInviteUrl, type ContactInvite } from "./contactInvite.ts";
-import { lockNotifyDraft, type NotifyLockResult } from "./partnerNotify.ts";
+import {
+  lockNotifyDraft,
+  parsePartnerPing,
+  type NotifyLockResult,
+} from "./partnerNotify.ts";
+import { pollInbox } from "./notifyInbox.ts";
 import { grantAccess } from "./grant.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { deriveOwnerCard } from "./ownerCard.ts";
@@ -177,6 +182,13 @@ export interface SessionController {
    * for contacts with no notify capability yet.
    */
   notifyContactsOfPositive(session: OwnerSession): Promise<NotifyLockResult>;
+  /**
+   * Poll this device's own notify inbox for a partner-notify ping (the recipient
+   * side of {@link notifyContactsOfPositive}). True when a contact has flagged a
+   * positive; the ping is contentless, so this never reveals who. False when the
+   * inbox is empty, undecodable, unreachable, or not yet minted (all uniform).
+   */
+  hasPartnerNudge(session: OwnerSession): Promise<boolean>;
   /** Forget this device's passkey binding. The phrase still recovers. */
   forget(): void;
 }
@@ -380,6 +392,20 @@ function notifyLinkedContacts(
   return lockNotifyDraft(api, session.blob, ids);
 }
 
+// The recipient side: poll this device's own inbox for a partner-notify ping.
+// False (not an error) when no inbox is minted yet, the inbox is empty/decoy, or
+// the bytes do not decode to a well-formed ping. The ping is contentless, so this
+// only ever answers "is there a nudge", never who sent it.
+async function pollPartnerNudge(
+  api: ApiClient,
+  session: OwnerSession,
+): Promise<boolean> {
+  const cap = session.blob.myNotify;
+  if (cap === undefined) return false;
+  const ping = await pollInbox(api, cap);
+  return ping !== null && parsePartnerPing(ping) !== null;
+}
+
 // Revoke one contact link: kill the payload first (overwrite to garbage), then
 // drop the record. Fail-safe order: a failed revoke leaves the record for a retry.
 async function revokeContactLink(
@@ -551,9 +577,8 @@ export function createSessionController(deps: SessionDeps): SessionController {
       return mintContactLink(api, accounts, session, label);
     },
 
-    revokeContact(session, contactId) {
-      return revokeContactLink(api, accounts, session, contactId);
-    },
+    revokeContact: (session, contactId) =>
+      revokeContactLink(api, accounts, session, contactId),
 
     revokeAlias: (session, aliasId) =>
       revokeAliasLink(api, accounts, session, aliasId),
@@ -567,6 +592,8 @@ export function createSessionController(deps: SessionDeps): SessionController {
     },
 
     notifyContactsOfPositive: (session) => notifyLinkedContacts(api, session),
+
+    hasPartnerNudge: (session) => pollPartnerNudge(api, session),
 
     forget() {
       devices.clear();

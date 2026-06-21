@@ -11,6 +11,7 @@ import type {
 } from "../store/index.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
+import { mintNotify } from "../store/index.ts";
 
 // End-to-end of the UI wiring: a real shared link in the URL routes through
 // parseAliasLink -> useAppRouter -> Chrome -> the a2-public screen ->
@@ -42,6 +43,9 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
     state: { ...INITIAL_OWNER_STATE, onPrep: opts.onPrep ?? false },
     avatar: DEFAULT_AVATAR,
     sharingMode: "link",
+    // Real accounts always mint a notify inbox at signup; carry one so the
+    // partner-notify channel (keyed on the inbox id) behaves as in production.
+    myNotify: mintNotify(),
   };
   return {
     signUp: (handle) => {
@@ -126,6 +130,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
     ingestContactReturn: (session) => Promise.resolve(session),
     notifyContactsOfPositive: () =>
       Promise.resolve({ sent: [], skipped: [], failed: [] }),
+    hasPartnerNudge: () => Promise.resolve(false),
     forget: () => undefined,
   };
 }
@@ -330,6 +335,41 @@ describe("App onboarding flow", () => {
     );
     expect(entry).toBeInTheDocument();
     expect(entry.textContent).not.toMatch(/\d/);
+  });
+
+  it("a partner-notify ping lights the bell and leads the inbox with a contentless row", async () => {
+    window.history.pushState({}, "", "/#b1-claim");
+    const user = userEvent.setup();
+    const controller = fakeController();
+    // No knocks: the bell dot here is driven solely by the partner-notify nudge.
+    controller.reviewKnocks = () => Promise.resolve({ count: 0, pending: [] });
+    controller.hasPartnerNudge = () => Promise.resolve(true);
+    render(<App store={stubStore(null)} controller={controller} />);
+
+    // Onboard into the passport.
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(
+      await screen.findByRole("button", { name: /Tap to reveal/ }),
+    );
+    await user.click(screen.getByRole("button", { name: /saved it/i }));
+    await user.click(
+      await screen.findByRole("button", { name: /Enter my passport/ }),
+    );
+
+    // The bell shows new activity even with zero knocks, so the time-sensitive
+    // nudge is not stranded behind a manual open.
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Notifications (new activity)",
+      }),
+    );
+
+    // The row is present, leads the list, and is contentless (no contact, no count).
+    const row = await screen.findByText(
+      "A recent contact suggests getting tested",
+    );
+    expect(row).toBeInTheDocument();
+    expect(row.textContent).not.toMatch(/\d/);
   });
 
   it("creates and revokes a per-contact link from the Connect screen", async () => {

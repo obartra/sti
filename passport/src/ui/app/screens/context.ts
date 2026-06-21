@@ -45,6 +45,10 @@ export interface ScreenCtx {
   approveKnocks: () => void;
   /** An approve is in flight (disable the control). */
   approvingKnocks: boolean;
+  /** A linked contact reported a positive: show the contentless "get tested" row. */
+  showPartnerNudge: boolean;
+  /** Dismiss the partner-notify row for this session (the ping carries no nonce). */
+  dismissPartnerNudge: () => void;
   /** The owner's published aliases (public/casual links); empty logged out. */
   aliases: AliasRecord[];
   /** Revoke one published alias by id (its link stops resolving). */

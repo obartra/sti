@@ -23,16 +23,30 @@ export interface KnockInbox {
 
 export function notificationItems(
   knocks: KnockInbox,
-  go: (to: "report" | "privacy") => void,
+  nudge: { show: boolean; dismiss: () => void },
+  go: (to: "report" | "privacy" | "care") => void,
 ): NotificationItem[] {
-  const items: NotificationItem[] = [
-    {
-      icon: "bell",
-      title: "Time to re-test soon",
-      sub: "Keep your status up to date",
-      onOpen: () => go("report"),
-    },
-  ];
+  const items: NotificationItem[] = [];
+  // The partner-notify nudge leads when present: it is the most time-sensitive row
+  // (PEP is most effective within 72h). Contentless, so it never names the contact;
+  // opening it routes to Care and clears the row for the session.
+  if (nudge.show) {
+    items.push({
+      icon: "heart",
+      title: "A recent contact suggests getting tested",
+      sub: "Find testing and PEP options in Care",
+      onOpen: () => {
+        nudge.dismiss();
+        go("care");
+      },
+    });
+  }
+  items.push({
+    icon: "bell",
+    title: "Time to re-test soon",
+    sub: "Keep your status up to date",
+    onOpen: () => go("report"),
+  });
   if (knocks.canApprove) {
     items.push({
       icon: "users",
@@ -95,6 +109,8 @@ export const coreRenderers: ScreenRenderers = {
     approveKnocks,
     approvingKnocks,
     refreshKnocks,
+    showPartnerNudge,
+    dismissPartnerNudge,
   }) => (
     <Notifications
       items={notificationItems(
@@ -104,6 +120,7 @@ export const coreRenderers: ScreenRenderers = {
           approve: approveKnocks,
           approving: approvingKnocks,
         },
+        { show: showPartnerNudge, dismiss: dismissPartnerNudge },
         (to) => nav.go(to),
       )}
       onView={refreshKnocks}
