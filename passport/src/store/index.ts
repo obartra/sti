@@ -9,6 +9,11 @@ export {
   createRequesterStore,
   browserRequesterSecret,
 } from "./requesterStore.ts";
+export {
+  createGrantKeyStore,
+  browserGrantKeyStore,
+  type GrantKeyStore,
+} from "./grantKeyStore.ts";
 export { serializePublicCard, parsePublicCard } from "./publicCard.ts";
 export { parseAliasLink } from "./aliasLink.ts";
 export type { AccountSync } from "./accountSync.ts";

@@ -329,14 +329,15 @@ describe("owner session against a live blind store", () => {
     const shared = await ctl.shareLink(session);
     const aliasId = shared.session.blob.aliases[0]?.id ?? "";
 
-    // No knocks yet. These viewers knock contentlessly (no grant key), so they
-    // raise the count but never the grantable pending list.
+    // No knocks yet.
     expect(await ctl.reviewKnocks(shared.session)).toEqual({
       count: 0,
       pending: [],
     });
 
-    // Two distinct viewers knock (each its own device secret); a repeat dedupes.
+    // Two distinct viewers knock (each its own device secret + grant key); a
+    // repeat from one dedupes. Each viewer's knock carries a grant pubkey, so both
+    // are grantable.
     const viewerA = createBackendStore(api, "secret-a");
     const viewerB = createBackendStore(api, "secret-b");
     await viewerA.knock(aliasId);
@@ -345,7 +346,8 @@ describe("owner session against a live blind store", () => {
 
     const review = await ctl.reviewKnocks(shared.session);
     expect(review.count).toBe(2);
-    expect(review.pending).toEqual([]); // contentless knocks aren't grantable
+    expect(review.pending).toHaveLength(2);
+    expect(review.pending.every((p) => p.alias.id === aliasId)).toBe(true);
   });
 
   it("renewLink: a failing revoke leaves the record and old link intact (retryable)", async () => {

@@ -32,4 +32,11 @@ export interface PassportStore {
    * knocked. Resolves on success; callers treat any failure as a no-op.
    */
   knock(aliasId: string): Promise<void>;
+  /**
+   * Poll for an in-app grant the owner may have approved after a knock (doc 13):
+   * resolves to the viewer card once the owner has sealed the alias key to this
+   * device's grant key, or `null` while still pending / if this device never
+   * knocked / on any failure. Existence-uniform and safe to call repeatedly.
+   */
+  redeemGrant(aliasId: string): Promise<ResolvedView | null>;
 }
