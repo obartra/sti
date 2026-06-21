@@ -59,6 +59,7 @@ function stubController(over: Partial<SessionController>): SessionController {
     acceptContactInvite: unused,
     ingestContactReturn: unused,
     notifyContactsOfPositive: unused,
+    hasPartnerNudge: unused,
     forget: unused,
     ...over,
   };

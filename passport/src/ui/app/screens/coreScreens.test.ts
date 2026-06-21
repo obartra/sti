@@ -12,14 +12,23 @@ function inbox(over: Partial<KnockInbox> = {}): KnockInbox {
   };
 }
 
+function nudge(show = false): { show: boolean; dismiss: () => void } {
+  return { show, dismiss: () => undefined };
+}
+
 describe("notificationItems (inbox privacy contract)", () => {
   it("shows the knock entry only when there is something to surface", () => {
-    const none = notificationItems(inbox(), () => undefined);
+    const none = notificationItems(inbox(), nudge(), () => undefined);
     expect(none.some((i) => i.icon === "users")).toBe(false);
-    const info = notificationItems(inbox({ showInfo: true }), () => undefined);
+    const info = notificationItems(
+      inbox({ showInfo: true }),
+      nudge(),
+      () => undefined,
+    );
     expect(info.some((i) => i.icon === "users")).toBe(true);
     const grant = notificationItems(
       inbox({ canApprove: true }),
+      nudge(),
       () => undefined,
     );
     expect(grant.some((i) => i.icon === "users")).toBe(true);
@@ -32,7 +41,7 @@ describe("notificationItems (inbox privacy contract)", () => {
       inbox({ canApprove: true, showInfo: true }),
     ];
     for (const c of cases) {
-      const knock = notificationItems(c, () => undefined).find(
+      const knock = notificationItems(c, nudge(), () => undefined).find(
         (i) => i.icon === "users",
       );
       expect(knock).toBeDefined();
@@ -46,6 +55,7 @@ describe("notificationItems (inbox privacy contract)", () => {
     let approved = false;
     const grantable = notificationItems(
       inbox({ canApprove: true, approve: () => (approved = true) }),
+      nudge(),
       () => undefined,
     ).find((i) => i.icon === "users");
     expect(grantable?.action?.label).toBe("Approve");
@@ -56,6 +66,7 @@ describe("notificationItems (inbox privacy contract)", () => {
 
     const infoOnly = notificationItems(
       inbox({ showInfo: true }),
+      nudge(),
       () => undefined,
     ).find((i) => i.icon === "users");
     expect(infoOnly?.action).toBeUndefined();
@@ -65,6 +76,7 @@ describe("notificationItems (inbox privacy contract)", () => {
   it("a grantable knock takes precedence over the info row (only one users entry)", () => {
     const items = notificationItems(
       inbox({ canApprove: true, showInfo: true }),
+      nudge(),
       () => undefined,
     ).filter((i) => i.icon === "users");
     expect(items).toHaveLength(1);
@@ -74,23 +86,52 @@ describe("notificationItems (inbox privacy contract)", () => {
   it("once nothing is grantable or info-worthy, the knock entry disappears", () => {
     // The state right after approving the only knock: canApprove flips off and
     // showInfo is false (no un-grantable knocks remain), so the row clears.
-    const items = notificationItems(inbox(), () => undefined);
+    const items = notificationItems(inbox(), nudge(), () => undefined);
     expect(items.some((i) => i.icon === "users")).toBe(false);
   });
 
   it("the busy flag flows into the action so the button can disable", () => {
     const item = notificationItems(
       inbox({ canApprove: true, approving: true }),
+      nudge(),
       () => undefined,
     ).find((i) => i.icon === "users");
     expect(item?.action?.busy).toBe(true);
   });
 
   it("the standing re-test nudge is always present and carries no timestamp", () => {
-    const retest = notificationItems(inbox(), () => undefined).find(
+    const retest = notificationItems(inbox(), nudge(), () => undefined).find(
       (i) => i.icon === "bell",
     );
     expect(retest).toBeDefined();
     expect(retest?.when).toBeUndefined();
+  });
+
+  it("surfaces the partner-notify row only when a contact reported, and it is contentless", () => {
+    const absent = notificationItems(inbox(), nudge(false), () => undefined);
+    expect(absent.some((i) => i.icon === "heart")).toBe(false);
+
+    const present = notificationItems(inbox(), nudge(true), () => undefined);
+    const row = present.find((i) => i.icon === "heart");
+    expect(row).toBeDefined();
+    // Contentless: it names no contact, carries no count or timestamp.
+    expect(row?.when).toBeUndefined();
+    expect(`${row?.title} ${row?.sub}`).not.toMatch(/\d/);
+    expect(`${row?.title} ${row?.sub}`).not.toMatch(/@\w/);
+    // It leads the inbox (most time-sensitive: PEP window).
+    expect(present[0]?.icon).toBe("heart");
+  });
+
+  it("opening the partner-notify row routes to care and clears it for the session", () => {
+    let dismissed = false;
+    let routed: string | null = null;
+    const row = notificationItems(
+      inbox(),
+      { show: true, dismiss: () => (dismissed = true) },
+      (to) => (routed = to),
+    ).find((i) => i.icon === "heart");
+    row?.onOpen?.();
+    expect(dismissed).toBe(true);
+    expect(routed).toBe("care");
   });
 });

@@ -3,7 +3,7 @@ import { useAppRouter } from "./app/useAppRouter.ts";
 import { useDesktop } from "./desktop/Desktop.tsx";
 import { useOnboarding } from "./app/useOnboarding.ts";
 import { useShareLink } from "./app/useShareLink.ts";
-import { useKnockReview } from "./app/useKnockReview.ts";
+import { useOwnerInbox } from "./app/useOwnerInbox.ts";
 import { useOwnerActions } from "./app/useOwnerActions.ts";
 import { OWNER } from "./app/fixtures.ts";
 import { Chrome } from "./app/Chrome.tsx";
@@ -154,15 +154,18 @@ export function App({
     revokeLink,
   } = useShareLink(controller, sessionRef, setSession, setShareOpen);
 
-  // Owner-pull knock review (the quiet inbox indicator + in-app approve).
+  // The owner's quiet inbox: knock review + the partner-notify nudge, both
+  // owner-pull and contentless, re-pulled together when the inbox opens.
   const {
     knockCount,
-    canApprove: canApproveKnocks,
-    showInfo: showKnockInfo,
-    approve: approveKnocks,
-    approving: approvingKnocks,
-    refresh: refreshKnocks,
-  } = useKnockReview(controller, session);
+    canApproveKnocks,
+    showKnockInfo,
+    approveKnocks,
+    approvingKnocks,
+    showPartnerNudge,
+    dismissPartnerNudge,
+    refreshInbox,
+  } = useOwnerInbox(controller, session);
 
   const owner = session
     ? deriveOwnerView(session.blob, todayEpochDay())
@@ -194,11 +197,13 @@ export function App({
       onRevokeShareLink={revokeLink}
       onDeleteAccount={onDeleteAccount}
       knockCount={knockCount}
-      refreshKnocks={refreshKnocks}
+      refreshKnocks={refreshInbox}
       canApproveKnocks={canApproveKnocks}
       showKnockInfo={showKnockInfo}
       approveKnocks={approveKnocks}
       approvingKnocks={approvingKnocks}
+      showPartnerNudge={showPartnerNudge}
+      dismissPartnerNudge={dismissPartnerNudge}
       aliases={session ? session.blob.aliases : []}
       onRevokeAlias={onRevokeAlias}
       contacts={session ? session.blob.contacts : []}

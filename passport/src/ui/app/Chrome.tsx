@@ -38,6 +38,8 @@ export interface ChromeProps {
   showKnockInfo: boolean;
   approveKnocks: () => void;
   approvingKnocks: boolean;
+  showPartnerNudge: boolean;
+  dismissPartnerNudge: () => void;
   aliases: ScreenCtx["aliases"];
   onRevokeAlias: ScreenCtx["onRevokeAlias"];
   contacts: ScreenCtx["contacts"];
@@ -119,6 +121,8 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     showKnockInfo: props.showKnockInfo,
     approveKnocks: props.approveKnocks,
     approvingKnocks: props.approvingKnocks,
+    showPartnerNudge: props.showPartnerNudge,
+    dismissPartnerNudge: props.dismissPartnerNudge,
     aliases: props.aliases,
     onRevokeAlias: props.onRevokeAlias,
     contacts: props.contacts,
@@ -173,7 +177,10 @@ function AppChrome(props: ChromeProps) {
           onAdd={() => nav.go("report")}
           onBell={() => nav.go("notifications")}
           showAdd={route.screen === "results"}
-          hasKnocks={knockCount > 0}
+          // The bell dot means "the inbox has something": a knock OR the
+          // partner-notify nudge. The nudge leads the inbox for PEP timeliness, so
+          // it must light the bell too, not wait to be discovered on a manual open.
+          hasKnocks={knockCount > 0 || props.showPartnerNudge}
         >
           {content}
         </AppShell>
