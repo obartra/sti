@@ -8,6 +8,7 @@ import {
   Chevron,
   Info,
   Phone,
+  Clock,
 } from "../../design/icons.tsx";
 
 // Care: testing, at-home screening, local resource finders, and learn-and-talk
@@ -27,6 +28,10 @@ const COPY = {
       "New to testing? Heymistr ships discreet at-home screening kits on a regular schedule.",
     heymistrCta: "Sign up",
     resourcesEyebrow: "Free & low-cost near you",
+    // PEP is post-exposure and time-critical (under 72h), so it leads the resource
+    // finders. Copy matches the public /exposed page for one voice across surfaces.
+    pepTitle: "PEP, if it has been under 72 hours",
+    pepSub: "Emergency HIV prevention, time-sensitive",
     condomsTitle: "Find free condoms near you",
     condomsSub:
       "Health centers and community programs that hand them out at no cost.",
@@ -83,6 +88,7 @@ export interface CareProps {
   onLearnOfficial?: (() => void) | undefined;
   onHeymistr?: (() => void) | undefined;
   onFindCondoms?: (() => void) | undefined;
+  onFindPep?: (() => void) | undefined;
   onFindPrep?: (() => void) | undefined;
   onLearn?: (() => void) | undefined;
 }
@@ -291,6 +297,7 @@ export function Care({
   onLearnOfficial,
   onHeymistr,
   onFindCondoms,
+  onFindPep,
   onFindPrep,
   onLearn,
 }: CareProps) {
@@ -329,6 +336,13 @@ export function Care({
         variant="flat"
         style={{ padding: 6, display: "flex", flexDirection: "column" }}
       >
+        <Row
+          lead={<Clock size={20} />}
+          title={c.pepTitle}
+          sub={c.pepSub}
+          trail={chevron}
+          onClick={onFindPep}
+        />
         <Row
           lead={<Shield size={20} />}
           title={c.condomsTitle}
