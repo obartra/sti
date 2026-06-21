@@ -99,6 +99,7 @@ export const coreRenderers: ScreenRenderers = {
       onFindClinic={() => openResource(RESOURCES.clinic)}
       onLearnOfficial={() => openResource(RESOURCES.clinic)}
       onFindCondoms={() => openResource(RESOURCES.condoms)}
+      onFindPep={() => openResource(RESOURCES.pep)}
       onFindPrep={() => openResource(RESOURCES.prep)}
     />
   ),
