@@ -30,7 +30,9 @@ export function formatBuildDate(iso: string = BUILD_DATE): string {
   return `${String(day)} ${name} ${String(year)}`;
 }
 
-// "v0.3.0 · 18 Jun 2026" (or "2ec9f0f · 18 Jun 2026" before the first tag).
+// "v0.1.7 · 18 Jun 2026" on main (vMajor.Minor.Patch, patch = commits since the
+// tag); on a branch the build appends the branch name + short sha. The scheme
+// lives in deploy/report-lib.mjs.
 export function versionLabel(): string {
   return `${APP_VERSION} · ${formatBuildDate()}`;
 }
