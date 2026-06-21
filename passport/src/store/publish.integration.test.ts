@@ -34,7 +34,7 @@ describe("publish against a live blind store", () => {
   };
 
   it("publishes a card that resolves back through its own link", async () => {
-    const { link, record } = await publishCard(api, blue);
+    const { link, record } = await publishCard(api, () => blue);
 
     // The returned link parses back to the record's id + key.
     const parsed = parseAliasLink(new URL(link).pathname, new URL(link).hash);
@@ -46,7 +46,7 @@ describe("publish against a live blind store", () => {
   });
 
   it("republishes an update to the same alias (link stays valid)", async () => {
-    const { record } = await publishCard(api, blue);
+    const { record } = await publishCard(api, () => blue);
     const gray: ResolvedView = { state: "gray", identity: { handle: "robin" } };
 
     await republishCard(api, record, gray);

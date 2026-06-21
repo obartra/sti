@@ -24,7 +24,7 @@ import type { ProtectionLabel, Route } from "../ui/badge-card.tsx";
 import type { ResolvedView } from "../ui/public/PublicResolution.tsx";
 import type { ApiClient } from "../api/client.ts";
 import type { AliasRecord } from "./accountBlob.ts";
-import { avatarSrc, type AvatarConfig } from "../lib/avatars.ts";
+import { avatarSrc, pseudonymFor, type AvatarConfig } from "../lib/avatars.ts";
 import { republishCard } from "./publish.ts";
 
 // The condom preferences that have a public label ("none" shows nothing).
@@ -79,12 +79,40 @@ export function deriveOwnerCard(
  * timing (docs/10 §F), the same deferred decorrelation work as the notify
  * cover-wake; it is gated off / not built. Tracked in doc 11.
  */
-/** The inputs the owner's current card is derived from (see deriveOwnerCard). */
+/**
+ * The display identity a card shows for `record` (doc 15): its per-alias override
+ * if the owner set one, else the deterministic id-derived default (a pseudonym
+ * handle, and no avatar so the viewer falls back to the id-derived avatar). The
+ * default reveals nothing because the id is random per alias.
+ */
+export function resolveCardIdentity(record: AliasRecord): {
+  handle: string;
+  avatar?: AvatarConfig;
+} {
+  return {
+    handle: record.handle ?? pseudonymFor(record.id),
+    ...(record.avatar ? { avatar: record.avatar } : {}),
+  };
+}
+
+/**
+ * Build the card published to one alias: the owner's badge (account-level, shared
+ * across all their links) plus that alias's own resolved display identity.
+ */
+export function deriveAliasCard(
+  state: OwnerState,
+  record: AliasRecord,
+  nowDay: number,
+): ResolvedView {
+  const id = resolveCardIdentity(record);
+  return deriveOwnerCard(state, id.handle, nowDay, id.avatar);
+}
+
+/** The account-level inputs the owner's cards are derived from; the per-alias
+ * identity comes from each record (see deriveAliasCard). */
 export interface OwnerCardInputs {
   readonly state: OwnerState;
-  readonly handle: string;
   readonly nowDay: number;
-  readonly avatar?: AvatarConfig;
 }
 
 export async function republishOwnerCard(
@@ -92,11 +120,9 @@ export async function republishOwnerCard(
   records: readonly AliasRecord[],
   owner: OwnerCardInputs,
 ): Promise<void> {
-  const card = deriveOwnerCard(
-    owner.state,
-    owner.handle,
-    owner.nowDay,
-    owner.avatar,
+  await Promise.all(
+    records.map((r) =>
+      republishCard(api, r, deriveAliasCard(owner.state, r, owner.nowDay)),
+    ),
   );
-  await Promise.all(records.map((r) => republishCard(api, r, card)));
 }

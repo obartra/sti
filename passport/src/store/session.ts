@@ -42,7 +42,7 @@ import {
 import { pollInbox } from "./notifyInbox.ts";
 import { grantAccess } from "./grant.ts";
 import type { OwnerState } from "../core/badge.ts";
-import { deriveOwnerCard } from "./ownerCard.ts";
+import { deriveAliasCard } from "./ownerCard.ts";
 import { todayEpochDay } from "../core/clock.ts";
 import {
   publishCard,
@@ -291,13 +291,11 @@ async function mintContactLink(
 ): Promise<ContactLinkResult> {
   const { myNotify } = await accounts.ensureMyNotify(session.master);
   const nowDay = todayEpochDay();
-  const card = deriveOwnerCard(
-    session.blob.state,
-    session.blob.handle,
-    nowDay,
-    session.blob.avatar,
+  const { record } = await publishCard(
+    api,
+    (rec) => deriveAliasCard(session.blob.state, rec, nowDay),
+    { isPublic: false },
   );
-  const { record } = await publishCard(api, card, { isPublic: false });
   const contact: ContactRecord = {
     id: randomAliasId(),
     label: label.slice(0, MAX_CONTACT_LABEL),
@@ -332,13 +330,11 @@ async function acceptContactInvite(
   }
   const { myNotify } = await accounts.ensureMyNotify(session.master);
   const nowDay = todayEpochDay();
-  const card = deriveOwnerCard(
-    session.blob.state,
-    session.blob.handle,
-    nowDay,
-    session.blob.avatar,
+  const { record } = await publishCard(
+    api,
+    (rec) => deriveAliasCard(session.blob.state, rec, nowDay),
+    { isPublic: false },
   );
-  const { record } = await publishCard(api, card, { isPublic: false });
   const contact: ContactRecord = {
     id: randomAliasId(),
     label: label.slice(0, MAX_CONTACT_LABEL),
@@ -437,40 +433,41 @@ async function revokeAliasLink(
   return { master: session.master, blob };
 }
 
+// Produce a link for the owner's current sharing mode. Shared by shareLink and
+// renewLink. One alias per visibility: reuse the alias whose visibility matches the
+// CURRENT sharing mode (republishing the current card so an already-shared link
+// reflects the latest badge), or mint one on first share in this mode. Selecting by
+// visibility, not array position, keeps the link's key-presence aligned with the
+// mode the sheet shows: a public link carries the AES key in its `#k=` fragment, a
+// private link never does. Reusing by position would otherwise hand out a
+// key-bearing URL under a "private link" sheet after a public -> link switch.
+async function shareLinkFor(
+  api: ApiClient,
+  accounts: AccountManager,
+  session: OwnerSession,
+): Promise<ShareLinkResult> {
+  const nowDay = todayEpochDay();
+  const wantPublic = session.blob.sharingMode === "public";
+  const existing = session.blob.aliases.find((a) => a.isPublic === wantPublic);
+  if (existing !== undefined) {
+    await republishCard(
+      api,
+      existing,
+      deriveAliasCard(session.blob.state, existing, nowDay),
+    );
+    return { session, url: aliasLinkUrl(existing) };
+  }
+  const { link, record } = await publishCard(
+    api,
+    (rec) => deriveAliasCard(session.blob.state, rec, nowDay),
+    { isPublic: wantPublic },
+  );
+  const blob = await accounts.addAlias(session.master, record);
+  return { session: { master: session.master, blob }, url: link };
+}
+
 export function createSessionController(deps: SessionDeps): SessionController {
   const { accounts, sync, devices, passkey, api } = deps;
-
-  // Produce a link for the owner's current sharing mode. Shared by shareLink and
-  // renewLink (a free function, not a `this` method, so it survives destructuring
-  // of the controller). One alias per visibility: reuse the alias whose
-  // visibility matches the CURRENT sharing mode (republishing the current card so
-  // an already-shared link reflects the latest badge), or mint one on first share
-  // in this mode. Selecting by visibility, not array position, keeps the link's
-  // key-presence aligned with the mode the sheet shows: a public link carries the
-  // AES key in its `#k=` fragment, a private link never does. Reusing by position
-  // would otherwise hand out a key-bearing URL under a "private link" sheet after
-  // a public -> link switch.
-  async function shareLinkFor(session: OwnerSession): Promise<ShareLinkResult> {
-    const card = deriveOwnerCard(
-      session.blob.state,
-      session.blob.handle,
-      todayEpochDay(),
-      session.blob.avatar,
-    );
-    const wantPublic = session.blob.sharingMode === "public";
-    const existing = session.blob.aliases.find(
-      (a) => a.isPublic === wantPublic,
-    );
-    if (existing !== undefined) {
-      await republishCard(api, existing, card);
-      return { session, url: aliasLinkUrl(existing) };
-    }
-    const { link, record } = await publishCard(api, card, {
-      isPublic: wantPublic,
-    });
-    const blob = await accounts.addAlias(session.master, record);
-    return { session: { master: session.master, blob }, url: link };
-  }
 
   return {
     async signUp(handle) {
@@ -536,7 +533,7 @@ export function createSessionController(deps: SessionDeps): SessionController {
     },
 
     shareLink(session) {
-      return shareLinkFor(session);
+      return shareLinkFor(api, accounts, session);
     },
 
     async renewLink(session) {
@@ -555,7 +552,7 @@ export function createSessionController(deps: SessionDeps): SessionController {
       }
       // Mint a fresh link for the current card (this is now the only alias for
       // the mode, since the old record is gone).
-      return shareLinkFor(working);
+      return shareLinkFor(api, accounts, working);
     },
 
     async deleteAccount(session) {

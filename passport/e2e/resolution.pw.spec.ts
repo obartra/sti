@@ -69,7 +69,7 @@ async function seedCard(): Promise<string> {
     route: null,
     identity: { handle: HANDLE },
   };
-  const { record } = await publishCard(createApiClient(apiBase), card, {
+  const { record } = await publishCard(createApiClient(apiBase), () => card, {
     isPublic: true,
   });
   return `/a/${record.id}#k=${record.key}`;

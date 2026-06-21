@@ -66,10 +66,14 @@ async function sealAndPut(
   await api.putAlias(record.id, payload, record.writeToken);
 }
 
-/** Mint a new alias and publish `view` to it. */
+/**
+ * Mint a new alias and publish a card to it. Takes a `buildView(record)` callback
+ * rather than a prebuilt view because the card's display identity is resolved from
+ * the alias's own id (doc 15), which only exists once the record is minted here.
+ */
 export async function publishCard(
   api: ApiClient,
-  view: ResolvedView,
+  buildView: (record: AliasRecord) => ResolvedView,
   opts: { isPublic?: boolean } = {},
 ): Promise<PublishedAlias> {
   const raw = crypto.getRandomValues(new Uint8Array(32));
@@ -79,7 +83,7 @@ export async function publishCard(
     key: bytesToBase64url(raw),
     isPublic: opts.isPublic ?? true,
   };
-  await sealAndPut(api, await importAesKey(raw), record, view);
+  await sealAndPut(api, await importAesKey(raw), record, buildView(record));
   return { link: aliasLinkUrl(record), record };
 }
 
