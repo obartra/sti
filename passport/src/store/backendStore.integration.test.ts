@@ -8,12 +8,14 @@ import { createApiClient } from "../api/client.ts";
 import { ALIAS_PAYLOAD_SIZE } from "../api/contract.ts";
 import {
   createBackendStore,
+  createGrantKeyStore,
   serializePublicCard,
   grantAccess,
   redeemGrant,
   requesterHash,
   deriveGrantSlotId,
 } from "./index.ts";
+import type { StorageLike } from "../auth/deviceStore.ts";
 import {
   importAesKey,
   sealToSize,
@@ -184,4 +186,63 @@ describe("public resolution against a live blind store", () => {
       view,
     );
   });
+
+  it("the viewer store knocks, the owner approves, and redeemGrant returns the card", async () => {
+    // The whole requester half through the PassportStore boundary: knock carries
+    // the device's grant key, the owner approves, the store's redeemGrant resolves.
+    const view: ResolvedView = {
+      state: "blue",
+      labels: ["hiv"],
+      route: "hiv",
+      identity: { handle: "max" },
+    };
+    const raw = crypto.getRandomValues(new Uint8Array(32));
+    const key = await importAesKey(raw);
+    const aliasId = randomAliasId();
+    const writeToken = randomWriteToken();
+    await api.putAlias(
+      aliasId,
+      await sealToSize(key, serializePublicCard(view), ALIAS_PAYLOAD_SIZE),
+      writeToken,
+    );
+    const aliasRecord = {
+      id: aliasId,
+      writeToken,
+      key: bytesToBase64url(raw),
+      isPublic: false,
+    };
+
+    // A viewer device: its own backend store with an in-memory grant key store and
+    // a stable per-device secret.
+    const secret = bytesToBase64url(crypto.getRandomValues(new Uint8Array(32)));
+    const grantKeys = createGrantKeyStore(memoryStorage());
+    const viewer = createBackendStore(api, secret, grantKeys);
+
+    // Before knocking there is no stored key, so redeemGrant is null.
+    expect(await viewer.redeemGrant(aliasId)).toBeNull();
+
+    // The viewer knocks (the store sends its grant pubkey); still pending.
+    await viewer.knock(aliasId);
+    expect(await viewer.redeemGrant(aliasId)).toBeNull();
+
+    // The owner reads the pending knock and approves it.
+    const hash = await requesterHash(secret, aliasId);
+    const review = await api.knockReview(aliasId, writeToken);
+    const pending = review.pending.find((p) => p.requesterHash === hash);
+    if (!pending) throw new Error("expected the viewer's knock to be pending");
+    await grantAccess(api, aliasRecord, pending);
+
+    // The viewer's store now redeems the grant into the real card.
+    expect(await viewer.redeemGrant(aliasId)).toEqual(view);
+  });
 });
+
+// A minimal in-memory StorageLike for the viewer's grant key store.
+function memoryStorage(): StorageLike {
+  const map = new Map<string, string>();
+  return {
+    getItem: (k) => map.get(k) ?? null,
+    setItem: (k, v) => void map.set(k, v),
+    removeItem: (k) => void map.delete(k),
+  };
+}

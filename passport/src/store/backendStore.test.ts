@@ -1,8 +1,10 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { createBackendStore } from "./backendStore.ts";
+import { createGrantKeyStore } from "./grantKeyStore.ts";
 import { serializePublicCard } from "./publicCard.ts";
 import { requesterHash } from "./knock.ts";
+import type { StorageLike } from "../auth/deviceStore.ts";
 import { ApiError, type ApiClient } from "../api/client.ts";
 import { ALIAS_PAYLOAD_SIZE } from "../api/contract.ts";
 import {
@@ -12,6 +14,15 @@ import {
   type Bytes,
 } from "../crypto/index.ts";
 import type { ResolvedView } from "../ui/public/PublicResolution.tsx";
+
+function memoryStorage(): StorageLike {
+  const map = new Map<string, string>();
+  return {
+    getItem: (k) => map.get(k) ?? null,
+    setItem: (k, v) => void map.set(k, v),
+    removeItem: (k) => void map.delete(k),
+  };
+}
 
 const view: ResolvedView = {
   state: "blue",
@@ -36,7 +47,7 @@ function stubApi(getAlias: ApiClient["getAlias"]): ApiClient {
     notify: unused,
     knockCount: () => Promise.resolve(0),
     knockReview: () => Promise.resolve({ count: 0, pending: [] }),
-    knock: unused,
+    knock: () => Promise.resolve(),
     registerPush: unused,
     health: unused,
   };
@@ -101,8 +112,12 @@ describe("backend store resolveAlias", () => {
 });
 
 describe("backend store knock", () => {
-  it("sends the salted per-device hash for the alias, not the secret", async () => {
-    const calls: { id: string; requesterHash: string }[] = [];
+  it("sends the salted hash and the device's grant pubkey, not the secret", async () => {
+    const calls: {
+      id: string;
+      requesterHash: string;
+      pubKey?: string | undefined;
+    }[] = [];
     const unused = () => {
       throw new Error("not used in this test");
     };
@@ -117,13 +132,14 @@ describe("backend store knock", () => {
       knockReview: () => Promise.resolve({ count: 0, pending: [] }),
       registerPush: unused,
       health: unused,
-      knock: (id, hash) => {
-        calls.push({ id, requesterHash: hash });
+      knock: (id, hash, pubKey) => {
+        calls.push({ id, requesterHash: hash, pubKey });
         return Promise.resolve();
       },
     };
     const secret = "device-secret-xyz";
-    const store = createBackendStore(api, secret);
+    const grantKeys = createGrantKeyStore(memoryStorage());
+    const store = createBackendStore(api, secret, grantKeys);
 
     await store.knock(GOOD_ID);
 
@@ -132,5 +148,61 @@ describe("backend store knock", () => {
     // The wire value is the hash, never the raw secret.
     expect(calls[0]?.requesterHash).toBe(await requesterHash(secret, GOOD_ID));
     expect(calls[0]?.requesterHash).not.toContain(secret);
+    // The knock carries this device's grant PUBLIC key (the private half stays
+    // in the store), so the owner can seal an in-app grant to it.
+    expect(calls[0]?.pubKey).toBe(
+      (await grantKeys.forAlias(GOOD_ID)).publicKey,
+    );
+    expect(calls[0]?.pubKey).not.toBe(grantKeys.privateKey(GOOD_ID));
+  });
+
+  it("redeemGrant is null before a knock (no stored key)", async () => {
+    const unused = () => {
+      throw new Error("not used in this test");
+    };
+    const api: ApiClient = {
+      getAlias: unused,
+      putAlias: unused,
+      getAccount: unused,
+      putAccount: unused,
+      deleteAccount: unused,
+      notify: unused,
+      knock: unused,
+      knockCount: () => Promise.resolve(0),
+      knockReview: () => Promise.resolve({ count: 0, pending: [] }),
+      registerPush: unused,
+      health: unused,
+    };
+    const store = createBackendStore(
+      api,
+      "s",
+      createGrantKeyStore(memoryStorage()),
+    );
+    expect(await store.redeemGrant(GOOD_ID)).toBeNull();
+  });
+
+  it("redeemGrant is null when the grant slot is a decoy / not sealed to us", async () => {
+    // This device knocked (so it has a stored key), but the slot it polls is just
+    // a 4096-byte decoy (the owner hasn't approved, or it was sealed to someone
+    // else). Opening it fails -> the store fails closed to null, indistinguishable
+    // from a miss. getAlias is wired to always return a decoy.
+    const decoy = crypto.getRandomValues(new Uint8Array(ALIAS_PAYLOAD_SIZE));
+    const store = createBackendStore(
+      stubApi(() => Promise.resolve(decoy)),
+      "s",
+      createGrantKeyStore(memoryStorage()),
+    );
+    await store.knock(GOOD_ID); // mint + store this device's grant key
+    expect(await store.redeemGrant(GOOD_ID)).toBeNull();
+  });
+
+  it("redeemGrant fails closed to null when the server is unreachable", async () => {
+    const store = createBackendStore(
+      stubApi(() => Promise.reject(new ApiError("unreachable", "down"))),
+      "s",
+      createGrantKeyStore(memoryStorage()),
+    );
+    await store.knock(GOOD_ID);
+    expect(await store.redeemGrant(GOOD_ID)).toBeNull();
   });
 });
