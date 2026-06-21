@@ -87,6 +87,29 @@ describe("account blob codec", () => {
     );
   });
 
+  it("round-trips v9 per-alias display overrides (handle + avatar)", () => {
+    const withOverride: AccountBlob = {
+      handle: "robin",
+      aliases: [
+        {
+          id: ID,
+          writeToken: "B".repeat(43),
+          key: "C".repeat(43),
+          isPublic: true,
+          handle: "meow",
+          avatar: { animal: 1, color: 2, hat: 0, glasses: 1, extra: 0 },
+        },
+      ],
+      contacts: [],
+      state: INITIAL_OWNER_STATE,
+      avatar: DEFAULT_AVATAR,
+      sharingMode: "public",
+    };
+    expect(parseAccountBlob(serializeAccountBlob(withOverride))).toEqual(
+      withOverride,
+    );
+  });
+
   it("round-trips an empty alias list", () => {
     const empty: AccountBlob = {
       handle: "sam",
@@ -146,7 +169,7 @@ describe("account blob codec", () => {
     avatar: A,
   };
   reject("a non-object", 7);
-  reject("an unknown version", { ...base, v: 9 });
+  reject("an unknown version", { ...base, v: 10, sharingMode: "link" });
   reject("a prior version (v6 is no longer accepted)", {
     v: 6,
     handle: "x",
@@ -184,6 +207,24 @@ describe("account blob codec", () => {
   reject("an alias missing isPublic", {
     ...base,
     aliases: [{ id: ID, writeToken: ID, key: ID }],
+    sharingMode: "link",
+  });
+  reject("an alias with an empty handle override", {
+    ...base,
+    aliases: [{ id: ID, writeToken: ID, key: ID, isPublic: true, handle: "" }],
+    sharingMode: "link",
+  });
+  reject("an alias with a malformed avatar override", {
+    ...base,
+    aliases: [
+      {
+        id: ID,
+        writeToken: ID,
+        key: ID,
+        isPublic: true,
+        avatar: { ...A, animal: 999 },
+      },
+    ],
     sharingMode: "link",
   });
   reject("a missing state", {
