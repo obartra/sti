@@ -136,11 +136,15 @@ export function App({
     revokeLink,
   } = useShareLink(controller, sessionRef, setSession, setShareOpen);
 
-  // Owner-pull knock review (the quiet inbox indicator).
-  const { knockCount, refresh: refreshKnocks } = useKnockReview(
-    controller,
-    session,
-  );
+  // Owner-pull knock review (the quiet inbox indicator + in-app approve).
+  const {
+    knockCount,
+    canApprove: canApproveKnocks,
+    showInfo: showKnockInfo,
+    approve: approveKnocks,
+    approving: approvingKnocks,
+    refresh: refreshKnocks,
+  } = useKnockReview(controller, session);
 
   const owner = session
     ? deriveOwnerView(session.blob, todayEpochDay())
@@ -173,6 +177,10 @@ export function App({
       onDeleteAccount={onDeleteAccount}
       knockCount={knockCount}
       refreshKnocks={refreshKnocks}
+      canApproveKnocks={canApproveKnocks}
+      showKnockInfo={showKnockInfo}
+      approveKnocks={approveKnocks}
+      approvingKnocks={approvingKnocks}
       contacts={session ? session.blob.contacts : []}
       onCreateContactLink={onCreateContactLink}
       onRevokeContact={onRevokeContact}

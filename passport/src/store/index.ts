@@ -45,5 +45,7 @@ export type {
   SessionDeps,
   ShareLinkResult,
   ContactLinkResult,
+  PendingApproval,
+  OwnerKnocks,
 } from "./session.ts";
 export { createSessionController } from "./session.ts";
