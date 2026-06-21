@@ -17,12 +17,12 @@ import {
   isAvatarConfig,
   type AvatarConfig,
 } from "../lib/avatars.ts";
-import { decodeVersionedUpTo, isValidHandle } from "./codec.ts";
+import { decodeVersioned, isValidHandle } from "./codec.ts";
 
-// We SERIALIZE at the latest version; we PARSE any version up to it. v1 cards
-// (already published to prod before avatars) have no avatar and stay valid; the
-// only difference at v2 is the optional avatar, so the older shape parses cleanly.
-const SCHEMA_VERSION = 2;
+// One wire schema. The version pins the shape so an unknown one is rejected
+// rather than mis-rendered; there is no prior format to support, so a payload
+// whose `v` is not this exact version fails closed.
+const SCHEMA_VERSION = 1;
 
 const BADGE_STATES: readonly BadgeState[] = ["blue", "gray"];
 const PROTECTION_LABELS: readonly ProtectionLabel[] = [
@@ -32,18 +32,18 @@ const PROTECTION_LABELS: readonly ProtectionLabel[] = [
   "condoms_raw",
 ];
 
-interface PublishedCardV2 {
+interface PublishedCard {
   readonly v: typeof SCHEMA_VERSION;
   readonly state: BadgeState;
   readonly labels: ProtectionLabel[];
   readonly route: Route;
   readonly handle: string;
-  // v2+. The owner's avatar config (one per account today). The card is sealed, so
-  // carrying it leaks nothing to the blind server; it just lets a viewer see the
-  // look the owner built instead of a handle-derived stand-in. A viewer holding two
-  // of an owner's links can correlate them by avatar, the same as they already
-  // could by handle, so this adds no correlation surface (doc 13 limits). Omitted
-  // when the owner never set one.
+  // The owner's avatar config (one per account). The card is sealed, so carrying
+  // it leaks nothing to the blind server; it just lets a viewer see the look the
+  // owner built instead of a handle-derived stand-in. A viewer holding two of an
+  // owner's links can correlate them by avatar, the same as they already could by
+  // handle, so this adds no correlation surface (doc 13 limits). Optional: a card
+  // with no avatar resolves to a handle-derived stand-in.
   readonly avatar?: AvatarConfig;
 }
 
@@ -62,14 +62,13 @@ function isLabel(x: unknown): x is ProtectionLabel {
 
 /** Serialize a resolved card into the versioned wire bytes (owner side). */
 export function serializePublicCard(card: ResolvedView): Bytes {
-  const wire: PublishedCardV2 = {
+  const wire: PublishedCard = {
     v: SCHEMA_VERSION,
     state: card.state,
     labels: card.labels ?? [],
     route: card.route ?? null,
     handle: card.identity.handle,
-    // Omit entirely when absent so a no-avatar card is byte-clean (and a v1-shaped
-    // card is still produced for an owner who never built an avatar).
+    // Omit entirely when absent so a no-avatar card is byte-clean.
     ...(card.avatar ? { avatar: card.avatar } : {}),
   };
   return utf8ToBytes(JSON.stringify(wire));
@@ -80,7 +79,7 @@ export function serializePublicCard(card: ResolvedView): Bytes {
  * anything unexpected so the caller can fail closed to the uniform null state.
  */
 export function parsePublicCard(bytes: Bytes): ResolvedView {
-  const o = decodeVersionedUpTo(bytes, SCHEMA_VERSION);
+  const o = decodeVersioned(bytes, SCHEMA_VERSION);
   if (!isBadgeState(o.state)) {
     throw new Error("public card: invalid state");
   }
@@ -93,8 +92,8 @@ export function parsePublicCard(bytes: Bytes): ResolvedView {
   if (o.route !== null && !isLabel(o.route)) {
     throw new Error("public card: invalid route");
   }
-  // The avatar is optional (absent in v1). When present it must be a well-formed
-  // config; a malformed one fails closed like any other bad field.
+  // The avatar is optional. When present it must be a well-formed config; a
+  // malformed one fails closed like any other bad field.
   if (o.avatar !== undefined && !isAvatarConfig(o.avatar)) {
     throw new Error("public card: invalid avatar");
   }

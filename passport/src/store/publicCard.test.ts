@@ -29,15 +29,15 @@ describe("public card codec", () => {
     expect(parsed).toEqual(withAvatar);
   });
 
-  it("parses a v1 card (no avatar) — back-compat falls back to no avatar", () => {
-    const v1 = {
+  it("parses a card with the avatar field omitted (falls back to no avatar)", () => {
+    const noAvatar = {
       v: 1,
       state: "blue",
       labels: ["hiv"],
       route: "hiv",
       handle: "robin",
     };
-    const parsed = parsePublicCard(utf8ToBytes(JSON.stringify(v1)));
+    const parsed = parsePublicCard(utf8ToBytes(JSON.stringify(noAvatar)));
     expect(parsed.avatar).toBeUndefined();
     expect(parsed.avatarSrc).toBeUndefined();
     expect(parsed.identity.handle).toBe("robin");
@@ -65,7 +65,7 @@ describe("public card codec", () => {
 
   reject("non-object", 42);
   reject("a future version", {
-    v: 3,
+    v: 2,
     state: "blue",
     labels: [],
     route: null,
@@ -79,7 +79,7 @@ describe("public card codec", () => {
     handle: "x",
   });
   reject("a malformed avatar", {
-    v: 2,
+    v: 1,
     state: "blue",
     labels: [],
     route: null,
