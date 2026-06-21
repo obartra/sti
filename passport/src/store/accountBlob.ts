@@ -20,17 +20,16 @@ import { isAvatarConfig, type AvatarConfig } from "../lib/avatars.ts";
 import { decodeVersioned, isValidHandle } from "./codec.ts";
 import type { NotifyCapability } from "./notifyInbox.ts";
 
-// v6 adds the pairwise notify capabilities (doc 13 slice 5): the account's own
-// `myNotify` (minted at signup; how contacts wake/notify the owner) and an optional
-// `theirNotify` per contact (the contact's capability, received at link exchange).
-// Both are optional so existing construction sites and a pre-exchange contact stay
-// valid. v5 added the per-contact links (`contacts`); v4 was the absolute-day
-// testing input. There are no real older accounts in the wild, so the current
-// version is parsed exclusively: an older or otherwise malformed blob fails the
-// strict version check and parseAccountBlob THROWS (recovery surfaces an error
+// v7 adds `circles` (doc 13 slice 6): purely client-side bundles of contacts with
+// a shared display, never seen by the server. Optional, so existing construction
+// sites stay valid. v6 added the pairwise notify capabilities (`myNotify` +
+// `theirNotify`); v5 added the per-contact links (`contacts`); v4 was the
+// absolute-day testing input. There are no real older accounts in the wild, so the
+// current version is parsed exclusively: an older or otherwise malformed blob fails
+// the strict version check and parseAccountBlob THROWS (recovery surfaces an error
 // rather than silently restoring it). Only a genuine account miss (404) maps to
 // null/"no account".
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -66,6 +65,24 @@ export interface ContactRecord {
   readonly theirNotify?: NotifyCapability;
 }
 
+/** A circle name is the owner's own label for a bundle; never sent, capped small. */
+export const MAX_CIRCLE_NAME = 64;
+
+/**
+ * A circle (doc 13 slice 6): a purely client-side bundle of contacts the owner
+ * groups together, with a name. The server never learns a circle exists; group
+ * status sharing reuses each member's existing pairwise channel. Membership is a
+ * list of ContactRecord ids.
+ */
+export interface CircleRecord {
+  /** A local opaque id for the circle. */
+  readonly id: string;
+  /** The owner's private name for the circle; may be empty. Never sent. */
+  readonly name: string;
+  /** The contacts in this circle, by their ContactRecord id. */
+  readonly memberContactIds: string[];
+}
+
 /** The account-level sharing default: a public profile, or link-only (private). */
 export type SharingMode = "public" | "link";
 
@@ -90,9 +107,14 @@ export interface AccountBlob {
    * Optional so pre-v6 construction sites stay valid; minted lazily where needed.
    */
   readonly myNotify?: NotifyCapability;
+  /**
+   * Client-side contact bundles (doc 13 slice 6). Optional so pre-v7 construction
+   * sites stay valid; absent means no circles. Never sent to the server.
+   */
+  readonly circles?: CircleRecord[];
 }
 
-interface AccountBlobV6 extends AccountBlob {
+interface AccountBlobV7 extends AccountBlob {
   readonly v: typeof SCHEMA_VERSION;
 }
 
@@ -153,10 +175,28 @@ function isContactRecord(x: unknown): x is ContactRecord {
   );
 }
 
+function isCircleRecord(x: unknown): x is CircleRecord {
+  if (typeof x !== "object" || x === null) return false;
+  const r = x as Record<string, unknown>;
+  return (
+    typeof r.id === "string" &&
+    validId(r.id) &&
+    typeof r.name === "string" &&
+    r.name.length <= MAX_CIRCLE_NAME &&
+    Array.isArray(r.memberContactIds) &&
+    r.memberContactIds.every((m) => typeof m === "string" && validId(m))
+  );
+}
+
+// circles is optional on the account (absent until the owner makes one).
+function isOptionalCircles(x: unknown): boolean {
+  return x === undefined || (Array.isArray(x) && x.every(isCircleRecord));
+}
+
 export function serializeAccountBlob(blob: AccountBlob): Bytes {
-  // theirNotify rides inside each contact and myNotify is omitted when absent, so a
-  // pre-exchange account stays byte-identical to its v5 shape plus the version bump.
-  const wire: AccountBlobV6 = {
+  // theirNotify rides inside each contact; myNotify and circles are omitted when
+  // absent, so a pre-v7 account stays byte-identical plus the version bump.
+  const wire: AccountBlobV7 = {
     v: SCHEMA_VERSION,
     handle: blob.handle,
     aliases: blob.aliases,
@@ -165,6 +205,7 @@ export function serializeAccountBlob(blob: AccountBlob): Bytes {
     avatar: blob.avatar,
     sharingMode: blob.sharingMode,
     ...(blob.myNotify !== undefined ? { myNotify: blob.myNotify } : {}),
+    ...(blob.circles !== undefined ? { circles: blob.circles } : {}),
   };
   return utf8ToBytes(JSON.stringify(wire));
 }
@@ -190,8 +231,16 @@ function assertValidBlob(o: Record<string, unknown>): void {
   if (!isSharingMode(o.sharingMode)) {
     throw new Error("account blob: invalid sharingMode");
   }
+  assertValidOptionalFields(o);
+}
+
+// The fields added in v6/v7, each optional (absent on a pre-feature account).
+function assertValidOptionalFields(o: Record<string, unknown>): void {
   if (!isOptionalNotify(o.myNotify)) {
     throw new Error("account blob: invalid myNotify");
+  }
+  if (!isOptionalCircles(o.circles)) {
+    throw new Error("account blob: invalid circles");
   }
 }
 
@@ -207,5 +256,8 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
     avatar: o.avatar as AccountBlob["avatar"],
     sharingMode: o.sharingMode as AccountBlob["sharingMode"],
     ...(isNotifyCapability(o.myNotify) ? { myNotify: o.myNotify } : {}),
+    ...(Array.isArray(o.circles)
+      ? { circles: o.circles as CircleRecord[] }
+      : {}),
   };
 }
