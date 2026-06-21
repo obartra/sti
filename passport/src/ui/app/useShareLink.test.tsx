@@ -55,6 +55,8 @@ function stubController(over: Partial<SessionController>): SessionController {
     approveKnocks: unused,
     createContactLink: unused,
     revokeContact: unused,
+    acceptContactInvite: unused,
+    ingestContactReturn: unused,
     forget: unused,
     ...over,
   };

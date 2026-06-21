@@ -23,8 +23,14 @@ export type {
   AliasRecord,
   ContactRecord,
   CircleRecord,
+  StatusAlias,
   SharingMode,
 } from "./accountBlob.ts";
+export {
+  contactInviteUrl,
+  parseContactInvite,
+  type ContactInvite,
+} from "./contactInvite.ts";
 export {
   MIN_CIRCLE_SIZE,
   circleMeetsFloor,

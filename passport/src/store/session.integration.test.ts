@@ -13,6 +13,9 @@ import { createSessionController } from "./session.ts";
 import { deriveOwnerCard } from "./ownerCard.ts";
 import { redeemGrant } from "./grant.ts";
 import { requesterHash } from "./knock.ts";
+import { parseContactInvite } from "./contactInvite.ts";
+import { lockNotifyDraft, parsePartnerPing } from "./partnerNotify.ts";
+import { pollInbox } from "./notifyInbox.ts";
 import { todayEpochDay } from "../core/clock.ts";
 import { generateGrantKeyPair, bytesToBase64url } from "../crypto/index.ts";
 import { createDeviceStore, type StorageLike } from "../auth/deviceStore.ts";
@@ -103,6 +106,135 @@ describe("owner session against a live blind store", () => {
     const resumed = await ctl.resume();
     expect(resumed?.master).toEqual(session.master);
     expect(resumed?.blob).toEqual(session.blob);
+  });
+
+  it("a mutual contact-link exchange links two owners both ways", async () => {
+    const store = createBackendStore(createApiClient(baseUrl));
+    const linkParts = (url: string) => {
+      const u = new URL(url);
+      return { pathname: u.pathname, hash: u.hash };
+    };
+
+    // Owner A (made blue via PrEP so reading A's card is distinguishable) and B.
+    const a = controller(fakePasskey());
+    const { session: a0 } = await a.ctl.signUp("alex");
+    const aSession = await a.ctl.setOwnerState(a0, {
+      ...a0.blob.state,
+      onPrep: true,
+    });
+    const b = controller(fakePasskey());
+    const { session: bSession } = await b.ctl.signUp("blair");
+
+    // A invites; the link is a contact invite carrying A's notify capability.
+    const invite = await a.ctl.createContactLink(aSession, "blair");
+    const parsed = parseContactInvite(
+      linkParts(invite.url).pathname,
+      linkParts(invite.url).hash,
+    );
+    if (parsed === null) throw new Error("expected a contact invite");
+
+    // B accepts: records A as a complete two-way contact and returns an invite.
+    const accept = await b.ctl.acceptContactInvite(bSession, parsed, "alex");
+    const ret = parseContactInvite(
+      linkParts(accept.url).pathname,
+      linkParts(accept.url).hash,
+    );
+    if (ret === null) throw new Error("expected a return invite");
+
+    // A ingests the return, completing the pending contact it created.
+    const aDone = await a.ctl.ingestContactReturn(invite.session, ret);
+
+    const aContact = aDone.blob.contacts[0];
+    const bContact = accept.session.blob.contacts[0];
+    if (aContact?.theirStatusAlias === undefined) {
+      throw new Error("A's contact did not complete");
+    }
+    if (bContact?.theirStatusAlias === undefined) {
+      throw new Error("B's contact did not complete");
+    }
+
+    // Each side reads the other's status through theirStatusAlias.
+    expect(await store.resolveAlias(bContact.theirStatusAlias)).toEqual(
+      deriveOwnerCard(
+        aSession.blob.state,
+        aSession.blob.handle,
+        todayEpochDay(),
+        aSession.blob.avatar,
+      ),
+    );
+    expect(await store.resolveAlias(aContact.theirStatusAlias)).toEqual(
+      deriveOwnerCard(
+        bSession.blob.state,
+        bSession.blob.handle,
+        todayEpochDay(),
+        bSession.blob.avatar,
+      ),
+    );
+
+    // Each side holds the other's notify capability (the right way round).
+    expect(aContact.theirNotify).toEqual(accept.session.blob.myNotify);
+    expect(bContact.theirNotify).toEqual(invite.session.blob.myNotify);
+
+    // And the notify path works: A notifies B, whose inbox decrypts the ping.
+    const bNotify = bSession.blob.myNotify;
+    if (bNotify === undefined) throw new Error("B has no notify identity");
+    const sent = await lockNotifyDraft(a.api, aDone.blob, [aContact.id]);
+    expect(sent.sent).toEqual([aContact.id]);
+    const ping = await pollInbox(b.api, bNotify);
+    if (ping === null) throw new Error("expected B to receive the ping");
+    expect(parsePartnerPing(ping)?.kind).toBe("partner-notify");
+  });
+
+  it("ingest and accept guard the exchange edges (no-match, no-ref, double, return)", async () => {
+    const linkParts = (url: string) => {
+      const u = new URL(url);
+      return { pathname: u.pathname, hash: u.hash };
+    };
+    const a = controller(fakePasskey());
+    const { session } = await a.ctl.signUp("quinn");
+    const invite = await a.ctl.createContactLink(session, "river");
+    const parsed = parseContactInvite(
+      linkParts(invite.url).pathname,
+      linkParts(invite.url).hash,
+    );
+    if (parsed === null) throw new Error("expected an invite");
+
+    // A return whose ref matches no pending contact is a no-op.
+    const noMatch = await a.ctl.ingestContactReturn(invite.session, {
+      alias: { id: "Z".repeat(43), key: "Y".repeat(43) },
+      notify: invite.session.blob.myNotify ?? parsed.notify,
+      ref: "W".repeat(43),
+    });
+    expect(noMatch.blob.contacts).toEqual(invite.session.blob.contacts);
+
+    // A return with no ref at all is a no-op.
+    const noRef = await a.ctl.ingestContactReturn(invite.session, {
+      alias: { id: "Z".repeat(43), key: "Y".repeat(43) },
+      notify: parsed.notify,
+    });
+    expect(noRef.blob.contacts).toEqual(invite.session.blob.contacts);
+
+    // Accepting a RETURN invite (it carries ref) is refused.
+    await expect(
+      a.ctl.acceptContactInvite(
+        invite.session,
+        { ...parsed, ref: "W".repeat(43) },
+        "river",
+      ),
+    ).rejects.toThrow();
+
+    // A real return completes the contact; a second ingest of it is a no-op.
+    const contact = invite.session.blob.contacts[0];
+    if (contact === undefined) throw new Error("expected a pending contact");
+    const ret = {
+      alias: { id: "1".repeat(43), key: "2".repeat(43) },
+      notify: parsed.notify,
+      ref: contact.alias.id,
+    };
+    const done = await a.ctl.ingestContactReturn(invite.session, ret);
+    expect(done.blob.contacts[0]?.theirStatusAlias).toEqual(ret.alias);
+    const twice = await a.ctl.ingestContactReturn(done, ret);
+    expect(twice.blob.contacts).toEqual(done.blob.contacts);
   });
 
   it("recovers the same account from the phrase", async () => {
