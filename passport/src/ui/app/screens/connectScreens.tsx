@@ -17,12 +17,18 @@ export const connectRenderers: ScreenRenderers = {
   "scan-link": ({ nav }) => <ScanLink onCancel={nav.back} />,
   // "Share a link" is now the per-contact link manager: mint a private link for
   // one person, list active links, revoke each (doc 13, slice 1).
-  "alias-share": ({ contacts, onCreateContactLink, onRevokeContact }) => (
+  "alias-share": ({
+    contacts,
+    onCreateContactLink,
+    onRevokeContact,
+    onIngestContactReturn,
+  }) => (
     <ContactLinks
       contacts={contacts}
       nowDay={todayEpochDay()}
       onCreate={onCreateContactLink}
       onRevoke={onRevokeContact}
+      onIngestReturn={onIngestContactReturn}
     />
   ),
 };

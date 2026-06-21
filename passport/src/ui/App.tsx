@@ -129,6 +129,7 @@ export function App({
     onCreateContactLink,
     onRevokeContact,
     onAcceptContactInvite,
+    onIngestContactReturn,
   } = useOwnerActions(controller, sessionRef, setSession);
 
   // The share sheet: opening it mints/refreshes the owner's primary alias and
@@ -190,6 +191,7 @@ export function App({
       onRevokeContact={onRevokeContact}
       isLoggedIn={session !== null}
       onAcceptContactInvite={onAcceptContactInvite}
+      onIngestContactReturn={onIngestContactReturn}
     />
   );
 }

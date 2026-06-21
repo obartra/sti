@@ -43,6 +43,7 @@ export interface ChromeProps {
   onRevokeContact: ScreenCtx["onRevokeContact"];
   isLoggedIn: ScreenCtx["isLoggedIn"];
   onAcceptContactInvite: ScreenCtx["onAcceptContactInvite"];
+  onIngestContactReturn: ScreenCtx["onIngestContactReturn"];
 }
 
 function MobileSub({ nav, children }: { nav: Nav; children: ReactNode }) {
@@ -121,6 +122,7 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     onRevokeContact: props.onRevokeContact,
     isLoggedIn: props.isLoggedIn,
     onAcceptContactInvite: props.onAcceptContactInvite,
+    onIngestContactReturn: props.onIngestContactReturn,
     store: props.store,
     data: route.data,
   };
