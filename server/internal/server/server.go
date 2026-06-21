@@ -33,6 +33,7 @@ type Config struct {
 	DecoySecret    []byte
 	KnockTTL       time.Duration // default 4 days
 	SendMaxJitter  time.Duration // default 2 min; spreads wake timing
+	CoverWindow    time.Duration // spreads the cover broadcast (doc 13 §2); set from STI_COVER_WINDOW, 0 = no spread
 	MaxInflight    int           // global concurrency cap; default 256
 	SensitiveWait  time.Duration // max wait for a slot on /a, /knock; default 5s
 	IPRatePerSec   float64       // non-sensitive endpoints; default 5
@@ -60,6 +61,9 @@ func (c *Config) withDefaults() {
 	if c.SendMaxJitter == 0 {
 		c.SendMaxJitter = 2 * time.Minute
 	}
+	// CoverWindow is deliberately NOT defaulted here: 0 is a valid "fan out with no
+	// spread" used by tests for a deterministic single-pass broadcast. Production
+	// sets it from STI_COVER_WINDOW (main.go), which falls back to 2 min.
 	if c.MaxInflight == 0 {
 		c.MaxInflight = 256
 	}

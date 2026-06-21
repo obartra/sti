@@ -8,3 +8,7 @@ comps-reference/
 html/
 test-results/
 playwright-report/
+
+# Local env (Vite): never commit, holds the dev API base and any local overrides.
+.env.local
+.env.*.local

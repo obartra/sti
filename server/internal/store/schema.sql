@@ -48,6 +48,20 @@ CREATE TABLE IF NOT EXISTS send_queue (
 );
 CREATE INDEX IF NOT EXISTS idx_send_queue_available ON send_queue (available_at);
 
+-- Decorrelation cover broadcast (doc 13 §2). When a real wake comes due the drain
+-- fans out one contentless wake per registered push route into here, each at a
+-- jittered available_at, so the whole push population wakes and the real recipient
+-- is not distinguishable. Same shape as send_queue but never re-triggers a fan-out
+-- (the drain reads send_queue, not this, to decide a broadcast), so covers cannot
+-- beget covers.
+CREATE TABLE IF NOT EXISTS cover_send (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    routing_endpoint_id TEXT NOT NULL,
+    available_at        INTEGER NOT NULL,  -- jittered wake time within the window
+    created_at          INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cover_send_available ON cover_send (available_at);
+
 CREATE TABLE IF NOT EXISTS knock (
     target_id       TEXT NOT NULL,         -- alias being knocked on
     requester_hash  TEXT NOT NULL,         -- opaque per-requester token

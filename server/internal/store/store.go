@@ -297,7 +297,36 @@ func (s *Store) PushEndpoints(ctx context.Context, routingEndpointID string) ([]
 	return out, rows.Err()
 }
 
-// --- Send queue -------------------------------------------------------------
+// DistinctPushRoutes returns every routing endpoint that has at least one
+// registered push subscription: the cover-broadcast population. A real wake fans
+// out one cover to each of these so the recipient is hidden among them (doc 13 §2).
+func (s *Store) DistinctPushRoutes(ctx context.Context) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT DISTINCT routing_endpoint_id FROM push_endpoint`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
+// --- Send queues ------------------------------------------------------------
+
+// The real wake queue and the cover-broadcast queue are byte-for-byte the same
+// shape, so they share one set of enqueue/due/delete helpers keyed by a constant
+// table name (never user input, so the fmt.Sprintf carries no injection).
+const (
+	sendQueueTable  = "send_queue"
+	coverQueueTable = "cover_send"
+)
 
 // Send is a queued wake job (contentless).
 type Send struct {
@@ -305,18 +334,16 @@ type Send struct {
 	RoutingEndpointID string
 }
 
-// EnqueueSend adds a wake job to be delivered at or after availableAt.
-func (s *Store) EnqueueSend(ctx context.Context, routingEndpointID string, availableAt, now int64) error {
+func (s *Store) enqueueQueued(ctx context.Context, table, routingEndpointID string, availableAt, now int64) error {
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO send_queue (routing_endpoint_id, available_at, created_at) VALUES (?, ?, ?)`,
+		fmt.Sprintf(`INSERT INTO %s (routing_endpoint_id, available_at, created_at) VALUES (?, ?, ?)`, table),
 		routingEndpointID, availableAt, now)
 	return err
 }
 
-// DueSends returns up to limit jobs whose time has arrived, oldest first.
-func (s *Store) DueSends(ctx context.Context, now int64, limit int) ([]Send, error) {
+func (s *Store) dueQueued(ctx context.Context, table string, now int64, limit int) ([]Send, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, routing_endpoint_id FROM send_queue WHERE available_at <= ? ORDER BY available_at LIMIT ?`,
+		fmt.Sprintf(`SELECT id, routing_endpoint_id FROM %s WHERE available_at <= ? ORDER BY available_at LIMIT ?`, table),
 		now, limit)
 	if err != nil {
 		return nil, err
@@ -333,10 +360,39 @@ func (s *Store) DueSends(ctx context.Context, now int64, limit int) ([]Send, err
 	return out, rows.Err()
 }
 
-// DeleteSend removes a delivered job.
-func (s *Store) DeleteSend(ctx context.Context, id int64) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM send_queue WHERE id = ?`, id)
+func (s *Store) deleteQueued(ctx context.Context, table string, id int64) error {
+	_, err := s.db.ExecContext(ctx, fmt.Sprintf(`DELETE FROM %s WHERE id = ?`, table), id)
 	return err
+}
+
+// EnqueueSend adds a real wake job to be delivered at or after availableAt.
+func (s *Store) EnqueueSend(ctx context.Context, routingEndpointID string, availableAt, now int64) error {
+	return s.enqueueQueued(ctx, sendQueueTable, routingEndpointID, availableAt, now)
+}
+
+// DueSends returns up to limit real jobs whose time has arrived, oldest first.
+func (s *Store) DueSends(ctx context.Context, now int64, limit int) ([]Send, error) {
+	return s.dueQueued(ctx, sendQueueTable, now, limit)
+}
+
+// DeleteSend removes a real job once its broadcast is scheduled.
+func (s *Store) DeleteSend(ctx context.Context, id int64) error {
+	return s.deleteQueued(ctx, sendQueueTable, id)
+}
+
+// EnqueueCover schedules one cover wake for a routing endpoint within the window.
+func (s *Store) EnqueueCover(ctx context.Context, routingEndpointID string, availableAt, now int64) error {
+	return s.enqueueQueued(ctx, coverQueueTable, routingEndpointID, availableAt, now)
+}
+
+// DueCovers returns up to limit cover wakes whose time has arrived, oldest first.
+func (s *Store) DueCovers(ctx context.Context, now int64, limit int) ([]Send, error) {
+	return s.dueQueued(ctx, coverQueueTable, now, limit)
+}
+
+// DeleteCover removes a delivered cover wake.
+func (s *Store) DeleteCover(ctx context.Context, id int64) error {
+	return s.deleteQueued(ctx, coverQueueTable, id)
 }
 
 // --- Knocks -----------------------------------------------------------------

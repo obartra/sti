@@ -156,6 +156,73 @@ func TestSendQueue(t *testing.T) {
 	}
 }
 
+func TestCoverQueueIsSeparateFromSendQueue(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	// A real send and a cover live in different tables: neither shows up in the
+	// other's due query, so a cover can never re-trigger a fan-out.
+	if err := s.EnqueueSend(ctx, "ep1", 100, 100); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.EnqueueCover(ctx, "ep2", 200, 100); err != nil {
+		t.Fatal(err)
+	}
+	sends, err := s.DueSends(ctx, 1000, 10)
+	if err != nil || len(sends) != 1 || sends[0].RoutingEndpointID != "ep1" {
+		t.Fatalf("due sends: %+v err=%v", sends, err)
+	}
+	covers, err := s.DueCovers(ctx, 1000, 10)
+	if err != nil || len(covers) != 1 || covers[0].RoutingEndpointID != "ep2" {
+		t.Fatalf("due covers: %+v err=%v", covers, err)
+	}
+	// Covers honor their own availability and delete independently.
+	if got, _ := s.DueCovers(ctx, 150, 10); len(got) != 0 {
+		t.Fatalf("cover not yet due at 150, got %d", len(got))
+	}
+	if err := s.DeleteCover(ctx, covers[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := s.DueCovers(ctx, 1000, 10); len(got) != 0 {
+		t.Fatalf("deleted cover still due, got %d", len(got))
+	}
+	// The send queue was untouched by cover operations.
+	if got, _ := s.DueSends(ctx, 1000, 10); len(got) != 1 {
+		t.Fatalf("send queue disturbed by cover ops, due %d", len(got))
+	}
+}
+
+func TestDistinctPushRoutes(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	if got, err := s.DistinctPushRoutes(ctx); err != nil || len(got) != 0 {
+		t.Fatalf("empty population: got %v err=%v", got, err)
+	}
+	// Two routes, one of them with two subscriptions: the population is the set of
+	// routes, deduped, not the count of subscriptions.
+	ok := func(err error) {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	ok(s.RegisterPush(ctx, "route-a", PushTarget{Endpoint: "https://push/1", P256dh: "p", Auth: "a"}, 1))
+	ok(s.RegisterPush(ctx, "route-a", PushTarget{Endpoint: "https://push/2", P256dh: "p", Auth: "a"}, 1))
+	ok(s.RegisterPush(ctx, "route-b", PushTarget{Endpoint: "https://push/3", P256dh: "p", Auth: "a"}, 1))
+
+	got, err := s.DistinctPushRoutes(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := map[string]bool{}
+	for _, r := range got {
+		set[r] = true
+	}
+	if len(got) != 2 || !set["route-a"] || !set["route-b"] {
+		t.Fatalf("want {route-a, route-b}, got %v", got)
+	}
+}
+
 func TestKnockDedupeCountAndPurge(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
