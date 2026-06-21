@@ -6,6 +6,10 @@ LICENSE
 **/storybook-static
 **/visual-baselines
 **/comps-reference
+**/test-results
+**/playwright-report
+**/reports/behaviors
+.claude/scratch
 
 # Authored design docs: source of truth for the rendered labs pages, left verbatim.
 labs/docs

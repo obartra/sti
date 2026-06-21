@@ -5,49 +5,15 @@
 //
 // Usage: node deploy/build-promises.mjs
 
-import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { version, today, esc } from "./report-lib.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
 const FEATURE_DIR = join(ROOT, "passport", "src", "core");
 const OUT_DIR = join(ROOT, "dist", "promises");
-
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
-function version() {
-  try {
-    return execSync("git describe --tags --always --dirty", {
-      cwd: ROOT,
-      encoding: "utf8",
-    }).trim();
-  } catch {
-    // Netlify's shallow checkout can lack git history; fall back to the commit
-    // ref it provides in the environment.
-    const ref = process.env.COMMIT_REF;
-    return ref ? ref.slice(0, 7) : "dev";
-  }
-}
-
-function today() {
-  const d = new Date();
-  return `${String(d.getDate())} ${MONTHS[d.getMonth()]} ${String(d.getFullYear())}`;
-}
 
 // Minimal Gherkin parse: Feature (+ its prose), Background givens, Scenarios
 // (name + steps). Enough for the feature files this repo writes.
@@ -92,13 +58,6 @@ function outcome(scenario) {
   if (t.includes("reads")) return { kind: "headline", label: "Headline" };
   return { kind: "neutral", label: "Holds" };
 }
-
-const esc = (s) =>
-  String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 
 function stepRow(step) {
   const assert = step.keyword === "Then";
