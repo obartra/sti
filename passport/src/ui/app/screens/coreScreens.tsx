@@ -6,23 +6,8 @@ import type { NotificationItem } from "../../core/Notifications.tsx";
 import { Privacy } from "../../core/Privacy.tsx";
 import { extendClearance } from "../../../core/report.ts";
 import { todayEpochDay } from "../../../core/clock.ts";
+import { RESOURCES, openResource } from "../../../lib/resources.ts";
 import type { ScreenRenderers } from "./context.ts";
-
-// Care's resource finders open public, US/CDC-aligned locators (per doc 03 §12:
-// no single national condom program, so a maps search; clinic/testing via the
-// CDC finder; PrEP via the open PrEP locator). External, static, no user data.
-const RESOURCES = {
-  clinic: "https://gettested.cdc.gov/",
-  condoms:
-    "https://www.google.com/maps/search/?api=1&query=free+condoms+near+me",
-  prep: "https://preplocator.org/",
-} as const;
-
-function openResource(url: string): void {
-  if (typeof window !== "undefined") {
-    window.open(url, "_blank", "noopener,noreferrer");
-  }
-}
 
 // The real inbox: a standing re-test nudge, plus a knock entry only when someone
 // has actually knocked (no requester, no count, no per-knock time). When a knock

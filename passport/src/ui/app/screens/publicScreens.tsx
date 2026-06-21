@@ -2,6 +2,7 @@ import { Landing } from "../../public/Landing.tsx";
 import { PublicResolution } from "../../public/PublicResolution.tsx";
 import { PublicResolutionScreen } from "../../public/PublicResolutionScreen.tsx";
 import { Alert } from "../../public/Alert.tsx";
+import { Exposed } from "../../public/Exposed.tsx";
 import { SAMPLE_RESOLVED } from "../fixtures.ts";
 import type { ScreenCtx, ScreenRenderers } from "./context.ts";
 
@@ -79,4 +80,5 @@ export const publicRenderers: ScreenRenderers = {
   "a3-alert": ({ nav, data }) => (
     <Alert preview={data?.preview ?? false} onBack={nav.back} />
   ),
+  exposed: ({ nav }) => <Exposed onClaim={() => nav.go("b1-claim")} />,
 };

@@ -42,6 +42,10 @@ function routeFromHash(): Route | null {
 // here holds the decryption key, not a screen name.
 function routeFromLocation(): Route | null {
   if (typeof window === "undefined") return null;
+  // The public heads-up page (linked from the off-app text). Anonymous, no key.
+  if (/^\/exposed\/?$/.test(window.location.pathname)) {
+    return { screen: "exposed", group: "public", data: null };
+  }
   const link = parseAliasLink(window.location.pathname, window.location.hash);
   if (link) {
     // A contact invite is the same link plus a notify capability (and `ref` on a
@@ -80,7 +84,8 @@ export function useAppRouter(initial: Route = START): Router {
   // the now-stale `/a/{id}` link.
   useEffect(() => {
     const onAliasLink = route.screen === "a2-public" && route.data?.key != null;
-    if (onAliasLink) return;
+    // Leave the canonical public /exposed URL alone too (it is the shared link).
+    if (onAliasLink || route.screen === "exposed") return;
     const target = `/#${route.screen}`;
     if (window.location.pathname + window.location.hash !== target) {
       window.history.replaceState(null, "", target);
