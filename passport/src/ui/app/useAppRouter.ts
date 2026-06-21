@@ -8,6 +8,7 @@ import {
   type Screen,
 } from "./routes.ts";
 import { parseAliasLink } from "../../store/aliasLink.ts";
+import { parseContactInvite } from "../../store/contactInvite.ts";
 
 export interface Nav {
   // Navigate to a screen, pushing the current one onto the history stack.
@@ -43,10 +44,21 @@ function routeFromLocation(): Route | null {
   if (typeof window === "undefined") return null;
   const link = parseAliasLink(window.location.pathname, window.location.hash);
   if (link) {
+    // A contact invite is the same link plus a notify capability (and `ref` on a
+    // return). When present, carry it so a logged-in viewer can accept (doc 13).
+    const invite = parseContactInvite(
+      window.location.pathname,
+      window.location.hash,
+    );
     return {
       screen: "a2-public",
       group: "public",
-      data: { id: link.id, key: link.key },
+      data: {
+        id: link.id,
+        key: link.key,
+        ...(invite ? { notify: invite.notify } : {}),
+        ...(invite?.ref !== undefined ? { ref: invite.ref } : {}),
+      },
     };
   }
   return routeFromHash();

@@ -1,5 +1,6 @@
 import { useCallback, type RefObject } from "react";
 import type {
+  ContactInvite,
   ContactLinkResult,
   OwnerSession,
   SessionController,
@@ -12,6 +13,11 @@ export interface OwnerActions {
   onCreateContactLink: (label: string) => Promise<ContactLinkResult>;
   /** Revoke one contact link by id. */
   onRevokeContact: (id: string) => void;
+  /** Accept a contact invite; resolves with the return invite to send back. */
+  onAcceptContactInvite: (
+    invite: ContactInvite,
+    label: string,
+  ) => Promise<ContactLinkResult>;
 }
 
 /**
@@ -64,5 +70,26 @@ export function useOwnerActions(
     [controller, sessionRef, setSession],
   );
 
-  return { onDeleteAccount, onCreateContactLink, onRevokeContact };
+  const onAcceptContactInvite = useCallback(
+    async (invite: ContactInvite, label: string) => {
+      const current = sessionRef.current;
+      if (current === null) throw new Error("not signed in");
+      const result = await controller.acceptContactInvite(
+        current,
+        invite,
+        label,
+      );
+      sessionRef.current = result.session;
+      setSession(result.session);
+      return result;
+    },
+    [controller, sessionRef, setSession],
+  );
+
+  return {
+    onDeleteAccount,
+    onCreateContactLink,
+    onRevokeContact,
+    onAcceptContactInvite,
+  };
 }

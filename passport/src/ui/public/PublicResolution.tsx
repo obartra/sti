@@ -10,8 +10,7 @@ import {
   SelfBanner,
   ResolvedBadge,
   SharedSummary,
-  KnockSection,
-  ColdActions,
+  ResolutionActions,
 } from "./PublicResolution.parts.tsx";
 import { Explainer } from "./PublicResolution.explainer.tsx";
 
@@ -42,6 +41,10 @@ export interface PublicResolutionProps {
   // gray-nothing. A cold/guessed open never reaches it.
   linkHolder?: boolean;
   initialKnockSent?: boolean;
+  // A logged-in viewer opening a contact invite can add the inviter as a two-way
+  // contact instead of knocking. onAccept resolves with the return link to share.
+  canAccept?: boolean;
+  onAccept?: ((label: string) => Promise<string>) | undefined;
   onBack?: () => void;
   onClaim?: () => void;
   onVerify?: () => void;
@@ -53,6 +56,8 @@ export function PublicResolution({
   self = false,
   linkHolder = false,
   initialKnockSent = false,
+  canAccept = false,
+  onAccept,
   onBack,
   onClaim,
   onVerify,
@@ -84,17 +89,18 @@ export function PublicResolution({
 
       {resolved && <Explainer />}
 
-      <KnockSection
+      <ResolutionActions
+        self={self}
+        resolved={resolved}
         linkHolder={linkHolder}
         knockSent={knockSent}
+        canAccept={canAccept}
+        onAccept={onAccept}
         onKnock={doKnock}
         onBack={onBack}
+        onClaim={onClaim}
+        onVerify={onVerify}
       />
-
-      {/* Cold resolved-for-stranger only. Gray-nothing stays button-free. */}
-      {!self && resolved && (
-        <ColdActions onClaim={onClaim} onVerify={onVerify} />
-      )}
     </div>
   );
 }

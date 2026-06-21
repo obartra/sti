@@ -40,13 +40,25 @@ export const publicRenderers: ScreenRenderers = {
       );
     }
 
-    // A real shared link: resolve the id + key against the backend.
-    const { id, key } = ctx.data ?? {};
+    // A real shared link: resolve the id + key against the backend. If the link is
+    // a contact invite (it carried a notify capability) and the viewer is logged
+    // in, offer "Add to contacts" instead of a knock.
+    const { id, key, notify, ref } = ctx.data ?? {};
     if (id !== undefined && key !== undefined) {
+      const invite =
+        ctx.isLoggedIn && notify !== undefined
+          ? {
+              alias: { id, key },
+              notify,
+              ...(ref !== undefined ? { ref } : {}),
+            }
+          : undefined;
       return (
         <PublicResolutionScreen
           store={ctx.store}
           link={{ id, key }}
+          invite={invite}
+          onAcceptInvite={ctx.onAcceptContactInvite}
           onBack={ctx.nav.back}
           onClaim={onClaim}
           onVerify={onVerify}

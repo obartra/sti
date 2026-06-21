@@ -1,0 +1,121 @@
+import { useState } from "react";
+import { Card, Button, Input } from "../../design/components/index.ts";
+import { Copy, Link as LinkIcon } from "../../design/icons.tsx";
+
+// The return link the inviter must open to finish the two-way link (doc 13 path A).
+// Same shape as the Connect "link ready" card: a mono URL + a copy button.
+function ReturnLink({ handle, url }: { handle: string; url: string }) {
+  const copy = () => {
+    try {
+      void navigator.clipboard.writeText(url).catch(() => undefined);
+    } catch {
+      // no clipboard available
+    }
+  };
+  return (
+    <Card
+      variant="tint"
+      style={{ display: "flex", flexDirection: "column", gap: 8 }}
+    >
+      <div
+        style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong)" }}
+      >
+        Added. Send this link back to @{handle} so they can see you too.
+      </div>
+      <div
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: 12.5,
+          color: "var(--text-strong)",
+          wordBreak: "break-all",
+        }}
+      >
+        {url.replace(/^https?:\/\//, "")}
+      </div>
+      <Button
+        variant="secondary"
+        size="sm"
+        icon={<Copy size={15} />}
+        onClick={copy}
+      >
+        Copy link to send back
+      </Button>
+    </Card>
+  );
+}
+
+// A logged-in viewer opening a contact invite: add the inviter as a two-way
+// contact (doc 13 path A), then surface the return link to send back.
+export function AcceptInviteSection({
+  handle,
+  onAccept,
+}: {
+  handle: string;
+  onAccept: (label: string) => Promise<string>;
+}) {
+  const [label, setLabel] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [returnUrl, setReturnUrl] = useState<string | null>(null);
+
+  const add = () => {
+    if (busy) return;
+    setBusy(true);
+    void onAccept(label.trim())
+      .then((url) => setReturnUrl(url))
+      .catch(() => undefined)
+      .finally(() => setBusy(false));
+  };
+
+  if (returnUrl !== null) return <ReturnLink handle={handle} url={returnUrl} />;
+
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          style={{
+            flex: "none",
+            width: 34,
+            height: 34,
+            borderRadius: "var(--radius-sm)",
+            background: "var(--accent-soft)",
+            color: "var(--text-accent)",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <LinkIcon size={18} />
+        </span>
+        <span
+          style={{
+            fontSize: 15.5,
+            fontWeight: 700,
+            color: "var(--text-strong)",
+          }}
+        >
+          Add @{handle} to your contacts
+        </span>
+      </div>
+      <p
+        style={{
+          margin: 0,
+          fontSize: 13.5,
+          lineHeight: 1.55,
+          color: "var(--text-muted)",
+        }}
+      >
+        You will see each other&apos;s status and can notify each other. They
+        are not added until you send the link back.
+      </p>
+      <Input
+        placeholder="A private nickname for them (optional)"
+        value={label}
+        onChange={(e) => setLabel(e.target.value)}
+        maxLength={64}
+      />
+      <Button variant="primary" size="lg" block onClick={add}>
+        {busy ? "Adding..." : "Add to contacts"}
+      </Button>
+    </Card>
+  );
+}

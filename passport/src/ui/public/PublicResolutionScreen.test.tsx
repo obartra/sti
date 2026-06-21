@@ -3,9 +3,21 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { PublicResolutionScreen } from "./PublicResolutionScreen.tsx";
 import type { ResolvedView } from "./PublicResolution.tsx";
-import type { PassportStore } from "../../store/index.ts";
+import type {
+  ContactInvite,
+  ContactLinkResult,
+  PassportStore,
+} from "../../store/index.ts";
 
 const LINK = { id: "A".repeat(43), key: "B".repeat(43) };
+
+const NOTIFY = {
+  inboxId: "I".repeat(43),
+  writeToken: "W".repeat(43),
+  key: "K".repeat(43),
+  routingToken: "R".repeat(43),
+};
+const INVITE: ContactInvite = { alias: LINK, notify: NOTIFY };
 
 function storeResolving(
   to: ResolvedView | null,
@@ -72,6 +84,68 @@ describe("PublicResolutionScreen", () => {
     );
     render(<PublicResolutionScreen store={store} link={LINK} />);
     expect(await screen.findByText("@robin")).toBeInTheDocument();
+  });
+
+  it("a logged-in viewer adds the inviter and gets a return link to send back", async () => {
+    const user = userEvent.setup();
+    const view: ResolvedView = {
+      state: "blue",
+      labels: ["hiv"],
+      route: "hiv",
+      identity: { handle: "alex" },
+    };
+    const returnUrl = `https://sti.care/a/${"R".repeat(43)}#k=${"S".repeat(43)}&n=abc`;
+    const onAcceptInvite = vi.fn(
+      (): Promise<ContactLinkResult> =>
+        Promise.resolve({
+          session: { master: new Uint8Array(), blob: {} as never },
+          contact: {} as never,
+          url: returnUrl,
+        }),
+    );
+    render(
+      <PublicResolutionScreen
+        store={storeResolving(view)}
+        link={LINK}
+        invite={INVITE}
+        onAcceptInvite={onAcceptInvite}
+      />,
+    );
+
+    // The invite shows "Add to contacts", not the knock prompt.
+    const add = await screen.findByRole("button", { name: "Add to contacts" });
+    expect(screen.queryByRole("button", { name: "Request access" })).toBeNull();
+
+    await user.type(
+      screen.getByPlaceholderText(/private nickname/i),
+      "from the party",
+    );
+    await user.click(add);
+
+    expect(onAcceptInvite).toHaveBeenCalledWith(INVITE, "from the party");
+    // The return link to send back is surfaced.
+    expect(
+      await screen.findByRole("button", { name: /Copy link to send back/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not offer accept for a return invite (it is the inviter's to ingest)", async () => {
+    const view: ResolvedView = {
+      state: "gray",
+      identity: { handle: "alex" },
+    };
+    render(
+      <PublicResolutionScreen
+        store={storeResolving(view)}
+        link={LINK}
+        invite={{ ...INVITE, ref: "Q".repeat(43) }}
+        onAcceptInvite={() => Promise.reject(new Error("should not be called"))}
+      />,
+    );
+    expect(await screen.findByText("@alex")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Add to contacts" }),
+    ).toBeNull();
   });
 
   it("polls for the grant after the viewer requests access", async () => {

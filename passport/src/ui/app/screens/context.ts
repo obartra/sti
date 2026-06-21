@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Nav } from "../useAppRouter.ts";
 import type { RouteData, Screen } from "../routes.ts";
 import type {
+  ContactInvite,
   ContactLinkResult,
   ContactRecord,
   OwnerView,
@@ -49,6 +50,16 @@ export interface ScreenCtx {
   onCreateContactLink: (label: string) => Promise<ContactLinkResult>;
   /** Revoke one contact link by id. */
   onRevokeContact: (id: string) => void;
+  /** Whether a session is active (a logged-in owner), for screens shown to both. */
+  isLoggedIn: boolean;
+  /**
+   * Accept a contact invite (doc 13 path A): record the inviter as a two-way
+   * contact and resolve with a RETURN invite to send back. Rejects if logged out.
+   */
+  onAcceptContactInvite: (
+    invite: ContactInvite,
+    label: string,
+  ) => Promise<ContactLinkResult>;
   store: PassportStore;
   data: RouteData | null;
 }
