@@ -52,6 +52,8 @@ function fakeApi(): ApiClient {
     knock: unused,
     knockCount: unused,
     knockReview: unused,
+    getInbox: unused,
+    putInbox: unused,
     registerPush: unused,
     health: unused,
   };

@@ -143,6 +143,8 @@ func (s *Server) Metrics() *metrics.Metrics { return s.metrics }
 func (s *Server) routes() {
 	s.mux.HandleFunc("GET /a/{id}", s.handleAliasGet)
 	s.mux.HandleFunc("PUT /a/{id}", s.handleAliasPut)
+	s.mux.HandleFunc("GET /inbox/{id}", s.handleInboxGet)
+	s.mux.HandleFunc("PUT /inbox/{id}", s.handleInboxPut)
 	s.mux.HandleFunc("GET /acct/{id}", s.handleAccountGet)
 	s.mux.HandleFunc("PUT /acct/{id}", s.handleAccountPut)
 	s.mux.HandleFunc("DELETE /acct/{id}", s.handleAccountDelete)
@@ -197,11 +199,12 @@ func (r *statusRecorder) Write(b []byte) (int, error) {
 }
 
 // sensitivePath reports whether a request must stay existence-uniform: it never
-// receives a visible 429/503. Only the existence-revealing READS qualify, GET /a
-// and POST /knock. PUT /a is a write (visible 403/204, rate-limited) and is
-// sheddable, so a write flood cannot ride the never-shed path.
+// receives a visible 429/503. Only the existence-revealing READS qualify: GET /a,
+// GET /inbox, and POST /knock. The PUTs are writes (visible 403/204, rate-limited)
+// and are sheddable, so a write flood cannot ride the never-shed path.
 func sensitivePath(method, p string) bool {
 	return (method == http.MethodGet && strings.HasPrefix(p, contract.PathAliasPrefix)) ||
+		(method == http.MethodGet && strings.HasPrefix(p, contract.PathInboxPrefix)) ||
 		(method == http.MethodPost && strings.HasPrefix(p, contract.PathKnockPrefix))
 }
 
@@ -246,30 +249,46 @@ func (s *Server) uniformOverload(w http.ResponseWriter, r *http.Request) {
 		s.writeJSON(w, http.StatusOK, contract.KnockResponse{Status: contract.KnockStatus})
 		return
 	}
-	id := strings.TrimPrefix(r.URL.Path, contract.PathAliasPrefix)
+	// GET /a or GET /inbox: emit the EXACT decoy a normal miss would, so saturation
+	// is indistinguishable from a nonexistent id. The normal miss keys the decoy by
+	// the bare id, so this must too (keying by the full path would diverge).
+	id := strings.TrimPrefix(r.URL.Path, contract.PathInboxPrefix)
+	id = strings.TrimPrefix(id, contract.PathAliasPrefix)
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write(decoyBytes(s.cfg.DecoySecret, id, contract.AliasPayloadSize))
 }
 
-// --- Alias (the hot, existence-uniform read) --------------------------------
+// --- Alias + notify inbox (the fixed-size, existence-uniform reads) ----------
+//
+// A storeReadFn / storeWriteFn lets the alias and notify-inbox endpoints (which
+// are byte-for-byte the same blind, write-token-gated, fixed-size protocol) share
+// one GET and one PUT implementation.
+type storeReadFn func(ctx context.Context, id string) ([]byte, bool, error)
+type storeWriteFn func(ctx context.Context, id string, ct []byte, authHash string, now int64) (bool, error)
 
 func (s *Server) handleAliasGet(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	payload := s.aliasPayload(r, id)
-	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Cache-Control", "no-store")
-	_, _ = w.Write(payload)
+	s.handleFixedGet(w, r, s.st.GetAlias, "alias get")
 }
 
-// aliasPayload always returns exactly AliasPayloadSize bytes: the stored
+func (s *Server) handleInboxGet(w http.ResponseWriter, r *http.Request) {
+	s.handleFixedGet(w, r, s.st.GetInbox, "inbox get")
+}
+
+func (s *Server) handleFixedGet(w http.ResponseWriter, r *http.Request, get storeReadFn, label string) {
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write(s.fixedPayload(r, r.PathValue("id"), get, label))
+}
+
+// fixedPayload always returns exactly AliasPayloadSize bytes: the stored
 // ciphertext if it exists, otherwise a deterministic decoy. Invalid ids and even
 // internal errors fall through to a decoy, so nothing about existence leaks.
-func (s *Server) aliasPayload(r *http.Request, id string) []byte {
+func (s *Server) fixedPayload(r *http.Request, id string, get storeReadFn, label string) []byte {
 	if contract.ValidID(id) {
-		if ct, found, err := s.st.GetAlias(r.Context(), id); err != nil {
+		if ct, found, err := get(r.Context(), id); err != nil {
 			s.metrics.Error(metrics.ErrStore)
-			s.log.Error("alias get", "err", err)
+			s.log.Error(label, "err", err)
 		} else if found {
 			return ct
 		}
@@ -278,6 +297,14 @@ func (s *Server) aliasPayload(r *http.Request, id string) []byte {
 }
 
 func (s *Server) handleAliasPut(w http.ResponseWriter, r *http.Request) {
+	s.handleFixedPut(w, r, s.st.WriteAlias)
+}
+
+func (s *Server) handleInboxPut(w http.ResponseWriter, r *http.Request) {
+	s.handleFixedPut(w, r, s.st.WriteInbox)
+}
+
+func (s *Server) handleFixedPut(w http.ResponseWriter, r *http.Request, write storeWriteFn) {
 	id := r.PathValue("id")
 	if !contract.ValidID(id) {
 		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed id")
@@ -298,21 +325,20 @@ func (s *Server) handleAliasPut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(body) != contract.AliasPayloadSize {
-		// The client pre-pads alias payloads to exactly the fixed size.
-		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "alias payload must be exactly the fixed size")
+		// The client pre-pads payloads to exactly the fixed size.
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "payload must be exactly the fixed size")
 		return
 	}
-	authHash := hashToken(token)
-	ok, err := s.st.WriteAlias(r.Context(), id, body, authHash, s.now())
+	ok, err := write(r.Context(), id, body, hashToken(token), s.now())
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
 		return
 	}
 	if !ok {
-		// PUT is deliberately NOT existence-uniform (unlike GET /a and POST /knock):
-		// 403 here distinguishes "exists, wrong token" from a 204 create. That is
-		// acceptable, the read id is already shared with viewers, so holding it
-		// already implies you may learn it exists, and 256-bit ids are unguessable.
+		// PUT is deliberately NOT existence-uniform (unlike the GET reads): 403 here
+		// distinguishes "exists, wrong token" from a 204 create. Acceptable: holding
+		// the id already implies you may learn it exists, and 256-bit ids are
+		// unguessable, so this leaks nothing a write-token holder didn't already know.
 		s.writeError(w, http.StatusForbidden, contract.ErrBadRequest, "write token does not match")
 		return
 	}

@@ -116,13 +116,23 @@ func hasColumn(ctx context.Context, db *sql.DB, table, col string) (bool, error)
 // Close releases the database handle.
 func (s *Store) Close() error { return s.db.Close() }
 
-// --- Alias (the hot read) ---------------------------------------------------
+// --- Alias + notify inbox (fixed-size, write-token-gated, blind reads) -------
+//
+// The alias and notify_inbox tables are identical in shape (opaque id ->
+// fixed-size ciphertext gated by a write-token hash, read existence-uniformly),
+// so the create/overwrite and read logic is shared. The `table` argument is ONLY
+// ever a compile-time constant from {aliasTable, inboxTable}, never request data,
+// so the formatted SQL carries no injection.
+const (
+	aliasTable = "alias"
+	inboxTable = "notify_inbox"
+)
 
-// WriteAlias creates an alias (recording writeAuth as its capability) or, if it
-// already exists, overwrites it only when writeAuth matches the stored one.
-// authorized=false means the id exists but the caller doesn't hold its write
-// token. Done in a transaction so concurrent first-writers can't race.
-func (s *Store) WriteAlias(ctx context.Context, id string, ciphertext []byte, writeAuth string, now int64) (authorized bool, err error) {
+// writeFixed creates a row (recording writeAuth as its capability) or, if the id
+// exists, overwrites it only when writeAuth matches. authorized=false means the
+// id exists but the caller doesn't hold its write token. Transactional so
+// concurrent first-writers can't race.
+func (s *Store) writeFixed(ctx context.Context, table, id string, ciphertext []byte, writeAuth string, now int64) (authorized bool, err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return false, err
@@ -130,11 +140,11 @@ func (s *Store) WriteAlias(ctx context.Context, id string, ciphertext []byte, wr
 	defer tx.Rollback()
 
 	var existing string
-	switch err := tx.QueryRowContext(ctx, `SELECT write_auth FROM alias WHERE id = ?`, id).Scan(&existing); {
+	sel := fmt.Sprintf("SELECT write_auth FROM %s WHERE id = ?", table)
+	switch err := tx.QueryRowContext(ctx, sel, id).Scan(&existing); {
 	case errors.Is(err, sql.ErrNoRows):
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO alias (id, ciphertext, write_auth, updated_at) VALUES (?, ?, ?, ?)`,
-			id, ciphertext, writeAuth, now); err != nil {
+		ins := fmt.Sprintf("INSERT INTO %s (id, ciphertext, write_auth, updated_at) VALUES (?, ?, ?, ?)", table)
+		if _, err := tx.ExecContext(ctx, ins, id, ciphertext, writeAuth, now); err != nil {
 			return false, err
 		}
 	case err != nil:
@@ -144,9 +154,8 @@ func (s *Store) WriteAlias(ctx context.Context, id string, ciphertext []byte, wr
 		if subtle.ConstantTimeCompare([]byte(existing), []byte(writeAuth)) != 1 {
 			return false, nil
 		}
-		if _, err := tx.ExecContext(ctx,
-			`UPDATE alias SET ciphertext = ?, updated_at = ? WHERE id = ?`,
-			ciphertext, now, id); err != nil {
+		upd := fmt.Sprintf("UPDATE %s SET ciphertext = ?, updated_at = ? WHERE id = ?", table)
+		if _, err := tx.ExecContext(ctx, upd, ciphertext, now, id); err != nil {
 			return false, err
 		}
 	}
@@ -156,10 +165,11 @@ func (s *Store) WriteAlias(ctx context.Context, id string, ciphertext []byte, wr
 	return true, nil
 }
 
-// GetAlias returns the stored payload and whether it exists. Callers MUST NOT
+// getFixed returns the stored payload and whether it exists. Callers MUST NOT
 // turn found=false into a distinguishable response (see the decoy rule).
-func (s *Store) GetAlias(ctx context.Context, id string) (ciphertext []byte, found bool, err error) {
-	err = s.db.QueryRowContext(ctx, `SELECT ciphertext FROM alias WHERE id = ?`, id).Scan(&ciphertext)
+func (s *Store) getFixed(ctx context.Context, table, id string) (ciphertext []byte, found bool, err error) {
+	sel := fmt.Sprintf("SELECT ciphertext FROM %s WHERE id = ?", table)
+	err = s.db.QueryRowContext(ctx, sel, id).Scan(&ciphertext)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, false, nil
 	}
@@ -167,6 +177,25 @@ func (s *Store) GetAlias(ctx context.Context, id string) (ciphertext []byte, fou
 		return nil, false, err
 	}
 	return ciphertext, true, nil
+}
+
+// WriteAlias / GetAlias: the public card store (the hot existence-uniform read).
+func (s *Store) WriteAlias(ctx context.Context, id string, ciphertext []byte, writeAuth string, now int64) (authorized bool, err error) {
+	return s.writeFixed(ctx, aliasTable, id, ciphertext, writeAuth, now)
+}
+
+func (s *Store) GetAlias(ctx context.Context, id string) (ciphertext []byte, found bool, err error) {
+	return s.getFixed(ctx, aliasTable, id)
+}
+
+// WriteInbox / GetInbox: the per-device notify inbox (doc 13). Same shape and
+// blind read as alias, separate table.
+func (s *Store) WriteInbox(ctx context.Context, id string, ciphertext []byte, writeAuth string, now int64) (authorized bool, err error) {
+	return s.writeFixed(ctx, inboxTable, id, ciphertext, writeAuth, now)
+}
+
+func (s *Store) GetInbox(ctx context.Context, id string) (ciphertext []byte, found bool, err error) {
+	return s.getFixed(ctx, inboxTable, id)
 }
 
 // --- Account sync blob ------------------------------------------------------

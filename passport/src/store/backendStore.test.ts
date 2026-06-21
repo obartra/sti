@@ -47,6 +47,8 @@ function stubApi(getAlias: ApiClient["getAlias"]): ApiClient {
     notify: unused,
     knockCount: () => Promise.resolve(0),
     knockReview: () => Promise.resolve({ count: 0, pending: [] }),
+    getInbox: unused,
+    putInbox: unused,
     knock: () => Promise.resolve(),
     registerPush: unused,
     health: unused,
@@ -130,6 +132,8 @@ describe("backend store knock", () => {
       notify: unused,
       knockCount: () => Promise.resolve(0),
       knockReview: () => Promise.resolve({ count: 0, pending: [] }),
+      getInbox: unused,
+      putInbox: unused,
       registerPush: unused,
       health: unused,
       knock: (id, hash, pubKey) => {
@@ -170,6 +174,8 @@ describe("backend store knock", () => {
       knock: unused,
       knockCount: () => Promise.resolve(0),
       knockReview: () => Promise.resolve({ count: 0, pending: [] }),
+      getInbox: unused,
+      putInbox: unused,
       registerPush: unused,
       health: unused,
     };

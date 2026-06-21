@@ -14,7 +14,11 @@ import {
   redeemGrant,
   requesterHash,
   deriveGrantSlotId,
+  mintInbox,
+  writePing,
+  pollInbox,
 } from "./index.ts";
+import { utf8ToBytes, bytesToUtf8 } from "../crypto/index.ts";
 import type { StorageLike } from "../auth/deviceStore.ts";
 import {
   importAesKey,
@@ -234,6 +238,29 @@ describe("public resolution against a live blind store", () => {
 
     // The viewer's store now redeems the grant into the real card.
     expect(await viewer.redeemGrant(aliasId)).toEqual(view);
+  });
+
+  it("the notify inbox round-trips a ping and a never-written inbox polls null", async () => {
+    const inbox = mintInbox();
+    // A fresh inbox (the server returns a decoy) decrypts to nothing.
+    expect(await pollInbox(api, inbox)).toBeNull();
+
+    // Write an encrypted ping; the recipient polls and decrypts it.
+    await writePing(
+      api,
+      inbox,
+      utf8ToBytes("a recent contact suggests testing"),
+    );
+    const got = await pollInbox(api, inbox);
+    if (got === null) throw new Error("expected the ping");
+    expect(bytesToUtf8(got)).toBe("a recent contact suggests testing");
+
+    // The read is existence-uniform: a real inbox and a never-written one are both
+    // a fixed 4096-byte body on the wire.
+    expect((await api.getInbox(inbox.inboxId)).length).toBe(ALIAS_PAYLOAD_SIZE);
+    expect((await api.getInbox(mintInbox().inboxId)).length).toBe(
+      ALIAS_PAYLOAD_SIZE,
+    );
   });
 });
 

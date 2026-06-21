@@ -8,6 +8,17 @@ CREATE TABLE IF NOT EXISTS alias (
     updated_at  INTEGER NOT NULL
 ) WITHOUT ROWID;
 
+-- The notify inbox: alias-shaped per-device storage for one fixed-size, encrypted,
+-- contentless partner-notify ping by opaque id (doc 13). Same blind/existence-
+-- uniform read as alias; kept a SEPARATE table so inbox writes never touch card
+-- storage and can carry their own metrics/limits.
+CREATE TABLE IF NOT EXISTS notify_inbox (
+    id          TEXT PRIMARY KEY,   -- opaque inbox id (the recipient's capability)
+    ciphertext  BLOB NOT NULL,      -- padded to contract.AliasPayloadSize before storage
+    write_auth  TEXT NOT NULL,      -- hash(write token); gates writes to this inbox
+    updated_at  INTEGER NOT NULL
+) WITHOUT ROWID;
+
 CREATE TABLE IF NOT EXISTS account (
     id          TEXT PRIMARY KEY,   -- opaque, derived from the owner's own key
     ciphertext  BLOB NOT NULL,
