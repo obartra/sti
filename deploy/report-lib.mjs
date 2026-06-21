@@ -22,17 +22,67 @@ const MONTHS = [
   "Dec",
 ];
 
-// The repo-scoped build identifier, with a Netlify shallow-checkout fallback.
-export function version() {
+function git(args) {
+  return execSync(`git ${args}`, { cwd: ROOT, encoding: "utf8" }).trim();
+}
+
+// The current branch. CI checkouts are often detached, so trust the CI env first
+// (Netlify sets BRANCH, GitHub Actions sets GITHUB_REF_NAME), then ask git.
+function currentBranch() {
+  const fromEnv = process.env.BRANCH || process.env.GITHUB_REF_NAME;
+  if (fromEnv) return fromEnv;
   try {
-    return execSync("git describe --tags --always --dirty", {
-      cwd: ROOT,
-      encoding: "utf8",
-    }).trim();
+    return git("rev-parse --abbrev-ref HEAD");
   } catch {
-    const ref = process.env.COMMIT_REF;
-    return ref ? ref.slice(0, 7) : "dev";
+    return "HEAD";
   }
+}
+
+// Fold a branch name into a semver-safe pre-release identifier: the spec allows
+// only [0-9A-Za-z-], so slashes and other separators become hyphens.
+function sanitizeBranch(name) {
+  return name
+    .replace(/[^0-9A-Za-z-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+}
+
+/**
+ * The repo-scoped build version (one stamp for backend + frontend). The git TAG
+ * carries only major.minor (e.g. `v0.1`); the PATCH is the number of commits since
+ * it, so it advances on every commit without re-tagging. On `main` the version is
+ * a clean `vMajor.Minor.Patch`; on any other branch it appends the (syntax-safe)
+ * branch name and short sha so a preview build is identifiable. Falls back to the
+ * commit ref / short sha / "dev" when no `vMajor.Minor` tag is reachable.
+ */
+export function version() {
+  let described;
+  try {
+    // --long always prints `tag-distance-gsha` (even at distance 0). The
+    // match/exclude pair selects a vMAJOR.MINOR tag and skips any legacy
+    // vMAJOR.MINOR.PATCH tag, so the distance is the patch.
+    described = git(
+      'describe --tags --long --match "v[0-9]*.[0-9]*" --exclude "v[0-9]*.[0-9]*.[0-9]*"',
+    );
+  } catch {
+    const ref = process.env.COMMIT_REF || process.env.GITHUB_SHA;
+    if (ref) return ref.slice(0, 7);
+    try {
+      return git("rev-parse --short HEAD");
+    } catch {
+      return "dev";
+    }
+  }
+  const m = described.match(/^(v\d+\.\d+)-(\d+)-g([0-9a-f]+)$/);
+  if (m === null) return described || "dev";
+  const [, tag, patch, sha] = m;
+  const semver = `${tag}.${patch}`;
+  const branch = currentBranch();
+  if (branch === "main") return semver;
+  // Detached HEAD with no CI branch hint: identify by sha alone.
+  if (branch === "HEAD") return `${semver}-g${sha}`;
+  return `${semver}-${sanitizeBranch(branch)}-g${sha}`;
 }
 
 export function today() {

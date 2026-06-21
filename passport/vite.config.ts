@@ -1,22 +1,11 @@
 /// <reference types="vitest/config" />
-import { execSync } from "node:child_process";
 import { defineConfig } from "vite";
 import { configDefaults } from "vitest/config";
 import react from "@vitejs/plugin-react";
-
-// Repo-scoped version, derived at build time. `git describe` reports the nearest
-// tag plus commits-since plus the short sha, so once a release is tagged (e.g.
-// v0.3.0) the stamp reads as semver and falls back to the short sha until then.
-// One version for the whole repo, covering both the backend and the frontend.
-function repoVersion(): string {
-  try {
-    return execSync("git describe --tags --always --dirty", {
-      encoding: "utf8",
-    }).trim();
-  } catch {
-    return "dev";
-  }
-}
+// Repo-scoped build version, shared with the report generators so they can't
+// drift: vMajor.Minor.Patch where the tag is major.minor and the patch is the
+// commit distance. One stamp for the whole repo (backend + frontend).
+import { version as repoVersion } from "../deploy/report-lib.mjs";
 
 export default defineConfig({
   define: {
