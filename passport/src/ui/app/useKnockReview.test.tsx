@@ -64,6 +64,7 @@ function stubController(
     revokeAlias: unused,
     acceptContactInvite: unused,
     ingestContactReturn: unused,
+    notifyContactsOfPositive: unused,
     forget: unused,
   };
 }

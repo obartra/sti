@@ -117,9 +117,21 @@ export function App({
   // Apply a reported result on top of the current owner state, stamped with the
   // report day so freshness ages from now.
   const onReport = useCallback(
-    (outcome: ReportOutcome) =>
-      setOwnerState((s) => applyReport(s, outcome, todayEpochDay())),
-    [setOwnerState],
+    (outcome: ReportOutcome) => {
+      setOwnerState((s) => applyReport(s, outcome, todayEpochDay()));
+      // A reported active STI positive silently notifies every linked contact
+      // (doc 13): automatic, contentless, no reporter choice, never surfaced at
+      // the report moment. HIV is excluded for now (U=U has its own nuance).
+      if (outcome.activeNonHivSti) {
+        const current = sessionRef.current;
+        if (current !== null) {
+          void controller
+            .notifyContactsOfPositive(current)
+            .catch(() => undefined);
+        }
+      }
+    },
+    [setOwnerState, controller],
   );
 
   // Account deletion + per-contact link create/revoke (each folds the result

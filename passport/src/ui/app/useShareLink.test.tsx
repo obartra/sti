@@ -58,6 +58,7 @@ function stubController(over: Partial<SessionController>): SessionController {
     revokeAlias: unused,
     acceptContactInvite: unused,
     ingestContactReturn: unused,
+    notifyContactsOfPositive: unused,
     forget: unused,
     ...over,
   };
