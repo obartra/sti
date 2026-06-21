@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { PublicResolution } from "./PublicResolution.tsx";
+import { avatarSrc, randomAvatar } from "../../lib/avatars.ts";
 
 // A2: the logged-out public resolution surface and its states.
 const meta: Meta<typeof PublicResolution> = {
@@ -17,6 +18,19 @@ export const ResolvedForStranger: Story = {
       state: "blue",
       labels: ["hiv", "condoms_always"],
       identity: { handle: "sam" },
+    },
+  },
+};
+
+// A resolved card that carries the owner's chosen avatar (doc 13): the viewer sees
+// the look the owner built, not a handle-derived stand-in.
+export const ResolvedWithAvatar: Story = {
+  args: {
+    resolved: {
+      state: "blue",
+      labels: ["hiv"],
+      identity: { handle: "sam" },
+      avatarSrc: avatarSrc(randomAvatar(7)),
     },
   },
 };

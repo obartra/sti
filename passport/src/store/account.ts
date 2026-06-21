@@ -209,6 +209,7 @@ export function createAccountManager(api: ApiClient): AccountManager {
         state,
         handle: next.handle,
         nowDay,
+        avatar: next.avatar,
       });
       return next;
     },

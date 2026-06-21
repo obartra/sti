@@ -13,6 +13,7 @@ import {
 } from "./index.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { todayEpochDay } from "../core/clock.ts";
+import { DEFAULT_AVATAR } from "../lib/avatars.ts";
 import { startApi, type Harness } from "../test-support/serverHarness.ts";
 
 // This loop drives the real account manager, which republishes against the live
@@ -62,11 +63,12 @@ describe("owner loop against a live blind store", () => {
       await store.resolveAlias({ id: record.id, key: record.key }),
     ).toEqual(card);
 
-    // The owner pauses: setOwnerState republishes every alias.
+    // The owner pauses: setOwnerState republishes every alias WITH the account's
+    // avatar (the default seeded at create), so the resolved card carries it.
     const paused: OwnerState = { ...blue, paused: true };
     await accounts.setOwnerState(created.master, paused);
 
-    const grayCard = deriveOwnerCard(paused, "robin", TODAY);
+    const grayCard = deriveOwnerCard(paused, "robin", TODAY, DEFAULT_AVATAR);
     expect(grayCard.state).toBe("gray");
     expect(
       await store.resolveAlias({ id: record.id, key: record.key }),
