@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { Button, Card, Input } from "../../design/components/index.ts";
+import {
+  Button,
+  Card,
+  Input,
+  Segmented,
+} from "../../design/components/index.ts";
 import { Link, Copy, Trash } from "../../design/icons.tsx";
 import {
   parseContactInvite,
@@ -12,12 +17,31 @@ import {
    The link carries the key, so the recipient opens it directly. No status is
    shown here; this is link management, not a viewer surface. */
 
+// The lifetimes a link can be minted with. `days` is added to today; null means
+// until-revoked. 24h is one epoch day (expiry is day-granular). 7 days is the
+// default, matching the prior fixed behaviour.
+const DURATIONS: { key: string; label: string; days: number | null }[] = [
+  { key: "1", label: "24h", days: 1 },
+  { key: "7", label: "7 days", days: 7 },
+  { key: "30", label: "30 days", days: 30 },
+  { key: "none", label: "No expiry", days: null },
+];
+const DEFAULT_DURATION = "7";
+
+function durationDaysFor(key: string): number | null {
+  return DURATIONS.find((d) => d.key === key)?.days ?? null;
+}
+
 export interface ContactLinksProps {
   contacts: ContactRecord[];
   /** Today as an epoch day, for the expiry countdown. */
   nowDay: number;
-  /** Mint a new link for `label`; resolves with the shareable URL. */
-  onCreate: (label: string) => Promise<{ url: string }>;
+  /** Mint a new link for `label` with a chosen lifetime (days, or null for
+   * until-revoked); resolves with the shareable URL. */
+  onCreate: (
+    label: string,
+    durationDays: number | null,
+  ) => Promise<{ url: string }>;
   onRevoke: (id: string) => void;
   /** Ingest a return link a contact sent back, completing the pending link. */
   onIngestReturn?: ((ret: ContactInvite) => void) | undefined;
@@ -156,6 +180,7 @@ export function ContactLinks({
   onIngestReturn,
 }: ContactLinksProps): React.ReactElement {
   const [label, setLabel] = useState("");
+  const [duration, setDuration] = useState(DEFAULT_DURATION);
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<string | null>(null);
 
@@ -163,7 +188,7 @@ export function ContactLinks({
     if (busy) return;
     setBusy(true);
     setCreated(null);
-    void onCreate(label.trim())
+    void onCreate(label.trim(), durationDaysFor(duration))
       .then((r) => {
         setCreated(r.url);
         setLabel("");
@@ -195,7 +220,7 @@ export function ContactLinks({
         </h1>
         <p style={{ fontSize: 14, color: "var(--text-body)", marginTop: 6 }}>
           A private link for one person. They open it to see your status. Revoke
-          any link anytime; links expire on their own after a week.
+          any link anytime; each link expires on its own when its time is up.
         </p>
       </div>
 
@@ -208,6 +233,21 @@ export function ContactLinks({
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           maxLength={64}
+        />
+        <div
+          style={{
+            fontSize: 12.5,
+            fontWeight: 600,
+            color: "var(--text-subtle)",
+          }}
+        >
+          Lasts
+        </div>
+        <Segmented
+          aria-label="Link lifetime"
+          value={duration}
+          onChange={setDuration}
+          options={DURATIONS.map((d) => ({ value: d.key, label: d.label }))}
         />
         <Button
           variant="primary"

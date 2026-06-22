@@ -47,9 +47,17 @@ export async function mintContactLink(
   api: ApiClient,
   accounts: AccountManager,
   session: OwnerSession,
-  opts: { label: string; identity: AliasIdentity },
+  opts: {
+    label: string;
+    identity: AliasIdentity;
+    durationDays?: number | null | undefined;
+  },
 ): Promise<ContactLinkResult> {
   const { label, identity } = opts;
+  // The link's lifetime: a day count from now, or null for until-revoked.
+  // Defaults to CONTACT_LINK_DAYS so an omitted choice keeps the prior behaviour.
+  const durationDays =
+    opts.durationDays === undefined ? CONTACT_LINK_DAYS : opts.durationDays;
   const { myNotify } = await accounts.ensureMyNotify(session.master);
   const nowDay = todayEpochDay();
   const stamp = (rec: AliasRecord): AliasRecord =>
@@ -63,7 +71,7 @@ export async function mintContactLink(
     id: randomAliasId(),
     label: label.slice(0, MAX_CONTACT_LABEL),
     createdDay: nowDay,
-    expiresDay: nowDay + CONTACT_LINK_DAYS,
+    expiresDay: durationDays === null ? null : nowDay + durationDays,
     alias: stamp(record),
   };
   const blob = await accounts.addContact(session.master, contact);

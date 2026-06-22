@@ -144,13 +144,15 @@ export interface SessionController {
   ): Promise<number>;
   /**
    * Mint a fresh PRIVATE link for one specific contact (a named, individually
-   * revocable link, default 7-day expiry), publish the current card to it, and
-   * record it. Returns the updated session, the new contact, and the link URL.
+   * revocable link), publish the current card to it, and record it. `durationDays`
+   * sets the link's lifetime (a day count, or null for until-revoked); omitted, it
+   * defaults to the 7-day expiry. Returns the session, the new contact, and the URL.
    */
   createContactLink(
     session: OwnerSession,
     label: string,
     identity?: AliasIdentity,
+    durationDays?: number | null,
   ): Promise<ContactLinkResult>;
   /**
    * Revoke one contact's link (its old URL stops resolving) and drop the record.
@@ -409,8 +411,12 @@ export function createSessionController(deps: SessionDeps): SessionController {
       return grantPending(api, approvals);
     },
 
-    createContactLink(session, label, identity = "anonymous") {
-      return mintContactLink(api, accounts, session, { label, identity });
+    createContactLink(session, label, identity = "anonymous", durationDays) {
+      return mintContactLink(api, accounts, session, {
+        label,
+        identity,
+        durationDays,
+      });
     },
 
     revokeContact: (session, contactId) =>
