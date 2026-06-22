@@ -654,6 +654,25 @@ describe("owner session against a live blind store", () => {
     expect(await store.resolveAlias(caps(made.contact.alias))).toBeNull();
   });
 
+  it("createContactLink honours a chosen lifetime (a day count, or until-revoked)", async () => {
+    const { ctl } = controller(fakePasskey());
+    const { session } = await ctl.signUp("dora");
+
+    // A 1-day link expires tomorrow.
+    const short = await ctl.createContactLink(session, "Sam", "anonymous", 1);
+    expect(short.contact.expiresDay).toBe(short.contact.createdDay + 1);
+
+    // null = no expiry (lives until revoked); the sweep + republish-skip treat a
+    // null expiry as always-live.
+    const forever = await ctl.createContactLink(
+      short.session,
+      "Ari",
+      "anonymous",
+      null,
+    );
+    expect(forever.contact.expiresDay).toBeNull();
+  });
+
   it("reviewKnocks counts knocks on the owner's aliases (deduped per requester)", async () => {
     const { ctl, api } = controller(fakePasskey());
     const { session } = await ctl.signUp("ivy");

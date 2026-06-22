@@ -56,8 +56,12 @@ export interface ScreenCtx {
   onRevokeAlias: (id: string) => void;
   /** The owner's per-contact links (newest last); empty logged out. */
   contacts: ContactRecord[];
-  /** Mint a new per-contact link for `label`; resolves with the contact + URL. */
-  onCreateContactLink: (label: string) => Promise<ContactLinkResult>;
+  /** Mint a new per-contact link for `label` with a chosen lifetime (days, or
+   * null for until-revoked); resolves with the contact + URL. */
+  onCreateContactLink: (
+    label: string,
+    durationDays: number | null,
+  ) => Promise<ContactLinkResult>;
   /** Revoke one contact link by id. */
   onRevokeContact: (id: string) => void;
   /** Starred contact ids (device-local display preference); empty logged out. */

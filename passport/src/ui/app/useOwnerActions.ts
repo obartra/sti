@@ -9,8 +9,12 @@ import type {
 export interface OwnerActions {
   /** Permanently delete the account and log out (clamps to the landing). */
   onDeleteAccount: () => void;
-  /** Mint a new per-contact link; resolves with the contact + URL. */
-  onCreateContactLink: (label: string) => Promise<ContactLinkResult>;
+  /** Mint a new per-contact link with a chosen lifetime (days, or null for
+   * until-revoked); resolves with the contact + URL. */
+  onCreateContactLink: (
+    label: string,
+    durationDays: number | null,
+  ) => Promise<ContactLinkResult>;
   /** Revoke one contact link by id. */
   onRevokeContact: (id: string) => void;
   /** Revoke one published alias (public/casual link) by id. */
@@ -58,10 +62,15 @@ export function useOwnerActions(
   }, [controller, sessionRef, setSession]);
 
   const onCreateContactLink = useCallback(
-    async (label: string) => {
+    async (label: string, durationDays: number | null) => {
       const current = sessionRef.current;
       if (current === null) throw new Error("not signed in");
-      const result = await controller.createContactLink(current, label);
+      const result = await controller.createContactLink(
+        current,
+        label,
+        "anonymous",
+        durationDays,
+      );
       sessionRef.current = result.session;
       setSession(result.session);
       return result;
