@@ -20,10 +20,10 @@ function nudge(show = false): { show: boolean; dismiss: () => void } {
   return { show, dismiss: () => undefined };
 }
 
-// Re-test gating: by default not due (a freshly-tested owner sees no re-test row),
-// so the knock/partner assertions below are isolated from it.
+// Re-test gating: by default plenty of freshness left (a freshly-tested owner sees
+// no re-test row), so the knock/partner assertions below are isolated from it.
 function retest(over: Partial<RetestState> = {}): RetestState {
-  return { due: false, tested: true, ...over };
+  return { suppressed: false, daysLeft: 90, tested: true, ...over };
 }
 
 describe("notificationItems (inbox privacy contract)", () => {
@@ -123,35 +123,56 @@ describe("notificationItems (inbox privacy contract)", () => {
     expect(item?.action?.busy).toBe(true);
   });
 
-  it("hides the re-test row for a freshly-tested owner (not due)", () => {
+  it("hides the re-test row for a freshly-tested owner (plenty of days left)", () => {
     const items = notificationItems(
       inbox(),
       nudge(),
-      retest({ due: false }),
+      retest({ daysLeft: 90 }),
       () => undefined,
     );
     expect(items.some((i) => i.icon === "bell")).toBe(false);
   });
 
-  it("shows a lapsed re-test row when due and the owner has tested before", () => {
+  it("warns in advance during the soon window, before the status lapses", () => {
     const row = notificationItems(
       inbox(),
       nudge(),
-      retest({ due: true, tested: true }),
+      retest({ daysLeft: 7, tested: true }),
+      () => undefined,
+    ).find((i) => i.icon === "bell");
+    expect(row?.title).toBe("Time to re-test soon");
+    expect(row?.sub).toContain("7 days");
+  });
+
+  it("shows a lapsed re-test row once the window is gone and the owner has tested before", () => {
+    const row = notificationItems(
+      inbox(),
+      nudge(),
+      retest({ daysLeft: 0, tested: true }),
       () => undefined,
     ).find((i) => i.icon === "bell");
     expect(row?.title).toBe("Time to re-test");
     expect(row?.when).toBeUndefined();
   });
 
-  it("shows a set-up row when due and the owner has never tested", () => {
+  it("shows a set-up row when never tested (lapsed window, no prior test)", () => {
     const row = notificationItems(
       inbox(),
       nudge(),
-      retest({ due: true, tested: false }),
+      retest({ daysLeft: 0, tested: false }),
       () => undefined,
     ).find((i) => i.icon === "bell");
     expect(row?.title).toBe("Set up your status");
+  });
+
+  it("suppresses the re-test row while paused or in a clearance window", () => {
+    const items = notificationItems(
+      inbox(),
+      nudge(),
+      retest({ suppressed: true, daysLeft: 0 }),
+      () => undefined,
+    );
+    expect(items.some((i) => i.icon === "bell")).toBe(false);
   });
 
   it("surfaces the partner-notify row only when a contact reported, and it is contentless", () => {
