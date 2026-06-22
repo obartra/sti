@@ -3,9 +3,10 @@ import {
   deriveOwnerCard,
   deriveAliasCard,
   resolveCardIdentity,
+  withIdentity,
 } from "./ownerCard.ts";
 import { NOW_DAY, daysAgo } from "../core/badge.fixtures.ts";
-import { pseudonymFor, avatarSrc } from "../lib/avatars.ts";
+import { pseudonymFor, avatarSrc, DEFAULT_AVATAR } from "../lib/avatars.ts";
 import type { OwnerState } from "../core/badge.ts";
 import type { AliasRecord } from "./accountBlob.ts";
 
@@ -205,5 +206,35 @@ describe("deriveAliasCard (badge + per-alias face)", () => {
       avatar,
       avatarSrc: avatarSrc(avatar),
     });
+  });
+});
+
+describe("withIdentity (mint-time identity choice, doc 15)", () => {
+  const account = { handle: "robin", avatar: DEFAULT_AVATAR };
+
+  it("anonymous leaves the record unchanged (id-derived face)", () => {
+    const r = aliasRecord();
+    expect(withIdentity(r, "anonymous", account)).toBe(r);
+  });
+
+  it("main stamps the account handle + avatar onto the record", () => {
+    const r = aliasRecord();
+    expect(withIdentity(r, "main", account)).toEqual({
+      ...r,
+      handle: "robin",
+      avatar: DEFAULT_AVATAR,
+    });
+  });
+
+  it("is deterministic: card built from a stamped record shows the main face", () => {
+    const r = aliasRecord();
+    const stamped = withIdentity(r, "main", account);
+    expect(deriveAliasCard(state(), stamped, NOW_DAY).identity.handle).toBe(
+      "robin",
+    );
+    // Anonymous instead resolves to the id-derived pseudonym.
+    expect(deriveAliasCard(state(), r, NOW_DAY).identity.handle).toBe(
+      pseudonymFor(r.id),
+    );
   });
 });

@@ -11,9 +11,17 @@
 
 import type { ApiClient } from "../api/client.ts";
 import type { AccountManager } from "./account.ts";
-import { MAX_CONTACT_LABEL, type ContactRecord } from "./accountBlob.ts";
+import {
+  MAX_CONTACT_LABEL,
+  type AliasRecord,
+  type ContactRecord,
+} from "./accountBlob.ts";
 import { contactInviteUrl, type ContactInvite } from "./contactInvite.ts";
-import { deriveAliasCard } from "./ownerCard.ts";
+import {
+  deriveAliasCard,
+  withIdentity,
+  type AliasIdentity,
+} from "./ownerCard.ts";
 import { todayEpochDay } from "../core/clock.ts";
 import { randomAliasId } from "../crypto/index.ts";
 import {
@@ -39,13 +47,16 @@ export async function mintContactLink(
   api: ApiClient,
   accounts: AccountManager,
   session: OwnerSession,
-  label: string,
+  opts: { label: string; identity: AliasIdentity },
 ): Promise<ContactLinkResult> {
+  const { label, identity } = opts;
   const { myNotify } = await accounts.ensureMyNotify(session.master);
   const nowDay = todayEpochDay();
+  const stamp = (rec: AliasRecord): AliasRecord =>
+    withIdentity(rec, identity, session.blob);
   const { record } = await publishCard(
     api,
-    (rec) => deriveAliasCard(session.blob.state, rec, nowDay),
+    (rec) => deriveAliasCard(session.blob.state, stamp(rec), nowDay),
     { isPublic: false },
   );
   const contact: ContactRecord = {
@@ -53,7 +64,7 @@ export async function mintContactLink(
     label: label.slice(0, MAX_CONTACT_LABEL),
     createdDay: nowDay,
     expiresDay: nowDay + CONTACT_LINK_DAYS,
-    alias: record,
+    alias: stamp(record),
   };
   const blob = await accounts.addContact(session.master, contact);
   return {
@@ -72,9 +83,9 @@ export async function acceptContactInvite(
   api: ApiClient,
   accounts: AccountManager,
   session: OwnerSession,
-  opts: { invite: ContactInvite; label: string },
+  opts: { invite: ContactInvite; label: string; identity: AliasIdentity },
 ): Promise<ContactLinkResult> {
-  const { invite, label } = opts;
+  const { invite, label, identity } = opts;
   // A return invite (it carries `ref`) is the inviter's to ingest, not to accept;
   // accepting it would mint a dangling third side that nobody can match back.
   if (invite.ref !== undefined) {
@@ -82,9 +93,11 @@ export async function acceptContactInvite(
   }
   const { myNotify } = await accounts.ensureMyNotify(session.master);
   const nowDay = todayEpochDay();
+  const stamp = (rec: AliasRecord): AliasRecord =>
+    withIdentity(rec, identity, session.blob);
   const { record } = await publishCard(
     api,
-    (rec) => deriveAliasCard(session.blob.state, rec, nowDay),
+    (rec) => deriveAliasCard(session.blob.state, stamp(rec), nowDay),
     { isPublic: false },
   );
   const contact: ContactRecord = {
@@ -92,7 +105,7 @@ export async function acceptContactInvite(
     label: label.slice(0, MAX_CONTACT_LABEL),
     createdDay: nowDay,
     expiresDay: nowDay + CONTACT_LINK_DAYS,
-    alias: record,
+    alias: stamp(record),
     theirNotify: invite.notify,
     theirStatusAlias: invite.alias,
   };
@@ -170,11 +183,14 @@ export async function shareLinkFor(
   api: ApiClient,
   accounts: AccountManager,
   session: OwnerSession,
+  identity: AliasIdentity,
 ): Promise<ShareLinkResult> {
   const nowDay = todayEpochDay();
   const wantPublic = session.blob.sharingMode === "public";
   const existing = session.blob.aliases.find((a) => a.isPublic === wantPublic);
   if (existing !== undefined) {
+    // Reuse keeps the existing alias's own identity (changing it = renewLink with a
+    // fresh choice); only its badge is refreshed.
     await republishCard(
       api,
       existing,
@@ -182,11 +198,13 @@ export async function shareLinkFor(
     );
     return { session, url: aliasLinkUrl(existing) };
   }
+  const stamp = (rec: AliasRecord): AliasRecord =>
+    withIdentity(rec, identity, session.blob);
   const { link, record } = await publishCard(
     api,
-    (rec) => deriveAliasCard(session.blob.state, rec, nowDay),
+    (rec) => deriveAliasCard(session.blob.state, stamp(rec), nowDay),
     { isPublic: wantPublic },
   );
-  const blob = await accounts.addAlias(session.master, record);
+  const blob = await accounts.addAlias(session.master, stamp(record));
   return { session: { master: session.master, blob }, url: link };
 }
