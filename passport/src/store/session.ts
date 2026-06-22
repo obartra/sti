@@ -43,6 +43,7 @@ import { notifyLinkedContacts, pollPartnerNudge } from "./notifyOps.ts";
 import { grantAccess } from "./grant.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { revokeAlias } from "./publish.ts";
+import type { AliasIdentity } from "./ownerCard.ts";
 import {
   mintContactLink,
   acceptContactInvite,
@@ -102,14 +103,20 @@ export interface SessionController {
    * or mints one on first share and records it. Returns the (possibly updated)
    * session and the URL.
    */
-  shareLink(session: OwnerSession): Promise<ShareLinkResult>;
+  shareLink(
+    session: OwnerSession,
+    identity?: AliasIdentity,
+  ): Promise<ShareLinkResult>;
   /**
    * Revoke the link for the current sharing mode (the old URL stops resolving to
    * any status) and mint a fresh one for the same card. "Revoke" is no future
    * reads, not "unsee" (doc 01). Returns the updated session and the new URL. A
    * no-op-with-mint when no alias exists yet (just produces a first link).
    */
-  renewLink(session: OwnerSession): Promise<ShareLinkResult>;
+  renewLink(
+    session: OwnerSession,
+    identity?: AliasIdentity,
+  ): Promise<ShareLinkResult>;
   /**
    * Permanently delete the account: revoke every shared link and remove the
    * account blob, then forget this device's passkey binding. After this the
@@ -143,6 +150,7 @@ export interface SessionController {
   createContactLink(
     session: OwnerSession,
     label: string,
+    identity?: AliasIdentity,
   ): Promise<ContactLinkResult>;
   /**
    * Revoke one contact's link (its old URL stops resolving) and drop the record.
@@ -166,6 +174,7 @@ export interface SessionController {
     session: OwnerSession,
     invite: ContactInvite,
     label: string,
+    identity?: AliasIdentity,
   ): Promise<ContactLinkResult>;
   /**
    * Ingest a return invite, completing the pending contact it answers. A no-op
@@ -362,11 +371,11 @@ export function createSessionController(deps: SessionDeps): SessionController {
       return { master: session.master, blob };
     },
 
-    shareLink(session) {
-      return shareLinkFor(api, accounts, session);
+    shareLink(session, identity = "anonymous") {
+      return shareLinkFor(api, accounts, session, identity);
     },
 
-    async renewLink(session) {
+    async renewLink(session, identity = "anonymous") {
       const wantPublic = session.blob.sharingMode === "public";
       const existing = session.blob.aliases.find(
         (a) => a.isPublic === wantPublic,
@@ -382,7 +391,7 @@ export function createSessionController(deps: SessionDeps): SessionController {
       }
       // Mint a fresh link for the current card (this is now the only alias for
       // the mode, since the old record is gone).
-      return shareLinkFor(api, accounts, working);
+      return shareLinkFor(api, accounts, working, identity);
     },
 
     async deleteAccount(session) {
@@ -400,8 +409,8 @@ export function createSessionController(deps: SessionDeps): SessionController {
       return grantPending(api, approvals);
     },
 
-    createContactLink(session, label) {
-      return mintContactLink(api, accounts, session, label);
+    createContactLink(session, label, identity = "anonymous") {
+      return mintContactLink(api, accounts, session, { label, identity });
     },
 
     revokeContact: (session, contactId) =>
@@ -410,8 +419,12 @@ export function createSessionController(deps: SessionDeps): SessionController {
     revokeAlias: (session, aliasId) =>
       revokeAliasLink(api, accounts, session, aliasId),
 
-    acceptContactInvite(session, invite, label) {
-      return acceptContactInvite(api, accounts, session, { invite, label });
+    acceptContactInvite(session, invite, label, identity = "anonymous") {
+      return acceptContactInvite(api, accounts, session, {
+        invite,
+        label,
+        identity,
+      });
     },
 
     ingestContactReturn(session, ret) {

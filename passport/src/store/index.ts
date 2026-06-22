@@ -57,7 +57,9 @@ export {
   deriveOwnerCard,
   deriveAliasCard,
   resolveCardIdentity,
+  withIdentity,
   republishOwnerCard,
+  type AliasIdentity,
 } from "./ownerCard.ts";
 export { knock, requesterHash } from "./knock.ts";
 export {

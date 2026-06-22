@@ -108,6 +108,31 @@ export function deriveAliasCard(
   return deriveOwnerCard(state, id.handle, nowDay, id.avatar);
 }
 
+/**
+ * The owner's choice of displayed identity for an alias being minted (doc 15):
+ * `anonymous` leaves the face id-derived (the unlinkable default), `main` shows the
+ * account's main identity (its handle + avatar). A bespoke per-alias face is a
+ * later opt-in; until then those are the two choices.
+ */
+export type AliasIdentity = "anonymous" | "main";
+
+/**
+ * Stamp the chosen display identity onto a freshly minted alias record. Pure and
+ * deterministic, so applying it to the record passed to the card builder and to the
+ * record that gets persisted yields the same override (the card and the stored
+ * record can never disagree). `anonymous` returns the record unchanged.
+ */
+export function withIdentity(
+  record: AliasRecord,
+  identity: AliasIdentity,
+  account: { readonly handle: string; readonly avatar: AvatarConfig },
+): AliasRecord {
+  if (identity === "main") {
+    return { ...record, handle: account.handle, avatar: account.avatar };
+  }
+  return record;
+}
+
 /** The account-level inputs the owner's cards are derived from; the per-alias
  * identity comes from each record (see deriveAliasCard). */
 export interface OwnerCardInputs {
