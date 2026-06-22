@@ -104,7 +104,9 @@ export interface NotifyLockResult {
 
 // The wake is keyed by the hash of the routing token; the server only ever sees
 // this hash, never the token, so it cannot link a wake to an inbox or a contact.
-function routingHash(routingToken: string): Promise<string> {
+// Exported so push registration keys a device's push route by the SAME hash a
+// contact's wake targets (registerPush.routingEndpointId == notify.tokenHash).
+export function routingHash(routingToken: string): Promise<string> {
   return sha256Base64url(utf8ToBytes(routingToken));
 }
 
