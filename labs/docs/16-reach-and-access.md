@@ -131,6 +131,10 @@ The minimum required before findable mode ships:
   (report-and-takedown), not prevented. Advanced confusable detection is deferred.
 - Findable mode does not launch until this is in place.
 
+The full implementable spec, the directory data model, the resolve endpoint and its handoff to the
+knock flow, the reserved + blocklist starter contents, and the launch-gate checklist, is
+[Vanity Namespace Governance](17-vanity-namespace-governance.md).
+
 ## Reach without a directory (the cheaper paths, ship first)
 
 These cover much of distribution without a name directory, and ship ahead of vanity:
@@ -199,7 +203,9 @@ typically stays anonymous. The choices are independent and each carries its own 
 
 ## Open (build-time details, not blocking the decision)
 
-> **OPEN:** the exact vanity-resolve endpoint shape and how it hands off to the knock flow (a resolve
-> that returns the aliasId, then the normal knock, keeps the server's role to name lookup only).
+> **RESOLVED** (in [doc 17](17-vanity-namespace-governance.md)): the vanity-resolve endpoint shape and
+> its handoff to the knock flow. `GET /u/{name}` returns the aliasId (or a bare 404), then the normal
+> knock runs against that id, keeping the server's role to name lookup only.
 
-> **OPEN:** reserved-name and blocklist contents (a starter list, grown by report-and-takedown).
+> **RESOLVED** (in [doc 17](17-vanity-namespace-governance.md)): reserved-name and blocklist starter
+> contents, versioned in the repo and grown by report-and-takedown.
