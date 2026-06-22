@@ -110,6 +110,28 @@
     "pin": "src/store/session.integration.test.ts"
   },
   {
+    "id": "per-alias-face-unlinkable",
+    "category": "Trust integrity & sharing",
+    "title": "A card's face is per-alias and unlinkable by default",
+    "intent": "Two of an owner's aliases share no handle or avatar unless the owner opts in; a default alias's face is derived only from its own random id, so it ties to nothing.",
+    "check": "deriveAliasCard with no override resolves the handle to pseudonymFor(id) and leaves the avatar id-derived; distinct ids yield distinct faces, and an override instead shows the chosen handle/avatar.",
+    "status": "validated",
+    "layer": "wire",
+    "docRef": "15",
+    "pin": "src/store/ownerCard.test.ts"
+  },
+  {
+    "id": "main-identity-no-propagate",
+    "category": "Trust integrity & sharing",
+    "title": "Editing the main identity never changes an already-published alias face",
+    "intent": "The account handle and avatar are the owner's main identity (Home and the mint pre-fill), not an alias's face, so a profile edit does not reach links already shared.",
+    "check": "after setProfile changes the avatar, a previously published alias still resolves to its own per-alias face, never the new avatar.",
+    "status": "validated",
+    "layer": "wire",
+    "docRef": "15",
+    "pin": "src/store/account.integration.test.ts"
+  },
+  {
     "id": "recovery-phrase-login",
     "category": "Account & recovery",
     "title": "A new device recovers the account from the phrase",
