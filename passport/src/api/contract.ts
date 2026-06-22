@@ -23,6 +23,7 @@ export const PATHS = {
   pushRegister: "/push/register",
   knockPrefix: "/knock/",
   health: "/healthz",
+  vapid: "/vapid",
 } as const;
 
 export const HEADER_WRITE_TOKEN = "X-Write-Token";
@@ -55,4 +56,9 @@ export interface PushSubscription {
 export interface PushRegisterRequest {
   readonly routingEndpointId: string;
   readonly subscription: PushSubscription;
+}
+
+/** The server's active Web Push public key; empty string when push is unconfigured. */
+export interface VapidResponse {
+  readonly publicKey: string;
 }

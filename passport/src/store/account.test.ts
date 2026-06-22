@@ -31,6 +31,7 @@ function fakeAccountApi(): ApiClient {
     putInbox: unused,
     knock: unused,
     registerPush: unused,
+    getVapidPublicKey: unused,
     health: unused,
     getAccount: (id) => {
       const e = store.get(id);
@@ -254,6 +255,7 @@ describe("account manager", () => {
       putInbox: unused,
       knock: unused,
       registerPush: unused,
+      getVapidPublicKey: unused,
       health: unused,
       getAccount: (id) => {
         const e = accountStore.get(id);
@@ -356,6 +358,7 @@ describe("account manager", () => {
       putInbox: unused,
       knock: unused,
       registerPush: unused,
+      getVapidPublicKey: unused,
       health: unused,
       getAccount: (id) => {
         const e = accountStore.get(id);

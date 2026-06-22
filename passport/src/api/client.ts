@@ -86,6 +86,11 @@ export interface ApiClient {
   /** Owner-only: the full review (count + pending requesters), authed by its token. */
   knockReview(id: string, writeToken: string): Promise<KnockReview>;
   registerPush(req: PushRegisterRequest): Promise<void>;
+  /**
+   * The server's active Web Push public key, or null when push is unconfigured /
+   * unreachable. Public and cacheable; a browser needs it to subscribe.
+   */
+  getVapidPublicKey(): Promise<string | null>;
   health(): Promise<boolean>;
 }
 
@@ -157,6 +162,24 @@ function requireVersion(res: Response, op: string): string {
     throw new ApiError("protocol", `${op} missing version header`);
   }
   return version;
+}
+
+/** The server's active Web Push public key, or null when unconfigured/unreachable. */
+async function fetchVapidPublicKey(
+  call: (path: string, init?: RequestInit) => Promise<Response>,
+): Promise<string | null> {
+  try {
+    const res = await call(PATHS.vapid, { method: "GET" });
+    if (!res.ok) return null;
+    const body: unknown = await res.json();
+    const key =
+      typeof body === "object" && body !== null
+        ? (body as { publicKey?: unknown }).publicKey
+        : undefined;
+    return typeof key === "string" && key !== "" ? key : null;
+  } catch {
+    return null;
+  }
 }
 
 /** The owner's review of a knock id: live count plus the well-formed pending list. */
@@ -318,6 +341,8 @@ export function createApiClient(
     async registerPush(req) {
       await postJson(call, PATHS.pushRegister, req, "push register");
     },
+
+    getVapidPublicKey: () => fetchVapidPublicKey(call),
 
     async health() {
       // A liveness probe is a boolean: unreachable/shed = not healthy, not error.

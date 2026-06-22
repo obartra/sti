@@ -52,6 +52,10 @@ type Config struct {
 	// Sender delivers contentless Web Push wakes. nil disables delivery (the
 	// default); set it only alongside NotifyEnabled.
 	Sender Sender
+	// VAPIDPublicKey is the Web Push public key served at GET /vapid so a browser
+	// can subscribe. Empty (the default) means push is not configured and the
+	// client treats it as unavailable. Public, not a secret.
+	VAPIDPublicKey string
 }
 
 func (c *Config) withDefaults() {
@@ -157,6 +161,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /knock/{id}", s.handleKnock)
 	s.mux.HandleFunc("GET /knock/{id}", s.handleKnockReview)
 	s.mux.HandleFunc("GET /healthz", s.handleHealth)
+	s.mux.HandleFunc("GET /vapid", s.handleVapid)
 	s.mux.HandleFunc("GET /{$}", s.handleRoot) // exactly "/", a public landing
 }
 
@@ -568,6 +573,12 @@ func (s *Server) handleKnockReview(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	s.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// handleVapid serves the active Web Push public key so a browser can subscribe.
+// Empty when push is not configured; the client reads that as "push unavailable".
+func (s *Server) handleVapid(w http.ResponseWriter, _ *http.Request) {
+	s.writeJSON(w, http.StatusOK, contract.VapidResponse{PublicKey: s.cfg.VAPIDPublicKey})
 }
 
 // handleRoot serves a small public landing page so api.sti.care is not a bare
