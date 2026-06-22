@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkle, QrCode, Link } from "../../design/icons.tsx";
+import { Link } from "../../design/icons.tsx";
 import { COPY, DiscoverTile, FavesSection, PrivacySection } from "./parts.tsx";
 import { RecentSection } from "./recent.tsx";
 import type { ContactRecord } from "../../store/accountBlob.ts";
@@ -20,8 +20,6 @@ export interface ConnectProps {
   onToggleFave: (contactId: string) => void;
   /** Delete a contact link (the "delete linkup" row action). */
   onRemoveContact: (contactId: string) => void;
-  onLinkup?: (() => void) | undefined;
-  onScanLink?: (() => void) | undefined;
   onShareLink?: (() => void) | undefined;
 }
 
@@ -31,8 +29,6 @@ export function Connect({
   faves,
   onToggleFave,
   onRemoveContact,
-  onLinkup,
-  onScanLink,
   onShareLink,
 }: ConnectProps) {
   const [visible, setVisible] = useState(6);
@@ -67,20 +63,8 @@ export function Connect({
           </p>
         </div>
 
-        {/* scan / share discovery, the only ways to connect */}
+        {/* share a link, the supported way to connect (scan/NFC ride on slice 7) */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <DiscoverTile
-            icon={<Sparkle size={22} />}
-            title={COPY.linkupTile}
-            sub={COPY.linkupTileSub}
-            onClick={onLinkup}
-          />
-          <DiscoverTile
-            icon={<QrCode size={22} />}
-            title={COPY.scanTile}
-            sub={COPY.scanTileSub}
-            onClick={onScanLink}
-          />
           <DiscoverTile
             icon={<Link size={22} />}
             title={COPY.shareTile}

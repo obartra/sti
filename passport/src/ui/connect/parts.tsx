@@ -110,21 +110,6 @@ export function ContactAvatar({
   );
 }
 
-// Handle-seeded avatar, still used by the scan / in-person linkup screens (their
-// partner identity comes from the slice-7 device flow, not a stored contact).
-export function HandleAvatar({
-  handle,
-  size = "md",
-}: {
-  handle: string;
-  size?: "sm" | "md" | "lg";
-}) {
-  const name = handle.replace(/[^a-z]/gi, " ").trim() || handle;
-  return (
-    <Avatar initials={name} alt={name} src={avatarFor(handle)} size={size} />
-  );
-}
-
 // A scan/share discovery tile.
 export function DiscoverTile({
   icon,
