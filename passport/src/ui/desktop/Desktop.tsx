@@ -61,8 +61,6 @@ export const SECTION: Record<string, string> = {
   wallet: "home",
   "avatar-edit": "home",
   connect: "connect",
-  linkup: "connect",
-  "scan-link": "connect",
   "alias-share": "connect",
   circles: "circles",
   "circle-create": "circles",
