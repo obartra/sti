@@ -33,14 +33,15 @@ import {
   type AliasRecord,
   type ContactRecord,
 } from "./accountBlob.ts";
-import { addCircle, dropCircle, type CircleCreated } from "./circleOps.ts";
-import { contactInviteUrl, type ContactInvite } from "./contactInvite.ts";
 import {
-  lockNotifyDraft,
-  parsePartnerPing,
-  type NotifyLockResult,
-} from "./partnerNotify.ts";
-import { pollInbox } from "./notifyInbox.ts";
+  addCircle,
+  editCircle,
+  dropCircle,
+  type CircleCreated,
+} from "./circleOps.ts";
+import { contactInviteUrl, type ContactInvite } from "./contactInvite.ts";
+import type { NotifyLockResult } from "./partnerNotify.ts";
+import { notifyLinkedContacts, pollPartnerNudge } from "./notifyOps.ts";
 import { grantAccess } from "./grant.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { deriveAliasCard } from "./ownerCard.ts";
@@ -200,6 +201,13 @@ export interface SessionController {
     name: string,
     memberContactIds: string[],
   ): Promise<CircleCreated>;
+  /** Rename a circle and/or change its members (same id). Returns the session. */
+  updateCircle(
+    session: OwnerSession,
+    circleId: string,
+    name: string,
+    memberContactIds: string[],
+  ): Promise<OwnerSession>;
   /** Delete one circle by id (a local grouping; contacts are untouched). */
   removeCircle(session: OwnerSession, circleId: string): Promise<OwnerSession>;
   /** Forget this device's passkey binding. The phrase still recovers. */
@@ -386,33 +394,6 @@ async function ingestContactReturn(
   };
   const blob = await accounts.addContact(session.master, completed);
   return { master: session.master, blob };
-}
-
-// Silently notify every linked contact (those with a notify capability) that a
-// positive was reported: a contentless ping to each inbox + a wake. No window and
-// no reporter choice, everyone you've linked with is told, automatically.
-function notifyLinkedContacts(
-  api: ApiClient,
-  session: OwnerSession,
-): Promise<NotifyLockResult> {
-  const ids = session.blob.contacts
-    .filter((c) => c.theirNotify !== undefined)
-    .map((c) => c.id);
-  return lockNotifyDraft(api, session.blob, ids);
-}
-
-// The recipient side: poll this device's own inbox for a partner-notify ping.
-// False (not an error) when no inbox is minted yet, the inbox is empty/decoy, or
-// the bytes do not decode to a well-formed ping. The ping is contentless, so this
-// only ever answers "is there a nudge", never who sent it.
-async function pollPartnerNudge(
-  api: ApiClient,
-  session: OwnerSession,
-): Promise<boolean> {
-  const cap = session.blob.myNotify;
-  if (cap === undefined) return false;
-  const ping = await pollInbox(api, cap);
-  return ping !== null && parsePartnerPing(ping) !== null;
 }
 
 // Revoke one contact link: kill the payload first (overwrite to garbage), then
@@ -607,6 +588,9 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
     createCircle: (session, name, memberContactIds) =>
       addCircle(accounts, session, name, memberContactIds),
+
+    updateCircle: (session, circleId, name, memberContactIds) =>
+      editCircle(accounts, session, { circleId, name, memberContactIds }),
 
     removeCircle: (session, circleId) =>
       dropCircle(accounts, session, circleId),

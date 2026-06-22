@@ -61,6 +61,7 @@ function stubController(over: Partial<SessionController>): SessionController {
     notifyContactsOfPositive: unused,
     hasPartnerNudge: unused,
     createCircle: unused,
+    updateCircle: unused,
     removeCircle: unused,
     forget: unused,
     ...over,

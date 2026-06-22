@@ -11,16 +11,35 @@ export const circleRenderers: ScreenRenderers = {
       onOpenCircle={(id) => nav.go("circle-detail", { id })}
     />
   ),
-  "circle-create": ({ nav, contacts, onCreateCircle }) => (
-    <CircleCreate
-      contacts={contacts}
-      onCreate={(name, memberContactIds) => {
-        void onCreateCircle(name, memberContactIds).then((id) => {
-          nav.go("circle-detail", { id });
-        });
-      }}
-    />
-  ),
+  "circle-create": ({
+    nav,
+    data,
+    circles,
+    contacts,
+    onCreateCircle,
+    onUpdateCircle,
+  }) => {
+    // The same screen creates or edits: a route id means "edit this circle".
+    const existing = data?.id
+      ? circles.find((c) => c.id === data.id)
+      : undefined;
+    return (
+      <CircleCreate
+        contacts={contacts}
+        existing={existing}
+        onCreate={(name, memberContactIds) => {
+          if (existing) {
+            onUpdateCircle(existing.id, name, memberContactIds);
+            nav.go("circle-detail", { id: existing.id });
+          } else {
+            void onCreateCircle(name, memberContactIds).then((id) => {
+              nav.go("circle-detail", { id });
+            });
+          }
+        }}
+      />
+    );
+  },
   "circle-detail": ({
     nav,
     data,
@@ -45,6 +64,7 @@ export const circleRenderers: ScreenRenderers = {
         circle={circle}
         contacts={contacts}
         resolveAlias={(link) => store.resolveAlias(link)}
+        onEdit={() => nav.go("circle-create", { id: circle.id })}
         onDelete={() => {
           onRemoveCircle(circle.id);
           nav.go("circles");
