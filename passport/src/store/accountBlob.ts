@@ -33,7 +33,7 @@ import type { NotifyCapability } from "./notifyInbox.ts";
 // exclusively: an older or otherwise malformed blob fails the strict version check
 // and parseAccountBlob THROWS (recovery surfaces an error rather than silently
 // restoring it). Only a genuine account miss (404) maps to null/"no account".
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -49,6 +49,12 @@ export interface AliasRecord {
    */
   readonly handle?: string;
   readonly avatar?: AvatarConfig;
+  /**
+   * Optional link lifetime (doc 16): the epoch day this link expires, or null /
+   * absent for until-revoked. Enforced client-side, the device stops republishing
+   * and sweeps the link once expired, the same model as a contact link's expiry.
+   */
+  readonly expiresDay?: number | null;
 }
 
 /**
@@ -151,7 +157,8 @@ interface AccountBlobWire extends AccountBlob {
 function hasValidAliasOverride(r: Record<string, unknown>): boolean {
   return (
     (r.handle === undefined || isValidHandle(r.handle)) &&
-    (r.avatar === undefined || isAvatarConfig(r.avatar))
+    (r.avatar === undefined || isAvatarConfig(r.avatar)) &&
+    (r.expiresDay === undefined || isDayOrNull(r.expiresDay))
   );
 }
 

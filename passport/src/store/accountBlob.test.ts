@@ -110,6 +110,35 @@ describe("account blob codec", () => {
     );
   });
 
+  it("round-trips a v10 alias link expiry (a day, and until-revoked)", () => {
+    const withExpiry: AccountBlob = {
+      handle: "robin",
+      aliases: [
+        {
+          id: ID,
+          writeToken: "B".repeat(43),
+          key: "C".repeat(43),
+          isPublic: true,
+          expiresDay: 19_100,
+        },
+        {
+          id: "D".repeat(43),
+          writeToken: "E".repeat(43),
+          key: "F".repeat(43),
+          isPublic: false,
+          expiresDay: null,
+        },
+      ],
+      contacts: [],
+      state: INITIAL_OWNER_STATE,
+      avatar: DEFAULT_AVATAR,
+      sharingMode: "link",
+    };
+    expect(parseAccountBlob(serializeAccountBlob(withExpiry))).toEqual(
+      withExpiry,
+    );
+  });
+
   it("round-trips an empty alias list", () => {
     const empty: AccountBlob = {
       handle: "sam",
@@ -169,7 +198,7 @@ describe("account blob codec", () => {
     avatar: A,
   };
   reject("a non-object", 7);
-  reject("an unknown version", { ...base, v: 10, sharingMode: "link" });
+  reject("an unknown version", { ...base, v: 11, sharingMode: "link" });
   reject("a prior version (v6 is no longer accepted)", {
     v: 6,
     handle: "x",
@@ -202,6 +231,13 @@ describe("account blob codec", () => {
   reject("an alias with a malformed id", {
     ...base,
     aliases: [{ id: "short", writeToken: ID, key: ID, isPublic: true }],
+    sharingMode: "link",
+  });
+  reject("an alias with a non-numeric expiry", {
+    ...base,
+    aliases: [
+      { id: ID, writeToken: ID, key: ID, isPublic: true, expiresDay: "soon" },
+    ],
     sharingMode: "link",
   });
   reject("an alias missing isPublic", {

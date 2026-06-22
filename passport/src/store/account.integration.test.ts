@@ -158,4 +158,30 @@ describe("account lifecycle against a live blind store", () => {
     // A different phrase derives a different account id, so it sees nothing.
     expect(await accounts.recover(fresh.recoveryPhrase + "x")).toBeNull();
   });
+
+  it("setOwnerState sweeps an expired alias link (doc 16): it stops resolving", async () => {
+    const store = createBackendStore(api);
+    const created = await accounts.create("dev");
+    // A real, resolvable alias, recorded with an expiry already in the past.
+    const live = await publishCard(
+      api,
+      (rec) => deriveAliasCard(created.blob.state, rec, NOW_DAY),
+      { isPublic: true },
+    );
+    await accounts.addAlias(created.master, {
+      ...live.record,
+      expiresDay: 1,
+    });
+    const caps = { id: live.record.id, key: live.record.key };
+    expect(await store.resolveAlias(caps)).not.toBeNull();
+
+    // The next state change sweeps the expired alias: it is dropped from the
+    // blob and its link no longer resolves.
+    const after = await accounts.setOwnerState(
+      created.master,
+      INITIAL_OWNER_STATE,
+    );
+    expect(after.aliases).toHaveLength(0);
+    expect(await store.resolveAlias(caps)).toBeNull();
+  });
 });
