@@ -121,6 +121,15 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       };
       return Promise.resolve({ master, blob });
     },
+    setContactDuration: (_session, contactId, durationDays) => {
+      blob = {
+        ...blob,
+        contacts: blob.contacts.map((c) =>
+          c.id === contactId ? { ...c, expiresDay: durationDays } : c,
+        ),
+      };
+      return Promise.resolve({ master, blob });
+    },
     revokeAlias: (_session, aliasId) => {
       blob = { ...blob, aliases: blob.aliases.filter((a) => a.id !== aliasId) };
       return Promise.resolve({ master, blob });
@@ -425,7 +434,8 @@ describe("App onboarding flow", () => {
     ).toBeInTheDocument();
     expect((await screen.findAllByText("Sam")).length).toBeGreaterThan(0);
 
-    // Revoke it: the entry is gone.
+    // Open the link's options menu, then revoke it: the entry is gone.
+    await user.click(screen.getByRole("button", { name: /Options for Sam/ }));
     await user.click(screen.getByRole("button", { name: /Revoke/ }));
     expect(screen.queryByText("Sam")).toBeNull();
   });

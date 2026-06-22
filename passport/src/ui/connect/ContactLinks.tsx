@@ -5,7 +5,7 @@ import {
   Input,
   Segmented,
 } from "../../design/components/index.ts";
-import { Link, Copy, Trash } from "../../design/icons.tsx";
+import { Link, Copy, Trash, Dots } from "../../design/icons.tsx";
 import {
   parseContactInvite,
   type ContactInvite,
@@ -43,6 +43,9 @@ export interface ContactLinksProps {
     durationDays: number | null,
   ) => Promise<{ url: string }>;
   onRevoke: (id: string) => void;
+  /** Change one link's lifetime in place (days from today, or null for
+   * until-revoked); the same link keeps working. */
+  onSetDuration: (id: string, durationDays: number | null) => void;
   /** Ingest a return link a contact sent back, completing the pending link. */
   onIngestReturn?: ((ret: ContactInvite) => void) | undefined;
 }
@@ -177,6 +180,7 @@ export function ContactLinks({
   nowDay,
   onCreate,
   onRevoke,
+  onSetDuration,
   onIngestReturn,
 }: ContactLinksProps): React.ReactElement {
   const [label, setLabel] = useState("");
@@ -282,6 +286,7 @@ export function ContactLinks({
                 if (created?.includes(c.alias.id)) setCreated(null);
                 onRevoke(c.id);
               }}
+              onSetDuration={(days) => onSetDuration(c.id, days)}
             />
           ))}
         </Card>
@@ -290,44 +295,36 @@ export function ContactLinks({
   );
 }
 
-// One contact row: the private label, a linked-vs-pending line with the expiry,
-// and a revoke control.
-function ContactRow({
-  contact,
-  nowDay,
+// The lifetime + revoke menu revealed under a row (the "⋯" panel). Setting a
+// lifetime changes the link's expiry in place; the link keeps working.
+function RowMenu({
+  onSetDuration,
   onRevoke,
 }: {
-  contact: ContactRecord;
-  nowDay: number;
+  onSetDuration: (durationDays: number | null) => void;
   onRevoke: () => void;
 }): React.ReactElement {
-  const status =
-    contact.theirStatusAlias !== undefined
-      ? "Linked both ways"
-      : "Awaiting their link back";
   return (
     <div
       style={{
         display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "10px 10px",
+        flexDirection: "column",
+        gap: 8,
+        padding: "6px 10px 12px",
+        borderTop: "1px solid var(--border-card)",
       }}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 14.5,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-          }}
-        >
-          {contact.label || "Unnamed link"}
-        </div>
-        <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-          {`${status} · ${expiryLabel(contact.expiresDay, nowDay)}`}
-        </div>
+      <div
+        style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-subtle)" }}
+      >
+        Change lifetime
       </div>
+      <Segmented
+        aria-label="Change link lifetime"
+        value=""
+        onChange={(key) => onSetDuration(durationDaysFor(key))}
+        options={DURATIONS.map((d) => ({ value: d.key, label: d.label }))}
+      />
       <Button
         variant="quiet"
         size="sm"
@@ -336,6 +333,87 @@ function ContactRow({
       >
         Revoke
       </Button>
+    </div>
+  );
+}
+
+// One contact row: the private label, a linked-vs-pending line with the expiry,
+// and a "⋯" menu to change the link's lifetime or revoke it.
+function ContactRow({
+  contact,
+  nowDay,
+  onRevoke,
+  onSetDuration,
+}: {
+  contact: ContactRecord;
+  nowDay: number;
+  onRevoke: () => void;
+  onSetDuration: (durationDays: number | null) => void;
+}): React.ReactElement {
+  const [open, setOpen] = useState(false);
+  const status =
+    contact.theirStatusAlias !== undefined
+      ? "Linked both ways"
+      : "Awaiting their link back";
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "10px 10px",
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: 14.5,
+              fontWeight: 700,
+              color: "var(--text-strong)",
+            }}
+          >
+            {contact.label || "Unnamed link"}
+          </div>
+          <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
+            {`${status} · ${expiryLabel(contact.expiresDay, nowDay)}`}
+          </div>
+        </div>
+        <button
+          type="button"
+          aria-label={`Options for ${contact.label || "this link"}`}
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+          style={{
+            appearance: "none",
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+            width: 34,
+            height: 34,
+            borderRadius: "50%",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--text-subtle)",
+            flex: "none",
+          }}
+        >
+          <Dots size={18} />
+        </button>
+      </div>
+      {open && (
+        <RowMenu
+          onSetDuration={(days) => {
+            onSetDuration(days);
+            setOpen(false);
+          }}
+          onRevoke={() => {
+            onRevoke();
+            setOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

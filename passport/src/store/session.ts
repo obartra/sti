@@ -49,6 +49,7 @@ import {
   acceptContactInvite,
   ingestContactReturn,
   revokeContactLink,
+  setContactLinkExpiry,
   revokeAliasLink,
   shareLinkFor,
 } from "./shareOps.ts";
@@ -161,6 +162,16 @@ export interface SessionController {
   revokeContact(
     session: OwnerSession,
     contactId: string,
+  ): Promise<OwnerSession>;
+  /**
+   * Change one contact link's lifetime in place (extend or shorten): the same
+   * link keeps resolving, only its stored expiry moves. `durationDays` is counted
+   * from today; null means until-revoked. A no-op if the id is unknown.
+   */
+  setContactDuration(
+    session: OwnerSession,
+    contactId: string,
+    durationDays: number | null,
   ): Promise<OwnerSession>;
   /**
    * Revoke one published alias (a public/casual link) by id: its URL stops
@@ -421,6 +432,9 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
     revokeContact: (session, contactId) =>
       revokeContactLink(api, accounts, session, contactId),
+
+    setContactDuration: (session, contactId, durationDays) =>
+      setContactLinkExpiry(accounts, session, contactId, durationDays),
 
     revokeAlias: (session, aliasId) =>
       revokeAliasLink(api, accounts, session, aliasId),
