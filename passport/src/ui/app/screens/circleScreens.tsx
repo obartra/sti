@@ -1,35 +1,55 @@
 import { CirclesList } from "../../circles/CirclesList.tsx";
 import { CircleCreate } from "../../circles/CircleCreate.tsx";
-import { CircleJoin } from "../../circles/CircleJoin.tsx";
-import { CircleApprovals } from "../../circles/CircleApprovals.tsx";
 import { CircleDetail } from "../../circles/CircleDetail.tsx";
-import { CircleManage } from "../../circles/CircleManage.tsx";
-import { CircleLeave } from "../../circles/CircleLeave.tsx";
 import type { ScreenRenderers } from "./context.ts";
 
 export const circleRenderers: ScreenRenderers = {
-  circles: ({ nav }) => (
+  circles: ({ nav, circles }) => (
     <CirclesList
+      circles={circles}
       onCreate={() => nav.go("circle-create")}
       onOpenCircle={(id) => nav.go("circle-detail", { id })}
     />
   ),
-  "circle-create": ({ nav }) => (
-    <CircleCreate onCreate={() => nav.go("circle-detail")} />
-  ),
-  "circle-join": ({ nav }) => (
-    <CircleJoin onJoin={() => nav.go("circle-detail")} onNotNow={nav.back} />
-  ),
-  "circle-approvals": () => <CircleApprovals />,
-  "circle-detail": ({ nav }) => (
-    <CircleDetail
-      onApprovals={() => nav.go("circle-approvals")}
-      onManage={() => nav.go("circle-manage")}
-      onLeave={() => nav.go("circle-leave")}
+  "circle-create": ({ nav, contacts, onCreateCircle }) => (
+    <CircleCreate
+      contacts={contacts}
+      onCreate={(name, memberContactIds) => {
+        void onCreateCircle(name, memberContactIds).then((id) => {
+          nav.go("circle-detail", { id });
+        });
+      }}
     />
   ),
-  "circle-manage": ({ nav }) => <CircleManage onArchive={nav.back} />,
-  "circle-leave": ({ nav }) => (
-    <CircleLeave onLeave={() => nav.go("circles")} onStay={nav.back} />
-  ),
+  "circle-detail": ({
+    nav,
+    data,
+    circles,
+    contacts,
+    store,
+    onRemoveCircle,
+  }) => {
+    const circle = circles.find((c) => c.id === data?.id);
+    if (circle === undefined) {
+      // The circle was deleted (or a stale deep link): fall back to the list.
+      return (
+        <CirclesList
+          circles={circles}
+          onCreate={() => nav.go("circle-create")}
+          onOpenCircle={(id) => nav.go("circle-detail", { id })}
+        />
+      );
+    }
+    return (
+      <CircleDetail
+        circle={circle}
+        contacts={contacts}
+        resolveAlias={(link) => store.resolveAlias(link)}
+        onDelete={() => {
+          onRemoveCircle(circle.id);
+          nav.go("circles");
+        }}
+      />
+    );
+  },
 };

@@ -60,6 +60,8 @@ function stubController(over: Partial<SessionController>): SessionController {
     ingestContactReturn: unused,
     notifyContactsOfPositive: unused,
     hasPartnerNudge: unused,
+    createCircle: unused,
+    removeCircle: unused,
     forget: unused,
     ...over,
   };

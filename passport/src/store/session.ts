@@ -33,6 +33,7 @@ import {
   type AliasRecord,
   type ContactRecord,
 } from "./accountBlob.ts";
+import { addCircle, dropCircle, type CircleCreated } from "./circleOps.ts";
 import { contactInviteUrl, type ContactInvite } from "./contactInvite.ts";
 import {
   lockNotifyDraft,
@@ -189,6 +190,18 @@ export interface SessionController {
    * inbox is empty, undecodable, unreachable, or not yet minted (all uniform).
    */
   hasPartnerNudge(session: OwnerSession): Promise<boolean>;
+  /**
+   * Create a circle (doc 13 slice 6): a private, local grouping of contacts under
+   * a name. Members are normalized against current contacts. Purely client-side;
+   * the server never learns a circle exists. Returns the new circle id + session.
+   */
+  createCircle(
+    session: OwnerSession,
+    name: string,
+    memberContactIds: string[],
+  ): Promise<CircleCreated>;
+  /** Delete one circle by id (a local grouping; contacts are untouched). */
+  removeCircle(session: OwnerSession, circleId: string): Promise<OwnerSession>;
   /** Forget this device's passkey binding. The phrase still recovers. */
   forget(): void;
 }
@@ -591,6 +604,12 @@ export function createSessionController(deps: SessionDeps): SessionController {
     notifyContactsOfPositive: (session) => notifyLinkedContacts(api, session),
 
     hasPartnerNudge: (session) => pollPartnerNudge(api, session),
+
+    createCircle: (session, name, memberContactIds) =>
+      addCircle(accounts, session, name, memberContactIds),
+
+    removeCircle: (session, circleId) =>
+      dropCircle(accounts, session, circleId),
 
     forget() {
       devices.clear();

@@ -22,6 +22,10 @@ export interface OwnerActions {
   ) => Promise<ContactLinkResult>;
   /** Ingest a return invite, completing the matching pending contact (no-op if none). */
   onIngestContactReturn: (ret: ContactInvite) => void;
+  /** Create a circle from a name + chosen contact ids; resolves the new circle id. */
+  onCreateCircle: (name: string, memberContactIds: string[]) => Promise<string>;
+  /** Delete one circle by id (a local grouping; contacts untouched). */
+  onRemoveCircle: (id: string) => void;
 }
 
 /**
@@ -120,6 +124,37 @@ export function useOwnerActions(
     [controller, sessionRef, setSession],
   );
 
+  const onCreateCircle = useCallback(
+    async (name: string, memberContactIds: string[]) => {
+      const current = sessionRef.current;
+      if (current === null) throw new Error("not signed in");
+      const { session, circleId } = await controller.createCircle(
+        current,
+        name,
+        memberContactIds,
+      );
+      sessionRef.current = session;
+      setSession(session);
+      return circleId;
+    },
+    [controller, sessionRef, setSession],
+  );
+
+  const onRemoveCircle = useCallback(
+    (id: string) => {
+      const current = sessionRef.current;
+      if (current === null) return;
+      void controller
+        .removeCircle(current, id)
+        .then((updated) => {
+          sessionRef.current = updated;
+          setSession(updated);
+        })
+        .catch(() => undefined);
+    },
+    [controller, sessionRef, setSession],
+  );
+
   return {
     onDeleteAccount,
     onCreateContactLink,
@@ -127,5 +162,7 @@ export function useOwnerActions(
     onRevokeAlias,
     onAcceptContactInvite,
     onIngestContactReturn,
+    onCreateCircle,
+    onRemoveCircle,
   };
 }

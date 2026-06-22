@@ -119,9 +119,7 @@ export function App({
   const onReport = useCallback(
     (outcome: ReportOutcome) => {
       setOwnerState((s) => applyReport(s, outcome, todayEpochDay()));
-      // A reported active STI positive silently notifies every linked contact
-      // (doc 13): automatic, contentless, no reporter choice, never surfaced at
-      // the report moment. HIV is excluded for now (U=U has its own nuance).
+      // A reported active non-HIV positive silently notifies linked contacts (doc 13).
       if (outcome.activeNonHivSti) {
         const current = sessionRef.current;
         if (current !== null) {
@@ -134,19 +132,12 @@ export function App({
     [setOwnerState, controller],
   );
 
-  // Account deletion + per-contact link create/revoke (each folds the result
-  // back into the session; delete logs out, clamping app routes to the landing).
-  const {
-    onDeleteAccount,
-    onCreateContactLink,
-    onRevokeContact,
-    onRevokeAlias,
-    onAcceptContactInvite,
-    onIngestContactReturn,
-  } = useOwnerActions(controller, sessionRef, setSession);
+  // Account deletion, per-contact links, and circles (each folds the result back
+  // into the session; delete logs out, clamping app routes to the landing). Passed
+  // through to Chrome as a group ({...actions}), since the names match 1:1.
+  const actions = useOwnerActions(controller, sessionRef, setSession);
 
-  // The share sheet: opening it mints/refreshes the owner's primary alias and
-  // surfaces its real link; copy writes that link to the clipboard.
+  // The share sheet: opening it mints/refreshes the owner's primary alias.
   const {
     shareUrl,
     setShareOpen: handleSetShareOpen,
@@ -154,8 +145,7 @@ export function App({
     revokeLink,
   } = useShareLink(controller, sessionRef, setSession, setShareOpen);
 
-  // The owner's quiet inbox: knock review + the partner-notify nudge, both
-  // owner-pull and contentless, re-pulled together when the inbox opens.
+  // The owner's quiet inbox: knock review + the partner-notify nudge (owner-pull).
   const {
     knockCount,
     canApproveKnocks,
@@ -195,7 +185,6 @@ export function App({
       shareUrl={shareUrl}
       onCopyShareLink={copyShareLink}
       onRevokeShareLink={revokeLink}
-      onDeleteAccount={onDeleteAccount}
       knockCount={knockCount}
       refreshKnocks={refreshInbox}
       canApproveKnocks={canApproveKnocks}
@@ -205,13 +194,10 @@ export function App({
       showPartnerNudge={showPartnerNudge}
       dismissPartnerNudge={dismissPartnerNudge}
       aliases={session ? session.blob.aliases : []}
-      onRevokeAlias={onRevokeAlias}
       contacts={session ? session.blob.contacts : []}
-      onCreateContactLink={onCreateContactLink}
-      onRevokeContact={onRevokeContact}
       isLoggedIn={session !== null}
-      onAcceptContactInvite={onAcceptContactInvite}
-      onIngestContactReturn={onIngestContactReturn}
+      circles={session ? (session.blob.circles ?? []) : []}
+      {...actions}
     />
   );
 }
