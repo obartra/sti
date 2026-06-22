@@ -45,6 +45,7 @@ describe("knock", () => {
       getInbox: unused,
       putInbox: unused,
       registerPush: unused,
+      getVapidPublicKey: unused,
       health: unused,
       knock: (id, hash) => {
         seen = { id, hash };

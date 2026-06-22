@@ -67,9 +67,10 @@ func main() {
 	// gates must BOTH be on to deliver: STI_NOTIFY_ENABLED, and a configured Web
 	// Push sender (VAPID keys). Either alone delivers nothing.
 	notifyEnabled := os.Getenv("STI_NOTIFY_ENABLED") == "true"
+	vapidPublic := os.Getenv("STI_VAPID_PUBLIC_KEY")
 	var sender server.Sender
-	if pub, priv := os.Getenv("STI_VAPID_PUBLIC_KEY"), os.Getenv("STI_VAPID_PRIVATE_KEY"); pub != "" && priv != "" {
-		sender = server.NewWebPushSender(pub, priv, env("STI_VAPID_SUBJECT", "https://sti.care"))
+	if priv := os.Getenv("STI_VAPID_PRIVATE_KEY"); vapidPublic != "" && priv != "" {
+		sender = server.NewWebPushSender(vapidPublic, priv, env("STI_VAPID_SUBJECT", "https://sti.care"))
 	}
 	if notifyEnabled && sender == nil {
 		log.Warn("STI_NOTIFY_ENABLED is set but no VAPID keys are configured; wakes are not delivered")
@@ -104,6 +105,7 @@ func main() {
 		AllowedOrigins: allowedOrigins,
 		NotifyEnabled:  notifyEnabled,
 		Sender:         sender,
+		VAPIDPublicKey: vapidPublic,
 		IPRatePerSec:   ipRate,
 		IPBurst:        ipBurst,
 		MaxInflight:    maxInflight,

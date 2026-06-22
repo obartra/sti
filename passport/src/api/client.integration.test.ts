@@ -44,6 +44,12 @@ describe("api client against a live blind store", () => {
     expect(await api.health()).toBe(true);
   });
 
+  it("getVapidPublicKey is null when the server has no push keys configured", async () => {
+    // The harness runs without VAPID keys, so /vapid answers an empty key, which
+    // the client surfaces as null ("push unavailable") rather than an error.
+    expect(await api.getVapidPublicKey()).toBeNull();
+  });
+
   it("round-trips an alias: publish, resolve, decrypt equals published", async () => {
     const id = randomAliasId();
     const writeToken = randomWriteToken();

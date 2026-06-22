@@ -51,6 +51,7 @@ function stubApi(getAlias: ApiClient["getAlias"]): ApiClient {
     putInbox: unused,
     knock: () => Promise.resolve(),
     registerPush: unused,
+    getVapidPublicKey: unused,
     health: unused,
   };
 }
@@ -135,6 +136,7 @@ describe("backend store knock", () => {
       getInbox: unused,
       putInbox: unused,
       registerPush: unused,
+      getVapidPublicKey: unused,
       health: unused,
       knock: (id, hash, pubKey) => {
         calls.push({ id, requesterHash: hash, pubKey });
@@ -177,6 +179,7 @@ describe("backend store knock", () => {
       getInbox: unused,
       putInbox: unused,
       registerPush: unused,
+      getVapidPublicKey: unused,
       health: unused,
     };
     const store = createBackendStore(

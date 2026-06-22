@@ -40,6 +40,7 @@ function recordingApi(): { api: ApiClient; puts: PutCall[] } {
       putInbox: unused,
       knock: unused,
       registerPush: unused,
+      getVapidPublicKey: unused,
       health: unused,
       putAlias: (id, payload, writeToken) => {
         puts.push({ id, payload, writeToken });

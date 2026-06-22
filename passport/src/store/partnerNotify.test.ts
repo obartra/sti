@@ -89,6 +89,7 @@ function fakeApi(poisonInboxId?: string): {
     knockCount: unused,
     knockReview: unused,
     registerPush: unused,
+    getVapidPublicKey: unused,
     health: unused,
   };
   return { api, pings, notified };

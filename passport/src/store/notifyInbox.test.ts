@@ -49,6 +49,7 @@ function fakeApi(): ApiClient {
     knockCount: unused,
     knockReview: unused,
     registerPush: unused,
+    getVapidPublicKey: unused,
     health: unused,
   };
 }

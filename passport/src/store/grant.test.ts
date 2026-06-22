@@ -55,6 +55,7 @@ function fakeApi(): ApiClient {
     getInbox: unused,
     putInbox: unused,
     registerPush: unused,
+    getVapidPublicKey: unused,
     health: unused,
   };
 }

@@ -61,6 +61,7 @@ const (
 	PathPushRegister  = "/push/register" // POST: register a Web Push endpoint
 	PathKnockPrefix   = "/knock/"        // POST: contentless knock
 	PathHealth        = "/healthz"       // GET: liveness
+	PathVapid         = "/vapid"         // GET: the active Web Push public key
 )
 
 // --- JSON bodies (only the non-byte endpoints) ------------------------------
@@ -70,6 +71,13 @@ const (
 // token itself or who is notifying whom.
 type NotifyRequest struct {
 	TokenHash string `json:"tokenHash"`
+}
+
+// VapidResponse carries the server's active Web Push (VAPID) public key, which a
+// browser needs to subscribe. PublicKey is empty when push is not configured, which
+// the client reads as "push unavailable". Public and cacheable; reveals nothing.
+type VapidResponse struct {
+	PublicKey string `json:"publicKey"`
 }
 
 // PushRegisterRequest binds a Web Push subscription to an opaque routing endpoint.
