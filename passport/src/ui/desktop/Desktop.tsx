@@ -67,20 +67,13 @@ export const SECTION: Record<string, string> = {
   circles: "circles",
   "circle-create": "circles",
   "circle-detail": "circles",
-  results: "results",
   care: "care",
   learn: "care",
   "learn-detail": "care",
   "learn-uu": "care",
 };
 
-const TABS: readonly DesktopTab[] = [
-  "home",
-  "connect",
-  "circles",
-  "results",
-  "care",
-];
+const TABS: readonly DesktopTab[] = ["home", "connect", "circles", "care"];
 export const isTab = (s: string): boolean =>
   (TABS as readonly string[]).includes(s);
 

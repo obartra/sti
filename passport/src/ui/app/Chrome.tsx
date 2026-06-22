@@ -188,7 +188,6 @@ function AppChrome(props: ChromeProps) {
           onTab={(t) => nav.jump(t)}
           onAdd={() => nav.go("report")}
           onBell={() => nav.go("notifications")}
-          showAdd={route.screen === "results"}
           // The bell dot means "the inbox has something": a knock OR the
           // partner-notify nudge. The nudge leads the inbox for PEP timeliness, so
           // it must light the bell too, not wait to be discovered on a manual open.
