@@ -53,9 +53,12 @@ describe("notificationItems (inbox privacy contract)", () => {
       inbox({ canApprove: true, showInfo: true }),
     ];
     for (const c of cases) {
-      const knock = notificationItems(c, nudge(), retest(), () => undefined).find(
-        (i) => i.icon === "users",
-      );
+      const knock = notificationItems(
+        c,
+        nudge(),
+        retest(),
+        () => undefined,
+      ).find((i) => i.icon === "users");
       expect(knock).toBeDefined();
       expect(knock?.when).toBeUndefined();
       expect(`${knock?.title} ${knock?.sub}`).not.toMatch(/\d/);
@@ -101,7 +104,12 @@ describe("notificationItems (inbox privacy contract)", () => {
   it("once nothing is grantable or info-worthy, the knock entry disappears", () => {
     // The state right after approving the only knock: canApprove flips off and
     // showInfo is false (no un-grantable knocks remain), so the row clears.
-    const items = notificationItems(inbox(), nudge(), retest(), () => undefined);
+    const items = notificationItems(
+      inbox(),
+      nudge(),
+      retest(),
+      () => undefined,
+    );
     expect(items.some((i) => i.icon === "users")).toBe(false);
   });
 
@@ -116,7 +124,12 @@ describe("notificationItems (inbox privacy contract)", () => {
   });
 
   it("hides the re-test row for a freshly-tested owner (not due)", () => {
-    const items = notificationItems(inbox(), nudge(), retest({ due: false }), () => undefined);
+    const items = notificationItems(
+      inbox(),
+      nudge(),
+      retest({ due: false }),
+      () => undefined,
+    );
     expect(items.some((i) => i.icon === "bell")).toBe(false);
   });
 
