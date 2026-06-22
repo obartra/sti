@@ -1,42 +1,28 @@
 import { useState } from "react";
-import {
-  Button,
-  Card,
-  Input,
-  Field,
-  Switch,
-  Segmented,
-} from "../../design/components/index.ts";
-import {
-  Info,
-  Lock,
-  Check,
-  Globe,
-  Link,
-  ShieldCheck,
-  ArrowRight,
-} from "../../design/icons.tsx";
-import { randomAvatar, avatarSrc } from "../../lib/avatars.ts";
+import { Button, Card, Input, Field } from "../../design/components/index.ts";
+import { Info, Check, ShieldCheck, ArrowRight } from "../../design/icons.tsx";
+import { randomAvatar, avatarFor, pseudonymFor } from "../../lib/avatars.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
 import { AvatarBuilder } from "./AvatarBuilder.tsx";
 import { COPY, sectionLabel } from "./claimCopy.ts";
-import type { Vis } from "./claimCopy.ts";
 
-// The opaque-id alias card: avatar, @handle, the URL, and the opaque-id note.
-function AliasCard({
-  handle,
-  avatar,
-  aliasId,
-}: {
-  handle: string;
-  avatar: AvatarConfig;
-  aliasId: string;
-}) {
+// The opaque id of the previewed default link. Fixed here (no session yet); the
+// real one is a random id minted at publish. The anonymous face is derived from
+// it the same way the wire does (pseudonymFor + avatarFor), so the preview is
+// honest: this is the face a link wears by default, not the identity above.
+const PREVIEW_ALIAS_ID = "a7f3k9q2";
+
+// The default-link preview: the anonymous, id-derived face (doc 15) and the
+// opaque URL. Deliberately NOT the identity the owner is building above; that
+// face only appears when they choose to show it (per link, at share time).
+function DefaultLinkCard({ aliasId }: { aliasId: string }) {
+  const handle = pseudonymFor(aliasId);
+  const faceSrc = avatarFor(handle);
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <img
-          src={avatarSrc(avatar)}
+          src={faceSrc}
           alt=""
           style={{
             width: 46,
@@ -54,7 +40,7 @@ function AliasCard({
               color: "var(--text-strong)",
             }}
           >
-            @{handle || "…"}
+            @{handle}
           </div>
           <div
             style={{
@@ -81,129 +67,8 @@ function AliasCard({
         <span style={{ flex: "none", marginTop: 1 }}>
           <Info size={13} />
         </span>{" "}
-        {COPY.opaqueNote}
+        {COPY.anonNote}
       </div>
-    </Card>
-  );
-}
-
-// Public vs private = key distribution. Private (default) keeps the key off the
-// URL; public puts it in the #fragment.
-function VisibilityCard({
-  vis,
-  onChange,
-}: {
-  vis: Vis;
-  onChange: (next: Vis) => void;
-}) {
-  return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div
-        style={{
-          fontSize: 15,
-          fontWeight: 700,
-          color: "var(--text-strong)",
-        }}
-      >
-        {COPY.visTitle}
-      </div>
-      <Segmented<Vis>
-        options={[
-          { value: "private", label: COPY.visPrivate },
-          { value: "public", label: COPY.visPublic },
-        ]}
-        value={vis}
-        onChange={onChange}
-      />
-      <div
-        style={{
-          fontSize: 12.5,
-          color: "var(--text-muted)",
-          lineHeight: 1.5,
-          display: "flex",
-          gap: 6,
-        }}
-      >
-        <span
-          style={{
-            flex: "none",
-            marginTop: 1,
-            color: "var(--text-accent)",
-          }}
-        >
-          {vis === "private" ? <Lock size={13} /> : <Link size={13} />}
-        </span>
-        <span>
-          {vis === "private" ? COPY.visPrivateNote : COPY.visPublicNote}
-        </span>
-      </div>
-    </Card>
-  );
-}
-
-// Vanity opt-in, the one taught choice point. Public-only, off by default.
-function VanityCard({
-  vis,
-  vanity,
-  onChange,
-}: {
-  vis: Vis;
-  vanity: boolean;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <Card
-      variant="flat"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-        opacity: vis === "public" ? 1 : 0.55,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ flex: "none", color: "var(--text-subtle)" }}>
-          <Globe size={18} />
-        </span>
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              fontSize: 14,
-              fontWeight: 700,
-              color: "var(--text-strong)",
-            }}
-          >
-            {COPY.vanityTitle}
-          </div>
-          <div style={{ fontSize: 12, color: "var(--text-subtle)" }}>
-            {COPY.vanityOff}
-          </div>
-        </div>
-        <Switch
-          checked={vanity}
-          onChange={(v) => onChange(v && vis === "public")}
-          disabled={vis !== "public"}
-        />
-      </div>
-      {vanity && (
-        <div
-          style={{
-            fontSize: 12.5,
-            lineHeight: 1.5,
-            color: "var(--status-treat-fg)",
-            background: "var(--treat-50, #FBF3D9)",
-            borderRadius: "var(--radius-sm)",
-            padding: "9px 11px",
-            display: "flex",
-            gap: 7,
-          }}
-        >
-          <span style={{ flex: "none", marginTop: 1 }}>
-            <Info size={14} />
-          </span>
-          <span>{COPY.vanityWarn}</span>
-        </div>
-      )}
     </Card>
   );
 }
@@ -255,8 +120,9 @@ function PromiseCard() {
   );
 }
 
-// The create-account body shown when not in the login variant. Holds all the
-// alias-related state, which the login variant never touches.
+// The create-account body shown when not in the login variant. Holds the main
+// identity (handle + avatar), which the login variant never touches. Reach mode
+// (Direct / Gated / Findable) is chosen later, at first-run setup (doc 16).
 export function CreateFlow({
   busy = false,
   onClaim,
@@ -265,23 +131,17 @@ export function CreateFlow({
   onClaim?: ((handle: string, avatar: AvatarConfig) => void) | undefined;
 }) {
   const [handle, setHandle] = useState("robin");
-  // First alias is opaque + PRIVATE by default; vanity is an explicit opt-in.
-  const [vis, setVis] = useState<Vis>("private");
-  const [vanity, setVanity] = useState(false);
-  const aliasId = "a7f3k9q2"; // opaque id, the only thing in the URL
   const ok = handle.trim().length >= 3;
   // Avatar config lives in component state; seed a deterministic default.
   const [avatar, setAvatar] = useState<AvatarConfig>(() => randomAvatar(2));
 
   return (
     <>
-      <div style={{ ...sectionLabel, marginTop: 2 }}>{COPY.aliasSection}</div>
+      <div style={{ ...sectionLabel, marginTop: 2 }}>
+        {COPY.identitySection}
+      </div>
 
-      {/* The opaque id is the only thing in the URL; the handle lives in the
-          encrypted payload. Two aliases can't be linked by their address. */}
-      <AliasCard handle={handle} avatar={avatar} aliasId={aliasId} />
-
-      <Field label={COPY.aliasHandleLabel} hint={COPY.aliasHandleHint}>
+      <Field label={COPY.identityHandleLabel} hint={COPY.identityHandleHint}>
         <Input
           value={handle}
           onChange={(e) =>
@@ -313,15 +173,11 @@ export function CreateFlow({
         <AvatarBuilder config={avatar} onChange={setAvatar} />
       </div>
 
-      <VisibilityCard
-        vis={vis}
-        onChange={(v) => {
-          setVis(v);
-          if (v === "private") setVanity(false);
-        }}
-      />
-
-      <VanityCard vis={vis} vanity={vanity} onChange={setVanity} />
+      <div style={{ ...sectionLabel, marginTop: 2 }}>{COPY.defaultSection}</div>
+      {/* The opaque id is the only thing in the URL, and the previewed face is
+          id-derived, so the default link reveals neither your identity nor a
+          way to link it to another alias. */}
+      <DefaultLinkCard aliasId={PREVIEW_ALIAS_ID} />
 
       <PromiseCard />
       <Button

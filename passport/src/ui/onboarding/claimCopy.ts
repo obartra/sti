@@ -1,8 +1,9 @@
 import type { CSSProperties } from "react";
 
-// B1 claim account copy, verbatim from copy.js (claim). Passkey is the one MVP
-// unlock path: no email, no phone, no SSO. The first alias is opaque + PRIVATE
-// by default; vanity is an explicit, public-only opt-in (off by default).
+// B1 claim account copy. Passkey is the one MVP unlock path: no email, no phone,
+// no SSO. The handle + avatar are your MAIN IDENTITY (doc 15): the face you can
+// choose to show. Every link is anonymous by default; how a link is reached
+// (Direct / Gated / Findable) is chosen later at first-run setup (doc 16).
 export const COPY = {
   title: "Create your account",
   sub: "One key unlocks everything you make. No name, no email required.",
@@ -21,27 +22,16 @@ export const COPY = {
     "Enter the recovery phrase you saved at signup. It’s the only way back in without this device’s passkey.",
   recoverPlaceholder: "Your recovery phrase",
   recoverCta: "Recover account",
-  aliasSection: "Your first alias",
-  opaqueNote:
-    "Your address is an opaque id, not your handle, so two aliases can’t be linked by their URL.",
-  newLook: "New look",
-  aliasHandleLabel: "Handle on this alias",
-  aliasHandleHint:
-    "Just a display name, not your address, and not unique across the app.",
-  avatarLabel: "Build your avatar",
+  identitySection: "Your identity",
+  identityHandleLabel: "Your name",
+  identityHandleHint:
+    "A display name you can choose to show on a link. Not your address, and not unique across the app.",
+  avatarLabel: "Your face",
   avatarHint:
-    "No photos on sti.care. Pick an animal and dress it up; each alias gets its own look.",
-  visTitle: "Who can open it?",
-  visPrivate: "Private",
-  visPublic: "Public link",
-  visPrivateNote:
-    "Private by default. Only people you hand a link to can see it. To anyone else, there’s no sign it exists at all.",
-  visPublicNote:
-    "A public alias puts its key in the link itself, anyone you send it to can see the badge.",
-  vanityTitle: "Make it findable with a custom handle",
-  vanityOff: "Off by default",
-  vanityWarn:
-    "Findable, not unlinkable. It points at your status and anyone can look it up, use it only where you’d be fine being recognized.",
+    "No photos on sti.care. Pick an animal and dress it up. This is the look you can choose to show.",
+  defaultSection: "What a link shows",
+  anonNote:
+    "By default a link shows an anonymous face and an opaque address, both derived from the link itself, never the identity above. Two links can’t be tied together, and you choose per link whether to reveal yourself.",
   promiseTitle: "Our privacy promise",
   promise: [
     "We never show what you tested for, only a status.",
@@ -50,8 +40,6 @@ export const COPY = {
   ],
   cta: "Continue",
 } as const;
-
-export type Vis = "private" | "public";
 
 export const sectionLabel: CSSProperties = {
   fontSize: 11,
