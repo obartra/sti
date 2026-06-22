@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { encodeMatrix, clearCentre } from "./qr.tsx";
+import { encodeMatrix, clearCentre, svgString } from "./qr.tsx";
 
 // NOTE: these pin the encoder's structural contract (real QR geometry +
 // determinism). End-to-end scannability (a phone camera actually reading the
@@ -58,5 +58,20 @@ describe("clearCentre", () => {
   it("returns the grid unchanged when the hole is not positive", () => {
     const grid = encodeMatrix(LINK);
     expect(clearCentre(grid, 0)).toBe(grid);
+  });
+});
+
+describe("svgString", () => {
+  const TEAL_LOGO = "#2F9BB3"; // the brand mark drawn into the decorative centre
+
+  it("with a link, exports a real QR and no occluding centre logo", () => {
+    const svg = svgString("logo", "a7f3k9q2", 1024, LINK);
+    expect(svg).toContain("<rect"); // modules are present
+    expect(svg).not.toContain(TEAL_LOGO); // nothing punched over the data
+  });
+
+  it("without a link, keeps the decorative centre brand mark", () => {
+    const svg = svgString("logo", "a7f3k9q2", 1024);
+    expect(svg).toContain(TEAL_LOGO);
   });
 });

@@ -208,6 +208,10 @@ export interface MatrixProps {
   seed?: number | string | undefined;
   bg?: string | undefined;
   radius?: CSSProperties["borderRadius"] | undefined;
+  /** When set, render a REAL scannable QR of this value (a full https link)
+   * instead of the decorative faux matrix. The module count comes from the data,
+   * so `n` is ignored; `hole` still clears a centre square for a badge/logo. */
+  value?: string | undefined;
 }
 
 // Pixel geometry shared by the module-drawing helpers: quiet-zone margin in
@@ -254,17 +258,25 @@ function resolveSeed(seed: number | string | undefined): number {
   return seedOf(seed === undefined || seed === "" ? "alias" : seed);
 }
 
-// Matrix({ size, seed, hole, color, bg }) → an <svg> of crisp modules.
+// Matrix({ size, value | seed, hole, color, bg }) → an <svg> of crisp modules.
+// With `value` it is a real scannable QR of that link; otherwise the decorative
+// faux matrix seeded by `seed`.
 export function Matrix(props: MatrixProps): ReactElement {
   const size = props.size ?? 160;
-  const n = props.n ?? 29;
   const hole = props.hole ?? 0;
   const color = props.color ?? "var(--ink-900)";
-  const seed = resolveSeed(props.seed);
+  const { value, seed: seedProp, n: nProp } = props;
+  const m = useMemo(
+    () =>
+      value !== undefined && value !== ""
+        ? clearCentre(encodeMatrix(value), hole)
+        : buildMatrix(nProp ?? 29, resolveSeed(seedProp), hole),
+    [value, nProp, seedProp, hole],
+  );
+  const n = m.length;
   const quiet = 2; // modules of margin
   const total = n + quiet * 2;
   const cell = size / total;
-  const m = useMemo(() => buildMatrix(n, seed, hole), [n, seed, hole]);
   const g = cell * 0.07; // hairline gap so modules read individually
   const rects = matrixRects(m, n, { quiet, cell, g }, color);
   return (
@@ -358,21 +370,33 @@ function badgeCentreSvg(status: string, size: number): string {
   );
 }
 
-// svgString(status, seed, size). When status is "logo" (or anything outside
-// the two-state set) the centre carries the brand mark instead of a status
-// badge, that's the LINK-CARRIER form, which asserts nothing.
-export function svgString(status: string, seed: string, size: number): string {
-  const isLogo = status === "logo" || !BADGE_HEX[status];
-  const n = 29,
-    quiet = 2,
-    hole = 9;
+// svgString(status, seed, size, value?). With `value` it renders a REAL,
+// scannable QR of that link, deliberately with NO centre overlay so nothing
+// occludes the modules (this is the image people actually scan). Without it,
+// the decorative faux matrix carries a centre badge/logo: "logo" (or anything
+// outside the two-state set) draws the brand mark (link-carrier, asserts
+// nothing), else the two-state status badge.
+export function svgString(
+  status: string,
+  seed: string,
+  size: number,
+  value?: string,
+): string {
+  const quiet = 2;
+  const real = value !== undefined && value !== "";
+  const m = real ? encodeMatrix(value) : buildMatrix(29, seedOf(seed), 9);
+  const n = m.length;
   const total = n + quiet * 2;
   const cell = size / total;
   const g = cell * 0.07;
   const rx = cell * 0.18;
-  const m = buildMatrix(n, seedOf(seed), hole);
   const rects = matrixRectsSvg(m, n, { quiet, cell, g }, rx);
-  const centre = isLogo ? logoCentreSvg(size) : badgeCentreSvg(status, size);
+  const isLogo = status === "logo" || !BADGE_HEX[status];
+  const centre = real
+    ? ""
+    : isLogo
+      ? logoCentreSvg(size)
+      : badgeCentreSvg(status, size);
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
     `<rect width="${size}" height="${size}" rx="${(size * 0.06).toFixed(1)}" fill="#ffffff"/>` +
@@ -387,24 +411,30 @@ export interface DownloadPNGOpts {
   seed?: string | undefined;
   alias?: string | undefined;
   size?: number | undefined;
+  /** The full link to encode as a REAL scannable QR. When set, the exported
+   * image is a working QR of this URL (no centre logo); without it the image is
+   * the decorative faux matrix. The URL carries only the opaque id (+ key), never
+   * a handle, so invariant 8 holds. */
+  value?: string | undefined;
 }
 
-// downloadPNG({ status, seed | alias, size }) → triggers a PNG download.
-// No `handle` parameter: a QR is only ever seeded by an opaque alias id.
+// downloadPNG({ status, value, seed | alias, size }) → triggers a PNG download.
+// No `handle` parameter: a QR is only ever seeded/encoded from an opaque alias
+// id (or a link built from one), never a handle.
 export function downloadPNG(opts?: DownloadPNGOpts): void {
   const o = opts ?? {};
   // "logo" → a status-free link-carrier image; otherwise the two-state badge.
   const status = o.status ?? "blue";
-  // Seed the matrix by the opaque ALIAS id ONLY. The chain can resolve to
-  // opts.seed or opts.alias (both opaque alias ids) and nothing else, no
-  // opts.handle path, no "robin" literal, so a QR can never be seeded from a
+  // Seed the (decorative) matrix by the opaque ALIAS id ONLY. The chain can
+  // resolve to opts.seed or opts.alias (both opaque alias ids) and nothing else,
+  // no opts.handle path, no "robin" literal, so a QR can never be seeded from a
   // human handle (invariant 8). If neither is supplied it falls to a neutral,
   // non-identifying placeholder, never a handle.
   const seed = o.seed ?? o.alias ?? "alias";
   // Download filename is derived from the opaque seed, never a handle.
   const fileTag = seed.replace(/[^a-z0-9]/gi, "") || "alias";
   const size = o.size ?? 1024;
-  const svg = svgString(status, seed, size);
+  const svg = svgString(status, seed, size, o.value);
   const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
   const img = new Image();
   img.onload = () => {
