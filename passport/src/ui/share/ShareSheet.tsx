@@ -15,6 +15,7 @@ import type { BadgeState, ProtectionLabel, Route } from "../badge-card.tsx";
 import { Matrix, downloadPNG } from "../../lib/qr.tsx";
 import type { AliasIdentity } from "../../store/index.ts";
 import { IdentityChoiceRow, previewFace } from "./ShareSheet.identity.tsx";
+import { DurationRow } from "./ShareSheet.duration.tsx";
 import { Grabber, WalletRow } from "./ShareSheet.parts.tsx";
 
 /* ShareSheet, the share modal opened by "Share my passport" and the share-rail
@@ -87,6 +88,11 @@ export interface ShareSheetProps {
   /** Choose the link's face. When absent, the identity control is hidden (e.g.
    * Storybook), and the preview shows whatever `identity`/`avatarSrc` is passed. */
   onIdentityChange?: ((choice: AliasIdentity) => void) | undefined;
+  /** The link's lifetime (doc 16): a day count, or null for until-revoked. */
+  durationChoice?: number | null | undefined;
+  /** Set the link's lifetime in place. When absent, the lifetime control is
+   * hidden (e.g. Storybook). */
+  onDurationChange?: ((durationDays: number | null) => void) | undefined;
 }
 
 function SheetHeader({
@@ -276,6 +282,8 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
     desktop = false,
     identityChoice = "anonymous",
     onIdentityChange,
+    durationChoice = null,
+    onDurationChange,
   } = props;
   const link = sharingMode === "link";
   const { url, seed } = displayLink(realUrl, link);
@@ -335,13 +343,12 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
         >
           <Eye size={14} /> {COPY.reassurance}
         </div>
-        {onIdentityChange && (
-          <IdentityChoiceRow
-            handle={identity.handle}
-            choice={identityChoice}
-            onChange={onIdentityChange}
-          />
-        )}
+        <IdentityChoiceRow
+          handle={identity.handle}
+          choice={identityChoice}
+          onChange={onIdentityChange}
+        />
+        <DurationRow choice={durationChoice} onChange={onDurationChange} />
         <UrlCard link={link} url={url} seed={seed} onCopy={onCopy} />
         <WalletRow show={showWallet} onWallet={onWallet} />
         <div style={{ display: "flex", gap: 10, marginTop: 14 }}>

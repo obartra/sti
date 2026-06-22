@@ -37,6 +37,8 @@ export interface ChromeProps {
   onRevokeShareLink: () => void;
   shareIdentity: AliasIdentity;
   onShareIdentityChange: (choice: AliasIdentity) => void;
+  shareDuration: number | null;
+  onShareDurationChange: (durationDays: number | null) => void;
   onDeleteAccount: () => void;
   knockCount: number;
   refreshKnocks: () => void;
@@ -93,6 +95,8 @@ function ShareOverlay({
   onRevokeShareLink,
   shareIdentity,
   onShareIdentityChange,
+  shareDuration,
+  onShareDurationChange,
 }: ChromeProps) {
   return (
     <ShareSheet
@@ -107,6 +111,8 @@ function ShareOverlay({
       url={shareUrl}
       identityChoice={shareIdentity}
       onIdentityChange={onShareIdentityChange}
+      durationChoice={shareDuration}
+      onDurationChange={onShareDurationChange}
       onCopy={onCopyShareLink}
       onRevoke={onRevokeShareLink}
       onWallet={() => {

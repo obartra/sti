@@ -56,6 +56,7 @@ function stubController(over: Partial<SessionController>): SessionController {
     createContactLink: unused,
     revokeContact: unused,
     setContactDuration: unused,
+    setShareLinkDuration: unused,
     revokeAlias: unused,
     acceptContactInvite: unused,
     ingestContactReturn: unused,
@@ -156,5 +157,29 @@ describe("useShareLink identity choice", () => {
     const { result } = setup(stubController({ renewLink }));
     act(() => result.current.setIdentity("anonymous")); // already anonymous
     expect(renewLink).not.toHaveBeenCalled();
+  });
+});
+
+describe("useShareLink lifetime", () => {
+  it("defaults to no expiry and sets a lifetime in place (no renew)", () => {
+    const setShareLinkDuration = vi.fn(() => Promise.resolve(session));
+    const renewLink = vi.fn();
+    const { result } = setup(
+      stubController({ setShareLinkDuration, renewLink }),
+    );
+
+    expect(result.current.duration).toBeNull();
+    act(() => result.current.setDuration(7));
+    expect(result.current.duration).toBe(7);
+    // The link's expiry moves in place; it is NOT a renew (the URL is unchanged).
+    expect(setShareLinkDuration).toHaveBeenCalledWith(session, 7);
+    expect(renewLink).not.toHaveBeenCalled();
+  });
+
+  it("re-selecting the current lifetime is a no-op", () => {
+    const setShareLinkDuration = vi.fn(() => Promise.resolve(session));
+    const { result } = setup(stubController({ setShareLinkDuration }));
+    act(() => result.current.setDuration(null)); // already null
+    expect(setShareLinkDuration).not.toHaveBeenCalled();
   });
 });

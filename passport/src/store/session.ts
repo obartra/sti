@@ -52,6 +52,7 @@ import {
   setContactLinkExpiry,
   revokeAliasLink,
   shareLinkFor,
+  setShareLinkExpiry,
 } from "./shareOps.ts";
 
 /** An unlocked session: the master (in memory only) and the loaded account. */
@@ -118,6 +119,16 @@ export interface SessionController {
     session: OwnerSession,
     identity?: AliasIdentity,
   ): Promise<ShareLinkResult>;
+  /**
+   * Change the share-sheet link's lifetime in place (doc 16): the link for the
+   * current sharing mode keeps resolving, only its stored expiry moves.
+   * `durationDays` is counted from today; null means until-revoked. A no-op if no
+   * link has been minted for this mode yet.
+   */
+  setShareLinkDuration(
+    session: OwnerSession,
+    durationDays: number | null,
+  ): Promise<OwnerSession>;
   /**
    * Permanently delete the account: revoke every shared link and remove the
    * account blob, then forget this device's passkey binding. After this the
@@ -406,6 +417,9 @@ export function createSessionController(deps: SessionDeps): SessionController {
       // the mode, since the old record is gone).
       return shareLinkFor(api, accounts, working, identity);
     },
+
+    setShareLinkDuration: (session, durationDays) =>
+      setShareLinkExpiry(accounts, session, durationDays),
 
     async deleteAccount(session) {
       await accounts.deleteAccount(session.master);
