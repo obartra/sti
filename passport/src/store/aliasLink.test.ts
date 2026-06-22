@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseAliasLink } from "./aliasLink.ts";
+import { parseAliasLink, parseScannedLink } from "./aliasLink.ts";
 
 const ID = "A".repeat(43);
 const KEY = "B".repeat(43);
@@ -35,5 +35,46 @@ describe("parseAliasLink", () => {
 
   it("returns null for a malformed key", () => {
     expect(parseAliasLink(`/a/${ID}`, "#k=too-short")).toBeNull();
+  });
+});
+
+describe("parseScannedLink", () => {
+  it("parses a full sti.care alias URL", () => {
+    expect(parseScannedLink(`https://sti.care/a/${ID}#k=${KEY}`)).toEqual({
+      id: ID,
+      key: KEY,
+    });
+  });
+
+  it("tolerates surrounding whitespace from the decoder", () => {
+    expect(parseScannedLink(`  https://sti.care/a/${ID}#k=${KEY}\n`)).toEqual({
+      id: ID,
+      key: KEY,
+    });
+  });
+
+  it("rejects a link to any other host (untrusted QR cannot redirect off-site)", () => {
+    expect(
+      parseScannedLink(`https://evil.example/a/${ID}#k=${KEY}`),
+    ).toBeNull();
+    // Even a look-alike subdomain is rejected: only the exact host is followed.
+    expect(
+      parseScannedLink(`https://sti.care.evil.com/a/${ID}#k=${KEY}`),
+    ).toBeNull();
+  });
+
+  it("accepts an explicit same-origin host (local/preview testing)", () => {
+    expect(
+      parseScannedLink(
+        `http://localhost:5173/a/${ID}#k=${KEY}`,
+        "localhost:5173",
+      ),
+    ).toEqual({ id: ID, key: KEY });
+  });
+
+  it("returns null for non-URL junk or a non-alias sti.care URL", () => {
+    expect(parseScannedLink("not a url")).toBeNull();
+    expect(parseScannedLink("https://sti.care/about")).toBeNull();
+    expect(parseScannedLink(`https://sti.care/a/${ID}`)).toBeNull(); // no key
   });
 });
