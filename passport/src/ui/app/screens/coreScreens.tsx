@@ -21,12 +21,54 @@ export interface KnockInbox {
   approving: boolean;
 }
 
-/** Whether the re-test row shows, and whether the owner has ever tested. */
+// How many days before the freshness window lapses the re-test nudge starts
+// warning, so the owner can refresh before their status goes gray rather than after.
+const RETEST_SOON_DAYS = 14;
+
+/** Inputs that decide the re-test row: pause state, days left, ever-tested. */
 export interface RetestState {
-  /** Freshness has lapsed (or was never set) and the owner isn't paused. */
-  due: boolean;
-  /** The owner has a recorded test (distinguishes "re-test" from "set up"). */
+  /** Manually paused or in a post-positive clearance window: no re-test nudge. */
+  suppressed: boolean;
+  /** Days left in the 90-day freshness window (0 when untested or lapsed). */
+  daysLeft: number;
+  /** The owner has a recorded test (distinguishes re-test / soon from set-up). */
   tested: boolean;
+}
+
+// The re-test row, or null when not warranted. Lapsed (or never set) reads as a
+// firm nudge; the last RETEST_SOON_DAYS before lapse read as an advance warning so
+// the owner can refresh before going gray; otherwise nothing. Suppressed while
+// paused or in a clearance window. Never shown to a freshly-tested owner.
+function retestRow(
+  retest: RetestState,
+  go: (to: "report") => void,
+): NotificationItem | null {
+  if (retest.suppressed) return null;
+  if (retest.daysLeft === 0) {
+    return retest.tested
+      ? {
+          icon: "bell",
+          title: "Time to re-test",
+          sub: "Your status has gone gray. A fresh test brings it back.",
+          onOpen: () => go("report"),
+        }
+      : {
+          icon: "bell",
+          title: "Set up your status",
+          sub: "Take a test to start sharing where you stand.",
+          onOpen: () => go("report"),
+        };
+  }
+  if (retest.daysLeft <= RETEST_SOON_DAYS) {
+    const days = retest.daysLeft === 1 ? "1 day" : `${retest.daysLeft} days`;
+    return {
+      icon: "bell",
+      title: "Time to re-test soon",
+      sub: `${days} left before your status goes gray.`,
+      onOpen: () => go("report"),
+    };
+  }
+  return null;
 }
 
 export function notificationItems(
@@ -50,26 +92,8 @@ export function notificationItems(
       },
     });
   }
-  // The re-test row only when freshness has lapsed (or was never set) and the owner
-  // isn't paused / in a clearance window, never a standing row for someone who just
-  // tested. Copy fits whether they have a lapsed status or none yet.
-  if (retest.due) {
-    items.push(
-      retest.tested
-        ? {
-            icon: "bell",
-            title: "Time to re-test",
-            sub: "Your status has gone gray. A fresh test brings it back.",
-            onOpen: () => go("report"),
-          }
-        : {
-            icon: "bell",
-            title: "Set up your status",
-            sub: "Take a test to start sharing where you stand.",
-            onOpen: () => go("report"),
-          },
-    );
-  }
+  const retestItem = retestRow(retest, go);
+  if (retestItem !== null) items.push(retestItem);
   if (knocks.canApprove) {
     items.push({
       icon: "users",
@@ -148,7 +172,8 @@ export const coreRenderers: ScreenRenderers = {
         },
         { show: showPartnerNudge, dismiss: dismissPartnerNudge },
         {
-          due: !owner.paused && !owner.autoPaused && owner.daysLeft === 0,
+          suppressed: owner.paused || owner.autoPaused,
+          daysLeft: owner.daysLeft,
           tested: ownerState.testing.lastPanelDay !== null,
         },
         (to) => nav.go(to),
