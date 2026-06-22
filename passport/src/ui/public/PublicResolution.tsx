@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   type BadgeState,
   type ProtectionLabel,
@@ -37,6 +37,9 @@ export interface PublicResolutionProps {
   resolved: ResolvedView | null;
   // Self-preview ("this is what others see"); no claim/verify CTAs.
   self?: boolean;
+  // Optional control rendered under the self banner (the per-alias face picker,
+  // doc 15): lets the owner preview the face each of their links resolves to.
+  picker?: ReactNode;
   // Arrived via the shared link: only this viewer gets the knock affordance on
   // gray-nothing. A cold/guessed open never reaches it.
   linkHolder?: boolean;
@@ -54,6 +57,7 @@ export interface PublicResolutionProps {
 export function PublicResolution({
   resolved,
   self = false,
+  picker,
   linkHolder = false,
   initialKnockSent = false,
   canAccept = false,
@@ -82,6 +86,7 @@ export function PublicResolution({
       <BackBar onBack={onBack} />
 
       {self && <SelfBanner />}
+      {self && picker}
 
       <ResolvedBadge resolved={resolved} />
 

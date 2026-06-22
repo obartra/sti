@@ -1,20 +1,11 @@
 import { Landing } from "../../public/Landing.tsx";
 import { PublicResolution } from "../../public/PublicResolution.tsx";
 import { PublicResolutionScreen } from "../../public/PublicResolutionScreen.tsx";
+import { SelfPreview } from "../../public/SelfPreview.tsx";
 import { Alert } from "../../public/Alert.tsx";
 import { Exposed } from "../../public/Exposed.tsx";
 import { SAMPLE_RESOLVED } from "../fixtures.ts";
-import type { ScreenCtx, ScreenRenderers } from "./context.ts";
-
-function selfCard(ctx: ScreenCtx) {
-  const { owner } = ctx;
-  return {
-    state: owner.viewerBadge,
-    labels: owner.labels,
-    route: owner.blueRoute,
-    identity: { handle: owner.handle },
-  };
-}
+import type { ScreenRenderers } from "./context.ts";
 
 export const publicRenderers: ScreenRenderers = {
   "a1-landing": ({ nav }) => (
@@ -28,12 +19,14 @@ export const publicRenderers: ScreenRenderers = {
     const onClaim = () => ctx.nav.go("b1-claim");
     const onVerify = () => ctx.nav.go("learn");
 
-    // Self-preview ("what others see"): the owner's own card, computed locally.
+    // Self-preview ("what others see"): per alias (doc 15). The owner picks which
+    // link to preview and sees the exact face it resolves to, computed locally.
     if (ctx.data?.self) {
       return (
-        <PublicResolution
-          resolved={selfCard(ctx)}
-          self
+        <SelfPreview
+          aliases={ctx.aliases}
+          state={ctx.ownerState}
+          accountHandle={ctx.owner.handle}
           onBack={ctx.nav.back}
           onClaim={onClaim}
           onVerify={onVerify}
