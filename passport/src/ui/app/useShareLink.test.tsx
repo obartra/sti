@@ -120,3 +120,40 @@ describe("useShareLink serialization", () => {
     expect(result.current.shareUrl).toBe(RESULT.url);
   });
 });
+
+describe("useShareLink identity choice", () => {
+  it("opens anonymous by default and mints with that face", async () => {
+    const d = deferred<ShareLinkResult>();
+    const shareLink = vi.fn(() => d.promise);
+    const { result } = setup(stubController({ shareLink }));
+
+    expect(result.current.identity).toBe("anonymous");
+    act(() => result.current.setShareOpen(true));
+    expect(shareLink).toHaveBeenCalledWith(session, "anonymous");
+    await act(async () => {
+      d.resolve(RESULT);
+      await d.promise;
+    });
+  });
+
+  it("changing the face rotates to a fresh alias carrying it (renew)", async () => {
+    const d = deferred<ShareLinkResult>();
+    const renewLink = vi.fn(() => d.promise);
+    const { result } = setup(stubController({ renewLink }));
+
+    act(() => result.current.setIdentity("main"));
+    expect(result.current.identity).toBe("main");
+    expect(renewLink).toHaveBeenCalledWith(session, "main");
+    await act(async () => {
+      d.resolve(RESULT);
+      await d.promise;
+    });
+  });
+
+  it("re-selecting the current face is a no-op (no rotation)", () => {
+    const renewLink = vi.fn();
+    const { result } = setup(stubController({ renewLink }));
+    act(() => result.current.setIdentity("anonymous")); // already anonymous
+    expect(renewLink).not.toHaveBeenCalled();
+  });
+});

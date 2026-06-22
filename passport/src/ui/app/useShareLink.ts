@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState, type RefObject } from "react";
 import type {
+  AliasIdentity,
   OwnerSession,
   SessionController,
   ShareLinkResult,
@@ -14,6 +15,13 @@ export interface ShareLinkControls {
   readonly copyShareLink: () => void;
   /** Revoke the current link (it stops resolving) and surface a fresh one. */
   readonly revokeLink: () => void;
+  /** The face this link shows: anonymous (id-derived) or the owner's main identity. */
+  readonly identity: AliasIdentity;
+  /**
+   * Choose the link's face. Changing it rotates to a fresh alias carrying the new
+   * face (a renew), since an already-shared alias keeps the face it was minted with.
+   */
+  readonly setIdentity: (choice: AliasIdentity) => void;
 }
 
 /**
@@ -31,6 +39,10 @@ export function useShareLink(
   setShareOpen: (open: boolean) => void,
 ): ShareLinkControls {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  // The chosen face for the link, mirrored in a ref so callbacks read the latest
+  // without re-subscribing. Defaults to anonymous (the unlinkable id-derived face).
+  const [identity, setIdentityState] = useState<AliasIdentity>("anonymous");
+  const identityRef = useRef<AliasIdentity>("anonymous");
   // Serializes link work (mint / republish / revoke) against the session: a
   // second call while one is in flight is dropped, so two opens cannot race into
   // duplicate mints and a revoke cannot interleave with an open. Reset on settle.
@@ -68,14 +80,27 @@ export function useShareLink(
   const open = useCallback(
     (next: boolean) => {
       setShareOpen(next);
-      if (next) prepare((s) => controller.shareLink(s), true);
+      if (next)
+        prepare((s) => controller.shareLink(s, identityRef.current), true);
     },
     [controller, prepare, setShareOpen],
   );
 
   const revokeLink = useCallback(() => {
-    prepare((s) => controller.renewLink(s), false);
+    prepare((s) => controller.renewLink(s, identityRef.current), false);
   }, [controller, prepare]);
+
+  // Changing the face rotates to a fresh alias carrying it (renew), because an
+  // already-minted alias keeps the face it was sealed with. A no-op if unchanged.
+  const setIdentity = useCallback(
+    (choice: AliasIdentity) => {
+      if (choice === identityRef.current) return;
+      identityRef.current = choice;
+      setIdentityState(choice);
+      prepare((s) => controller.renewLink(s, choice), false);
+    },
+    [controller, prepare],
+  );
 
   const copyShareLink = useCallback(() => {
     if (shareUrl === null) return;
@@ -86,5 +111,12 @@ export function useShareLink(
     }
   }, [shareUrl]);
 
-  return { shareUrl, setShareOpen: open, copyShareLink, revokeLink };
+  return {
+    shareUrl,
+    setShareOpen: open,
+    copyShareLink,
+    revokeLink,
+    identity,
+    setIdentity,
+  };
 }

@@ -8,13 +8,14 @@ import {
   Globe,
   Copy,
   Download,
-  QrCode,
-  ArrowRight,
   Refresh,
 } from "../../design/icons.tsx";
 import { BadgeCard } from "../badge-card.tsx";
 import type { BadgeState, ProtectionLabel, Route } from "../badge-card.tsx";
 import { Matrix, downloadPNG } from "../../lib/qr.tsx";
+import type { AliasIdentity } from "../../store/index.ts";
+import { IdentityChoiceRow, previewFace } from "./ShareSheet.identity.tsx";
+import { Grabber, WalletRow } from "./ShareSheet.parts.tsx";
 
 /* ShareSheet, the share modal opened by "Share my passport" and the share-rail
    buttons. Faithful port of the design prototype's ShareSheet (app/shell.jsx).
@@ -36,8 +37,6 @@ const COPY = {
   noteLink: "Only people you send this private link to can open it.",
   copyLink: "Copy link",
   saveQr: "Save QR image",
-  walletTitle: "Add to Apple or Google Wallet",
-  walletSub: "Keep your pass a swipe away",
   revoke: "Revoke & renew",
   share: "Share",
 } as const;
@@ -82,6 +81,12 @@ export interface ShareSheetProps {
    */
   showWallet?: boolean | undefined;
   desktop?: boolean | undefined;
+  /** The face this link shows (doc 15): anonymous (id-derived) or the owner's
+   * main identity. Defaults to anonymous. */
+  identityChoice?: AliasIdentity | undefined;
+  /** Choose the link's face. When absent, the identity control is hidden (e.g.
+   * Storybook), and the preview shows whatever `identity`/`avatarSrc` is passed. */
+  onIdentityChange?: ((choice: AliasIdentity) => void) | undefined;
 }
 
 function SheetHeader({
@@ -215,68 +220,6 @@ function UrlCard({
   );
 }
 
-function WalletRow({
-  onWallet,
-}: {
-  onWallet: (() => void) | undefined;
-}): ReactElement {
-  return (
-    <button
-      type="button"
-      onClick={onWallet}
-      style={{
-        appearance: "none",
-        cursor: "pointer",
-        width: "100%",
-        marginTop: 12,
-        textAlign: "left",
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "12px 14px",
-        borderRadius: "var(--radius-md)",
-        border: "1px solid var(--border-card)",
-        background: "var(--surface-card)",
-        boxShadow: "var(--shadow-sm)",
-      }}
-    >
-      <span
-        style={{
-          flex: "none",
-          width: 38,
-          height: 38,
-          borderRadius: "var(--radius-sm)",
-          background: "#1B1B2F",
-          color: "#fff",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <QrCode size={19} />
-      </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 14.5,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-          }}
-        >
-          {COPY.walletTitle}
-        </div>
-        <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-          {COPY.walletSub}
-        </div>
-      </div>
-      <ArrowRight
-        size={18}
-        style={{ color: "var(--text-subtle)", flex: "none" }}
-      />
-    </button>
-  );
-}
-
 function sheetStyleFor(desktop: boolean, open: boolean): CSSProperties {
   if (desktop)
     return {
@@ -331,9 +274,19 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
     onWallet,
     showWallet = true,
     desktop = false,
+    identityChoice = "anonymous",
+    onIdentityChange,
   } = props;
   const link = sharingMode === "link";
   const { url, seed } = displayLink(realUrl, link);
+  // The preview shows the viewer's actual face for this link (see previewFace).
+  const face = previewFace({
+    choice: identityChoice,
+    identity,
+    avatarSrc,
+    seed,
+    hasControl: onIdentityChange !== undefined,
+  });
 
   return (
     <div
@@ -358,24 +311,14 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
         }}
       />
       <div style={sheetStyleFor(desktop, open)}>
-        {!desktop && (
-          <div
-            style={{
-              width: 40,
-              height: 4,
-              borderRadius: 999,
-              background: "var(--ink-200)",
-              margin: "0 auto 16px",
-            }}
-          />
-        )}
+        <Grabber desktop={desktop} />
         <SheetHeader link={link} onClose={onClose} />
         <BadgeCard
           state={state}
           labels={labels}
           route={route}
-          identity={identity}
-          avatarSrc={avatarSrc}
+          identity={{ handle: face.handle }}
+          avatarSrc={face.avatarSrc}
           width="100%"
         />
         <div
@@ -392,8 +335,15 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
         >
           <Eye size={14} /> {COPY.reassurance}
         </div>
+        {onIdentityChange && (
+          <IdentityChoiceRow
+            handle={identity.handle}
+            choice={identityChoice}
+            onChange={onIdentityChange}
+          />
+        )}
         <UrlCard link={link} url={url} seed={seed} onCopy={onCopy} />
-        {showWallet && <WalletRow onWallet={onWallet} />}
+        <WalletRow show={showWallet} onWallet={onWallet} />
         <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
           {link && (
             <Button
