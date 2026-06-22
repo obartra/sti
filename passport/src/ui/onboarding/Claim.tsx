@@ -6,10 +6,10 @@ import { CreateFlow } from "./ClaimCreateFlow.tsx";
 import { COPY, sectionLabel } from "./claimCopy.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
 
-// B1 claim account. Faithful port of onboarding.jsx Claim + AvatarBuilder, copy
-// verbatim from copy.js (claim). Passkey is the one MVP unlock path: no email,
-// no phone, no SSO. The first alias is opaque + PRIVATE by default; vanity is an
-// explicit, public-only opt-in (off by default).
+// B1 claim account. Passkey is the one MVP unlock path: no email, no phone, no
+// SSO. The handle + avatar are the owner's main identity (doc 15), the face they
+// can choose to show; every link is anonymous by default. How a link is reached
+// (Direct / Gated / Findable) is chosen later, at first-run setup (doc 16).
 
 export interface ClaimProps {
   /** When true, render the login (unlock) variant instead of the create flow. */
