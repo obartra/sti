@@ -23,8 +23,8 @@ export const Approvable: Story = {
     items: [
       {
         icon: "bell",
-        title: "Time to re-test soon",
-        sub: "Keep your status up to date",
+        title: "Time to re-test",
+        sub: "Your status has gone gray. A fresh test brings it back.",
       },
       {
         icon: "users",

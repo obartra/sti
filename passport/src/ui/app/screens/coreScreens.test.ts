@@ -1,6 +1,10 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { notificationItems, type KnockInbox } from "./coreScreens.tsx";
+import {
+  notificationItems,
+  type KnockInbox,
+  type RetestState,
+} from "./coreScreens.tsx";
 
 function inbox(over: Partial<KnockInbox> = {}): KnockInbox {
   return {
@@ -16,19 +20,27 @@ function nudge(show = false): { show: boolean; dismiss: () => void } {
   return { show, dismiss: () => undefined };
 }
 
+// Re-test gating: by default not due (a freshly-tested owner sees no re-test row),
+// so the knock/partner assertions below are isolated from it.
+function retest(over: Partial<RetestState> = {}): RetestState {
+  return { due: false, tested: true, ...over };
+}
+
 describe("notificationItems (inbox privacy contract)", () => {
   it("shows the knock entry only when there is something to surface", () => {
-    const none = notificationItems(inbox(), nudge(), () => undefined);
+    const none = notificationItems(inbox(), nudge(), retest(), () => undefined);
     expect(none.some((i) => i.icon === "users")).toBe(false);
     const info = notificationItems(
       inbox({ showInfo: true }),
       nudge(),
+      retest(),
       () => undefined,
     );
     expect(info.some((i) => i.icon === "users")).toBe(true);
     const grant = notificationItems(
       inbox({ canApprove: true }),
       nudge(),
+      retest(),
       () => undefined,
     );
     expect(grant.some((i) => i.icon === "users")).toBe(true);
@@ -41,7 +53,7 @@ describe("notificationItems (inbox privacy contract)", () => {
       inbox({ canApprove: true, showInfo: true }),
     ];
     for (const c of cases) {
-      const knock = notificationItems(c, nudge(), () => undefined).find(
+      const knock = notificationItems(c, nudge(), retest(), () => undefined).find(
         (i) => i.icon === "users",
       );
       expect(knock).toBeDefined();
@@ -56,6 +68,7 @@ describe("notificationItems (inbox privacy contract)", () => {
     const grantable = notificationItems(
       inbox({ canApprove: true, approve: () => (approved = true) }),
       nudge(),
+      retest(),
       () => undefined,
     ).find((i) => i.icon === "users");
     expect(grantable?.action?.label).toBe("Approve");
@@ -67,6 +80,7 @@ describe("notificationItems (inbox privacy contract)", () => {
     const infoOnly = notificationItems(
       inbox({ showInfo: true }),
       nudge(),
+      retest(),
       () => undefined,
     ).find((i) => i.icon === "users");
     expect(infoOnly?.action).toBeUndefined();
@@ -77,6 +91,7 @@ describe("notificationItems (inbox privacy contract)", () => {
     const items = notificationItems(
       inbox({ canApprove: true, showInfo: true }),
       nudge(),
+      retest(),
       () => undefined,
     ).filter((i) => i.icon === "users");
     expect(items).toHaveLength(1);
@@ -86,7 +101,7 @@ describe("notificationItems (inbox privacy contract)", () => {
   it("once nothing is grantable or info-worthy, the knock entry disappears", () => {
     // The state right after approving the only knock: canApprove flips off and
     // showInfo is false (no un-grantable knocks remain), so the row clears.
-    const items = notificationItems(inbox(), nudge(), () => undefined);
+    const items = notificationItems(inbox(), nudge(), retest(), () => undefined);
     expect(items.some((i) => i.icon === "users")).toBe(false);
   });
 
@@ -94,24 +109,53 @@ describe("notificationItems (inbox privacy contract)", () => {
     const item = notificationItems(
       inbox({ canApprove: true, approving: true }),
       nudge(),
+      retest(),
       () => undefined,
     ).find((i) => i.icon === "users");
     expect(item?.action?.busy).toBe(true);
   });
 
-  it("the standing re-test nudge is always present and carries no timestamp", () => {
-    const retest = notificationItems(inbox(), nudge(), () => undefined).find(
-      (i) => i.icon === "bell",
-    );
-    expect(retest).toBeDefined();
-    expect(retest?.when).toBeUndefined();
+  it("hides the re-test row for a freshly-tested owner (not due)", () => {
+    const items = notificationItems(inbox(), nudge(), retest({ due: false }), () => undefined);
+    expect(items.some((i) => i.icon === "bell")).toBe(false);
+  });
+
+  it("shows a lapsed re-test row when due and the owner has tested before", () => {
+    const row = notificationItems(
+      inbox(),
+      nudge(),
+      retest({ due: true, tested: true }),
+      () => undefined,
+    ).find((i) => i.icon === "bell");
+    expect(row?.title).toBe("Time to re-test");
+    expect(row?.when).toBeUndefined();
+  });
+
+  it("shows a set-up row when due and the owner has never tested", () => {
+    const row = notificationItems(
+      inbox(),
+      nudge(),
+      retest({ due: true, tested: false }),
+      () => undefined,
+    ).find((i) => i.icon === "bell");
+    expect(row?.title).toBe("Set up your status");
   });
 
   it("surfaces the partner-notify row only when a contact reported, and it is contentless", () => {
-    const absent = notificationItems(inbox(), nudge(false), () => undefined);
+    const absent = notificationItems(
+      inbox(),
+      nudge(false),
+      retest(),
+      () => undefined,
+    );
     expect(absent.some((i) => i.icon === "heart")).toBe(false);
 
-    const present = notificationItems(inbox(), nudge(true), () => undefined);
+    const present = notificationItems(
+      inbox(),
+      nudge(true),
+      retest(),
+      () => undefined,
+    );
     const row = present.find((i) => i.icon === "heart");
     expect(row).toBeDefined();
     // Contentless: it names no contact, carries no count or timestamp.
@@ -128,6 +172,7 @@ describe("notificationItems (inbox privacy contract)", () => {
     const row = notificationItems(
       inbox(),
       { show: true, dismiss: () => (dismissed = true) },
+      retest(),
       (to) => (routed = to),
     ).find((i) => i.icon === "heart");
     row?.onOpen?.();
