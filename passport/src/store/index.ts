@@ -15,7 +15,7 @@ export {
   type GrantKeyStore,
 } from "./grantKeyStore.ts";
 export { serializePublicCard, parsePublicCard } from "./publicCard.ts";
-export { parseAliasLink } from "./aliasLink.ts";
+export { parseAliasLink, parseScannedLink } from "./aliasLink.ts";
 export type { AccountSync } from "./accountSync.ts";
 export { createAccountSync } from "./accountSync.ts";
 export type {

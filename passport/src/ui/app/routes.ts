@@ -14,6 +14,7 @@ export const ALL_SCREENS = [
   "home",
   "connect",
   "alias-share",
+  "scan",
   "wallet",
   "care",
   "notifications",

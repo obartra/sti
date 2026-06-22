@@ -28,3 +28,28 @@ export function parseAliasLink(
 
   return { id, key };
 }
+
+// The canonical site host that share links are built against.
+const SITE_HOST = "sti.care";
+
+/**
+ * Parse the text decoded from a scanned QR into an {@link AliasLink}. A scanned
+ * code is untrusted input, so this is deliberately strict: it must be a full URL
+ * to our own site (the canonical host, or `selfHost` for same-origin testing),
+ * and its path + fragment must be a well-formed public alias link. Anything else
+ * (a different host, a non-link URL, junk, a private/keyless link) is null, so a
+ * malicious QR can never redirect the viewer off-site. Pure and total.
+ */
+export function parseScannedLink(
+  text: string,
+  selfHost?: string,
+): AliasLink | null {
+  let url: URL;
+  try {
+    url = new URL(text.trim());
+  } catch {
+    return null;
+  }
+  if (url.host !== SITE_HOST && url.host !== selfHost) return null;
+  return parseAliasLink(url.pathname, url.hash);
+}
