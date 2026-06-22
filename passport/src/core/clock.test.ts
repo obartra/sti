@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { toEpochDay, todayEpochDay } from "./clock.ts";
+import { toEpochDay, todayEpochDay, relativeDayLabel } from "./clock.ts";
 
 describe("epoch day", () => {
   it("counts whole UTC days since the epoch", () => {
@@ -20,5 +20,19 @@ describe("epoch day", () => {
     const d = todayEpochDay();
     expect(Number.isInteger(d)).toBe(true);
     expect(d).toBeGreaterThan(0);
+  });
+});
+
+describe("relativeDayLabel", () => {
+  const today = 1000;
+  it("buckets a past day into a coarse label", () => {
+    expect(relativeDayLabel(1000, today)).toBe("Today");
+    expect(relativeDayLabel(1001, today)).toBe("Today"); // future reads as today
+    expect(relativeDayLabel(999, today)).toBe("Yesterday");
+    expect(relativeDayLabel(996, today)).toBe("4 days ago");
+    expect(relativeDayLabel(990, today)).toBe("1 week ago");
+    expect(relativeDayLabel(983, today)).toBe("2 weeks ago");
+    expect(relativeDayLabel(965, today)).toBe("1 month ago");
+    expect(relativeDayLabel(900, today)).toBe("3 months ago");
   });
 });

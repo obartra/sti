@@ -27,3 +27,20 @@ export function todayEpochDay(): number {
 export function epochDayToDate(day: number): Date {
   return new Date(day * MS_PER_DAY);
 }
+
+/**
+ * A coarse "when" label for a past day relative to today (Today / Yesterday /
+ * N days / N weeks / N months ago). Day-granular and approximate by design; used
+ * for owner-facing recency (e.g. a linkup's last-seen), never anything a viewer
+ * reads. A future or same day reads as "Today".
+ */
+export function relativeDayLabel(day: number, today: number): string {
+  const d = today - day;
+  if (d <= 0) return "Today";
+  if (d === 1) return "Yesterday";
+  if (d < 7) return `${d} days ago`;
+  if (d < 14) return "1 week ago";
+  if (d < 30) return `${Math.floor(d / 7)} weeks ago`;
+  if (d < 60) return "1 month ago";
+  return `${Math.floor(d / 30)} months ago`;
+}

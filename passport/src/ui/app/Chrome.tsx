@@ -45,6 +45,8 @@ export interface ChromeProps {
   contacts: ScreenCtx["contacts"];
   onCreateContactLink: ScreenCtx["onCreateContactLink"];
   onRevokeContact: ScreenCtx["onRevokeContact"];
+  faves: ScreenCtx["faves"];
+  onToggleFave: ScreenCtx["onToggleFave"];
   isLoggedIn: ScreenCtx["isLoggedIn"];
   onAcceptContactInvite: ScreenCtx["onAcceptContactInvite"];
   onIngestContactReturn: ScreenCtx["onIngestContactReturn"];
@@ -132,6 +134,8 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     contacts: props.contacts,
     onCreateContactLink: props.onCreateContactLink,
     onRevokeContact: props.onRevokeContact,
+    faves: props.faves,
+    onToggleFave: props.onToggleFave,
     isLoggedIn: props.isLoggedIn,
     onAcceptContactInvite: props.onAcceptContactInvite,
     onIngestContactReturn: props.onIngestContactReturn,
