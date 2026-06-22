@@ -17,7 +17,6 @@ export const ALL_SCREENS = [
   "scan-link",
   "alias-share",
   "wallet",
-  "results",
   "care",
   "notifications",
   "avatar-edit",
@@ -65,7 +64,7 @@ const PUBLIC: readonly Screen[] = ["a1-landing", "a2-public", "exposed"];
 const ONBOARD: readonly Screen[] = ["b1-claim", "b2-recovery", "b3-setup"];
 
 // The bottom tab bar (mobile) / sidebar (desktop) destinations.
-export const TABS = ["home", "connect", "circles", "results", "care"] as const;
+export const TABS = ["home", "connect", "circles", "care"] as const;
 export type Tab = (typeof TABS)[number];
 
 export function groupOf(screen: Screen): Group {

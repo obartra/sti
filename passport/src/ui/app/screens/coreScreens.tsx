@@ -1,5 +1,4 @@
 import { Home } from "../../core/Home.tsx";
-import { Results } from "../../core/Results.tsx";
 import { Care } from "../../core/Care.tsx";
 import { Notifications } from "../../core/Notifications.tsx";
 import type { NotificationItem } from "../../core/Notifications.tsx";
@@ -138,7 +137,6 @@ export const coreRenderers: ScreenRenderers = {
       onExtend={() => setOwnerState((s) => extendClearance(s, todayEpochDay()))}
     />
   ),
-  results: () => <Results />,
   care: ({ nav, owner }) => (
     <Care
       badge={owner.badge}

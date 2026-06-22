@@ -8,7 +8,6 @@ import {
   Passport,
   Users,
   Circles,
-  Results,
   Care,
   type IconProps,
 } from "../../design/icons.tsx";
@@ -17,7 +16,7 @@ import "./app-shell.css";
 const cx = (...parts: (string | false | undefined)[]) =>
   parts.filter(Boolean).join(" ");
 
-export type TabId = "home" | "connect" | "circles" | "results" | "care";
+export type TabId = "home" | "connect" | "circles" | "care";
 
 // Order, labels, and icons reproduced from shell.jsx TabBar + copy.js nav.
 const TABS: { id: TabId; label: string; Icon: (p: IconProps) => ReactNode }[] =
@@ -25,7 +24,6 @@ const TABS: { id: TabId; label: string; Icon: (p: IconProps) => ReactNode }[] =
     { id: "home", label: "Passport", Icon: Passport },
     { id: "connect", label: "Connect", Icon: Users },
     { id: "circles", label: "Circles", Icon: Circles },
-    { id: "results", label: "Results", Icon: Results },
     { id: "care", label: "Care", Icon: Care },
   ];
 

@@ -24,10 +24,10 @@ export const Default: Story = {
 
 export const SubScreenWithBackBar: Story = {
   render: function ShellBackStory() {
-    const [tab, setTab] = useState<TabId>("results");
+    const [tab, setTab] = useState<TabId>("care");
     return (
       <AppShell tab={tab} onTab={setTab} showAdd={false}>
-        <BackBar title="Results" />
+        <BackBar title="Care" />
         <Card style={{ marginTop: "var(--space-4)" }}>
           A sub-screen rendered under the back bar.
         </Card>

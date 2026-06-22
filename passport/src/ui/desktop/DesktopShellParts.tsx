@@ -11,7 +11,6 @@ import {
   Passport,
   Users,
   Circles,
-  Results,
   Care,
   Plus,
   Bell,
@@ -25,7 +24,7 @@ import {
    area), split out of Desktop.tsx so each file stays under the length ceiling.
    Faithful port of the design's app/desktop.jsx; output is unchanged. */
 
-export type DesktopTab = "home" | "connect" | "circles" | "results" | "care";
+export type DesktopTab = "home" | "connect" | "circles" | "care";
 
 // Copy inlined verbatim from copy.js (the strings the desktop AppShell reads:
 // nav.*, home.*).
@@ -34,7 +33,6 @@ const COPY = {
     passport: "Passport",
     connect: "Connect",
     circles: "Circles",
-    results: "Results",
     care: "Care",
   },
   home: {
@@ -52,7 +50,6 @@ export const NAV_ITEMS: {
   { id: "home", label: COPY.nav.passport, icon: Passport },
   { id: "connect", label: COPY.nav.connect, icon: Users },
   { id: "circles", label: COPY.nav.circles, icon: Circles },
-  { id: "results", label: COPY.nav.results, icon: Results },
   { id: "care", label: COPY.nav.care, icon: Care },
 ];
 
