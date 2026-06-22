@@ -39,3 +39,26 @@ export const MobilePrivate: Story = {
 export const Desktop: Story = {
   args: { ...base, sharingMode: "public", desktop: true },
 };
+
+// The per-alias identity choice (doc 15). Wiring onIdentityChange surfaces the
+// control: anonymous shows the id-derived face, main shows @handle + the
+// findability warning.
+export const IdentityAnonymous: Story = {
+  args: {
+    ...base,
+    sharingMode: "link",
+    desktop: false,
+    identityChoice: "anonymous",
+    onIdentityChange: () => undefined,
+  },
+};
+
+export const IdentityMain: Story = {
+  args: {
+    ...base,
+    sharingMode: "link",
+    desktop: false,
+    identityChoice: "main",
+    onIdentityChange: () => undefined,
+  },
+};

@@ -144,6 +144,8 @@ export function App({
     setShareOpen: handleSetShareOpen,
     copyShareLink,
     revokeLink,
+    identity: shareIdentity,
+    setIdentity: setShareIdentity,
   } = useShareLink(controller, sessionRef, setSession, setShareOpen);
 
   // The owner's quiet inbox: knock review + the partner-notify nudge (owner-pull).
@@ -185,6 +187,8 @@ export function App({
       shareUrl={shareUrl}
       onCopyShareLink={copyShareLink}
       onRevokeShareLink={revokeLink}
+      shareIdentity={shareIdentity}
+      onShareIdentityChange={setShareIdentity}
       knockCount={knockCount}
       refreshKnocks={refreshInbox}
       canApproveKnocks={canApproveKnocks}

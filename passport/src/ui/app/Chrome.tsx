@@ -9,7 +9,11 @@ import { VersionStamp } from "./VersionStamp.tsx";
 import { ScreenView } from "./screens/index.tsx";
 import { isTab, sectionOf, type Route, type Tab } from "./routes.ts";
 import type { Nav } from "./useAppRouter.ts";
-import type { OwnerView, PassportStore } from "../../store/index.ts";
+import type {
+  AliasIdentity,
+  OwnerView,
+  PassportStore,
+} from "../../store/index.ts";
 import type { ScreenCtx } from "./screens/context.ts";
 import type { OnboardingActions } from "./useOnboarding.ts";
 import type { ReportOutcome } from "../../core/report.ts";
@@ -31,6 +35,8 @@ export interface ChromeProps {
   shareUrl: string | null;
   onCopyShareLink: () => void;
   onRevokeShareLink: () => void;
+  shareIdentity: AliasIdentity;
+  onShareIdentityChange: (choice: AliasIdentity) => void;
   onDeleteAccount: () => void;
   knockCount: number;
   refreshKnocks: () => void;
@@ -84,6 +90,8 @@ function ShareOverlay({
   shareUrl,
   onCopyShareLink,
   onRevokeShareLink,
+  shareIdentity,
+  onShareIdentityChange,
 }: ChromeProps) {
   return (
     <ShareSheet
@@ -96,6 +104,8 @@ function ShareOverlay({
       identity={{ handle: owner.handle }}
       avatarSrc={avatarSrc(owner.avatar)}
       url={shareUrl}
+      identityChoice={shareIdentity}
+      onIdentityChange={onShareIdentityChange}
       onCopy={onCopyShareLink}
       onRevoke={onRevokeShareLink}
       onWallet={() => {
