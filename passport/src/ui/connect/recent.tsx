@@ -1,19 +1,26 @@
 import { Button, Card } from "../../design/components/index.ts";
 import { Star, StarFill, Trash } from "../../design/icons.tsx";
-import type { RecentLinkup } from "./Connect.tsx";
-import { COPY, HandleAvatar, SectionHead, menuItem } from "./parts.tsx";
+import { relativeDayLabel } from "../../core/clock.ts";
+import type { ContactRecord } from "../../store/accountBlob.ts";
+import {
+  COPY,
+  ContactAvatar,
+  SectionHead,
+  contactName,
+  menuItem,
+} from "./parts.tsx";
 
-// The kebab popover for a recent-linkup row: star/unstar and delete.
+// The kebab popover for a recent-linkup row: star/unstar and delete the link.
 function RecentRowMenu({
-  handle,
+  contactId,
   isFave,
   onToggleFave,
   onRemove,
 }: {
-  handle: string;
+  contactId: string;
   isFave: boolean;
-  onToggleFave: (handle: string) => void;
-  onRemove: (handle: string) => void;
+  onToggleFave: (contactId: string) => void;
+  onRemove: (contactId: string) => void;
 }) {
   return (
     <div
@@ -31,7 +38,7 @@ function RecentRowMenu({
     >
       <button
         type="button"
-        onClick={() => onToggleFave(handle)}
+        onClick={() => onToggleFave(contactId)}
         style={menuItem("var(--text-body)")}
       >
         {isFave ? <StarFill size={15} /> : <Star size={15} />}{" "}
@@ -39,7 +46,7 @@ function RecentRowMenu({
       </button>
       <button
         type="button"
-        onClick={() => onRemove(handle)}
+        onClick={() => onRemove(contactId)}
         style={menuItem("var(--status-expired-fg)")}
       >
         <Trash size={15} /> {COPY.menuDelete}
@@ -48,24 +55,25 @@ function RecentRowMenu({
   );
 }
 
-// One recent-linkup row plus its kebab menu.
+// One recent-linkup row (a contact) plus its kebab menu.
 function RecentRow({
-  linkup,
-  faves,
+  contact,
+  nowDay,
+  isFave,
   menuOpen,
   onToggleMenu,
   onToggleFave,
   onRemove,
 }: {
-  linkup: RecentLinkup;
-  faves: string[];
+  contact: ContactRecord;
+  nowDay: number;
+  isFave: boolean;
   menuOpen: boolean;
   onToggleMenu: () => void;
-  onToggleFave: (handle: string) => void;
-  onRemove: (handle: string) => void;
+  onToggleFave: (contactId: string) => void;
+  onRemove: (contactId: string) => void;
 }) {
-  const l = linkup;
-  const isFave = faves.includes(l.handle);
+  const name = contactName(contact);
   return (
     <div
       style={{
@@ -76,7 +84,7 @@ function RecentRow({
         padding: "7px 6px",
       }}
     >
-      <HandleAvatar handle={l.handle} size="sm" />
+      <ContactAvatar contact={contact} size="sm" />
       <div style={{ flex: 1, minWidth: 0 }}>
         <span
           style={{
@@ -85,7 +93,7 @@ function RecentRow({
             color: "var(--text-strong)",
           }}
         >
-          @{l.handle}
+          {name}
         </span>
         {isFave && (
           <span
@@ -106,12 +114,12 @@ function RecentRow({
             marginLeft: 8,
           }}
         >
-          {l.when === "Today" ? COPY.todayChip : l.when}
+          {relativeDayLabel(contact.createdDay, nowDay)}
         </span>
       </div>
       <button
         type="button"
-        aria-label={`Options for @${l.handle}`}
+        aria-label={`Options for ${name}`}
         aria-expanded={menuOpen}
         onClick={onToggleMenu}
         style={{
@@ -143,7 +151,7 @@ function RecentRow({
       </button>
       {menuOpen && (
         <RecentRowMenu
-          handle={l.handle}
+          contactId={contact.id}
           isFave={isFave}
           onToggleFave={onToggleFave}
           onRemove={onRemove}
@@ -157,19 +165,21 @@ export function RecentSection({
   recent,
   visible,
   faves,
+  nowDay,
   menuFor,
   onToggleMenu,
   onToggleFave,
   onRemove,
   onShowMore,
 }: {
-  recent: RecentLinkup[];
+  recent: ContactRecord[];
   visible: number;
-  faves: string[];
-  menuFor: number | null;
-  onToggleMenu: (index: number) => void;
-  onToggleFave: (handle: string) => void;
-  onRemove: (handle: string) => void;
+  faves: ReadonlySet<string>;
+  nowDay: number;
+  menuFor: string | null;
+  onToggleMenu: (contactId: string) => void;
+  onToggleFave: (contactId: string) => void;
+  onRemove: (contactId: string) => void;
   onShowMore: () => void;
 }) {
   return (
@@ -195,13 +205,14 @@ export function RecentSection({
           variant="flat"
           style={{ padding: 4, display: "flex", flexDirection: "column" }}
         >
-          {recent.slice(0, visible).map((l, i) => (
+          {recent.slice(0, visible).map((c) => (
             <RecentRow
-              key={`${l.handle}${l.when}${String(i)}`}
-              linkup={l}
-              faves={faves}
-              menuOpen={menuFor === i}
-              onToggleMenu={() => onToggleMenu(i)}
+              key={c.id}
+              contact={c}
+              nowDay={nowDay}
+              isFave={faves.has(c.id)}
+              menuOpen={menuFor === c.id}
+              onToggleMenu={() => onToggleMenu(c.id)}
               onToggleFave={onToggleFave}
               onRemove={onRemove}
             />

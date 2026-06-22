@@ -60,6 +60,10 @@ export interface ScreenCtx {
   onCreateContactLink: (label: string) => Promise<ContactLinkResult>;
   /** Revoke one contact link by id. */
   onRevokeContact: (id: string) => void;
+  /** Starred contact ids (device-local display preference); empty logged out. */
+  faves: ReadonlySet<string>;
+  /** Toggle one contact's star. */
+  onToggleFave: (id: string) => void;
   /** Whether a session is active (a logged-in owner), for screens shown to both. */
   isLoggedIn: boolean;
   /**

@@ -1,102 +1,45 @@
 import { useState } from "react";
 import { Sparkle, QrCode, Link } from "../../design/icons.tsx";
-import {
-  COPY,
-  DiscoverTile,
-  FavesSection,
-  PendingSection,
-  PrivacySection,
-} from "./parts.tsx";
+import { COPY, DiscoverTile, FavesSection, PrivacySection } from "./parts.tsx";
 import { RecentSection } from "./recent.tsx";
+import type { ContactRecord } from "../../store/accountBlob.ts";
 
-// Connect: linkups (hookups) + faves for repeats, via SCAN / SHARE-LINK only.
-// Faithful port of comps-reference/app/connect.jsx (the Connect component plus
-// its helpers SectionHead, HandleAvatar, DiscoverTile), copy verbatim from the
-// connect object in copy.js. Discovery is member-initiated and link/scan-scoped:
-// you only ever appear to people you've scanned or sent a link to. There is no
-// badge/status surfaced anywhere on this screen; the gold star and red delete
-// are pure decoration/urgency, not a status model.
-
-// Faves stay local, they are a display preference, not part of the notify edge.
-const INITIAL_FAVES = ["sam", "alexj", "kai_"];
-
-export interface PendingLinkup {
-  handle: string;
-  when: string;
-}
-
-export interface RecentLinkup {
-  handle: string;
-  when: string;
-}
-
-// Recent linkups, the most-recent encounter per alias. In the app these come
-// from the on-device LinkupStore; here they are in-file fixtures.
-const RECENT_LINKUPS: RecentLinkup[] = [
-  { handle: "sam", when: "Today" },
-  { handle: "alexj", when: "Yesterday" },
-  { handle: "kai_", when: "2 days ago" },
-  { handle: "noor", when: "4 days ago" },
-  { handle: "devs", when: "1 week ago" },
-  { handle: "max_t", when: "2 weeks ago" },
-  { handle: "riley", when: "3 weeks ago" },
-  { handle: "jess", when: "1 month ago" },
-];
-
-const INITIAL_PENDING: PendingLinkup[] = [{ handle: "theo", when: "3h ago" }];
-
+// Connect: your linkups (the contacts you've connected with), via SCAN / SHARE-LINK
+// only. A linkup IS a contact link: there is one underlying record, shown here as a
+// browsable, starrable list (newest first) and managed as links under "Share my
+// link". Discovery is member-initiated and link/scan-scoped; you only ever appear to
+// people you've scanned or sent a link to. No badge/status is surfaced here. Faves
+// (stars) are a device-local display preference, never synced.
 export interface ConnectProps {
+  /** The owner's contacts (a linkup == a contact); shown newest first. */
+  contacts: ContactRecord[];
+  /** Today as an epoch day, for the relative "when" labels. */
+  nowDay: number;
+  /** Starred contact ids (device-local). */
+  faves: ReadonlySet<string>;
+  onToggleFave: (contactId: string) => void;
+  /** Delete a contact link (the "delete linkup" row action). */
+  onRemoveContact: (contactId: string) => void;
   onLinkup?: (() => void) | undefined;
   onScanLink?: (() => void) | undefined;
   onShareLink?: (() => void) | undefined;
-  /** Seed the recent linkups list (defaults to in-file fixtures). */
-  linkups?: RecentLinkup[];
-  /** Seed the pending "waiting on you" list (defaults to one entry). */
-  pending?: PendingLinkup[];
-  /** Seed the starred faves (defaults to three). */
-  initialFaves?: string[];
 }
 
 export function Connect({
+  contacts,
+  nowDay,
+  faves,
+  onToggleFave,
+  onRemoveContact,
   onLinkup,
   onScanLink,
   onShareLink,
-  linkups = RECENT_LINKUPS,
-  pending: pendingSeed = INITIAL_PENDING,
-  initialFaves = INITIAL_FAVES,
 }: ConnectProps) {
-  // "Waiting on you" = the recipient side of a scan: someone you scanned
-  // proposed a link; you confirm to bind. NOT a stranger request.
-  const [pending, setPending] = useState<PendingLinkup[]>(pendingSeed);
-  const [recent, setRecent] = useState<RecentLinkup[]>(linkups);
-  const [faves, setFaves] = useState<string[]>(initialFaves);
   const [visible, setVisible] = useState(6);
-  const [menuFor, setMenuFor] = useState<number | null>(null);
-  const [favesFullNote, setFavesFullNote] = useState(false);
+  const [menuFor, setMenuFor] = useState<string | null>(null);
 
-  const confirmPending = (handle: string) =>
-    setPending((p) => p.filter((s) => s.handle !== handle));
-  const dismissPending = (handle: string) =>
-    setPending((p) => p.filter((s) => s.handle !== handle));
-  const removeLinkup = (handle: string) => {
-    setRecent((r) => r.filter((l) => l.handle !== handle));
-    setMenuFor(null);
-  };
-  const toggleFave = (handle: string) => {
-    setFaves((p) => {
-      if (p.includes(handle)) {
-        setFavesFullNote(false);
-        return p.filter((h) => h !== handle);
-      }
-      if (p.length >= 9) {
-        setFavesFullNote(true);
-        return p;
-      }
-      setFavesFullNote(false);
-      return [...p, handle];
-    });
-    setMenuFor(null);
-  };
+  const recent = [...contacts].sort((a, b) => b.createdDay - a.createdDay);
+  const faveContacts = recent.filter((c) => faves.has(c.id));
 
   return (
     <div style={{ width: "100%", maxWidth: 390 }}>
@@ -146,31 +89,22 @@ export function Connect({
           />
         </div>
 
-        {/* waiting on you, recipient side of a scan */}
-        {pending.length > 0 && (
-          <PendingSection
-            pending={pending}
-            onConfirm={confirmPending}
-            onDismiss={dismissPending}
-          />
-        )}
+        {/* faves, starred contacts */}
+        <FavesSection faves={faveContacts} onToggleFave={onToggleFave} />
 
-        {/* faves, starred people, capped */}
-        <FavesSection
-          faves={faves}
-          favesFullNote={favesFullNote}
-          onToggleFave={toggleFave}
-        />
-
-        {/* recent linkups */}
+        {/* recent linkups (your contacts, newest first) */}
         <RecentSection
           recent={recent}
           visible={visible}
           faves={faves}
+          nowDay={nowDay}
           menuFor={menuFor}
-          onToggleMenu={(i) => setMenuFor(menuFor === i ? null : i)}
-          onToggleFave={toggleFave}
-          onRemove={removeLinkup}
+          onToggleMenu={(id) => setMenuFor(menuFor === id ? null : id)}
+          onToggleFave={onToggleFave}
+          onRemove={(id) => {
+            onRemoveContact(id);
+            setMenuFor(null);
+          }}
           onShowMore={() => setVisible((v) => v + 6)}
         />
 

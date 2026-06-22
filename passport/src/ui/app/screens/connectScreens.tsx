@@ -6,8 +6,13 @@ import { todayEpochDay } from "../../../core/clock.ts";
 import type { ScreenRenderers } from "./context.ts";
 
 export const connectRenderers: ScreenRenderers = {
-  connect: ({ nav }) => (
+  connect: ({ nav, contacts, faves, onToggleFave, onRevokeContact }) => (
     <Connect
+      contacts={contacts}
+      nowDay={todayEpochDay()}
+      faves={faves}
+      onToggleFave={onToggleFave}
+      onRemoveContact={onRevokeContact}
       onLinkup={() => nav.go("linkup")}
       onScanLink={() => nav.go("scan-link")}
       onShareLink={() => nav.go("alias-share")}

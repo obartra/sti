@@ -4,6 +4,7 @@ import { useDesktop } from "./desktop/Desktop.tsx";
 import { useOnboarding } from "./app/useOnboarding.ts";
 import { useShareLink } from "./app/useShareLink.ts";
 import { useOwnerInbox } from "./app/useOwnerInbox.ts";
+import { useFaves } from "./app/useFaves.ts";
 import { useOwnerActions } from "./app/useOwnerActions.ts";
 import { OWNER } from "./app/fixtures.ts";
 import { Chrome } from "./app/Chrome.tsx";
@@ -157,9 +158,8 @@ export function App({
     refreshInbox,
   } = useOwnerInbox(controller, session);
 
-  const owner = session
-    ? deriveOwnerView(session.blob, todayEpochDay())
-    : OWNER;
+  // Starred contacts (device-local; see useFaves). Unrelated to the session.
+  const { faves, toggleFave } = useFaves();
 
   // A logged-out visitor must never land on an app-group screen (e.g. a #home
   // deep link): clamp those to the public landing until they sign in. Public
@@ -173,7 +173,7 @@ export function App({
     <Chrome
       route={effectiveRoute}
       nav={nav}
-      owner={owner}
+      owner={session ? deriveOwnerView(session.blob, todayEpochDay()) : OWNER}
       ownerState={session ? session.blob.state : INITIAL_OWNER_STATE}
       onboarding={onboarding}
       onReport={onReport}
@@ -195,6 +195,8 @@ export function App({
       dismissPartnerNudge={dismissPartnerNudge}
       aliases={session ? session.blob.aliases : []}
       contacts={session ? session.blob.contacts : []}
+      faves={faves}
+      onToggleFave={toggleFave}
       isLoggedIn={session !== null}
       circles={session ? (session.blob.circles ?? []) : []}
       {...actions}

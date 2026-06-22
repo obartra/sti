@@ -1,8 +1,8 @@
 import type { CSSProperties, ReactNode } from "react";
-import { Button, Card, Avatar } from "../../design/components/index.ts";
+import { Card, Avatar } from "../../design/components/index.ts";
 import { Check, Chevron, Lock, StarFill } from "../../design/icons.tsx";
 import { avatarFor } from "../../lib/avatars.ts";
-import type { PendingLinkup } from "./Connect.tsx";
+import type { ContactRecord } from "../../store/accountBlob.ts";
 import { COPY } from "./copy.ts";
 
 export { COPY };
@@ -15,8 +15,15 @@ const sectionLbl: CSSProperties = {
   color: "var(--text-subtle)",
 };
 
+// The owner's private label for a contact, or a neutral fallback. There is no
+// cross-account handle to show (unlinkability), so a contact is named only by the
+// nickname the owner gave it.
+export function contactName(contact: ContactRecord): string {
+  return contact.label.trim() === "" ? "Contact" : contact.label;
+}
+
 // Consistent section header: uppercase eyebrow + optional soft count chip +
-// optional one-line sub. Keeps Waiting / Faves / Recent on one visual rhythm.
+// optional one-line sub. Keeps Faves / Recent on one visual rhythm.
 export function SectionHead({
   title,
   count,
@@ -85,6 +92,26 @@ export const menuItem = (color: string): CSSProperties => ({
   color,
 });
 
+export function ContactAvatar({
+  contact,
+  size = "md",
+}: {
+  contact: ContactRecord;
+  size?: "sm" | "md" | "lg";
+}) {
+  const name = contactName(contact);
+  return (
+    <Avatar
+      initials={name}
+      alt={name}
+      src={avatarFor(contact.id)}
+      size={size}
+    />
+  );
+}
+
+// Handle-seeded avatar, still used by the scan / in-person linkup screens (their
+// partner identity comes from the slice-7 device flow, not a stored contact).
 export function HandleAvatar({
   handle,
   size = "md",
@@ -175,98 +202,19 @@ export function DiscoverTile({
   );
 }
 
-// "Waiting on you" = the recipient side of a scan: someone you scanned proposed
-// a link; you confirm to bind. NOT a stranger request.
-export function PendingSection({
-  pending,
-  onConfirm,
-  onDismiss,
-}: {
-  pending: PendingLinkup[];
-  onConfirm: (handle: string) => void;
-  onDismiss: (handle: string) => void;
-}) {
-  return (
-    <div>
-      <SectionHead
-        title={COPY.waitingTitle}
-        count={pending.length}
-        sub={COPY.waitingSub}
-      />
-      <Card
-        variant="flat"
-        style={{ padding: 4, display: "flex", flexDirection: "column" }}
-      >
-        {pending.map((sg) => (
-          <div
-            key={sg.handle}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 11,
-              padding: "7px 6px",
-            }}
-          >
-            <HandleAvatar handle={sg.handle} size="sm" />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <span
-                style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "var(--text-strong)",
-                }}
-              >
-                @{sg.handle}
-              </span>
-              <span
-                style={{
-                  fontSize: 12,
-                  color: "var(--text-subtle)",
-                  marginLeft: 8,
-                }}
-              >
-                {COPY.scannedAgo} · {sg.when}
-              </span>
-            </div>
-            <div style={{ display: "flex", gap: 6, flex: "none" }}>
-              <Button
-                variant="quiet"
-                size="sm"
-                onClick={() => onDismiss(sg.handle)}
-              >
-                {COPY.suggestDismiss}
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                icon={<Check size={15} />}
-                onClick={() => onConfirm(sg.handle)}
-              >
-                {COPY.suggestAdd}
-              </Button>
-            </div>
-          </div>
-        ))}
-      </Card>
-    </div>
-  );
-}
-
-// Faves, starred people, capped at nine.
+// Faves: the starred contacts, pinned to the top.
 export function FavesSection({
   faves,
-  favesFullNote,
   onToggleFave,
 }: {
-  faves: string[];
-  favesFullNote: boolean;
-  onToggleFave: (handle: string) => void;
+  faves: ContactRecord[];
+  onToggleFave: (contactId: string) => void;
 }) {
   return (
     <div>
       <SectionHead
         title={COPY.favesTitle}
-        count={`${faves.length}/9`}
+        count={faves.length}
         sub={COPY.favesSub}
       />
       <Card
@@ -278,9 +226,9 @@ export function FavesSection({
           padding: faves.length ? 12 : 16,
         }}
       >
-        {faves.map((h) => (
+        {faves.map((c) => (
           <span
-            key={h}
+            key={c.id}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -291,7 +239,7 @@ export function FavesSection({
               boxShadow: "var(--shadow-sm)",
             }}
           >
-            <HandleAvatar handle={h} size="sm" />
+            <ContactAvatar contact={c} size="sm" />
             <span
               style={{
                 fontSize: 13,
@@ -299,12 +247,12 @@ export function FavesSection({
                 color: "var(--text-strong)",
               }}
             >
-              @{h}
+              {contactName(c)}
             </span>
             <button
               type="button"
-              aria-label={`Unstar ${h}`}
-              onClick={() => onToggleFave(h)}
+              aria-label={`Unstar ${contactName(c)}`}
+              onClick={() => onToggleFave(c.id)}
               style={{
                 appearance: "none",
                 border: "none",
@@ -331,17 +279,6 @@ export function FavesSection({
           </span>
         )}
       </Card>
-      {favesFullNote && (
-        <div
-          style={{
-            fontSize: 12.5,
-            color: "var(--status-treat-fg)",
-            marginTop: 8,
-          }}
-        >
-          {COPY.favesFull}
-        </div>
-      )}
     </div>
   );
 }
