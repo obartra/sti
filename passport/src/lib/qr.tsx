@@ -1,10 +1,44 @@
-/* StiQR, a convincing QR-CODE LOOK for the prototype (deterministic faux
-   matrix: real finder patterns, timing rows, separators, quiet zone, and a
-   reserved centre hole for a logo / status badge). It is decorative, it does
-   not encode real data, but reads unmistakably as a QR at any size.
-   Ported faithfully from comps-reference/app/qr.jsx. */
+/* StiQR. encodeMatrix produces a REAL, scannable QR module grid for a URL (doc
+   16): a phone camera scanning it opens the link. buildMatrix below is the older
+   decorative faux matrix (real finder patterns, timing rows, separators, a
+   reserved centre hole), kept for the no-link Storybook/preview case where there
+   is no URL to encode. Decorative and real share the same <rect> rendering. */
 import { useMemo } from "react";
 import type { CSSProperties, ReactElement } from "react";
+import qrcode from "qrcode-generator";
+
+// ── Real, scannable QR encoding (doc 16) ────────────────────────────────────
+export type Ecc = "L" | "M" | "Q" | "H";
+
+// Encode `value` (a full https link) into a real QR module grid. The grid side
+// (and thus QR version) is chosen automatically from the data length. Error
+// correction defaults to H (~30% recoverable), which keeps it scannable even
+// with a centre badge/logo punched out.
+export function encodeMatrix(value: string, ecc: Ecc = "H"): boolean[][] {
+  const qr = qrcode(0, ecc);
+  qr.addData(value);
+  qr.make();
+  const n = qr.getModuleCount();
+  return Array.from({ length: n }, (_, r) =>
+    Array.from({ length: n }, (_, c) => qr.isDark(r, c)),
+  );
+}
+
+// Clear a centred square of `hole` modules (set them light) so a logo/badge can
+// sit there. Returns a copy; the original is untouched. At ECC H a modest hole
+// stays within the recoverable budget. A hole <= 0 returns the grid unchanged.
+export function clearCentre(grid: boolean[][], hole: number): boolean[][] {
+  if (hole <= 0) return grid;
+  const n = grid.length;
+  const start = Math.floor((n - hole) / 2);
+  return grid.map((row, i) =>
+    row.map((v, j) =>
+      i >= start && i < start + hole && j >= start && j < start + hole
+        ? false
+        : v,
+    ),
+  );
+}
 
 // Small, stable PRNG so a given seed always paints the same code.
 function rng(seed: number): () => number {
