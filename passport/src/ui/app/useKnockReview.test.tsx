@@ -61,6 +61,7 @@ function stubController(
     approveKnocks,
     createContactLink: unused,
     revokeContact: unused,
+    setContactDuration: unused,
     revokeAlias: unused,
     acceptContactInvite: unused,
     ingestContactReturn: unused,

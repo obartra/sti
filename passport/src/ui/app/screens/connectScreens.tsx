@@ -30,6 +30,7 @@ export const connectRenderers: ScreenRenderers = {
     contacts,
     onCreateContactLink,
     onRevokeContact,
+    onSetContactDuration,
     onIngestContactReturn,
   }) => (
     <ContactLinks
@@ -37,6 +38,7 @@ export const connectRenderers: ScreenRenderers = {
       nowDay={todayEpochDay()}
       onCreate={onCreateContactLink}
       onRevoke={onRevokeContact}
+      onSetDuration={onSetContactDuration}
       onIngestReturn={onIngestContactReturn}
     />
   ),

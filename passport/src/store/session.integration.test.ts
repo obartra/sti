@@ -673,6 +673,38 @@ describe("owner session against a live blind store", () => {
     expect(forever.contact.expiresDay).toBeNull();
   });
 
+  it("setContactDuration moves a link's expiry in place (same link keeps working)", async () => {
+    const { ctl, api } = controller(fakePasskey());
+    const store = createBackendStore(api);
+    const { session } = await ctl.signUp("eli");
+    const made = await ctl.createContactLink(session, "Sam", "anonymous", 7);
+    const aliasId = made.contact.alias.id;
+
+    // Extend to 30 days: same contact id, same alias (URL unchanged), new expiry.
+    const extended = await ctl.setContactDuration(
+      made.session,
+      made.contact.id,
+      30,
+    );
+    const updated = extended.blob.contacts.find(
+      (c) => c.id === made.contact.id,
+    );
+    expect(updated?.alias.id).toBe(aliasId);
+    expect(updated?.expiresDay).toBe(todayEpochDay() + 30);
+    // The link still resolves (it was not revoked or re-minted).
+    expect(await store.resolveAlias(caps(made.contact.alias))).not.toBeNull();
+
+    // Set to never expire.
+    const forever = await ctl.setContactDuration(
+      extended,
+      made.contact.id,
+      null,
+    );
+    expect(
+      forever.blob.contacts.find((c) => c.id === made.contact.id)?.expiresDay,
+    ).toBeNull();
+  });
+
   it("reviewKnocks counts knocks on the owner's aliases (deduped per requester)", async () => {
     const { ctl, api } = controller(fakePasskey());
     const { session } = await ctl.signUp("ivy");

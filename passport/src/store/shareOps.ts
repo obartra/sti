@@ -163,6 +163,27 @@ export async function revokeContactLink(
   return { master: session.master, blob };
 }
 
+// Change one contact link's lifetime in place (extend or shorten): the same
+// link keeps working, only its stored expiry moves. `durationDays` is counted
+// from today; null means until-revoked. A no-op for an unknown id. No republish:
+// the card is unchanged, only the expiry the device honors locally.
+export async function setContactLinkExpiry(
+  accounts: AccountManager,
+  session: OwnerSession,
+  contactId: string,
+  durationDays: number | null,
+): Promise<OwnerSession> {
+  const contact = session.blob.contacts.find((c) => c.id === contactId);
+  if (contact === undefined) return session;
+  const nowDay = todayEpochDay();
+  const expiresDay = durationDays === null ? null : nowDay + durationDays;
+  const blob = await accounts.addContact(session.master, {
+    ...contact,
+    expiresDay,
+  });
+  return { master: session.master, blob };
+}
+
 // Revoke one published alias (a public/casual link) by id: kill the payload first,
 // then drop the record. Same fail-safe order as a contact link. A no-op for an
 // unknown id.
