@@ -67,6 +67,7 @@ function stubController(
     notifyContactsOfPositive: unused,
     hasPartnerNudge: unused,
     createCircle: unused,
+    updateCircle: unused,
     removeCircle: unused,
     forget: unused,
   };

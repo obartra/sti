@@ -5,7 +5,7 @@
 // their own pairwise share, surfaced here and gated by the group-size floor.
 import { useEffect, useState } from "react";
 import { Avatar, Button, Card } from "../../design/components/index.ts";
-import { EyeOff, Heart, Trash } from "../../design/icons.tsx";
+import { EyeOff, Heart, Trash, UserPlus } from "../../design/icons.tsx";
 import { avatarFor } from "../../lib/avatars.ts";
 import {
   resolveCircleRoster,
@@ -23,6 +23,7 @@ const COPY = {
     "A roster only shows each person’s overall status, never results or conditions, and never the full picture.",
   noShame:
     "Statuses change. If someone’s flips, their light just turns gray and they get a private nudge. Nobody is ever called out, and no one sees a tally.",
+  edit: "Edit name & members",
   delete: "Delete circle",
   deleteNote: "Removes this grouping for you. Your contacts are not affected.",
 } as const;
@@ -124,6 +125,7 @@ export interface CircleDetailProps {
   circle: CircleRecord;
   contacts: ContactRecord[];
   resolveAlias: PassportStore["resolveAlias"];
+  onEdit?: (() => void) | undefined;
   onDelete?: (() => void) | undefined;
 }
 
@@ -131,6 +133,7 @@ export function CircleDetail({
   circle,
   contacts,
   resolveAlias,
+  onEdit,
   onDelete,
 }: CircleDetailProps) {
   const [roster, setRoster] = useState<RosterState>("loading");
@@ -200,6 +203,14 @@ export function CircleDetail({
         variant="flat"
         style={{ display: "flex", flexDirection: "column", gap: 10 }}
       >
+        <Button
+          variant="secondary"
+          size="md"
+          icon={<UserPlus size={16} />}
+          onClick={onEdit}
+        >
+          {COPY.edit}
+        </Button>
         <Button
           variant="danger"
           size="md"

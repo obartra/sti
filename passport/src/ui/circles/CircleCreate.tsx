@@ -14,10 +14,11 @@ import {
 import { Lock } from "../../design/icons.tsx";
 import { avatarFor } from "../../lib/avatars.ts";
 import { sectionLbl } from "./shared.tsx";
-import type { ContactRecord } from "../../store/accountBlob.ts";
+import type { CircleRecord, ContactRecord } from "../../store/accountBlob.ts";
 
 const COPY = {
-  title: "Create a circle",
+  createTitle: "Create a circle",
+  editTitle: "Edit circle",
   nameLabel: "Name",
   nameHint: "Keep it neutral. It shows on lock screens and notifications.",
   namePlaceholder: "e.g. Thursday crew",
@@ -27,6 +28,7 @@ const COPY = {
   noContacts:
     "Link with people first (from Connect), then group them into a circle here.",
   create: "Create circle",
+  save: "Save changes",
 } as const;
 
 interface PickRowProps {
@@ -68,12 +70,21 @@ function PickRow({ contact, checked, onToggle }: PickRowProps) {
 
 export interface CircleCreateProps {
   contacts: ContactRecord[];
+  /** When present, the screen edits this circle (prefilled) instead of creating. */
+  existing?: CircleRecord | undefined;
   onCreate?: ((name: string, memberContactIds: string[]) => void) | undefined;
 }
 
-export function CircleCreate({ contacts, onCreate }: CircleCreateProps) {
-  const [name, setName] = useState("");
-  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+export function CircleCreate({
+  contacts,
+  existing,
+  onCreate,
+}: CircleCreateProps) {
+  const editing = existing !== undefined;
+  const [name, setName] = useState(existing?.name ?? "");
+  const [selected, setSelected] = useState<ReadonlySet<string>>(
+    () => new Set(existing?.memberContactIds ?? []),
+  );
   const ok = name.trim().length >= 2;
 
   const toggle = (id: string) =>
@@ -102,7 +113,7 @@ export function CircleCreate({ contacts, onCreate }: CircleCreateProps) {
           color: "var(--text-strong)",
         }}
       >
-        {COPY.title}
+        {editing ? COPY.editTitle : COPY.createTitle}
       </h1>
 
       <Field label={COPY.nameLabel} hint={COPY.nameHint}>
@@ -164,7 +175,7 @@ export function CircleCreate({ contacts, onCreate }: CircleCreateProps) {
         disabled={!ok}
         onClick={() => onCreate?.(name.trim(), [...selected])}
       >
-        {COPY.create}
+        {editing ? COPY.save : COPY.create}
       </Button>
     </div>
   );

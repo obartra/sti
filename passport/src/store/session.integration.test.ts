@@ -386,6 +386,32 @@ describe("owner session against a live blind store", () => {
     expect(small).toBeNull();
   });
 
+  it("creates then edits a circle in place (rename + member change persists)", async () => {
+    const { ctl } = controller(fakePasskey());
+    const { session } = await ctl.signUp("circler");
+    const c1 = await ctl.createContactLink(session, "sam");
+    const c2 = await ctl.createContactLink(c1.session, "ari");
+
+    // Create with one member, then rename + add the second member (same id).
+    const created = await ctl.createCircle(c2.session, "crew", [c1.contact.id]);
+    const before = created.session.blob.circles?.find(
+      (c) => c.id === created.circleId,
+    );
+    expect(before?.memberContactIds).toEqual([c1.contact.id]);
+
+    const edited = await ctl.updateCircle(
+      created.session,
+      created.circleId,
+      "the crew",
+      [c1.contact.id, c2.contact.id],
+    );
+    const after = edited.blob.circles?.find((c) => c.id === created.circleId);
+    expect(after?.name).toBe("the crew");
+    expect(after?.memberContactIds).toEqual([c1.contact.id, c2.contact.id]);
+    // Same id: still exactly one circle, not a duplicate.
+    expect(edited.blob.circles?.length).toBe(1);
+  });
+
   it("recovers the same account from the phrase", async () => {
     const { ctl } = controller(fakePasskey());
     const { session, recoveryPhrase } = await ctl.signUp("sam");

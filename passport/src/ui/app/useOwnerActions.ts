@@ -24,6 +24,12 @@ export interface OwnerActions {
   onIngestContactReturn: (ret: ContactInvite) => void;
   /** Create a circle from a name + chosen contact ids; resolves the new circle id. */
   onCreateCircle: (name: string, memberContactIds: string[]) => Promise<string>;
+  /** Rename a circle and/or change its members (same id). */
+  onUpdateCircle: (
+    id: string,
+    name: string,
+    memberContactIds: string[],
+  ) => void;
   /** Delete one circle by id (a local grouping; contacts untouched). */
   onRemoveCircle: (id: string) => void;
 }
@@ -124,6 +130,27 @@ export function useOwnerActions(
     [controller, sessionRef, setSession],
   );
 
+  const circle = useCircleActions(controller, sessionRef, setSession);
+
+  return {
+    onDeleteAccount,
+    onCreateContactLink,
+    onRevokeContact,
+    onRevokeAlias,
+    onAcceptContactInvite,
+    onIngestContactReturn,
+    ...circle,
+  };
+}
+
+// The circle mutations (create / rename+remember-members / delete), split out so
+// useOwnerActions stays within its length ceiling. Same fold-result-into-session
+// shape as the rest.
+function useCircleActions(
+  controller: SessionController,
+  sessionRef: RefObject<OwnerSession | null>,
+  setSession: (s: OwnerSession | null) => void,
+): Pick<OwnerActions, "onCreateCircle" | "onUpdateCircle" | "onRemoveCircle"> {
   const onCreateCircle = useCallback(
     async (name: string, memberContactIds: string[]) => {
       const current = sessionRef.current;
@@ -136,6 +163,21 @@ export function useOwnerActions(
       sessionRef.current = session;
       setSession(session);
       return circleId;
+    },
+    [controller, sessionRef, setSession],
+  );
+
+  const onUpdateCircle = useCallback(
+    (id: string, name: string, memberContactIds: string[]) => {
+      const current = sessionRef.current;
+      if (current === null) return;
+      void controller
+        .updateCircle(current, id, name, memberContactIds)
+        .then((updated) => {
+          sessionRef.current = updated;
+          setSession(updated);
+        })
+        .catch(() => undefined);
     },
     [controller, sessionRef, setSession],
   );
@@ -155,14 +197,5 @@ export function useOwnerActions(
     [controller, sessionRef, setSession],
   );
 
-  return {
-    onDeleteAccount,
-    onCreateContactLink,
-    onRevokeContact,
-    onRevokeAlias,
-    onAcceptContactInvite,
-    onIngestContactReturn,
-    onCreateCircle,
-    onRemoveCircle,
-  };
+  return { onCreateCircle, onUpdateCircle, onRemoveCircle };
 }

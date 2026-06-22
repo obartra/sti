@@ -50,6 +50,7 @@ export interface ChromeProps {
   onIngestContactReturn: ScreenCtx["onIngestContactReturn"];
   circles: ScreenCtx["circles"];
   onCreateCircle: ScreenCtx["onCreateCircle"];
+  onUpdateCircle: ScreenCtx["onUpdateCircle"];
   onRemoveCircle: ScreenCtx["onRemoveCircle"];
 }
 
@@ -136,6 +137,7 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     onIngestContactReturn: props.onIngestContactReturn,
     circles: props.circles,
     onCreateCircle: props.onCreateCircle,
+    onUpdateCircle: props.onUpdateCircle,
     onRemoveCircle: props.onRemoveCircle,
     store: props.store,
     data: route.data,

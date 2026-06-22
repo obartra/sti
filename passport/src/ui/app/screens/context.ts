@@ -76,6 +76,12 @@ export interface ScreenCtx {
   circles: CircleRecord[];
   /** Create a circle from a name + chosen contact ids; resolves the new circle id. */
   onCreateCircle: (name: string, memberContactIds: string[]) => Promise<string>;
+  /** Rename a circle and/or change its members (same id). */
+  onUpdateCircle: (
+    id: string,
+    name: string,
+    memberContactIds: string[],
+  ) => void;
   /** Delete one circle by id (a local grouping; contacts are untouched). */
   onRemoveCircle: (id: string) => void;
   store: PassportStore;

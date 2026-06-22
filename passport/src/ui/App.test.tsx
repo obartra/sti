@@ -137,6 +137,15 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       blob = { ...blob, circles: [...(blob.circles ?? []), circle] };
       return Promise.resolve({ session: { master, blob }, circleId });
     },
+    updateCircle: (_session, id, name, memberContactIds) => {
+      blob = {
+        ...blob,
+        circles: (blob.circles ?? []).map((c) =>
+          c.id === id ? { id, name, memberContactIds } : c,
+        ),
+      };
+      return Promise.resolve({ master, blob });
+    },
     removeCircle: (_session, id) => {
       blob = {
         ...blob,

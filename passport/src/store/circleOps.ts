@@ -36,6 +36,22 @@ export async function addCircle(
   return { session: { master: session.master, blob }, circleId };
 }
 
+// Update an existing circle in place (same id): rename it and/or change its member
+// set. Upserting by the given id replaces the record; members are re-normalized.
+export async function editCircle(
+  accounts: AccountManager,
+  session: OwnerSession,
+  edit: { circleId: string; name: string; memberContactIds: string[] },
+): Promise<OwnerSession> {
+  const circle: CircleRecord = {
+    id: edit.circleId,
+    name: edit.name.slice(0, MAX_CIRCLE_NAME),
+    memberContactIds: edit.memberContactIds,
+  };
+  const blob = await accounts.upsertCircle(session.master, circle);
+  return { master: session.master, blob };
+}
+
 // Drop one circle by id (a local grouping; the contacts themselves are untouched).
 export async function dropCircle(
   accounts: AccountManager,
