@@ -3,16 +3,19 @@ import { Card, Button, Segmented } from "../../design/components/index.ts";
 import {
   Hand,
   Calendar,
-  Info,
+  Link,
+  Globe,
   Lock,
   Users,
   ArrowRight,
 } from "../../design/icons.tsx";
 import { TopBack } from "./TopBack.tsx";
 
-// B3 first-run setup. Faithful port of onboarding.jsx Setup, copy verbatim from
-// copy.js (setup). Sharing defaults to private ("Request only"); "Everyone" is
-// a deliberate opt-in carrying the watchable-over-time warning.
+// B3 first-run setup. Sets the freshness intro and the account's default reach
+// mode (doc 16): how the links you share let people reach your status. Direct
+// (hand someone a keyed link, instant) is the default; Gated (post a link, you
+// approve each knock) is the privacy-forward alternative; Findable (a memorable
+// name) is the third mode, not built yet, shown disabled so the roadmap is honest.
 const COPY = {
   title: "How your passport works",
   sub: "Two quick defaults. You can change either later in settings.",
@@ -21,15 +24,19 @@ const COPY = {
     "You add results yourself, no clinic logins, no waiting. What you share is your own honest word: as you report it, not a medical test.",
   freshTitle: "Freshness window",
   freshBody: "Your status stays current for 90 days, then asks for a re-test.",
-  privTitle: "Who can see your test status",
-  privPublic: "Everyone",
-  privPublicSub:
-    "A deliberate opt-in: anyone who opens your profile sees your status, and can watch it change over time. Most people leave this off.",
-  privLink: "Request only",
-  privLinkSub:
-    "Default. Your status stays hidden unless you share a private link. Anyone without one sees nothing at all, not even that you exist. Private links always work.",
-  privDefaultNote:
-    "Sharing starts private. Turning on “Everyone” is a choice, not the default.",
+  reachTitle: "How people reach your status",
+  reachDirect: "Direct link",
+  reachDirectSub:
+    "Default. You hand someone a link (a DM, a scan, a link made for one person) and it opens to your status right away. Handing it over is the trust step.",
+  reachGated: "Ask first",
+  reachGatedSub:
+    "Post a link anywhere. Opening it only lets someone ask; you approve each person yourself before they see anything.",
+  reachFindable: "Findable",
+  reachFindableSoon: "Soon",
+  reachFindableSub:
+    "A memorable name people can find and put in a bio. It needs a public name to work, so it’s coming later.",
+  reachNote:
+    "Either way, your status stays off the open web: no name to look up, and someone without a link can’t even tell you exist.",
   anonTitle: "A heads-up that looks out for you",
   anonBody:
     "If someone you’ve linked with reports a positive, you get a private heads-up. It works both ways, always anonymous, and never names a condition.",
@@ -120,57 +127,124 @@ function FreshnessCard() {
   );
 }
 
-// Who-can-see-your-status card with the private-default segmented control.
-function PrivacyCard({
+// The unbuilt third mode (Findable: vanity + request, doc 16), shown disabled so
+// the roadmap is honest without offering a path that needs a name directory we
+// have not built. Not selectable.
+function FindableRow() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 8,
+        opacity: 0.55,
+        borderTop: "1px solid var(--border-card)",
+        paddingTop: 12,
+      }}
+    >
+      <span style={{ flex: "none", marginTop: 1, color: "var(--text-subtle)" }}>
+        <Globe size={14} />
+      </span>
+      <div style={{ flex: 1 }}>
+        <div
+          style={{
+            fontSize: 13.5,
+            fontWeight: 700,
+            color: "var(--text-strong)",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          {COPY.reachFindable}
+          <span
+            style={{
+              fontSize: 10.5,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+              color: "var(--text-subtle)",
+              background: "var(--surface-sunken)",
+              borderRadius: "var(--radius-pill)",
+              padding: "2px 8px",
+            }}
+          >
+            {COPY.reachFindableSoon}
+          </span>
+        </div>
+        <div
+          style={{
+            fontSize: 12.5,
+            color: "var(--text-muted)",
+            lineHeight: 1.5,
+            marginTop: 2,
+          }}
+        >
+          {COPY.reachFindableSub}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// How-people-reach-your-status card: Direct (default) vs Gated, plus the
+// disabled Findable row. Maps to the account sharing mode: Direct = "public"
+// (the key rides the link, instant), Gated = "link" (no key, each viewer knocks).
+function ReachCard({
   sharing,
   onChange,
 }: {
   sharing: "public" | "link";
   onChange: (next: "public" | "link") => void;
 }) {
-  const isPublic = sharing === "public";
+  const direct = sharing === "public";
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div
         style={{ fontSize: 15, fontWeight: 700, color: "var(--text-strong)" }}
       >
-        {COPY.privTitle}
+        {COPY.reachTitle}
       </div>
       <Segmented
-        aria-label={COPY.privTitle}
+        aria-label={COPY.reachTitle}
         value={sharing}
         onChange={onChange}
         options={[
-          { value: "public", label: COPY.privPublic },
-          { value: "link", label: COPY.privLink },
+          { value: "public", label: COPY.reachDirect },
+          { value: "link", label: COPY.reachGated },
         ]}
       />
       <div
         style={{
           fontSize: 13,
-          color: isPublic ? "var(--status-treat-fg)" : "var(--text-muted)",
+          color: "var(--text-muted)",
           lineHeight: 1.5,
           display: "flex",
           gap: 6,
         }}
       >
-        {isPublic && (
-          <span style={{ flex: "none", marginTop: 1 }}>
-            <Info size={14} />
-          </span>
-        )}
-        <span>{isPublic ? COPY.privPublicSub : COPY.privLinkSub}</span>
+        <span
+          style={{ flex: "none", marginTop: 1, color: "var(--text-accent)" }}
+        >
+          {direct ? <Link size={14} /> : <Hand size={14} />}
+        </span>
+        <span>{direct ? COPY.reachDirectSub : COPY.reachGatedSub}</span>
       </div>
+      <FindableRow />
       <div
         style={{
           fontSize: 12,
           color: "var(--text-subtle)",
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-start",
           gap: 6,
+          lineHeight: 1.45,
         }}
       >
-        <Lock size={12} /> {COPY.privDefaultNote}
+        <span style={{ flex: "none", marginTop: 1 }}>
+          <Lock size={12} />
+        </span>
+        {COPY.reachNote}
       </div>
     </Card>
   );
@@ -236,8 +310,9 @@ export function FirstRunSetup({
   busy = false,
   error = null,
 }: FirstRunSetupProps) {
-  // Private by default; "Everyone" is the opt-in.
-  const [sharing, setSharing] = useState<"public" | "link">("link");
+  // Direct ("public") is the default reach mode (doc 16): a link you hand over
+  // opens instantly. "Ask first" (Gated, "link") is the approve-each-viewer mode.
+  const [sharing, setSharing] = useState<"public" | "link">("public");
   return (
     <div
       style={{
@@ -267,7 +342,7 @@ export function FirstRunSetup({
 
       <SelfCard />
       <FreshnessCard />
-      <PrivacyCard sharing={sharing} onChange={setSharing} />
+      <ReachCard sharing={sharing} onChange={setSharing} />
       <AnonCard />
 
       {error !== null && (
