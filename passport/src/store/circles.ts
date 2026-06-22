@@ -10,7 +10,23 @@
  * how many members have a resolved status.
  */
 
-import type { AccountBlob, CircleRecord } from "./accountBlob.ts";
+import type {
+  AccountBlob,
+  CircleRecord,
+  ContactRecord,
+} from "./accountBlob.ts";
+import type { PassportStore } from "./passportStore.ts";
+
+/** A circle member's two-state display tone (the membership color, not the badge). */
+export type CircleTone = "blue" | "gray";
+
+/** One roster row: a member, the owner's private label for them, and their tone. */
+export interface CircleRosterMember {
+  readonly contactId: string;
+  /** The owner's private nickname for this contact; shown only to the owner. */
+  readonly label: string;
+  readonly tone: CircleTone;
+}
 
 /**
  * The smallest circle that may display member statuses. Below this a circle hides
@@ -37,6 +53,50 @@ export function visibleCircleStatuses<T>(
   return circle.memberContactIds
     .map((id) => statusByContactId.get(id))
     .filter((s): s is T => s !== undefined);
+}
+
+/**
+ * Resolve a circle to its display roster, or null when the circle is below the
+ * min-5 floor (hidden entirely, never a partial reveal). Each member is blue only
+ * when their shared status currently reads blue; everything else (no exchanged
+ * status alias, an unreachable or again-uniform resolve, a non-blue card) is gray.
+ * Resolution is fail-closed per member, so one unreachable member never errors the
+ * roster, and the count and order always match the circle's membership.
+ */
+export async function resolveCircleRoster(
+  circle: CircleRecord,
+  contacts: readonly ContactRecord[],
+  resolveAlias: PassportStore["resolveAlias"],
+): Promise<CircleRosterMember[] | null> {
+  if (!circleMeetsFloor(circle)) return null;
+  const byId = new Map(contacts.map((c) => [c.id, c]));
+  return Promise.all(
+    circle.memberContactIds.map(async (id) => {
+      const contact = byId.get(id);
+      return {
+        contactId: id,
+        label: contact?.label ?? "",
+        tone: contact ? await memberTone(contact, resolveAlias) : "gray",
+      };
+    }),
+  );
+}
+
+// A member is blue only when their read-only status alias currently resolves to a
+// blue card; an unexchanged alias, a null (uniform) resolve, or a gray card is gray.
+async function memberTone(
+  contact: ContactRecord,
+  resolveAlias: PassportStore["resolveAlias"],
+): Promise<CircleTone> {
+  const alias = contact.theirStatusAlias;
+  if (alias === undefined) return "gray";
+  try {
+    const view = await resolveAlias({ id: alias.id, key: alias.key });
+    return view?.state === "blue" ? "blue" : "gray";
+  } catch {
+    // Fail-closed: an unreachable resolve reads as gray, never errors the roster.
+    return "gray";
+  }
 }
 
 /**

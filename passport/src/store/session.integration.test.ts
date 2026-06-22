@@ -10,6 +10,7 @@ import { createAccountManager } from "./account.ts";
 import { createAccountSync } from "./accountSync.ts";
 import { createBackendStore } from "./backendStore.ts";
 import { createSessionController } from "./session.ts";
+import { resolveCircleRoster } from "./circles.ts";
 import { deriveOwnerCard } from "./ownerCard.ts";
 import { pseudonymFor } from "../lib/avatars.ts";
 import { redeemGrant } from "./grant.ts";
@@ -316,6 +317,73 @@ describe("owner session against a live blind store", () => {
 
     // The recipient now finds the contentless nudge on its own inbox poll.
     expect(await ctl.hasPartnerNudge(recipient)).toBe(true);
+  });
+
+  it("resolves a circle roster against the live store (blue member, gray rest, hidden below floor)", async () => {
+    const { ctl, api } = controller(fakePasskey());
+    const store = createBackendStore(api);
+
+    // A blue owner (recent core panel + PrEP) publishes a contact link; resolving
+    // that alias with its key yields the blue card the member reads as theirStatus.
+    const { session } = await ctl.signUp("nova");
+    const blue = await ctl.setOwnerState(session, {
+      ...session.blob.state,
+      testing: {
+        lastPanelDay: todayEpochDay(),
+        corePanelComplete: true,
+        exposedSitesCovered: true,
+      },
+      onPrep: true,
+    });
+    const link = await ctl.createContactLink(blue, "member zero");
+    const blueStatus = {
+      id: link.contact.alias.id,
+      key: link.contact.alias.key,
+    };
+
+    // A circle of five: one member whose status alias resolves blue, four with no
+    // exchanged status (gray). resolveCircleRoster reads only contacts + resolver,
+    // so synthetic membership ids are fine here.
+    const contacts: ContactRecord[] = [
+      {
+        id: "m0",
+        label: "zero",
+        createdDay: 1,
+        expiresDay: null,
+        alias: { id: "m0", writeToken: "w", key: "k", isPublic: false },
+        theirStatusAlias: blueStatus,
+      },
+      ...["m1", "m2", "m3", "m4"].map(
+        (id): ContactRecord => ({
+          id,
+          label: id,
+          createdDay: 1,
+          expiresDay: null,
+          alias: { id, writeToken: "w", key: "k", isPublic: false },
+        }),
+      ),
+    ];
+    const ids = ["m0", "m1", "m2", "m3", "m4"];
+    const roster = await resolveCircleRoster(
+      { id: "c", name: "crew", memberContactIds: ids },
+      contacts,
+      (link) => store.resolveAlias(link),
+    );
+    expect(roster?.map((m) => m.tone)).toEqual([
+      "blue",
+      "gray",
+      "gray",
+      "gray",
+      "gray",
+    ]);
+
+    // Below the floor the whole roster hides (never a partial reveal).
+    const small = await resolveCircleRoster(
+      { id: "c", name: "crew", memberContactIds: ids.slice(0, 4) },
+      contacts,
+      (link) => store.resolveAlias(link),
+    );
+    expect(small).toBeNull();
   });
 
   it("recovers the same account from the phrase", async () => {
