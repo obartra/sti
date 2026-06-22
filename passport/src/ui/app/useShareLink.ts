@@ -22,6 +22,13 @@ export interface ShareLinkControls {
    * face (a renew), since an already-shared alias keeps the face it was minted with.
    */
   readonly setIdentity: (choice: AliasIdentity) => void;
+  /** The link's lifetime: a day count, or null for until-revoked (the default). */
+  readonly duration: number | null;
+  /**
+   * Set the link's lifetime in place (days from today, or null for
+   * until-revoked). The same link keeps working, only its expiry moves.
+   */
+  readonly setDuration: (durationDays: number | null) => void;
 }
 
 /**
@@ -43,6 +50,10 @@ export function useShareLink(
   // without re-subscribing. Defaults to anonymous (the unlinkable id-derived face).
   const [identity, setIdentityState] = useState<AliasIdentity>("anonymous");
   const identityRef = useRef<AliasIdentity>("anonymous");
+  // The link's lifetime, mirrored in a ref like identity. Defaults to null
+  // (until-revoked), matching how an alias is minted.
+  const [duration, setDurationState] = useState<number | null>(null);
+  const durationRef = useRef<number | null>(null);
   // Serializes link work (mint / republish / revoke) against the session: a
   // second call while one is in flight is dropped, so two opens cannot race into
   // duplicate mints and a revoke cannot interleave with an open. Reset on settle.
@@ -102,6 +113,27 @@ export function useShareLink(
     [controller, prepare],
   );
 
+  // Changing the lifetime moves the current link's expiry in place (no renew, so
+  // the URL is unchanged), then folds the updated session back in. A no-op if
+  // unchanged or logged out / before the link is minted.
+  const setDuration = useCallback(
+    (durationDays: number | null) => {
+      if (durationDays === durationRef.current) return;
+      durationRef.current = durationDays;
+      setDurationState(durationDays);
+      const current = sessionRef.current;
+      if (current === null) return;
+      void controller
+        .setShareLinkDuration(current, durationDays)
+        .then((updated) => {
+          sessionRef.current = updated;
+          setSession(updated);
+        })
+        .catch(() => undefined);
+    },
+    [controller, sessionRef, setSession],
+  );
+
   const copyShareLink = useCallback(() => {
     if (shareUrl === null) return;
     try {
@@ -118,5 +150,7 @@ export function useShareLink(
     revokeLink,
     identity,
     setIdentity,
+    duration,
+    setDuration,
   };
 }

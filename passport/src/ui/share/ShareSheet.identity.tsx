@@ -42,8 +42,11 @@ export function IdentityChoiceRow({
 }: {
   handle: string;
   choice: AliasIdentity;
-  onChange: (choice: AliasIdentity) => void;
-}): ReactElement {
+  // Absent hides the control (e.g. Storybook), so the parent can render it
+  // unconditionally without a wrapping guard.
+  onChange?: ((choice: AliasIdentity) => void) | undefined;
+}): ReactElement | null {
+  if (onChange === undefined) return null;
   return (
     <div style={{ margin: "0 0 14px" }}>
       <div style={{ display: "flex", gap: 8 }}>

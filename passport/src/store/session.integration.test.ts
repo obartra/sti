@@ -705,6 +705,27 @@ describe("owner session against a live blind store", () => {
     ).toBeNull();
   });
 
+  it("setShareLinkDuration moves the share-sheet link's expiry in place", async () => {
+    const { ctl, api } = controller(fakePasskey());
+    const store = createBackendStore(api);
+    const { session } = await ctl.signUp("fern");
+    const shared = await ctl.shareLink(session);
+    const aliasId = shared.session.blob.aliases[0]?.id;
+
+    // Give the share-sheet link a 30-day lifetime: same alias, expiry moves.
+    const dated = await ctl.setShareLinkDuration(shared.session, 30);
+    const alias = dated.blob.aliases.find((a) => a.id === aliasId);
+    expect(alias?.expiresDay).toBe(todayEpochDay() + 30);
+    // The link still resolves (it was not revoked or re-minted).
+    expect(await store.resolveAlias(caps(alias))).not.toBeNull();
+
+    // Clear it back to no expiry.
+    const forever = await ctl.setShareLinkDuration(dated, null);
+    expect(
+      forever.blob.aliases.find((a) => a.id === aliasId)?.expiresDay,
+    ).toBeNull();
+  });
+
   it("reviewKnocks counts knocks on the owner's aliases (deduped per requester)", async () => {
     const { ctl, api } = controller(fakePasskey());
     const { session } = await ctl.signUp("ivy");

@@ -184,6 +184,27 @@ export async function setContactLinkExpiry(
   return { master: session.master, blob };
 }
 
+// Change the share-sheet link's lifetime in place (doc 16): the primary alias for
+// the current sharing mode keeps resolving, only its stored expiry moves.
+// `durationDays` is counted from today; null means until-revoked. A no-op if no
+// such alias has been minted yet. No republish (the card is unchanged).
+export async function setShareLinkExpiry(
+  accounts: AccountManager,
+  session: OwnerSession,
+  durationDays: number | null,
+): Promise<OwnerSession> {
+  const wantPublic = session.blob.sharingMode === "public";
+  const alias = session.blob.aliases.find((a) => a.isPublic === wantPublic);
+  if (alias === undefined) return session;
+  const nowDay = todayEpochDay();
+  const expiresDay = durationDays === null ? null : nowDay + durationDays;
+  const blob = await accounts.addAlias(session.master, {
+    ...alias,
+    expiresDay,
+  });
+  return { master: session.master, blob };
+}
+
 // Revoke one published alias (a public/casual link) by id: kill the payload first,
 // then drop the record. Same fail-safe order as a contact link. A no-op for an
 // unknown id.
