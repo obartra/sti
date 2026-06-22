@@ -21,9 +21,18 @@ export interface KnockInbox {
   approving: boolean;
 }
 
+/** Whether the re-test row shows, and whether the owner has ever tested. */
+export interface RetestState {
+  /** Freshness has lapsed (or was never set) and the owner isn't paused. */
+  due: boolean;
+  /** The owner has a recorded test (distinguishes "re-test" from "set up"). */
+  tested: boolean;
+}
+
 export function notificationItems(
   knocks: KnockInbox,
   nudge: { show: boolean; dismiss: () => void },
+  retest: RetestState,
   go: (to: "report" | "privacy" | "care") => void,
 ): NotificationItem[] {
   const items: NotificationItem[] = [];
@@ -41,12 +50,26 @@ export function notificationItems(
       },
     });
   }
-  items.push({
-    icon: "bell",
-    title: "Time to re-test soon",
-    sub: "Keep your status up to date",
-    onOpen: () => go("report"),
-  });
+  // The re-test row only when freshness has lapsed (or was never set) and the owner
+  // isn't paused / in a clearance window, never a standing row for someone who just
+  // tested. Copy fits whether they have a lapsed status or none yet.
+  if (retest.due) {
+    items.push(
+      retest.tested
+        ? {
+            icon: "bell",
+            title: "Time to re-test",
+            sub: "Your status has gone gray. A fresh test brings it back.",
+            onOpen: () => go("report"),
+          }
+        : {
+            icon: "bell",
+            title: "Set up your status",
+            sub: "Take a test to start sharing where you stand.",
+            onOpen: () => go("report"),
+          },
+    );
+  }
   if (knocks.canApprove) {
     items.push({
       icon: "users",
@@ -105,6 +128,8 @@ export const coreRenderers: ScreenRenderers = {
   ),
   notifications: ({
     nav,
+    owner,
+    ownerState,
     canApproveKnocks,
     showKnockInfo,
     approveKnocks,
@@ -122,6 +147,10 @@ export const coreRenderers: ScreenRenderers = {
           approving: approvingKnocks,
         },
         { show: showPartnerNudge, dismiss: dismissPartnerNudge },
+        {
+          due: !owner.paused && !owner.autoPaused && owner.daysLeft === 0,
+          tested: ownerState.testing.lastPanelDay !== null,
+        },
         (to) => nav.go(to),
       )}
       onView={refreshKnocks}

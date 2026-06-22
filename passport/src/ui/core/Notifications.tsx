@@ -14,10 +14,10 @@ import {
 // neutral prompt that never names a condition or a person in its own text;
 // the privacy-safe wording is the whole point of the screen.
 // The default items mirror what the app actually renders (see coreScreens
-// notificationItems): a standing re-test nudge and a CONTENTLESS knock entry —
-// no requester, no count, no per-knock timing. Circle/partner-notify rows are
-// intentionally absent until those features ship. Kept in sync so Storybook and
-// the privacy-invariant test model the real contract, not an older one.
+// notificationItems): the re-test nudge shown once freshness has lapsed and a
+// CONTENTLESS knock entry — no requester, no count, no per-knock timing. The
+// partner-notify row is added live when a contact reports. Kept in sync so
+// Storybook and the privacy-invariant test model the real contract, not an older one.
 const COPY = {
   notifications: {
     title: "Notifications",
@@ -25,8 +25,8 @@ const COPY = {
     items: [
       {
         icon: "bell",
-        title: "Time to re-test soon",
-        sub: "Keep your status up to date",
+        title: "Time to re-test",
+        sub: "Your status has gone gray. A fresh test brings it back.",
       },
       {
         icon: "users",
