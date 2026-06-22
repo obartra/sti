@@ -48,6 +48,9 @@ export interface ChromeProps {
   isLoggedIn: ScreenCtx["isLoggedIn"];
   onAcceptContactInvite: ScreenCtx["onAcceptContactInvite"];
   onIngestContactReturn: ScreenCtx["onIngestContactReturn"];
+  circles: ScreenCtx["circles"];
+  onCreateCircle: ScreenCtx["onCreateCircle"];
+  onRemoveCircle: ScreenCtx["onRemoveCircle"];
 }
 
 function MobileSub({ nav, children }: { nav: Nav; children: ReactNode }) {
@@ -131,6 +134,9 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     isLoggedIn: props.isLoggedIn,
     onAcceptContactInvite: props.onAcceptContactInvite,
     onIngestContactReturn: props.onIngestContactReturn,
+    circles: props.circles,
+    onCreateCircle: props.onCreateCircle,
+    onRemoveCircle: props.onRemoveCircle,
     store: props.store,
     data: route.data,
   };

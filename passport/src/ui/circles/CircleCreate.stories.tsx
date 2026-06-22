@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { CircleCreate } from "./CircleCreate.tsx";
+import type { ContactRecord } from "../../store/accountBlob.ts";
 
-// Create circle / event. The screen starts in the "circle" type; switching the
-// Type segmented control to "event" reveals the event-date field and changes
-// the expiration options and CTA. Both states are interactive here.
+// Create a circle: name it and pick from your existing contacts. The primary CTA
+// is disabled until a name is entered. With no contacts, a prompt to link first.
 const meta: Meta<typeof CircleCreate> = {
   title: "Passport/Circles/Create",
   component: CircleCreate,
@@ -11,6 +11,25 @@ const meta: Meta<typeof CircleCreate> = {
 export default meta;
 type Story = StoryObj<typeof CircleCreate>;
 
-// Default: the empty create form (the primary CTA is disabled until a name is
-// entered).
-export const Default: Story = {};
+function contact(id: string, label: string): ContactRecord {
+  return {
+    id,
+    label,
+    createdDay: 1,
+    expiresDay: null,
+    alias: { id, writeToken: "w", key: "k", isPublic: false },
+  };
+}
+
+const contacts: ContactRecord[] = [
+  contact("a", "sam"),
+  contact("b", "ari"),
+  contact("c", "leo"),
+  contact("d", "kit"),
+];
+
+// Default: the form with a few contacts to pick from.
+export const Default: Story = { args: { contacts } };
+
+// No contacts yet: a prompt to link with people first.
+export const NoContacts: Story = { args: { contacts: [] } };

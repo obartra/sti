@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { CirclesList } from "./CirclesList.tsx";
+import type { CircleRecord } from "../../store/accountBlob.ts";
 
-// The circles & events list. Meaningful states: a populated list (with an
-// organizer badge and a pending-requests count) and the empty state.
+// The circles list: one row per private grouping (name + member count).
+// Meaningful states: a populated list and the empty state.
 const meta: Meta<typeof CirclesList> = {
   title: "Passport/Circles/List",
   component: CirclesList,
@@ -10,8 +11,17 @@ const meta: Meta<typeof CirclesList> = {
 export default meta;
 type Story = StoryObj<typeof CirclesList>;
 
-// Default: the seeded fixture, with organizer badges and a "2 pending" count.
-export const Populated: Story = {};
+const circles: CircleRecord[] = [
+  {
+    id: "c1",
+    name: "Thursday crew",
+    memberContactIds: ["a", "b", "c", "d", "e", "f", "g"],
+  },
+  { id: "c2", name: "Fern house", memberContactIds: ["a", "b", "c", "d", "e"] },
+];
+
+// Default: a couple of circles with their member counts.
+export const Populated: Story = { args: { circles } };
 
 // Empty: no circles yet, so the empty-state card with a Create CTA shows.
-export const Empty: Story = { args: { initialCircles: [] } };
+export const Empty: Story = { args: { circles: [] } };

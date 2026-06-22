@@ -1,167 +1,20 @@
-// Circles & Events shared bits: the two-state member "tone" system (a
-// circle-membership color system, NOT the passport status badge), the small UI
-// atoms the circle screens compose from, and the mock fixture data the screens
-// read.
-//
-// Faithful port of comps-reference/app/circles-ui.jsx:
-//   window.CirclesUI  -> MemberDot, MiniDot, RoleBadge, DotGlyph
-//   window.CircleStore -> TONE, circleById, plus the mock circle data
+// Circle member display atoms: the two-state "tone" system (a circle-membership
+// color system, NOT the passport status badge) and the small UI atoms the circle
+// screens compose from.
 //
 // Member status is two-state only (blue = "Tested & on HIV prevention",
-// gray = "No status shared right now"). No worst-of room rollup, no status
-// counts, no aggregate banner. A roster shows each person's individual atom;
-// that's the only status surface a circle has.
+// gray = "No status shared right now"). No worst-of room rollup, no status counts,
+// no aggregate banner. A roster shows each person's individual atom; that's the
+// only status surface a circle has.
 //
-// IMPORTANT: this "tone" is the circle-membership color system, distinct from
-// the passport badge. It is intentionally two-state and uses two distinct
-// SHAPES so the state never rides on colour alone.
+// IMPORTANT: this "tone" is the circle-membership color system, distinct from the
+// passport badge. It is intentionally two-state and uses two distinct SHAPES so
+// the state never rides on colour alone.
 import type { CSSProperties } from "react";
-import { Shield } from "../../design/icons.tsx";
-
-// ── Copy (verbatim from copy.js `circles`, the role label used here) ──────────
-const COPY = {
-  roleOrganizer: "Organizer",
-} as const;
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-export type Tone = "blue" | "gray";
-export type CircleType = "circle" | "event";
-export type Role = "organizer" | "member";
-
-export interface CircleMember {
-  handle: string;
-  status: Tone;
-  role: Role;
-  you?: boolean;
-  sharing?: boolean;
-}
-
-export interface CircleRequest {
-  handle: string;
-  when?: string;
-  declined?: boolean;
-}
-
-export interface Circle {
-  id: string;
-  name: string;
-  type: CircleType;
-  role: Role;
-  barDays?: number;
-  date?: string;
-  daysToDate?: number;
-  expires?: string | null;
-  daysToExpiry?: number;
-  members: CircleMember[];
-  requests: CircleRequest[];
-}
-
-export interface CircleStoreData {
-  circles: Circle[];
-  archived: Circle[];
-}
-
-// ── Mock fixture data (module-level, mirrors the demo store) ──────────────────
-export function makeCircleFixture(): CircleStoreData {
-  return {
-    circles: [
-      {
-        id: "thu",
-        name: "Thursday crew",
-        type: "circle",
-        role: "organizer",
-        barDays: 30,
-        expires: null,
-        members: [
-          {
-            handle: "robin",
-            status: "blue",
-            role: "organizer",
-            you: true,
-            sharing: true,
-          },
-          { handle: "sam", status: "blue", role: "organizer" },
-          { handle: "ari", status: "blue", role: "member" },
-          { handle: "leo", status: "blue", role: "member" },
-          { handle: "noa.v", status: "blue", role: "member" },
-          { handle: "kit", status: "blue", role: "member" },
-          { handle: "jules", status: "blue", role: "member" },
-          { handle: "theo", status: "gray", role: "member" },
-        ],
-        requests: [],
-      },
-      {
-        id: "sol",
-        name: "Solstice",
-        type: "event",
-        role: "organizer",
-        date: "21 Jun 2026",
-        daysToDate: 11,
-        barDays: 30,
-        expires: "21 Jun 2026",
-        daysToExpiry: 11,
-        members: [
-          {
-            handle: "robin",
-            status: "blue",
-            role: "organizer",
-            you: true,
-            sharing: true,
-          },
-          { handle: "max.b", status: "blue", role: "organizer" },
-          { handle: "rio", status: "blue", role: "member" },
-          { handle: "dann", status: "blue", role: "member" },
-          { handle: "sasha", status: "blue", role: "member" },
-          { handle: "nico", status: "blue", role: "member" },
-          { handle: "ben10", status: "blue", role: "member" },
-          { handle: "ozzy", status: "blue", role: "member" },
-          { handle: "finn", status: "blue", role: "member" },
-          { handle: "remy", status: "blue", role: "member" },
-          { handle: "cass", status: "blue", role: "member" },
-          { handle: "jay", status: "blue", role: "member" },
-        ],
-        requests: [
-          { handle: "mika", when: "2h ago" },
-          { handle: "drew", when: "Yesterday" },
-        ],
-      },
-      {
-        id: "fern",
-        name: "Fern house",
-        type: "circle",
-        role: "member",
-        barDays: 90,
-        expires: "30 Jun 2026",
-        daysToExpiry: 20,
-        members: [
-          {
-            handle: "robin",
-            status: "blue",
-            role: "member",
-            you: true,
-            sharing: true,
-          },
-          { handle: "alexj", status: "blue", role: "organizer" },
-          { handle: "kai_", status: "blue", role: "member" },
-          { handle: "marco", status: "gray", role: "member" },
-          { handle: "lee0", status: "gray", role: "member" },
-        ],
-        requests: [],
-      },
-    ],
-    archived: [],
-  };
-}
-
-export function circleById(data: CircleStoreData, id: string): Circle {
-  const found = data.circles.find((c) => c.id === id);
-  if (found) return found;
-  const first = data.circles[0];
-  if (!first) throw new Error("circleById: empty circle store");
-  return first;
-}
 
 // ── Two-state tone ───────────────────────────────────────────────────────────
+export type Tone = "blue" | "gray";
+
 export interface ToneStyle {
   base: string;
   bg: string;
@@ -289,36 +142,6 @@ export function MiniDot({ tone, size = 16 }: MiniDotProps) {
       }}
     >
       <DotGlyph tone={tone} size={size * 0.58} />
-    </span>
-  );
-}
-
-// Permissions are binary: organizers can edit; members can't. One badge.
-export interface RoleBadgeProps {
-  role: Role;
-}
-
-export function RoleBadge({ role }: RoleBadgeProps) {
-  if (role !== "organizer") return null;
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-        flex: "none",
-        background: "var(--accent-soft)",
-        color: "var(--text-accent)",
-        borderRadius: "var(--radius-pill)",
-        padding: "2px 8px",
-        fontSize: 10.5,
-        fontWeight: 700,
-        letterSpacing: "0.04em",
-        textTransform: "uppercase",
-        whiteSpace: "nowrap",
-      }}
-    >
-      <Shield size={10} /> {COPY.roleOrganizer}
     </span>
   );
 }

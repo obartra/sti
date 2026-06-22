@@ -3,6 +3,7 @@ import type { Nav } from "../useAppRouter.ts";
 import type { RouteData, Screen } from "../routes.ts";
 import type {
   AliasRecord,
+  CircleRecord,
   ContactInvite,
   ContactLinkResult,
   ContactRecord,
@@ -71,6 +72,12 @@ export interface ScreenCtx {
   ) => Promise<ContactLinkResult>;
   /** Ingest a return invite a contact sent back, completing the pending link. */
   onIngestContactReturn: (ret: ContactInvite) => void;
+  /** The owner's circles (private contact groupings); empty logged out. */
+  circles: CircleRecord[];
+  /** Create a circle from a name + chosen contact ids; resolves the new circle id. */
+  onCreateCircle: (name: string, memberContactIds: string[]) => Promise<string>;
+  /** Delete one circle by id (a local grouping; contacts are untouched). */
+  onRemoveCircle: (id: string) => void;
   store: PassportStore;
   data: RouteData | null;
 }

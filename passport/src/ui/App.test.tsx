@@ -131,6 +131,19 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
     notifyContactsOfPositive: () =>
       Promise.resolve({ sent: [], skipped: [], failed: [] }),
     hasPartnerNudge: () => Promise.resolve(false),
+    createCircle: (_session, name, memberContactIds) => {
+      const circleId = `circle-${name}`;
+      const circle = { id: circleId, name, memberContactIds };
+      blob = { ...blob, circles: [...(blob.circles ?? []), circle] };
+      return Promise.resolve({ session: { master, blob }, circleId });
+    },
+    removeCircle: (_session, id) => {
+      blob = {
+        ...blob,
+        circles: (blob.circles ?? []).filter((c) => c.id !== id),
+      };
+      return Promise.resolve({ master, blob });
+    },
     forget: () => undefined,
   };
 }

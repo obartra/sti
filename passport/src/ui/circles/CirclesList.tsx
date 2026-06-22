@@ -1,24 +1,19 @@
-// Circles & events list. Faithful port of comps-reference/app/circles.jsx
-// CirclesList. Copy verbatim from copy.js `circles`.
-import { useState } from "react";
+// Circles list: the owner's private circles, each a named grouping of contacts.
+// A circle shows a roster of per-member status once it has five or more members.
 import { Button, Card } from "../../design/components/index.ts";
 import {
   Plus,
-  Calendar,
   Chevron,
   Lock,
   Circles as CirclesIcon,
 } from "../../design/icons.tsx";
-import { makeCircleFixture, RoleBadge } from "./shared.tsx";
-import type { Circle } from "./shared.tsx";
+import type { CircleRecord } from "../../store/accountBlob.ts";
 
 const COPY = {
   title: "Circles",
   create: "Create",
-  sub: "Private groups and dated events. Everyone shares their own status, so the group can look out for each other.",
+  sub: "Private groups. Everyone shares their own status, so the group can look out for each other.",
   empty: "No circles yet. Create one for your crew, your house, or a night.",
-  eventChip: "Event",
-  circleChip: "Circle",
   members: "members",
 } as const;
 
@@ -76,17 +71,16 @@ function EmptyState({ onCreate }: EmptyStateProps) {
 }
 
 interface CircleRowProps {
-  circle: Circle;
+  circle: CircleRecord;
   onOpenCircle?: ((id: string) => void) | undefined;
 }
 
-function CircleRow({ circle: g, onOpenCircle }: CircleRowProps) {
-  const pending = g.requests.filter((r) => !r.declined).length;
+function CircleRow({ circle, onOpenCircle }: CircleRowProps) {
   return (
     <Card
       pad="sm"
       variant="interactive"
-      onClick={() => onOpenCircle?.(g.id)}
+      onClick={() => onOpenCircle?.(circle.id)}
       style={{
         display: "flex",
         alignItems: "center",
@@ -107,51 +101,30 @@ function CircleRow({ circle: g, onOpenCircle }: CircleRowProps) {
           justifyContent: "center",
         }}
       >
-        {g.type === "event" ? (
-          <Calendar size={21} />
-        ) : (
-          <CirclesIcon size={21} />
-        )}
+        <CirclesIcon size={21} />
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
+            fontSize: 15.5,
+            fontWeight: 700,
+            color: "var(--text-strong)",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
             minWidth: 0,
           }}
         >
-          <span
-            style={{
-              fontSize: 15.5,
-              fontWeight: 700,
-              color: "var(--text-strong)",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              minWidth: 0,
-            }}
-          >
-            {g.name}
-          </span>
-          <RoleBadge role={g.role} />
+          {circle.name}
         </div>
         <div
           style={{
             fontSize: 12.5,
             color: "var(--text-muted)",
             marginTop: 3,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
           }}
         >
-          {g.type === "event"
-            ? `${COPY.eventChip} · ${g.date}`
-            : COPY.circleChip}{" "}
-          · {g.members.length} {COPY.members}
-          {pending > 0 ? ` · ${pending} pending` : ""}
+          {circle.memberContactIds.length} {COPY.members}
         </div>
       </div>
       <Chevron
@@ -163,20 +136,16 @@ function CircleRow({ circle: g, onOpenCircle }: CircleRowProps) {
 }
 
 export interface CirclesListProps {
-  initialCircles?: Circle[];
+  circles: CircleRecord[];
   onCreate?: (() => void) | undefined;
   onOpenCircle?: ((id: string) => void) | undefined;
 }
 
 export function CirclesList({
-  initialCircles,
+  circles,
   onCreate,
   onOpenCircle,
 }: CirclesListProps) {
-  const [circles] = useState<Circle[]>(
-    () => initialCircles ?? makeCircleFixture().circles,
-  );
-
   return (
     <div
       style={{
@@ -228,8 +197,8 @@ export function CirclesList({
         <EmptyState onCreate={onCreate} />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {circles.map((g) => (
-            <CircleRow key={g.id} circle={g} onOpenCircle={onOpenCircle} />
+          {circles.map((c) => (
+            <CircleRow key={c.id} circle={c} onOpenCircle={onOpenCircle} />
           ))}
         </div>
       )}
@@ -243,8 +212,8 @@ export function CirclesList({
         <div
           style={{ fontSize: 13, lineHeight: 1.55, color: "var(--text-body)" }}
         >
-          Circles only ever show each person&rsquo;s overall status. Nobody,
-          including organizers, sees results or conditions.
+          Circles only ever show each person&rsquo;s overall status. Nobody sees
+          results or conditions.
         </div>
       </Card>
     </div>
