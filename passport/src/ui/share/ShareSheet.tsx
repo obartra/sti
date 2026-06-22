@@ -157,7 +157,7 @@ function UrlCard({
         boxShadow: "var(--shadow-sm)",
       }}
     >
-      <Matrix seed={seed} size={64} color="var(--ink-900)" />
+      <Matrix value={`https://${url}`} size={64} color="var(--ink-900)" />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
@@ -209,7 +209,7 @@ function UrlCard({
             size="sm"
             icon={<Download size={15} />}
             onClick={() => {
-              downloadPNG({ status: "logo", seed });
+              downloadPNG({ status: "logo", value: `https://${url}`, seed });
             }}
           >
             {COPY.saveQr}
