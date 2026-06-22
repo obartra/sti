@@ -49,8 +49,12 @@ A single mapping, opt-in per user:
 ## Allocation lifecycle (gate)
 
 - **First-come-first-served.** A name is held by exactly one alias at a time.
-- **Released on alias deletion or revocation.** When the owning alias is revoked or the account is
-  deleted, the name returns to the pool and can be claimed by anyone. No grace hold, no reservation.
+- **Released after a 24-hour lock.** When the owning alias is revoked or the account is deleted, the
+  name enters a 24-hour locked window during which it is unclaimable by anyone, then returns to the
+  pool (first-come). The lock defeats automated watch-and-grab (seizing a freed name the instant it
+  frees, to impersonate the prior holder) and leaves a window for a report to intervene before reuse.
+  It does **not** reserve the name for the prior owner (a deleted account is gone); after the lock
+  lapses the name is freely reclaimable by anyone.
 - **No transfers, no marketplace.** A name cannot be handed to another account or sold; release +
   reclaim is the only path, and it is racy by design (first-come wins).
 - **One name per alias** in v1. An account with several findable aliases registers a name per alias;
@@ -95,6 +99,12 @@ an opaque id"; everything after is the unchanged knock/grant path.
 - **Rate limiting (gate):** per-IP and global rate limits on `/u/` to slow bulk enumeration/scraping of
   the namespace. Short human-chosen names are enumerable in principle; rate limiting raises the cost,
   it does not make the namespace private (stated honestly, not sold as protection it is not).
+- **Resolve stays unauthenticated; enumeration is accepted.** We do not auth-gate `/u/` or otherwise
+  try to hide the namespace. A scrape of the namespace yields a list of registered names (so, of
+  passports that exist). This is **accepted** because registering is an explicit, informed opt-in: the
+  registering user is told the harvest impact at registration (below) and chooses it. The mitigation is
+  consent plus rate limiting, not secrecy. (Confirmed: the user making an informed choice is the control
+  here, not a technical barrier.)
 
 ## Metadata discipline (gate)
 
@@ -108,7 +118,13 @@ Carried from doc 16, made concrete:
   timing a side channel.
 - A vanity registration is **the** most identity-like datum the system holds; it is treated as
   sensitive consumer-health-adjacent data for policy (consent + retention limits) under MHMDA / GDPR /
-  CCPA regardless of HIPAA scope. Design as if it binds; confirm specifics with counsel.
+  CCPA regardless of HIPAA scope.
+- **Counsel posture (no lawyer required to launch conservatively).** Counsel is not imminent, so the
+  operating default **is** the strictest interpretation: treat the registration as sensitive, minimize
+  what is stored (`name -> aliasId` and nothing more), keep retention short, and gate it behind explicit
+  consent. That conservative posture needs no lawyer to adopt; counsel would be needed only to **relax**
+  it (longer retention, looser classification), which is not on the path to launch. So this does not
+  block a conservative Findable launch, it only bounds how much we could later loosen.
 
 ## Consent + disclosure at registration (gate)
 
@@ -117,25 +133,59 @@ an explicit, plain-language disclosure before the name is taken:
 
 - "A name is **public and findable**. Anyone who knows or guesses it can see that this passport exists
   and ask to view it." (They still cannot see the status without a grant.)
-- "Releasing the alias frees the name for anyone to claim."
+- "Your name can be **found in bulk**, not just guessed one at a time. The list of names is scrapable,
+  so registering reveals that this passport exists to anyone harvesting the namespace." (What is
+  revealed is the name + that the passport exists, never the status.)
+- "Releasing the alias frees the name; after a short lock, anyone can claim it."
 - "Names are not unique to a person and we do not verify identity; someone may pick a similar name."
 
 The disclosure is part of the registration flow, not buried in terms. No dark-pattern default: Findable
 is never pre-selected (doc 16 keeps Direct the default; the onboarding Findable row stays disabled until
 this ships).
 
+## Report and takedown (gate; designed hands-free where it can be)
+
+The takedown surface is smaller than it looks, which is what lets most of it run without a human. The
+system verifies no identity, so there is no authoritative person to impersonate; the concrete harms
+are (a) impersonating the **service or its staff** and (b) **slurs / abusive** names, both of which are
+the reserved + blocklist sets, so both are rule-based and automatable. The residual case (one pseudonym
+mimicking another pseudonym) carries low harm precisely because neither name is verified or
+authoritative.
+
+So the process is:
+
+- **Intake is automated.** An in-app / web report form creates a report record; no human is needed to
+  receive a report.
+- **Objective violations are auto-actioned (hands-free).** A reported name that matches the reserved
+  list or blocklist is auto-revoked and enters the 24-hour lock, no judgment call. A periodic re-scan
+  applies the same rule when the lists grow, so a name that becomes disallowed later is swept
+  automatically.
+- **Volume never auto-acts.** A pile of reports against a name does **not** free it on its own; that
+  would weaponize false reports as a griefing tool. Only objective rule matches auto-act.
+- **The subjective residual is a minimal, reversible review.** A name that is neither a rule match nor
+  clearly fine is queued for a single one-click reviewer action (revoke -> lock, or dismiss). This is
+  the one step that is not hands-free; it is kept rare by the "nothing authoritative to impersonate"
+  property, and it is reversible (the name is locked, not instantly reissued).
+
+A substantiated takedown does the same thing a release does: revoke the alias and put the name through
+the 24-hour lock. No separate punitive state.
+
 ## The launch gate (checklist)
 
 Findable mode ships only when all of the following are true:
 
-1. Charset/normalization, length, and the allocation lifecycle are enforced server-side.
-2. The reserved + blocklist starter lists exist in the repo and are enforced at registration.
+1. Charset/normalization, length, and the allocation lifecycle (including the 24-hour release lock) are
+   enforced server-side.
+2. The reserved + blocklist starter lists exist in the repo and are enforced at registration, with a
+   re-scan that sweeps names a later list-growth disallows.
 3. `GET /u/{name}` is implemented with uniform `404`, defensive normalization, and rate limiting.
 4. Metadata discipline (no name-keyed read logs; decorrelation extends to named aliases) is in place
    and tested.
-5. The registration consent disclosure ships with the flow.
-6. A report-and-takedown path exists (free the name + revoke on a substantiated impersonation report).
-7. Counsel has reviewed the consent + retention posture.
+5. The registration consent disclosure ships with the flow, including the bulk-harvest impact.
+6. The report-and-takedown path exists: automated intake, hands-free auto-action on rule matches, and
+   the one-click reviewer step for the subjective residual (volume never auto-acts).
+7. The conservative data posture (sensitive treatment, minimization, short retention, explicit consent)
+   is in place. Counsel review is **not** a launch blocker; it is needed only to relax that posture.
 
 Until all seven hold, the onboarding Findable option stays disabled (shown, with "Soon"), exactly as
 it is today.
@@ -147,8 +197,8 @@ it is today.
 - **Within-charset impersonation is reactive.** `rob1n` for `robin` is caught by report, not prevented.
 - **Existence is revealed by registering.** This departs from the opaque path's existence-uniformity;
   it is the opted-into cost, disclosed at registration.
-- **Release is racy.** Freeing a name on deletion means someone else can immediately take it; there is
-  no hold for the prior owner.
+- **Release is racy after the lock.** A freed name reopens first-come once its 24-hour lock lapses; the
+  lock blocks instant automated grabs but does not reserve the name for the prior owner.
 
 ## What this does not change
 
