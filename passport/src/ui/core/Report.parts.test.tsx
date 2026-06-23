@@ -11,7 +11,12 @@ describe("report infections", () => {
   it("asks only about the core panel (no collect-then-discard rows)", () => {
     // Herpes / hep B / HPV are not part of the badge and were never stored, so
     // they were dropped from the report; only the four core-panel infections stay.
-    expect(COPY.infections.map((i) => i.id)).toEqual(["hiv", "ct", "gc", "syph"]);
+    expect(COPY.infections.map((i) => i.id)).toEqual([
+      "hiv",
+      "ct",
+      "gc",
+      "syph",
+    ]);
   });
 });
 
