@@ -288,8 +288,15 @@ describe("App onboarding flow", () => {
     });
     if (!addResult) throw new Error("no 'Add a result' action on home");
 
-    // The all-negative one-tap is a clear, complete core panel.
+    // No one-tap path now: mark every condition negative (HIV, syphilis, and
+    // each gonorrhea/chlamydia site) to record a clear, complete core panel.
     await user.click(addResult);
+    const negatives = await screen.findAllByRole("button", {
+      name: "Negative",
+    });
+    for (const btn of negatives) {
+      await user.click(btn);
+    }
     await user.click(
       await screen.findByRole("button", { name: /Save results/ }),
     );

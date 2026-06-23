@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import type { HivStatus } from "../../core/badge.ts";
 import type { ReportOutcome } from "../../core/report.ts";
+import { todayEpochDay } from "../../core/clock.ts";
 
 // C2 Report a result. Faithful port of comps-reference/app/core-flows.jsx
 // (Report + ReportSaved + the in-file Chip helper). Copy reproduced VERBATIM
@@ -14,16 +15,12 @@ import type { ReportOutcome } from "../../core/report.ts";
 // two-state (blue/gray) BadgeCard, never a four-light status.
 export const COPY = {
   title: "Add results",
-  modeAll: "All negative",
-  modeDetail: "Specific results",
-  allClearTitle: "The full core panel came back negative",
-  allClearSub:
-    "One tap. HIV, syphilis, gonorrhea and chlamydia all recorded negative, the core panel a blue card needs.",
-  detailHint: "Set what applies. Anything you didn’t test stays untouched.",
+  detailHint:
+    "Set only what you actually tested for. Everything starts at “not tested” and stays untouched until you change it.",
   notTested: "Not tested",
-  coreTitle: "What a blue card needs",
+  coreTitle: "Core panel coverage",
   coreBody:
-    "A blue card means a recent full check: HIV, syphilis, gonorrhea and chlamydia. For gonorrhea and chlamydia, each spot counts, mark the ones that aren’t a part of your body you use.",
+    "The core panel is HIV, syphilis, gonorrhea and chlamydia. For gonorrhea and chlamydia, each spot counts, mark the ones that aren’t a part of your body you use.",
   coreCovered: "Core panel covered, this can show blue.",
   coreIncomplete:
     "Not the full core panel yet. Until it’s complete your card stays gray, never a half-status.",
@@ -85,6 +82,27 @@ export const COPY = {
     },
   ],
   dateLabel: "Date tested",
+  dateHint: "The day you took these tests. An older date won’t read as fresh.",
+  blueTitle: "What a blue card needs",
+  blueSub:
+    "All three, together. A clean panel on its own stays gray, that’s by design.",
+  blueRecent: "A recent full core panel",
+  blueRecentSub:
+    "HIV, syphilis, gonorrhea and chlamydia, within the last 90 days.",
+  blueClear: "Clear right now",
+  blueClearSub: "No current STI, and not mid-treatment.",
+  blueRoute: "Active HIV protection",
+  blueRouteSub:
+    "On PrEP, undetectable, or always uses condoms (shown publicly).",
+  blueReady: "This will show a blue card.",
+  blueNotReady: "Still gray until each of these is met.",
+  routeTitle: "HIV protection",
+  routeSub:
+    "Pick what’s true for you. Undetectable is set above, in your HIV result.",
+  prepLabel: "I’m on PrEP",
+  condomsLabel: "I always use condoms",
+  condomsHint:
+    "Shown publicly as your route. Your other condom choices are in Settings.",
   onPassportTitle: "Update my last test date on my passport",
   onPassportSub:
     "Refreshes your status and last-tested date. Nothing else is shown.",
@@ -188,11 +206,11 @@ export function Tag({ children }: { children: ReactNode }) {
 // this is ever surfaced to a viewer; the badge surfaces read only the derived
 // two-state badge.
 export interface ReportState {
-  mode: string;
-  setMode: (v: string) => void;
   onPassport: boolean;
   setOnPassport: (v: boolean) => void;
-  detail: boolean;
+  /** The reported test day (epoch day, UTC). Defaults to today. */
+  panelDay: number;
+  setPanelDay: (day: number) => void;
   val: (id: string) => string;
   set: (id: string, v: string) => void;
   siteVal: (id: string, sk: string) => string;
@@ -228,7 +246,6 @@ interface Derived {
 // The badge reflects CURRENT STATE, never diagnosis HISTORY. None of this is
 // surfaced to a viewer; it derives the two-state badge inputs only.
 function derive(
-  detail: boolean,
   val: (id: string) => string,
   siteStatus: (id: string) => SiteStatus,
 ): Derived {
@@ -245,11 +262,12 @@ function derive(
     ["gc", "Gonorrhea"],
     ["ct", "Chlamydia"],
   ];
-  const anyPositive =
-    detail && Object.keys(coreState).some((k) => coreState[k] === "positive");
-  const anyChronicPositive =
-    detail &&
-    c.infections.some((inf) => CHRONIC.includes(inf.id) && val(inf.id) === POS);
+  const anyPositive = Object.keys(coreState).some(
+    (k) => coreState[k] === "positive",
+  );
+  const anyChronicPositive = c.infections.some(
+    (inf) => CHRONIC.includes(inf.id) && val(inf.id) === POS,
+  );
   const coreComplete = Object.keys(coreState).every(
     (k) => coreState[k] === "covered",
   );
@@ -263,7 +281,7 @@ function derive(
       ? siteStatus(inf.id) !== "untouched"
       : val(inf.id) !== c.notTested,
   );
-  const anyEntered = !detail || touchedAny;
+  const anyEntered = touchedAny;
   return {
     anyPositive,
     anyChronicPositive,
@@ -274,16 +292,13 @@ function derive(
   };
 }
 
-// Map the report UI state to the badge-relevant outcome. "All negative" mode is
-// a one-tap full, clear core panel. In detail mode, HIV status comes from its
-// pick (Undetectable is the U=U route), the core panel is complete only when
+// Map the report UI state to the badge-relevant outcome. HIV status comes from
+// its pick (Undetectable is the U=U route), the core panel is complete only when
 // every core infection is covered, and a core positive other than HIV is an
 // active non-HIV STI. Prior-history syphilis is NOT active; undetectable HIV is
-// not an active non-HIV STI.
+// not an active non-HIV STI. The chosen test day rides along so an older test
+// ages from when it was taken.
 export function reportOutcome(s: ReportState): ReportOutcome {
-  if (!s.detail) {
-    return { hiv: "negative", corePanelComplete: true, activeNonHivSti: false };
-  }
   const hivPick = s.val("hiv");
   // Undefined when HIV was not tested, so applyReport preserves the prior status
   // (a syph/gc/ct-only report must not wipe a recorded undetectable/U=U).
@@ -299,17 +314,24 @@ export function reportOutcome(s: ReportState): ReportOutcome {
     s.val("syph") === POS ||
     s.siteStatus("gc") === "positive" ||
     s.siteStatus("ct") === "positive";
-  return { hiv, corePanelComplete: s.coreComplete, activeNonHivSti };
+  return {
+    hiv,
+    corePanelComplete: s.coreComplete,
+    activeNonHivSti,
+    panelDay: s.panelDay,
+  };
 }
 
 export function useReportState(): ReportState {
   const c = COPY;
-  const [mode, setMode] = useState<string>(c.modeAll);
   const [vals, setVals] = useState<Record<string, string>>({});
   const [siteVals, setSiteVals] = useState<
     Record<string, Record<string, string>>
   >({});
   const [onPassport, setOnPassport] = useState(true);
+  // Default the test date to today (the common case: entering results you just
+  // got). Read once at mount via the clock edge; the owner can back-date it.
+  const [panelDay, setPanelDay] = useState<number>(() => todayEpochDay());
   const val = (id: string) => vals[id] ?? c.notTested;
   const set = (id: string, v: string) => setVals((p) => ({ ...p, [id]: v }));
   const siteVal = (id: string, sk: string) => siteVals[id]?.[sk] ?? c.notTested;
@@ -327,18 +349,16 @@ export function useReportState(): ReportState {
       ? "covered"
       : "partial";
   };
-  const detail = mode === c.modeDetail;
   return {
-    mode,
-    setMode,
     onPassport,
     setOnPassport,
-    detail,
+    panelDay,
+    setPanelDay,
     val,
     set,
     siteVal,
     setSite,
     siteStatus,
-    ...derive(detail, val, siteStatus),
+    ...derive(val, siteStatus),
   };
 }

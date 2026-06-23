@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Report, ReportSaved } from "./Report.tsx";
+import { INITIAL_OWNER_STATE } from "../../core/badge.ts";
 
 // C2 Report a result. The owner records their OWN test outcomes (positive /
 // negative, per site) and saves them to the passport. This is owner-only data
@@ -13,13 +14,16 @@ const meta: Meta<typeof Report> = {
 export default meta;
 type Story = StoryObj<typeof Report>;
 
-// The report form. Lands on "All negative" (the one-tap full-core-panel path);
-// switch to "Specific results" in-story to enter per-infection and per-site
-// outcomes and watch the blue-card coverage guidance update live.
+// The report form. Opens straight into per-condition entry, everything starting
+// at "not tested"; the "what a blue card needs" checklist and the HIV-protection
+// route toggles update live as outcomes and routes are entered.
 export const ReportForm: Story = {};
 
-// Pre-filled date label, otherwise the same form.
-export const WithDate: Story = { args: { lastTestedLabel: "12 Jun 2026" } };
+// Starting from an owner already on PrEP, so the route requirement reads as met
+// from the outset and only a complete clear panel is left to earn blue.
+export const OnPrep: Story = {
+  args: { ownerState: { ...INITIAL_OWNER_STATE, onPrep: true } },
+};
 
 type SavedStory = StoryObj<typeof ReportSaved>;
 

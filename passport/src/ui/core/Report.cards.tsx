@@ -1,59 +1,6 @@
 import { Card } from "../../design/components/index.ts";
-import {
-  Check,
-  Info,
-  Heart,
-  EyeOff,
-  ShieldCheck,
-} from "../../design/icons.tsx";
+import { Info, Heart, EyeOff, ShieldCheck } from "../../design/icons.tsx";
 import { COPY } from "./Report.parts.tsx";
-
-export function AllClearCard() {
-  const c = COPY;
-  return (
-    <Card
-      variant="tint"
-      style={{ display: "flex", gap: 14, alignItems: "flex-start" }}
-    >
-      <span
-        style={{
-          flex: "none",
-          width: 44,
-          height: 44,
-          borderRadius: "50%",
-          background: "var(--status-clear-bg)",
-          color: "var(--status-clear-base)",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Check size={24} />
-      </span>
-      <div>
-        <div
-          style={{
-            fontSize: 16,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-          }}
-        >
-          {c.allClearTitle}
-        </div>
-        <div
-          style={{
-            fontSize: 13.5,
-            lineHeight: 1.55,
-            color: "var(--text-body)",
-            marginTop: 3,
-          }}
-        >
-          {c.allClearSub}
-        </div>
-      </div>
-    </Card>
-  );
-}
 
 export function CorePanelCard({
   touchedAny,

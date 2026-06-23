@@ -6,22 +6,21 @@ import {
   type SiteStatus,
 } from "./Report.parts.tsx";
 
-// A minimal ReportState: reportOutcome reads only detail, val, siteStatus, and
-// coreComplete; the rest are inert stubs so the mapping can be tested directly.
+// A minimal ReportState: reportOutcome reads only val, siteStatus, coreComplete,
+// and panelDay; the rest are inert stubs so the mapping can be tested directly.
 function state(over: {
-  detail: boolean;
   coreComplete?: boolean;
+  panelDay?: number;
   vals?: Record<string, string>;
   sites?: Record<string, SiteStatus>;
 }): ReportState {
   const vals = over.vals ?? {};
   const sites = over.sites ?? {};
   return {
-    mode: over.detail ? "Specific results" : "All negative",
-    setMode: () => undefined,
     onPassport: true,
     setOnPassport: () => undefined,
-    detail: over.detail,
+    panelDay: over.panelDay ?? 20000,
+    setPanelDay: () => undefined,
     val: (id) => vals[id] ?? "Not tested",
     set: () => undefined,
     siteVal: () => "Not tested",
@@ -37,60 +36,54 @@ function state(over: {
 }
 
 describe("reportOutcome", () => {
-  it("all-negative mode is a complete, clear, HIV-negative panel", () => {
-    expect(reportOutcome(state({ detail: false }))).toEqual({
-      hiv: "negative",
-      corePanelComplete: true,
-      activeNonHivSti: false,
-    });
+  it("leaves HIV unestablished (undefined) when not tested", () => {
+    expect(reportOutcome(state({})).hiv).toBeUndefined();
   });
 
-  it("leaves HIV unestablished (undefined) when not tested in detail mode", () => {
-    expect(reportOutcome(state({ detail: true })).hiv).toBeUndefined();
+  it("an untouched panel is incomplete (no one-tap all-clear)", () => {
+    expect(reportOutcome(state({})).corePanelComplete).toBe(false);
   });
 
   it("maps the HIV pick (Undetectable is the U=U route)", () => {
-    expect(
-      reportOutcome(state({ detail: true, vals: { hiv: "Undetectable" } })).hiv,
-    ).toBe("positive_undetectable");
-    expect(
-      reportOutcome(state({ detail: true, vals: { hiv: "Positive" } })).hiv,
-    ).toBe("positive_detectable");
-    expect(
-      reportOutcome(state({ detail: true, vals: { hiv: "Negative" } })).hiv,
-    ).toBe("negative");
+    expect(reportOutcome(state({ vals: { hiv: "Undetectable" } })).hiv).toBe(
+      "positive_undetectable",
+    );
+    expect(reportOutcome(state({ vals: { hiv: "Positive" } })).hiv).toBe(
+      "positive_detectable",
+    );
+    expect(reportOutcome(state({ vals: { hiv: "Negative" } })).hiv).toBe(
+      "negative",
+    );
   });
 
   it("flags an active non-HIV STI from a positive syphilis or site", () => {
     expect(
-      reportOutcome(state({ detail: true, vals: { syph: "Positive" } }))
-        .activeNonHivSti,
+      reportOutcome(state({ vals: { syph: "Positive" } })).activeNonHivSti,
     ).toBe(true);
     expect(
-      reportOutcome(state({ detail: true, sites: { gc: "positive" } }))
-        .activeNonHivSti,
+      reportOutcome(state({ sites: { gc: "positive" } })).activeNonHivSti,
     ).toBe(true);
     expect(
-      reportOutcome(state({ detail: true, sites: { ct: "positive" } }))
-        .activeNonHivSti,
+      reportOutcome(state({ sites: { ct: "positive" } })).activeNonHivSti,
     ).toBe(true);
   });
 
   it("prior-history syphilis is not an active non-HIV STI", () => {
     expect(
-      reportOutcome(state({ detail: true, vals: { syph: "Prior history" } }))
-        .activeNonHivSti,
+      reportOutcome(state({ vals: { syph: "Prior history" } })).activeNonHivSti,
     ).toBe(false);
   });
 
-  it("carries core-panel completeness through in detail mode", () => {
+  it("carries core-panel completeness through", () => {
+    expect(reportOutcome(state({ coreComplete: true })).corePanelComplete).toBe(
+      true,
+    );
     expect(
-      reportOutcome(state({ detail: true, coreComplete: true }))
-        .corePanelComplete,
-    ).toBe(true);
-    expect(
-      reportOutcome(state({ detail: true, coreComplete: false }))
-        .corePanelComplete,
+      reportOutcome(state({ coreComplete: false })).corePanelComplete,
     ).toBe(false);
+  });
+
+  it("carries the chosen test day through as panelDay", () => {
+    expect(reportOutcome(state({ panelDay: 19710 })).panelDay).toBe(19710);
   });
 });
