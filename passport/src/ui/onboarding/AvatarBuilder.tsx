@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { Button, Card } from "../../design/components/index.ts";
+import { Dice } from "../../design/icons.tsx";
 import { avatarParts, avatarSrc, randomAvatar } from "../../lib/avatars.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
 
@@ -116,7 +117,7 @@ export function AvatarBuilder({ config, onChange }: AvatarBuilderProps) {
           }}
         />
         <Button variant="secondary" size="sm" onClick={shuffle}>
-          Surprise me
+          <Dice size={16} /> Surprise me
         </Button>
       </div>
       {row("Beard", "beard", P.beards)}

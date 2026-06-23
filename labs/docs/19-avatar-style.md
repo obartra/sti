@@ -157,3 +157,10 @@ be skipped.
    sharpen the default-link-preview copy (keeping the anonymous-by-default face).
    `AvatarConfig` becomes `{ hair, mood, skin, hairColor, beard }`; old-shape blobs
    (including the interim `{ hair, mood, tone }`) coerce to the default on read.
+7. Move the builder out of signup. The avatar is not shown on a link by default
+   (it is anonymous), so building it during account creation is premature and makes
+   that screen long. A fresh account now gets a **random** avatar; the full builder
+   lives only on the dedicated `avatar-edit` screen, reached from the Privacy screen
+   and from private-link creation (where a revealed avatar is actually seen). The
+   "Surprise me" button gets a dice icon. Background also auto-contrasts with the
+   avatar; the darkest skin is blue-tinted so the eyes read; the sad mood is dropped.

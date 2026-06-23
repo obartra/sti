@@ -1,43 +1,14 @@
 import { COPY, usePrivacyState } from "./Privacy.parts.tsx";
-import { Avatar, Button, Card } from "../../design/components/index.ts";
 import type { OwnerState } from "../../core/badge.ts";
 import type { AliasRecord, ContactRecord } from "../../store/index.ts";
 import type { PushControls } from "../app/usePush.ts";
 import { LiveLinks } from "./Privacy.aliases.tsx";
+import { AvatarCard } from "../onboarding/AvatarCard.tsx";
 import {
   AttributesCard,
   ControlsCard,
   DangerZone,
 } from "./Privacy.sections.tsx";
-
-// A compact entry to the avatar editor with a live preview of the current avatar.
-function AvatarCard({ src, onEdit }: { src: string; onEdit: () => void }) {
-  return (
-    <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <Avatar size="lg" src={src} alt="" />
-      <div style={{ flex: 1 }}>
-        <div
-          style={{ fontSize: 15, fontWeight: 700, color: "var(--text-strong)" }}
-        >
-          {COPY.avatarTitle}
-        </div>
-        <div
-          style={{
-            fontSize: 13,
-            color: "var(--text-muted)",
-            lineHeight: 1.5,
-            marginTop: 3,
-          }}
-        >
-          {COPY.avatarSub}
-        </div>
-      </div>
-      <Button variant="secondary" size="sm" onClick={onEdit}>
-        {COPY.avatarEdit}
-      </Button>
-    </Card>
-  );
-}
 
 export interface PrivacyProps {
   ownerState: OwnerState;

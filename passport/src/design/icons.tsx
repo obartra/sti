@@ -65,6 +65,10 @@ export function Dots({ size = 24, ...rest }: IconProps) {
   return <svg {...svg(size, rest)}><circle cx="5" cy="12" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="19" cy="12" r="1.4"></circle></svg>;
 }
 
+export function Dice({ size = 24, ...rest }: IconProps) {
+  return <svg {...svg(size, rest)}><rect x="3" y="3" width="18" height="18" rx="3"></rect><circle cx="8.5" cy="8.5" r="1.1"></circle><circle cx="15.5" cy="8.5" r="1.1"></circle><circle cx="12" cy="12" r="1.1"></circle><circle cx="8.5" cy="15.5" r="1.1"></circle><circle cx="15.5" cy="15.5" r="1.1"></circle></svg>;
+}
+
 export function Download({ size = 24, ...rest }: IconProps) {
   return <svg {...svg(size, rest)}><path d="M12 4v11"></path><path d="m7.5 11 4.5 4.5 4.5-4.5"></path><path d="M5 19.5h14"></path></svg>;
 }

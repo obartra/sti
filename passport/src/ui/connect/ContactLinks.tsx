@@ -6,6 +6,7 @@ import {
   Segmented,
 } from "../../design/components/index.ts";
 import { Link, Copy, Trash, Dots } from "../../design/icons.tsx";
+import { AvatarCard } from "../onboarding/AvatarCard.tsx";
 import {
   parseContactInvite,
   type ContactInvite,
@@ -48,6 +49,10 @@ export interface ContactLinksProps {
   onSetDuration: (id: string, durationDays: number | null) => void;
   /** Ingest a return link a contact sent back, completing the pending link. */
   onIngestReturn?: ((ret: ContactInvite) => void) | undefined;
+  /** Avatar editor entry: a live preview src and a handler to open the editor.
+   * Private links are where a revealed avatar is actually seen (doc 19). */
+  avatarSrc?: string | undefined;
+  onEditAvatar?: (() => void) | undefined;
 }
 
 // Normalize a pasted link (the UI displays them without the scheme) so new URL()
@@ -182,6 +187,8 @@ export function ContactLinks({
   onRevoke,
   onSetDuration,
   onIngestReturn,
+  avatarSrc,
+  onEditAvatar,
 }: ContactLinksProps): React.ReactElement {
   const [label, setLabel] = useState("");
   const [duration, setDuration] = useState(DEFAULT_DURATION);
@@ -227,6 +234,10 @@ export function ContactLinks({
           any link anytime; each link expires on its own when its time is up.
         </p>
       </div>
+
+      {onEditAvatar && avatarSrc !== undefined && (
+        <AvatarCard src={avatarSrc} onEdit={onEditAvatar} />
+      )}
 
       <Card
         variant="flat"
