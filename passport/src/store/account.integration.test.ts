@@ -83,7 +83,13 @@ describe("account lifecycle against a live blind store", () => {
     const created = await accounts.create("robin");
     const store = createBackendStore(api);
 
-    const newAvatar: AvatarConfig = { hair: 2, mood: 1, skin: 1, hairColor: 5, beard: 1 };
+    const newAvatar: AvatarConfig = {
+      hair: 2,
+      mood: 1,
+      skin: 1,
+      hairColor: 5,
+      beard: 1,
+    };
 
     // Publish two live links the real way, so each carries its own per-alias face
     // derived from its id (anonymous, no override). NOW_DAY is safe because

@@ -86,7 +86,10 @@ const PALETTE_BASE: readonly Swatch[] = [
 // Hair can go to the brand near-black (ink-900); skin's darkest is a blue-tinted
 // teal-dark instead, because the eyes render in black and would vanish against a
 // near-black face.
-const SKINS: readonly Swatch[] = [...PALETTE_BASE, { name: "Ink", hex: "16505C" }];
+const SKINS: readonly Swatch[] = [
+  ...PALETTE_BASE,
+  { name: "Ink", hex: "16505C" },
+];
 const HAIR_COLORS: readonly Swatch[] = [
   ...PALETTE_BASE,
   { name: "Ink", hex: "1B1B2F" },
@@ -277,7 +280,7 @@ export function randomAvatar(seed: number): AvatarConfig {
   // Avalanche the seed (xorshift-multiply, same family as pseudonymFor) so even
   // adjacent seeds spread across the whole space. Each field is a successive "digit"
   // of the mixed value via division, not low-bit modulo, which would cluster.
-  let h = (seed >>> 0) || 1;
+  let h = seed >>> 0 || 1;
   h ^= h >>> 16;
   h = Math.imul(h, 2246822519) >>> 0;
   h ^= h >>> 13;

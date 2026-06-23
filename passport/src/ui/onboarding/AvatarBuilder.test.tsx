@@ -74,7 +74,9 @@ describe("AvatarBuilder", () => {
       screen.getByRole("button", { name: "Hair color: White" }),
     ).toBeDisabled();
     // A non-bald hair leaves the hair-color row interactive.
-    rerender(<AvatarBuilder config={{ ...bald, hair: 0 }} onChange={vi.fn()} />);
+    rerender(
+      <AvatarBuilder config={{ ...bald, hair: 0 }} onChange={vi.fn()} />,
+    );
     expect(
       screen.getByRole("button", { name: "Hair color: White" }),
     ).toBeEnabled();

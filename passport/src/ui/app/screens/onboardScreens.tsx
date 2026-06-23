@@ -65,6 +65,10 @@ export const onboardRenderers: ScreenRenderers = {
     />
   ),
   "avatar-edit": ({ nav, owner, onSetAvatar }) => (
-    <AvatarEditRoute nav={nav} avatar={owner.avatar} onSetAvatar={onSetAvatar} />
+    <AvatarEditRoute
+      nav={nav}
+      avatar={owner.avatar}
+      onSetAvatar={onSetAvatar}
+    />
   ),
 };

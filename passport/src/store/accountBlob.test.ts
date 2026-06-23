@@ -304,7 +304,9 @@ describe("avatar migration on read (doc 19)", () => {
     parseAccountBlob(utf8ToBytes(JSON.stringify(wire)));
   // The first alias of a freshly built wire, typed as a mutable record for the
   // override-mutation tests below.
-  const firstAlias = (wire: Record<string, unknown>): Record<string, unknown> => {
+  const firstAlias = (
+    wire: Record<string, unknown>,
+  ): Record<string, unknown> => {
     const aliases = wire.aliases as Record<string, unknown>[];
     const first = aliases[0];
     if (!first) throw new Error("test setup: expected one alias");
@@ -361,7 +363,13 @@ describe("avatar migration on read (doc 19)", () => {
 
   it("drops an invalid alias avatar override but keeps every other field", () => {
     const wire = wireOf(oneAlias);
-    firstAlias(wire).avatar = { animal: 1, color: 2, hat: 0, glasses: 1, extra: 0 };
+    firstAlias(wire).avatar = {
+      animal: 1,
+      color: 2,
+      hat: 0,
+      glasses: 1,
+      extra: 0,
+    };
     const alias = reparse(wire).aliases[0];
     expect(alias?.avatar).toBeUndefined();
     expect(alias?.handle).toBe("meow");

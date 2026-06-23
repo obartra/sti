@@ -111,7 +111,11 @@ describe("avatar rendering (doc 19 DiceBear Dylan)", () => {
     // (incl. Bald), mood, and beard with default colors.
     const base = DEFAULT_AVATAR;
     for (let skin = 0; skin < avatarParts.skins.length; skin++)
-      for (let hairColor = 0; hairColor < avatarParts.hairColors.length; hairColor++)
+      for (
+        let hairColor = 0;
+        hairColor < avatarParts.hairColors.length;
+        hairColor++
+      )
         check({ ...base, skin, hairColor });
     for (let hair = 0; hair < avatarParts.hairs.length; hair++)
       for (let beard = 0; beard < avatarParts.beards.length; beard++)
@@ -187,7 +191,9 @@ describe("avatar config validation and migration (doc 19)", () => {
     expect(
       migrateAvatar({ animal: 2, color: 1, hat: 0, glasses: 0, extra: 0 }),
     ).toEqual(DEFAULT_AVATAR);
-    expect(migrateAvatar({ hair: 0, mood: 0, tone: 0 })).toEqual(DEFAULT_AVATAR);
+    expect(migrateAvatar({ hair: 0, mood: 0, tone: 0 })).toEqual(
+      DEFAULT_AVATAR,
+    );
     expect(migrateAvatar({ hair: 99 })).toEqual(DEFAULT_AVATAR);
     expect(migrateAvatar(undefined)).toEqual(DEFAULT_AVATAR);
     expect(migrateAvatar("garbage")).toEqual(DEFAULT_AVATAR);
@@ -202,7 +208,11 @@ describe("avatar config validation and migration (doc 19)", () => {
   it("wraps negative / out-of-range partial indices instead of clamping to 0", () => {
     // Renders without crashing for any integer (plain `%` would yield a negative
     // index; normalize wraps with true modulo).
-    expect(svgOf(avatarSrc({ skin: -2, hairColor: 99, mood: -5 })).startsWith("<svg")).toBe(true);
+    expect(
+      svgOf(avatarSrc({ skin: -2, hairColor: 99, mood: -5 })).startsWith(
+        "<svg",
+      ),
+    ).toBe(true);
     // mood -1 wraps to the last mood (5), not to 0.
     expect(avatarSrc({ mood: -1 })).toBe(avatarSrc({ mood: 5 }));
     expect(avatarSrc({ mood: -1 })).not.toBe(avatarSrc({ mood: 0 }));

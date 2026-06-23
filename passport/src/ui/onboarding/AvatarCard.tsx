@@ -9,7 +9,13 @@ const COPY = {
   edit: "Edit",
 } as const;
 
-export function AvatarCard({ src, onEdit }: { src: string; onEdit: () => void }) {
+export function AvatarCard({
+  src,
+  onEdit,
+}: {
+  src: string;
+  onEdit: () => void;
+}) {
   return (
     <Card variant="flat" style={{ padding: 6 }}>
       <Row
