@@ -63,23 +63,9 @@ export const COPY = {
       core: true,
       note: "Treated syphilis can stay antibody positive. Your card stays up to date.",
     },
-    {
-      id: "herpes",
-      name: "Herpes",
-      options: ["Not tested", "Negative", "Positive"],
-      note: "Common and manageable. A herpes result never changes the status you share, it’s not part of your badge.",
-    },
-    {
-      id: "hepb",
-      name: "Hepatitis B",
-      options: ["Not tested", "Negative", "Positive"],
-    },
-    {
-      id: "hpv",
-      name: "HPV",
-      options: ["Not tested", "Negative", "Positive"],
-      note: "HPV is common and usually clears on its own. It’s not part of your status, the vaccine and routine screening are what matter.",
-    },
+    // The report only asks what affects the card: the core panel above. Herpes,
+    // hepatitis B and HPV are not part of the badge and were never stored, so
+    // collecting them was asking-then-discarding; their education lives in Learn.
   ],
   dateLabel: "Date tested",
   dateHint: "The day you took these tests. An older date won’t read as fresh.",
@@ -109,11 +95,6 @@ export const COPY = {
   privacyNoteTitle: "Your privacy is protected",
   privacyNote:
     "Your card never names a condition. A positive simply shows no status, gray, the same as any other reason a card isn’t current.",
-  chronicTitle: "This stays between you and your care",
-  chronicBody:
-    "Herpes and HPV are common and manageable, and they never change the status you share, they’re not part of your badge. Tap “About” above to learn what they mean and how to look after yourself.",
-  chronicOutbreak:
-    "Having a herpes outbreak right now? Pausing your status for a bit is a considerate choice while it passes. It just shows gray, like any other reason, never why.",
   save: "Save results",
   cancel: "Cancel",
 } as const;
@@ -132,14 +113,14 @@ export const fieldLbl: CSSProperties = {
   marginBottom: 10,
 };
 
-// C2 infection ids -> Learn explainer ids (hep B has no explainer on the site).
+// Core-panel infection ids -> Learn explainer ids, for the "About" link on a
+// touched row. (Herpes/HPV explainers still live in Learn; they're just not
+// reachable from the report anymore, since those rows are gone.)
 export const LEARN_MAP: Record<string, string> = {
   hiv: "hiv",
   ct: "chlamydia",
   gc: "gonorrhea",
   syph: "syphilis",
-  herpes: "herpes",
-  hpv: "hpv",
 };
 
 // In-file Chip helper, ported verbatim from the prototype. The active state uses
@@ -217,14 +198,11 @@ export interface ReportState {
   setSite: (id: string, sk: string, v: string) => void;
   siteStatus: (id: string) => SiteStatus;
   anyPositive: boolean;
-  anyChronicPositive: boolean;
   coreComplete: boolean;
   coreMissing: string[];
   touchedAny: boolean;
   anyEntered: boolean;
 }
-
-const CHRONIC = ["herpes", "hpv"];
 
 // Single-test core infections (HIV/syphilis): covered when negative, or on the
 // lone acceptable positives, undetectable HIV, prior-treated syphilis.
@@ -236,7 +214,6 @@ function singleStatus(v: string, ok: string[]): SiteStatus {
 
 interface Derived {
   anyPositive: boolean;
-  anyChronicPositive: boolean;
   coreComplete: boolean;
   coreMissing: string[];
   touchedAny: boolean;
@@ -265,9 +242,6 @@ function derive(
   const anyPositive = Object.keys(coreState).some(
     (k) => coreState[k] === "positive",
   );
-  const anyChronicPositive = c.infections.some(
-    (inf) => CHRONIC.includes(inf.id) && val(inf.id) === POS,
-  );
   const coreComplete = Object.keys(coreState).every(
     (k) => coreState[k] === "covered",
   );
@@ -284,7 +258,6 @@ function derive(
   const anyEntered = touchedAny;
   return {
     anyPositive,
-    anyChronicPositive,
     coreComplete,
     coreMissing,
     touchedAny,
