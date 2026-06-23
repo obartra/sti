@@ -1,7 +1,7 @@
+import { useState } from "react";
 import {
   Button,
   Card,
-  Segmented,
   Switch,
   Field,
   Input,
@@ -17,9 +17,21 @@ import {
   useReportState,
 } from "./Report.parts.tsx";
 import type { ReportState } from "./Report.parts.tsx";
-import type { ReportOutcome } from "../../core/report.ts";
-import { AllClearCard, ChronicCard } from "./Report.cards.tsx";
+import { previewReport, type ReportOutcome } from "../../core/report.ts";
+import {
+  INITIAL_OWNER_STATE,
+  condomRoutePresent,
+  type OwnerState,
+} from "../../core/badge.ts";
+import { withPrep, withCondomRoute } from "../../core/route.ts";
+import {
+  todayEpochDay,
+  epochDayToISODate,
+  isoDateToEpochDay,
+} from "../../core/clock.ts";
+import { ChronicCard } from "./Report.cards.tsx";
 import { DetailEntry } from "./Report.infection.tsx";
+import { BlueReadiness, RouteControls } from "./Report.route.tsx";
 import { ShareHeadsUp } from "./Report.share.tsx";
 
 export interface ReportProps {
@@ -35,8 +47,12 @@ export interface ReportProps {
   onTweak?: ((tweak: Record<string, string>) => void) | undefined;
   /** Apply the reported result to the real owner state (the wired app). */
   onApply?: ((outcome: ReportOutcome) => void) | undefined;
-  /** Pre-fill the date-tested field (the prototype's t.f.lastTestedLabel). */
-  lastTestedLabel?: string;
+  /** The owner's current state, for the live "what blue needs" preview + routes. */
+  ownerState?: OwnerState;
+  /** Persist a route toggle (PrEP / condoms-always) to the owner state. */
+  onSetOwnerState?:
+    | ((update: (prev: OwnerState) => OwnerState) => void)
+    | undefined;
 }
 
 interface SaveArgs {
@@ -60,10 +76,10 @@ function runSave({
   onSavedPositive,
   onSavedHome,
 }: SaveArgs) {
-  const { onPassport, anyPositive, detail, coreComplete } = state;
+  const { onPassport, anyPositive, coreComplete } = state;
   if (onPassport) {
     if (anyPositive) onTweak?.({ clearance: "positive", pauseMode: "auto" });
-    else if (!detail || coreComplete)
+    else if (coreComplete)
       onTweak?.({ recency: "fresh", clearance: "clear", pauseMode: "none" });
     else
       onTweak?.({ recency: "lapsed", clearance: "clear", pauseMode: "none" });
@@ -116,71 +132,36 @@ function PrivacyNoteCard() {
   );
 }
 
-export function Report({
+// The "Date tested" picker, the passport toggle, and the save/cancel bar. The
+// date is a real date input, capped at today and written back as an epoch day,
+// so a back-dated test ages from when it was taken instead of reading as fresh.
+function ReportFooter({
+  state,
+  anyEntered,
   onBack,
-  onSavedPositive,
-  onSavedHome,
-  onLearn,
-  onTweak,
-  onApply,
-  lastTestedLabel = "7 Jun 2026",
-}: ReportProps) {
+  onSave,
+}: {
+  state: ReportState;
+  anyEntered: boolean;
+  onBack?: (() => void) | undefined;
+  onSave: () => void;
+}) {
   const c = COPY;
-  const state = useReportState();
-  const { detail, anyPositive, anyChronicPositive, anyEntered } = state;
-  const save = () => {
-    runSave({ state, onTweak, onApply, onSavedPositive, onSavedHome });
-  };
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 20,
-        width: "100%",
-        maxWidth: 390,
-      }}
-    >
-      <h1
-        style={{
-          fontSize: 24,
-          fontWeight: 800,
-          letterSpacing: "-0.02em",
-          color: "var(--text-strong)",
-        }}
+    <>
+      <Field
+        label={<span style={fieldLbl}>{c.dateLabel}</span>}
+        hint={c.dateHint}
       >
-        {c.title}
-      </h1>
-
-      <Segmented<string>
-        options={[
-          { value: c.modeAll, label: c.modeAll },
-          { value: c.modeDetail, label: c.modeDetail },
-        ]}
-        value={state.mode}
-        onChange={state.setMode}
-      />
-
-      {!detail ? (
-        <AllClearCard />
-      ) : (
-        <DetailEntry state={state} onLearn={onLearn} />
-      )}
-
-      {anyPositive && <PrivacyNoteCard />}
-
-      {/* Chronic, lifelong-manageable diagnosis (HSV/HPV): education only, it
-          never grays the badge. Outbreak -> the considerate move is Pause. */}
-      {anyChronicPositive && (
-        <ChronicCard herpesPositive={state.val("herpes") === "Positive"} />
-      )}
-
-      {/* Display-only today: the value is never read, and applyReport stamps the
-          result with today's epoch day. If this becomes editable, applyReport must
-          take the chosen day as nowDay's lastPanelDay (an old date must not read
-          as fresh). */}
-      <Field label={<span style={fieldLbl}>{c.dateLabel}</span>}>
-        <Input defaultValue={lastTestedLabel} />
+        <Input
+          type="date"
+          value={epochDayToISODate(state.panelDay)}
+          max={epochDayToISODate(todayEpochDay())}
+          onChange={(e) => {
+            const day = isoDateToEpochDay(e.target.value);
+            if (day !== null) state.setPanelDay(day);
+          }}
+        />
       </Field>
       <Card
         variant="flat"
@@ -211,11 +192,92 @@ export function Report({
           size="lg"
           block
           disabled={!anyEntered}
-          onClick={save}
+          onClick={onSave}
         >
           {c.save}
         </Button>
       </div>
+    </>
+  );
+}
+
+export function Report({
+  onBack,
+  onSavedPositive,
+  onSavedHome,
+  onLearn,
+  onTweak,
+  onApply,
+  ownerState = INITIAL_OWNER_STATE,
+  onSetOwnerState,
+}: ReportProps) {
+  const c = COPY;
+  const state = useReportState();
+  const { anyPositive, anyChronicPositive, anyEntered } = state;
+  // Route toggles mirror Settings: they write the owner state immediately (so
+  // they count toward blue) AND drive the local preview before the parent
+  // re-renders. Stories with no setter still toggle via the local copy.
+  const [prep, setPrep] = useState(ownerState.onPrep);
+  const [condoms, setCondoms] = useState(condomRoutePresent(ownerState));
+  const togglePrep = (v: boolean) => {
+    setPrep(v);
+    onSetOwnerState?.((s) => withPrep(s, v));
+  };
+  const toggleCondoms = (v: boolean) => {
+    setCondoms(v);
+    onSetOwnerState?.((s) => withCondomRoute(s, v));
+  };
+  const base = withCondomRoute(withPrep(ownerState, prep), condoms);
+  const preview = previewReport(base, reportOutcome(state), todayEpochDay());
+  const save = () => {
+    runSave({ state, onTweak, onApply, onSavedPositive, onSavedHome });
+  };
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 20,
+        width: "100%",
+        maxWidth: 390,
+      }}
+    >
+      <h1
+        style={{
+          fontSize: 24,
+          fontWeight: 800,
+          letterSpacing: "-0.02em",
+          color: "var(--text-strong)",
+        }}
+      >
+        {c.title}
+      </h1>
+
+      <BlueReadiness preview={preview} />
+
+      <DetailEntry state={state} onLearn={onLearn} />
+
+      <RouteControls
+        prep={prep}
+        condoms={condoms}
+        onPrep={togglePrep}
+        onCondoms={toggleCondoms}
+      />
+
+      {anyPositive && <PrivacyNoteCard />}
+
+      {/* Chronic, lifelong-manageable diagnosis (HSV/HPV): education only, it
+          never grays the badge. Outbreak -> the considerate move is Pause. */}
+      {anyChronicPositive && (
+        <ChronicCard herpesPositive={state.val("herpes") === "Positive"} />
+      )}
+
+      <ReportFooter
+        state={state}
+        anyEntered={anyEntered}
+        onBack={onBack}
+        onSave={save}
+      />
     </div>
   );
 }

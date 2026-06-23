@@ -155,6 +155,16 @@ This guide is the propagation plan.
   "not exposed here" option per site), and the **3-state condom preference** (No condoms / Condoms optional / Condoms
   always), decoupled from blue; only "condoms always" shown publicly qualifies as
   the HIV-protection route.
+- **Refinement (shipped).** No "all negative" one-tap shortcut: the flow opens straight into
+  per-condition entry with **everything defaulting to "not tested,"** so a person states what they
+  actually tested for rather than asserting a blanket clear. **Date tested is a real date input**
+  (capped at today) wired to the panel day, so a back-dated test ages from when it was taken
+  instead of reading as fresh. The flow **surfaces the HIV-protection route inline** (a PrEP toggle
+  and a condoms-always toggle, writing the same owner state as Settings; undetectable rides in via
+  the HIV result), since a clean panel alone never earns blue. A **live "what a blue card needs"
+  checklist** shows the three requirements (recent full panel / clear / a route) and whether the
+  result will show blue, computed from the same `badgeGates` the badge itself uses so it can never
+  drift. The route a person sets here persists immediately, the same as in Settings.
 
 ### Let partners know — `CoreFlows.Partners` / `PartnersSent`
 - **Now:** Report → review auto-built list → **"Send the heads-up"** or **"Pause for now"**

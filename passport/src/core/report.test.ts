@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { applyReport, extendClearance, type ReportOutcome } from "./report.ts";
+import {
+  applyReport,
+  extendClearance,
+  previewReport,
+  type ReportOutcome,
+} from "./report.ts";
 import {
   INITIAL_OWNER_STATE,
   computeBadge,
@@ -157,6 +162,41 @@ describe("applyReport", () => {
     expect(next.clearUntilDay).toBe(NOW_DAY + 5); // preserved, not cleared
   });
 
+  it("stamps the panel with the chosen test day when panelDay is given", () => {
+    const day = daysAgo(30);
+    const next = applyReport(
+      onPrep,
+      { ...clearNegative, panelDay: day },
+      NOW_DAY,
+    );
+    expect(next.testing.lastPanelDay).toBe(day);
+  });
+
+  it("a back-dated panel past the window reads as gray, not fresh", () => {
+    // A complete clear panel on a route, but dated 200 days ago: out of window.
+    const next = applyReport(
+      onPrep,
+      { ...clearNegative, panelDay: daysAgo(200) },
+      NOW_DAY,
+    );
+    expect(computeBadge(next, NOW_DAY)).toBe("gray");
+  });
+
+  it("a non-HIV positive arms the clearance window from now, not the test day", () => {
+    // Even a back-dated positive holds the badge through the window from today.
+    const next = applyReport(
+      onPrep,
+      {
+        hiv: "negative",
+        corePanelComplete: true,
+        activeNonHivSti: true,
+        panelDay: daysAgo(3),
+      },
+      NOW_DAY,
+    );
+    expect(next.clearUntilDay).toBe(NOW_DAY + CLEARANCE_WINDOW_DAYS);
+  });
+
   it("extendClearance lengthens the window and never shortens it", () => {
     const armed: OwnerState = { ...onPrep, clearUntilDay: NOW_DAY + 3 };
     const extended = extendClearance(armed, NOW_DAY);
@@ -171,5 +211,59 @@ describe("applyReport", () => {
     expect(extendClearance(stale, NOW_DAY).clearUntilDay).toBe(
       NOW_DAY + CLEARANCE_WINDOW_DAYS,
     );
+  });
+});
+
+describe("previewReport", () => {
+  it("a clear complete panel on a route reads all-met and will be blue", () => {
+    const p = previewReport(onPrep, clearNegative, NOW_DAY);
+    expect(p).toEqual({
+      recentPanel: true,
+      clear: true,
+      route: true,
+      willBeBlue: true,
+    });
+  });
+
+  it("the same panel with no route: only the route requirement is unmet", () => {
+    const p = previewReport(INITIAL_OWNER_STATE, clearNegative, NOW_DAY);
+    expect(p.recentPanel).toBe(true);
+    expect(p.clear).toBe(true);
+    expect(p.route).toBe(false);
+    expect(p.willBeBlue).toBe(false);
+  });
+
+  it("an incomplete panel leaves the recent-panel requirement unmet", () => {
+    const p = previewReport(
+      onPrep,
+      { hiv: "negative", corePanelComplete: false, activeNonHivSti: false },
+      NOW_DAY,
+    );
+    expect(p.recentPanel).toBe(false);
+    expect(p.willBeBlue).toBe(false);
+  });
+
+  it("an active non-HIV positive leaves the clear requirement unmet", () => {
+    const p = previewReport(
+      onPrep,
+      { hiv: "negative", corePanelComplete: true, activeNonHivSti: true },
+      NOW_DAY,
+    );
+    expect(p.clear).toBe(false);
+    expect(p.willBeBlue).toBe(false);
+  });
+
+  it("detectable HIV leaves the clear requirement unmet (the hard blocker)", () => {
+    const p = previewReport(
+      onPrep,
+      {
+        hiv: "positive_detectable",
+        corePanelComplete: true,
+        activeNonHivSti: false,
+      },
+      NOW_DAY,
+    );
+    expect(p.clear).toBe(false);
+    expect(p.willBeBlue).toBe(false);
   });
 });

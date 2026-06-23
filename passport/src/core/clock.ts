@@ -29,6 +29,25 @@ export function epochDayToDate(day: number): Date {
 }
 
 /**
+ * An epoch day as a `YYYY-MM-DD` string (UTC), the value format a native
+ * `<input type="date">` reads and writes. Pairs with {@link isoDateToEpochDay}.
+ */
+export function epochDayToISODate(day: number): string {
+  return epochDayToDate(day).toISOString().slice(0, 10);
+}
+
+/**
+ * Parse a `YYYY-MM-DD` date input value back to a UTC epoch day, or null when the
+ * string is empty or unparseable (e.g. the field was cleared). Date-only strings
+ * parse as UTC midnight by spec, so this round-trips {@link epochDayToISODate}.
+ */
+export function isoDateToEpochDay(iso: string): number | null {
+  if (iso === "") return null;
+  const ms = Date.parse(iso);
+  return Number.isNaN(ms) ? null : toEpochDay(ms);
+}
+
+/**
  * A coarse "when" label for a past day relative to today (Today / Yesterday /
  * N days / N weeks / N months ago). Day-granular and approximate by design; used
  * for owner-facing recency (e.g. a linkup's last-seen), never anything a viewer

@@ -3,14 +3,15 @@ import { Wallet } from "../../wallet/Wallet.tsx";
 import type { ScreenRenderers } from "./context.ts";
 
 export const reportRenderers: ScreenRenderers = {
-  report: ({ nav, owner, onReport }) => (
+  report: ({ nav, ownerState, onReport, setOwnerState }) => (
     <Report
       onBack={nav.back}
       onSavedPositive={() => nav.go("report-saved")}
       onSavedHome={() => nav.jump("home")}
       onLearn={(id) => nav.go("learn-detail", { id })}
       onApply={onReport}
-      lastTestedLabel={owner.lastTestedLabel}
+      ownerState={ownerState}
+      onSetOwnerState={setOwnerState}
     />
   ),
   "report-saved": ({ nav, owner }) => (

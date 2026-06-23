@@ -1,6 +1,12 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { toEpochDay, todayEpochDay, relativeDayLabel } from "./clock.ts";
+import {
+  toEpochDay,
+  todayEpochDay,
+  relativeDayLabel,
+  epochDayToISODate,
+  isoDateToEpochDay,
+} from "./clock.ts";
 
 describe("epoch day", () => {
   it("counts whole UTC days since the epoch", () => {
@@ -20,6 +26,28 @@ describe("epoch day", () => {
     const d = todayEpochDay();
     expect(Number.isInteger(d)).toBe(true);
     expect(d).toBeGreaterThan(0);
+  });
+});
+
+describe("ISO date round-trip", () => {
+  it("formats an epoch day as a UTC YYYY-MM-DD string", () => {
+    expect(epochDayToISODate(0)).toBe("1970-01-01");
+    expect(epochDayToISODate(1)).toBe("1970-01-02");
+    // 2026-06-22 is day 20626 since the epoch.
+    expect(epochDayToISODate(20626)).toBe("2026-06-22");
+  });
+
+  it("parses a date-input value back to the same epoch day", () => {
+    expect(isoDateToEpochDay("1970-01-01")).toBe(0);
+    expect(isoDateToEpochDay("2026-06-22")).toBe(20626);
+    for (const day of [0, 1, 19710, 20626, 25000]) {
+      expect(isoDateToEpochDay(epochDayToISODate(day))).toBe(day);
+    }
+  });
+
+  it("returns null for an empty or unparseable value", () => {
+    expect(isoDateToEpochDay("")).toBeNull();
+    expect(isoDateToEpochDay("not-a-date")).toBeNull();
   });
 });
 

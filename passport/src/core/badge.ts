@@ -151,18 +151,53 @@ function hasQualifyingRoute(s: OwnerState): boolean {
 }
 
 /**
+ * The individual blue requirements, each as a pass/fail. Blue is every gate
+ * passing; gray is any one failing. This is the single source of truth shared by
+ * {@link computeBadge} and the owner-facing "what blue needs" report preview, so
+ * the checklist a person sees can never drift from the badge they actually get.
+ */
+export interface BadgeGates {
+  /** Not manually paused. */
+  readonly notPaused: boolean;
+  /** Not inside a reported positive's post-treatment clearance window. */
+  readonly notInClearance: boolean;
+  /** HIV is not positive-and-detectable (a hard blocker, independent of route). */
+  readonly hivNotDetectable: boolean;
+  /** A complete core panel with every exposed site covered, within the window. */
+  readonly testedInWindow: boolean;
+  /** No current active non-HIV STI. */
+  readonly clear: boolean;
+  /** At least one qualifying HIV-protection route (PrEP / undetectable / condoms). */
+  readonly hasRoute: boolean;
+}
+
+/** Evaluate every blue requirement against the owner state as of `nowDay`. */
+export function badgeGates(s: OwnerState, nowDay: number): BadgeGates {
+  return {
+    notPaused: !s.paused,
+    notInClearance: !inClearanceWindow(s, nowDay),
+    hivNotDetectable: !detectableHivBlocks(s),
+    testedInWindow: testedInWindow(s.testing, nowDay),
+    clear: isClear(s),
+    hasRoute: hasQualifyingRoute(s),
+  };
+}
+
+/**
  * Blue requires ALL of: not paused; not detectable-HIV; tested in window (as of
  * `nowDay`); clear; and at least one qualifying HIV-protection route. Else gray.
  * `nowDay` is supplied by the caller (core/clock) so this stays pure.
  */
 export function computeBadge(s: OwnerState, nowDay: number): Badge {
-  if (s.paused) return "gray";
-  if (inClearanceWindow(s, nowDay)) return "gray";
-  if (detectableHivBlocks(s)) return "gray";
-  if (!testedInWindow(s.testing, nowDay)) return "gray";
-  if (!isClear(s)) return "gray";
-  if (!hasQualifyingRoute(s)) return "gray";
-  return "blue";
+  const g = badgeGates(s, nowDay);
+  const blue =
+    g.notPaused &&
+    g.notInClearance &&
+    g.hivNotDetectable &&
+    g.testedInWindow &&
+    g.clear &&
+    g.hasRoute;
+  return blue ? "blue" : "gray";
 }
 
 /**
