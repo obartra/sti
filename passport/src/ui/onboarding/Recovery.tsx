@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ShowPhase } from "./recoveryShow.tsx";
+import { copyText } from "../../lib/clipboard.ts";
 
 // B2 recovery phrase. The phrase is the app-generated, high-entropy recovery
 // token (the only no-PII way back in if the device is lost; no email/phone, no
@@ -14,46 +15,6 @@ export interface RecoveryProps {
   onContinue?: (() => void) | undefined;
 }
 
-// The synchronous fallback for contexts where navigator.clipboard is absent or
-// blocked (older Safari, some in-app webviews): a hidden textarea + execCommand.
-function execCommandCopy(text: string): boolean {
-  try {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    // execCommand is deprecated but remains the only sync copy fallback, and runs
-    // exactly where the async Clipboard API isn't available, so keep it.
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    const ok = document.execCommand("copy");
-    document.body.removeChild(ta);
-    return ok;
-  } catch {
-    return false;
-  }
-}
-
-// Copy text to the clipboard via the async API, falling back to execCommandCopy.
-// Returns whether a copy path succeeded.
-function copyToClipboard(text: string): boolean {
-  try {
-    // Typed present by the DOM lib but actually absent in some webviews, so treat
-    // it as optional and fall through when it isn't there.
-    const clip: Clipboard | undefined =
-      typeof navigator === "undefined" ? undefined : navigator.clipboard;
-    if (clip) {
-      void clip.writeText(text).catch(() => undefined);
-      return true;
-    }
-  } catch {
-    // fall through to the textarea path
-  }
-  return execCommandCopy(text);
-}
-
 export function Recovery({ phrase, onBack, onContinue }: RecoveryProps) {
   const [revealed, setRevealed] = useState(false);
   // Sticky: once revealed, the owner can continue even after hiding again. Hiding
@@ -62,7 +23,7 @@ export function Recovery({ phrase, onBack, onContinue }: RecoveryProps) {
   const [copied, setCopied] = useState(false);
 
   const copyPhrase = () => {
-    if (!copyToClipboard(phrase)) return;
+    if (!copyText(phrase)) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
   };

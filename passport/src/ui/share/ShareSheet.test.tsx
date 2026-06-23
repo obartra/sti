@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { ShareSheet } from "./ShareSheet.tsx";
 
 const base = {
@@ -7,6 +7,13 @@ const base = {
   state: "gray" as const,
   identity: { handle: "ari" },
 };
+
+afterEach(() => {
+  // Tests that add a native share API clean it up so others see "no share".
+  if ("share" in navigator) {
+    delete (navigator as { share?: unknown }).share;
+  }
+});
 
 describe("ShareSheet link wiring", () => {
   it("shows the real shareable link (scheme stripped), not the placeholder", () => {
@@ -62,6 +69,44 @@ describe("ShareSheet link wiring", () => {
     );
     expect(overlay?.style.pointerEvents).toBe("auto");
     expect(overlay).toHaveAttribute("aria-hidden", "false");
+  });
+
+  it("Copy link confirms with a Copied state when the copy succeeds", () => {
+    render(<ShareSheet {...base} sharingMode="link" onCopy={() => true} />);
+    fireEvent.click(screen.getByText("Copy link"));
+    expect(screen.getByText("Copied")).toBeInTheDocument();
+  });
+
+  it("without a native share API, the primary button reads Done and closes", () => {
+    const onClose = vi.fn();
+    render(<ShareSheet {...base} onClose={onClose} />);
+    // jsdom has no navigator.share, so there's nothing to share to: just close.
+    expect(screen.queryByRole("button", { name: "Share" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("with a native share API, Share hands off the link and then closes", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "share", {
+      value: share,
+      configurable: true,
+    });
+    const onClose = vi.fn();
+    const id = "z".repeat(43);
+    render(
+      <ShareSheet
+        {...base}
+        sharingMode="link"
+        url={`https://sti.care/a/${id}`}
+        onClose={onClose}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Share" }));
+    expect(share).toHaveBeenCalledWith(
+      expect.objectContaining({ url: `https://sti.care/a/${id}` }),
+    );
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
   });
 
   it("hides the wallet row when showWallet is false (feature gated off)", () => {

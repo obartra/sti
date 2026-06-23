@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactElement } from "react";
+import { useState, type CSSProperties, type ReactElement } from "react";
 import { Button } from "../../design/components/index.ts";
 import {
   X,
@@ -7,6 +7,7 @@ import {
   Link,
   Globe,
   Copy,
+  Check,
   Download,
   Refresh,
 } from "../../design/icons.tsx";
@@ -37,10 +38,23 @@ const COPY = {
   notePublic: "Anyone who scans sees just this status.",
   noteLink: "Only people you send this private link to can open it.",
   copyLink: "Copy link",
+  copied: "Copied",
   saveQr: "Save QR image",
   revoke: "Revoke & renew",
   share: "Share",
+  done: "Done",
+  shareTitle: "My sti.care passport",
 } as const;
+
+// Whether this browser can hand off to a native share sheet. When it can, the
+// primary button opens it; when it can't (most desktops), there's nothing to
+// share to, so the button reads "Done" and just closes (the copy / QR actions
+// above are the share path there). Read at call time so tests/SSR stay safe.
+function canNativeShare(): boolean {
+  return (
+    typeof navigator !== "undefined" && typeof navigator.share === "function"
+  );
+}
 
 // Canonical opaque alias. Public carries the #fragment key; the private (link)
 // form is the bare /a/{id}, its key is handed at share time.
@@ -71,8 +85,8 @@ export interface ShareSheetProps {
   avatarSrc?: string | undefined;
   /** The real shareable link. Null/absent falls back to a placeholder (Storybook). */
   url?: string | null | undefined;
-  /** Copy the real link to the clipboard. */
-  onCopy?: (() => void) | undefined;
+  /** Copy the real link to the clipboard; return false if no copy path was taken. */
+  onCopy?: (() => boolean) | undefined;
   onRevoke?: (() => void) | undefined;
   onWallet?: (() => void) | undefined;
   /**
@@ -149,8 +163,16 @@ function UrlCard({
   link: boolean;
   url: string;
   seed: string;
-  onCopy: (() => void) | undefined;
+  onCopy: (() => boolean) | undefined;
 }): ReactElement {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    // Only confirm when a copy path actually ran, so "Copied" never lies on a
+    // device where the clipboard is unavailable.
+    if (onCopy?.() === false) return;
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1600);
+  };
   return (
     <div
       style={{
@@ -205,10 +227,10 @@ function UrlCard({
           <Button
             variant="secondary"
             size="sm"
-            icon={<Copy size={15} />}
-            onClick={onCopy}
+            icon={copied ? <Check size={15} /> : <Copy size={15} />}
+            onClick={copy}
           >
-            {COPY.copyLink}
+            {copied ? COPY.copied : COPY.copyLink}
           </Button>
           <Button
             variant="ghost"
@@ -264,6 +286,63 @@ function sheetStyleFor(desktop: boolean, open: boolean): CSSProperties {
   };
 }
 
+// Hand off to the OS share sheet when one exists, then close on a completed
+// share; otherwise (no native share, e.g. desktop) there's nothing to share to,
+// so just close. A dismissed native share (reject) leaves the sheet open.
+function nativeShareOrClose(
+  nativeShare: boolean,
+  url: string,
+  onClose: (() => void) | undefined,
+): void {
+  if (!nativeShare) {
+    onClose?.();
+    return;
+  }
+  void navigator
+    .share({ title: COPY.shareTitle, url })
+    .then(() => onClose?.())
+    .catch(() => undefined);
+}
+
+// The revoke (private links only) + primary button row. The primary reads
+// "Share" and opens the OS share sheet where available, else "Done" (close).
+function SheetActions({
+  link,
+  nativeShare,
+  onShare,
+  onRevoke,
+}: {
+  link: boolean;
+  nativeShare: boolean;
+  onShare: () => void;
+  onRevoke: (() => void) | undefined;
+}): ReactElement {
+  return (
+    <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+      {link && (
+        <Button
+          variant="quiet"
+          size="lg"
+          block
+          icon={<Refresh size={17} />}
+          onClick={onRevoke}
+        >
+          {COPY.revoke}
+        </Button>
+      )}
+      <Button
+        variant="primary"
+        size="lg"
+        block
+        icon={nativeShare ? <Share size={18} /> : undefined}
+        onClick={onShare}
+      >
+        {nativeShare ? COPY.share : COPY.done}
+      </Button>
+    </div>
+  );
+}
+
 export function ShareSheet(props: ShareSheetProps): ReactElement {
   const {
     open,
@@ -295,6 +374,10 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
     seed,
     hasControl: onIdentityChange !== undefined,
   });
+
+  const nativeShare = canNativeShare();
+  const onShare = () =>
+    nativeShareOrClose(nativeShare, realUrl ?? `https://${url}`, onClose);
 
   return (
     <div
@@ -356,28 +439,12 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
         <DurationRow choice={durationChoice} onChange={onDurationChange} />
         <UrlCard link={link} url={url} seed={seed} onCopy={onCopy} />
         <WalletRow show={showWallet} onWallet={onWallet} />
-        <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-          {link && (
-            <Button
-              variant="quiet"
-              size="lg"
-              block
-              icon={<Refresh size={17} />}
-              onClick={onRevoke}
-            >
-              {COPY.revoke}
-            </Button>
-          )}
-          <Button
-            variant="primary"
-            size="lg"
-            block
-            icon={<Share size={18} />}
-            onClick={onClose}
-          >
-            {COPY.share}
-          </Button>
-        </div>
+        <SheetActions
+          link={link}
+          nativeShare={nativeShare}
+          onShare={onShare}
+          onRevoke={onRevoke}
+        />
       </div>
     </div>
   );

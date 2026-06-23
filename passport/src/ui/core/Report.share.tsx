@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Copy, Check, Flame, Hand, Heart } from "../../design/icons.tsx";
+import { copyText } from "../../lib/clipboard.ts";
 
 // After a positive is saved, an OPTIONAL way to give a heads-up to someone who
 // isn't on sti.care (linked contacts are handled automatically and silently, so
@@ -82,11 +83,7 @@ export function ShareHeadsUp() {
   const tone = TONES.find((t) => t.id === activeId) ?? DIRECT;
 
   const copy = () => {
-    try {
-      void navigator.clipboard.writeText(tone.message).catch(() => undefined);
-    } catch {
-      // no clipboard available
-    }
+    if (!copyText(tone.message)) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 1400);
   };

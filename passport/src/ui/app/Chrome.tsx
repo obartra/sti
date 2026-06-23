@@ -33,7 +33,7 @@ export interface ChromeProps {
   setShareOpen: (open: boolean) => void;
   /** The owner's real shareable link (null while preparing / logged out). */
   shareUrl: string | null;
-  onCopyShareLink: () => void;
+  onCopyShareLink: () => boolean;
   onRevokeShareLink: () => void;
   shareIdentity: AliasIdentity;
   onShareIdentityChange: (choice: AliasIdentity) => void;

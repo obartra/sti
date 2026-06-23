@@ -5,14 +5,15 @@ import type {
   SessionController,
   ShareLinkResult,
 } from "../../store/index.ts";
+import { copyText } from "../../lib/clipboard.ts";
 
 export interface ShareLinkControls {
   /** The owner's real shareable link, or null until the share sheet is opened. */
   readonly shareUrl: string | null;
   /** Open/close the share sheet; opening mints/refreshes the alias for the mode. */
   readonly setShareOpen: (open: boolean) => void;
-  /** Copy the current real link to the clipboard (no-op if none / unavailable). */
-  readonly copyShareLink: () => void;
+  /** Copy the current real link to the clipboard; true if a copy path was taken. */
+  readonly copyShareLink: () => boolean;
   /** Revoke the current link (it stops resolving) and surface a fresh one. */
   readonly revokeLink: () => void;
   /** The face this link shows: anonymous (id-derived) or the owner's main identity. */
@@ -151,12 +152,8 @@ export function useShareLink(
   );
 
   const copyShareLink = useCallback(() => {
-    if (shareUrl === null) return;
-    try {
-      void navigator.clipboard.writeText(shareUrl).catch(() => undefined);
-    } catch {
-      // no clipboard available
-    }
+    if (shareUrl === null) return false;
+    return copyText(shareUrl);
   }, [shareUrl]);
 
   return {
