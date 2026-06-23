@@ -16,6 +16,15 @@ export {
 } from "./grantKeyStore.ts";
 export { serializePublicCard, parsePublicCard } from "./publicCard.ts";
 export { parseAliasLink, parseScannedLink } from "./aliasLink.ts";
+export {
+  normalizeVanityName,
+  vanityNameError,
+  isValidVanityName,
+  RESERVED_NAMES,
+  MIN_VANITY_LEN,
+  MAX_VANITY_LEN,
+  type VanityNameError,
+} from "./vanityName.ts";
 export type { AccountSync } from "./accountSync.ts";
 export { createAccountSync } from "./accountSync.ts";
 export type {
