@@ -232,7 +232,6 @@ function PublicChrome(props: ChromeProps) {
     return (
       <DesktopLanding
         onClaim={() => nav.go("b1-claim")}
-        onSample={() => nav.go("a2-public")}
         onLogin={() => nav.go("b1-claim", { isLogin: true })}
         onHome={() => nav.jump("a1-landing", "public")}
       />

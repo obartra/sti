@@ -17,7 +17,6 @@ const SECTION_MAX: CSSProperties = { maxWidth: 1120, margin: "0 auto" };
 
 export interface LandingHandlers {
   onClaim?: (() => void) | undefined;
-  onSample?: (() => void) | undefined;
   onLogin?: (() => void) | undefined;
   onHome?: (() => void) | undefined;
 }
@@ -124,7 +123,7 @@ export function LandingHeader({ onClaim, onLogin, onHome }: LandingHandlers) {
 }
 
 // ── Hero copy column ─────────────────────────────────────────────────────────
-function HeroCopy({ onClaim, onSample }: LandingHandlers) {
+function HeroCopy({ onClaim }: LandingHandlers) {
   return (
     <div>
       <div
@@ -168,9 +167,6 @@ function HeroCopy({ onClaim, onSample }: LandingHandlers) {
       >
         <Button variant="primary" size="lg" onClick={onClaim}>
           {LANDING.claim} <ArrowRight size={18} />
-        </Button>
-        <Button variant="secondary" size="lg" onClick={onSample}>
-          {LANDING.sample}
         </Button>
       </div>
       <div
@@ -240,7 +236,7 @@ function HeroSample() {
 }
 
 // ── Hero section ─────────────────────────────────────────────────────────────
-export function Hero({ onClaim, onSample }: LandingHandlers) {
+export function Hero({ onClaim }: LandingHandlers) {
   return (
     <section style={{ position: "relative", overflow: "hidden" }}>
       <div
@@ -278,7 +274,7 @@ export function Hero({ onClaim, onSample }: LandingHandlers) {
           alignItems: "center",
         }}
       >
-        <HeroCopy onClaim={onClaim} onSample={onSample} />
+        <HeroCopy onClaim={onClaim} />
         <HeroSample />
       </div>
     </section>

@@ -6,7 +6,6 @@ export const LANDING = {
   title: "Know where you stand.",
   sub: "Share a link or scan in person to see where someone stands. Just the status, never the details.",
   claim: "Claim your passport",
-  sample: "See a sample card",
   points: [
     [
       "Know before you meet",

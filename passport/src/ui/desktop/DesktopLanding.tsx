@@ -12,14 +12,12 @@ import {
 
 export interface DesktopLandingProps {
   onClaim?: () => void;
-  onSample?: () => void;
   onLogin?: () => void;
   onHome?: () => void;
 }
 
 export function DesktopLanding({
   onClaim,
-  onSample,
   onLogin,
   onHome,
 }: DesktopLandingProps) {
@@ -34,7 +32,7 @@ export function DesktopLanding({
       }}
     >
       <LandingHeader onClaim={onClaim} onLogin={onLogin} onHome={onHome} />
-      <Hero onClaim={onClaim} onSample={onSample} />
+      <Hero onClaim={onClaim} />
       <ValueBand />
       <ClosingCTA onClaim={onClaim} />
       <LandingFooter />

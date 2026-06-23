@@ -15,7 +15,6 @@ const COPY = {
   title: "Know where you stand.",
   sub: "Share a link or scan in person to see where someone stands. Just the status, never the details.",
   claim: "Claim your passport",
-  sample: "See a sample card",
   points: [
     [
       "Know before you meet",
@@ -172,20 +171,11 @@ function SampleCard() {
   );
 }
 
-function LandingActions({
-  onClaim,
-  onSample,
-}: {
-  onClaim?: (() => void) | undefined;
-  onSample?: (() => void) | undefined;
-}) {
+function LandingActions({ onClaim }: { onClaim?: (() => void) | undefined }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <Button variant="primary" size="lg" block onClick={onClaim}>
         {COPY.claim} <ArrowRight size={18} />
-      </Button>
-      <Button variant="secondary" size="lg" block onClick={onSample}>
-        {COPY.sample}
       </Button>
     </div>
   );
@@ -229,11 +219,10 @@ function PrivacyFootnote() {
 
 export interface LandingProps {
   onClaim?: () => void;
-  onSample?: () => void;
   onLogin?: () => void;
 }
 
-export function Landing({ onClaim, onSample, onLogin }: LandingProps) {
+export function Landing({ onClaim, onLogin }: LandingProps) {
   return (
     <div
       style={{
@@ -248,7 +237,7 @@ export function Landing({ onClaim, onSample, onLogin }: LandingProps) {
       <LandingHeader onLogin={onLogin} />
       <LandingHero />
       <SampleCard />
-      <LandingActions onClaim={onClaim} onSample={onSample} />
+      <LandingActions onClaim={onClaim} />
       <ValuePoints />
       <PrivacyFootnote />
     </div>

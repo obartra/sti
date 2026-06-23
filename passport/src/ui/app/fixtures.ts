@@ -1,8 +1,3 @@
-import type {
-  BadgeState,
-  ProtectionLabel,
-  Route as BadgeRoute,
-} from "../badge-card.tsx";
 import { randomAvatar } from "../../lib/avatars.ts";
 import type { OwnerView } from "../../store/index.ts";
 
@@ -26,13 +21,4 @@ export const OWNER: OwnerView = {
   clearBy: new Date("2026-06-27T00:00:00Z"),
   daysLeft: 62,
   lastTestedLabel: "7 Jun 2026",
-};
-
-// A sample blue card shown for the "see what others see" / public-resolution
-// preview (a different person, so it never leaks the owner's own data).
-export const SAMPLE_RESOLVED = {
-  state: "blue" as BadgeState,
-  labels: ["hiv", "condoms_always"] as ProtectionLabel[],
-  route: "hiv" as BadgeRoute,
-  identity: { handle: "sam" },
 };

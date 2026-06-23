@@ -4,14 +4,12 @@ import { PublicResolutionScreen } from "../../public/PublicResolutionScreen.tsx"
 import { SelfPreview } from "../../public/SelfPreview.tsx";
 import { Alert } from "../../public/Alert.tsx";
 import { Exposed } from "../../public/Exposed.tsx";
-import { SAMPLE_RESOLVED } from "../fixtures.ts";
 import type { ScreenRenderers } from "./context.ts";
 
 export const publicRenderers: ScreenRenderers = {
   "a1-landing": ({ nav }) => (
     <Landing
       onClaim={() => nav.go("b1-claim")}
-      onSample={() => nav.go("a2-public")}
       onLogin={() => nav.go("b1-claim", { isLogin: true })}
     />
   ),
@@ -60,10 +58,11 @@ export const publicRenderers: ScreenRenderers = {
       );
     }
 
-    // No link (the landing's "see a sample" demo): a fixture card.
+    // No link (a cold/direct open with no alias): the uniform gray-nothing, never
+    // a fabricated card. The landing shows a clearly-labeled sample card inline.
     return (
       <PublicResolution
-        resolved={SAMPLE_RESOLVED}
+        resolved={null}
         onBack={ctx.nav.back}
         onClaim={onClaim}
         onVerify={onVerify}
