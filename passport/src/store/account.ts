@@ -100,6 +100,13 @@ export interface AccountManager {
    * persist it. Does not touch the badge, so no republish is needed.
    */
   setProfile(master: Bytes, profile: OwnerProfile): Promise<AccountBlob>;
+  /**
+   * Enforce link expiry on load: revoke + drop any links (aliases or contact
+   * links) past their expiry, then persist. A no-op (no write) when nothing is
+   * expired. No republish, the badge is unchanged. This closes the passive-owner
+   * gap so expiry no longer waits for the next setOwnerState.
+   */
+  sweepExpiredLinks(master: Bytes): Promise<AccountBlob>;
 }
 
 // A brand-new account: empty links, default avatar, private (link) sharing, and a
@@ -353,6 +360,26 @@ export function createAccountManager(api: ApiClient): AccountManager {
       const next = await sweepExpired(api, blob, state, nowDay);
       await sync.save(master, next);
       await republishLiveLinks(api, next, nowDay);
+      return next;
+    },
+
+    async sweepExpiredLinks(master) {
+      const blob = await sync.load(master);
+      if (blob === null) {
+        throw new Error("sweepExpiredLinks: no account exists for this key");
+      }
+      const nowDay = todayEpochDay();
+      const anyExpired =
+        blob.contacts.some((c) => isExpired(c.expiresDay, nowDay)) ||
+        blob.aliases.some((a) => isExpired(a.expiresDay, nowDay));
+      // Nothing to do: skip the revoke + write entirely so a clean load is a
+      // pure read.
+      if (!anyExpired) return blob;
+      // Reuse the same revoke + drop sweep as setOwnerState, with the state
+      // unchanged (a load does not move the badge), and no republish (the
+      // surviving links' cards are unchanged).
+      const next = await sweepExpired(api, blob, blob.state, nowDay);
+      await sync.save(master, next);
       return next;
     },
 

@@ -329,6 +329,35 @@ async function grantPending(
   return approvals.length;
 }
 
+// Enforce link expiry on load, best-effort (closes the passive-owner gap). A
+// sweep failure falls back to the already-loaded blob, so a network blip never
+// blocks login; expiry is re-attempted on the next load.
+async function sweptOnLoad(
+  accounts: AccountManager,
+  master: Bytes,
+  fallback: AccountBlob,
+): Promise<AccountBlob> {
+  return accounts.sweepExpiredLinks(master).catch(() => fallback);
+}
+
+// Unlock the master from this device's passkey binding (the resume path). null
+// when there is no binding, the passkey is cancelled/unavailable, or the binding
+// does not unwrap (wrong passkey / corrupt binding: GCM rejects). The binding is
+// left intact on failure, so a later correct unlock still works.
+async function unlockMaster(
+  devices: DeviceStore,
+  passkey: PasskeyAuth,
+): Promise<Bytes | null> {
+  const cred = devices.load();
+  if (cred === null) return null;
+  try {
+    const prfOutput = await passkey.unlock(cred.credentialId);
+    return await unwrapMaster(base64urlToBytes(cred.wrappedMaster), prfOutput);
+  } catch {
+    return null;
+  }
+}
+
 export function createSessionController(deps: SessionDeps): SessionController {
   const { accounts, sync, devices, passkey, api } = deps;
 
@@ -343,37 +372,21 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
     async recover(phrase) {
       const recovered = await accounts.recover(phrase);
-      return recovered === null
-        ? null
-        : { master: recovered.master, blob: recovered.blob };
+      if (recovered === null) return null;
+      const blob = await sweptOnLoad(
+        accounts,
+        recovered.master,
+        recovered.blob,
+      );
+      return { master: recovered.master, blob };
     },
 
     async resume() {
-      const cred = devices.load();
-      if (cred === null) return null;
-
-      let prfOutput: Bytes;
-      try {
-        prfOutput = await passkey.unlock(cred.credentialId);
-      } catch {
-        // Cancelled, unavailable, or unknown credential: fall back to the phrase.
-        return null;
-      }
-
-      let master: Bytes;
-      try {
-        master = await unwrapMaster(
-          base64urlToBytes(cred.wrappedMaster),
-          prfOutput,
-        );
-      } catch {
-        // Wrong passkey or corrupt binding: GCM rejects. Leave the binding in
-        // place (a later correct unlock still works) and fall back to the phrase.
-        return null;
-      }
-
+      const master = await unlockMaster(devices, passkey);
+      if (master === null) return null;
       const blob = await sync.load(master);
-      return blob === null ? null : { master, blob };
+      if (blob === null) return null;
+      return { master, blob: await sweptOnLoad(accounts, master, blob) };
     },
 
     async enrollPasskey(session, userName) {

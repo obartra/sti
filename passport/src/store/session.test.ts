@@ -57,6 +57,13 @@ function fakeBackend() {
     },
     setOwnerState: () => Promise.reject(new Error("unused")),
     setProfile: () => Promise.reject(new Error("unused")),
+    sweepExpiredLinks: (master) => {
+      // No links expire in these tests, so a sweep is a pure read of the blob.
+      const blob = byMaster.get(bytesToBase64url(master));
+      return blob
+        ? Promise.resolve(blob)
+        : Promise.reject(new Error("no account"));
+    },
   };
   const sync: AccountSync = {
     load: (master) =>
