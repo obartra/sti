@@ -25,6 +25,11 @@ export interface PushControls {
 }
 
 function messageFor(result: PushEnableResult): string | null {
+  // A real failure carries its cause; surface it rather than a dead-end "try
+  // again", so the user sees (and can report) what actually broke.
+  if (typeof result === "object") {
+    return `Couldn’t turn on notifications: ${result.failed}`;
+  }
   switch (result) {
     case "enabled":
       return null;
@@ -34,8 +39,6 @@ function messageFor(result: PushEnableResult): string | null {
       return "This device can’t show notifications here.";
     case "unconfigured":
       return "Push isn’t available yet. You’ll still see alerts in the app.";
-    case "error":
-      return "Couldn’t turn on notifications. Try again.";
   }
 }
 

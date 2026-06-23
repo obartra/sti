@@ -30,7 +30,16 @@ export type PushEnableResult =
   | "denied" // the OS/browser permission prompt was declined
   | "unsupported" // this browser can't do Web Push
   | "unconfigured" // the server has no VAPID key yet (nothing to subscribe to)
-  | "error"; // SW registration / subscribe / network failure
+  // A real failure (SW register / subscribe / network), carrying the cause so the
+  // UI can surface it instead of a dead-end "try again" that hides what broke.
+  | { failed: string };
+
+// A short, human-readable label for a thrown error: its name plus message when
+// present (e.g. "AbortError: Registration failed - push service error").
+function errorLabel(e: unknown): string {
+  if (e instanceof Error) return e.message ? `${e.name}: ${e.message}` : e.name;
+  return String(e);
+}
 
 const SW_URL = "/sw.js";
 
@@ -90,7 +99,7 @@ async function subscribeAndRegister(
     p256dh === undefined ||
     auth === undefined
   ) {
-    return "error";
+    return { failed: "the push subscription had no endpoint or keys" };
   }
   await api.registerPush({
     routingEndpointId: await routingEndpointId(cap),
@@ -116,8 +125,12 @@ export async function enablePush(
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return "denied";
     return await subscribeAndRegister(api, apiBase, cap, reg);
-  } catch {
-    return "error";
+  } catch (e) {
+    // A blocked permission can surface here too: subscribe() throws a
+    // NotAllowedError rather than requestPermission returning non-granted. Treat
+    // it as denied (actionable) and surface any other failure with its cause.
+    if (e instanceof Error && e.name === "NotAllowedError") return "denied";
+    return { failed: errorLabel(e) };
   }
 }
 
