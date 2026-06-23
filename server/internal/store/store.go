@@ -585,6 +585,49 @@ func (s *Store) PurgeExpiredKnocks(ctx context.Context, now int64) (int64, error
 	return res.RowsAffected()
 }
 
+// --- Admin audit log (doc 20) -----------------------------------------------
+//
+// Append-only record of every admin action. The store never reads user content,
+// so neither does the audit: action is a fixed verb and target is an opaque id or
+// vanity name. Backs the operator surface's "this is reconstructable" guarantee.
+
+// AuditEntry is one recorded admin action, newest-first when listed.
+type AuditEntry struct {
+	Action    string
+	Target    string
+	CreatedAt int64
+}
+
+// AppendAudit records one admin action. Append-only: callers never update or
+// delete rows. target is opaque (an id or a name) and MUST NOT carry user content.
+func (s *Store) AppendAudit(ctx context.Context, action, target string, now int64) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO admin_audit (action, target, created_at) VALUES (?, ?, ?)`,
+		action, target, now)
+	return err
+}
+
+// RecentAudits returns the most recent admin actions, newest first, up to limit.
+// Backs the admin "recent activity" view and the audit tests. id is monotonic, so
+// ordering by it is a stable proxy for time even when two rows share a timestamp.
+func (s *Store) RecentAudits(ctx context.Context, limit int) ([]AuditEntry, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT action, target, created_at FROM admin_audit ORDER BY id DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []AuditEntry
+	for rows.Next() {
+		var e AuditEntry
+		if err := rows.Scan(&e.Action, &e.Target, &e.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
 // --- Blind aggregate stats (for system telemetry only) ----------------------
 //
 // These return aggregate counts and sizes of OPAQUE rows. They name no subject:

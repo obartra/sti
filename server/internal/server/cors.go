@@ -13,10 +13,12 @@ import (
 // Access-Control-Allow-Credentials is deliberately never set.
 var (
 	corsAllowMethods = "GET, PUT, POST, OPTIONS"
-	// X-Expires-At rides the alias PUT (doc 16). It MUST be allowed here or the
-	// browser's preflight rejects the write before it is sent (Node-based
-	// integration tests don't exercise CORS, so this is browser-only).
-	corsAllowHeaders  = contract.HeaderWriteToken + ", " + contract.HeaderVersion + ", " + contract.HeaderExpiresAt + ", Content-Type"
+	// X-Expires-At rides the alias PUT (doc 16); Authorization carries the admin
+	// bearer on /admin/* (doc 20). Both MUST be allowed here or the browser's
+	// preflight rejects the request before it is sent (Node-based integration tests
+	// don't exercise CORS, so this is browser-only). Authorization is a request
+	// header only; no cookie is involved, so Allow-Credentials stays unset.
+	corsAllowHeaders  = contract.HeaderWriteToken + ", " + contract.HeaderVersion + ", " + contract.HeaderExpiresAt + ", Authorization, Content-Type"
 	corsExposeHeaders = contract.HeaderVersion
 	corsMaxAge        = "86400"
 )

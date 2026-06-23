@@ -62,6 +62,12 @@ const (
 	PathKnockPrefix   = "/knock/"        // POST: contentless knock
 	PathHealth        = "/healthz"       // GET: liveness
 	PathVapid         = "/vapid"         // GET: the active Web Push public key
+
+	// The operator surface (doc 20). Bearer + flag gated, rate-limited, audited.
+	// Registered only when admin is enabled; otherwise these paths are a bare 404,
+	// so the surface is invisible by default.
+	PathAdminPrefix = "/admin/"     // all admin endpoints share this prefix
+	PathAdminPing   = "/admin/ping" // GET: 204 if the admin bearer token is valid
 )
 
 // --- JSON bodies (only the non-byte endpoints) ------------------------------
@@ -187,11 +193,12 @@ type ErrorBody struct {
 
 // Stable error codes (non-sensitive endpoints only).
 const (
-	ErrBadRequest  = "bad_request"
-	ErrTooLarge    = "payload_too_large"
-	ErrRateLimited = "rate_limited"
-	ErrInternal    = "internal"
-	ErrNotFound    = "not_found" // never used on /a or /knock
-	ErrUnsupported = "unsupported_media_type"
-	ErrMethodNotOk = "method_not_allowed"
+	ErrBadRequest   = "bad_request"
+	ErrTooLarge     = "payload_too_large"
+	ErrRateLimited  = "rate_limited"
+	ErrInternal     = "internal"
+	ErrNotFound     = "not_found" // never used on /a or /knock
+	ErrUnsupported  = "unsupported_media_type"
+	ErrMethodNotOk  = "method_not_allowed"
+	ErrUnauthorized = "unauthorized" // admin bearer missing or wrong (doc 20)
 )

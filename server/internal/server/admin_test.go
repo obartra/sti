@@ -1,0 +1,181 @@
+package server
+
+import (
+	"context"
+	"encoding/json"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"sti.care/api/internal/contract"
+	"sti.care/api/internal/store"
+)
+
+const testAdminToken = "test-admin-secret-0123456789abcdef" // >= boot floor, but server.New imposes none
+
+// newTestAdminServer builds a server with the operator surface enabled and returns
+// the handler plus the store, so a test can assert on the audit log it writes.
+func newTestAdminServer(t *testing.T, token string) (http.Handler, *store.Store) {
+	t.Helper()
+	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	secret := make([]byte, 32)
+	for i := range secret {
+		secret[i] = byte(i + 1)
+	}
+	// A generous limit so the auth/audit assertions (which fire several requests
+	// back to back) are never throttled; TestAdminRateLimited pins the tight budget.
+	srv := New(st, Config{
+		DecoySecret:  secret,
+		AdminEnabled: true,
+		AdminToken:   token,
+		AdminBurst:   1000,
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+	return srv.Handler(), st
+}
+
+func adminPing(h http.Handler, bearer string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest("GET", contract.PathAdminPing, nil)
+	if bearer != "" {
+		req.Header.Set("Authorization", bearer)
+	}
+	return do(h, req)
+}
+
+// The ping gate: the correct bearer is 204, and everything else (no header, a
+// non-Bearer scheme, a wrong token, and tokens whose LENGTH differs from the
+// secret) is a uniform 401. The length cases matter because a naive
+// ConstantTimeCompare short-circuits on a length mismatch; the handler hashes both
+// sides first so a wrong-length guess is rejected the same way as a wrong-value one.
+func TestAdminPingTokenGate(t *testing.T) {
+	h, _ := newTestAdminServer(t, testAdminToken)
+
+	if rec := adminPing(h, "Bearer "+testAdminToken); rec.Code != http.StatusNoContent {
+		t.Fatalf("valid token: got %d, want 204", rec.Code)
+	}
+
+	for name, bearer := range map[string]string{
+		"no header":      "",
+		"wrong scheme":   "Basic " + testAdminToken,
+		"bare token":     testAdminToken,
+		"wrong value":    "Bearer " + strings.Repeat("x", len(testAdminToken)),
+		"shorter prefix": "Bearer " + testAdminToken[:len(testAdminToken)-3],
+		"longer":         "Bearer " + testAdminToken + "extra",
+		"empty bearer":   "Bearer ",
+	} {
+		rec := adminPing(h, bearer)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("%s: got %d, want 401", name, rec.Code)
+		}
+		var resp contract.ErrorResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil || resp.Error.Code != contract.ErrUnauthorized {
+			t.Fatalf("%s: error code = %q (err %v), want %q", name, resp.Error.Code, err, contract.ErrUnauthorized)
+		}
+	}
+}
+
+// When the admin surface is disabled (the default), no route is registered, so
+// /admin/ping is a bare 404 even with a would-be-valid token: the surface is
+// invisible, not merely guarded.
+func TestAdminDisabledIsNotFound(t *testing.T) {
+	h := newTestServer(t) // admin off by default
+	if rec := adminPing(h, "Bearer "+testAdminToken); rec.Code != http.StatusNotFound {
+		t.Fatalf("admin disabled: got %d, want 404", rec.Code)
+	}
+}
+
+// An enabled surface with an empty configured token never authorizes, even with a
+// "Bearer " header (defense in depth; boot refuses this config, but the auth check
+// must not depend on that).
+func TestAdminEmptyTokenNeverAuthorizes(t *testing.T) {
+	h, _ := newTestAdminServer(t, "")
+	for _, bearer := range []string{"Bearer ", "Bearer anything", ""} {
+		if rec := adminPing(h, bearer); rec.Code != http.StatusUnauthorized {
+			t.Fatalf("empty configured token, bearer %q: got %d, want 401", bearer, rec.Code)
+		}
+	}
+}
+
+// A successful ping writes exactly one audit row (action "ping", no target); a
+// failed auth writes none, so an attacker cannot flood the log with 401s.
+func TestAdminPingAuditing(t *testing.T) {
+	h, st := newTestAdminServer(t, testAdminToken)
+	ctx := context.Background()
+
+	// Three rejected attempts leave the log empty.
+	adminPing(h, "")
+	adminPing(h, "Bearer wrong")
+	adminPing(h, "Basic "+testAdminToken)
+	if got, err := st.RecentAudits(ctx, 10); err != nil || len(got) != 0 {
+		t.Fatalf("after failed auths: %d rows (err %v), want 0", len(got), err)
+	}
+
+	if rec := adminPing(h, "Bearer "+testAdminToken); rec.Code != http.StatusNoContent {
+		t.Fatalf("valid ping: %d", rec.Code)
+	}
+	got, err := st.RecentAudits(ctx, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Action != "ping" || got[0].Target != "" {
+		t.Fatalf("audit rows = %+v, want one ping with empty target", got)
+	}
+}
+
+// The /admin limiter sheds an over-budget caller with a 429 BEFORE the bearer
+// check, so an unauthenticated flood is cheap and cannot brute-force at speed. A
+// frozen clock keeps the bucket from refilling mid-test.
+func TestAdminRateLimited(t *testing.T) {
+	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	clock := func() int64 { return 1000 }
+	srv := New(st, Config{
+		DecoySecret:     make([]byte, 32),
+		AdminEnabled:    true,
+		AdminToken:      testAdminToken,
+		AdminRatePerSec: 0.000001, // effectively no refill within the test
+		AdminBurst:      2,
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)), clock)
+	h := srv.Handler()
+
+	// Burst of 2 valid pings succeed; the 3rd is throttled even though its token is
+	// correct, proving the limit runs ahead of (and independent of) auth.
+	if rec := adminPing(h, "Bearer "+testAdminToken); rec.Code != http.StatusNoContent {
+		t.Fatalf("ping 1: %d", rec.Code)
+	}
+	if rec := adminPing(h, "Bearer "+testAdminToken); rec.Code != http.StatusNoContent {
+		t.Fatalf("ping 2: %d", rec.Code)
+	}
+	if rec := adminPing(h, "Bearer "+testAdminToken); rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("ping 3: got %d, want 429", rec.Code)
+	}
+}
+
+// The admin bearer is cross-origin (the /admin page on the app origin calls the
+// api origin), so a preflight from an allowed origin must list Authorization in
+// Access-Control-Allow-Headers, or the browser blocks the request before it is
+// sent. Browser-only, so it is pinned here (the integration suite skips CORS).
+func TestAdminCORSAllowsAuthorization(t *testing.T) {
+	h := newTestServerWithOrigins(t, allowedOrigin)
+	req := httptest.NewRequest("OPTIONS", contract.PathAdminPing, nil)
+	req.Header.Set("Origin", allowedOrigin)
+	req.Header.Set("Access-Control-Request-Method", "GET")
+	req.Header.Set("Access-Control-Request-Headers", "authorization")
+	rec := do(h, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("preflight: %d", rec.Code)
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Headers"); !strings.Contains(strings.ToLower(got), "authorization") {
+		t.Fatalf("allow-headers missing Authorization: %q", got)
+	}
+}

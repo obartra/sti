@@ -84,3 +84,17 @@ CREATE TABLE IF NOT EXISTS knock (
     PRIMARY KEY (target_id, requester_hash)
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS idx_knock_expires ON knock (expires_at);
+
+-- Append-only admin action log (doc 20). Records the single shared "admin" role's
+-- actions so any use of the operator surface is reconstructable after the fact: a
+-- leaked admin secret's misuse is at least auditable. Holds ONLY opaque values:
+-- the action name and an opaque target (an id or a vanity name), never any user
+-- content (no ciphertext, no plaintext, no status). Rows are never updated and are
+-- pruned only by retention, never by an admin action, so the history stays honest.
+CREATE TABLE IF NOT EXISTS admin_audit (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    action      TEXT NOT NULL,            -- e.g. "ping", "vanity.takedown"
+    target      TEXT NOT NULL DEFAULT '', -- opaque id/name, never content
+    created_at  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit (created_at);

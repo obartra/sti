@@ -62,6 +62,10 @@ func TestCORSPreflightFromAllowedOrigin(t *testing.T) {
 	if !strings.Contains(allowHeaders, contract.HeaderExpiresAt) {
 		t.Fatalf("allow-headers missing %s: %q", contract.HeaderExpiresAt, allowHeaders)
 	}
+	// The admin bearer rides Authorization (doc 20); same browser-only requirement.
+	if !strings.Contains(allowHeaders, "Authorization") {
+		t.Fatalf("allow-headers missing Authorization: %q", allowHeaders)
+	}
 }
 
 func TestCORSDisallowedOriginGetsNoAllowHeaders(t *testing.T) {
