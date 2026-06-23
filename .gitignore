@@ -6,9 +6,6 @@ node_modules/
 # Prototype zips dropped in the repo root for deploy/ — never commit these.
 /*.zip
 
-# Local preview tooling
-.claude/launch.json
-
 # The assembled publish dir (deploy/build-site.sh): app + /promises + /design.
 dist/
 
