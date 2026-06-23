@@ -112,6 +112,26 @@ describe("push enable/disable", () => {
     expect(saved.ctx).toBeUndefined();
   });
 
+  it("surfaces the real cause when subscribe fails (not a dead-end)", async () => {
+    const { pushManager } = installPushEnv();
+    const err = new Error("Registration failed - push service error");
+    err.name = "AbortError";
+    pushManager.subscribe = vi.fn(() => Promise.reject(err));
+    const result = await enablePush(fakeApi(), "x", cap);
+    expect(result).toEqual({
+      failed: "AbortError: Registration failed - push service error",
+    });
+    expect(saved.ctx).toBeUndefined();
+  });
+
+  it("maps a NotAllowedError thrown by subscribe to 'denied'", async () => {
+    const { pushManager } = installPushEnv();
+    const err = new Error("permission denied");
+    err.name = "NotAllowedError";
+    pushManager.subscribe = vi.fn(() => Promise.reject(err));
+    expect(await enablePush(fakeApi(), "x", cap)).toBe("denied");
+  });
+
   it("returns 'unconfigured' when the server has no VAPID key", async () => {
     installPushEnv();
     const result = await enablePush(
