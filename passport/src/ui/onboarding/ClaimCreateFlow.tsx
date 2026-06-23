@@ -142,7 +142,13 @@ export function CreateFlow({
         {COPY.identitySection}
       </div>
 
-      <Field label={COPY.identityHandleLabel} hint={COPY.identityHandleHint}>
+      <Field
+        label={COPY.identityHandleLabel}
+        hint={COPY.identityHandleHint}
+        error={
+          handle.length > 0 && !ok ? COPY.identityHandleTooShort : undefined
+        }
+      >
         <Input
           value={handle}
           placeholder={COPY.identityHandlePlaceholder}

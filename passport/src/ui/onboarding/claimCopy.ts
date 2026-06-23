@@ -24,6 +24,7 @@ export const COPY = {
   identitySection: "Your identity",
   identityHandleLabel: "Your name",
   identityHandlePlaceholder: "Pick a display name",
+  identityHandleTooShort: "At least 3 characters.",
   identityHandleHint:
     "A display name you can choose to show on a link. Not your address, and not unique across the app.",
   avatarLabel: "Your face",
