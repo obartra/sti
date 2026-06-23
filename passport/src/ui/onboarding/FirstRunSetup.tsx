@@ -39,7 +39,7 @@ const COPY = {
     "Either way, your status stays off the open web: no name to look up, and someone without a link can’t even tell you exist.",
   anonTitle: "A heads-up that looks out for you",
   anonBody:
-    "If someone you’ve linked with reports a positive, you get a private heads-up. It works both ways, always anonymous, and never names a condition.",
+    "If someone you’ve linked with reports a positive, you get a private heads-up. Always anonymous, and never names a condition.",
   cta: "Enter my passport",
 } as const;
 
