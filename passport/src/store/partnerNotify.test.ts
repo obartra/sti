@@ -38,7 +38,7 @@ function contact(
     id: randomAliasId(),
     label,
     createdDay,
-    expiresDay: null,
+    expiresAt: null,
     alias: aliasRecord(),
   };
   return notifiable ? { ...base, theirNotify: mintNotify() } : base;

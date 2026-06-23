@@ -16,7 +16,7 @@ function contact(id: string, label: string): ContactRecord {
     id,
     label,
     createdDay: 1,
-    expiresDay: null,
+    expiresAt: null,
     alias: { id, writeToken: "w", key: "k", isPublic: false },
   };
 }

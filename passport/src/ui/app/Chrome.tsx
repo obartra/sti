@@ -38,7 +38,7 @@ export interface ChromeProps {
   shareIdentity: AliasIdentity;
   onShareIdentityChange: (choice: AliasIdentity) => void;
   shareDuration: number | null;
-  onShareDurationChange: (durationDays: number | null) => void;
+  onShareDurationChange: (durationMs: number | null) => void;
   onDeleteAccount: () => void;
   knockCount: number;
   refreshKnocks: () => void;

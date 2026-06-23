@@ -103,7 +103,7 @@ describe("account manager", () => {
     id: "D".repeat(43),
     label: "Sam",
     createdDay: 19_000,
-    expiresDay: 19_007,
+    expiresAt: 19_007,
     alias: {
       id: "E".repeat(43),
       writeToken: "F".repeat(43),
@@ -192,7 +192,7 @@ describe("account manager", () => {
       id: "L".repeat(43),
       label: "Live",
       createdDay: 1,
-      expiresDay: 9_999_999, // far future
+      expiresAt: 9_999_999_999_999, // far future (epoch ms, year ~2286)
       alias: {
         id: "1".repeat(43),
         writeToken: "2".repeat(43),
@@ -204,7 +204,7 @@ describe("account manager", () => {
       id: "X".repeat(43),
       label: "Old",
       createdDay: 1,
-      expiresDay: 1, // long past
+      expiresAt: 1, // long past
       alias: {
         id: "4".repeat(43),
         writeToken: "5".repeat(43),

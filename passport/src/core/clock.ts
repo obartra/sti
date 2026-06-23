@@ -13,6 +13,10 @@
 
 const MS_PER_DAY = 86_400_000;
 
+/** Milliseconds in an hour / a day, for absolute link-expiry math (doc 16). */
+export const HOUR_MS = 3_600_000;
+export const DAY_MS = MS_PER_DAY;
+
 /** Whole days since the Unix epoch (UTC) for an epoch-millisecond instant. */
 export function toEpochDay(epochMs: number): number {
   return Math.floor(epochMs / MS_PER_DAY);
@@ -21,6 +25,31 @@ export function toEpochDay(epochMs: number): number {
 /** Today as a UTC epoch-day count. The single point that reads the wall clock. */
 export function todayEpochDay(): number {
   return toEpochDay(Date.now());
+}
+
+/**
+ * Now as an absolute epoch-ms instant. The clock edge for link expiry, which is
+ * sub-day (doc 16) and so can't use the day-granular badge clock above.
+ */
+export function nowMs(): number {
+  return Date.now();
+}
+
+/**
+ * A short owner-facing label for how long a link has left, from its absolute
+ * expiry (epoch ms) or null for no expiry. Coarse and approximate: sub-hour reads
+ * as minutes, then hours, then days. Used only for the owner's own link list,
+ * never anything a viewer sees.
+ */
+export function expiryLabel(expiresAt: number | null, now: number): string {
+  if (expiresAt === null) return "No expiry";
+  const left = expiresAt - now;
+  if (left <= 0) return "Expired";
+  if (left < HOUR_MS)
+    return `${Math.max(1, Math.round(left / 60_000))} min left`;
+  if (left < DAY_MS) return `${Math.round(left / HOUR_MS)}h left`;
+  const days = Math.round(left / DAY_MS);
+  return days === 1 ? "1 day left" : `${days} days left`;
 }
 
 /** The Date at the start (UTC midnight) of an epoch day, for display formatting. */

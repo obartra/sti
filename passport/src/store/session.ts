@@ -121,13 +121,13 @@ export interface SessionController {
   ): Promise<ShareLinkResult>;
   /**
    * Change the share-sheet link's lifetime in place (doc 16): the link for the
-   * current sharing mode keeps resolving, only its stored expiry moves.
-   * `durationDays` is counted from today; null means until-revoked. A no-op if no
-   * link has been minted for this mode yet.
+   * current sharing mode keeps resolving, only its expiry moves. `durationMs` is
+   * counted from now (so it can be sub-day); null means until-revoked. Re-PUTs the
+   * card so the server enforces the new expiry. A no-op if no link exists yet.
    */
   setShareLinkDuration(
     session: OwnerSession,
-    durationDays: number | null,
+    durationMs: number | null,
   ): Promise<OwnerSession>;
   /**
    * Permanently delete the account: revoke every shared link and remove the
@@ -156,15 +156,15 @@ export interface SessionController {
   ): Promise<number>;
   /**
    * Mint a fresh PRIVATE link for one specific contact (a named, individually
-   * revocable link), publish the current card to it, and record it. `durationDays`
-   * sets the link's lifetime (a day count, or null for until-revoked); omitted, it
+   * revocable link), publish the current card to it, and record it. `durationMs`
+   * sets the link's lifetime (ms from now, or null for until-revoked); omitted, it
    * defaults to the 7-day expiry. Returns the session, the new contact, and the URL.
    */
   createContactLink(
     session: OwnerSession,
     label: string,
     identity?: AliasIdentity,
-    durationDays?: number | null,
+    durationMs?: number | null,
   ): Promise<ContactLinkResult>;
   /**
    * Revoke one contact's link (its old URL stops resolving) and drop the record.
@@ -176,13 +176,13 @@ export interface SessionController {
   ): Promise<OwnerSession>;
   /**
    * Change one contact link's lifetime in place (extend or shorten): the same
-   * link keeps resolving, only its stored expiry moves. `durationDays` is counted
-   * from today; null means until-revoked. A no-op if the id is unknown.
+   * link keeps resolving, only its expiry moves. `durationMs` is counted from now;
+   * null means until-revoked. Re-PUTs so the server enforces it. No-op if unknown.
    */
   setContactDuration(
     session: OwnerSession,
     contactId: string,
-    durationDays: number | null,
+    durationMs: number | null,
   ): Promise<OwnerSession>;
   /**
    * Revoke one published alias (a public/casual link) by id: its URL stops
@@ -431,8 +431,8 @@ export function createSessionController(deps: SessionDeps): SessionController {
       return shareLinkFor(api, accounts, working, identity);
     },
 
-    setShareLinkDuration: (session, durationDays) =>
-      setShareLinkExpiry(accounts, session, durationDays),
+    setShareLinkDuration: (session, durationMs) =>
+      setShareLinkExpiry(api, accounts, session, durationMs),
 
     async deleteAccount(session) {
       await accounts.deleteAccount(session.master);
@@ -449,19 +449,19 @@ export function createSessionController(deps: SessionDeps): SessionController {
       return grantPending(api, approvals);
     },
 
-    createContactLink(session, label, identity = "anonymous", durationDays) {
+    createContactLink(session, label, identity = "anonymous", durationMs) {
       return mintContactLink(api, accounts, session, {
         label,
         identity,
-        durationDays,
+        durationMs,
       });
     },
 
     revokeContact: (session, contactId) =>
       revokeContactLink(api, accounts, session, contactId),
 
-    setContactDuration: (session, contactId, durationDays) =>
-      setContactLinkExpiry(accounts, session, contactId, durationDays),
+    setContactDuration: (session, contactId, durationMs) =>
+      setContactLinkExpiry(api, accounts, session, { contactId, durationMs }),
 
     revokeAlias: (session, aliasId) =>
       revokeAliasLink(api, accounts, session, aliasId),

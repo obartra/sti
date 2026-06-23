@@ -256,7 +256,7 @@ describe("public resolution against a live blind store", () => {
       id: randomAliasId(),
       label: "sam",
       createdDay: nowDay,
-      expiresDay: null,
+      expiresAt: null,
       alias: {
         id: randomAliasId(),
         writeToken: randomWriteToken(),

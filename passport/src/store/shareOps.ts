@@ -22,7 +22,7 @@ import {
   withIdentity,
   type AliasIdentity,
 } from "./ownerCard.ts";
-import { todayEpochDay } from "../core/clock.ts";
+import { todayEpochDay, nowMs, DAY_MS } from "../core/clock.ts";
 import { randomAliasId } from "../crypto/index.ts";
 import {
   publishCard,
@@ -37,7 +37,12 @@ import type {
 } from "./session.ts";
 
 /** A per-contact link's default lifetime before it lapses to gray-nothing (doc 13). */
-export const CONTACT_LINK_DAYS = 7;
+export const CONTACT_LINK_MS = 7 * DAY_MS;
+
+// An absolute expiry instant for a duration in ms from now, or null for none.
+function expiryFor(durationMs: number | null): number | null {
+  return durationMs === null ? null : nowMs() + durationMs;
+}
 
 // Mint a fresh private alias for one contact, publish the current card to it, and
 // record it with a default expiry. The alias is private (unadvertised); the link is
@@ -50,14 +55,15 @@ export async function mintContactLink(
   opts: {
     label: string;
     identity: AliasIdentity;
-    durationDays?: number | null | undefined;
+    durationMs?: number | null | undefined;
   },
 ): Promise<ContactLinkResult> {
   const { label, identity } = opts;
-  // The link's lifetime: a day count from now, or null for until-revoked.
-  // Defaults to CONTACT_LINK_DAYS so an omitted choice keeps the prior behaviour.
-  const durationDays =
-    opts.durationDays === undefined ? CONTACT_LINK_DAYS : opts.durationDays;
+  // The link's lifetime in ms from now, or null for until-revoked. Defaults to
+  // CONTACT_LINK_MS so an omitted choice keeps the prior behaviour.
+  const expiresAt = expiryFor(
+    opts.durationMs === undefined ? CONTACT_LINK_MS : opts.durationMs,
+  );
   const { myNotify } = await accounts.ensureMyNotify(session.master);
   const nowDay = todayEpochDay();
   const stamp = (rec: AliasRecord): AliasRecord =>
@@ -65,13 +71,13 @@ export async function mintContactLink(
   const { record } = await publishCard(
     api,
     (rec) => deriveAliasCard(session.blob.state, stamp(rec), nowDay),
-    { isPublic: false },
+    { isPublic: false, expiresAt },
   );
   const contact: ContactRecord = {
     id: randomAliasId(),
     label: label.slice(0, MAX_CONTACT_LABEL),
     createdDay: nowDay,
-    expiresDay: durationDays === null ? null : nowDay + durationDays,
+    expiresAt,
     alias: stamp(record),
   };
   const blob = await accounts.addContact(session.master, contact);
@@ -103,16 +109,17 @@ export async function acceptContactInvite(
   const nowDay = todayEpochDay();
   const stamp = (rec: AliasRecord): AliasRecord =>
     withIdentity(rec, identity, session.blob);
+  const expiresAt = expiryFor(CONTACT_LINK_MS);
   const { record } = await publishCard(
     api,
     (rec) => deriveAliasCard(session.blob.state, stamp(rec), nowDay),
-    { isPublic: false },
+    { isPublic: false, expiresAt },
   );
   const contact: ContactRecord = {
     id: randomAliasId(),
     label: label.slice(0, MAX_CONTACT_LABEL),
     createdDay: nowDay,
-    expiresDay: nowDay + CONTACT_LINK_DAYS,
+    expiresAt,
     alias: stamp(record),
     theirNotify: invite.notify,
     theirStatusAlias: invite.alias,
@@ -163,45 +170,58 @@ export async function revokeContactLink(
   return { master: session.master, blob };
 }
 
-// Change one contact link's lifetime in place (extend or shorten): the same
-// link keeps working, only its stored expiry moves. `durationDays` is counted
-// from today; null means until-revoked. A no-op for an unknown id. No republish:
-// the card is unchanged, only the expiry the device honors locally.
+// Change one contact link's lifetime in place (extend or shorten): the same link
+// keeps working, only its expiry moves. `durationMs` is counted from now; null
+// means until-revoked. A no-op for an unknown id. Re-PUTs the card carrying the
+// new expiry so the SERVER stops resolving it on time (doc 16), not just the
+// device's local sweep, then records the new expiry in the blob.
 export async function setContactLinkExpiry(
+  api: ApiClient,
   accounts: AccountManager,
   session: OwnerSession,
-  contactId: string,
-  durationDays: number | null,
+  opts: { contactId: string; durationMs: number | null },
 ): Promise<OwnerSession> {
+  const { contactId, durationMs } = opts;
   const contact = session.blob.contacts.find((c) => c.id === contactId);
   if (contact === undefined) return session;
+  const expiresAt = expiryFor(durationMs);
   const nowDay = todayEpochDay();
-  const expiresDay = durationDays === null ? null : nowDay + durationDays;
+  await republishCard(
+    api,
+    contact.alias,
+    deriveAliasCard(session.blob.state, contact.alias, nowDay),
+    expiresAt,
+  );
   const blob = await accounts.addContact(session.master, {
     ...contact,
-    expiresDay,
+    expiresAt,
+    alias: { ...contact.alias, expiresAt },
   });
   return { master: session.master, blob };
 }
 
 // Change the share-sheet link's lifetime in place (doc 16): the primary alias for
-// the current sharing mode keeps resolving, only its stored expiry moves.
-// `durationDays` is counted from today; null means until-revoked. A no-op if no
-// such alias has been minted yet. No republish (the card is unchanged).
+// the current sharing mode keeps resolving, only its expiry moves. `durationMs` is
+// counted from now; null means until-revoked. A no-op if no such alias exists yet.
+// Re-PUTs the card with the new expiry so the server enforces it.
 export async function setShareLinkExpiry(
+  api: ApiClient,
   accounts: AccountManager,
   session: OwnerSession,
-  durationDays: number | null,
+  durationMs: number | null,
 ): Promise<OwnerSession> {
   const wantPublic = session.blob.sharingMode === "public";
   const alias = session.blob.aliases.find((a) => a.isPublic === wantPublic);
   if (alias === undefined) return session;
+  const expiresAt = expiryFor(durationMs);
   const nowDay = todayEpochDay();
-  const expiresDay = durationDays === null ? null : nowDay + durationDays;
-  const blob = await accounts.addAlias(session.master, {
-    ...alias,
-    expiresDay,
-  });
+  await republishCard(
+    api,
+    alias,
+    deriveAliasCard(session.blob.state, alias, nowDay),
+    expiresAt,
+  );
+  const blob = await accounts.addAlias(session.master, { ...alias, expiresAt });
   return { master: session.master, blob };
 }
 

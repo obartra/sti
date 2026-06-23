@@ -20,7 +20,7 @@ function contact(id: string, label: string, daysAgo: number): ContactRecord {
     id: id.padEnd(43, "0"),
     label,
     createdDay: NOW - daysAgo,
-    expiresDay: null,
+    expiresAt: null,
     alias: {
       id: id.padEnd(43, "0"),
       writeToken: "w",

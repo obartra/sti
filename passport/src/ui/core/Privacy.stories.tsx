@@ -25,7 +25,7 @@ const meta: Meta<typeof Privacy> = {
         id: ID("C"),
         label: "Sam",
         createdDay: 19_000,
-        expiresDay: 19_007,
+        expiresAt: 19_007,
         alias: sampleAlias("D", false),
       },
     ],
