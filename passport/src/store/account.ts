@@ -17,7 +17,7 @@ import {
   isOwnerState,
   type OwnerState,
 } from "../core/badge.ts";
-import { todayEpochDay } from "../core/clock.ts";
+import { todayEpochDay, nowMs } from "../core/clock.ts";
 import { DEFAULT_AVATAR, isAvatarConfig } from "../lib/avatars.ts";
 import { createAccountSync, type AccountSync } from "./accountSync.ts";
 import { republishOwnerCard } from "./ownerCard.ts";
@@ -182,16 +182,11 @@ async function ensureMyNotifyOn(
   return { blob: next, myNotify };
 }
 
-// A link with an expiry is expired once today reaches it; a null/absent expiry
-// (until-revoked) never is. Shared by the sweep and the republish-skip so an
-// expired link is treated the same everywhere.
-function isExpired(
-  expiresDay: number | null | undefined,
-  nowDay: number,
-): boolean {
-  return (
-    expiresDay !== null && expiresDay !== undefined && nowDay >= expiresDay
-  );
+// A link with an expiry is expired once now reaches its instant; a null/absent
+// expiry (until-revoked) never is. Times are absolute epoch ms (doc 16). Shared by
+// the sweep and the republish-skip so an expired link is treated the same.
+function isExpired(expiresAt: number | null | undefined, now: number): boolean {
+  return expiresAt !== null && expiresAt !== undefined && now >= expiresAt;
 }
 
 // Sweep expired links: overwrite each expired alias / contact link to garbage
@@ -204,21 +199,21 @@ async function sweepExpired(
   api: ApiClient,
   blob: AccountBlob,
   state: OwnerState,
-  nowDay: number,
+  now: number,
 ): Promise<AccountBlob> {
   await Promise.all([
     ...blob.contacts
-      .filter((c) => isExpired(c.expiresDay, nowDay))
+      .filter((c) => isExpired(c.expiresAt, now))
       .map((c) => revokeAlias(api, c.alias)),
     ...blob.aliases
-      .filter((a) => isExpired(a.expiresDay, nowDay))
+      .filter((a) => isExpired(a.expiresAt, now))
       .map((a) => revokeAlias(api, a)),
   ]);
   return {
     ...blob,
     state,
-    contacts: blob.contacts.filter((c) => !isExpired(c.expiresDay, nowDay)),
-    aliases: blob.aliases.filter((a) => !isExpired(a.expiresDay, nowDay)),
+    contacts: blob.contacts.filter((c) => !isExpired(c.expiresAt, now)),
+    aliases: blob.aliases.filter((a) => !isExpired(a.expiresAt, now)),
   };
 }
 
@@ -239,11 +234,11 @@ async function republishLiveLinks(
   blob: AccountBlob,
   nowDay: number,
 ): Promise<void> {
-  const liveAliases = blob.aliases.filter(
-    (a) => !isExpired(a.expiresDay, nowDay),
-  );
+  // Expiry is absolute ms; the badge derivation still uses the day clock.
+  const now = nowMs();
+  const liveAliases = blob.aliases.filter((a) => !isExpired(a.expiresAt, now));
   const liveContacts = blob.contacts.filter(
-    (c) => !isExpired(c.expiresDay, nowDay),
+    (c) => !isExpired(c.expiresAt, now),
   );
   const liveLinks = [...liveAliases, ...liveContacts.map((c) => c.alias)];
   await republishOwnerCard(api, liveLinks, { state: blob.state, nowDay });
@@ -356,8 +351,8 @@ export function createAccountManager(api: ApiClient): AccountManager {
       }
       const nowDay = todayEpochDay();
       // Sweep expired links (revoke + drop) before saving, then republish the
-      // new badge to the survivors.
-      const next = await sweepExpired(api, blob, state, nowDay);
+      // new badge to the survivors. Expiry is ms; the badge clock is day-granular.
+      const next = await sweepExpired(api, blob, state, nowMs());
       await sync.save(master, next);
       await republishLiveLinks(api, next, nowDay);
       return next;
@@ -368,17 +363,17 @@ export function createAccountManager(api: ApiClient): AccountManager {
       if (blob === null) {
         throw new Error("sweepExpiredLinks: no account exists for this key");
       }
-      const nowDay = todayEpochDay();
+      const now = nowMs();
       const anyExpired =
-        blob.contacts.some((c) => isExpired(c.expiresDay, nowDay)) ||
-        blob.aliases.some((a) => isExpired(a.expiresDay, nowDay));
+        blob.contacts.some((c) => isExpired(c.expiresAt, now)) ||
+        blob.aliases.some((a) => isExpired(a.expiresAt, now));
       // Nothing to do: skip the revoke + write entirely so a clean load is a
       // pure read.
       if (!anyExpired) return blob;
       // Reuse the same revoke + drop sweep as setOwnerState, with the state
       // unchanged (a load does not move the badge), and no republish (the
       // surviving links' cards are unchanged).
-      const next = await sweepExpired(api, blob, blob.state, nowDay);
+      const next = await sweepExpired(api, blob, blob.state, now);
       await sync.save(master, next);
       return next;
     },

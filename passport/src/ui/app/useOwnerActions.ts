@@ -14,13 +14,13 @@ export interface OwnerActions {
    * until-revoked); resolves with the contact + URL. */
   onCreateContactLink: (
     label: string,
-    durationDays: number | null,
+    durationMs: number | null,
   ) => Promise<ContactLinkResult>;
   /** Revoke one contact link by id. */
   onRevokeContact: (id: string) => void;
   /** Change one contact link's lifetime in place (days from today, or null for
    * until-revoked); the same link keeps working. */
-  onSetContactDuration: (id: string, durationDays: number | null) => void;
+  onSetContactDuration: (id: string, durationMs: number | null) => void;
   /** Revoke one published alias (public/casual link) by id. */
   onRevokeAlias: (id: string) => void;
   /** Accept a contact invite; resolves with the return invite to send back. */
@@ -69,14 +69,14 @@ export function useOwnerActions(
   }, [controller, sessionRef, setSession]);
 
   const onCreateContactLink = useCallback(
-    async (label: string, durationDays: number | null) => {
+    async (label: string, durationMs: number | null) => {
       const current = sessionRef.current;
       if (current === null) throw new Error("not signed in");
       const result = await controller.createContactLink(
         current,
         label,
         "anonymous",
-        durationDays,
+        durationMs,
       );
       sessionRef.current = result.session;
       setSession(result.session);
@@ -101,11 +101,11 @@ export function useOwnerActions(
   );
 
   const onSetContactDuration = useCallback(
-    (id: string, durationDays: number | null) => {
+    (id: string, durationMs: number | null) => {
       const current = sessionRef.current;
       if (current === null) return;
       void controller
-        .setContactDuration(current, id, durationDays)
+        .setContactDuration(current, id, durationMs)
         .then((updated) => {
           sessionRef.current = updated;
           setSession(updated);

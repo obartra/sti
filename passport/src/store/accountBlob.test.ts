@@ -17,7 +17,7 @@ const blob: AccountBlob = {
       id: "D".repeat(43),
       label: "Sam",
       createdDay: 19_000,
-      expiresDay: 19_007,
+      expiresAt: 19_007,
       alias: {
         id: "E".repeat(43),
         writeToken: "F".repeat(43),
@@ -45,7 +45,7 @@ describe("account blob codec", () => {
           id: "D".repeat(43),
           label: "Sam",
           createdDay: 19_000,
-          expiresDay: null,
+          expiresAt: null,
           alias: {
             id: "E".repeat(43),
             writeToken: "F".repeat(43),
@@ -119,14 +119,14 @@ describe("account blob codec", () => {
           writeToken: "B".repeat(43),
           key: "C".repeat(43),
           isPublic: true,
-          expiresDay: 19_100,
+          expiresAt: 19_100,
         },
         {
           id: "D".repeat(43),
           writeToken: "E".repeat(43),
           key: "F".repeat(43),
           isPublic: false,
-          expiresDay: null,
+          expiresAt: null,
         },
       ],
       contacts: [],
@@ -220,7 +220,7 @@ describe("account blob codec", () => {
         id: ID,
         label: "x",
         createdDay: 1,
-        expiresDay: null,
+        expiresAt: null,
         alias: { id: "short" },
       },
     ],
@@ -236,7 +236,7 @@ describe("account blob codec", () => {
   reject("an alias with a non-numeric expiry", {
     ...base,
     aliases: [
-      { id: ID, writeToken: ID, key: ID, isPublic: true, expiresDay: "soon" },
+      { id: ID, writeToken: ID, key: ID, isPublic: true, expiresAt: "soon" },
     ],
     sharingMode: "link",
   });
@@ -308,7 +308,7 @@ describe("account blob codec", () => {
         id: ID,
         label: "x",
         createdDay: 1,
-        expiresDay: null,
+        expiresAt: null,
         alias: { id: ID, writeToken: ID, key: ID, isPublic: false },
         theirNotify: { ...N, routingToken: "short" },
       },

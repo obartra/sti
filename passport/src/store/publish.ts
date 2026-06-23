@@ -51,11 +51,13 @@ export function keyedAliasLinkUrl(record: AliasRecord): string {
 }
 
 // Seal `view` under `key` and write it to the alias. Shared by publish (new key)
-// and republish (the existing key), so both encode a card identically.
+// and republish (the existing key), so both encode a card identically. The
+// record's own `expiresAt` rides the PUT (doc 16) and is sent every time, so the
+// server's expiry stays in lock-step with the blob (idempotent on a republish).
 async function sealAndPut(
   api: ApiClient,
   key: CryptoKey,
-  record: Pick<AliasRecord, "id" | "writeToken">,
+  record: Pick<AliasRecord, "id" | "writeToken" | "expiresAt">,
   view: ResolvedView,
 ): Promise<void> {
   const payload = await sealToSize(
@@ -63,38 +65,53 @@ async function sealAndPut(
     serializePublicCard(view),
     ALIAS_PAYLOAD_SIZE,
   );
-  await api.putAlias(record.id, payload, record.writeToken);
+  await api.putAlias(
+    record.id,
+    payload,
+    record.writeToken,
+    record.expiresAt ?? null,
+  );
 }
 
 /**
  * Mint a new alias and publish a card to it. Takes a `buildView(record)` callback
  * rather than a prebuilt view because the card's display identity is resolved from
  * the alias's own id (doc 15), which only exists once the record is minted here.
+ * `expiresAt` (epoch ms, or null/absent for no expiry) is recorded on the alias
+ * and sent to the server so the link expires on time (doc 16).
  */
 export async function publishCard(
   api: ApiClient,
   buildView: (record: AliasRecord) => ResolvedView,
-  opts: { isPublic?: boolean } = {},
+  opts: { isPublic?: boolean; expiresAt?: number | null } = {},
 ): Promise<PublishedAlias> {
   const raw = crypto.getRandomValues(new Uint8Array(32));
+  const expiresAt = opts.expiresAt ?? null;
   const record: AliasRecord = {
     id: randomAliasId(),
     writeToken: randomWriteToken(),
     key: bytesToBase64url(raw),
     isPublic: opts.isPublic ?? true,
+    expiresAt,
   };
   await sealAndPut(api, await importAesKey(raw), record, buildView(record));
   return { link: aliasLinkUrl(record), record };
 }
 
-/** Overwrite an existing alias with an updated card (same link, same key). */
+/**
+ * Overwrite an existing alias with an updated card (same link, same key). By
+ * default a badge republish keeps the record's current expiry; pass `expiresAt`
+ * (number or null) to change the link's lifetime in the same write (doc 16).
+ */
 export async function republishCard(
   api: ApiClient,
   record: AliasRecord,
   view: ResolvedView,
+  expiresAt?: number | null,
 ): Promise<void> {
   const key = await importAesKey(base64urlToBytes(record.key));
-  await sealAndPut(api, key, record, view);
+  const rec = expiresAt === undefined ? record : { ...record, expiresAt };
+  await sealAndPut(api, key, rec, view);
 }
 
 /**

@@ -13,7 +13,7 @@ import {
 import type { AliasRecord } from "./accountBlob.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { NOW_DAY } from "../core/badge.fixtures.ts";
-import { todayEpochDay } from "../core/clock.ts";
+import { nowMs, DAY_MS } from "../core/clock.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
 import type { AvatarConfig } from "../lib/avatars.ts";
 import { startApi, type Harness } from "../test-support/serverHarness.ts";
@@ -109,7 +109,7 @@ describe("account lifecycle against a live blind store", () => {
       id: "L".repeat(43),
       label: "",
       createdDay: 0,
-      expiresDay: null,
+      expiresAt: null,
       alias: liveLink.record,
     });
 
@@ -171,7 +171,7 @@ describe("account lifecycle against a live blind store", () => {
     );
     await accounts.addAlias(created.master, {
       ...live.record,
-      expiresDay: 1,
+      expiresAt: 1,
     });
     const caps = { id: live.record.id, key: live.record.key };
     expect(await store.resolveAlias(caps)).not.toBeNull();
@@ -194,7 +194,7 @@ describe("account lifecycle against a live blind store", () => {
       (rec) => deriveAliasCard(created.blob.state, rec, NOW_DAY),
       { isPublic: true },
     );
-    await accounts.addAlias(created.master, { ...live.record, expiresDay: 1 });
+    await accounts.addAlias(created.master, { ...live.record, expiresAt: 1 });
     const caps = { id: live.record.id, key: live.record.key };
     expect(await store.resolveAlias(caps)).not.toBeNull();
 
@@ -206,11 +206,11 @@ describe("account lifecycle against a live blind store", () => {
   });
 
   it("sweepExpiredLinks is a no-op when nothing is expired (live link untouched)", async () => {
-    const future = todayEpochDay() + 30; // safely live vs the real today the sweep uses
+    const future = nowMs() + 30 * DAY_MS; // safely live vs the real now the sweep uses
     const created = await accounts.create("wren");
-    await accounts.addAlias(created.master, { ...record, expiresDay: future });
+    await accounts.addAlias(created.master, { ...record, expiresAt: future });
     const swept = await accounts.sweepExpiredLinks(created.master);
     expect(swept.aliases).toHaveLength(1);
-    expect(swept.aliases[0]?.expiresDay).toBe(future);
+    expect(swept.aliases[0]?.expiresAt).toBe(future);
   });
 });

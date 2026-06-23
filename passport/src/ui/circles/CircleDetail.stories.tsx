@@ -19,7 +19,7 @@ function contact(id: string, label: string, blue: boolean): ContactRecord {
     id,
     label,
     createdDay: 1,
-    expiresDay: null,
+    expiresAt: null,
     alias: { id, writeToken: "w", key: "k", isPublic: false },
     ...(blue ? { theirStatusAlias: { id: `s-${id}`, key: "k" } } : {}),
   };

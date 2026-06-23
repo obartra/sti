@@ -50,11 +50,11 @@ export interface AliasRecord {
   readonly handle?: string;
   readonly avatar?: AvatarConfig;
   /**
-   * Optional link lifetime (doc 16): the epoch day this link expires, or null /
-   * absent for until-revoked. Enforced client-side, the device stops republishing
-   * and sweeps the link once expired, the same model as a contact link's expiry.
+   * Optional link lifetime (doc 16): the absolute epoch-ms instant this link
+   * expires, or null / absent for until-revoked. Server-enforced (sent on the
+   * alias PUT) AND swept by the device. Absolute ms so it can be sub-day.
    */
-  readonly expiresDay?: number | null;
+  readonly expiresAt?: number | null;
 }
 
 /**
@@ -82,8 +82,8 @@ export interface ContactRecord {
   readonly label: string;
   /** Epoch day the link was created. */
   readonly createdDay: number;
-  /** Epoch day the link expires, or null for until-revoked. */
-  readonly expiresDay: number | null;
+  /** Absolute epoch-ms instant the link expires, or null for until-revoked (doc 16). */
+  readonly expiresAt: number | null;
   /** The private alias this contact resolves; always isPublic=false. */
   readonly alias: AliasRecord;
   /**
@@ -158,7 +158,7 @@ function hasValidAliasOverride(r: Record<string, unknown>): boolean {
   return (
     (r.handle === undefined || isValidHandle(r.handle)) &&
     (r.avatar === undefined || isAvatarConfig(r.avatar)) &&
-    (r.expiresDay === undefined || isDayOrNull(r.expiresDay))
+    (r.expiresAt === undefined || isMsOrNull(r.expiresAt))
   );
 }
 
@@ -177,7 +177,9 @@ function isAliasRecord(x: unknown): x is AliasRecord {
   );
 }
 
-function isDayOrNull(x: unknown): boolean {
+// A non-negative integer (an epoch-ms instant) or null (no expiry). The same
+// shape works for any absolute time value; named for its use, link expiry.
+function isMsOrNull(x: unknown): boolean {
   return x === null || (typeof x === "number" && Number.isInteger(x) && x >= 0);
 }
 
@@ -239,7 +241,7 @@ function isContactRecord(x: unknown): x is ContactRecord {
     typeof r.createdDay === "number" &&
     Number.isInteger(r.createdDay) &&
     r.createdDay >= 0 &&
-    isDayOrNull(r.expiresDay) &&
+    (r.expiresAt === undefined || isMsOrNull(r.expiresAt)) &&
     hasValidContactAliases(r)
   );
 }

@@ -6,6 +6,10 @@ import {
   relativeDayLabel,
   epochDayToISODate,
   isoDateToEpochDay,
+  nowMs,
+  expiryLabel,
+  HOUR_MS,
+  DAY_MS,
 } from "./clock.ts";
 
 describe("epoch day", () => {
@@ -48,6 +52,28 @@ describe("ISO date round-trip", () => {
   it("returns null for an empty or unparseable value", () => {
     expect(isoDateToEpochDay("")).toBeNull();
     expect(isoDateToEpochDay("not-a-date")).toBeNull();
+  });
+});
+
+describe("nowMs", () => {
+  it("is a positive integer (the ms clock edge)", () => {
+    const t = nowMs();
+    expect(Number.isInteger(t)).toBe(true);
+    expect(t).toBeGreaterThan(0);
+  });
+});
+
+describe("expiryLabel", () => {
+  const now = 1_000_000_000_000;
+  it("buckets remaining lifetime coarsely", () => {
+    expect(expiryLabel(null, now)).toBe("No expiry");
+    expect(expiryLabel(now, now)).toBe("Expired");
+    expect(expiryLabel(now - 1, now)).toBe("Expired");
+    expect(expiryLabel(now + 5 * 60_000, now)).toBe("5 min left");
+    expect(expiryLabel(now + 30_000, now)).toBe("1 min left"); // floored up to 1
+    expect(expiryLabel(now + 3 * HOUR_MS, now)).toBe("3h left");
+    expect(expiryLabel(now + DAY_MS, now)).toBe("1 day left");
+    expect(expiryLabel(now + 6 * DAY_MS, now)).toBe("6 days left");
   });
 });
 

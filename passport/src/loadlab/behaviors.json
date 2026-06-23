@@ -136,7 +136,7 @@
     "category": "Trust integrity & sharing",
     "title": "A link's lifetime can be extended or shortened without changing its URL",
     "intent": "Per-link duration (doc 16) is a stored expiry the owner can move at any time; changing it must not rotate the alias, so the recipient's link keeps working.",
-    "check": "setContactDuration and setShareLinkDuration move the record's expiresDay while the same alias id keeps resolving (no renew, URL unchanged).",
+    "check": "setContactDuration and setShareLinkDuration move the record's expiresAt while the same alias id keeps resolving (no renew, URL unchanged).",
     "status": "validated",
     "layer": "wire",
     "docRef": "16",

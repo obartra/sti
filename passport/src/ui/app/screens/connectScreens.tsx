@@ -1,7 +1,7 @@
 import { Connect } from "../../connect/Connect.tsx";
 import { ContactLinks } from "../../connect/ContactLinks.tsx";
 import { QrScanner } from "../../connect/QrScanner.tsx";
-import { todayEpochDay } from "../../../core/clock.ts";
+import { todayEpochDay, nowMs } from "../../../core/clock.ts";
 import type { ScreenRenderers } from "./context.ts";
 
 export const connectRenderers: ScreenRenderers = {
@@ -35,7 +35,7 @@ export const connectRenderers: ScreenRenderers = {
   }) => (
     <ContactLinks
       contacts={contacts}
-      nowDay={todayEpochDay()}
+      now={nowMs()}
       onCreate={onCreateContactLink}
       onRevoke={onRevokeContact}
       onSetDuration={onSetContactDuration}
