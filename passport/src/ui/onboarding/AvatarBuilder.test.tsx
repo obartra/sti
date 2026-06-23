@@ -59,6 +59,27 @@ describe("AvatarBuilder", () => {
     );
   });
 
+  it("disables the hair-color row when Bald is selected (it has no effect then)", () => {
+    const bald: AvatarConfig = {
+      hair: 12,
+      mood: 0,
+      skin: 0,
+      hairColor: 0,
+      beard: 0,
+    };
+    const { rerender } = render(
+      <AvatarBuilder config={bald} onChange={vi.fn()} />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Hair color: White" }),
+    ).toBeDisabled();
+    // A non-bald hair leaves the hair-color row interactive.
+    rerender(<AvatarBuilder config={{ ...bald, hair: 0 }} onChange={vi.fn()} />);
+    expect(
+      screen.getByRole("button", { name: "Hair color: White" }),
+    ).toBeEnabled();
+  });
+
   it("'Surprise me' emits a valid random config", async () => {
     const onChange = vi.fn();
     render(<AvatarBuilder config={cfg} onChange={onChange} />);

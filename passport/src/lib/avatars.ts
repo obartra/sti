@@ -146,6 +146,9 @@ export interface AvatarParts {
   // swatches instead of full avatars.
   skinHexes: readonly string[];
   hairColorHexes: readonly string[];
+  // Per-hair flag: a bald style ignores the hair color, so the builder can dim the
+  // hair-color row when one is selected.
+  hairIsBald: readonly boolean[];
 }
 
 // The builder needs the option labels, counts, and color values; it builds configs
@@ -158,6 +161,7 @@ export const avatarParts: AvatarParts = {
   beards: BEARDS.map((b) => b.label),
   skinHexes: SKINS.map((p) => `#${p.hex}`),
   hairColorHexes: HAIR_COLORS.map((p) => `#${p.hex}`),
+  hairIsBald: HAIR.map((h) => h.bald === true),
 };
 
 // A fresh account starts here: plain hair, happy, teal skin, ink hair, no beard.
@@ -249,8 +253,24 @@ function avatarSvg(cfgIn: AvatarConfigInput): string {
   }).toString();
 }
 
+// Generated avatars are pure in their config, so memoize the data URIs. The config
+// space is ~5.6k but a builder session or a roster touches far fewer; a small bound
+// keeps memory flat while collapsing the repeated re-renders to one generation each.
+const svgCache = new Map<string, string>();
+const SVG_CACHE_MAX = 512;
+
 export function avatarSrc(cfg: AvatarConfigInput): string {
-  return "data:image/svg+xml," + encodeURIComponent(avatarSvg(cfg));
+  const c = normalize(cfg);
+  const key = `${c.hair}:${c.mood}:${c.skin}:${c.hairColor}:${c.beard}`;
+  const cached = svgCache.get(key);
+  if (cached !== undefined) return cached;
+  const src = "data:image/svg+xml," + encodeURIComponent(avatarSvg(c));
+  if (svgCache.size >= SVG_CACHE_MAX) {
+    const oldest = svgCache.keys().next().value;
+    if (oldest !== undefined) svgCache.delete(oldest);
+  }
+  svgCache.set(key, src);
+  return src;
 }
 
 export function randomAvatar(seed: number): AvatarConfig {

@@ -56,16 +56,23 @@ export function AvatarBuilder({ config, onChange }: AvatarBuilderProps) {
   const shuffle = () =>
     onChange(randomAvatar(Math.floor(Math.random() * 0x7fffffff)));
 
+  // Bald ignores the hair color, so dim that row when a bald style is selected.
+  const baldSelected = P.hairIsBald[config.hair] ?? false;
+
   // Each option shows just what it controls: a color row renders solid color
   // swatches; an asset row (hair, mood, beard) renders a mini avatar of that asset.
+  // A disabled row (hair color while bald) dims and stops responding.
   const row = (
     label: string,
     key: keyof AvatarConfig,
     options: readonly string[],
-    colors?: readonly string[],
+    opts: { colors?: readonly string[]; disabled?: boolean } = {},
   ) => (
-    <div>
-      <div style={partLabel}>{label}</div>
+    <div style={opts.disabled ? { opacity: 0.45 } : undefined}>
+      <div style={partLabel}>
+        {label}
+        {opts.disabled ? " (set by Bald)" : ""}
+      </div>
       <div style={swatchGrid}>
         {options.map((name, i) => (
           <button
@@ -75,11 +82,15 @@ export function AvatarBuilder({ config, onChange }: AvatarBuilderProps) {
             type="button"
             aria-label={`${label}: ${name}`}
             aria-pressed={config[key] === i}
-            style={swatch(config[key] === i)}
+            disabled={opts.disabled ?? false}
+            style={{
+              ...swatch(config[key] === i),
+              cursor: opts.disabled ? "default" : "pointer",
+            }}
             onClick={() => set(key, i)}
           >
-            {colors ? (
-              <span style={{ ...swatchImg, background: colors[i] }} />
+            {opts.colors ? (
+              <span style={{ ...swatchImg, background: opts.colors[i] }} />
             ) : (
               <img
                 src={avatarSrc({ ...config, [key]: i })}
@@ -123,8 +134,11 @@ export function AvatarBuilder({ config, onChange }: AvatarBuilderProps) {
       {row("Beard", "beard", P.beards)}
       {row("Hair", "hair", P.hairs)}
       {row("Mood", "mood", P.moods)}
-      {row("Skin", "skin", P.skins, P.skinHexes)}
-      {row("Hair color", "hairColor", P.hairColors, P.hairColorHexes)}
+      {row("Skin", "skin", P.skins, { colors: P.skinHexes })}
+      {row("Hair color", "hairColor", P.hairColors, {
+        colors: P.hairColorHexes,
+        disabled: baldSelected,
+      })}
     </Card>
   );
 }
