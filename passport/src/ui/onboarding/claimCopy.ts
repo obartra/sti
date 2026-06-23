@@ -12,7 +12,6 @@ export const COPY = {
   loginSub: "Unlock with your passkey.",
   loginStep: "Log in",
   passkey: "Passkey",
-  usePasskey: "Create passkey",
   usePasskeyLogin: "Unlock with passkey",
   keyLabel: "Your account key",
   passkeyHint:

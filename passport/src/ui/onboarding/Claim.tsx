@@ -150,16 +150,22 @@ export function Claim({
         >
           {COPY.passkeyHint}
         </div>
-        <Button
-          variant="primary"
-          size="lg"
-          block
-          icon={<Fingerprint size={18} />}
-          disabled={busy}
-          onClick={isLogin ? onLogin : undefined}
-        >
-          {isLogin ? COPY.usePasskeyLogin : COPY.usePasskey}
-        </Button>
+        {/* Login unlocks with the passkey here. On create there's nothing to do
+            yet: the passkey is enrolled at the end of setup (FirstRunSetup ->
+            finish), so this card is just explaining the account key, and the
+            action is the "Continue" button in the identity form below. */}
+        {isLogin && (
+          <Button
+            variant="primary"
+            size="lg"
+            block
+            icon={<Fingerprint size={18} />}
+            disabled={busy}
+            onClick={onLogin}
+          >
+            {COPY.usePasskeyLogin}
+          </Button>
+        )}
       </Card>
       {error !== null && (
         <div
