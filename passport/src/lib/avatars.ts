@@ -70,7 +70,6 @@ const MOODS: readonly { name: MoodName; label: string }[] = [
   { name: "hopeful", label: "Hopeful" },
   { name: "neutral", label: "Neutral" },
   { name: "confused", label: "Confused" },
-  { name: "sad", label: "Sad" },
   { name: "angry", label: "Angry" },
 ];
 
@@ -100,8 +99,43 @@ const BEARDS: readonly { label: string }[] = [
   { label: "Beard" },
 ];
 
-// A fixed light tint behind every avatar (teal-50), so the face reads on any card.
-const BACKGROUND = "EEF8FA";
+// The background is picked automatically to contrast with the skin and hair, so a
+// light avatar gets the deep tint and a dark one gets the pale tint. Both are
+// on-brand (teal-50 and teal-700).
+const BACKGROUNDS = ["EEF8FA", "1F6E80"] as const;
+
+// WCAG relative luminance of a 6-digit hex (no '#').
+function relativeLuminance(hex: string): number {
+  const channel = (i: number) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+}
+
+function contrastRatio(a: string, b: string): number {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+// Choose the background that maximizes the weaker of its two contrasts (against
+// skin and against hair), so neither part of the avatar blends into it.
+function backgroundFor(skinHex: string, hairHex: string): string {
+  let best: string = BACKGROUNDS[0];
+  let bestScore = -1;
+  for (const bg of BACKGROUNDS) {
+    const score = Math.min(
+      contrastRatio(bg, skinHex),
+      contrastRatio(bg, hairHex),
+    );
+    if (score > bestScore) {
+      bestScore = score;
+      best = bg;
+    }
+  }
+  return best;
+}
 
 export interface AvatarParts {
   hairs: readonly string[];
@@ -204,7 +238,7 @@ function avatarSvg(cfgIn: AvatarConfigInput): string {
     mood: [mood.name],
     skinColor: [skin.hex],
     hairColor: [hairHex],
-    backgroundColor: [BACKGROUND],
+    backgroundColor: [backgroundFor(skin.hex, hairHex)],
     facialHair: ["default"],
     facialHairProbability: cfg.beard === 1 ? 100 : 0,
   }).toString();

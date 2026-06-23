@@ -120,6 +120,19 @@ describe("avatar rendering (doc 19 DiceBear Dylan)", () => {
       check({ ...base, mood });
   });
 
+  it("auto-contrasts the background: dark behind a light avatar, light behind a dark one", () => {
+    // All-white avatar gets the deep tint; all-ink avatar gets the pale tint.
+    const light = svgOf(
+      avatarSrc({ hair: 0, mood: 0, skin: 0, hairColor: 0, beard: 0 }),
+    ).toLowerCase();
+    expect(light).toContain("1f6e80");
+    expect(light).not.toContain("eef8fa");
+    const dark = svgOf(
+      avatarSrc({ hair: 0, mood: 0, skin: 5, hairColor: 5, beard: 0 }),
+    ).toLowerCase();
+    expect(dark).toContain("eef8fa");
+  });
+
   it("never touches the network (generation is fully on-device)", () => {
     const fetchSpy =
       typeof globalThis.fetch === "function"
@@ -138,9 +151,9 @@ describe("avatar rendering (doc 19 DiceBear Dylan)", () => {
 describe("avatar config validation and migration (doc 19)", () => {
   it("accepts a valid in-range config", () => {
     expect(isAvatarConfig(DEFAULT_AVATAR)).toBe(true);
-    // hair 12 is Bald (the last index), skin/hairColor 5 is Ink, beard 1.
+    // hair 12 is Bald (the last index), mood 5 is the last, skin/hairColor 5 Ink.
     expect(
-      isAvatarConfig({ hair: 12, mood: 6, skin: 5, hairColor: 5, beard: 1 }),
+      isAvatarConfig({ hair: 12, mood: 5, skin: 5, hairColor: 5, beard: 1 }),
     ).toBe(true);
   });
 

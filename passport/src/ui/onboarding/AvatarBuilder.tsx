@@ -119,11 +119,11 @@ export function AvatarBuilder({ config, onChange }: AvatarBuilderProps) {
           Surprise me
         </Button>
       </div>
+      {row("Beard", "beard", P.beards)}
       {row("Hair", "hair", P.hairs)}
       {row("Mood", "mood", P.moods)}
       {row("Skin", "skin", P.skins, P.skinHexes)}
       {row("Hair color", "hairColor", P.hairColors, P.hairColorHexes)}
-      {row("Beard", "beard", P.beards)}
     </Card>
   );
 }

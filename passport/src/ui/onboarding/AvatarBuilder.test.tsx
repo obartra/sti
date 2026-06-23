@@ -41,7 +41,7 @@ describe("AvatarBuilder", () => {
   it("marks the selected option in each row as pressed", () => {
     render(
       <AvatarBuilder
-        config={{ hair: 4, mood: 6, skin: 3, hairColor: 5, beard: 1 }}
+        config={{ hair: 4, mood: 5, skin: 3, hairColor: 5, beard: 1 }}
         onChange={vi.fn()}
       />,
     );

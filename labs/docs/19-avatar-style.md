@@ -71,15 +71,19 @@ Skin and hair color are chosen **separately** from this palette (more variety th
 tone, but every value is still on brand, so no combination can produce mud). Skin and hair use almost
 the same set, with one difference: hair's darkest is the brand near-black (`--ink-900`), but skin's
 darkest is a blue-tinted teal-dark (#16505C) instead, because the eyes render in black and would vanish
-against a near-black face. The background is a fixed light tint (`--teal-50`), not a user choice, so the
-face always reads. The raw DiceBear palettes are never exposed. The builder offers, in a fixed-column
-grid, with color rows shown as plain color swatches and asset rows as mini avatars:
+against a near-black face. The background is **not** a user choice: it is picked automatically to
+contrast with the skin and hair (a light avatar gets the deep tint, a dark one the pale tint), choosing
+the candidate that maximizes the weaker of its two WCAG contrasts so neither part blends in. Both
+candidates (`--teal-50`, `--teal-700`) are on brand. The raw DiceBear palettes are never exposed. The
+builder offers, in a fixed-column grid, with color rows shown as plain color swatches and asset rows as
+mini avatars:
 
+- **Beard** (clean-shaven or Dylan's one beard style), placed first.
 - **Hair** (12 Dylan styles + **Bald**). Dylan has no no-hair style, so Bald reuses the flattest style
   with the hair color forced to the skin, so the hair reads as a bare head.
-- **Mood** (7). Picking a mood is the personality knob the old "hat / glasses" rows never were.
-- **Skin** and **Hair color** (6 swatches each, from the shared palette).
-- **Beard** (clean-shaven or Dylan's one beard style).
+- **Mood** (6: happy, super happy, hopeful, neutral, confused, angry). The personality knob the old
+  "hat / glasses" rows never were.
+- **Skin** and **Hair color** (6 swatches each, from their palettes).
 - **Surprise me**, a shuffle button (the current `randomAvatar` has no UI today).
 
 `AvatarConfig` becomes `{ hair, mood, skin, hairColor, beard }` (small in-range indices, same
