@@ -130,7 +130,8 @@ export function CreateFlow({
   busy?: boolean;
   onClaim?: ((handle: string, avatar: AvatarConfig) => void) | undefined;
 }) {
-  const [handle, setHandle] = useState("robin");
+  // Start empty: the owner types their own name (don't prefill a demo handle).
+  const [handle, setHandle] = useState("");
   const ok = handle.trim().length >= 3;
   // Avatar config lives in component state; seed a deterministic default.
   const [avatar, setAvatar] = useState<AvatarConfig>(() => randomAvatar(2));
@@ -144,6 +145,7 @@ export function CreateFlow({
       <Field label={COPY.identityHandleLabel} hint={COPY.identityHandleHint}>
         <Input
           value={handle}
+          placeholder={COPY.identityHandlePlaceholder}
           onChange={(e) =>
             setHandle(e.target.value.replace(/[^a-z0-9_]/gi, "").toLowerCase())
           }

@@ -23,6 +23,7 @@ export const COPY = {
   recoverCta: "Recover account",
   identitySection: "Your identity",
   identityHandleLabel: "Your name",
+  identityHandlePlaceholder: "Pick a display name",
   identityHandleHint:
     "A display name you can choose to show on a link. Not your address, and not unique across the app.",
   avatarLabel: "Your face",

@@ -205,6 +205,26 @@ describe("App routing of a shared passport link", () => {
   });
 });
 
+// Run the b1 -> b3 onboarding: type a handle (the field starts empty now), claim,
+// reveal + confirm the recovery phrase, then enter the app.
+async function onboard(
+  user: ReturnType<typeof userEvent.setup>,
+  handle = "robin",
+) {
+  await user.type(
+    await screen.findByPlaceholderText("Pick a display name"),
+    handle,
+  );
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+  await user.click(
+    await screen.findByRole("button", { name: /Tap to reveal/ }),
+  );
+  await user.click(screen.getByRole("button", { name: /saved it/i }));
+  await user.click(
+    await screen.findByRole("button", { name: /Enter my passport/ }),
+  );
+}
+
 describe("App onboarding flow", () => {
   it("creates a real account and enters the app as the derived owner", async () => {
     // Start at b1-claim (the landing's claim target).
@@ -212,23 +232,9 @@ describe("App onboarding flow", () => {
     const user = userEvent.setup();
     render(<App store={stubStore(null)} controller={fakeController()} />);
 
-    // b1: pick a handle distinct from the OWNER fixture ("robin") so reaching it
-    // at home proves the real session drives the view, not the placeholder.
-    const handle = screen.getByDisplayValue("robin");
-    await user.clear(handle);
-    await user.type(handle, "kai");
-    await user.click(screen.getByRole("button", { name: "Continue" }));
-
-    // b2: the real recovery token is shown once; reveal then confirm saved.
-    await user.click(
-      await screen.findByRole("button", { name: /Tap to reveal/ }),
-    );
-    await user.click(screen.getByRole("button", { name: /saved it/i }));
-
-    // b3: enter the app.
-    await user.click(
-      await screen.findByRole("button", { name: /Enter my passport/ }),
-    );
+    // Pick a handle distinct from the OWNER fixture ("robin") so reaching it at
+    // home proves the real session drives the view, not the placeholder.
+    await onboard(user, "kai");
 
     // Home renders the derived owner: the chosen handle, not the fixture's.
     expect((await screen.findAllByText("@kai")).length).toBeGreaterThan(0);
@@ -243,14 +249,7 @@ describe("App onboarding flow", () => {
     controller.enrollPasskey = () => Promise.reject(new Error("declined"));
     render(<App store={stubStore(null)} controller={controller} />);
 
-    await user.click(screen.getByRole("button", { name: "Continue" }));
-    await user.click(
-      await screen.findByRole("button", { name: /Tap to reveal/ }),
-    );
-    await user.click(screen.getByRole("button", { name: /saved it/i }));
-    await user.click(
-      await screen.findByRole("button", { name: /Enter my passport/ }),
-    );
+    await onboard(user);
 
     // The account was created (default handle "robin"), so the app still enters.
     expect((await screen.findAllByText("@robin")).length).toBeGreaterThan(0);
@@ -268,6 +267,10 @@ describe("App onboarding flow", () => {
     );
 
     // Onboard through to home (still gray: never tested yet).
+    await user.type(
+      await screen.findByPlaceholderText("Pick a display name"),
+      "robin",
+    );
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await user.click(
       await screen.findByRole("button", { name: /Tap to reveal/ }),
@@ -328,14 +331,7 @@ describe("App onboarding flow", () => {
     render(<App store={stubStore(null)} controller={controller} />);
 
     // Onboard into the app.
-    await user.click(screen.getByRole("button", { name: "Continue" }));
-    await user.click(
-      await screen.findByRole("button", { name: /Tap to reveal/ }),
-    );
-    await user.click(screen.getByRole("button", { name: /saved it/i }));
-    await user.click(
-      await screen.findByRole("button", { name: /Enter my passport/ }),
-    );
+    await onboard(user);
     expect((await screen.findAllByText("@robin")).length).toBeGreaterThan(0);
 
     // Open Privacy, then the danger zone's two-step delete.
@@ -360,14 +356,7 @@ describe("App onboarding flow", () => {
     render(<App store={stubStore(null)} controller={controller} />);
 
     // Onboard, then open the inbox via the bell.
-    await user.click(screen.getByRole("button", { name: "Continue" }));
-    await user.click(
-      await screen.findByRole("button", { name: /Tap to reveal/ }),
-    );
-    await user.click(screen.getByRole("button", { name: /saved it/i }));
-    await user.click(
-      await screen.findByRole("button", { name: /Enter my passport/ }),
-    );
+    await onboard(user);
     await user.click(
       await screen.findByRole("button", { name: "Notifications" }),
     );
@@ -391,14 +380,7 @@ describe("App onboarding flow", () => {
     render(<App store={stubStore(null)} controller={controller} />);
 
     // Onboard into the passport.
-    await user.click(screen.getByRole("button", { name: "Continue" }));
-    await user.click(
-      await screen.findByRole("button", { name: /Tap to reveal/ }),
-    );
-    await user.click(screen.getByRole("button", { name: /saved it/i }));
-    await user.click(
-      await screen.findByRole("button", { name: /Enter my passport/ }),
-    );
+    await onboard(user);
 
     // The bell shows new activity even with zero knocks, so the time-sensitive
     // nudge is not stranded behind a manual open.
@@ -422,14 +404,7 @@ describe("App onboarding flow", () => {
     render(<App store={stubStore(null)} controller={fakeController()} />);
 
     // Onboard, then open Connect -> Share my link (the per-contact manager).
-    await user.click(screen.getByRole("button", { name: "Continue" }));
-    await user.click(
-      await screen.findByRole("button", { name: /Tap to reveal/ }),
-    );
-    await user.click(screen.getByRole("button", { name: /saved it/i }));
-    await user.click(
-      await screen.findByRole("button", { name: /Enter my passport/ }),
-    );
+    await onboard(user);
     await user.click(await screen.findByRole("button", { name: "Connect" }));
     await user.click(await screen.findByText("Share my link"));
 
