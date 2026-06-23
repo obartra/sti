@@ -220,3 +220,11 @@ export function Users({ size = 24, ...rest }: IconProps) {
 export function X({ size = 24, ...rest }: IconProps) {
   return <svg {...svg(size, rest)}><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>;
 }
+
+// ── Manual additions (NOT from the generator) ──────────────────────────────
+// Icons added by hand that are not in the design bundle yet. When regenerating
+// this file from comps-reference, re-apply everything below this banner.
+
+export function Dice({ size = 24, ...rest }: IconProps) {
+  return <svg {...svg(size, rest)}><rect x="3" y="3" width="18" height="18" rx="3"></rect><circle cx="8.5" cy="8.5" r="1.1"></circle><circle cx="15.5" cy="8.5" r="1.1"></circle><circle cx="12" cy="12" r="1.1"></circle><circle cx="8.5" cy="15.5" r="1.1"></circle><circle cx="15.5" cy="15.5" r="1.1"></circle></svg>;
+}

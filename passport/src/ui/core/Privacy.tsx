@@ -3,6 +3,7 @@ import type { OwnerState } from "../../core/badge.ts";
 import type { AliasRecord, ContactRecord } from "../../store/index.ts";
 import type { PushControls } from "../app/usePush.ts";
 import { LiveLinks } from "./Privacy.aliases.tsx";
+import { AvatarCard } from "../onboarding/AvatarCard.tsx";
 import {
   AttributesCard,
   ControlsCard,
@@ -19,6 +20,9 @@ export interface PrivacyProps {
   push?: PushControls | undefined;
   onViewAs?: (() => void) | undefined;
   onDeleted?: (() => void) | undefined;
+  /** Live preview src for the current avatar; with onEditAvatar, shows the editor entry. */
+  avatarSrc?: string | undefined;
+  onEditAvatar?: (() => void) | undefined;
 }
 
 const noop = (): void => undefined;
@@ -33,6 +37,8 @@ export function Privacy({
   push,
   onViewAs,
   onDeleted,
+  avatarSrc,
+  onEditAvatar,
 }: PrivacyProps) {
   const state = usePrivacyState(ownerState, setOwnerState);
   return (
@@ -56,6 +62,10 @@ export function Privacy({
         >
           {COPY.title}
         </h1>
+
+        {onEditAvatar && avatarSrc !== undefined && (
+          <AvatarCard src={avatarSrc} onEdit={onEditAvatar} />
+        )}
 
         {/* One unified list of every live link (public/casual aliases + contact
             links), each individually revocable. */}

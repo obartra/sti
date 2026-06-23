@@ -319,7 +319,7 @@ describe("account manager", () => {
   it("setProfile persists avatar + sharing and guards invalid input", async () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
-    const avatar = { animal: 1, color: 2, hat: 0, glasses: 1, extra: 0 };
+    const avatar = { hair: 1, mood: 2, skin: 2, hairColor: 4, beard: 0 };
     const next = await accounts.setProfile(created.master, {
       avatar,
       sharingMode: "public",
@@ -330,7 +330,7 @@ describe("account manager", () => {
     // A bad avatar or sharing mode is rejected at write time, not persisted.
     await expect(
       accounts.setProfile(created.master, {
-        avatar: { ...avatar, animal: 999 },
+        avatar: { ...avatar, hair: 999 },
         sharingMode: "public",
       }),
     ).rejects.toThrow();

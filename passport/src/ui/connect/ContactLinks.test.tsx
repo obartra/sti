@@ -170,3 +170,32 @@ describe("ContactLinks", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("ContactLinks avatar entry (doc 19)", () => {
+  const baseProps = {
+    contacts: [],
+    now: 19_000,
+    onCreate: () => Promise.resolve({ url: "https://sti.care/a/x" }),
+    onRevoke: () => undefined,
+    onSetDuration: () => undefined,
+  };
+
+  it("shows the avatar editor entry and opens it on Edit", async () => {
+    const onEditAvatar = vi.fn();
+    render(
+      <ContactLinks
+        {...baseProps}
+        avatarSrc="data:image/svg+xml,<svg/>"
+        onEditAvatar={onEditAvatar}
+      />,
+    );
+    expect(screen.getByText("Your avatar")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(onEditAvatar).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides the entry when no editor handler is provided", () => {
+    render(<ContactLinks {...baseProps} />);
+    expect(screen.queryByText("Your avatar")).not.toBeInTheDocument();
+  });
+});

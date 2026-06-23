@@ -6,6 +6,7 @@ import {
   Segmented,
 } from "../../design/components/index.ts";
 import { Link, Trash, Dots } from "../../design/icons.tsx";
+import { AvatarCard } from "../onboarding/AvatarCard.tsx";
 import { DAY_MS } from "../../core/clock.ts";
 import { CreatedLink, IngestReturn } from "./ContactLinks.parts.tsx";
 import type { ContactInvite, ContactRecord } from "../../store/index.ts";
@@ -45,6 +46,10 @@ export interface ContactLinksProps {
   onSetDuration: (id: string, durationMs: number | null) => void;
   /** Ingest a return link a contact sent back, completing the pending link. */
   onIngestReturn?: ((ret: ContactInvite) => void) | undefined;
+  /** Avatar editor entry: a live preview src and a handler to open the editor.
+   * Private links are where a revealed avatar is actually seen (doc 19). */
+  avatarSrc?: string | undefined;
+  onEditAvatar?: (() => void) | undefined;
 }
 
 function expiryLabel(expiresAt: number | null, now: number): string {
@@ -122,6 +127,8 @@ export function ContactLinks({
   onRevoke,
   onSetDuration,
   onIngestReturn,
+  avatarSrc,
+  onEditAvatar,
 }: ContactLinksProps): React.ReactElement {
   const [label, setLabel] = useState("");
   const [duration, setDuration] = useState(DEFAULT_DURATION);
@@ -175,6 +182,10 @@ export function ContactLinks({
           any link anytime; each link expires on its own when its time is up.
         </p>
       </div>
+
+      {onEditAvatar && avatarSrc !== undefined && (
+        <AvatarCard src={avatarSrc} onEdit={onEditAvatar} />
+      )}
 
       <CreateCard
         label={label}

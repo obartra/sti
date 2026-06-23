@@ -16,7 +16,11 @@
 import { utf8ToBytes, type Bytes } from "../crypto/index.ts";
 import { validId } from "../api/contract.ts";
 import { isOwnerState, type OwnerState } from "../core/badge.ts";
-import { isAvatarConfig, type AvatarConfig } from "../lib/avatars.ts";
+import {
+  isAvatarConfig,
+  migrateAvatar,
+  type AvatarConfig,
+} from "../lib/avatars.ts";
 import { decodeVersioned, isValidHandle } from "./codec.ts";
 import type { NotifyCapability } from "./notifyInbox.ts";
 
@@ -152,14 +156,35 @@ interface AccountBlobWire extends AccountBlob {
   readonly v: typeof SCHEMA_VERSION;
 }
 
-// The optional per-alias display override (doc 15), each field validated only when
-// present, so a malformed override fails closed like any other field.
+// The optional per-alias display override (doc 15). Handle and expiry still fail
+// closed; the avatar is exempt because it is cosmetic and migrates (doc 19): a bad
+// or old-shape override avatar is dropped on read by migrateAliasOverride below, so
+// it must not invalidate the whole alias here.
 function hasValidAliasOverride(r: Record<string, unknown>): boolean {
   return (
     (r.handle === undefined || isValidHandle(r.handle)) &&
-    (r.avatar === undefined || isAvatarConfig(r.avatar)) &&
+    // The avatar is intentionally NOT validated here: it is cosmetic and migrates
+    // (doc 19), so a bad/old-shape override avatar is dropped on read rather than
+    // invalidating the alias. Handle and expiry still fail closed.
     (r.expiresAt === undefined || isMsOrNull(r.expiresAt))
   );
+}
+
+// Drop an alias override avatar that is not a valid current config (old-shape or
+// corrupt), so the alias keeps every other field (handle, expiry, tokens) and just
+// falls back to the id-derived avatar. Cosmetic-only, lossy on purpose (doc 19).
+function migrateAliasOverride(a: AliasRecord): AliasRecord {
+  if (a.avatar === undefined || isAvatarConfig(a.avatar)) return a;
+  const copy = { ...a };
+  delete (copy as { avatar?: AvatarConfig }).avatar;
+  return copy;
+}
+
+// A per-contact link carries the owner's alias (it can hold an avatar override
+// when the owner revealed themselves), so its avatar migrates the same way.
+function migrateContactAvatar(c: ContactRecord): ContactRecord {
+  const alias = migrateAliasOverride(c.alias);
+  return alias === c.alias ? c : { ...c, alias };
 }
 
 function isAliasRecord(x: unknown): x is AliasRecord {
@@ -296,9 +321,9 @@ function assertValidBlob(o: Record<string, unknown>): void {
   if (!isOwnerState(o.state)) {
     throw new Error("account blob: invalid state");
   }
-  if (!isAvatarConfig(o.avatar)) {
-    throw new Error("account blob: invalid avatar");
-  }
+  // The avatar is not gated here: it is cosmetic and migrates to the default on
+  // read (see parseAccountBlob), so an old-shape or corrupt avatar must not brick
+  // the whole account (doc 19).
   if (!isSharingMode(o.sharingMode)) {
     throw new Error("account blob: invalid sharingMode");
   }
@@ -321,10 +346,10 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
   assertValidBlob(o);
   return {
     handle: o.handle as string,
-    aliases: o.aliases as AccountBlob["aliases"],
-    contacts: o.contacts as AccountBlob["contacts"],
+    aliases: (o.aliases as AliasRecord[]).map(migrateAliasOverride),
+    contacts: (o.contacts as ContactRecord[]).map(migrateContactAvatar),
     state: o.state as AccountBlob["state"],
-    avatar: o.avatar as AccountBlob["avatar"],
+    avatar: migrateAvatar(o.avatar),
     sharingMode: o.sharingMode as AccountBlob["sharingMode"],
     ...(isNotifyCapability(o.myNotify) ? { myNotify: o.myNotify } : {}),
     ...(Array.isArray(o.circles)

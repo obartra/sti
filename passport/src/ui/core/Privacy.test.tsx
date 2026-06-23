@@ -23,6 +23,34 @@ function applyLast(set: Mock, from: OwnerState): OwnerState {
   return (call[0] as Updater)(from);
 }
 
+describe("Privacy avatar editor entry (doc 19 slice 5)", () => {
+  it("shows the avatar entry and routes to the editor on Edit", async () => {
+    const onEditAvatar = vi.fn();
+    render(
+      <Privacy
+        ownerState={INITIAL_OWNER_STATE}
+        setOwnerState={() => undefined}
+        avatarSrc="data:image/svg+xml,<svg/>"
+        onEditAvatar={onEditAvatar}
+      />,
+    );
+    expect(screen.getByText("Your avatar")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(onEditAvatar).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides the avatar entry when no editor handler is provided", () => {
+    render(
+      <Privacy
+        ownerState={INITIAL_OWNER_STATE}
+        setOwnerState={() => undefined}
+        avatarSrc="data:image/svg+xml,<svg/>"
+      />,
+    );
+    expect(screen.queryByText("Your avatar")).not.toBeInTheDocument();
+  });
+});
+
 describe("usePrivacyState card-attribute wiring", () => {
   it("reads the card attributes from the owner state", () => {
     const state: OwnerState = {

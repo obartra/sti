@@ -43,6 +43,28 @@ describe("public card codec", () => {
     expect(parsed.identity.handle).toBe("robin");
   });
 
+  it("falls back to no avatar for an old-shape or corrupt avatar (doc 19 migration)", () => {
+    for (const bad of [
+      { animal: 2, color: 1, hat: 0, glasses: 0, extra: 0 }, // pre-doc-19 shape
+      { animal: "cat" },
+      { hair: 99, mood: 0, tone: 0 }, // out of range
+      "garbage",
+    ]) {
+      const json = {
+        v: 2,
+        state: "blue",
+        labels: ["hiv"],
+        route: "hiv",
+        handle: "robin",
+        avatar: bad,
+      };
+      const parsed = parsePublicCard(utf8ToBytes(JSON.stringify(json)));
+      expect(parsed.avatar).toBeUndefined();
+      expect(parsed.avatarSrc).toBeUndefined();
+      expect(parsed.identity.handle).toBe("robin");
+    }
+  });
+
   it("round-trips the doxy_pep label (producer and validator stay in lockstep)", () => {
     const withDoxy: ResolvedView = {
       ...view,
@@ -96,14 +118,6 @@ describe("public card codec", () => {
     labels: [],
     route: null,
     handle: "x",
-  });
-  reject("a malformed avatar", {
-    v: 2,
-    state: "blue",
-    labels: [],
-    route: null,
-    handle: "x",
-    avatar: { animal: "cat" },
   });
   reject("an invalid state", {
     v: 2,

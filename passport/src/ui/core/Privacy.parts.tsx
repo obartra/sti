@@ -9,6 +9,9 @@ import type { CondomPreference, OwnerState } from "../../core/badge.ts";
 // built yet, so nothing here fakes it.)
 export const COPY = {
   title: "Privacy & sharing",
+  avatarTitle: "Your avatar",
+  avatarSub: "The look you can choose to show on a link.",
+  avatarEdit: "Edit",
   controlsTitle: "Controls",
   anonAlerts: "Anonymous partner alerts",
   anonAlertsSub:

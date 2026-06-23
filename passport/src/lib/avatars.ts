@@ -1,43 +1,34 @@
-/* Avatar builder: layered animal avatars with per-animal ANCHORS so
-   accessories always land in the right place (frog eyes are on stalks, bunny
-   hat sits between the ears, and so on).
-   No photos by design, fun without PHI pressure.
-   API: avatarParts, avatarSrc(cfgOrSeed), avatarFor(handle), randomAvatar(seed)
+/* Avatars: the DiceBear "Dylan" style, generated locally and recolored to the
+   brand teal palette (doc 19). Flat bold forms: a hair style, skin and hair colors,
+   a mood, and a beard, all from one on-brand palette sorted light to dark.
 
-   Faithful port of comps-reference/app/avatars.js: same behavior, same
-   byte-identical SVG path strings. The original IIFE attached its API to
-   window.STI; here it is plain ES module exports with no global references. */
+   Privacy: generation is a pure, on-device function of (config) via @dicebear/core.
+   We never call the DiceBear HTTP API, which would ship the seed (an alias id) off
+   the device and break the no-PHI posture (philosophy principle 6).
 
-// A color triple is [bg, head, dark].
-export type ColorTriple = readonly [string, string, string];
+   License: the Dylan style is MIT AND CC-BY-4.0. The CC-BY attribution lives in
+   src/lib/credits.ts and is surfaced under the avatar editor.
 
-// Anchors: eyes [[x,y],[x,y]] · hatY (where the hat's base sits) ·
-// ear [x,y] (earring) · nose [x,y] (stud) · cheek [x,y] (tattoo)
-export interface Anchors {
-  eyes: readonly [readonly [number, number], readonly [number, number]];
-  hatY: number;
-  ear: readonly [number, number];
-  nose: readonly [number, number];
-  cheek: readonly [number, number];
-}
+   API (unchanged seam): avatarParts, avatarSrc(cfgOrSeed), avatarFor(handle),
+   randomAvatar(seed), isAvatarConfig, migrateAvatar, DEFAULT_AVATAR, pseudonymFor. */
 
-export interface Animal {
-  name: string;
-  anchors: Anchors;
-  draw: (h: string, d: string) => string;
-}
+import { createAvatar } from "@dicebear/core";
+import * as dylan from "@dicebear/dylan";
+import type { Options as DylanOptions } from "@dicebear/dylan";
 
-export interface Accessory {
-  name: string;
-  draw: (h: string, d: string, a: Anchors) => string;
-}
+// The exact option literals Dylan accepts, derived from its own schema so a typo in
+// the lists below is a compile error, not a silent fallback at render time.
+type HairName = NonNullable<DylanOptions["hair"]>[number];
+type MoodName = NonNullable<DylanOptions["mood"]>[number];
 
+// The persisted avatar: small indices into the lists below. Colors come from one
+// shared on-brand palette, chosen separately for skin and hair.
 export interface AvatarConfig {
-  animal: number;
-  color: number;
-  hat: number;
-  glasses: number;
-  extra: number;
+  hair: number;
+  mood: number;
+  skin: number;
+  hairColor: number;
+  beard: number;
 }
 
 export type AvatarConfigInput =
@@ -46,226 +37,149 @@ export type AvatarConfigInput =
   | null
   | undefined;
 
-export interface AvatarParts {
-  animals: readonly Animal[];
-  colors: readonly ColorTriple[];
-  hats: readonly Accessory[];
-  glasses: readonly Accessory[];
-  extras: readonly Accessory[];
+// One palette swatch. Hex is without the leading '#', as DiceBear's color options
+// expect, and every value mirrors a colors.css token so avatars stay on brand.
+// Kept as literals (this runs outside the DOM); if the tokens move, move these too.
+interface Swatch {
+  name: string;
+  hex: string;
 }
 
-// [bg, head, dark]
-const COLORS: readonly ColorTriple[] = [
-  ["#DFF1F5", "#2F9BB3", "#16505C"], // teal
-  ["#F3ECDF", "#C29A55", "#6B5226"], // sand
-  ["#E4F2E9", "#5FAE85", "#2A5E45"], // green
-  ["#FAEEDC", "#E0A500", "#7A5A00"], // amber
-  ["#E7E9F4", "#7B89C9", "#39406E"], // ink blue
+// Dylan's hair styles (schema order), plus a synthetic "Bald": Dylan has no
+// no-hair style, so Bald reuses the flattest style with the hair color forced to
+// the skin (see avatarSvg) so it reads as a bare head. `name` is the DiceBear value.
+const HAIR: readonly { name: HairName; label: string; bald?: boolean }[] = [
+  { name: "plain", label: "Plain" },
+  { name: "wavy", label: "Wavy" },
+  { name: "shortCurls", label: "Short curls" },
+  { name: "parting", label: "Parting" },
+  { name: "spiky", label: "Spiky" },
+  { name: "roundBob", label: "Round bob" },
+  { name: "longCurls", label: "Long curls" },
+  { name: "buns", label: "Buns" },
+  { name: "bangs", label: "Bangs" },
+  { name: "fluffy", label: "Fluffy" },
+  { name: "flatTop", label: "Flat top" },
+  { name: "shaggy", label: "Shaggy" },
+  { name: "plain", label: "Bald", bald: true },
 ];
 
-const ANIMALS: readonly Animal[] = [
-  {
-    name: "Cat",
-    anchors: {
-      eyes: [
-        [25.5, 34],
-        [38.5, 34],
-      ],
-      hatY: 18,
-      ear: [16.5, 42],
-      nose: [32, 40],
-      cheek: [44, 43],
-    },
-    draw: (h, d) => `
-      <path d="M17 26 L14 12 L26 20 Z" fill="${h}"/><path d="M47 26 L50 12 L38 20 Z" fill="${h}"/>
-      <circle cx="32" cy="37" r="17" fill="${h}"/>
-      <circle cx="25.5" cy="34" r="2.4" fill="${d}"/><circle cx="38.5" cy="34" r="2.4" fill="${d}"/>
-      <path d="M28 43 q4 3.4 8 0" stroke="${d}" stroke-width="2" stroke-linecap="round" fill="none"/>
-      <path d="M14 38 l8 1 M14 44 l8-1 M50 38 l-8 1 M50 44 l-8-1" stroke="${d}" stroke-width="1.6" stroke-linecap="round" opacity="0.7"/>`,
-  },
-  {
-    name: "Bear",
-    anchors: {
-      eyes: [
-        [25.5, 34],
-        [38.5, 34],
-      ],
-      hatY: 19,
-      ear: [14.5, 43],
-      nose: [34.8, 44.6],
-      cheek: [44.5, 43.5],
-    },
-    draw: (h, d) => `
-      <circle cx="18" cy="22" r="7" fill="${h}"/><circle cx="46" cy="22" r="7" fill="${h}"/>
-      <circle cx="32" cy="38" r="17" fill="${h}"/>
-      <circle cx="25.5" cy="34" r="2.4" fill="${d}"/><circle cx="38.5" cy="34" r="2.4" fill="${d}"/>
-      <ellipse cx="32" cy="43" rx="6.5" ry="5" fill="#FFFFFF" opacity="0.85"/>
-      <circle cx="32" cy="41.5" r="2.2" fill="${d}"/><path d="M32 43.5 v2.5" stroke="${d}" stroke-width="1.8" stroke-linecap="round"/>`,
-  },
-  {
-    name: "Fox",
-    anchors: {
-      eyes: [
-        [25, 33],
-        [39, 33],
-      ],
-      hatY: 18,
-      ear: [15.5, 41],
-      nose: [34.6, 47.2],
-      cheek: [45, 39],
-    },
-    draw: (h, d) => `
-      <path d="M15 30 L12 12 L28 21 Z" fill="${h}"/><path d="M49 30 L52 12 L36 21 Z" fill="${h}"/>
-      <circle cx="32" cy="37" r="17" fill="${h}"/>
-      <path d="M32 54 q-12-2-15-12 q6-3 15-3 q9 0 15 3 q-3 10-15 12 Z" fill="#FFFFFF" opacity="0.85"/>
-      <circle cx="25" cy="33" r="2.4" fill="${d}"/><circle cx="39" cy="33" r="2.4" fill="${d}"/>
-      <circle cx="32" cy="45" r="2.6" fill="${d}"/>`,
-  },
-  {
-    name: "Frog",
-    anchors: {
-      eyes: [
-        [22, 22],
-        [42, 22],
-      ],
-      hatY: 8,
-      ear: [14.5, 45],
-      nose: [34.4, 36.5],
-      cheek: [44, 47],
-    },
-    draw: (h, d) => `
-      <circle cx="22" cy="22" r="7.5" fill="${h}"/><circle cx="42" cy="22" r="7.5" fill="${h}"/>
-      <circle cx="22" cy="22" r="3" fill="#FFFFFF"/><circle cx="42" cy="22" r="3" fill="#FFFFFF"/>
-      <circle cx="22" cy="22" r="1.5" fill="${d}"/><circle cx="42" cy="22" r="1.5" fill="${d}"/>
-      <ellipse cx="32" cy="40" rx="18" ry="14.5" fill="${h}"/>
-      <path d="M24 43 q8 6 16 0" stroke="${d}" stroke-width="2" stroke-linecap="round" fill="none"/>`,
-  },
-  {
-    name: "Bunny",
-    anchors: {
-      eyes: [
-        [26, 35],
-        [38, 35],
-      ],
-      hatY: 13,
-      ear: [17.5, 43],
-      nose: [34.2, 39.5],
-      cheek: [43.5, 44],
-    },
-    draw: (h, d) => `
-      <ellipse cx="24" cy="14" rx="5.5" ry="12" fill="${h}"/><ellipse cx="40" cy="14" rx="5.5" ry="12" fill="${h}"/>
-      <circle cx="32" cy="38" r="16.5" fill="${h}"/>
-      <circle cx="26" cy="35" r="2.4" fill="${d}"/><circle cx="38" cy="35" r="2.4" fill="${d}"/>
-      <path d="M29.5 43 q2.5 2.6 5 0" stroke="${d}" stroke-width="2" stroke-linecap="round" fill="none"/>
-      <circle cx="32" cy="41" r="1.8" fill="${d}"/>`,
-  },
-  {
-    name: "Owl",
-    anchors: {
-      eyes: [
-        [25, 35],
-        [39, 35],
-      ],
-      hatY: 18,
-      ear: [15.5, 43],
-      nose: [34.6, 44],
-      cheek: [45, 43],
-    },
-    draw: (h, d) => `
-      <path d="M18 24 L15 14 L26 19 Z" fill="${h}"/><path d="M46 24 L49 14 L38 19 Z" fill="${h}"/>
-      <circle cx="32" cy="38" r="17" fill="${h}"/>
-      <circle cx="25" cy="35" r="6" fill="#FFFFFF" opacity="0.9"/><circle cx="39" cy="35" r="6" fill="#FFFFFF" opacity="0.9"/>
-      <circle cx="25" cy="35" r="2.6" fill="${d}"/><circle cx="39" cy="35" r="2.6" fill="${d}"/>
-      <path d="M32 41 l-3 5 h6 Z" fill="${d}"/>`,
-  },
+const MOODS: readonly { name: MoodName; label: string }[] = [
+  { name: "happy", label: "Happy" },
+  { name: "superHappy", label: "Super happy" },
+  { name: "hopeful", label: "Hopeful" },
+  { name: "neutral", label: "Neutral" },
+  { name: "confused", label: "Confused" },
+  { name: "angry", label: "Angry" },
 ];
 
-// Accessories receive (head, dark, anchors) and draw at the anchor points.
-const HATS: readonly Accessory[] = [
-  { name: "None", draw: () => "" },
-  {
-    name: "Beanie",
-    draw: (_h, d, a) => {
-      const y = a.hatY;
-      return `<path d="M19 ${y + 9} q13-15 26 0 l-1 4 q-12-6-24 0 Z" fill="${d}"/>
-        <circle cx="32" cy="${y - 3}" r="3.2" fill="${d}"/>`;
-    },
-  },
-  {
-    name: "Cap",
-    draw: (_h, d, a) => {
-      const y = a.hatY;
-      return `<path d="M20 ${y + 8} q12-13 24 0 l0 3 q-12-5-24 0 Z" fill="${d}"/>
-        <path d="M42 ${y + 8} q9 0 11 5 q-6 1-12-1 Z" fill="${d}"/>`;
-    },
-  },
-  {
-    name: "Party",
-    draw: (_h, d, a) => {
-      const y = a.hatY;
-      return `<path d="M32 ${y - 9} L25 ${y + 9} q7-3.5 14 0 Z" fill="${d}"/>
-        <circle cx="32" cy="${y - 9}" r="2.8" fill="#E0A500"/>
-        <circle cx="29.6" cy="${y + 1}" r="1.3" fill="#FFFFFF" opacity="0.8"/><circle cx="33.8" cy="${y - 3}" r="1.3" fill="#FFFFFF" opacity="0.8"/>`;
-    },
-  },
+// Skin and hair share these light-to-dark swatches; only the darkest differs (one
+// entry below), so they are spread from a common base to keep them in lockstep.
+const PALETTE_BASE: readonly Swatch[] = [
+  { name: "White", hex: "FFFFFF" },
+  { name: "Mist", hex: "DDF0F4" },
+  { name: "Sky", hex: "8FCAD6" },
+  { name: "Teal", hex: "2F9BB3" },
+  { name: "Deep", hex: "1F6E80" },
 ];
 
-const GLASSES: readonly Accessory[] = [
-  { name: "None", draw: () => "" },
-  {
-    name: "Round",
-    draw: (_h, d, a) => {
-      const [[x1, y1], [x2, y2]] = a.eyes;
-      return `<circle cx="${x1}" cy="${y1}" r="5.5" stroke="${d}" stroke-width="2" fill="none"/>
-        <circle cx="${x2}" cy="${y2}" r="5.5" stroke="${d}" stroke-width="2" fill="none"/>
-        <path d="M${x1 + 5.5} ${y1} L${x2 - 5.5} ${y2}" stroke="${d}" stroke-width="2"/>`;
-    },
-  },
-  {
-    name: "Shades",
-    draw: (_h, d, a) => {
-      const [[x1, y1], [x2, y2]] = a.eyes;
-      const lens = (x: number, y: number) =>
-        `<path d="M${x - 7} ${y - 3.4} h14 v2.4 q0 6-7 6 q-7 0-7-6 Z" fill="${d}" opacity="0.92"/>`;
-      const by = (y1 + y2) / 2 - 3.4;
-      return (
-        lens(x1, y1) +
-        lens(x2, y2) +
-        `<rect x="${x1 + 6}" y="${by}" width="${Math.max(2, x2 - x1 - 12)}" height="2.2" fill="${d}" opacity="0.92"/>`
-      );
-    },
-  },
+// Hair can go to the brand near-black (ink-900); skin's darkest is a blue-tinted
+// teal-dark instead, because the eyes render in black and would vanish against a
+// near-black face.
+const SKINS: readonly Swatch[] = [
+  ...PALETTE_BASE,
+  { name: "Ink", hex: "16505C" },
+];
+const HAIR_COLORS: readonly Swatch[] = [
+  ...PALETTE_BASE,
+  { name: "Ink", hex: "1B1B2F" },
 ];
 
-// Extras (piercings/tattoos) were cut for simplicity, kept here only so
-// legacy persisted configs normalize cleanly; never drawn or offered.
-const EXTRAS: readonly Accessory[] = [{ name: "None", draw: () => "" }];
+// Clean-shaven or a beard (Dylan has a single beard style).
+const BEARDS: readonly { label: string }[] = [
+  { label: "No beard" },
+  { label: "Beard" },
+];
 
-const PARTS: AvatarParts = {
-  animals: ANIMALS,
-  colors: COLORS,
-  hats: HATS,
-  glasses: GLASSES,
-  extras: EXTRAS,
+// The background is picked automatically to contrast with the skin and hair, so a
+// light avatar gets the deep tint and a dark one gets the pale tint. Both are
+// on-brand (teal-50 and teal-700).
+const BACKGROUNDS = ["EEF8FA", "1F6E80"] as const;
+
+// WCAG relative luminance of a 6-digit hex (no '#').
+function relativeLuminance(hex: string): number {
+  const channel = (i: number) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+}
+
+function contrastRatio(a: string, b: string): number {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+// Choose the background that maximizes the weaker of its two contrasts (against
+// skin and against hair), so neither part of the avatar blends into it.
+function backgroundFor(skinHex: string, hairHex: string): string {
+  let best: string = BACKGROUNDS[0];
+  let bestScore = -1;
+  for (const bg of BACKGROUNDS) {
+    const score = Math.min(
+      contrastRatio(bg, skinHex),
+      contrastRatio(bg, hairHex),
+    );
+    if (score > bestScore) {
+      bestScore = score;
+      best = bg;
+    }
+  }
+  return best;
+}
+
+export interface AvatarParts {
+  hairs: readonly string[];
+  moods: readonly string[];
+  skins: readonly string[];
+  hairColors: readonly string[];
+  beards: readonly string[];
+  // CSS colors (with leading '#') so the builder can show color rows as plain
+  // swatches instead of full avatars.
+  skinHexes: readonly string[];
+  hairColorHexes: readonly string[];
+  // Per-hair flag: a bald style ignores the hair color, so the builder can dim the
+  // hair-color row when one is selected.
+  hairIsBald: readonly boolean[];
+}
+
+// The builder needs the option labels, counts, and color values; it builds configs
+// by index.
+export const avatarParts: AvatarParts = {
+  hairs: HAIR.map((h) => h.label),
+  moods: MOODS.map((m) => m.label),
+  skins: SKINS.map((p) => p.name),
+  hairColors: HAIR_COLORS.map((p) => p.name),
+  beards: BEARDS.map((b) => b.label),
+  skinHexes: SKINS.map((p) => `#${p.hex}`),
+  hairColorHexes: HAIR_COLORS.map((p) => `#${p.hex}`),
+  hairIsBald: HAIR.map((h) => h.bald === true),
 };
 
-export const avatarParts: AvatarParts = PARTS;
-
-// The first option of every layer: a plain animal, used as the default avatar a
-// fresh account starts with until the owner customizes it.
+// A fresh account starts here: plain hair, happy, teal skin, ink hair, no beard.
 export const DEFAULT_AVATAR: AvatarConfig = {
-  animal: 0,
-  color: 0,
-  hat: 0,
-  glasses: 0,
-  extra: 0,
+  hair: 0,
+  mood: 0,
+  skin: 3,
+  hairColor: 5,
+  beard: 0,
 };
 
 /**
  * Strict validation for a persisted AvatarConfig (the synced account blob): every
- * field must be an in-range integer index. Unlike {@link normalize} (which is
- * lenient for legacy/partial configs at render time) this fails closed, so a
- * corrupt blob is rejected rather than silently coerced.
+ * field must be an in-range integer index. Fails closed, so an old-shape or corrupt
+ * value is rejected here and {@link migrateAvatar} can fall it back to the default.
  */
 export function isAvatarConfig(x: unknown): x is AvatarConfig {
   if (typeof x !== "object" || x === null) return false;
@@ -273,65 +187,115 @@ export function isAvatarConfig(x: unknown): x is AvatarConfig {
   const inRange = (v: unknown, n: number): boolean =>
     typeof v === "number" && Number.isInteger(v) && v >= 0 && v < n;
   return (
-    inRange(c.animal, ANIMALS.length) &&
-    inRange(c.color, COLORS.length) &&
-    inRange(c.hat, HATS.length) &&
-    inRange(c.glasses, GLASSES.length) &&
-    inRange(c.extra, EXTRAS.length)
+    inRange(c.hair, HAIR.length) &&
+    inRange(c.mood, MOODS.length) &&
+    inRange(c.skin, SKINS.length) &&
+    inRange(c.hairColor, HAIR_COLORS.length) &&
+    inRange(c.beard, BEARDS.length)
   );
+}
+
+/**
+ * Coerce a persisted value to a valid config (doc 19 migration): a valid new-shape
+ * config passes through unchanged; anything else (the old animal/color/hat shape, a
+ * partial, or corrupt data) falls back to the default. Avatars are cosmetic and
+ * re-pickable, so this lossy fallback is the migration. There is no migration job.
+ */
+export function migrateAvatar(x: unknown): AvatarConfig {
+  return isAvatarConfig(x) ? x : DEFAULT_AVATAR;
+}
+
+// Clamp an arbitrary number into [0, n) by true modulo: plain `%` keeps the sign,
+// so a negative index would survive (and only be rescued by a later `?? [0]`).
+function wrapIndex(v: number, n: number): number {
+  return ((Math.trunc(v) % n) + n) % n;
 }
 
 function normalize(cfg: AvatarConfigInput): AvatarConfig {
   if (typeof cfg === "number") return randomAvatar(cfg);
   const c = cfg ?? {};
   return {
-    animal: (c.animal ?? 0) % ANIMALS.length,
-    color: (c.color ?? 0) % COLORS.length,
-    hat: (c.hat ?? 0) % HATS.length,
-    glasses: (c.glasses ?? 0) % GLASSES.length,
-    extra: (c.extra ?? 0) % EXTRAS.length,
+    hair: wrapIndex(c.hair ?? 0, HAIR.length),
+    mood: wrapIndex(c.mood ?? 0, MOODS.length),
+    skin: wrapIndex(c.skin ?? 0, SKINS.length),
+    hairColor: wrapIndex(c.hairColor ?? 0, HAIR_COLORS.length),
+    beard: wrapIndex(c.beard ?? 0, BEARDS.length),
   };
 }
+
+// The Dylan style object for @dicebear/core (its `create`/`meta`/`schema`).
+const STYLE = { create: dylan.create, meta: dylan.meta, schema: dylan.schema };
+
+// A constant seed: every visible difference comes from the explicit options below,
+// so the same config always renders the same avatar regardless of who owns it.
+const AVATAR_SEED = "sti";
 
 function avatarSvg(cfgIn: AvatarConfigInput): string {
   const cfg = normalize(cfgIn);
-  const color = COLORS[cfg.color];
-  const animal = ANIMALS[cfg.animal];
-  const glasses = GLASSES[cfg.glasses];
-  const hat = HATS[cfg.hat];
-  const extra = EXTRAS[cfg.extra];
-  if (!color || !animal || !glasses || !hat || !extra) {
+  const hair = HAIR[cfg.hair] ?? HAIR[0];
+  const mood = MOODS[cfg.mood] ?? MOODS[0];
+  const skin = SKINS[cfg.skin] ?? SKINS[0];
+  const hairCol = HAIR_COLORS[cfg.hairColor] ?? HAIR_COLORS[0];
+  if (!hair || !mood || !skin || !hairCol) {
     throw new Error("avatarSvg: config index out of range");
   }
-  const [bg, head, dark] = color;
-  const a = animal.anchors;
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">` +
-    `<rect width="64" height="64" fill="${bg}"/>` +
-    animal.draw(head, dark) +
-    glasses.draw(head, dark, a) +
-    hat.draw(head, dark, a) +
-    extra.draw(head, dark, a) +
-    `</svg>`
-  );
+  // Bald forces the hair color to the skin so the (flat) hair blends into the head;
+  // otherwise the chosen hair color applies.
+  const hairHex = hair.bald ? skin.hex : hairCol.hex;
+  return createAvatar(STYLE, {
+    seed: AVATAR_SEED,
+    // Single-element arrays force the exact choice (DiceBear otherwise picks from
+    // the list by seed).
+    hair: [hair.name],
+    mood: [mood.name],
+    skinColor: [skin.hex],
+    hairColor: [hairHex],
+    backgroundColor: [backgroundFor(skin.hex, hairHex)],
+    facialHair: ["default"],
+    facialHairProbability: cfg.beard > 0 ? 100 : 0,
+  }).toString();
 }
 
+// Generated avatars are pure in their config, so memoize the data URIs. The config
+// space is ~5.6k but a builder session or a roster touches far fewer; a small bound
+// keeps memory flat while collapsing the repeated re-renders to one generation each.
+const svgCache = new Map<string, string>();
+const SVG_CACHE_MAX = 512;
+
 export function avatarSrc(cfg: AvatarConfigInput): string {
-  return "data:image/svg+xml," + encodeURIComponent(avatarSvg(cfg));
+  const c = normalize(cfg);
+  const key = `${c.hair}:${c.mood}:${c.skin}:${c.hairColor}:${c.beard}`;
+  const cached = svgCache.get(key);
+  if (cached !== undefined) return cached;
+  const src = "data:image/svg+xml," + encodeURIComponent(avatarSvg(c));
+  if (svgCache.size >= SVG_CACHE_MAX) {
+    const oldest = svgCache.keys().next().value;
+    if (oldest !== undefined) svgCache.delete(oldest);
+  }
+  svgCache.set(key, src);
+  return src;
 }
 
 export function randomAvatar(seed: number): AvatarConfig {
-  let s = seed >>> 0 || 1;
-  const next = (n: number) => {
-    s = (s * 1103515245 + 12345) & 0x7fffffff;
-    return s % n;
-  };
+  // Avalanche the seed (xorshift-multiply, same family as pseudonymFor) so even
+  // adjacent seeds spread across the whole space. Each field is a successive "digit"
+  // of the mixed value via division, not low-bit modulo, which would cluster.
+  let h = seed >>> 0 || 1;
+  h ^= h >>> 16;
+  h = Math.imul(h, 2246822519) >>> 0;
+  h ^= h >>> 13;
+  h = Math.imul(h, 3266489917) >>> 0;
+  h = (h ^ (h >>> 16)) >>> 0;
+  const H = HAIR.length;
+  const M = MOODS.length;
+  const S = SKINS.length;
+  const C = HAIR_COLORS.length;
   return {
-    animal: next(ANIMALS.length),
-    color: next(COLORS.length),
-    hat: next(HATS.length),
-    glasses: next(GLASSES.length),
-    extra: 0,
+    hair: h % H,
+    mood: Math.floor(h / H) % M,
+    skin: Math.floor(h / (H * M)) % S,
+    hairColor: Math.floor(h / (H * M * S)) % C,
+    beard: Math.floor(h / (H * M * S * C)) % BEARDS.length,
   };
 }
 
@@ -344,8 +308,7 @@ export function avatarFor(handle: string): string {
 }
 
 // Wordlists for the id-derived pseudonym (doc 15). Lowercase [a-z] only, neutral,
-// and deliberately avoiding the avatar animal names (cat/bear/fox/frog/bunny/owl)
-// so the handle and the avatar do not read as one doubled signal.
+// and deliberately generic so the handle reads as a label, not a trait.
 const PSEUDONYM_ADJECTIVES: readonly string[] = [
   "swift",
   "quiet",

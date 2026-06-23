@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { serializeAccountBlob, parseAccountBlob } from "./accountBlob.ts";
-import { utf8ToBytes } from "../crypto/index.ts";
+import { utf8ToBytes, bytesToUtf8 } from "../crypto/index.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
 import { mintNotify } from "./notifyInbox.ts";
@@ -97,7 +97,7 @@ describe("account blob codec", () => {
           key: "C".repeat(43),
           isPublic: true,
           handle: "meow",
-          avatar: { animal: 1, color: 2, hat: 0, glasses: 1, extra: 0 },
+          avatar: { hair: 1, mood: 2, skin: 2, hairColor: 4, beard: 0 },
         },
       ],
       contacts: [],
@@ -171,7 +171,7 @@ describe("account blob codec", () => {
         paused: false,
         clearUntilDay: null,
       },
-      avatar: { animal: 2, color: 3, hat: 1, glasses: 1, extra: 0 },
+      avatar: { hair: 2, mood: 3, skin: 1, hairColor: 5, beard: 1 },
       sharingMode: "public",
     };
     expect(parseAccountBlob(serializeAccountBlob(populated))).toEqual(
@@ -250,19 +250,6 @@ describe("account blob codec", () => {
     aliases: [{ id: ID, writeToken: ID, key: ID, isPublic: true, handle: "" }],
     sharingMode: "link",
   });
-  reject("an alias with a malformed avatar override", {
-    ...base,
-    aliases: [
-      {
-        id: ID,
-        writeToken: ID,
-        key: ID,
-        isPublic: true,
-        avatar: { ...A, animal: 999 },
-      },
-    ],
-    sharingMode: "link",
-  });
   reject("a missing state", {
     v: 7,
     handle: "x",
@@ -273,24 +260,6 @@ describe("account blob codec", () => {
   reject("an invalid hiv status", {
     ...base,
     state: { ...S, hiv: "maybe" },
-    sharingMode: "link",
-  });
-  reject("a missing avatar", {
-    v: 7,
-    handle: "x",
-    aliases: [],
-    contacts: [],
-    state: S,
-    sharingMode: "link",
-  });
-  reject("an out-of-range avatar index", {
-    ...base,
-    avatar: { ...A, animal: 999 },
-    sharingMode: "link",
-  });
-  reject("a non-integer avatar index", {
-    ...base,
-    avatar: { ...A, color: 1.5 },
     sharingMode: "link",
   });
   reject("a missing sharingMode", base);
@@ -323,5 +292,114 @@ describe("account blob codec", () => {
     ...base,
     sharingMode: "link",
     circles: [{ id: ID, name: "x", memberContactIds: ["short"] }],
+  });
+});
+
+describe("avatar migration on read (doc 19)", () => {
+  // Build current-version wire from a valid blob, then mutate one field, so these
+  // tests track the schema version automatically and exercise the real decoder.
+  const wireOf = (b: AccountBlob): Record<string, unknown> =>
+    JSON.parse(bytesToUtf8(serializeAccountBlob(b))) as Record<string, unknown>;
+  const reparse = (wire: unknown): AccountBlob =>
+    parseAccountBlob(utf8ToBytes(JSON.stringify(wire)));
+  // The first alias of a freshly built wire, typed as a mutable record for the
+  // override-mutation tests below.
+  const firstAlias = (
+    wire: Record<string, unknown>,
+  ): Record<string, unknown> => {
+    const aliases = wire.aliases as Record<string, unknown>[];
+    const first = aliases[0];
+    if (!first) throw new Error("test setup: expected one alias");
+    return first;
+  };
+
+  const oneAlias: AccountBlob = {
+    handle: "robin",
+    aliases: [
+      {
+        id: ID,
+        writeToken: "B".repeat(43),
+        key: "C".repeat(43),
+        isPublic: true,
+        handle: "meow",
+        avatar: DEFAULT_AVATAR,
+        expiresAt: 19_100,
+      },
+    ],
+    contacts: [
+      {
+        id: "D".repeat(43),
+        label: "Sam",
+        createdDay: 19_000,
+        expiresAt: 19_007,
+        alias: {
+          id: "E".repeat(43),
+          writeToken: "F".repeat(43),
+          key: "G".repeat(43),
+          isPublic: false,
+          avatar: DEFAULT_AVATAR,
+        },
+      },
+    ],
+    state: INITIAL_OWNER_STATE,
+    avatar: DEFAULT_AVATAR,
+    sharingMode: "link",
+  };
+
+  for (const bad of [
+    { animal: 2, color: 1, hat: 0, glasses: 0, extra: 0 }, // pre-doc-19 shape
+    { hair: 99, mood: 0, tone: 0 }, // out of range
+    { hair: 0, mood: 0 }, // partial
+    "garbage",
+    undefined,
+  ]) {
+    it(`coerces an invalid account avatar (${JSON.stringify(bad)}) to the default`, () => {
+      const wire = wireOf(oneAlias);
+      if (bad === undefined) delete wire.avatar;
+      else wire.avatar = bad;
+      expect(reparse(wire).avatar).toEqual(DEFAULT_AVATAR);
+    });
+  }
+
+  it("drops an invalid alias avatar override but keeps every other field", () => {
+    const wire = wireOf(oneAlias);
+    firstAlias(wire).avatar = {
+      animal: 1,
+      color: 2,
+      hat: 0,
+      glasses: 1,
+      extra: 0,
+    };
+    const alias = reparse(wire).aliases[0];
+    expect(alias?.avatar).toBeUndefined();
+    expect(alias?.handle).toBe("meow");
+    expect(alias?.id).toBe(ID);
+    // The rebuild must preserve link expiry, not just identity (doc 16).
+    expect(alias?.expiresAt).toBe(19_100);
+  });
+
+  it("keeps a valid alias avatar override untouched", () => {
+    const override = { hair: 3, mood: 1, skin: 0, hairColor: 5, beard: 0 };
+    const wire = wireOf(oneAlias);
+    firstAlias(wire).avatar = override;
+    expect(reparse(wire).aliases[0]?.avatar).toEqual(override);
+  });
+
+  it("migrates a contact link's alias avatar too, keeping the contact intact", () => {
+    const wire = wireOf(oneAlias);
+    const contacts = wire.contacts as Record<string, unknown>[];
+    const contact = contacts[0];
+    if (!contact) throw new Error("test setup: expected one contact");
+    (contact.alias as Record<string, unknown>).avatar = {
+      animal: 2, // pre-doc-19 shape on a per-contact alias
+      color: 1,
+      hat: 0,
+      glasses: 0,
+      extra: 0,
+    };
+    const parsed = reparse(wire).contacts[0];
+    expect(parsed?.alias.avatar).toBeUndefined();
+    expect(parsed?.label).toBe("Sam");
+    expect(parsed?.expiresAt).toBe(19_007);
   });
 });

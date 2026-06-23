@@ -3,7 +3,6 @@ import { Button, Card, Input, Field } from "../../design/components/index.ts";
 import { Info, Check, ShieldCheck, ArrowRight } from "../../design/icons.tsx";
 import { randomAvatar, avatarFor, pseudonymFor } from "../../lib/avatars.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
-import { AvatarBuilder } from "./AvatarBuilder.tsx";
 import { COPY, sectionLabel } from "./claimCopy.ts";
 
 // The opaque id of the previewed default link. Fixed here (no session yet); the
@@ -133,8 +132,12 @@ export function CreateFlow({
   // Start empty: the owner types their own name (don't prefill a demo handle).
   const [handle, setHandle] = useState("");
   const ok = handle.trim().length >= 3;
-  // Avatar config lives in component state; seed a deterministic default.
-  const [avatar, setAvatar] = useState<AvatarConfig>(() => randomAvatar(2));
+  // The avatar is not built here (doc 19): a fresh account gets a random one and
+  // the owner customizes it later from the dedicated editor. Seed once per mount so
+  // every new account starts with a different face.
+  const [avatar] = useState<AvatarConfig>(() =>
+    randomAvatar(Math.floor(Math.random() * 0x7fffffff)),
+  );
 
   return (
     <>
@@ -157,29 +160,6 @@ export function CreateFlow({
           }
         />
       </Field>
-
-      <div>
-        <div
-          style={{
-            fontSize: 14,
-            fontWeight: 600,
-            color: "var(--text-body)",
-            marginBottom: 4,
-          }}
-        >
-          {COPY.avatarLabel}
-        </div>
-        <div
-          style={{
-            fontSize: 13,
-            color: "var(--text-muted)",
-            marginBottom: 12,
-          }}
-        >
-          {COPY.avatarHint}
-        </div>
-        <AvatarBuilder config={avatar} onChange={setAvatar} />
-      </div>
 
       <div style={{ ...sectionLabel, marginTop: 2 }}>{COPY.defaultSection}</div>
       {/* The opaque id is the only thing in the URL, and the previewed face is
