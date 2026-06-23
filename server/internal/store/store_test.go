@@ -30,23 +30,23 @@ func TestAliasRoundTripAndOverwrite(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
-	if _, found, err := s.GetAlias(ctx, "missing"); err != nil || found {
+	if _, _, found, err := s.GetAlias(ctx, "missing"); err != nil || found {
 		t.Fatalf("missing alias: found=%v err=%v", found, err)
 	}
 
-	if ok, err := s.WriteAlias(ctx, "id1", []byte("cipher-a"), "owner-token", 100); err != nil || !ok {
+	if ok, err := s.WriteAlias(ctx, "id1", []byte("cipher-a"), "owner-token", 100, sql.NullInt64{}, false); err != nil || !ok {
 		t.Fatalf("first write: ok=%v err=%v", ok, err)
 	}
-	got, found, err := s.GetAlias(ctx, "id1")
+	got, _, found, err := s.GetAlias(ctx, "id1")
 	if err != nil || !found || !bytes.Equal(got, []byte("cipher-a")) {
 		t.Fatalf("get after write: %q found=%v err=%v", got, found, err)
 	}
 
 	// The owner (matching write token) can overwrite.
-	if ok, err := s.WriteAlias(ctx, "id1", []byte("cipher-b"), "owner-token", 200); err != nil || !ok {
+	if ok, err := s.WriteAlias(ctx, "id1", []byte("cipher-b"), "owner-token", 200, sql.NullInt64{}, false); err != nil || !ok {
 		t.Fatalf("owner overwrite: ok=%v err=%v", ok, err)
 	}
-	got, _, _ = s.GetAlias(ctx, "id1")
+	got, _, _, _ = s.GetAlias(ctx, "id1")
 	if !bytes.Equal(got, []byte("cipher-b")) {
 		t.Fatalf("overwrite: got %q, want cipher-b", got)
 	}
@@ -56,18 +56,18 @@ func TestAliasWriteTokenRejectsNonOwner(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
-	if ok, err := s.WriteAlias(ctx, "id1", []byte("cipher-a"), "owner-token", 100); err != nil || !ok {
+	if ok, err := s.WriteAlias(ctx, "id1", []byte("cipher-a"), "owner-token", 100, sql.NullInt64{}, false); err != nil || !ok {
 		t.Fatalf("first write: ok=%v err=%v", ok, err)
 	}
 	// A viewer holding the read id but not the write token cannot overwrite.
-	ok, err := s.WriteAlias(ctx, "id1", []byte("evil"), "wrong-token", 200)
+	ok, err := s.WriteAlias(ctx, "id1", []byte("evil"), "wrong-token", 200, sql.NullInt64{}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if ok {
 		t.Fatal("non-owner write was authorized")
 	}
-	got, _, _ := s.GetAlias(ctx, "id1")
+	got, _, _, _ := s.GetAlias(ctx, "id1")
 	if !bytes.Equal(got, []byte("cipher-a")) {
 		t.Fatalf("payload changed by non-owner: got %q", got)
 	}
@@ -379,7 +379,7 @@ func TestConcurrentWritesPersist(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			id := fmt.Sprintf("id-%04d", i)
-			oks[i], errs[i] = s.WriteAlias(ctx, id, []byte(id+"-cipher"), "tok", int64(i))
+			oks[i], errs[i] = s.WriteAlias(ctx, id, []byte(id+"-cipher"), "tok", int64(i), sql.NullInt64{}, false)
 		}(i)
 	}
 	wg.Wait()
@@ -393,7 +393,7 @@ func TestConcurrentWritesPersist(t *testing.T) {
 			t.Fatalf("write %d not authorized", i)
 		}
 		id := fmt.Sprintf("id-%04d", i)
-		got, found, err := s.GetAlias(ctx, id)
+		got, _, found, err := s.GetAlias(ctx, id)
 		if err != nil {
 			t.Fatalf("get %s: %v", id, err)
 		}

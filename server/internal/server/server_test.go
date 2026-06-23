@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -67,6 +68,77 @@ func TestAliasWriteThenRead(t *testing.T) {
 	}
 	if got := rec.Body.Bytes(); !bytes.Equal(got, payload) {
 		t.Fatalf("payload mismatch (len %d)", len(got))
+	}
+}
+
+// An alias with a server-stored expiry (doc 16) resolves before its instant and
+// returns a decoy after, the SAME response a missing id gets, so an expired link
+// stops resolving on time. A republish (PUT with no expiry header) preserves the
+// expiry; an explicit "none" clears it.
+func TestAliasExpiryServerEnforced(t *testing.T) {
+	clock := int64(1_000_000)
+	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	secret := make([]byte, 32)
+	for i := range secret {
+		secret[i] = byte(i + 1)
+	}
+	srv := New(st, Config{DecoySecret: secret}, slog.New(slog.NewTextHandler(io.Discard, nil)),
+		func() int64 { return clock })
+	h := srv.Handler()
+
+	id := randID(t)
+	payload := bytes.Repeat([]byte{0xCD}, contract.AliasPayloadSize)
+	putWithExpiry := func(expiry string) {
+		put := httptest.NewRequest("PUT", contract.PathAliasPrefix+id, bytes.NewReader(payload))
+		put.Header.Set(contract.HeaderWriteToken, "owner-token")
+		if expiry != "" {
+			put.Header.Set(contract.HeaderExpiresAt, expiry)
+		}
+		if rec := do(h, put); rec.Code != http.StatusNoContent {
+			t.Fatalf("put (expiry=%q): %d", expiry, rec.Code)
+		}
+	}
+	resolves := func() bool {
+		rec := do(h, httptest.NewRequest("GET", contract.PathAliasPrefix+id, nil))
+		if rec.Code != http.StatusOK || len(rec.Body.Bytes()) != contract.AliasPayloadSize {
+			t.Fatalf("get: code %d len %d", rec.Code, len(rec.Body.Bytes()))
+		}
+		return bytes.Equal(rec.Body.Bytes(), payload)
+	}
+
+	putWithExpiry(strconv.FormatInt(clock+1000, 10))
+	if !resolves() {
+		t.Fatal("before expiry: link should resolve to the real payload")
+	}
+	clock += 2000 // past the expiry
+	if resolves() {
+		t.Fatal("after expiry: link should return a decoy, not the payload")
+	}
+	// A republish (no expiry header) must not resurrect the link.
+	putWithExpiry("")
+	if resolves() {
+		t.Fatal("republish must preserve the (passed) expiry, not clear it")
+	}
+	// Clearing the expiry brings it back even though the old instant has passed.
+	putWithExpiry(contract.ExpiresAtNone)
+	if !resolves() {
+		t.Fatal("clearing expiry should make the link resolve again")
+	}
+}
+
+// A malformed expiry header is rejected rather than silently ignored.
+func TestAliasExpiryRejectsMalformed(t *testing.T) {
+	h := newTestServer(t)
+	put := httptest.NewRequest("PUT", contract.PathAliasPrefix+randID(t),
+		bytes.NewReader(bytes.Repeat([]byte{0x01}, contract.AliasPayloadSize)))
+	put.Header.Set(contract.HeaderWriteToken, "owner-token")
+	put.Header.Set(contract.HeaderExpiresAt, "soon")
+	if rec := do(h, put); rec.Code != http.StatusBadRequest {
+		t.Fatalf("malformed expiry: got %d, want 400", rec.Code)
 	}
 }
 

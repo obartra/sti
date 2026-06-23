@@ -160,6 +160,16 @@ const HeaderWriteToken = "X-Write-Token"
 // HeaderVersion carries the account-blob version on sync reads/writes.
 const HeaderVersion = "X-Version"
 
+// HeaderExpiresAt sets a link's server-enforced expiry on an alias PUT (doc 16):
+// an absolute epoch-ms instant after which reads return a decoy, the value
+// "none" to clear any expiry, or absent to leave the stored expiry untouched (a
+// badge-driven republish). The server reads only this one time value per alias.
+const HeaderExpiresAt = "X-Expires-At"
+
+// ExpiresAtNone is the HeaderExpiresAt value that explicitly clears an expiry
+// (distinct from omitting the header, which preserves the stored one).
+const ExpiresAtNone = "none"
+
 // KnockStatus is the single fixed value of KnockResponse.Status.
 const KnockStatus = "received"
 

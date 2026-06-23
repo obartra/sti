@@ -92,13 +92,21 @@ In all three, the server never sees the status or the key.
 Duration is a property of the link/capability, not a per-viewer timer.
 
 - **v1 supports updatable per-link duration + immediate revoke.** The owner can extend or shorten a
-  link's lifetime at any time (it is a stored expiry the device honors) and can revoke immediately
-  (overwrite the payload to garbage, drop the record; the existing revoke path). Nothing is immutable.
-- **Enforcement is client-side** (the owner's device revokes / stops republishing at expiry), so a
-  duration takes effect when the owner next acts, not as a hard server timer. If the device is offline
-  past expiry the link lingers until it next runs. We accept this rather than a server-side TTL, which
-  would leak expiry-timing metadata and cut against the metadata strictness below. (Same model as
-  today's per-contact-link expiry, doc 13.)
+  link's lifetime at any time (it is a stored expiry both the device and the server honor) and can
+  revoke immediately (overwrite the payload to garbage, drop the record; the existing revoke path).
+  Nothing is immutable.
+- **Expiry is an absolute timestamp (epoch ms), so it can be sub-day.** Durations are presets the owner
+  picks (e.g. 1 hour, 24 hours, 7 days, 30 days, or no expiry); the link's `expiresAt` is `now + the
+  preset` at the moment it is set. One unit across share links and per-contact links.
+- **Enforcement is server-side, and the device also sweeps.** AMENDS the earlier client-only stance.
+  The server stores each alias's `expiresAt` and, once reached, answers reads with a decoy, the SAME
+  uniform response a non-existent id gets, so an expired link stops resolving on time even if the
+  owner's device never comes back online. The owner's device still sweeps (revoke + drop) on its next
+  action, which frees the id and the local record. The server thus learns one non-identifying time
+  value per alias (its expiry instant); we accept that small metadata exposure as the cost of links
+  that reliably die when they say they will. The expiry is sent on the alias PUT (an `X-Expires-At`
+  header) and changes only when the owner changes the duration; a badge-driven republish leaves it
+  untouched.
 - **Deferred:** true per-*viewer* durations (expiring one recipient of a shared link without affecting
   others). That needs per-viewer re-keying, which breaks the single fixed-size ciphertext; stated as a
   known limit, not built in v1.
