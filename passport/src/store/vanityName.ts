@@ -68,7 +68,24 @@ export const RESERVED_NAMES: ReadonlySet<string> = new Set([
  * the list reactively via report-and-takedown. The check is wired so the list can
  * be populated (or sourced) without touching callers.
  */
-export const BLOCKED_NAMES: ReadonlySet<string> = new Set([]);
+export const BLOCKED_NAMES: ReadonlySet<string> = new Set([
+  // Scam / impersonation bait, the part we can responsibly hand-author. The
+  // slur / harassment portion is deliberately NOT hand-rolled here: before
+  // Findable launches, seed it from a maintained moderation wordlist (e.g. the
+  // LDNOOBW list or the npm `obscenity` package) so it stays current and is not a
+  // partial, opinionated list baked into source. Grown reactively by
+  // report-and-takedown (doc 17).
+  "scam",
+  "phishing",
+  "phish",
+  "fraud",
+  "spam",
+  "malware",
+  "giveaway",
+  "freemoney",
+  "imposter",
+  "impostor",
+]);
 
 // Normalize input to the canonical form names are stored and compared in: trim
 // surrounding whitespace, lowercase. Shape validation still rejects anything that

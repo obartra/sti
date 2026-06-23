@@ -5,6 +5,7 @@ import {
   vanityNameError,
   isValidVanityName,
   RESERVED_NAMES,
+  BLOCKED_NAMES,
   MIN_VANITY_LEN,
   MAX_VANITY_LEN,
 } from "./vanityName.ts";
@@ -49,6 +50,12 @@ describe("vanityNameError", () => {
       expect(vanityNameError(name)).toBe("reserved");
     }
   });
+
+  it("rejects blocklisted scam / impersonation terms", () => {
+    for (const name of ["scam", "phishing", "fraud", "imposter"]) {
+      expect(vanityNameError(name)).toBe("blocked");
+    }
+  });
 });
 
 describe("isValidVanityName", () => {
@@ -71,7 +78,8 @@ describe("isValidVanityName", () => {
           maxLength: MAX_VANITY_LEN,
         }),
         (name) => {
-          const expected = !RESERVED_NAMES.has(name);
+          const expected =
+            !RESERVED_NAMES.has(name) && !BLOCKED_NAMES.has(name);
           return isValidVanityName(name) === expected;
         },
       ),
