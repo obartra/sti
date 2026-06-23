@@ -52,8 +52,15 @@ func TestCORSPreflightFromAllowedOrigin(t *testing.T) {
 	if got := rec.Header().Get("Access-Control-Expose-Headers"); got != contract.HeaderVersion {
 		t.Fatalf("expose-headers: %q (the client must read %s)", got, contract.HeaderVersion)
 	}
-	if h := rec.Header().Get("Access-Control-Allow-Headers"); !strings.Contains(h, contract.HeaderWriteToken) {
-		t.Fatalf("allow-headers missing write token: %q", h)
+	allowHeaders := rec.Header().Get("Access-Control-Allow-Headers")
+	if !strings.Contains(allowHeaders, contract.HeaderWriteToken) {
+		t.Fatalf("allow-headers missing write token: %q", allowHeaders)
+	}
+	// The alias PUT carries X-Expires-At (doc 16); without it the browser preflight
+	// blocks every link write. Browser-only, so pin it here (CORS isn't exercised
+	// by the Node integration suite).
+	if !strings.Contains(allowHeaders, contract.HeaderExpiresAt) {
+		t.Fatalf("allow-headers missing %s: %q", contract.HeaderExpiresAt, allowHeaders)
 	}
 }
 
