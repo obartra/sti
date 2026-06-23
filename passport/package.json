@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "version": "0.0.0",
+  "license": "UNLICENSED",
   "description": "sti.care passport prototype: pure core built test-first, invariants as executable specs.",
   "scripts": {
     "dev": "vite",

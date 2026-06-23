@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Find a place to get tested near you, plus simple info on common STIs.",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "scripts": {
     "dev": "cd passport && npm run dev",
     "format": "prettier --write .",
