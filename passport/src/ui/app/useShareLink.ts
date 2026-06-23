@@ -51,7 +51,13 @@ export function useShareLink(
   const [identity, setIdentityState] = useState<AliasIdentity>("anonymous");
   const identityRef = useRef<AliasIdentity>("anonymous");
   // The link's lifetime, mirrored in a ref like identity. Defaults to null
-  // (until-revoked), matching how an alias is minted.
+  // (until-revoked), matching how an alias is minted, and is reset to null
+  // whenever a renew mints a fresh alias (see resetDuration).
+  // KNOWN LIMITATION (cosmetic): opening the sheet for an alias that already
+  // carries an expiry does not pre-select that lifetime here, it shows "No
+  // expiry" until the owner picks. Reflecting a stored expiry exactly would need
+  // a control that can show an arbitrary remaining duration (the four presets
+  // can't), so it is deferred; the underlying expiry mechanism is unaffected.
   const [duration, setDurationState] = useState<number | null>(null);
   const durationRef = useRef<number | null>(null);
   // Serializes link work (mint / republish / revoke) against the session: a
@@ -97,9 +103,18 @@ export function useShareLink(
     [controller, prepare, setShareOpen],
   );
 
+  // A renew mints a fresh alias with NO expiry, so the lifetime control must
+  // reset to match: otherwise it shows a lifetime the new link does not have, and
+  // the setDuration dedupe (below) silently blocks re-applying that same value.
+  const resetDuration = useCallback(() => {
+    durationRef.current = null;
+    setDurationState(null);
+  }, []);
+
   const revokeLink = useCallback(() => {
+    resetDuration();
     prepare((s) => controller.renewLink(s, identityRef.current), false);
-  }, [controller, prepare]);
+  }, [controller, prepare, resetDuration]);
 
   // Changing the face rotates to a fresh alias carrying it (renew), because an
   // already-minted alias keeps the face it was sealed with. A no-op if unchanged.
@@ -108,9 +123,10 @@ export function useShareLink(
       if (choice === identityRef.current) return;
       identityRef.current = choice;
       setIdentityState(choice);
+      resetDuration();
       prepare((s) => controller.renewLink(s, choice), false);
     },
-    [controller, prepare],
+    [controller, prepare, resetDuration],
   );
 
   // Changing the lifetime moves the current link's expiry in place (no renew, so

@@ -92,6 +92,14 @@ function useQrScan(
       media.getUserMedia({ video: { facingMode: "environment" } }),
     ])
       .then(async ([mod, s]) => {
+        // getUserMedia resolves asynchronously; if the effect was already torn
+        // down (unmount, or StrictMode's double-invoke) the cleanup ran before
+        // `stream` was set, so stop this freshly-acquired stream here or the
+        // camera leaks (track stays live, light stays on).
+        if (done) {
+          s.getTracks().forEach((t) => t.stop());
+          return;
+        }
         decode = mod.default;
         stream = s;
         const video = videoRef.current;

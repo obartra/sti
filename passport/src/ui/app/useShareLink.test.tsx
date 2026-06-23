@@ -182,4 +182,26 @@ describe("useShareLink lifetime", () => {
     act(() => result.current.setDuration(null)); // already null
     expect(setShareLinkDuration).not.toHaveBeenCalled();
   });
+
+  it("resets the lifetime when the face changes (renew mints a no-expiry alias)", () => {
+    const renewLink = vi.fn(() => Promise.resolve(RESULT));
+    const setShareLinkDuration = vi.fn(() => Promise.resolve(session));
+    const { result } = setup(
+      stubController({ renewLink, setShareLinkDuration }),
+    );
+
+    act(() => result.current.setDuration(7));
+    expect(result.current.duration).toBe(7);
+
+    // Changing the face renews the alias, which drops its expiry: the control
+    // must fall back to "no expiry" so it does not claim a lifetime the new link
+    // lacks.
+    act(() => result.current.setIdentity("main"));
+    expect(result.current.duration).toBeNull();
+
+    // And re-applying that same lifetime now works (not deduped against a stale
+    // value).
+    act(() => result.current.setDuration(7));
+    expect(setShareLinkDuration).toHaveBeenCalledTimes(2);
+  });
 });
