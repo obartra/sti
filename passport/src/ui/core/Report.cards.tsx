@@ -1,5 +1,5 @@
 import { Card } from "../../design/components/index.ts";
-import { Info, Heart, EyeOff, ShieldCheck } from "../../design/icons.tsx";
+import { Info, ShieldCheck } from "../../design/icons.tsx";
 import { COPY } from "./Report.parts.tsx";
 
 export function CorePanelCard({
@@ -97,80 +97,6 @@ export function CorePanelCard({
           </div>
         )}
       </div>
-    </Card>
-  );
-}
-
-export function ChronicCard({ herpesPositive }: { herpesPositive: boolean }) {
-  const c = COPY;
-  return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 10 }}
-    >
-      <div style={{ display: "flex", gap: 12 }}>
-        <span
-          style={{
-            flex: "none",
-            width: 38,
-            height: 38,
-            borderRadius: "var(--radius-sm)",
-            background: "var(--accent-soft)",
-            color: "var(--text-accent)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Heart size={19} />
-        </span>
-        <div>
-          <div
-            style={{
-              fontSize: 13.5,
-              fontWeight: 700,
-              color: "var(--text-strong)",
-            }}
-          >
-            {c.chronicTitle}
-          </div>
-          <div
-            style={{
-              fontSize: 13.5,
-              lineHeight: 1.5,
-              color: "var(--text-body)",
-              marginTop: 2,
-            }}
-          >
-            {c.chronicBody}
-          </div>
-        </div>
-      </div>
-      {herpesPositive && (
-        <div
-          style={{
-            fontSize: 12.5,
-            lineHeight: 1.5,
-            color: "var(--text-muted)",
-            display: "flex",
-            gap: 7,
-            alignItems: "flex-start",
-            borderTop: "1px solid var(--divider)",
-            paddingTop: 10,
-          }}
-        >
-          <span
-            style={{
-              flex: "none",
-              marginTop: 1,
-              color: "var(--text-accent)",
-            }}
-          >
-            <EyeOff size={14} />
-          </span>
-          {c.chronicOutbreak}
-        </div>
-      )}
     </Card>
   );
 }

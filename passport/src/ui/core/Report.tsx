@@ -29,7 +29,6 @@ import {
   epochDayToISODate,
   isoDateToEpochDay,
 } from "../../core/clock.ts";
-import { ChronicCard } from "./Report.cards.tsx";
 import { DetailEntry } from "./Report.infection.tsx";
 import { BlueReadiness, RouteControls } from "./Report.route.tsx";
 import { ShareHeadsUp } from "./Report.share.tsx";
@@ -213,7 +212,7 @@ export function Report({
 }: ReportProps) {
   const c = COPY;
   const state = useReportState();
-  const { anyPositive, anyChronicPositive, anyEntered } = state;
+  const { anyPositive, anyEntered } = state;
   // Route toggles mirror Settings: they write the owner state immediately (so
   // they count toward blue) AND drive the local preview before the parent
   // re-renders. Stories with no setter still toggle via the local copy.
@@ -265,12 +264,6 @@ export function Report({
       />
 
       {anyPositive && <PrivacyNoteCard />}
-
-      {/* Chronic, lifelong-manageable diagnosis (HSV/HPV): education only, it
-          never grays the badge. Outbreak -> the considerate move is Pause. */}
-      {anyChronicPositive && (
-        <ChronicCard herpesPositive={state.val("herpes") === "Positive"} />
-      )}
 
       <ReportFooter
         state={state}

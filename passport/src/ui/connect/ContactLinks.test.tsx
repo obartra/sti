@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { ContactLinks } from "./ContactLinks.tsx";
+import { DAY_MS } from "../../core/clock.ts";
 import {
   contactInviteUrl,
   mintNotify,
@@ -27,7 +28,7 @@ function contact(label: string, linked: boolean): ContactRecord {
     id: randomAliasId(),
     label,
     createdDay: 19_000,
-    expiresDay: 19_007,
+    expiresAt: 19_007,
     alias: aliasRecord(),
   };
   return linked
@@ -46,7 +47,7 @@ describe("ContactLinks", () => {
     render(
       <ContactLinks
         contacts={[contact("Sam", true), contact("Ana", false)]}
-        nowDay={19_000}
+        now={19_000}
         onCreate={noCreate}
         onRevoke={noop}
         onSetDuration={noop}
@@ -63,7 +64,7 @@ describe("ContactLinks", () => {
     render(
       <ContactLinks
         contacts={[sam]}
-        nowDay={19_000}
+        now={19_000}
         onCreate={noCreate}
         onRevoke={noop}
         onSetDuration={onSetDuration}
@@ -78,7 +79,7 @@ describe("ContactLinks", () => {
     const menu = screen.getByRole("tablist", { name: "Change link lifetime" });
     // Picking "24h" sets a 1-day lifetime for this link (not a new link).
     await user.click(within(menu).getByRole("tab", { name: "24h" }));
-    expect(onSetDuration).toHaveBeenCalledWith(sam.id, 1);
+    expect(onSetDuration).toHaveBeenCalledWith(sam.id, DAY_MS);
   });
 
   it("can set a link to never expire from its options menu", async () => {
@@ -88,7 +89,7 @@ describe("ContactLinks", () => {
     render(
       <ContactLinks
         contacts={[ana]}
-        nowDay={19_000}
+        now={19_000}
         onCreate={noCreate}
         onRevoke={noop}
         onSetDuration={onSetDuration}
@@ -106,7 +107,7 @@ describe("ContactLinks", () => {
     render(
       <ContactLinks
         contacts={[]}
-        nowDay={19_000}
+        now={19_000}
         onCreate={noCreate}
         onRevoke={noop}
         onSetDuration={noop}
@@ -131,7 +132,7 @@ describe("ContactLinks", () => {
     render(
       <ContactLinks
         contacts={[]}
-        nowDay={19_000}
+        now={19_000}
         onCreate={noCreate}
         onRevoke={noop}
         onSetDuration={noop}
@@ -156,7 +157,7 @@ describe("ContactLinks", () => {
 describe("ContactLinks avatar entry (doc 19)", () => {
   const baseProps = {
     contacts: [],
-    nowDay: 19_000,
+    now: 19_000,
     onCreate: () => Promise.resolve({ url: "https://sti.care/a/x" }),
     onRevoke: () => undefined,
     onSetDuration: () => undefined,

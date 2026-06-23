@@ -9,7 +9,7 @@ function contact(id: string, label: string, createdDay: number): ContactRecord {
     id,
     label,
     createdDay,
-    expiresDay: null,
+    expiresAt: null,
     alias: { id, writeToken: "w", key: "k", isPublic: false },
   };
 }

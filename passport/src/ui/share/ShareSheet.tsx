@@ -106,7 +106,7 @@ export interface ShareSheetProps {
   durationChoice?: number | null | undefined;
   /** Set the link's lifetime in place. When absent, the lifetime control is
    * hidden (e.g. Storybook). */
-  onDurationChange?: ((durationDays: number | null) => void) | undefined;
+  onDurationChange?: ((durationMs: number | null) => void) | undefined;
 }
 
 function SheetHeader({

@@ -8,7 +8,7 @@ import {
   Eye,
 } from "../../design/icons.tsx";
 import type { AliasRecord, ContactRecord } from "../../store/index.ts";
-import { todayEpochDay } from "../../core/clock.ts";
+import { nowMs, DAY_MS } from "../../core/clock.ts";
 
 // "Your links": one honest list of everything that can currently resolve to the
 // owner's status, the public/casual aliases plus every per-contact link, each
@@ -23,12 +23,13 @@ export interface LiveLinksProps {
   onViewAs?: (() => void) | undefined;
 }
 
-function expiryLabel(expiresDay: number | null, nowDay: number): string {
-  if (expiresDay === null) return "No expiry";
-  const left = expiresDay - nowDay;
+function expiryLabel(expiresAt: number | null, now: number): string {
+  if (expiresAt === null) return "No expiry";
+  const left = expiresAt - now;
   if (left <= 0) return "Expired";
-  if (left === 1) return "Expires tomorrow";
-  return `Expires in ${left} days`;
+  const days = Math.ceil(left / DAY_MS);
+  if (days === 1) return "Expires tomorrow";
+  return `Expires in ${days} days`;
 }
 
 function LinkRow({
@@ -100,7 +101,7 @@ export function LiveLinks({
   onRevokeContact,
   onViewAs,
 }: LiveLinksProps) {
-  const nowDay = todayEpochDay();
+  const now = nowMs();
   const empty = aliases.length === 0 && contacts.length === 0;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -168,7 +169,7 @@ export function LiveLinks({
               sub={
                 (c.theirStatusAlias !== undefined
                   ? "Linked both ways · "
-                  : "") + expiryLabel(c.expiresDay, nowDay)
+                  : "") + expiryLabel(c.expiresAt, now)
               }
               onRevoke={() => onRevokeContact(c.id)}
             />

@@ -7,6 +7,7 @@ import {
 } from "../../design/components/index.ts";
 import { Link, Copy, Trash, Dots } from "../../design/icons.tsx";
 import { AvatarCard } from "../onboarding/AvatarCard.tsx";
+import { DAY_MS } from "../../core/clock.ts";
 import {
   parseContactInvite,
   type ContactInvite,
@@ -18,35 +19,34 @@ import {
    The link carries the key, so the recipient opens it directly. No status is
    shown here; this is link management, not a viewer surface. */
 
-// The lifetimes a link can be minted with. `days` is added to today; null means
-// until-revoked. 24h is one epoch day (expiry is day-granular). 7 days is the
-// default, matching the prior fixed behaviour.
-const DURATIONS: { key: string; label: string; days: number | null }[] = [
-  { key: "1", label: "24h", days: 1 },
-  { key: "7", label: "7 days", days: 7 },
-  { key: "30", label: "30 days", days: 30 },
-  { key: "none", label: "No expiry", days: null },
+// The lifetimes a link can be minted with, as a duration in ms from now (doc 16);
+// null means until-revoked. 7 days is the default, matching the prior behaviour.
+const DURATIONS: { key: string; label: string; ms: number | null }[] = [
+  { key: "1", label: "24h", ms: DAY_MS },
+  { key: "7", label: "7 days", ms: 7 * DAY_MS },
+  { key: "30", label: "30 days", ms: 30 * DAY_MS },
+  { key: "none", label: "No expiry", ms: null },
 ];
 const DEFAULT_DURATION = "7";
 
-function durationDaysFor(key: string): number | null {
-  return DURATIONS.find((d) => d.key === key)?.days ?? null;
+function durationMsFor(key: string): number | null {
+  return DURATIONS.find((d) => d.key === key)?.ms ?? null;
 }
 
 export interface ContactLinksProps {
   contacts: ContactRecord[];
-  /** Today as an epoch day, for the expiry countdown. */
-  nowDay: number;
-  /** Mint a new link for `label` with a chosen lifetime (days, or null for
+  /** Now as epoch ms, for the expiry countdown. */
+  now: number;
+  /** Mint a new link for `label` with a chosen lifetime (ms from now, or null for
    * until-revoked); resolves with the shareable URL. */
   onCreate: (
     label: string,
-    durationDays: number | null,
+    durationMs: number | null,
   ) => Promise<{ url: string }>;
   onRevoke: (id: string) => void;
-  /** Change one link's lifetime in place (days from today, or null for
+  /** Change one link's lifetime in place (ms from now, or null for
    * until-revoked); the same link keeps working. */
-  onSetDuration: (id: string, durationDays: number | null) => void;
+  onSetDuration: (id: string, durationMs: number | null) => void;
   /** Ingest a return link a contact sent back, completing the pending link. */
   onIngestReturn?: ((ret: ContactInvite) => void) | undefined;
   /** Avatar editor entry: a live preview src and a handler to open the editor.
@@ -132,12 +132,13 @@ function IngestReturn({
   );
 }
 
-function expiryLabel(expiresDay: number | null, nowDay: number): string {
-  if (expiresDay === null) return "No expiry";
-  const left = expiresDay - nowDay;
+function expiryLabel(expiresAt: number | null, now: number): string {
+  if (expiresAt === null) return "No expiry";
+  const left = expiresAt - now;
   if (left <= 0) return "Expired";
-  if (left === 1) return "Expires tomorrow";
-  return `Expires in ${left} days`;
+  const days = Math.ceil(left / DAY_MS);
+  if (days === 1) return "Expires tomorrow";
+  return `Expires in ${days} days`;
 }
 
 function CreatedLink({ url }: { url: string }): React.ReactElement {
@@ -182,7 +183,7 @@ function CreatedLink({ url }: { url: string }): React.ReactElement {
 
 export function ContactLinks({
   contacts,
-  nowDay,
+  now,
   onCreate,
   onRevoke,
   onSetDuration,
@@ -199,7 +200,7 @@ export function ContactLinks({
     if (busy) return;
     setBusy(true);
     setCreated(null);
-    void onCreate(label.trim(), durationDaysFor(duration))
+    void onCreate(label.trim(), durationMsFor(duration))
       .then((r) => {
         setCreated(r.url);
         setLabel("");
@@ -290,14 +291,14 @@ export function ContactLinks({
             <ContactRow
               key={c.id}
               contact={c}
-              nowDay={nowDay}
+              now={now}
               onRevoke={() => {
                 // Clear the "link ready" panel if it belongs to the link being
                 // revoked, so a now-dead URL never lingers on screen.
                 if (created?.includes(c.alias.id)) setCreated(null);
                 onRevoke(c.id);
               }}
-              onSetDuration={(days) => onSetDuration(c.id, days)}
+              onSetDuration={(ms) => onSetDuration(c.id, ms)}
             />
           ))}
         </Card>
@@ -312,7 +313,7 @@ function RowMenu({
   onSetDuration,
   onRevoke,
 }: {
-  onSetDuration: (durationDays: number | null) => void;
+  onSetDuration: (durationMs: number | null) => void;
   onRevoke: () => void;
 }): React.ReactElement {
   return (
@@ -333,7 +334,7 @@ function RowMenu({
       <Segmented
         aria-label="Change link lifetime"
         value=""
-        onChange={(key) => onSetDuration(durationDaysFor(key))}
+        onChange={(key) => onSetDuration(durationMsFor(key))}
         options={DURATIONS.map((d) => ({ value: d.key, label: d.label }))}
       />
       <Button
@@ -352,14 +353,14 @@ function RowMenu({
 // and a "⋯" menu to change the link's lifetime or revoke it.
 function ContactRow({
   contact,
-  nowDay,
+  now,
   onRevoke,
   onSetDuration,
 }: {
   contact: ContactRecord;
-  nowDay: number;
+  now: number;
   onRevoke: () => void;
-  onSetDuration: (durationDays: number | null) => void;
+  onSetDuration: (durationMs: number | null) => void;
 }): React.ReactElement {
   const [open, setOpen] = useState(false);
   const status =
@@ -387,7 +388,7 @@ function ContactRow({
             {contact.label || "Unnamed link"}
           </div>
           <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-            {`${status} · ${expiryLabel(contact.expiresDay, nowDay)}`}
+            {`${status} · ${expiryLabel(contact.expiresAt, now)}`}
           </div>
         </div>
         <button
@@ -415,8 +416,8 @@ function ContactRow({
       </div>
       {open && (
         <RowMenu
-          onSetDuration={(days) => {
-            onSetDuration(days);
+          onSetDuration={(ms) => {
+            onSetDuration(ms);
             setOpen(false);
           }}
           onRevoke={() => {

@@ -99,7 +99,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
         id: "c".repeat(43),
         label,
         createdDay: 0,
-        expiresDay: 7,
+        expiresAt: 7,
         alias: {
           id: "v".repeat(43),
           writeToken: "w".repeat(43),
@@ -121,21 +121,21 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       };
       return Promise.resolve({ master, blob });
     },
-    setContactDuration: (_session, contactId, durationDays) => {
+    setContactDuration: (_session, contactId, durationMs) => {
       blob = {
         ...blob,
         contacts: blob.contacts.map((c) =>
-          c.id === contactId ? { ...c, expiresDay: durationDays } : c,
+          c.id === contactId ? { ...c, expiresAt: durationMs } : c,
         ),
       };
       return Promise.resolve({ master, blob });
     },
-    setShareLinkDuration: (_session, durationDays) => {
+    setShareLinkDuration: (_session, durationMs) => {
       const wantPublic = blob.sharingMode === "public";
       blob = {
         ...blob,
         aliases: blob.aliases.map((a) =>
-          a.isPublic === wantPublic ? { ...a, expiresDay: durationDays } : a,
+          a.isPublic === wantPublic ? { ...a, expiresAt: durationMs } : a,
         ),
       };
       return Promise.resolve({ master, blob });

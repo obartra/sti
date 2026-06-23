@@ -64,13 +64,13 @@ export interface ScreenCtx {
    * null for until-revoked); resolves with the contact + URL. */
   onCreateContactLink: (
     label: string,
-    durationDays: number | null,
+    durationMs: number | null,
   ) => Promise<ContactLinkResult>;
   /** Revoke one contact link by id. */
   onRevokeContact: (id: string) => void;
   /** Change one contact link's lifetime in place (days from today, or null for
    * until-revoked). */
-  onSetContactDuration: (id: string, durationDays: number | null) => void;
+  onSetContactDuration: (id: string, durationMs: number | null) => void;
   /** Starred contact ids (device-local display preference); empty logged out. */
   faves: ReadonlySet<string>;
   /** Toggle one contact's star. */

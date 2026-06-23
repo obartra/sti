@@ -23,13 +23,13 @@ export interface ShareLinkControls {
    * face (a renew), since an already-shared alias keeps the face it was minted with.
    */
   readonly setIdentity: (choice: AliasIdentity) => void;
-  /** The link's lifetime: a day count, or null for until-revoked (the default). */
+  /** The link's lifetime: a duration in ms, or null for until-revoked (default). */
   readonly duration: number | null;
   /**
-   * Set the link's lifetime in place (days from today, or null for
-   * until-revoked). The same link keeps working, only its expiry moves.
+   * Set the link's lifetime in place (ms from now, or null for until-revoked).
+   * The same link keeps working, only its expiry moves; the server is told too.
    */
-  readonly setDuration: (durationDays: number | null) => void;
+  readonly setDuration: (durationMs: number | null) => void;
 }
 
 /**
@@ -57,7 +57,7 @@ export function useShareLink(
   // KNOWN LIMITATION (cosmetic): opening the sheet for an alias that already
   // carries an expiry does not pre-select that lifetime here, it shows "No
   // expiry" until the owner picks. Reflecting a stored expiry exactly would need
-  // a control that can show an arbitrary remaining duration (the four presets
+  // a control that can show an arbitrary remaining duration (the presets
   // can't), so it is deferred; the underlying expiry mechanism is unaffected.
   const [duration, setDurationState] = useState<number | null>(null);
   const durationRef = useRef<number | null>(null);
@@ -134,14 +134,14 @@ export function useShareLink(
   // the URL is unchanged), then folds the updated session back in. A no-op if
   // unchanged or logged out / before the link is minted.
   const setDuration = useCallback(
-    (durationDays: number | null) => {
-      if (durationDays === durationRef.current) return;
-      durationRef.current = durationDays;
-      setDurationState(durationDays);
+    (durationMs: number | null) => {
+      if (durationMs === durationRef.current) return;
+      durationRef.current = durationMs;
+      setDurationState(durationMs);
       const current = sessionRef.current;
       if (current === null) return;
       void controller
-        .setShareLinkDuration(current, durationDays)
+        .setShareLinkDuration(current, durationMs)
         .then((updated) => {
           sessionRef.current = updated;
           setSession(updated);

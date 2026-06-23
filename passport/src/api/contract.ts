@@ -29,6 +29,12 @@ export const PATHS = {
 export const HEADER_WRITE_TOKEN = "X-Write-Token";
 export const HEADER_VERSION = "X-Version";
 
+// Sets a link's server-enforced expiry on an alias PUT (doc 16): an absolute
+// epoch-ms instant, EXPIRES_AT_NONE to clear it, or the header omitted to leave
+// the stored expiry untouched (a badge-driven republish must not reset it).
+export const HEADER_EXPIRES_AT = "X-Expires-At";
+export const EXPIRES_AT_NONE = "none";
+
 /** The single value POST /knock ever returns. */
 export const KNOCK_STATUS = "received";
 

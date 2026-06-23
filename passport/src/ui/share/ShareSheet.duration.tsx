@@ -1,26 +1,28 @@
 import type { ReactElement } from "react";
 import { Segmented } from "../../design/components/index.ts";
+import { HOUR_MS, DAY_MS } from "../../core/clock.ts";
 
 /* The share sheet's link-lifetime choice (doc 16): how long the link keeps
-   resolving before the device sweeps it. Changing it moves the link's expiry in
-   place (the URL is unchanged). Lifted out of ShareSheet to keep that file under
-   its size/complexity caps; parallel to the identity choice row. */
+   resolving before the server stops answering for it (and the device sweeps it).
+   Changing it moves the link's expiry in place (the URL is unchanged). Lifted out
+   of ShareSheet to keep that file under its size/complexity caps. */
 
-// The lifetimes a link can carry. `days` is added to today; null = until-revoked.
-// 24h is one epoch day (expiry is day-granular). Mirrors the per-contact options.
-const DURATIONS: { key: string; label: string; days: number | null }[] = [
-  { key: "1", label: "24h", days: 1 },
-  { key: "7", label: "7 days", days: 7 },
-  { key: "30", label: "30 days", days: 30 },
-  { key: "none", label: "No expiry", days: null },
+// The lifetimes a link can carry, as a duration in ms from now (doc 16); null =
+// until-revoked. Absolute ms so a link can be sub-day (the 1h option).
+const DURATIONS: { key: string; label: string; ms: number | null }[] = [
+  { key: "1h", label: "1h", ms: HOUR_MS },
+  { key: "24h", label: "24h", ms: DAY_MS },
+  { key: "7d", label: "7 days", ms: 7 * DAY_MS },
+  { key: "30d", label: "30 days", ms: 30 * DAY_MS },
+  { key: "none", label: "No expiry", ms: null },
 ];
 
-function keyFor(days: number | null): string {
-  return DURATIONS.find((d) => d.days === days)?.key ?? "none";
+function keyFor(ms: number | null): string {
+  return DURATIONS.find((d) => d.ms === ms)?.key ?? "none";
 }
 
-function daysFor(key: string): number | null {
-  return DURATIONS.find((d) => d.key === key)?.days ?? null;
+function msFor(key: string): number | null {
+  return DURATIONS.find((d) => d.key === key)?.ms ?? null;
 }
 
 export function DurationRow({
@@ -30,7 +32,7 @@ export function DurationRow({
   choice: number | null;
   // Absent hides the control (e.g. Storybook), so the parent can render it
   // unconditionally without a wrapping guard.
-  onChange?: ((durationDays: number | null) => void) | undefined;
+  onChange?: ((durationMs: number | null) => void) | undefined;
 }): ReactElement | null {
   if (onChange === undefined) return null;
   return (
@@ -50,7 +52,7 @@ export function DurationRow({
       <Segmented
         aria-label="Link lifetime"
         value={keyFor(choice)}
-        onChange={(key) => onChange(daysFor(key))}
+        onChange={(key) => onChange(msFor(key))}
         options={DURATIONS.map((d) => ({ value: d.key, label: d.label }))}
       />
     </div>

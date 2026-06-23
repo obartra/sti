@@ -15,7 +15,7 @@ const contact = (label: string): ContactRecord => ({
   id: id("C"),
   label,
   createdDay: 19_000,
-  expiresDay: null,
+  expiresAt: null,
   alias: alias("D", false),
 });
 

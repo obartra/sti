@@ -12,6 +12,8 @@
 import type { Bytes } from "../crypto/encoding.ts";
 import {
   ALIAS_PAYLOAD_SIZE,
+  EXPIRES_AT_NONE,
+  HEADER_EXPIRES_AT,
   HEADER_VERSION,
   HEADER_WRITE_TOKEN,
   PATHS,
@@ -62,7 +64,13 @@ export interface KnockReview {
 
 export interface ApiClient {
   getAlias(id: string): Promise<Bytes>;
-  putAlias(id: string, payload: Bytes, writeToken: string): Promise<void>;
+  putAlias(
+    id: string,
+    payload: Bytes,
+    writeToken: string,
+    /** Server-enforced expiry (doc 16): epoch ms, null to clear, omit to preserve. */
+    expiresAt?: number | null,
+  ): Promise<void>;
   /** Read a notify inbox (doc 13): the same fixed-size, existence-uniform read as
    * an alias, on the /inbox path. A miss is a decoy, indistinguishable from empty. */
   getInbox(id: string): Promise<Bytes>;
@@ -95,6 +103,19 @@ export interface ApiClient {
 }
 
 const OCTET_STREAM = "application/octet-stream";
+
+// The X-Expires-At header for an alias PUT (doc 16). Undefined leaves the stored
+// expiry untouched (a badge republish); null clears it; a number is an epoch-ms
+// instant. A (possibly empty) header map to spread into the request.
+function expiryHeaders(
+  expiresAt: number | null | undefined,
+): Record<string, string> {
+  if (expiresAt === undefined) return {};
+  return {
+    [HEADER_EXPIRES_AT]:
+      expiresAt === null ? EXPIRES_AT_NONE : String(expiresAt),
+  };
+}
 
 /** Reject a malformed account id before it hits the wire (shared by acct ops). */
 function assertAccountId(id: string): void {
@@ -244,7 +265,7 @@ export function createApiClient(
     t: { prefix: string; label: string },
     id: string,
     payload: Bytes,
-    writeToken: string,
+    authHeaders: Record<string, string>,
   ) {
     if (!validId(id))
       throw new ApiError("badRequest", `malformed ${t.label} id`);
@@ -256,10 +277,7 @@ export function createApiClient(
     }
     const res = await call(t.prefix + id, {
       method: "PUT",
-      headers: {
-        "Content-Type": OCTET_STREAM,
-        [HEADER_WRITE_TOKEN]: writeToken,
-      },
+      headers: { "Content-Type": OCTET_STREAM, ...authHeaders },
       body: payload,
     });
     if (!res.ok) throw new ApiError(statusToKind(res.status), `${t.label} put`);
@@ -270,8 +288,11 @@ export function createApiClient(
       return getFixed(ALIAS, id);
     },
 
-    putAlias(id, payload, writeToken) {
-      return putFixed(ALIAS, id, payload, writeToken);
+    putAlias(id, payload, writeToken, expiresAt) {
+      return putFixed(ALIAS, id, payload, {
+        [HEADER_WRITE_TOKEN]: writeToken,
+        ...expiryHeaders(expiresAt),
+      });
     },
 
     getInbox(id) {
@@ -279,7 +300,7 @@ export function createApiClient(
     },
 
     putInbox(id, payload, writeToken) {
-      return putFixed(INBOX, id, payload, writeToken);
+      return putFixed(INBOX, id, payload, { [HEADER_WRITE_TOKEN]: writeToken });
     },
 
     async getAccount(id) {

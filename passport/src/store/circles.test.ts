@@ -32,7 +32,7 @@ function blobWithContacts(ids: string[]): AccountBlob {
       id,
       label: "",
       createdDay: 1,
-      expiresDay: null,
+      expiresAt: null,
       alias: { id, writeToken: id, key: id, isPublic: false },
     }),
   );
@@ -89,7 +89,7 @@ function contactWithStatus(
     id,
     label,
     createdDay: 1,
-    expiresDay: null,
+    expiresAt: null,
     alias: { id, writeToken: id, key: id, isPublic: false },
   };
   if (statusId === null) return base;
