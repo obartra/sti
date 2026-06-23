@@ -5,11 +5,14 @@ import type {
   OwnerSession,
   SessionController,
 } from "../../store/index.ts";
+import type { AvatarConfig } from "../../lib/avatars.ts";
 import { disablePush } from "../../store/push.ts";
 
 export interface OwnerActions {
   /** Permanently delete the account and log out (clamps to the landing). */
   onDeleteAccount: () => void;
+  /** Persist a new account-wide avatar (keeps the current sharing mode). */
+  onSetAvatar: (avatar: AvatarConfig) => void;
   /** Mint a new per-contact link with a chosen lifetime (days, or null for
    * until-revoked); resolves with the contact + URL. */
   onCreateContactLink: (
@@ -67,6 +70,8 @@ export function useOwnerActions(
     // capability does not linger at rest in IndexedDB (best-effort, never throws).
     void disablePush();
   }, [controller, sessionRef, setSession]);
+
+  const { onSetAvatar } = useProfileActions(controller, sessionRef, setSession);
 
   const onCreateContactLink = useCallback(
     async (label: string, durationDays: number | null) => {
@@ -165,6 +170,7 @@ export function useOwnerActions(
 
   return {
     onDeleteAccount,
+    onSetAvatar,
     onCreateContactLink,
     onRevokeContact,
     onSetContactDuration,
@@ -173,6 +179,31 @@ export function useOwnerActions(
     onIngestContactReturn,
     ...circle,
   };
+}
+
+// The profile mutation (avatar today), split out so useOwnerActions stays within
+// its length ceiling. Same fold-result-into-session shape as the rest.
+function useProfileActions(
+  controller: SessionController,
+  sessionRef: RefObject<OwnerSession | null>,
+  setSession: (s: OwnerSession | null) => void,
+): Pick<OwnerActions, "onSetAvatar"> {
+  const onSetAvatar = useCallback(
+    (avatar: AvatarConfig) => {
+      const current = sessionRef.current;
+      if (current === null) return;
+      // Keep the current sharing mode; only the avatar changes.
+      void controller
+        .setProfile(current, { avatar, sharingMode: current.blob.sharingMode })
+        .then((updated) => {
+          sessionRef.current = updated;
+          setSession(updated);
+        })
+        .catch(() => undefined);
+    },
+    [controller, sessionRef, setSession],
+  );
+  return { onSetAvatar };
 }
 
 // The circle mutations (create / rename+remember-members / delete), split out so

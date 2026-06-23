@@ -14,6 +14,7 @@ import type { OnboardingActions } from "../useOnboarding.ts";
 import type { PushControls } from "../usePush.ts";
 import type { ReportOutcome } from "../../../core/report.ts";
 import type { OwnerState } from "../../../core/badge.ts";
+import type { AvatarConfig } from "../../../lib/avatars.ts";
 
 // What every routed screen gets: navigation, the owner's derived view, the raw
 // owner state + its setter (for settings), the onboarding/login actions, the
@@ -35,6 +36,8 @@ export interface ScreenCtx {
   openShare: () => void;
   /** Permanently delete the account and return to the logged-out landing. */
   onDeleteAccount: () => void;
+  /** Persist a new account-wide avatar (logged-in only; keeps sharing mode). */
+  onSetAvatar: (avatar: AvatarConfig) => void;
   /** Count of current knocks across the owner's aliases (contentless; 0 logged out). */
   knockCount: number;
   /** Re-pull the knock count + pending approvals (e.g. when the inbox opens). */

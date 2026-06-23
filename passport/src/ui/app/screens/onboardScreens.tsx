@@ -8,10 +8,27 @@ import type { Nav } from "../useAppRouter.ts";
 import type { ScreenRenderers } from "./context.ts";
 
 // Avatar edit owns local config state, so it is a component, not an inline arrow.
-// It opens on the owner's current avatar.
-function AvatarEditRoute({ nav, avatar }: { nav: Nav; avatar: AvatarConfig }) {
+// It opens on the owner's current avatar and persists the pick on Done.
+function AvatarEditRoute({
+  nav,
+  avatar,
+  onSetAvatar,
+}: {
+  nav: Nav;
+  avatar: AvatarConfig;
+  onSetAvatar: (avatar: AvatarConfig) => void;
+}) {
   const [config, setConfig] = useState<AvatarConfig>(avatar);
-  return <AvatarEdit config={config} onChange={setConfig} onDone={nav.back} />;
+  return (
+    <AvatarEdit
+      config={config}
+      onChange={setConfig}
+      onDone={() => {
+        onSetAvatar(config);
+        nav.back();
+      }}
+    />
+  );
 }
 
 export const onboardRenderers: ScreenRenderers = {
@@ -47,7 +64,7 @@ export const onboardRenderers: ScreenRenderers = {
       onEnter={(sharingMode) => void onboarding.finish(sharingMode)}
     />
   ),
-  "avatar-edit": ({ nav, owner }) => (
-    <AvatarEditRoute nav={nav} avatar={owner.avatar} />
+  "avatar-edit": ({ nav, owner, onSetAvatar }) => (
+    <AvatarEditRoute nav={nav} avatar={owner.avatar} onSetAvatar={onSetAvatar} />
   ),
 };

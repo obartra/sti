@@ -6,6 +6,7 @@ import { Privacy } from "../../core/Privacy.tsx";
 import { extendClearance } from "../../../core/report.ts";
 import { todayEpochDay } from "../../../core/clock.ts";
 import { RESOURCES, openResource } from "../../../lib/resources.ts";
+import { avatarSrc } from "../../../lib/avatars.ts";
 import type { ScreenRenderers } from "./context.ts";
 
 // The real inbox: a standing re-test nudge, plus a knock entry only when someone
@@ -181,6 +182,7 @@ export const coreRenderers: ScreenRenderers = {
   ),
   privacy: ({
     nav,
+    owner,
     ownerState,
     setOwnerState,
     onDeleteAccount,
@@ -189,6 +191,7 @@ export const coreRenderers: ScreenRenderers = {
     onRevokeAlias,
     onRevokeContact,
     push,
+    isLoggedIn,
   }) => (
     <Privacy
       ownerState={ownerState}
@@ -198,6 +201,8 @@ export const coreRenderers: ScreenRenderers = {
       onRevokeAlias={onRevokeAlias}
       onRevokeContact={onRevokeContact}
       push={push}
+      avatarSrc={avatarSrc(owner.avatar)}
+      onEditAvatar={isLoggedIn ? () => nav.go("avatar-edit") : undefined}
       onViewAs={() => nav.go("a2-public", { self: true })}
       onDeleted={() => {
         // Really delete (revoke links + remove the blob, logs out), then reset

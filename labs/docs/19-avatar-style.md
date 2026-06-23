@@ -129,3 +129,10 @@ be skipped.
 3. Rebuild `AvatarBuilder.tsx`: hair + mood + tone chips as mini-avatar swatches, shuffle button.
    Story + interaction test.
 4. Add the CC-BY attribution line. Update any avatar-related references in docs 15 / 16.
+5. Make the editor reachable and persistent. The `avatar-edit` route existed but
+   nothing navigated to it, and its handler edited local state then discarded it on
+   close, so a post-onboarding owner could never change their avatar. Add an
+   `onSetAvatar` owner action (`controller.setProfile` with the current sharing
+   mode, folded back into the session like the other owner mutations), thread it to
+   the route so "Done" persists, and add an "Edit your avatar" entry in the Privacy
+   screen with a live preview of the current avatar.
