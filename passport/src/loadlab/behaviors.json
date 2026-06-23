@@ -132,6 +132,39 @@
     "pin": "src/store/account.integration.test.ts"
   },
   {
+    "id": "link-duration-updatable-in-place",
+    "category": "Trust integrity & sharing",
+    "title": "A link's lifetime can be extended or shortened without changing its URL",
+    "intent": "Per-link duration (doc 16) is a stored expiry the owner can move at any time; changing it must not rotate the alias, so the recipient's link keeps working.",
+    "check": "setContactDuration and setShareLinkDuration move the record's expiresDay while the same alias id keeps resolving (no renew, URL unchanged).",
+    "status": "validated",
+    "layer": "wire",
+    "docRef": "16",
+    "pin": "src/store/session.integration.test.ts"
+  },
+  {
+    "id": "expired-link-no-future-reads",
+    "category": "Trust integrity & sharing",
+    "title": "An expired link stops resolving, enforced on the owner's device",
+    "intent": "A time-boxed link must actually stop working once its expiry passes (doc 16), enforced client-side: swept on the next state change and on load, so a passive owner's expired links do not linger.",
+    "check": "setOwnerState and sweepExpiredLinks revoke + drop a past-expiry alias so it no longer resolves; a live (future-expiry) link is left untouched.",
+    "status": "validated",
+    "layer": "wire",
+    "docRef": "16",
+    "pin": "src/store/account.integration.test.ts"
+  },
+  {
+    "id": "scanned-qr-same-host-only",
+    "category": "Trust integrity & sharing",
+    "title": "A scanned QR only follows an alias link to our own host",
+    "intent": "A scanned code is untrusted input (doc 16); it must never redirect the viewer off-site or feed garbage to the crypto layer, so only a well-formed alias link to the canonical host resolves.",
+    "check": "parseScannedLink returns the alias for an sti.care link, and null for any other host (including look-alikes like sti.care.evil.com), non-URL junk, or a keyless link.",
+    "status": "validated",
+    "layer": "wire",
+    "docRef": "16",
+    "pin": "src/store/aliasLink.test.ts"
+  },
+  {
     "id": "recovery-phrase-login",
     "category": "Account & recovery",
     "title": "A new device recovers the account from the phrase",
