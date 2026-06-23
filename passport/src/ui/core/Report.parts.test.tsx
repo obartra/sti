@@ -1,10 +1,19 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
 import {
+  COPY,
   reportOutcome,
   type ReportState,
   type SiteStatus,
 } from "./Report.parts.tsx";
+
+describe("report infections", () => {
+  it("asks only about the core panel (no collect-then-discard rows)", () => {
+    // Herpes / hep B / HPV are not part of the badge and were never stored, so
+    // they were dropped from the report; only the four core-panel infections stay.
+    expect(COPY.infections.map((i) => i.id)).toEqual(["hiv", "ct", "gc", "syph"]);
+  });
+});
 
 // A minimal ReportState: reportOutcome reads only val, siteStatus, coreComplete,
 // and panelDay; the rest are inert stubs so the mapping can be tested directly.
@@ -27,7 +36,6 @@ function state(over: {
     setSite: () => undefined,
     siteStatus: (id) => sites[id] ?? "untouched",
     anyPositive: false,
-    anyChronicPositive: false,
     coreComplete: over.coreComplete ?? false,
     coreMissing: [],
     touchedAny: false,
