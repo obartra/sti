@@ -188,6 +188,7 @@ export const coreRenderers: ScreenRenderers = {
     contacts,
     onRevokeAlias,
     onRevokeContact,
+    push,
   }) => (
     <Privacy
       ownerState={ownerState}
@@ -196,6 +197,7 @@ export const coreRenderers: ScreenRenderers = {
       contacts={contacts}
       onRevokeAlias={onRevokeAlias}
       onRevokeContact={onRevokeContact}
+      push={push}
       onViewAs={() => nav.go("a2-public", { self: true })}
       onDeleted={() => {
         // Really delete (revoke links + remove the blob, logs out), then reset

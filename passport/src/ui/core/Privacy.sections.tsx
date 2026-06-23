@@ -1,7 +1,8 @@
 import { Card, Button, Switch, Badge } from "../../design/components/index.ts";
-import { EyeOff, Trash, Users } from "../../design/icons.tsx";
+import { EyeOff, Trash, Users, Bell } from "../../design/icons.tsx";
 import { COPY, Chip, fieldLbl } from "./Privacy.parts.tsx";
 import type { Condoms, PrivacyState } from "./Privacy.parts.tsx";
+import type { PushControls } from "../app/usePush.ts";
 
 // What rides on the card besides the status, self-declared, optional.
 export function AttributesCard({ state }: { state: PrivacyState }) {
@@ -114,7 +115,84 @@ export function AttributesCard({ state }: { state: PrivacyState }) {
   );
 }
 
-export function ControlsCard({ state }: { state: PrivacyState }) {
+// Device push toggle (slice 7): an opt-in enhancement to the always-on in-app
+// alerts. The heads-up is identical (contentless); this only changes WHERE it
+// arrives (a closed-app notification). Disabled when the browser can't do push.
+function PushRow({ push }: { push: PushControls }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+        padding: "10px 8px",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <span
+          style={{
+            flex: "none",
+            width: 40,
+            height: 40,
+            borderRadius: "var(--radius-sm)",
+            background: "var(--accent-soft)",
+            color: "var(--text-accent)",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Bell size={20} />
+        </span>
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              fontSize: 15,
+              fontWeight: 600,
+              color: "var(--text-strong)",
+            }}
+          >
+            {COPY.pushRow}
+          </div>
+          <div
+            style={{
+              fontSize: 13,
+              color: "var(--text-muted)",
+              lineHeight: 1.5,
+              marginTop: 2,
+            }}
+          >
+            {push.supported ? COPY.pushRowSub : COPY.pushUnsupported}
+          </div>
+        </div>
+        <Switch
+          checked={push.enabled}
+          disabled={!push.supported || push.busy}
+          onChange={(on) => (on ? push.enable() : push.disable())}
+        />
+      </div>
+      {push.error !== null && (
+        <div
+          style={{
+            fontSize: 12.5,
+            color: "var(--status-expired-fg)",
+            marginLeft: 54,
+          }}
+        >
+          {push.error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ControlsCard({
+  state,
+  push,
+}: {
+  state: PrivacyState;
+  push?: PushControls | undefined;
+}) {
   return (
     <>
       <div style={fieldLbl}>{COPY.controlsTitle}</div>
@@ -166,6 +244,7 @@ export function ControlsCard({ state }: { state: PrivacyState }) {
             </div>
           </div>
         </div>
+        {push && <PushRow push={push} />}
         {/* Manual pause: show plain gray to everyone (CtrlRow). */}
         <div
           style={{

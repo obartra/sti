@@ -63,6 +63,7 @@ export interface ChromeProps {
   onCreateCircle: ScreenCtx["onCreateCircle"];
   onUpdateCircle: ScreenCtx["onUpdateCircle"];
   onRemoveCircle: ScreenCtx["onRemoveCircle"];
+  push: ScreenCtx["push"];
 }
 
 function MobileSub({ nav, children }: { nav: Nav; children: ReactNode }) {
@@ -161,6 +162,7 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     onCreateCircle: props.onCreateCircle,
     onUpdateCircle: props.onUpdateCircle,
     onRemoveCircle: props.onRemoveCircle,
+    push: props.push,
     store: props.store,
     data: route.data,
   };

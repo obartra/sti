@@ -5,10 +5,10 @@ import { useOnboarding } from "./app/useOnboarding.ts";
 import { useShareLink } from "./app/useShareLink.ts";
 import { useOwnerInbox } from "./app/useOwnerInbox.ts";
 import { useFaves } from "./app/useFaves.ts";
+import { usePush } from "./app/usePush.ts";
 import { useOwnerActions } from "./app/useOwnerActions.ts";
 import { OWNER } from "./app/fixtures.ts";
 import { Chrome } from "./app/Chrome.tsx";
-import type { Route } from "./app/routes.ts";
 import { createApiClient } from "../api/client.ts";
 import {
   browserRequesterSecret,
@@ -165,17 +165,19 @@ export function App({
   // Starred contacts (device-local; see useFaves). Unrelated to the session.
   const { faves, toggleFave } = useFaves();
 
-  // A logged-out visitor must never land on an app-group screen (e.g. a #home
-  // deep link): clamp those to the public landing until they sign in. Public
-  // screens (landing, a shared link, onboarding) are reachable either way.
-  const effectiveRoute: Route =
-    session === null && route.group === "app"
-      ? { screen: "a1-landing", group: "public", data: null }
-      : route;
+  // Device push for the partner-notify wake (slice 7); a Privacy toggle drives it.
+  const push = usePush(api, session);
 
   return (
     <Chrome
-      route={effectiveRoute}
+      // A logged-out visitor must never land on an app-group screen (e.g. a #home
+      // deep link): clamp those to the public landing until they sign in. Public
+      // screens (landing, a shared link, onboarding) are reachable either way.
+      route={
+        session === null && route.group === "app"
+          ? { screen: "a1-landing", group: "public", data: null }
+          : route
+      }
       nav={nav}
       owner={session ? deriveOwnerView(session.blob, todayEpochDay()) : OWNER}
       ownerState={session ? session.blob.state : INITIAL_OWNER_STATE}
@@ -207,6 +209,7 @@ export function App({
       onToggleFave={toggleFave}
       isLoggedIn={session !== null}
       circles={session ? (session.blob.circles ?? []) : []}
+      push={push}
       {...actions}
     />
   );

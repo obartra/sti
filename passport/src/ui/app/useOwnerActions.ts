@@ -5,6 +5,7 @@ import type {
   OwnerSession,
   SessionController,
 } from "../../store/index.ts";
+import { disablePush } from "../../store/push.ts";
 
 export interface OwnerActions {
   /** Permanently delete the account and log out (clamps to the landing). */
@@ -62,6 +63,9 @@ export function useOwnerActions(
     sessionRef.current = null;
     setSession(null);
     void controller.deleteAccount(current).catch(() => undefined);
+    // Also forget this device's push context so the deleted account's notify
+    // capability does not linger at rest in IndexedDB (best-effort, never throws).
+    void disablePush();
   }, [controller, sessionRef, setSession]);
 
   const onCreateContactLink = useCallback(

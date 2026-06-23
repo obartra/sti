@@ -13,6 +13,11 @@ export const COPY = {
   anonAlerts: "Anonymous partner alerts",
   anonAlertsSub:
     "Built in. If you report a positive, recent linkups get an anonymous heads-up. Never optional, never traceable to you.",
+  pushRow: "Notify me on this device",
+  pushRowSub:
+    "Get the alert as a notification even when the app is closed. The heads-up stays the same: no name, no detail. You’ll still see it in-app either way.",
+  pushOn: "On",
+  pushUnsupported: "Not available on this device",
   attrsTitle: "What shows on your card",
   attrsSub:
     "Optional facts you stand behind. They show to anyone allowed to see your card, on gray too. None of them is required.",

@@ -11,6 +11,7 @@ import type {
   PassportStore,
 } from "../../../store/index.ts";
 import type { OnboardingActions } from "../useOnboarding.ts";
+import type { PushControls } from "../usePush.ts";
 import type { ReportOutcome } from "../../../core/report.ts";
 import type { OwnerState } from "../../../core/badge.ts";
 
@@ -95,6 +96,8 @@ export interface ScreenCtx {
   ) => void;
   /** Delete one circle by id (a local grouping; contacts are untouched). */
   onRemoveCircle: (id: string) => void;
+  /** Device push controls (the partner-notify wake), for the Privacy toggle. */
+  push: PushControls;
   store: PassportStore;
   data: RouteData | null;
 }

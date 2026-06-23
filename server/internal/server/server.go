@@ -493,6 +493,16 @@ func (s *Server) handlePushRegister(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
 		return
 	}
+	// Make the device reachable for the notify that wakes it: map the notify token
+	// hash to this routing endpoint so a later POST /notify resolves a route and
+	// enqueues a send. The client sets both the notify token hash and the routing
+	// endpoint id to hash(routingToken), so this is an identity route; keeping it in
+	// notify_route leaves routing a single source of truth (not special-cased in
+	// handleNotify). Without it a registered subscription would never be pushed to.
+	if err := s.st.PutNotifyRoute(r.Context(), req.RoutingEndpointID, req.RoutingEndpointID); err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
