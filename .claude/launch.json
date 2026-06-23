@@ -1,0 +1,33 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "passport",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "passport",
+      "port": 5173,
+      "env": {
+        "VITE_API_BASE_URL": "http://127.0.0.1:8080"
+      }
+    },
+    {
+      "name": "server",
+      "runtimeExecutable": "go",
+      "runtimeArgs": ["run", "./cmd/stiapi"],
+      "cwd": "server",
+      "port": 8080,
+      "env": {
+        "STI_DECOY_SECRET": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+        "STI_ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173"
+      }
+    },
+    {
+      "name": "storybook",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "storybook"],
+      "cwd": "passport",
+      "port": 6006
+    }
+  ]
+}
