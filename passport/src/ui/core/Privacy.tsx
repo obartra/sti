@@ -1,6 +1,7 @@
 import { COPY, usePrivacyState } from "./Privacy.parts.tsx";
 import type { OwnerState } from "../../core/badge.ts";
 import type { AliasRecord, ContactRecord } from "../../store/index.ts";
+import type { PushControls } from "../app/usePush.ts";
 import { LiveLinks } from "./Privacy.aliases.tsx";
 import {
   AttributesCard,
@@ -15,6 +16,7 @@ export interface PrivacyProps {
   contacts?: ContactRecord[];
   onRevokeAlias?: ((id: string) => void) | undefined;
   onRevokeContact?: ((id: string) => void) | undefined;
+  push?: PushControls | undefined;
   onViewAs?: (() => void) | undefined;
   onDeleted?: (() => void) | undefined;
 }
@@ -28,6 +30,7 @@ export function Privacy({
   contacts = [],
   onRevokeAlias = noop,
   onRevokeContact = noop,
+  push,
   onViewAs,
   onDeleted,
 }: PrivacyProps) {
@@ -65,7 +68,7 @@ export function Privacy({
         />
 
         <AttributesCard state={state} />
-        <ControlsCard state={state} />
+        <ControlsCard state={state} push={push} />
         <DangerZone state={state} onDeleted={onDeleted} />
       </div>
     </div>

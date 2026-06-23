@@ -286,6 +286,25 @@ func notifyReq(tokenHash string) *http.Request {
 		strings.NewReader(`{"tokenHash":"`+tokenHash+`"}`))
 }
 
+// Registering a push subscription must also make the device reachable: a notify
+// for the same hash then resolves a route and enqueues a send. Without the route
+// population in handlePushRegister, a registered subscription is never woken.
+func TestPushRegisterMakesNotifyReach(t *testing.T) {
+	on := newDrainServer(t, true, &mockSender{}, 0)
+	body := `{"routingEndpointId":"H","subscription":` +
+		`{"endpoint":"https://push.example/x","keys":{"p256dh":"p","auth":"a"}}}`
+	reg := httptest.NewRequest("POST", contract.PathPushRegister, strings.NewReader(body))
+	if rec := do(on.Handler(), reg); rec.Code != 204 {
+		t.Fatalf("push register: want 204, got %d", rec.Code)
+	}
+	if rec := do(on.Handler(), notifyReq("H")); rec.Code != 202 {
+		t.Fatalf("notify: want 202, got %d", rec.Code)
+	}
+	if d := sendDepth(t, on); d != 1 {
+		t.Fatalf("notify after push-register should enqueue, depth %d", d)
+	}
+}
+
 func TestNotifyEnqueueIsGated(t *testing.T) {
 	ctx := context.Background()
 
