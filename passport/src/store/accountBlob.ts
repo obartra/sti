@@ -168,19 +168,20 @@ function hasValidAliasOverride(r: Record<string, unknown>): boolean {
 }
 
 // Drop an alias override avatar that is not a valid current config (old-shape or
-// corrupt), so the alias keeps its handle/expiry and falls back to the id-derived
-// avatar. Cosmetic-only, lossy on purpose (doc 19).
+// corrupt), so the alias keeps every other field (handle, expiry, tokens) and just
+// falls back to the id-derived avatar. Cosmetic-only, lossy on purpose (doc 19).
 function migrateAliasOverride(a: AliasRecord): AliasRecord {
   if (a.avatar === undefined || isAvatarConfig(a.avatar)) return a;
-  // Rebuild without the cosmetic override avatar (keep in sync with AliasRecord).
-  return {
-    id: a.id,
-    writeToken: a.writeToken,
-    key: a.key,
-    isPublic: a.isPublic,
-    ...(a.handle !== undefined ? { handle: a.handle } : {}),
-    ...(a.expiresDay !== undefined ? { expiresDay: a.expiresDay } : {}),
-  };
+  const copy = { ...a };
+  delete (copy as { avatar?: AvatarConfig }).avatar;
+  return copy;
+}
+
+// A per-contact link carries the owner's alias (it can hold an avatar override
+// when the owner revealed themselves), so its avatar migrates the same way.
+function migrateContactAvatar(c: ContactRecord): ContactRecord {
+  const alias = migrateAliasOverride(c.alias);
+  return alias === c.alias ? c : { ...c, alias };
 }
 
 function isAliasRecord(x: unknown): x is AliasRecord {
@@ -341,7 +342,7 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
   return {
     handle: o.handle as string,
     aliases: (o.aliases as AliasRecord[]).map(migrateAliasOverride),
-    contacts: o.contacts as AccountBlob["contacts"],
+    contacts: (o.contacts as ContactRecord[]).map(migrateContactAvatar),
     state: o.state as AccountBlob["state"],
     avatar: migrateAvatar(o.avatar),
     sharingMode: o.sharingMode as AccountBlob["sharingMode"],

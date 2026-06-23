@@ -38,8 +38,8 @@ export type AvatarConfigInput =
   | undefined;
 
 // One palette swatch. Hex is without the leading '#', as DiceBear's color options
-// expect, and every value is a token from colors.css so avatars stay on brand. If
-// the tokens move, move these with them.
+// expect, and every value mirrors a colors.css token so avatars stay on brand.
+// Kept as literals (this runs outside the DOM); if the tokens move, move these too.
 interface Swatch {
   name: string;
   hex: string;
@@ -73,23 +73,22 @@ const MOODS: readonly { name: MoodName; label: string }[] = [
   { name: "angry", label: "Angry" },
 ];
 
-// Two palettes from colors.css, sorted light to dark. Hair can go to the brand
-// near-black (ink-900); skin's darkest is a blue-tinted teal-dark instead, because
-// the eyes render in black and would vanish against a near-black face.
-const SKINS: readonly Swatch[] = [
+// Skin and hair share these light-to-dark swatches; only the darkest differs (one
+// entry below), so they are spread from a common base to keep them in lockstep.
+const PALETTE_BASE: readonly Swatch[] = [
   { name: "White", hex: "FFFFFF" },
   { name: "Mist", hex: "DDF0F4" },
   { name: "Sky", hex: "8FCAD6" },
   { name: "Teal", hex: "2F9BB3" },
   { name: "Deep", hex: "1F6E80" },
-  { name: "Ink", hex: "16505C" },
 ];
+
+// Hair can go to the brand near-black (ink-900); skin's darkest is a blue-tinted
+// teal-dark instead, because the eyes render in black and would vanish against a
+// near-black face.
+const SKINS: readonly Swatch[] = [...PALETTE_BASE, { name: "Ink", hex: "16505C" }];
 const HAIR_COLORS: readonly Swatch[] = [
-  { name: "White", hex: "FFFFFF" },
-  { name: "Mist", hex: "DDF0F4" },
-  { name: "Sky", hex: "8FCAD6" },
-  { name: "Teal", hex: "2F9BB3" },
-  { name: "Deep", hex: "1F6E80" },
+  ...PALETTE_BASE,
   { name: "Ink", hex: "1B1B2F" },
 ];
 
@@ -199,15 +198,21 @@ export function migrateAvatar(x: unknown): AvatarConfig {
   return isAvatarConfig(x) ? x : DEFAULT_AVATAR;
 }
 
+// Clamp an arbitrary number into [0, n) by true modulo: plain `%` keeps the sign,
+// so a negative index would survive (and only be rescued by a later `?? [0]`).
+function wrapIndex(v: number, n: number): number {
+  return ((Math.trunc(v) % n) + n) % n;
+}
+
 function normalize(cfg: AvatarConfigInput): AvatarConfig {
   if (typeof cfg === "number") return randomAvatar(cfg);
   const c = cfg ?? {};
   return {
-    hair: (c.hair ?? 0) % HAIR.length,
-    mood: (c.mood ?? 0) % MOODS.length,
-    skin: (c.skin ?? 0) % SKINS.length,
-    hairColor: (c.hairColor ?? 0) % HAIR_COLORS.length,
-    beard: (c.beard ?? 0) % BEARDS.length,
+    hair: wrapIndex(c.hair ?? 0, HAIR.length),
+    mood: wrapIndex(c.mood ?? 0, MOODS.length),
+    skin: wrapIndex(c.skin ?? 0, SKINS.length),
+    hairColor: wrapIndex(c.hairColor ?? 0, HAIR_COLORS.length),
+    beard: wrapIndex(c.beard ?? 0, BEARDS.length),
   };
 }
 
@@ -240,7 +245,7 @@ function avatarSvg(cfgIn: AvatarConfigInput): string {
     hairColor: [hairHex],
     backgroundColor: [backgroundFor(skin.hex, hairHex)],
     facialHair: ["default"],
-    facialHairProbability: cfg.beard === 1 ? 100 : 0,
+    facialHairProbability: cfg.beard > 0 ? 100 : 0,
   }).toString();
 }
 

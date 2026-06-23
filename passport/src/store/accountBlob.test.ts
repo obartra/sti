@@ -321,9 +321,24 @@ describe("avatar migration on read (doc 19)", () => {
         isPublic: true,
         handle: "meow",
         avatar: DEFAULT_AVATAR,
+        expiresDay: 19_100,
       },
     ],
-    contacts: [],
+    contacts: [
+      {
+        id: "D".repeat(43),
+        label: "Sam",
+        createdDay: 19_000,
+        expiresDay: 19_007,
+        alias: {
+          id: "E".repeat(43),
+          writeToken: "F".repeat(43),
+          key: "G".repeat(43),
+          isPublic: false,
+          avatar: DEFAULT_AVATAR,
+        },
+      },
+    ],
     state: INITIAL_OWNER_STATE,
     avatar: DEFAULT_AVATAR,
     sharingMode: "link",
@@ -344,13 +359,15 @@ describe("avatar migration on read (doc 19)", () => {
     });
   }
 
-  it("drops an invalid alias avatar override but keeps the alias and its handle", () => {
+  it("drops an invalid alias avatar override but keeps every other field", () => {
     const wire = wireOf(oneAlias);
     firstAlias(wire).avatar = { animal: 1, color: 2, hat: 0, glasses: 1, extra: 0 };
     const alias = reparse(wire).aliases[0];
     expect(alias?.avatar).toBeUndefined();
     expect(alias?.handle).toBe("meow");
     expect(alias?.id).toBe(ID);
+    // The rebuild must preserve link expiry, not just identity (doc 16).
+    expect(alias?.expiresDay).toBe(19_100);
   });
 
   it("keeps a valid alias avatar override untouched", () => {
@@ -358,5 +375,23 @@ describe("avatar migration on read (doc 19)", () => {
     const wire = wireOf(oneAlias);
     firstAlias(wire).avatar = override;
     expect(reparse(wire).aliases[0]?.avatar).toEqual(override);
+  });
+
+  it("migrates a contact link's alias avatar too, keeping the contact intact", () => {
+    const wire = wireOf(oneAlias);
+    const contacts = wire.contacts as Record<string, unknown>[];
+    const contact = contacts[0];
+    if (!contact) throw new Error("test setup: expected one contact");
+    (contact.alias as Record<string, unknown>).avatar = {
+      animal: 2, // pre-doc-19 shape on a per-contact alias
+      color: 1,
+      hat: 0,
+      glasses: 0,
+      extra: 0,
+    };
+    const parsed = reparse(wire).contacts[0];
+    expect(parsed?.alias.avatar).toBeUndefined();
+    expect(parsed?.label).toBe("Sam");
+    expect(parsed?.expiresDay).toBe(19_007);
   });
 });

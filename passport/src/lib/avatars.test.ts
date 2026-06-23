@@ -198,4 +198,13 @@ describe("avatar config validation and migration (doc 19)", () => {
       expect(isAvatarConfig(randomAvatar(s))).toBe(true);
     }
   });
+
+  it("wraps negative / out-of-range partial indices instead of clamping to 0", () => {
+    // Renders without crashing for any integer (plain `%` would yield a negative
+    // index; normalize wraps with true modulo).
+    expect(svgOf(avatarSrc({ skin: -2, hairColor: 99, mood: -5 })).startsWith("<svg")).toBe(true);
+    // mood -1 wraps to the last mood (5), not to 0.
+    expect(avatarSrc({ mood: -1 })).toBe(avatarSrc({ mood: 5 }));
+    expect(avatarSrc({ mood: -1 })).not.toBe(avatarSrc({ mood: 0 }));
+  });
 });
