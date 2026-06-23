@@ -405,3 +405,42 @@ func TestConcurrentWritesPersist(t *testing.T) {
 		t.Fatalf("%d/%d writes returned ok but were not persisted (data loss)", missing, n)
 	}
 }
+
+func TestVanityNameDirectory(t *testing.T) {
+	s := openTestStore(t)
+	ctx := context.Background()
+	const name = "robin"
+
+	// Unknown name: a real not-found (the directory is non-uniform by design).
+	if _, found, err := s.ResolveVanityName(ctx, name); err != nil || found {
+		t.Fatalf("unknown name: found=%v err=%v, want found=false", found, err)
+	}
+
+	// Register, then resolve to the opaque alias id.
+	if err := s.PutVanityName(ctx, name, "alias-one", 1000); err != nil {
+		t.Fatal(err)
+	}
+	got, found, err := s.ResolveVanityName(ctx, name)
+	if err != nil || !found || got != "alias-one" {
+		t.Fatalf("resolve: got=%q found=%v err=%v, want alias-one/true", got, found, err)
+	}
+
+	// Re-pointing the same name updates in place (one row per name).
+	if err := s.PutVanityName(ctx, name, "alias-two", 1001); err != nil {
+		t.Fatal(err)
+	}
+	if got, _, _ := s.ResolveVanityName(ctx, name); got != "alias-two" {
+		t.Fatalf("re-point: got=%q, want alias-two", got)
+	}
+
+	// Release frees it, and is idempotent.
+	if err := s.ReleaseVanityName(ctx, name); err != nil {
+		t.Fatal(err)
+	}
+	if _, found, _ := s.ResolveVanityName(ctx, name); found {
+		t.Fatal("after release: want not found")
+	}
+	if err := s.ReleaseVanityName(ctx, name); err != nil {
+		t.Fatalf("release is not idempotent: %v", err)
+	}
+}

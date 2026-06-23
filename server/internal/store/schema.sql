@@ -62,6 +62,18 @@ CREATE TABLE IF NOT EXISTS cover_send (
 );
 CREATE INDEX IF NOT EXISTS idx_cover_send_available ON cover_send (available_at);
 
+-- Vanity name directory (doc 17, Findable mode). Maps an opt-in, human-chosen
+-- name to the opaque alias id it points at, and NOTHING else: never a status, a
+-- key, or an identity. Resolving a name yields an opaque id the viewer must still
+-- knock for. Unlike the existence-uniform alias table, existence here is
+-- intentionally revealed (a registered name is discoverable by design); the name
+-- and that it is registered are the only thing Findable adds over Gated.
+CREATE TABLE IF NOT EXISTS vanity_name (
+    name        TEXT PRIMARY KEY,   -- normalized [a-z0-9_]{3,30}
+    alias_id    TEXT NOT NULL,      -- the opaque alias the name resolves to
+    created_at  INTEGER NOT NULL
+) WITHOUT ROWID;
+
 CREATE TABLE IF NOT EXISTS knock (
     target_id       TEXT NOT NULL,         -- alias being knocked on
     requester_hash  TEXT NOT NULL,         -- opaque per-requester token

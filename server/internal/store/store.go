@@ -234,6 +234,40 @@ func (s *Store) GetAccount(ctx context.Context, id string) (ciphertext []byte, v
 	return ciphertext, version, true, nil
 }
 
+// --- Vanity name directory (doc 17, Findable) -------------------------------
+// name -> alias_id only. No status, key, or identity. Registration is gated and
+// not yet wired to an endpoint; these back the resolve read path and tests.
+
+// PutVanityName registers (or re-points) a normalized name to an opaque alias id.
+func (s *Store) PutVanityName(ctx context.Context, name, aliasID string, now int64) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO vanity_name (name, alias_id, created_at) VALUES (?, ?, ?)
+		 ON CONFLICT(name) DO UPDATE SET alias_id = excluded.alias_id`,
+		name, aliasID, now)
+	return err
+}
+
+// ResolveVanityName returns the alias id a name points at, and whether it exists.
+// Existence is intentionally non-uniform here (doc 17): a missing name is a real
+// "not found", unlike the decoy-padded alias read.
+func (s *Store) ResolveVanityName(ctx context.Context, name string) (aliasID string, found bool, err error) {
+	err = s.db.QueryRowContext(ctx,
+		`SELECT alias_id FROM vanity_name WHERE name = ?`, name).Scan(&aliasID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return aliasID, true, nil
+}
+
+// ReleaseVanityName frees a name (on alias deletion/revocation). Idempotent.
+func (s *Store) ReleaseVanityName(ctx context.Context, name string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM vanity_name WHERE name = ?`, name)
+	return err
+}
+
 // --- Notify routing ---------------------------------------------------------
 
 // PutNotifyRoute maps hash(notify_token) to an opaque routing endpoint.

@@ -550,3 +550,50 @@ func TestConcurrentPutsPersistViaHTTP(t *testing.T) {
 		t.Fatalf("%d/%d PUTs returned 204 but did not persist (data loss)", lost, n)
 	}
 }
+
+func TestVanityResolve(t *testing.T) {
+	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	secret := make([]byte, 32)
+	for i := range secret {
+		secret[i] = byte(i + 1)
+	}
+	srv := New(st, Config{DecoySecret: secret}, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+	h := srv.Handler()
+
+	aliasID := randID(t)
+	if err := st.PutVanityName(context.Background(), "robin", aliasID, 1); err != nil {
+		t.Fatal(err)
+	}
+
+	// A registered name resolves to its opaque alias id (and only that).
+	rec := do(h, httptest.NewRequest("GET", "/u/robin", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("registered name: want 200, got %d", rec.Code)
+	}
+	var resp contract.VanityResolveResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.AliasID != aliasID {
+		t.Fatalf("aliasId: got %q, want %q", resp.AliasID, aliasID)
+	}
+
+	// The path is normalized (lowercased) before lookup, so an uppercase request
+	// resolves the same name.
+	if rec := do(h, httptest.NewRequest("GET", "/u/ROBIN", nil)); rec.Code != http.StatusOK {
+		t.Fatalf("uppercase name: want 200, got %d", rec.Code)
+	}
+
+	// An unregistered name is a bare 404: no body, no hint.
+	rec404 := do(h, httptest.NewRequest("GET", "/u/nobody", nil))
+	if rec404.Code != http.StatusNotFound {
+		t.Fatalf("unknown name: want 404, got %d", rec404.Code)
+	}
+	if rec404.Body.Len() != 0 {
+		t.Fatalf("unknown name: want empty body, got %q", rec404.Body.String())
+	}
+}
