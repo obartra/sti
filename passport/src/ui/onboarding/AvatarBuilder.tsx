@@ -55,10 +55,13 @@ export function AvatarBuilder({ config, onChange }: AvatarBuilderProps) {
   const shuffle = () =>
     onChange(randomAvatar(Math.floor(Math.random() * 0x7fffffff)));
 
+  // Each option shows just what it controls: a color row renders solid color
+  // swatches; an asset row (hair, mood, beard) renders a mini avatar of that asset.
   const row = (
     label: string,
     key: keyof AvatarConfig,
     options: readonly string[],
+    colors?: readonly string[],
   ) => (
     <div>
       <div style={partLabel}>{label}</div>
@@ -74,11 +77,15 @@ export function AvatarBuilder({ config, onChange }: AvatarBuilderProps) {
             style={swatch(config[key] === i)}
             onClick={() => set(key, i)}
           >
-            <img
-              src={avatarSrc({ ...config, [key]: i })}
-              alt=""
-              style={swatchImg}
-            />
+            {colors ? (
+              <span style={{ ...swatchImg, background: colors[i] }} />
+            ) : (
+              <img
+                src={avatarSrc({ ...config, [key]: i })}
+                alt=""
+                style={swatchImg}
+              />
+            )}
           </button>
         ))}
       </div>
@@ -114,8 +121,8 @@ export function AvatarBuilder({ config, onChange }: AvatarBuilderProps) {
       </div>
       {row("Hair", "hair", P.hairs)}
       {row("Mood", "mood", P.moods)}
-      {row("Skin", "skin", P.skins)}
-      {row("Hair color", "hairColor", P.hairColors)}
+      {row("Skin", "skin", P.skins, P.skinHexes)}
+      {row("Hair color", "hairColor", P.hairColors, P.hairColorHexes)}
       {row("Beard", "beard", P.beards)}
     </Card>
   );

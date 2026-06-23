@@ -67,10 +67,13 @@ drawn straight from `colors.css` and sorted light to dark:
 - white #FFFFFF, `--teal-100` (#DDF0F4), `--teal-300` (#8FCAD6), `--teal-500` (#2F9BB3),
   `--teal-700` (#1F6E80), `--ink-900` (#1B1B2F) (the brand near-black)
 
-Skin and hair color are chosen **separately** from this same palette (more variety than a single fixed
-tone, but every value is still on brand, so no combination can produce mud). The background is a fixed
-light tint (`--teal-50`), not a user choice, so the face always reads. The raw DiceBear palettes are
-never exposed. The builder offers, each as live mini-avatar swatches in a fixed-column grid:
+Skin and hair color are chosen **separately** from this palette (more variety than a single fixed
+tone, but every value is still on brand, so no combination can produce mud). Skin and hair use almost
+the same set, with one difference: hair's darkest is the brand near-black (`--ink-900`), but skin's
+darkest is a blue-tinted teal-dark (#16505C) instead, because the eyes render in black and would vanish
+against a near-black face. The background is a fixed light tint (`--teal-50`), not a user choice, so the
+face always reads. The raw DiceBear palettes are never exposed. The builder offers, in a fixed-column
+grid, with color rows shown as plain color swatches and asset rows as mini avatars:
 
 - **Hair** (12 Dylan styles + **Bald**). Dylan has no no-hair style, so Bald reuses the flattest style
   with the hair color forced to the skin, so the hair reads as a bare head.

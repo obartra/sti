@@ -74,9 +74,18 @@ const MOODS: readonly { name: MoodName; label: string }[] = [
   { name: "angry", label: "Angry" },
 ];
 
-// One shared palette for skin and hair, sorted light to dark, from colors.css:
-// white, teal-100, teal-300, teal-500, teal-700, ink-900 (the brand near-black).
-const PALETTE: readonly Swatch[] = [
+// Two palettes from colors.css, sorted light to dark. Hair can go to the brand
+// near-black (ink-900); skin's darkest is a blue-tinted teal-dark instead, because
+// the eyes render in black and would vanish against a near-black face.
+const SKINS: readonly Swatch[] = [
+  { name: "White", hex: "FFFFFF" },
+  { name: "Mist", hex: "DDF0F4" },
+  { name: "Sky", hex: "8FCAD6" },
+  { name: "Teal", hex: "2F9BB3" },
+  { name: "Deep", hex: "1F6E80" },
+  { name: "Ink", hex: "16505C" },
+];
+const HAIR_COLORS: readonly Swatch[] = [
   { name: "White", hex: "FFFFFF" },
   { name: "Mist", hex: "DDF0F4" },
   { name: "Sky", hex: "8FCAD6" },
@@ -100,15 +109,22 @@ export interface AvatarParts {
   skins: readonly string[];
   hairColors: readonly string[];
   beards: readonly string[];
+  // CSS colors (with leading '#') so the builder can show color rows as plain
+  // swatches instead of full avatars.
+  skinHexes: readonly string[];
+  hairColorHexes: readonly string[];
 }
 
-// The builder needs the option labels and counts; it builds configs by index.
+// The builder needs the option labels, counts, and color values; it builds configs
+// by index.
 export const avatarParts: AvatarParts = {
   hairs: HAIR.map((h) => h.label),
   moods: MOODS.map((m) => m.label),
-  skins: PALETTE.map((p) => p.name),
-  hairColors: PALETTE.map((p) => p.name),
+  skins: SKINS.map((p) => p.name),
+  hairColors: HAIR_COLORS.map((p) => p.name),
   beards: BEARDS.map((b) => b.label),
+  skinHexes: SKINS.map((p) => `#${p.hex}`),
+  hairColorHexes: HAIR_COLORS.map((p) => `#${p.hex}`),
 };
 
 // A fresh account starts here: plain hair, happy, teal skin, ink hair, no beard.
@@ -133,8 +149,8 @@ export function isAvatarConfig(x: unknown): x is AvatarConfig {
   return (
     inRange(c.hair, HAIR.length) &&
     inRange(c.mood, MOODS.length) &&
-    inRange(c.skin, PALETTE.length) &&
-    inRange(c.hairColor, PALETTE.length) &&
+    inRange(c.skin, SKINS.length) &&
+    inRange(c.hairColor, HAIR_COLORS.length) &&
     inRange(c.beard, BEARDS.length)
   );
 }
@@ -155,8 +171,8 @@ function normalize(cfg: AvatarConfigInput): AvatarConfig {
   return {
     hair: (c.hair ?? 0) % HAIR.length,
     mood: (c.mood ?? 0) % MOODS.length,
-    skin: (c.skin ?? 0) % PALETTE.length,
-    hairColor: (c.hairColor ?? 0) % PALETTE.length,
+    skin: (c.skin ?? 0) % SKINS.length,
+    hairColor: (c.hairColor ?? 0) % HAIR_COLORS.length,
     beard: (c.beard ?? 0) % BEARDS.length,
   };
 }
@@ -172,8 +188,8 @@ function avatarSvg(cfgIn: AvatarConfigInput): string {
   const cfg = normalize(cfgIn);
   const hair = HAIR[cfg.hair] ?? HAIR[0];
   const mood = MOODS[cfg.mood] ?? MOODS[0];
-  const skin = PALETTE[cfg.skin] ?? PALETTE[0];
-  const hairCol = PALETTE[cfg.hairColor] ?? PALETTE[0];
+  const skin = SKINS[cfg.skin] ?? SKINS[0];
+  const hairCol = HAIR_COLORS[cfg.hairColor] ?? HAIR_COLORS[0];
   if (!hair || !mood || !skin || !hairCol) {
     throw new Error("avatarSvg: config index out of range");
   }
@@ -210,13 +226,14 @@ export function randomAvatar(seed: number): AvatarConfig {
   h = (h ^ (h >>> 16)) >>> 0;
   const H = HAIR.length;
   const M = MOODS.length;
-  const P = PALETTE.length;
+  const S = SKINS.length;
+  const C = HAIR_COLORS.length;
   return {
     hair: h % H,
     mood: Math.floor(h / H) % M,
-    skin: Math.floor(h / (H * M)) % P,
-    hairColor: Math.floor(h / (H * M * P)) % P,
-    beard: Math.floor(h / (H * M * P * P)) % BEARDS.length,
+    skin: Math.floor(h / (H * M)) % S,
+    hairColor: Math.floor(h / (H * M * S)) % C,
+    beard: Math.floor(h / (H * M * S * C)) % BEARDS.length,
   };
 }
 

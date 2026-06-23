@@ -33,6 +33,7 @@ const ALLOWED_HEX = new Set([
   "ffffff",
   "fff",
   "1b1b2f",
+  "16505c", // skin's blue-tinted darkest (keeps the black eyes visible)
 ]);
 const ALLOWED_NAMED = new Set(["black", "white", "none"]);
 
