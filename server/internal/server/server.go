@@ -57,6 +57,20 @@ type Config struct {
 	// can subscribe. Empty (the default) means push is not configured and the
 	// client treats it as unavailable. Public, not a secret.
 	VAPIDPublicKey string
+	// AdminEnabled gates the entire operator surface (doc 20). Off by default, so
+	// production ships dark: when false no /admin route is registered at all, so
+	// those paths are a bare 404 and the surface is invisible. main.go refuses to
+	// boot with this true unless AdminToken is set and non-trivial.
+	AdminEnabled bool
+	// AdminToken is the shared bearer secret for the admin surface, compared
+	// constant-time and never logged. By the time it reaches here main.go has
+	// enforced a length floor (when AdminEnabled), so it is trusted non-trivial.
+	AdminToken string
+	// AdminRatePerSec / AdminBurst bound /admin/* per client IP, tightly: the
+	// surface is for one operator, so a low budget slows any brute force without
+	// affecting real use. Zero leaves the defaults (1/sec, burst 5).
+	AdminRatePerSec float64
+	AdminBurst      float64
 }
 
 func (c *Config) withDefaults() {
@@ -87,6 +101,12 @@ func (c *Config) withDefaults() {
 	if c.KnockBurst == 0 {
 		c.KnockBurst = 10
 	}
+	if c.AdminRatePerSec == 0 {
+		c.AdminRatePerSec = 1
+	}
+	if c.AdminBurst == 0 {
+		c.AdminBurst = 5
+	}
 }
 
 // Server is the HTTP handler set.
@@ -97,6 +117,7 @@ type Server struct {
 	now      func() int64 // unix millis; injectable for tests
 	ipLimit  *limiter     // visible 429 on non-sensitive endpoints
 	knockLim *limiter     // silent cap on /knock (never a 429)
+	adminLim *limiter     // tight per-IP cap on /admin/* (visible 429)
 	inflight chan struct{}
 	mux      *http.ServeMux
 	metrics  *metrics.Metrics // blind aggregate self-telemetry (loopback only)
@@ -116,6 +137,7 @@ func New(st *store.Store, cfg Config, log *slog.Logger, now func() int64) *Serve
 		now:      now,
 		ipLimit:  newLimiter(cfg.IPRatePerSec, cfg.IPBurst),
 		knockLim: newLimiter(cfg.KnockRatePerID, cfg.KnockBurst),
+		adminLim: newLimiter(cfg.AdminRatePerSec, cfg.AdminBurst),
 		inflight: make(chan struct{}, cfg.MaxInflight),
 		mux:      http.NewServeMux(),
 		metrics:  metrics.New(),
@@ -165,6 +187,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /healthz", s.handleHealth)
 	s.mux.HandleFunc("GET /vapid", s.handleVapid)
 	s.mux.HandleFunc("GET /{$}", s.handleRoot) // exactly "/", a public landing
+	s.registerAdminRoutes()                    // no-op unless AdminEnabled (doc 20)
 }
 
 // Handler returns the http.Handler with the CORS, metrics, and load-shedding
@@ -715,4 +738,5 @@ func (s *Server) SweepLimiters(now int64) {
 	cutoff := now - (10 * time.Minute).Milliseconds()
 	s.ipLimit.sweep(cutoff)
 	s.knockLim.sweep(cutoff)
+	s.adminLim.sweep(cutoff)
 }

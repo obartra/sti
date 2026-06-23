@@ -22,6 +22,12 @@ import (
 	"sti.care/api/internal/store"
 )
 
+// adminTokenMinLen is the boot-time length floor for STI_ADMIN_TOKEN when the
+// admin surface is enabled (doc 20). 32 chars is comfortably above a guessable
+// secret; the operator should use a long random value. Enforced loud at boot so a
+// misconfigured deploy never exposes admin behind a weak token.
+const adminTokenMinLen = 32
+
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
@@ -100,6 +106,22 @@ func main() {
 	// wakes (doc 13 §2). Default 2 min; only matters once notify delivery is on.
 	coverWindow := max(envDuration("STI_COVER_WINDOW", 2*time.Minute), 0)
 
+	// Operator surface (doc 20). OFF by default so production ships dark. Turning it
+	// on requires BOTH the flag AND a non-trivial bearer secret: if the flag is set
+	// without a secret at least adminTokenMinLen long, refuse to boot rather than
+	// expose admin with a weak or empty token (fail loud, like the decoy secret). A
+	// secret set without the flag is inert; warn so the operator knows admin is off.
+	adminEnabled := os.Getenv("STI_ADMIN_ENABLED") == "true"
+	adminToken := os.Getenv("STI_ADMIN_TOKEN")
+	if adminEnabled && len(adminToken) < adminTokenMinLen {
+		log.Error("STI_ADMIN_ENABLED is set but STI_ADMIN_TOKEN is missing or too short",
+			"min_len", adminTokenMinLen)
+		os.Exit(1)
+	}
+	if !adminEnabled && adminToken != "" {
+		log.Warn("STI_ADMIN_TOKEN is set but STI_ADMIN_ENABLED is off; the admin surface stays disabled")
+	}
+
 	srv := server.New(st, server.Config{
 		DecoySecret:    secret,
 		AllowedOrigins: allowedOrigins,
@@ -112,6 +134,8 @@ func main() {
 		SensitiveWait:  sensitiveWait,
 		KnockTTL:       knockTTL,
 		CoverWindow:    coverWindow,
+		AdminEnabled:   adminEnabled,
+		AdminToken:     adminToken,
 	}, log, nil)
 
 	// Host and process health gauges. All system facts, no subject data.

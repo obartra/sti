@@ -444,3 +444,42 @@ func TestVanityNameDirectory(t *testing.T) {
 		t.Fatalf("release is not idempotent: %v", err)
 	}
 }
+
+// The admin audit log is append-only and newest-first: each AppendAudit adds a
+// row, RecentAudits returns them most-recent-first bounded by limit, and the
+// opaque action/target round-trip intact (doc 20).
+func TestAdminAuditAppendAndList(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	if got, err := s.RecentAudits(ctx, 10); err != nil || len(got) != 0 {
+		t.Fatalf("empty log: got %d err %v", len(got), err)
+	}
+
+	if err := s.AppendAudit(ctx, "ping", "", 100); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AppendAudit(ctx, "vanity.takedown", "robin", 200); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := s.RecentAudits(ctx, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("len = %d, want 2", len(got))
+	}
+	// Newest first: the takedown (id 2) precedes the ping (id 1).
+	if got[0].Action != "vanity.takedown" || got[0].Target != "robin" || got[0].CreatedAt != 200 {
+		t.Fatalf("newest row = %+v", got[0])
+	}
+	if got[1].Action != "ping" || got[1].Target != "" {
+		t.Fatalf("oldest row = %+v", got[1])
+	}
+
+	// limit bounds the result to the most recent rows.
+	if one, err := s.RecentAudits(ctx, 1); err != nil || len(one) != 1 || one[0].Action != "vanity.takedown" {
+		t.Fatalf("limit 1: got %+v err %v", one, err)
+	}
+}
