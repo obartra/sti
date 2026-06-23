@@ -1,0 +1,13 @@
+# Vanity-name blocklist (doc 17 §63 "Reserved names + blocklist").
+#
+# One normalized term per line: lowercase [a-z0-9_], 3-30 chars. Blank lines and
+# lines starting with '#' are ignored. Terms are matched exactly against an
+# already-normalized name at registration (and by the periodic re-scan).
+#
+# This holds slurs and harassment terms. It is curated by the operator and
+# reviewed with counsel, and grown reactively via report-and-takedown. It is
+# DELIBERATELY left empty in source control and kept out of the design doc; the
+# operator populates it. Reserved operational/brand terms live in code
+# (reservedList in vanityname.go), not here.
+#
+# Add terms below this line.
