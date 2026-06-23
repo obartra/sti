@@ -57,6 +57,23 @@ describe("ContactLinks", () => {
     expect(screen.getByText(/Awaiting their link back/)).toBeInTheDocument();
   });
 
+  it("surfaces a failure to create a link instead of silently doing nothing", async () => {
+    const user = userEvent.setup();
+    render(
+      <ContactLinks
+        contacts={[]}
+        now={19_000}
+        onCreate={() => Promise.reject(new Error("offline"))}
+        onRevoke={noop}
+        onSetDuration={noop}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /Create a link/ }));
+    expect(
+      await screen.findByText(/Couldn’t create the link/),
+    ).toBeInTheDocument();
+  });
+
   it("changes a link's lifetime in place from its options menu", async () => {
     const user = userEvent.setup();
     const onSetDuration = vi.fn();
@@ -120,7 +137,7 @@ describe("ContactLinks", () => {
     const url = contactInviteUrl(aliasRecord(), notify, ref);
 
     await user.type(screen.getByPlaceholderText(/Paste the link/i), url);
-    await user.click(screen.getByRole("button", { name: "Finish linking" }));
+    await user.click(screen.getByRole("button", { name: "Link both ways" }));
 
     expect(onIngestReturn).toHaveBeenCalledTimes(1);
     expect(onIngestReturn.mock.calls[0]?.[0]).toMatchObject({ ref });
@@ -145,7 +162,7 @@ describe("ContactLinks", () => {
       screen.getByPlaceholderText(/Paste the link/i),
       plainInvite,
     );
-    await user.click(screen.getByRole("button", { name: "Finish linking" }));
+    await user.click(screen.getByRole("button", { name: "Link both ways" }));
 
     expect(onIngestReturn).not.toHaveBeenCalled();
     expect(
