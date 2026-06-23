@@ -42,6 +42,24 @@ describe("ShareSheet link wiring", () => {
     expect(screen.getByText("sti.care/a/a7f3k9q2")).toBeInTheDocument();
   });
 
+  it("closed: a viewport-fixed, non-interactive layer (won't park mid-page or block taps)", () => {
+    const { container } = render(<ShareSheet {...base} open={false} />);
+    const overlay = container.querySelector<HTMLElement>("[data-share-overlay]");
+    expect(overlay).not.toBeNull();
+    // `fixed` keeps it pinned to the viewport instead of anchoring to the
+    // document and showing through partway down a long page.
+    expect(overlay?.style.position).toBe("fixed");
+    expect(overlay?.style.pointerEvents).toBe("none");
+    expect(overlay).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("open: the overlay becomes interactive", () => {
+    const { container } = render(<ShareSheet {...base} open />);
+    const overlay = container.querySelector<HTMLElement>("[data-share-overlay]");
+    expect(overlay?.style.pointerEvents).toBe("auto");
+    expect(overlay).toHaveAttribute("aria-hidden", "false");
+  });
+
   it("hides the wallet row when showWallet is false (feature gated off)", () => {
     const wallet = "Add to Apple or Google Wallet";
     // Default shows it (the component's full form, kept for Storybook)...
