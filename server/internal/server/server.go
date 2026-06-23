@@ -153,6 +153,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("PUT /a/{id}", s.handleAliasPut)
 	s.mux.HandleFunc("GET /inbox/{id}", s.handleInboxGet)
 	s.mux.HandleFunc("PUT /inbox/{id}", s.handleInboxPut)
+	s.mux.HandleFunc("GET /u/{name}", s.handleVanityResolve)
 	s.mux.HandleFunc("GET /acct/{id}", s.handleAccountGet)
 	s.mux.HandleFunc("PUT /acct/{id}", s.handleAccountPut)
 	s.mux.HandleFunc("DELETE /acct/{id}", s.handleAccountDelete)
@@ -303,6 +304,33 @@ func (s *Server) fixedPayload(r *http.Request, id string, get storeReadFn, label
 		}
 	}
 	return decoyBytes(s.cfg.DecoySecret, id, contract.AliasPayloadSize)
+}
+
+// handleVanityResolve answers GET /u/{name} (doc 17, Findable): the name -> alias
+// id lookup, and nothing more. The viewer then runs the normal knock/grant flow
+// against the returned id. A registered name returns its opaque alias id; an
+// unregistered one (or any lookup error, masked) is a bare 404 with no body. The
+// directory holds no status/key/identity, so a hit reveals only that the name is
+// registered, which is the point of opting in (existence is intentionally NOT
+// uniform here, unlike GET /a). The name is lowercased before lookup, matching
+// the normalized form it is stored in.
+//
+// Registration (the gated PUT path) and rate limiting are deferred to the gated
+// Findable slice, so the directory is empty in production and every name 404s
+// until Findable ships.
+func (s *Server) handleVanityResolve(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	name := strings.ToLower(r.PathValue("name"))
+	aliasID, found, err := s.st.ResolveVanityName(r.Context(), name)
+	if err != nil {
+		s.metrics.Error(metrics.ErrStore)
+		s.log.Error("vanity resolve", "err", err)
+	}
+	if err != nil || !found {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	s.writeJSON(w, http.StatusOK, contract.VanityResolveResponse{AliasID: aliasID})
 }
 
 func (s *Server) handleAliasPut(w http.ResponseWriter, r *http.Request) {

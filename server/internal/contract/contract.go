@@ -144,6 +144,14 @@ type KnockReviewResponse struct {
 	Pending []PendingKnock `json:"pending,omitempty"`
 }
 
+// VanityResolveResponse is GET /u/{name}'s body when the name is registered: the
+// opaque alias id the viewer then knocks on (doc 17, Findable). The server
+// returns ONLY the id, never a status, key, or identity. A missing name is a bare
+// 404 (no body); existence is intentionally non-uniform here, unlike GET /a.
+type VanityResolveResponse struct {
+	AliasID string `json:"aliasId"`
+}
+
 // HeaderWriteToken authorizes a PUT to an alias. The owner holds it; viewers get
 // only the read id in the URL, so they can resolve an alias but never overwrite
 // it. The server stores hash(token) on first write and requires a match after.
