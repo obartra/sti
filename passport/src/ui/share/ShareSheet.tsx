@@ -299,8 +299,13 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
   return (
     <div
       aria-hidden={!open}
+      data-share-overlay=""
       style={{
-        position: desktop ? "fixed" : "absolute",
+        // Always viewport-fixed: the sheet is a modal layer, not page content.
+        // As `absolute` it anchored to the document (the shell isn't a positioned
+        // ancestor), so when closed the bottom sheet's translateY(100%) parked it
+        // ~100vh down a long page, showing through and overlapping content.
+        position: "fixed",
         inset: 0,
         zIndex: 30,
         pointerEvents: open ? "auto" : "none",
