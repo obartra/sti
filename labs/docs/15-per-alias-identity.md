@@ -185,13 +185,12 @@ established assumption in `accountBlob.ts`), so there is nothing to migrate.
 ## Honest limits (carried, stated)
 
 - **Avatar entropy is low.** The id-derived avatar draws from a few hundred combinations
-  (`avatars.ts`: 6 animals x 5 colors x 4 hats x 3 glasses), so two anonymous alias avatars can
-  collide by chance; the avatar is a weak signal.
+  (`avatars.ts`, doc 19: 12 hair x 7 mood x 5 tone), so two anonymous alias avatars can collide by
+  chance; the avatar is a weak signal.
 - **The pseudonym is the real separator, so it must be sized for it.** Anonymous unlinkability rests on
   `pseudonymFor` rarely colliding across the aliases one owner mints. For a heavy user minting dozens
   of links, keeping collisions well under ~1% wants on the order of 10^5 combinations (e.g. ~300
-  adjectives x ~300 nouns); smaller wordlists make the pseudonym a correlation hint. Avoid nouns that
-  clash with the avatar animal set.
+  adjectives x ~300 nouns); smaller wordlists make the pseudonym a correlation hint.
 - **Opt-in recognizability is linkable, by design.** Showing the same face to two contacts is a chosen
   linkable identity; the tool's duty is to make that an informed choice, not to prevent it.
 - **Behavioral correlation is out of scope:** per-alias faces do nothing about timing-based

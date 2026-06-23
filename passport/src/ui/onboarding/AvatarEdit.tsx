@@ -1,6 +1,7 @@
 import { Button } from "../../design/components/index.ts";
 import { AvatarBuilder } from "./AvatarBuilder.tsx";
 import type { AvatarConfig } from "../../lib/avatars.ts";
+import { AVATAR_CREDIT } from "../../lib/credits.ts";
 
 // Standalone avatar editor (account already claimed, reached from Privacy).
 // Faithful port of onboarding.jsx AvatarEdit: a title, the shared AvatarBuilder,
@@ -38,6 +39,24 @@ export function AvatarEdit({ config, onChange, onDone }: AvatarEditProps) {
         {COPY.title}
       </h1>
       <AvatarBuilder config={config} onChange={onChange} />
+      <p
+        style={{
+          fontSize: 11,
+          lineHeight: 1.5,
+          color: "var(--text-subtle)",
+          margin: 0,
+        }}
+      >
+        {AVATAR_CREDIT.title} by {AVATAR_CREDIT.creator},{" "}
+        <a
+          href={AVATAR_CREDIT.licenseUrl}
+          target="_blank"
+          rel="noreferrer"
+          style={{ color: "inherit", textDecoration: "underline" }}
+        >
+          {AVATAR_CREDIT.license}
+        </a>
+      </p>
       <Button variant="primary" size="lg" block onClick={onDone}>
         {COPY.done}
       </Button>

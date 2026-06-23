@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { avatarFor } from "./avatars.ts";
 
-// Procedural animal avatars, derived deterministically from a handle. These
-// samples surface the generator in the visual catalog so its output is pinned.
+// DiceBear "Dylan" avatars in the brand teal palette, derived deterministically
+// from a handle (doc 19). These samples surface the generator in the visual catalog
+// so its output is pinned.
 const HANDLES = ["robin", "kai", "sam", "alex", "jess", "morgan"];
 
 function AvatarGallery() {

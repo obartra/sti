@@ -66,7 +66,7 @@ describe("account lifecycle against a live blind store", () => {
 
   it("persists a profile change (avatar + sharing) across recovery", async () => {
     const created = await accounts.create("robin");
-    const avatar = { animal: 2, color: 1, hat: 1, glasses: 0, extra: 0 };
+    const avatar = { hair: 2, mood: 1, tone: 1 };
     await accounts.setProfile(created.master, {
       avatar,
       sharingMode: "public",
@@ -83,13 +83,7 @@ describe("account lifecycle against a live blind store", () => {
     const created = await accounts.create("robin");
     const store = createBackendStore(api);
 
-    const newAvatar: AvatarConfig = {
-      animal: 2,
-      color: 1,
-      hat: 1,
-      glasses: 0,
-      extra: 0,
-    };
+    const newAvatar: AvatarConfig = { hair: 2, mood: 1, tone: 1 };
 
     // Publish two live links the real way, so each carries its own per-alias face
     // derived from its id (anonymous, no override). NOW_DAY is safe because

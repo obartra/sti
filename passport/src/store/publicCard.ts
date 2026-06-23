@@ -102,11 +102,8 @@ export function parsePublicCard(bytes: Bytes): ResolvedView {
   if (o.route !== null && !isLabel(o.route)) {
     throw new Error("public card: invalid route");
   }
-  // The avatar is optional. When present it must be a well-formed config; a
-  // malformed one fails closed like any other bad field.
-  if (o.avatar !== undefined && !isAvatarConfig(o.avatar)) {
-    throw new Error("public card: invalid avatar");
-  }
+  // The avatar is optional and cosmetic. A missing, old-shape, or corrupt avatar
+  // is not an error: the card just falls back to the id-derived stand-in (doc 19).
   return {
     state: o.state,
     labels: o.labels,
@@ -114,7 +111,7 @@ export function parsePublicCard(bytes: Bytes): ResolvedView {
     identity: { handle: o.handle },
     // Reconstruct the rendered src from OUR template (never from the wire), so a
     // card can't smuggle in arbitrary SVG. Symmetric with deriveOwnerCard.
-    ...(o.avatar !== undefined
+    ...(isAvatarConfig(o.avatar)
       ? { avatar: o.avatar, avatarSrc: avatarSrc(o.avatar) }
       : {}),
   };

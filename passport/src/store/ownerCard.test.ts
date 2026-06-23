@@ -177,7 +177,7 @@ describe("resolveCardIdentity (doc 15 per-alias face)", () => {
   });
 
   it("with both overrides: shows the chosen handle and avatar", () => {
-    const avatar = { animal: 1, color: 2, hat: 0, glasses: 1, extra: 0 };
+    const avatar = { hair: 1, mood: 2, tone: 1 };
     expect(
       resolveCardIdentity(aliasRecord({ handle: "meow", avatar })),
     ).toEqual({ handle: "meow", avatar });
@@ -196,7 +196,7 @@ describe("deriveAliasCard (badge + per-alias face)", () => {
   });
 
   it("override alias: carries the chosen handle and avatar (with rendered src)", () => {
-    const avatar = { animal: 1, color: 2, hat: 0, glasses: 1, extra: 0 };
+    const avatar = { hair: 1, mood: 2, tone: 1 };
     const r = aliasRecord({ handle: "meow", avatar });
     expect(deriveAliasCard(state(), r, NOW_DAY)).toEqual({
       state: "blue",

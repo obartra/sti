@@ -29,7 +29,7 @@ export const COPY = {
     "A display name you can choose to show on a link. Not your address, and not unique across the app.",
   avatarLabel: "Your face",
   avatarHint:
-    "No photos on sti.care. Pick an animal and dress it up. This is the look you can choose to show.",
+    "No photos on sti.care. Pick a hair, a mood, and a tone. This is the look you can choose to show.",
   defaultSection: "What a link shows",
   anonNote:
     "By default a link shows an anonymous face and an opaque address, both derived from the link itself, never the identity above. Two links can’t be tied together, and you choose per link whether to reveal yourself.",
