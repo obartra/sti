@@ -79,6 +79,48 @@ describe("avatar rendering (doc 19 DiceBear Dylan)", () => {
     expect(avatarSrc(7)).toBe(avatarSrc(7));
   });
 
+  // The committed visual baselines (passport/visual-baselines/) are pixel snapshots
+  // of these same SVGs. avatarSrc memoizes, so the determinism check above can pass
+  // from the cache even if generation were not deterministic; this pins the GENERATED
+  // markup itself, in a fast unit test rather than only in the Docker visual gate.
+  //
+  // If a digest below changes, the avatar output moved (a seed or option change, or a
+  // @dicebear version bump): regenerate the baselines (the screenshot:update label) and
+  // update the digests here in the same PR. A digest that differs run to run (a CI
+  // failure that does not reproduce the same value locally) means generation itself went
+  // non-deterministic, which is the regression that would make the baselines flake.
+  it("pins the generated SVG so avatar output cannot drift unnoticed", () => {
+    // FNV-1a over the markup. Pure string generation has no rendering dependency, so
+    // the digest is identical on macOS dev and Linux CI (unlike the pixel baselines).
+    const digest = (s: string) => {
+      let h = 2166136261 >>> 0;
+      for (let i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 16777619) >>> 0;
+      }
+      return (h >>> 0).toString(16).padStart(8, "0");
+    };
+    // A spread across the surface: the default, a bald head, a bearded face, and the
+    // all-dark tone (which also flips the auto-contrast background).
+    const samples: Record<string, AvatarConfig> = {
+      default: DEFAULT_AVATAR,
+      bald: { hair: 12, mood: 3, skin: 3, hairColor: 5, beard: 0 },
+      bearded: { hair: 4, mood: 1, skin: 2, hairColor: 5, beard: 1 },
+      darkest: { hair: 0, mood: 0, skin: 5, hairColor: 5, beard: 0 },
+    };
+    const digests = Object.fromEntries(
+      Object.entries(samples).map(([k, c]) => [k, digest(svgOf(avatarSrc(c)))]),
+    );
+    expect(digests).toMatchInlineSnapshot(`
+      {
+        "bald": "45100832",
+        "bearded": "6ce9856c",
+        "darkest": "7ea11dad",
+        "default": "0a4314ff",
+      }
+    `);
+  });
+
   it("distinct ids render distinct avatars", () => {
     const srcs = new Set(ids.map(avatarFor));
     // 1000 ids over a 13 x 7 x 6 x 6 x 2 (=6552) config space: by the birthday
