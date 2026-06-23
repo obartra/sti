@@ -85,6 +85,18 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("add knock.pub_key: %w", err)
 		}
 	}
+	// alias.expires_at: server-enforced link expiry (doc 16). Older databases have
+	// an alias table without it; add it in place (NULL = no expiry).
+	hasExpiry, err := hasColumn(ctx, db, "alias", "expires_at")
+	if err != nil {
+		return err
+	}
+	if !hasExpiry {
+		if _, err := db.ExecContext(ctx,
+			`ALTER TABLE alias ADD COLUMN expires_at INTEGER`); err != nil {
+			return fmt.Errorf("add alias.expires_at: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -180,12 +192,66 @@ func (s *Store) getFixed(ctx context.Context, table, id string) (ciphertext []by
 }
 
 // WriteAlias / GetAlias: the public card store (the hot existence-uniform read).
-func (s *Store) WriteAlias(ctx context.Context, id string, ciphertext []byte, writeAuth string, now int64) (authorized bool, err error) {
-	return s.writeFixed(ctx, aliasTable, id, ciphertext, writeAuth, now)
+// Aliases carry a server-enforced expiry (doc 16), so this is its own path rather
+// than the shared writeFixed/getFixed (which the notify inbox still uses).
+//
+// `setExpiry` distinguishes "the caller stated an expiry" (a fresh publish or a
+// duration change) from "the caller left it alone" (a badge-driven republish): on
+// an overwrite, expires_at is only touched when setExpiry is true, so republishing
+// a card never resets a link's lifetime. On a first insert the stated expiry (or
+// NULL when unstated / `expiresAt` invalid) is recorded.
+func (s *Store) WriteAlias(ctx context.Context, id string, ciphertext []byte, writeAuth string, now int64, expiresAt sql.NullInt64, setExpiry bool) (authorized bool, err error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+
+	var existing string
+	switch err := tx.QueryRowContext(ctx, "SELECT write_auth FROM alias WHERE id = ?", id).Scan(&existing); {
+	case errors.Is(err, sql.ErrNoRows):
+		if _, err := tx.ExecContext(ctx,
+			"INSERT INTO alias (id, ciphertext, write_auth, updated_at, expires_at) VALUES (?, ?, ?, ?, ?)",
+			id, ciphertext, writeAuth, now, expiresAt); err != nil {
+			return false, err
+		}
+	case err != nil:
+		return false, err
+	default:
+		if subtle.ConstantTimeCompare([]byte(existing), []byte(writeAuth)) != 1 {
+			return false, nil
+		}
+		if setExpiry {
+			if _, err := tx.ExecContext(ctx,
+				"UPDATE alias SET ciphertext = ?, updated_at = ?, expires_at = ? WHERE id = ?",
+				ciphertext, now, expiresAt, id); err != nil {
+				return false, err
+			}
+		} else if _, err := tx.ExecContext(ctx,
+			"UPDATE alias SET ciphertext = ?, updated_at = ? WHERE id = ?",
+			ciphertext, now, id); err != nil {
+			return false, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
-func (s *Store) GetAlias(ctx context.Context, id string) (ciphertext []byte, found bool, err error) {
-	return s.getFixed(ctx, aliasTable, id)
+// GetAlias returns the stored payload, its expiry (Invalid = no expiry), and
+// whether it exists. Callers MUST NOT turn found=false (or an expired link) into a
+// distinguishable response; the alias read handler returns a decoy for both.
+func (s *Store) GetAlias(ctx context.Context, id string) (ciphertext []byte, expiresAt sql.NullInt64, found bool, err error) {
+	err = s.db.QueryRowContext(ctx, "SELECT ciphertext, expires_at FROM alias WHERE id = ?", id).
+		Scan(&ciphertext, &expiresAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, sql.NullInt64{}, false, nil
+	}
+	if err != nil {
+		return nil, sql.NullInt64{}, false, err
+	}
+	return ciphertext, expiresAt, true, nil
 }
 
 // WriteInbox / GetInbox: the per-device notify inbox (doc 13). Same shape and

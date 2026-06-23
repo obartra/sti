@@ -8,6 +8,7 @@ import (
 
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"io"
@@ -278,7 +279,25 @@ type storeReadFn func(ctx context.Context, id string) ([]byte, bool, error)
 type storeWriteFn func(ctx context.Context, id string, ct []byte, authHash string, now int64) (bool, error)
 
 func (s *Server) handleAliasGet(w http.ResponseWriter, r *http.Request) {
-	s.handleFixedGet(w, r, s.st.GetAlias, "alias get")
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write(s.aliasPayload(r, r.PathValue("id")))
+}
+
+// aliasPayload mirrors fixedPayload but enforces the link's expiry (doc 16): an
+// expired alias falls through to the decoy, the SAME response a missing id gets,
+// so an expired link stops resolving on time without leaking that it ever existed.
+func (s *Server) aliasPayload(r *http.Request, id string) []byte {
+	if contract.ValidID(id) {
+		ct, expiresAt, found, err := s.st.GetAlias(r.Context(), id)
+		if err != nil {
+			s.metrics.Error(metrics.ErrStore)
+			s.log.Error("alias get", "err", err)
+		} else if found && !(expiresAt.Valid && s.now() >= expiresAt.Int64) {
+			return ct
+		}
+	}
+	return decoyBytes(s.cfg.DecoySecret, id, contract.AliasPayloadSize)
 }
 
 func (s *Server) handleInboxGet(w http.ResponseWriter, r *http.Request) {
@@ -334,7 +353,32 @@ func (s *Server) handleVanityResolve(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAliasPut(w http.ResponseWriter, r *http.Request) {
-	s.handleFixedPut(w, r, s.st.WriteAlias)
+	expiresAt, setExpiry, ok := parseExpiresAt(r.Header.Get(contract.HeaderExpiresAt))
+	if !ok {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed expiry")
+		return
+	}
+	s.handleFixedPut(w, r, func(ctx context.Context, id string, ct []byte, authHash string, now int64) (bool, error) {
+		return s.st.WriteAlias(ctx, id, ct, authHash, now, expiresAt, setExpiry)
+	})
+}
+
+// parseExpiresAt reads the X-Expires-At header (doc 16): absent leaves the stored
+// expiry untouched (setExpiry=false); "none" clears it; a non-negative integer is
+// an epoch-ms instant. Anything else is rejected (ok=false).
+func parseExpiresAt(v string) (expiresAt sql.NullInt64, setExpiry bool, ok bool) {
+	switch {
+	case v == "":
+		return sql.NullInt64{}, false, true
+	case v == contract.ExpiresAtNone:
+		return sql.NullInt64{}, true, true
+	default:
+		ms, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || ms < 0 {
+			return sql.NullInt64{}, false, false
+		}
+		return sql.NullInt64{Int64: ms, Valid: true}, true, true
+	}
 }
 
 func (s *Server) handleInboxPut(w http.ResponseWriter, r *http.Request) {

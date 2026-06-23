@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"path/filepath"
 	"testing"
 )
@@ -27,7 +28,7 @@ func TestStatsCountsOpaqueRows(t *testing.T) {
 	}
 
 	ct := bytes.Repeat([]byte{0x01}, 4096)
-	if _, err := st.WriteAlias(ctx, "alias-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ct, "h", 1); err != nil {
+	if _, err := st.WriteAlias(ctx, "alias-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ct, "h", 1, sql.NullInt64{}, false); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := st.PutAccount(ctx, "acct-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ct, 1); err != nil {

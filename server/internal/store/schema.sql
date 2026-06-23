@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS alias (
     id          TEXT PRIMARY KEY,   -- opaque alias id (the only id the server sees)
     ciphertext  BLOB NOT NULL,      -- padded to contract.AliasPayloadSize before storage
     write_auth  TEXT NOT NULL,      -- hash(write token); gates overwrites by non-owners
-    updated_at  INTEGER NOT NULL
+    updated_at  INTEGER NOT NULL,
+    expires_at  INTEGER             -- epoch ms the link stops resolving; NULL = no expiry (doc 16)
 ) WITHOUT ROWID;
 
 -- The notify inbox: alias-shaped per-device storage for one fixed-size, encrypted,
