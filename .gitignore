@@ -11,3 +11,6 @@ dist/
 
 # Internal-only generated reports (deploy/build-behaviors.mjs): never published.
 reports/
+
+# Local SQLite dev database (created when the Go server runs locally).
+server/sti.db*
