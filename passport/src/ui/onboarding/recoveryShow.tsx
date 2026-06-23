@@ -207,6 +207,7 @@ function SaveNotes() {
 export function ShowPhase({
   phrase,
   revealed,
+  canSave,
   copied,
   onReveal,
   onHide,
@@ -216,6 +217,8 @@ export function ShowPhase({
 }: {
   phrase: string;
   revealed: boolean;
+  /** Revealed at least once, so the owner may continue even if now hidden. */
+  canSave: boolean;
   copied: boolean;
   onReveal: () => void;
   onHide: () => void;
@@ -267,7 +270,7 @@ export function ShowPhase({
         variant="primary"
         size="lg"
         block
-        disabled={!revealed}
+        disabled={!canSave}
         onClick={onSaved}
       >
         {COPY.savedCta} <ArrowRight size={18} />

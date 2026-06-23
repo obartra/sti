@@ -14,18 +14,55 @@ export interface RecoveryProps {
   onContinue?: (() => void) | undefined;
 }
 
+// The synchronous fallback for contexts where navigator.clipboard is absent or
+// blocked (older Safari, some in-app webviews): a hidden textarea + execCommand.
+function execCommandCopy(text: string): boolean {
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    // execCommand is deprecated but remains the only sync copy fallback, and runs
+    // exactly where the async Clipboard API isn't available, so keep it.
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+// Copy text to the clipboard via the async API, falling back to execCommandCopy.
+// Returns whether a copy path succeeded.
+function copyToClipboard(text: string): boolean {
+  try {
+    // Typed present by the DOM lib but actually absent in some webviews, so treat
+    // it as optional and fall through when it isn't there.
+    const clip: Clipboard | undefined =
+      typeof navigator === "undefined" ? undefined : navigator.clipboard;
+    if (clip) {
+      void clip.writeText(text).catch(() => undefined);
+      return true;
+    }
+  } catch {
+    // fall through to the textarea path
+  }
+  return execCommandCopy(text);
+}
+
 export function Recovery({ phrase, onBack, onContinue }: RecoveryProps) {
   const [revealed, setRevealed] = useState(false);
+  // Sticky: once revealed, the owner can continue even after hiding again. Hiding
+  // is just a visual cover, not a re-lock of the "I've saved it" confirm.
+  const [everRevealed, setEverRevealed] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const copyPhrase = () => {
-    // Clipboard is absent in some environments (jsdom, insecure contexts):
-    // accessing it throws synchronously there. Copy is best-effort, non-fatal.
-    try {
-      void navigator.clipboard.writeText(phrase).catch(() => undefined);
-    } catch {
-      // no clipboard available
-    }
+    if (!copyToClipboard(phrase)) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
   };
@@ -34,8 +71,12 @@ export function Recovery({ phrase, onBack, onContinue }: RecoveryProps) {
     <ShowPhase
       phrase={phrase}
       revealed={revealed}
+      canSave={everRevealed}
       copied={copied}
-      onReveal={() => setRevealed(true)}
+      onReveal={() => {
+        setRevealed(true);
+        setEverRevealed(true);
+      }}
       onHide={() => setRevealed(false)}
       onCopy={copyPhrase}
       onBack={onBack}
