@@ -8,38 +8,52 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const cfg: AvatarConfig = { hair: 0, mood: 0, tone: 0 };
+const cfg: AvatarConfig = { hair: 0, mood: 0, skin: 0, hairColor: 0, beard: 0 };
 
 describe("AvatarBuilder", () => {
   it("picking a hair swatch reports just that field changed", async () => {
     const onChange = vi.fn();
     render(<AvatarBuilder config={cfg} onChange={onChange} />);
-    await userEvent.click(screen.getByRole("button", { name: "Spiky" }));
-    expect(onChange).toHaveBeenCalledWith({ hair: 4, mood: 0, tone: 0 });
+    await userEvent.click(screen.getByRole("button", { name: "Hair: Spiky" }));
+    expect(onChange).toHaveBeenCalledWith({ ...cfg, hair: 4 });
   });
 
-  it("picking a mood and a tone changes only their fields", async () => {
+  it("skin and hair color are independent fields (disambiguated by row)", async () => {
     const onChange = vi.fn();
     render(<AvatarBuilder config={cfg} onChange={onChange} />);
-    await userEvent.click(screen.getByRole("button", { name: "Angry" }));
-    expect(onChange).toHaveBeenCalledWith({ hair: 0, mood: 6, tone: 0 });
-    await userEvent.click(screen.getByRole("button", { name: "Ink" }));
-    expect(onChange).toHaveBeenCalledWith({ hair: 0, mood: 0, tone: 3 });
+    await userEvent.click(screen.getByRole("button", { name: "Skin: Teal" }));
+    expect(onChange).toHaveBeenCalledWith({ ...cfg, skin: 3 });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Hair color: Ink" }),
+    );
+    expect(onChange).toHaveBeenCalledWith({ ...cfg, hairColor: 5 });
+  });
+
+  it("offers a Bald hair option and a beard toggle", async () => {
+    const onChange = vi.fn();
+    render(<AvatarBuilder config={cfg} onChange={onChange} />);
+    await userEvent.click(screen.getByRole("button", { name: "Hair: Bald" }));
+    expect(onChange).toHaveBeenCalledWith({ ...cfg, hair: 12 });
+    await userEvent.click(screen.getByRole("button", { name: "Beard: Beard" }));
+    expect(onChange).toHaveBeenCalledWith({ ...cfg, beard: 1 });
   });
 
   it("marks the selected option in each row as pressed", () => {
     render(
-      <AvatarBuilder config={{ hair: 4, mood: 6, tone: 3 }} onChange={vi.fn()} />,
+      <AvatarBuilder
+        config={{ hair: 4, mood: 6, skin: 3, hairColor: 5, beard: 1 }}
+        onChange={vi.fn()}
+      />,
     );
-    expect(screen.getByRole("button", { name: "Spiky" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Hair: Spiky" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
-    expect(screen.getByRole("button", { name: "Angry" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Skin: Teal" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
-    expect(screen.getByRole("button", { name: "Plain" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Hair: Plain" })).toHaveAttribute(
       "aria-pressed",
       "false",
     );

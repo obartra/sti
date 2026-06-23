@@ -9,24 +9,22 @@ const partLabel: CSSProperties = {
   letterSpacing: "0.05em",
   textTransform: "uppercase",
   color: "var(--text-subtle)",
-  width: 56,
-  flex: "none",
-  paddingTop: 12,
+  marginBottom: 8,
 };
 
-const swatchRow: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
+// Fixed columns so the swatches line up in tidy rows instead of ragged wrap.
+const swatchGrid: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(6, 1fr)",
   gap: 8,
-  alignItems: "center",
 };
 
 const swatch = (active: boolean): CSSProperties => ({
   appearance: "none",
   cursor: "pointer",
   padding: 0,
-  width: 44,
-  height: 44,
+  width: "100%",
+  aspectRatio: "1 / 1",
   borderRadius: "50%",
   overflow: "hidden",
   border: "none",
@@ -47,9 +45,9 @@ export interface AvatarBuilderProps {
   onChange: (next: AvatarConfig) => void;
 }
 
-// Avatar builder: pick a hair, a mood, and a tone. Each option is a live mini
-// preview of the avatar with that one part changed, and "Surprise me" rolls a
-// fresh random face.
+// Avatar builder: pick a hair, mood, skin color, hair color, and beard. Each
+// option is a live mini preview of the avatar with that one part changed, and
+// "Surprise me" rolls a fresh random face.
 export function AvatarBuilder({ config, onChange }: AvatarBuilderProps) {
   const P = avatarParts;
   const set = (key: keyof AvatarConfig, idx: number) =>
@@ -62,14 +60,16 @@ export function AvatarBuilder({ config, onChange }: AvatarBuilderProps) {
     key: keyof AvatarConfig,
     options: readonly string[],
   ) => (
-    <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-      <span style={partLabel}>{label}</span>
-      <div style={swatchRow}>
+    <div>
+      <div style={partLabel}>{label}</div>
+      <div style={swatchGrid}>
         {options.map((name, i) => (
           <button
-            key={name}
+            // Color rows share option names (skin and hair use one palette), so the
+            // row label disambiguates for accessibility and for tests.
+            key={`${key}-${i}`}
             type="button"
-            aria-label={name}
+            aria-label={`${label}: ${name}`}
             aria-pressed={config[key] === i}
             style={swatch(config[key] === i)}
             onClick={() => set(key, i)}
@@ -88,7 +88,7 @@ export function AvatarBuilder({ config, onChange }: AvatarBuilderProps) {
   return (
     <Card
       variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 14 }}
+      style={{ display: "flex", flexDirection: "column", gap: 16 }}
     >
       <div
         style={{
@@ -114,7 +114,9 @@ export function AvatarBuilder({ config, onChange }: AvatarBuilderProps) {
       </div>
       {row("Hair", "hair", P.hairs)}
       {row("Mood", "mood", P.moods)}
-      {row("Tone", "tone", P.tones)}
+      {row("Skin", "skin", P.skins)}
+      {row("Hair color", "hairColor", P.hairColors)}
+      {row("Beard", "beard", P.beards)}
     </Card>
   );
 }

@@ -61,26 +61,31 @@ Dylan's real options are `hair` (12 styles: plain, wavy, shortCurls, parting, sp
 longCurls, buns, bangs, fluffy, flatTop, shaggy), `mood` (7: happy, superHappy, hopeful, neutral,
 confused, sad, angry), and the `hairColor` / `skinColor` / `backgroundColor` palettes.
 
-To stay on brand the color is constrained to **the existing theme swatches**, not free choice. The
-source set is drawn straight from `colors.css`:
+To stay on brand the color is constrained to **one shared palette**, not free choice. The palette is
+drawn straight from `colors.css` and sorted light to dark:
 
-- three teals: `--teal-700` (#1F6E80), `--teal-500` (#2F9BB3), `--teal-300` (#8FCAD6)
-- one near-black: `--ink-900` (#1B1B2F) (the brand never uses pure black)
-- white: #FFFFFF
+- white #FFFFFF, `--teal-100` (#DDF0F4), `--teal-300` (#8FCAD6), `--teal-500` (#2F9BB3),
+  `--teal-700` (#1F6E80), `--ink-900` (#1B1B2F) (the brand near-black)
 
-From those swatches we define 5 named **tones**, each a coordinated `skinColor` / `hairColor` /
-`backgroundColor` triple, so a single pick always lands a coherent, on-brand face and no combination
-can produce mud. Every Dylan slot that supports color is filled from this set; the raw DiceBear
-palettes are never exposed. The builder offers three choices plus a die:
+Skin and hair color are chosen **separately** from this same palette (more variety than a single fixed
+tone, but every value is still on brand, so no combination can produce mud). The background is a fixed
+light tint (`--teal-50`), not a user choice, so the face always reads. The raw DiceBear palettes are
+never exposed. The builder offers, each as live mini-avatar swatches in a fixed-column grid:
 
-- **Hair** (12 chips), rendered as mini-avatar swatches rather than text.
-- **Mood** (7 chips). Picking a mood is the personality knob the old "hat / glasses" rows never were.
-- **Tone** (5 swatches built from the theme colors). The only color control, bounded to the brand set.
+- **Hair** (12 Dylan styles + **Bald**). Dylan has no no-hair style, so Bald reuses the flattest style
+  with the hair color forced to the skin, so the hair reads as a bare head.
+- **Mood** (7). Picking a mood is the personality knob the old "hat / glasses" rows never were.
+- **Skin** and **Hair color** (6 swatches each, from the shared palette).
+- **Beard** (clean-shaven or Dylan's one beard style).
 - **Surprise me**, a shuffle button (the current `randomAvatar` has no UI today).
 
-`AvatarConfig` becomes `{ hair: number, mood: number, tone: number }` (small in-range indices, same
-fail-closed validation discipline as `isAvatarConfig`). The tone triples are the single source of
-truth; if the theme tokens change, the tones change with them.
+`AvatarConfig` becomes `{ hair, mood, skin, hairColor, beard }` (small in-range indices, same
+fail-closed validation discipline as `isAvatarConfig`). The palette is the single source of truth; if
+the theme tokens change, the avatars change with them.
+
+The default link preview ("what a link shows") deliberately keeps showing the anonymous, id-derived
+face, not the built avatar: links are anonymous by default and the avatar appears only when the owner
+reveals a link (doc 15 / 16). The copy is sharpened to say so rather than changing that behavior.
 
 ## Migration off the old config
 
@@ -107,8 +112,11 @@ be skipped.
   brief asked for piercings; they do not exist in this style. The punk read comes from spiky hair +
   monotone + mood instead. If accessories become a hard requirement later, the only DiceBear style with
   them and a comparable line look is "lorelei"; switching is another pass at this same seam.
-- **Free color choice.** Color is limited to tones built from the theme swatches rather than Dylan's
-  full palettes. This is deliberate; the tones keep every avatar on brand.
+- **Free color choice.** Skin and hair color are chosen separately but only from the brand palette,
+  not Dylan's full palettes, and the background is fixed. This is deliberate; it keeps every avatar on
+  brand.
+- **A real bald style.** Dylan has none, so Bald is approximated by matching the hair color to the
+  skin. It reads as a bare head but is not a true no-hair render.
 
 ## Testing
 
@@ -136,3 +144,9 @@ be skipped.
    mode, folded back into the session like the other owner mutations), thread it to
    the route so "Done" persists, and add an "Edit your avatar" entry in the Privacy
    screen with a live preview of the current avatar.
+6. More variety (this slice). Replace the single coordinated `tone` with separate
+   skin and hair color picks from one light-to-dark palette; add a beard toggle and
+   a Bald hair option; lay the builder swatches out in a fixed-column grid; and
+   sharpen the default-link-preview copy (keeping the anonymous-by-default face).
+   `AvatarConfig` becomes `{ hair, mood, skin, hairColor, beard }`; old-shape blobs
+   (including the interim `{ hair, mood, tone }`) coerce to the default on read.

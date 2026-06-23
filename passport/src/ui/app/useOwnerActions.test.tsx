@@ -54,7 +54,13 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 
 describe("useOwnerActions.onSetAvatar", () => {
   it("persists via setProfile keeping the current sharing mode, then folds the session", async () => {
-    const next: AvatarConfig = { hair: 4, mood: 1, tone: 3 };
+    const next: AvatarConfig = {
+      hair: 4,
+      mood: 1,
+      skin: 2,
+      hairColor: 5,
+      beard: 1,
+    };
     const updated: OwnerSession = {
       ...session,
       blob: { ...session.blob, avatar: next },
@@ -88,7 +94,13 @@ describe("useOwnerActions.onSetAvatar", () => {
     );
 
     await act(async () => {
-      result.current.onSetAvatar({ hair: 1, mood: 1, tone: 1 });
+      result.current.onSetAvatar({
+        hair: 1,
+        mood: 1,
+        skin: 1,
+        hairColor: 1,
+        beard: 0,
+      });
       await flush();
     });
 

@@ -67,16 +67,23 @@ describe("avatar rendering (doc 19 DiceBear Dylan)", () => {
     for (const id of ids.slice(0, 20)) {
       expect(avatarFor(id)).toBe(avatarFor(id));
     }
-    const cfg: AvatarConfig = { hair: 4, mood: 1, tone: 3 };
+    const cfg: AvatarConfig = {
+      hair: 4,
+      mood: 1,
+      skin: 2,
+      hairColor: 5,
+      beard: 1,
+    };
     expect(avatarSrc(cfg)).toBe(avatarSrc(cfg));
     expect(avatarSrc(7)).toBe(avatarSrc(7));
   });
 
   it("distinct ids render distinct avatars", () => {
     const srcs = new Set(ids.map(avatarFor));
-    // 1000 ids over a 12 x 7 x 5 = 420 config space: by the birthday bound a
-    // well-mixed mapping covers most of it, so demand broad spread.
-    expect(srcs.size).toBeGreaterThan(330);
+    // 1000 ids over a 13 x 7 x 6 x 6 x 2 (=6552) config space: by the birthday
+    // bound ~900 stay distinct (mean), so a conservative floor is robust to run
+    // variance while still proving broad spread.
+    expect(srcs.size).toBeGreaterThan(820);
   });
 
   it("emits a data:image/svg+xml URI", () => {
@@ -84,25 +91,32 @@ describe("avatar rendering (doc 19 DiceBear Dylan)", () => {
     expect(svgOf(avatarSrc(DEFAULT_AVATAR)).startsWith("<svg")).toBe(true);
   });
 
-  it("uses only on-brand colors for every hair, mood, and tone", () => {
-    for (let tone = 0; tone < avatarParts.tones.length; tone++) {
-      for (let hair = 0; hair < avatarParts.hairs.length; hair++) {
-        for (let mood = 0; mood < avatarParts.moods.length; mood++) {
-          const svg = svgOf(avatarSrc({ hair, mood, tone }));
-          const hexes = svg.match(/#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}/g) ?? [];
-          for (const h of hexes) {
-            expect(ALLOWED_HEX.has(h.slice(1).toLowerCase())).toBe(true);
-          }
-          const named =
-            svg.match(/(?:fill|stroke)="([a-z]+)"/g)?.map((m) =>
-              m.replace(/.*"([a-z]+)"/, "$1"),
-            ) ?? [];
-          for (const n of named) {
-            expect(ALLOWED_NAMED.has(n)).toBe(true);
-          }
-        }
+  it("uses only on-brand colors across every option", () => {
+    const check = (cfg: AvatarConfig) => {
+      const svg = svgOf(avatarSrc(cfg));
+      const hexes = svg.match(/#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}/g) ?? [];
+      for (const h of hexes) {
+        expect(ALLOWED_HEX.has(h.slice(1).toLowerCase())).toBe(true);
       }
-    }
+      const named =
+        svg
+          .match(/(?:fill|stroke)="([a-z]+)"/g)
+          ?.map((m) => m.replace(/.*"([a-z]+)"/, "$1")) ?? [];
+      for (const n of named) {
+        expect(ALLOWED_NAMED.has(n)).toBe(true);
+      }
+    };
+    // Every skin x hair-color pairing (the color surface), then every hair style
+    // (incl. Bald), mood, and beard with default colors.
+    const base = DEFAULT_AVATAR;
+    for (let skin = 0; skin < avatarParts.skins.length; skin++)
+      for (let hairColor = 0; hairColor < avatarParts.hairColors.length; hairColor++)
+        check({ ...base, skin, hairColor });
+    for (let hair = 0; hair < avatarParts.hairs.length; hair++)
+      for (let beard = 0; beard < avatarParts.beards.length; beard++)
+        check({ ...base, hair, beard });
+    for (let mood = 0; mood < avatarParts.moods.length; mood++)
+      check({ ...base, mood });
   });
 
   it("never touches the network (generation is fully on-device)", () => {
@@ -111,7 +125,7 @@ describe("avatar rendering (doc 19 DiceBear Dylan)", () => {
         ? vi.spyOn(globalThis, "fetch")
         : null;
     avatarFor("robin");
-    avatarSrc({ hair: 2, mood: 3, tone: 1 });
+    avatarSrc({ hair: 2, mood: 3, skin: 1, hairColor: 4, beard: 0 });
     avatarSrc(99);
     if (fetchSpy) {
       expect(fetchSpy).not.toHaveBeenCalled();
@@ -123,15 +137,22 @@ describe("avatar rendering (doc 19 DiceBear Dylan)", () => {
 describe("avatar config validation and migration (doc 19)", () => {
   it("accepts a valid in-range config", () => {
     expect(isAvatarConfig(DEFAULT_AVATAR)).toBe(true);
-    expect(isAvatarConfig({ hair: 11, mood: 6, tone: 4 })).toBe(true);
+    // hair 12 is Bald (the last index), skin/hairColor 5 is Ink, beard 1.
+    expect(
+      isAvatarConfig({ hair: 12, mood: 6, skin: 5, hairColor: 5, beard: 1 }),
+    ).toBe(true);
   });
 
   it("rejects out-of-range, partial, wrong-type, and old-shape configs", () => {
-    expect(isAvatarConfig({ hair: 12, mood: 0, tone: 0 })).toBe(false);
-    expect(isAvatarConfig({ hair: -1, mood: 0, tone: 0 })).toBe(false);
-    expect(isAvatarConfig({ hair: 1.5, mood: 0, tone: 0 })).toBe(false);
-    expect(isAvatarConfig({ hair: 0, mood: 0 })).toBe(false);
-    // The pre-doc-19 shape (animal/color/hat/glasses/extra).
+    const ok = { hair: 0, mood: 0, skin: 0, hairColor: 0, beard: 0 };
+    expect(isAvatarConfig({ ...ok, hair: 13 })).toBe(false);
+    expect(isAvatarConfig({ ...ok, skin: 6 })).toBe(false);
+    expect(isAvatarConfig({ ...ok, beard: 2 })).toBe(false);
+    expect(isAvatarConfig({ ...ok, hairColor: -1 })).toBe(false);
+    expect(isAvatarConfig({ ...ok, hair: 1.5 })).toBe(false);
+    // Missing the new color/beard fields (the interim { hair, mood, tone } shape).
+    expect(isAvatarConfig({ hair: 0, mood: 0, tone: 0 })).toBe(false);
+    // The original animal/color/hat/glasses/extra shape.
     expect(
       isAvatarConfig({ animal: 2, color: 1, hat: 0, glasses: 0, extra: 0 }),
     ).toBe(false);
@@ -140,12 +161,19 @@ describe("avatar config validation and migration (doc 19)", () => {
   });
 
   it("migrates anything invalid to the default, valid configs pass through", () => {
-    const valid: AvatarConfig = { hair: 3, mood: 2, tone: 1 };
+    const valid: AvatarConfig = {
+      hair: 3,
+      mood: 2,
+      skin: 1,
+      hairColor: 4,
+      beard: 0,
+    };
     expect(migrateAvatar(valid)).toBe(valid);
-    // Old-shape, partial, and corrupt all fall back to the default.
+    // Original shape, the interim tone shape, partial, and corrupt all fall back.
     expect(
       migrateAvatar({ animal: 2, color: 1, hat: 0, glasses: 0, extra: 0 }),
     ).toEqual(DEFAULT_AVATAR);
+    expect(migrateAvatar({ hair: 0, mood: 0, tone: 0 })).toEqual(DEFAULT_AVATAR);
     expect(migrateAvatar({ hair: 99 })).toEqual(DEFAULT_AVATAR);
     expect(migrateAvatar(undefined)).toEqual(DEFAULT_AVATAR);
     expect(migrateAvatar("garbage")).toEqual(DEFAULT_AVATAR);

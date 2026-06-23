@@ -319,7 +319,7 @@ describe("account manager", () => {
   it("setProfile persists avatar + sharing and guards invalid input", async () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
-    const avatar = { hair: 1, mood: 2, tone: 1 };
+    const avatar = { hair: 1, mood: 2, skin: 2, hairColor: 4, beard: 0 };
     const next = await accounts.setProfile(created.master, {
       avatar,
       sharingMode: "public",

@@ -1,6 +1,6 @@
 /* Avatars: the DiceBear "Dylan" style, generated locally and recolored to the
-   brand teal palette (doc 19). Flat bold forms, a hair style and a mood, in one
-   on-brand hue family.
+   brand teal palette (doc 19). Flat bold forms: a hair style, skin and hair colors,
+   a mood, and a beard, all from one on-brand palette sorted light to dark.
 
    Privacy: generation is a pure, on-device function of (config) via @dicebear/core.
    We never call the DiceBear HTTP API, which would ship the seed (an alias id) off
@@ -21,12 +21,14 @@ import type { Options as DylanOptions } from "@dicebear/dylan";
 type HairName = NonNullable<DylanOptions["hair"]>[number];
 type MoodName = NonNullable<DylanOptions["mood"]>[number];
 
-// The persisted avatar: three small indices into the lists below. Color is not a
-// free choice; `tone` selects one of the on-brand triples.
+// The persisted avatar: small indices into the lists below. Colors come from one
+// shared on-brand palette, chosen separately for skin and hair.
 export interface AvatarConfig {
   hair: number;
   mood: number;
-  tone: number;
+  skin: number;
+  hairColor: number;
+  beard: number;
 }
 
 export type AvatarConfigInput =
@@ -35,19 +37,18 @@ export type AvatarConfigInput =
   | null
   | undefined;
 
-// A coordinated, on-brand color triple. Hexes are without the leading '#', as
-// DiceBear's color options expect, and every value is a token from colors.css so
-// the cast stays inside the theme. If the tokens move, move these with them.
-interface Tone {
+// One palette swatch. Hex is without the leading '#', as DiceBear's color options
+// expect, and every value is a token from colors.css so avatars stay on brand. If
+// the tokens move, move these with them.
+interface Swatch {
   name: string;
-  skin: string; // skinColor
-  hair: string; // hairColor
-  bg: string; // backgroundColor
+  hex: string;
 }
 
-// Dylan's hair styles (schema order). `name` is the DiceBear option value; `label`
-// is the human label shown for accessibility in the builder.
-const HAIR: readonly { name: HairName; label: string }[] = [
+// Dylan's hair styles (schema order), plus a synthetic "Bald": Dylan has no
+// no-hair style, so Bald reuses the flattest style with the hair color forced to
+// the skin (see avatarSvg) so it reads as a bare head. `name` is the DiceBear value.
+const HAIR: readonly { name: HairName; label: string; bald?: boolean }[] = [
   { name: "plain", label: "Plain" },
   { name: "wavy", label: "Wavy" },
   { name: "shortCurls", label: "Short curls" },
@@ -60,6 +61,7 @@ const HAIR: readonly { name: HairName; label: string }[] = [
   { name: "fluffy", label: "Fluffy" },
   { name: "flatTop", label: "Flat top" },
   { name: "shaggy", label: "Shaggy" },
+  { name: "plain", label: "Bald", bald: true },
 ];
 
 const MOODS: readonly { name: MoodName; label: string }[] = [
@@ -72,33 +74,51 @@ const MOODS: readonly { name: MoodName; label: string }[] = [
   { name: "angry", label: "Angry" },
 ];
 
-// Five tones built only from colors.css swatches: teal-700 #1F6E80, teal-600
-// #277F94, teal-500 #2F9BB3, teal-300 #8FCAD6, teal-100 #DDF0F4, teal-50 #EEF8FA,
-// ink-900 #1B1B2F (the brand near-black), and white #FFFFFF.
-const TONES: readonly Tone[] = [
-  { name: "Teal", skin: "2F9BB3", hair: "1F6E80", bg: "EEF8FA" },
-  { name: "Deep", skin: "1F6E80", hair: "1B1B2F", bg: "DDF0F4" },
-  { name: "Soft", skin: "8FCAD6", hair: "277F94", bg: "FFFFFF" },
-  { name: "Ink", skin: "2F9BB3", hair: "1B1B2F", bg: "FFFFFF" },
-  { name: "Mist", skin: "8FCAD6", hair: "1F6E80", bg: "EEF8FA" },
+// One shared palette for skin and hair, sorted light to dark, from colors.css:
+// white, teal-100, teal-300, teal-500, teal-700, ink-900 (the brand near-black).
+const PALETTE: readonly Swatch[] = [
+  { name: "White", hex: "FFFFFF" },
+  { name: "Mist", hex: "DDF0F4" },
+  { name: "Sky", hex: "8FCAD6" },
+  { name: "Teal", hex: "2F9BB3" },
+  { name: "Deep", hex: "1F6E80" },
+  { name: "Ink", hex: "1B1B2F" },
 ];
+
+// Clean-shaven or a beard (Dylan has a single beard style).
+const BEARDS: readonly { label: string }[] = [
+  { label: "No beard" },
+  { label: "Beard" },
+];
+
+// A fixed light tint behind every avatar (teal-50), so the face reads on any card.
+const BACKGROUND = "EEF8FA";
 
 export interface AvatarParts {
   hairs: readonly string[];
   moods: readonly string[];
-  tones: readonly string[];
+  skins: readonly string[];
+  hairColors: readonly string[];
+  beards: readonly string[];
 }
 
 // The builder needs the option labels and counts; it builds configs by index.
 export const avatarParts: AvatarParts = {
   hairs: HAIR.map((h) => h.label),
   moods: MOODS.map((m) => m.label),
-  tones: TONES.map((t) => t.name),
+  skins: PALETTE.map((p) => p.name),
+  hairColors: PALETTE.map((p) => p.name),
+  beards: BEARDS.map((b) => b.label),
 };
 
-// The first option of every layer: the default avatar a fresh account starts with
-// until the owner customizes it.
-export const DEFAULT_AVATAR: AvatarConfig = { hair: 0, mood: 0, tone: 0 };
+// A fresh account starts here: plain hair, happy, teal skin, ink hair, no beard.
+export const DEFAULT_AVATAR: AvatarConfig = {
+  hair: 0,
+  mood: 0,
+  skin: 3,
+  hairColor: 5,
+  beard: 0,
+};
 
 /**
  * Strict validation for a persisted AvatarConfig (the synced account blob): every
@@ -113,7 +133,9 @@ export function isAvatarConfig(x: unknown): x is AvatarConfig {
   return (
     inRange(c.hair, HAIR.length) &&
     inRange(c.mood, MOODS.length) &&
-    inRange(c.tone, TONES.length)
+    inRange(c.skin, PALETTE.length) &&
+    inRange(c.hairColor, PALETTE.length) &&
+    inRange(c.beard, BEARDS.length)
   );
 }
 
@@ -133,7 +155,9 @@ function normalize(cfg: AvatarConfigInput): AvatarConfig {
   return {
     hair: (c.hair ?? 0) % HAIR.length,
     mood: (c.mood ?? 0) % MOODS.length,
-    tone: (c.tone ?? 0) % TONES.length,
+    skin: (c.skin ?? 0) % PALETTE.length,
+    hairColor: (c.hairColor ?? 0) % PALETTE.length,
+    beard: (c.beard ?? 0) % BEARDS.length,
   };
 }
 
@@ -148,22 +172,25 @@ function avatarSvg(cfgIn: AvatarConfigInput): string {
   const cfg = normalize(cfgIn);
   const hair = HAIR[cfg.hair] ?? HAIR[0];
   const mood = MOODS[cfg.mood] ?? MOODS[0];
-  const tone = TONES[cfg.tone] ?? TONES[0];
-  if (!hair || !mood || !tone) {
+  const skin = PALETTE[cfg.skin] ?? PALETTE[0];
+  const hairCol = PALETTE[cfg.hairColor] ?? PALETTE[0];
+  if (!hair || !mood || !skin || !hairCol) {
     throw new Error("avatarSvg: config index out of range");
   }
+  // Bald forces the hair color to the skin so the (flat) hair blends into the head;
+  // otherwise the chosen hair color applies.
+  const hairHex = hair.bald ? skin.hex : hairCol.hex;
   return createAvatar(STYLE, {
     seed: AVATAR_SEED,
     // Single-element arrays force the exact choice (DiceBear otherwise picks from
     // the list by seed).
     hair: [hair.name],
     mood: [mood.name],
-    skinColor: [tone.skin],
-    hairColor: [tone.hair],
-    backgroundColor: [tone.bg],
-    // No facial hair: it is unrelated to the punk read and would add a random
-    // variable to an otherwise fully-specified avatar.
-    facialHairProbability: 0,
+    skinColor: [skin.hex],
+    hairColor: [hairHex],
+    backgroundColor: [BACKGROUND],
+    facialHair: ["default"],
+    facialHairProbability: cfg.beard === 1 ? 100 : 0,
   }).toString();
 }
 
@@ -173,19 +200,23 @@ export function avatarSrc(cfg: AvatarConfigInput): string {
 
 export function randomAvatar(seed: number): AvatarConfig {
   // Avalanche the seed (xorshift-multiply, same family as pseudonymFor) so even
-  // adjacent seeds spread across the whole 12 x 7 x 5 space. The three fields are
-  // taken as successive "digits" of the mixed value via division, not low-bit
-  // modulo, which would cluster.
+  // adjacent seeds spread across the whole space. Each field is a successive "digit"
+  // of the mixed value via division, not low-bit modulo, which would cluster.
   let h = (seed >>> 0) || 1;
   h ^= h >>> 16;
   h = Math.imul(h, 2246822519) >>> 0;
   h ^= h >>> 13;
   h = Math.imul(h, 3266489917) >>> 0;
   h = (h ^ (h >>> 16)) >>> 0;
+  const H = HAIR.length;
+  const M = MOODS.length;
+  const P = PALETTE.length;
   return {
-    hair: h % HAIR.length,
-    mood: Math.floor(h / HAIR.length) % MOODS.length,
-    tone: Math.floor(h / (HAIR.length * MOODS.length)) % TONES.length,
+    hair: h % H,
+    mood: Math.floor(h / H) % M,
+    skin: Math.floor(h / (H * M)) % P,
+    hairColor: Math.floor(h / (H * M * P)) % P,
+    beard: Math.floor(h / (H * M * P * P)) % BEARDS.length,
   };
 }
 

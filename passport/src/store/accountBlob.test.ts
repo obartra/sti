@@ -97,7 +97,7 @@ describe("account blob codec", () => {
           key: "C".repeat(43),
           isPublic: true,
           handle: "meow",
-          avatar: { hair: 1, mood: 2, tone: 1 },
+          avatar: { hair: 1, mood: 2, skin: 2, hairColor: 4, beard: 0 },
         },
       ],
       contacts: [],
@@ -171,7 +171,7 @@ describe("account blob codec", () => {
         paused: false,
         clearUntilDay: null,
       },
-      avatar: { hair: 2, mood: 3, tone: 1 },
+      avatar: { hair: 2, mood: 3, skin: 1, hairColor: 5, beard: 1 },
       sharingMode: "public",
     };
     expect(parseAccountBlob(serializeAccountBlob(populated))).toEqual(
@@ -354,7 +354,7 @@ describe("avatar migration on read (doc 19)", () => {
   });
 
   it("keeps a valid alias avatar override untouched", () => {
-    const override = { hair: 3, mood: 1, tone: 2 };
+    const override = { hair: 3, mood: 1, skin: 0, hairColor: 5, beard: 0 };
     const wire = wireOf(oneAlias);
     firstAlias(wire).avatar = override;
     expect(reparse(wire).aliases[0]?.avatar).toEqual(override);

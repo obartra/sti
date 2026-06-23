@@ -47,7 +47,7 @@ describe("deriveOwnerView", () => {
   });
 
   it("carries handle, avatar, and sharing mode straight through", () => {
-    const avatar = { hair: 1, mood: 2, tone: 1 };
+    const avatar = { hair: 1, mood: 2, skin: 2, hairColor: 4, beard: 0 };
     const v = deriveOwnerView(
       blob(INITIAL_OWNER_STATE, {
         handle: "sam",
