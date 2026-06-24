@@ -211,6 +211,23 @@ type AdminReportsResponse struct {
 	Reports []AdminReport `json:"reports"`
 }
 
+// AdminRecordInfo is opaque metadata about one stored record (doc 20 A3): whether
+// it exists, its ciphertext byte size, and when it was last written. Never any
+// content.
+type AdminRecordInfo struct {
+	Exists    bool  `json:"exists"`
+	SizeBytes int64 `json:"sizeBytes"`
+	UpdatedAt int64 `json:"updatedAt"`
+}
+
+// AdminLookupResponse is GET /admin/lookup/{id}'s body: opaque metadata for the id
+// across the record namespaces it could belong to. At most one is present.
+type AdminLookupResponse struct {
+	Alias   AdminRecordInfo `json:"alias"`
+	Account AdminRecordInfo `json:"account"`
+	Inbox   AdminRecordInfo `json:"inbox"`
+}
+
 // HeaderWriteToken authorizes a PUT to an alias. The owner holds it; viewers get
 // only the read id in the URL, so they can resolve an alias but never overwrite
 // it. The server stores hash(token) on first write and requires a match after.

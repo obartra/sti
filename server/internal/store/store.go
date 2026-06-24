@@ -461,6 +461,74 @@ func (s *Store) ClearVanityReports(ctx context.Context, name string) error {
 	return err
 }
 
+// --- Admin record management (doc 20 A3) ------------------------------------
+//
+// Operator actions on server-side records, within the blind-store boundary: they
+// delete/revoke OPAQUE rows and read OPAQUE metadata (sizes, timestamps), never
+// any plaintext. The admin secret unlocks no content; these can't either.
+
+// AdminDeleteAlias force-removes an alias row regardless of its write token (the
+// operator has no token; authority is the admin bearer). After this the id reads
+// back as a decoy, exactly like a never-existed id, so a revoked alias stops
+// resolving. Idempotent: deleting a missing id is a no-op.
+func (s *Store) AdminDeleteAlias(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM alias WHERE id = ?`, id)
+	return err
+}
+
+// ReleaseVanityNamesForAlias frees every vanity name pointing at aliasID into the
+// post-release lock (doc 17), so revoking an alias also stops its name(s)
+// resolving and holds them through the lock window. Idempotent.
+func (s *Store) ReleaseVanityNamesForAlias(ctx context.Context, aliasID string, now, lockMs int64) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE vanity_name SET alias_id = '', locked_until = ? WHERE alias_id = ?`,
+		now+lockMs, aliasID)
+	return err
+}
+
+// RecordInfo is opaque metadata about a stored record: whether it exists, its
+// ciphertext byte size, and when it was last written. No content, ever.
+type RecordInfo struct {
+	Exists    bool
+	SizeBytes int64
+	UpdatedAt int64
+}
+
+// RecordMeta is what an opaque-id lookup returns across the record namespaces an
+// id could belong to. An id is unguessable and namespace-specific in practice, so
+// at most one of these is present; reporting all three keeps the lookup one call.
+type RecordMeta struct {
+	Alias   RecordInfo
+	Account RecordInfo
+	Inbox   RecordInfo
+}
+
+// LookupRecord reports opaque metadata for an id across the alias, account, and
+// notify-inbox tables. It selects only length(ciphertext) and updated_at, never
+// the ciphertext, so it stays strictly within the blind-store boundary.
+func (s *Store) LookupRecord(ctx context.Context, id string) (RecordMeta, error) {
+	var m RecordMeta
+	for _, q := range []struct {
+		sql string
+		dst *RecordInfo
+	}{
+		{`SELECT length(ciphertext), updated_at FROM alias WHERE id = ?`, &m.Alias},
+		{`SELECT length(ciphertext), updated_at FROM account WHERE id = ?`, &m.Account},
+		{`SELECT length(ciphertext), updated_at FROM notify_inbox WHERE id = ?`, &m.Inbox},
+	} {
+		switch err := s.db.QueryRowContext(ctx, q.sql, id).
+			Scan(&q.dst.SizeBytes, &q.dst.UpdatedAt); {
+		case errors.Is(err, sql.ErrNoRows):
+			// leave Exists=false
+		case err != nil:
+			return RecordMeta{}, err
+		default:
+			q.dst.Exists = true
+		}
+	}
+	return m, nil
+}
+
 // --- Notify routing ---------------------------------------------------------
 
 // PutNotifyRoute maps hash(notify_token) to an opaque routing endpoint.

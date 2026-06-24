@@ -555,3 +555,61 @@ func TestVanityReports(t *testing.T) {
 		t.Fatalf("clear no-op: %v", err)
 	}
 }
+
+// Admin record management (doc 20 A3): force-delete an alias (it then reads as a
+// miss), release the vanity names pointing at it into the lock, and read opaque
+// metadata across the alias/account/inbox tables — never any content.
+func TestAdminRecordManagement(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+	const lock = int64(24 * 60 * 60 * 1000)
+
+	if _, err := s.WriteAlias(ctx, "a1", []byte("cipher6"), "wt", 100, sql.NullInt64{}, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.PutAccount(ctx, "acc1", []byte("blob"), 200); err != nil {
+		t.Fatal(err)
+	}
+	if st, err := s.ClaimVanityName(ctx, "robin", "a1", 100); err != nil || st != VanityClaimed {
+		t.Fatalf("claim: %v %v", st, err)
+	}
+
+	// Lookup reports opaque metadata only, for the right namespace.
+	m, err := s.LookupRecord(ctx, "a1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !m.Alias.Exists || m.Alias.SizeBytes != int64(len("cipher6")) || m.Alias.UpdatedAt != 100 {
+		t.Fatalf("alias meta = %+v", m.Alias)
+	}
+	if m.Account.Exists || m.Inbox.Exists {
+		t.Fatalf("alias id leaked into account/inbox: %+v", m)
+	}
+	if am, _ := s.LookupRecord(ctx, "acc1"); !am.Account.Exists || am.Alias.Exists {
+		t.Fatalf("account meta = %+v", am)
+	}
+	if mm, _ := s.LookupRecord(ctx, "missing"); mm.Alias.Exists || mm.Account.Exists || mm.Inbox.Exists {
+		t.Fatalf("missing id reported as existing: %+v", mm)
+	}
+
+	// Revoke the alias: it is gone, and its vanity name is released into the lock.
+	if err := s.AdminDeleteAlias(ctx, "a1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, found, _ := s.GetAlias(ctx, "a1"); found {
+		t.Fatal("alias still present after AdminDeleteAlias")
+	}
+	if err := s.ReleaseVanityNamesForAlias(ctx, "a1", 1000, lock); err != nil {
+		t.Fatal(err)
+	}
+	if _, found, _ := s.ResolveVanityName(ctx, "robin"); found {
+		t.Fatal("vanity name still resolves after its alias was revoked")
+	}
+	// Idempotent: both ops are no-ops on already-gone records.
+	if err := s.AdminDeleteAlias(ctx, "a1"); err != nil {
+		t.Fatalf("delete idempotent: %v", err)
+	}
+	if err := s.ReleaseVanityNamesForAlias(ctx, "a1", 1000, lock); err != nil {
+		t.Fatalf("release idempotent: %v", err)
+	}
+}
