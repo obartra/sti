@@ -66,7 +66,9 @@ describe("Privacy findable section (doc 17)", () => {
       />,
     );
     // Gated off (no ops): the wiring boundary decides; the screen stays clean.
-    expect(screen.queryByRole("button", { name: claim })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: claim }),
+    ).not.toBeInTheDocument();
 
     rerender(
       <Privacy

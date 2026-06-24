@@ -320,7 +320,11 @@ function isOptionalCircles(x: unknown): boolean {
 function isFindableRegistration(x: unknown): x is FindableRegistration {
   if (typeof x !== "object" || x === null) return false;
   const r = x as Record<string, unknown>;
-  return hasVanityNameShape(r.name) && typeof r.aliasId === "string" && validId(r.aliasId);
+  return (
+    hasVanityNameShape(r.name) &&
+    typeof r.aliasId === "string" &&
+    validId(r.aliasId)
+  );
 }
 
 function isOptionalFindable(x: unknown): boolean {

@@ -528,8 +528,7 @@ export function createSessionController(deps: SessionDeps): SessionController {
     registerVanityName: (session, name) =>
       registerVanityName(api, accounts, session, name),
 
-    releaseVanityName: (session) =>
-      releaseVanityName(api, accounts, session),
+    releaseVanityName: (session) => releaseVanityName(api, accounts, session),
 
     forget() {
       devices.clear();

@@ -147,7 +147,9 @@ describe("registerVanityName", () => {
 
 describe("releaseVanityName", () => {
   it("drops the server binding, revokes the alias, and clears the registration", async () => {
-    const { api, putAlias, release } = fakeApi({ registerResult: "registered" });
+    const { api, putAlias, release } = fakeApi({
+      registerResult: "registered",
+    });
     const { accounts, session } = await freshSession(api);
     const claimed = (await registerVanityName(api, accounts, session, "robin"))
       .session;
@@ -160,9 +162,7 @@ describe("releaseVanityName", () => {
     expect(next.blob.findable).toBeUndefined();
     expect(next.blob.aliases).toHaveLength(0);
     // The alias was revoked (a PUT to its id).
-    expect(putAlias.mock.calls.map((c) => c[0] as string)).toContain(
-      alias?.id,
-    );
+    expect(putAlias.mock.calls.map((c) => c[0] as string)).toContain(alias?.id);
   });
 
   it("is a no-op when no name is claimed", async () => {
