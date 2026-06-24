@@ -406,6 +406,61 @@ func (s *Store) ReleaseVanityName(ctx context.Context, name string, now, lockMs 
 	return err
 }
 
+// --- Vanity reports (doc 17 report-and-takedown; backs admin A2) -------------
+
+// VanityReport is one row of the admin review queue: a reported name aggregated
+// across its pending reports. reason is the most recent report's reason code,
+// count is how many reports the name has, and createdAt is when it was first
+// reported. All fields are opaque/operational: the name is public, the reason is
+// a fixed code, and no reporter identity is stored.
+type VanityReport struct {
+	Name      string
+	Reason    string
+	Count     int
+	CreatedAt int64
+}
+
+// AddVanityReport records one report against a name. reason is a fixed code the
+// caller has already validated. Append-only; cleared as a set on takedown/dismiss.
+func (s *Store) AddVanityReport(ctx context.Context, name, reason string, now int64) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO vanity_report (name, reason, created_at) VALUES (?, ?, ?)`,
+		name, reason, now)
+	return err
+}
+
+// PendingVanityReports returns the review queue: one row per reported name with
+// its report count, first-reported time, and most recent reason, busiest first.
+func (s *Store) PendingVanityReports(ctx context.Context, limit int) ([]VanityReport, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT name, COUNT(*) AS cnt, MIN(created_at) AS first_at,
+		        (SELECT reason FROM vanity_report r2 WHERE r2.name = r1.name ORDER BY r2.id DESC LIMIT 1)
+		 FROM vanity_report r1
+		 GROUP BY name
+		 ORDER BY cnt DESC, first_at ASC
+		 LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []VanityReport
+	for rows.Next() {
+		var v VanityReport
+		if err := rows.Scan(&v.Name, &v.Count, &v.CreatedAt, &v.Reason); err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}
+
+// ClearVanityReports drops all reports for a name (on takedown or dismiss).
+// Idempotent: clearing a name with no reports is a no-op.
+func (s *Store) ClearVanityReports(ctx context.Context, name string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM vanity_report WHERE name = ?`, name)
+	return err
+}
+
 // --- Notify routing ---------------------------------------------------------
 
 // PutNotifyRoute maps hash(notify_token) to an opaque routing endpoint.

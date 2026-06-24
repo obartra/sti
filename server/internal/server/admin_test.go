@@ -179,3 +179,80 @@ func TestAdminCORSAllowsAuthorization(t *testing.T) {
 		t.Fatalf("allow-headers missing Authorization: %q", got)
 	}
 }
+
+// The Findable review flow over the admin endpoints: the queue lists reported
+// names (authed), takedown revokes the name + clears its reports + writes an audit
+// row, and dismiss clears reports without revoking. Reads stay unauthed-rejected.
+func TestAdminFindableReview(t *testing.T) {
+	h, st := newTestAdminServer(t, testAdminToken)
+	ctx := context.Background()
+	bearer := "Bearer " + testAdminToken
+	authed := func(method, path string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, nil)
+		req.Header.Set("Authorization", bearer)
+		return do(h, req)
+	}
+
+	// Seed a registered name with two reports (store-level; intake has its own test).
+	if _, err := st.ClaimVanityName(ctx, "robin", strings.Repeat("A", 43), 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.AddVanityReport(ctx, "robin", contract.ReportImpersonation, 100); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.AddVanityReport(ctx, "robin", contract.ReportAbuse, 200); err != nil {
+		t.Fatal(err)
+	}
+
+	// The queue lists robin with its count; an unauthed read is 401.
+	rec := authed("GET", contract.PathAdminReports)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("reports: %d", rec.Code)
+	}
+	var resp contract.AdminReportsResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Reports) != 1 || resp.Reports[0].Name != "robin" || resp.Reports[0].Count != 2 {
+		t.Fatalf("queue = %+v", resp.Reports)
+	}
+	if rec := do(h, httptest.NewRequest("GET", contract.PathAdminReports, nil)); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("reports no auth: %d, want 401", rec.Code)
+	}
+
+	// Takedown: the name stops resolving, its reports clear, and it is audited.
+	if rec := authed("POST", "/admin/vanity/robin/takedown"); rec.Code != http.StatusNoContent {
+		t.Fatalf("takedown: %d", rec.Code)
+	}
+	if _, found, _ := st.ResolveVanityName(ctx, "robin"); found {
+		t.Fatal("after takedown: robin should not resolve")
+	}
+	if got, _ := st.PendingVanityReports(ctx, 10); len(got) != 0 {
+		t.Fatalf("takedown left reports: %+v", got)
+	}
+	if a, _ := st.RecentAudits(ctx, 10); len(a) == 0 || a[0].Action != "vanity.takedown" || a[0].Target != "robin" {
+		t.Fatalf("takedown not audited: %+v", a)
+	}
+
+	// Dismiss: clears a name's reports without revoking, and is audited.
+	if err := st.AddVanityReport(ctx, "alice", contract.ReportSpam, 300); err != nil {
+		t.Fatal(err)
+	}
+	if rec := authed("POST", "/admin/vanity/alice/dismiss"); rec.Code != http.StatusNoContent {
+		t.Fatalf("dismiss: %d", rec.Code)
+	}
+	if got, _ := st.PendingVanityReports(ctx, 10); len(got) != 0 {
+		t.Fatalf("dismiss left reports: %+v", got)
+	}
+	if a, _ := st.RecentAudits(ctx, 10); a[0].Action != "vanity.dismiss" || a[0].Target != "alice" {
+		t.Fatalf("dismiss not audited: %+v", a)
+	}
+}
+
+// The Findable review endpoints are admin-gated: disabled admin = bare 404.
+func TestAdminFindableReviewGatedOffWithAdmin(t *testing.T) {
+	h := newTestServer(t) // admin disabled
+	if rec := do(h, httptest.NewRequest("GET", contract.PathAdminReports, nil)); rec.Code != http.StatusNotFound {
+		t.Fatalf("reports while admin off: %d, want 404", rec.Code)
+	}
+}

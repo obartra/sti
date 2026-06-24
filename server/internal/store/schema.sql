@@ -105,3 +105,16 @@ CREATE TABLE IF NOT EXISTS admin_audit (
     created_at  INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit (created_at);
+
+-- Reports filed against a vanity name (doc 17 report-and-takedown). Public,
+-- unauthenticated intake (rate-limited) creates a row; the admin review queue
+-- aggregates them per name. `reason` is one of a fixed, validated set of codes
+-- (never free text), so the table holds no user-supplied content. Volume never
+-- auto-acts; rows are cleared on takedown or dismiss.
+CREATE TABLE IF NOT EXISTS vanity_report (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL,   -- the reported normalized vanity name
+    reason      TEXT NOT NULL,   -- a fixed reason code (see contract), never free text
+    created_at  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_vanity_report_name ON vanity_report (name);
