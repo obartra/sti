@@ -60,6 +60,7 @@ const (
 	PathNotify        = "/notify"        // POST: enqueue a contentless wake
 	PathPushRegister  = "/push/register" // POST: register a Web Push endpoint
 	PathKnockPrefix   = "/knock/"        // POST: contentless knock
+	PathVanityPrefix  = "/u/"            // GET resolve; PUT register / DELETE release (gated)
 	PathHealth        = "/healthz"       // GET: liveness
 	PathVapid         = "/vapid"         // GET: the active Web Push public key
 
@@ -150,6 +151,14 @@ type KnockReviewResponse struct {
 	Pending []PendingKnock `json:"pending,omitempty"`
 }
 
+// VanityRegisterRequest is the body of PUT /u/{name} (doc 17, Findable): the
+// opaque alias id the name should resolve to. The requester proves they own that
+// alias with its write token (X-Write-Token header); the server stores only the
+// name -> aliasId mapping, never a status, key, or identity.
+type VanityRegisterRequest struct {
+	AliasID string `json:"aliasId"`
+}
+
 // VanityResolveResponse is GET /u/{name}'s body when the name is registered: the
 // opaque alias id the viewer then knocks on (doc 17, Findable). The server
 // returns ONLY the id, never a status, key, or identity. A missing name is a bare
@@ -200,5 +209,6 @@ const (
 	ErrNotFound     = "not_found" // never used on /a or /knock
 	ErrUnsupported  = "unsupported_media_type"
 	ErrMethodNotOk  = "method_not_allowed"
-	ErrUnauthorized = "unauthorized" // admin bearer missing or wrong (doc 20)
+	ErrUnauthorized = "unauthorized"       // admin bearer missing or wrong (doc 20)
+	ErrVanityTaken  = "vanity_unavailable" // a vanity name is reserved, blocked, taken, or locked (doc 17)
 )

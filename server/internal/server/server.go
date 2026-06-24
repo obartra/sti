@@ -11,6 +11,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"math/rand/v2"
@@ -23,6 +24,7 @@ import (
 	"sti.care/api/internal/contract"
 	"sti.care/api/internal/metrics"
 	"sti.care/api/internal/store"
+	"sti.care/api/internal/vanityname"
 )
 
 //go:embed landing.html
@@ -71,6 +73,14 @@ type Config struct {
 	// affecting real use. Zero leaves the defaults (1/sec, burst 5).
 	AdminRatePerSec float64
 	AdminBurst      float64
+	// FindableEnabled gates the vanity-name WRITE endpoints (PUT/DELETE /u/{name},
+	// doc 17). Off by default: GET /u resolve stays live (and 404s an empty
+	// directory), but no name can be registered until Findable's launch gate flips
+	// this on, so the directory stays empty in production pre-launch.
+	FindableEnabled bool
+	// VanityLockWindow is the post-release lock during which a freed name is
+	// unclaimable (doc 17). Default 24h; lowered by tests to exercise expiry.
+	VanityLockWindow time.Duration
 }
 
 func (c *Config) withDefaults() {
@@ -106,6 +116,9 @@ func (c *Config) withDefaults() {
 	}
 	if c.AdminBurst == 0 {
 		c.AdminBurst = 5
+	}
+	if c.VanityLockWindow == 0 {
+		c.VanityLockWindow = 24 * time.Hour
 	}
 }
 
@@ -177,6 +190,13 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /inbox/{id}", s.handleInboxGet)
 	s.mux.HandleFunc("PUT /inbox/{id}", s.handleInboxPut)
 	s.mux.HandleFunc("GET /u/{name}", s.handleVanityResolve)
+	if s.cfg.FindableEnabled {
+		// The write half of the directory is gated behind the launch flag (doc 17),
+		// so the namespace stays empty in production until Findable ships. Resolve
+		// (above) stays live and harmlessly 404s an empty directory.
+		s.mux.HandleFunc("PUT /u/{name}", s.handleVanityRegister)
+		s.mux.HandleFunc("DELETE /u/{name}", s.handleVanityRelease)
+	}
 	s.mux.HandleFunc("GET /acct/{id}", s.handleAccountGet)
 	s.mux.HandleFunc("PUT /acct/{id}", s.handleAccountPut)
 	s.mux.HandleFunc("DELETE /acct/{id}", s.handleAccountDelete)
@@ -351,18 +371,21 @@ func (s *Server) fixedPayload(r *http.Request, id string, get storeReadFn, label
 // handleVanityResolve answers GET /u/{name} (doc 17, Findable): the name -> alias
 // id lookup, and nothing more. The viewer then runs the normal knock/grant flow
 // against the returned id. A registered name returns its opaque alias id; an
-// unregistered one (or any lookup error, masked) is a bare 404 with no body. The
-// directory holds no status/key/identity, so a hit reveals only that the name is
-// registered, which is the point of opting in (existence is intentionally NOT
-// uniform here, unlike GET /a). The name is lowercased before lookup, matching
-// the normalized form it is stored in.
-//
-// Registration (the gated PUT path) and rate limiting are deferred to the gated
-// Findable slice, so the directory is empty in production and every name 404s
-// until Findable ships.
+// unregistered, released, or locked name (or any lookup error, masked) is a bare
+// 404 with no body. The directory holds no status/key/identity, so a hit reveals
+// only that the name is registered, which is the point of opting in (existence is
+// intentionally NOT uniform here, unlike GET /a). The name is normalized before
+// lookup, matching the form it is stored in.
 func (s *Server) handleVanityResolve(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
-	name := strings.ToLower(r.PathValue("name"))
+	// A per-IP cap to slow bulk enumeration of the namespace (doc 17). The 429 is
+	// independent of whether the name exists, so it adds no existence signal. A
+	// GLOBAL limit and further resolve hardening are a follow-up slice (F3).
+	if !s.ipLimit.allow(clientIP(r), s.now()) {
+		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
+		return
+	}
+	name := vanityname.Normalize(r.PathValue("name"))
 	aliasID, found, err := s.st.ResolveVanityName(r.Context(), name)
 	if err != nil {
 		s.metrics.Error(metrics.ErrStore)
@@ -373,6 +396,106 @@ func (s *Server) handleVanityResolve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.writeJSON(w, http.StatusOK, contract.VanityResolveResponse{AliasID: aliasID})
+}
+
+// handleVanityRegister answers PUT /u/{name} (doc 17, Findable; gated): claim a
+// vanity name for an alias the caller owns. It enforces the name rules (charset /
+// reserved / blocklist), proves the caller owns the target alias via its write
+// token, then claims first-come. The name is public, so the unavailable reasons
+// (reserved/blocked/taken/locked) are not hidden; only ownership is gated.
+func (s *Server) handleVanityRegister(w http.ResponseWriter, r *http.Request) {
+	name, err := vanityname.Check(r.PathValue("name"))
+	if err != nil {
+		if errors.Is(err, vanityname.ErrFormat) {
+			s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "name must be lowercase a-z, 0-9 or _ and 3-30 characters")
+			return
+		}
+		// Reserved or blocked: the name can never be claimed.
+		s.writeError(w, http.StatusConflict, contract.ErrVanityTaken, "name is not available")
+		return
+	}
+	if !s.ipLimit.allow(clientIP(r), s.now()) {
+		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
+		return
+	}
+	var req contract.VanityRegisterRequest
+	if err := decodeJSON(r, &req); err != nil || !contract.ValidID(req.AliasID) {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "missing or malformed aliasId")
+		return
+	}
+	token := r.Header.Get(contract.HeaderWriteToken)
+	if token == "" {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "missing write token")
+		return
+	}
+	// Ownership: the caller must hold the write token of the alias the name points
+	// at, so a name can never be aimed at someone else's alias.
+	owns, err := s.st.VerifyAliasWrite(r.Context(), req.AliasID, hashToken(token))
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	if !owns {
+		s.writeError(w, http.StatusForbidden, contract.ErrBadRequest, "write token does not own that alias")
+		return
+	}
+	status, err := s.st.ClaimVanityName(r.Context(), name, req.AliasID, s.now())
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	switch status {
+	case store.VanityClaimed:
+		w.WriteHeader(http.StatusNoContent)
+	case store.VanityTaken:
+		s.writeError(w, http.StatusConflict, contract.ErrVanityTaken, "name is already taken")
+	case store.VanityLocked:
+		s.writeError(w, http.StatusConflict, contract.ErrVanityTaken, "name is temporarily locked")
+	}
+}
+
+// handleVanityRelease answers DELETE /u/{name} (doc 17, Findable; gated): the
+// owner frees their name into the 24h lock. Authorized by the write token of the
+// alias the name currently points at, so only the holder can release it. A name
+// that is not actively registered is a 404 (nothing to release).
+func (s *Server) handleVanityRelease(w http.ResponseWriter, r *http.Request) {
+	name := vanityname.Normalize(r.PathValue("name"))
+	if !vanityname.ValidFormat(name) {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed name")
+		return
+	}
+	if !s.ipLimit.allow(clientIP(r), s.now()) {
+		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
+		return
+	}
+	token := r.Header.Get(contract.HeaderWriteToken)
+	if token == "" {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "missing write token")
+		return
+	}
+	aliasID, found, err := s.st.ResolveVanityName(r.Context(), name)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	if !found {
+		s.writeError(w, http.StatusNotFound, contract.ErrNotFound, "")
+		return
+	}
+	owns, err := s.st.VerifyAliasWrite(r.Context(), aliasID, hashToken(token))
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	if !owns {
+		s.writeError(w, http.StatusForbidden, contract.ErrBadRequest, "write token does not own that name")
+		return
+	}
+	if err := s.st.ReleaseVanityName(r.Context(), name, s.now(), s.cfg.VanityLockWindow.Milliseconds()); err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) handleAliasPut(w http.ResponseWriter, r *http.Request) {
