@@ -179,6 +179,28 @@ describe("account blob codec", () => {
     );
   });
 
+  it("round-trips a findable registration (doc 17)", () => {
+    const withFindable: AccountBlob = {
+      handle: "robin",
+      aliases: [
+        {
+          id: "G".repeat(43),
+          writeToken: "H".repeat(43),
+          key: "I".repeat(43),
+          isPublic: true,
+        },
+      ],
+      contacts: [],
+      state: INITIAL_OWNER_STATE,
+      avatar: DEFAULT_AVATAR,
+      sharingMode: "public",
+      findable: { name: "robin", aliasId: "G".repeat(43) },
+    };
+    expect(parseAccountBlob(serializeAccountBlob(withFindable))).toEqual(
+      withFindable,
+    );
+  });
+
   const reject = (label: string, json: unknown) =>
     it(`rejects ${label}`, () => {
       expect(() =>
@@ -198,7 +220,7 @@ describe("account blob codec", () => {
     avatar: A,
   };
   reject("a non-object", 7);
-  reject("an unknown version", { ...base, v: 11, sharingMode: "link" });
+  reject("an unknown version", { ...base, v: 12, sharingMode: "link" });
   reject("a prior version (v6 is no longer accepted)", {
     v: 6,
     handle: "x",
@@ -226,6 +248,26 @@ describe("account blob codec", () => {
     ],
     sharingMode: "link",
   });
+  // A real current-version wire so these reach the findable validator (not the
+  // version gate, which `base`'s v7 trips first).
+  const v11 = {
+    v: 11,
+    handle: "x",
+    aliases: [],
+    contacts: [],
+    state: S,
+    avatar: A,
+    sharingMode: "link" as const,
+  };
+  reject("a findable with a malformed alias id", {
+    ...v11,
+    findable: { name: "robin", aliasId: "short" },
+  });
+  reject("a findable with a bad-shaped name", {
+    ...v11,
+    findable: { name: "AB", aliasId: ID },
+  });
+  reject("a findable that is not an object", { ...v11, findable: "robin" });
   reject("an empty handle", { ...base, handle: "", sharingMode: "link" });
   reject("a non-array aliases", { ...base, aliases: {}, sharingMode: "link" });
   reject("an alias with a malformed id", {

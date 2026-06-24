@@ -54,6 +54,12 @@ import {
   shareLinkFor,
   setShareLinkExpiry,
 } from "./shareOps.ts";
+import {
+  primaryShareAlias,
+  registerVanityName,
+  releaseVanityName,
+  type VanityRegisterOutcome,
+} from "./findableOps.ts";
 
 /** An unlocked session: the master (in memory only) and the loaded account. */
 export interface OwnerSession {
@@ -242,6 +248,24 @@ export interface SessionController {
   ): Promise<OwnerSession>;
   /** Delete one circle by id (a local grouping; contacts are untouched). */
   removeCircle(session: OwnerSession, circleId: string): Promise<OwnerSession>;
+  /**
+   * Claim a public findable name (doc 17): mint + publish a dedicated alias, bind
+   * the name to it server-side, and on success record both in the account. Returns
+   * the (possibly updated) session and the outcome ("registered" / "unavailable" /
+   * "error"); only "registered" changes the session. `name` must be normalized +
+   * valid (the UI checks first; the server enforces too). Rejects only on an
+   * unexpected error, not on the expected "unavailable".
+   */
+  registerVanityName(
+    session: OwnerSession,
+    name: string,
+  ): Promise<VanityRegisterOutcome>;
+  /**
+   * Release the owner's claimed findable name: drop the server binding (into the
+   * 24h lock), revoke the dedicated alias, and clear the registration. A no-op when
+   * no name is claimed. Returns the updated session.
+   */
+  releaseVanityName(session: OwnerSession): Promise<OwnerSession>;
   /** Forget this device's passkey binding. The phrase still recovers. */
   forget(): void;
 }
@@ -414,9 +438,7 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
     async renewLink(session, identity = "anonymous") {
       const wantPublic = session.blob.sharingMode === "public";
-      const existing = session.blob.aliases.find(
-        (a) => a.isPublic === wantPublic,
-      );
+      const existing = primaryShareAlias(session.blob, wantPublic);
       let working = session;
       if (existing !== undefined) {
         // Kill the old payload first, then drop the record. Order matters: if the
@@ -435,6 +457,18 @@ export function createSessionController(deps: SessionDeps): SessionController {
       setShareLinkExpiry(api, accounts, session, durationMs),
 
     async deleteAccount(session) {
+      // Best-effort: drop any public findable binding first (doc 17), so the name
+      // does not linger claimed after the account is gone. The alias itself is
+      // revoked by deleteAccount's revoke-all below. Never blocks deletion.
+      const reg = session.blob.findable;
+      const alias = reg
+        ? session.blob.aliases.find((a) => a.id === reg.aliasId)
+        : undefined;
+      if (reg !== undefined && alias !== undefined) {
+        await api
+          .releaseVanityName(reg.name, alias.writeToken)
+          .catch(() => undefined);
+      }
       await accounts.deleteAccount(session.master);
       devices.clear();
     },
@@ -490,6 +524,12 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
     removeCircle: (session, circleId) =>
       dropCircle(accounts, session, circleId),
+
+    registerVanityName: (session, name) =>
+      registerVanityName(api, accounts, session, name),
+
+    releaseVanityName: (session) =>
+      releaseVanityName(api, accounts, session),
 
     forget() {
       devices.clear();

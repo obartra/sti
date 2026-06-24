@@ -29,6 +29,7 @@ import {
   type AliasRecord,
   type ContactRecord,
   type CircleRecord,
+  type FindableRegistration,
   type SharingMode,
 } from "./accountBlob.ts";
 import { mintNotify, type NotifyCapability } from "./notifyInbox.ts";
@@ -101,6 +102,27 @@ export interface AccountManager {
    */
   setProfile(master: Bytes, profile: OwnerProfile): Promise<AccountBlob>;
   /**
+   * Record (or clear, when null) the owner's findable registration (doc 17): the
+   * claimed name and the alias it resolves to. Pure persistence; the server-side
+   * claim/release and the dedicated alias's lifecycle are driven a layer up
+   * (findableOps), so this just writes the blob field after that has succeeded.
+   */
+  setFindable(
+    master: Bytes,
+    findable: FindableRegistration | null,
+  ): Promise<AccountBlob>;
+  /**
+   * Record a findable claim atomically (doc 17): upsert the dedicated alias AND set
+   * the registration in a SINGLE blob write, so there is no intermediate state where
+   * the alias exists without its registration (which would surface it as a stray
+   * public link). Called by findableOps after the server bind succeeds.
+   */
+  recordFindable(
+    master: Bytes,
+    alias: AliasRecord,
+    findable: FindableRegistration,
+  ): Promise<AccountBlob>;
+  /**
    * Enforce link expiry on load: revoke + drop any links (aliases or contact
    * links) past their expiry, then persist. A no-op (no write) when nothing is
    * expired. No republish, the badge is unchanged. This closes the passive-owner
@@ -161,6 +183,33 @@ function withCircleRemoved(blob: AccountBlob, circleId: string): AccountBlob {
   return {
     ...blob,
     circles: (blob.circles ?? []).filter((c) => c.id !== circleId),
+  };
+}
+
+// Set or clear the optional findable registration. exactOptionalPropertyTypes
+// forbids assigning `undefined`, so a clear (null) deletes the key off a fresh copy
+// rather than writing `findable: undefined`.
+function withFindable(
+  blob: AccountBlob,
+  findable: FindableRegistration | null,
+): AccountBlob {
+  if (findable !== null) return { ...blob, findable };
+  const next = { ...blob };
+  delete (next as { findable?: FindableRegistration }).findable;
+  return next;
+}
+
+// Upsert the dedicated findable alias AND set the registration in one step, so a
+// claim's two facts land in a single blob write (no alias-without-registration gap).
+function withFindableAlias(
+  blob: AccountBlob,
+  alias: AliasRecord,
+  findable: FindableRegistration,
+): AccountBlob {
+  return {
+    ...blob,
+    aliases: [...blob.aliases.filter((a) => a.id !== alias.id), alias],
+    findable,
   };
 }
 
@@ -244,6 +293,26 @@ async function republishLiveLinks(
   await republishOwnerCard(api, liveLinks, { state: blob.state, nowDay });
 }
 
+// A load-modify-save over the synced blob (the closure createAccountManager builds).
+type BlobModify = (
+  master: Bytes,
+  fn: (blob: AccountBlob) => AccountBlob,
+) => Promise<AccountBlob>;
+
+// The findable (vanity-name) account mutations, split out so createAccountManager
+// stays within its length ceiling. Pure persistence over `modify`; the server-side
+// claim/release lives a layer up (findableOps).
+function findableMethods(
+  modify: BlobModify,
+): Pick<AccountManager, "setFindable" | "recordFindable"> {
+  return {
+    setFindable: (master, findable) =>
+      modify(master, (blob) => withFindable(blob, findable)),
+    recordFindable: (master, alias, findable) =>
+      modify(master, (blob) => withFindableAlias(blob, alias, findable)),
+  };
+}
+
 export function createAccountManager(api: ApiClient): AccountManager {
   const sync = createAccountSync(api);
 
@@ -323,9 +392,7 @@ export function createAccountManager(api: ApiClient): AccountManager {
       return modify(master, (blob) => withCircleRemoved(blob, circleId));
     },
 
-    ensureMyNotify(master) {
-      return ensureMyNotifyOn(sync, master);
-    },
+    ensureMyNotify: (master) => ensureMyNotifyOn(sync, master),
 
     async deleteAccount(master) {
       const blob = await sync.load(master);
@@ -404,5 +471,7 @@ export function createAccountManager(api: ApiClient): AccountManager {
       // every link in one window (the decorrelation-timing gap) for no change.
       return next;
     },
+
+    ...findableMethods(modify),
   };
 }

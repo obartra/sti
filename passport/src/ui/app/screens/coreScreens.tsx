@@ -3,6 +3,7 @@ import { Care } from "../../core/Care.tsx";
 import { Notifications } from "../../core/Notifications.tsx";
 import type { NotificationItem } from "../../core/Notifications.tsx";
 import { Privacy } from "../../core/Privacy.tsx";
+import { FINDABLE_ENABLED } from "../../../features.ts";
 import { extendClearance } from "../../../core/report.ts";
 import { todayEpochDay } from "../../../core/clock.ts";
 import { RESOURCES, openResource } from "../../../lib/resources.ts";
@@ -190,6 +191,9 @@ export const coreRenderers: ScreenRenderers = {
     contacts,
     onRevokeAlias,
     onRevokeContact,
+    vanityName,
+    onRegisterVanityName,
+    onReleaseVanityName,
     push,
     isLoggedIn,
   }) => (
@@ -204,6 +208,15 @@ export const coreRenderers: ScreenRenderers = {
       avatarSrc={avatarSrc(owner.avatar)}
       onEditAvatar={isLoggedIn ? () => nav.go("avatar-edit") : undefined}
       onViewAs={() => nav.go("a2-public", { self: true })}
+      // The Findable section is gated here, at the wiring boundary, so the Privacy
+      // screen + FindableName stay flag-agnostic (and storyable): present the ops
+      // only when the flag is on and the owner is logged in.
+      vanityName={vanityName}
+      findableOps={
+        FINDABLE_ENABLED && isLoggedIn
+          ? { register: onRegisterVanityName, release: onReleaseVanityName }
+          : undefined
+      }
       onDeleted={() => {
         // Really delete (revoke links + remove the blob, logs out), then reset
         // the URL to the public landing.

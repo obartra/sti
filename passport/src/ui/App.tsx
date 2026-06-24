@@ -26,6 +26,7 @@ import {
   createDeviceStore,
   type StorageLike,
 } from "../auth/deviceStore.ts";
+import type { AliasRecord } from "../store/index.ts";
 import { webAuthnPasskey } from "../auth/passkey.ts";
 import { applyReport, type ReportOutcome } from "../core/report.ts";
 import { INITIAL_OWNER_STATE, type OwnerState } from "../core/badge.ts";
@@ -60,6 +61,21 @@ const backendController = createSessionController({
   passkey: webAuthnPasskey(),
   api,
 });
+
+// The aliases shown in the live-links UI: every published alias EXCEPT the
+// dedicated findable alias (doc 17), which has its own card and stays in the blob
+// only so knocks to it are reviewed. Empty when logged out.
+function liveLinkAliases(session: OwnerSession | null): AliasRecord[] {
+  if (session === null) return [];
+  const findableId = session.blob.findable?.aliasId;
+  return session.blob.aliases.filter((a) => a.id !== findableId);
+}
+
+// The owner's claimed findable name, or null (logged out, or none). Hoisted so the
+// App component stays under its complexity ceiling.
+function findableName(session: OwnerSession | null): string | null {
+  return session?.blob.findable?.name ?? null;
+}
 
 // The wired app: a route + history model (useAppRouter), responsive chrome, and
 // the owner session. Logged out, it shows the public landing + onboarding;
@@ -203,12 +219,13 @@ export function App({
       approvingKnocks={approvingKnocks}
       showPartnerNudge={showPartnerNudge}
       dismissPartnerNudge={dismissPartnerNudge}
-      aliases={session ? session.blob.aliases : []}
+      aliases={liveLinkAliases(session)}
       contacts={session ? session.blob.contacts : []}
       faves={faves}
       onToggleFave={toggleFave}
       isLoggedIn={session !== null}
       circles={session ? (session.blob.circles ?? []) : []}
+      vanityName={findableName(session)}
       push={push}
       {...actions}
     />

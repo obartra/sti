@@ -32,6 +32,7 @@ export type {
   AliasRecord,
   ContactRecord,
   CircleRecord,
+  FindableRegistration,
   StatusAlias,
   SharingMode,
 } from "./accountBlob.ts";
@@ -102,3 +103,9 @@ export type {
   OwnerKnocks,
 } from "./session.ts";
 export { createSessionController } from "./session.ts";
+export {
+  primaryShareAlias,
+  registerVanityName,
+  releaseVanityName,
+  type VanityRegisterOutcome,
+} from "./findableOps.ts";

@@ -57,6 +57,8 @@ function fakeBackend() {
     },
     setOwnerState: () => Promise.reject(new Error("unused")),
     setProfile: () => Promise.reject(new Error("unused")),
+    setFindable: () => Promise.reject(new Error("unused")),
+    recordFindable: () => Promise.reject(new Error("unused")),
     sweepExpiredLinks: (master) => {
       // No links expire in these tests, so a sweep is a pure read of the blob.
       const blob = byMaster.get(bytesToBase64url(master));
@@ -271,5 +273,54 @@ describe("session controller", () => {
     // The blob is gone (phrase recovers nothing) and the passkey can't resume.
     expect(await ctl.recover(recoveryPhrase)).toBeNull();
     expect(await ctl.resume()).toBeNull();
+  });
+
+  it("deleteAccount releases a claimed findable name first (best-effort)", async () => {
+    const { accounts, sync } = fakeBackend();
+    const devices = createDeviceStore(memoryStorage());
+    let released: [string, string] | null = null;
+    // Records the one api call deleteAccount makes for findable; anything else throws.
+    const api = new Proxy({} as ApiClient, {
+      get(_t, prop) {
+        if (prop === "releaseVanityName") {
+          return (name: string, writeToken: string) => {
+            released = [name, writeToken];
+            return Promise.resolve();
+          };
+        }
+        return () => {
+          throw new Error("api unused in this test");
+        };
+      },
+    });
+    const ctl = createSessionController({
+      accounts,
+      sync,
+      devices,
+      passkey: fakePasskey(),
+      api,
+    });
+    const { session } = await ctl.signUp("robin");
+    const alias = {
+      id: "A".repeat(43),
+      writeToken: "B".repeat(43),
+      key: "C".repeat(43),
+      isPublic: true,
+    };
+    const claimed = {
+      master: session.master,
+      blob: {
+        ...session.blob,
+        aliases: [alias],
+        findable: { name: "robin", aliasId: alias.id },
+      },
+    };
+
+    await ctl.deleteAccount(claimed);
+
+    // The name was released with the backing alias's write token, then the account
+    // removed (phrase recovers nothing).
+    expect(released).toEqual(["robin", "B".repeat(43)]);
+    expect(await ctl.recover("ignored")).toBeNull();
   });
 });

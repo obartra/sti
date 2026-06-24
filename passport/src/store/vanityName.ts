@@ -121,3 +121,14 @@ export function vanityNameError(input: string): VanityNameError | null {
 export function isValidVanityName(input: string): boolean {
   return vanityNameError(input) === null;
 }
+
+/**
+ * Whether a value is a well-shaped vanity name (charset + length only), ignoring
+ * the reserved/blocked sets. Used to validate a name PERSISTED in the account blob:
+ * the charset is fixed, but the reserved/blocked sets grow over time, so validating
+ * a stored name against them would brick an account that registered a name later
+ * added to the blocklist (blob parse fails closed). Shape is the stable invariant.
+ */
+export function hasVanityNameShape(x: unknown): x is string {
+  return typeof x === "string" && NAME_SHAPE.test(x);
+}
