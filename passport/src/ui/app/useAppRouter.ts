@@ -9,6 +9,8 @@ import {
 } from "./routes.ts";
 import { parseAliasLink } from "../../store/aliasLink.ts";
 import { parseContactInvite } from "../../store/contactInvite.ts";
+import { normalizeVanityName } from "../../store/vanityName.ts";
+import { FINDABLE_ENABLED } from "../../features.ts";
 
 export interface Nav {
   // Navigate to a screen, pushing the current one onto the history stack.
@@ -29,6 +31,22 @@ export interface Router {
 const HOME: Route = { screen: "home", group: "app", data: null };
 const START: Route = { screen: "a1-landing", group: "public", data: null };
 
+// Extract the vanity name from a `/u/{name}` path (doc 17), or null if the path
+// isn't one. Decoding is fail-closed: a malformed percent-encoding falls back to
+// the raw segment rather than throwing during render (resolve then 404s → the
+// not-found screen). Exported for testing.
+export function findableNameFromPath(pathname: string): string | null {
+  const raw = /^\/u\/([^/]+)\/?$/.exec(pathname)?.[1];
+  if (raw === undefined) return null;
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    decoded = raw;
+  }
+  return normalizeVanityName(decoded);
+}
+
 // A screen can be deep-linked via the URL hash (#wallet, #circle-detail). Used
 // for internal shareable links and for the per-screen capture sweep.
 function routeFromHash(): Route | null {
@@ -45,6 +63,15 @@ function routeFromLocation(): Route | null {
   // The public heads-up page (linked from the off-app text). Anonymous, no key.
   if (/^\/exposed\/?$/.test(window.location.pathname)) {
     return { screen: "exposed", group: "public", data: null };
+  }
+  // A Findable name link `/u/{name}` (doc 17). Gated until launch; when on, route
+  // to the resolve step, which looks the name up and hands into the knock flow (a
+  // findable name carries no key, so it's the keyless gated path).
+  if (FINDABLE_ENABLED) {
+    const name = findableNameFromPath(window.location.pathname);
+    if (name !== null) {
+      return { screen: "u-resolve", group: "public", data: { name } };
+    }
   }
   const link = parseAliasLink(window.location.pathname, window.location.hash);
   if (link) {

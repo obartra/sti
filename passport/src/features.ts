@@ -22,4 +22,6 @@ export const WALLET_ENABLED = false;
  * Flipping this true client-side without the server flag would let people try to
  * register names the server refuses, so the two move together at launch (F6).
  */
-export const FINDABLE_ENABLED = false;
+// Widened to `boolean` (not the literal `false`) so the `if (FINDABLE_ENABLED)`
+// gate isn't flagged as an always-falsy dead branch; it flips to true at F6.
+export const FINDABLE_ENABLED = false as boolean;

@@ -24,7 +24,12 @@ function storeResolving(
   knock: PassportStore["knock"] = () => Promise.resolve(),
   redeemGrant: PassportStore["redeemGrant"] = () => Promise.resolve(null),
 ): PassportStore {
-  return { resolveAlias: () => Promise.resolve(to), knock, redeemGrant };
+  return {
+    resolveAlias: () => Promise.resolve(to),
+    knock,
+    redeemGrant,
+    resolveVanityName: () => Promise.resolve(null),
+  };
 }
 
 describe("PublicResolutionScreen", () => {

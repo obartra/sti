@@ -4,6 +4,7 @@ import { PublicResolutionScreen } from "../../public/PublicResolutionScreen.tsx"
 import { SelfPreview } from "../../public/SelfPreview.tsx";
 import { Alert } from "../../public/Alert.tsx";
 import { Exposed } from "../../public/Exposed.tsx";
+import { FindableResolve } from "../../findable/FindableResolve.tsx";
 import { SAMPLE_RESOLVED } from "../fixtures.ts";
 import type { ScreenRenderers } from "./context.ts";
 
@@ -34,13 +35,16 @@ export const publicRenderers: ScreenRenderers = {
       );
     }
 
-    // A real shared link: resolve the id + key against the backend. If the link is
-    // a contact invite (it carried a notify capability) and the viewer is logged
-    // in, offer "Add to contacts" instead of a knock.
+    // A real shared link: resolve the id (+ key) against the backend. A keyed link
+    // (`#k=`) can decrypt directly; a keyless id — a Findable name resolved via
+    // u-resolve — has no key, so resolveAlias yields gray-nothing and the screen
+    // shows the knock affordance (the gated path). If the link is a contact invite
+    // (it carried a notify capability) and the viewer is logged in, offer "Add to
+    // contacts" instead of a knock; an invite always carries a key.
     const { id, key, notify, ref } = ctx.data ?? {};
-    if (id !== undefined && key !== undefined) {
+    if (id !== undefined) {
       const invite =
-        ctx.isLoggedIn && notify !== undefined
+        ctx.isLoggedIn && key !== undefined && notify !== undefined
           ? {
               alias: { id, key },
               notify,
@@ -50,7 +54,7 @@ export const publicRenderers: ScreenRenderers = {
       return (
         <PublicResolutionScreen
           store={ctx.store}
-          link={{ id, key }}
+          link={{ id, key: key ?? "" }}
           invite={invite}
           onAcceptInvite={ctx.onAcceptContactInvite}
           onBack={ctx.nav.back}
@@ -74,4 +78,15 @@ export const publicRenderers: ScreenRenderers = {
     <Alert preview={data?.preview ?? false} onBack={nav.back} />
   ),
   exposed: ({ nav }) => <Exposed onClaim={() => nav.go("b1-claim")} />,
+  // Findable resolve→knock (doc 17, F5b): look the name up, then hand the alias id
+  // into the keyless knock flow (a2-public renders the "ask to view" affordance).
+  "u-resolve": (ctx) => (
+    <FindableResolve
+      name={ctx.data?.name ?? ""}
+      resolve={(n) => ctx.store.resolveVanityName(n)}
+      onResolved={(aliasId) => ctx.nav.go("a2-public", { id: aliasId })}
+      onClaim={() => ctx.nav.go("b1-claim")}
+      onBack={ctx.nav.back}
+    />
+  ),
 };
