@@ -40,6 +40,9 @@ function fakeAccountApi(): ApiClient {
     knock: unused,
     registerPush: unused,
     getVapidPublicKey: unused,
+    registerVanityName: unused,
+    releaseVanityName: unused,
+    resolveVanityName: unused,
     health: unused,
     getAccount: (id) => {
       const e = store.get(id);

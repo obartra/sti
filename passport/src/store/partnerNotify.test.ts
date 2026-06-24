@@ -90,6 +90,9 @@ function fakeApi(poisonInboxId?: string): {
     knockReview: unused,
     registerPush: unused,
     getVapidPublicKey: unused,
+    registerVanityName: unused,
+    releaseVanityName: unused,
+    resolveVanityName: unused,
     health: unused,
   };
   return { api, pings, notified };

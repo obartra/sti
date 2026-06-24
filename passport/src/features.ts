@@ -13,3 +13,13 @@
  * (the Wallet entry) and labs/docs/11-frontend-backend-integration.md.
  */
 export const WALLET_ENABLED = false;
+
+/**
+ * FINDABLE (doc 17, the vanity-name reach mode): the registration UI, the
+ * onboarding "Findable" option, and the resolve→knock handoff are built behind
+ * this. It stays off until the launch gate is met (consent disclosure shipped,
+ * blocklist curated) AND the server's STI_FINDABLE_ENABLED is flipped on the box.
+ * Flipping this true client-side without the server flag would let people try to
+ * register names the server refuses, so the two move together at launch (F6).
+ */
+export const FINDABLE_ENABLED = false;

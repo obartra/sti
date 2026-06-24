@@ -41,6 +41,9 @@ function recordingApi(): { api: ApiClient; puts: PutCall[] } {
       knock: unused,
       registerPush: unused,
       getVapidPublicKey: unused,
+      registerVanityName: unused,
+      releaseVanityName: unused,
+      resolveVanityName: unused,
       health: unused,
       putAlias: (id, payload, writeToken) => {
         puts.push({ id, payload, writeToken });
