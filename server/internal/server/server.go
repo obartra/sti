@@ -81,6 +81,12 @@ type Config struct {
 	// VanityLockWindow is the post-release lock during which a freed name is
 	// unclaimable (doc 17). Default 24h; lowered by tests to exercise expiry.
 	VanityLockWindow time.Duration
+	// VanityResolveGlobalPerSec / VanityResolveGlobalBurst bound GET /u resolve
+	// across ALL callers, not per IP (doc 17 wants both): the per-IP limit slows one
+	// scraper, this caps a distributed scrape of the namespace. Set generously so
+	// real use never trips it. Zero leaves the defaults (50/sec, burst 200).
+	VanityResolveGlobalPerSec float64
+	VanityResolveGlobalBurst  float64
 }
 
 func (c *Config) withDefaults() {
@@ -120,21 +126,28 @@ func (c *Config) withDefaults() {
 	if c.VanityLockWindow == 0 {
 		c.VanityLockWindow = 24 * time.Hour
 	}
+	if c.VanityResolveGlobalPerSec == 0 {
+		c.VanityResolveGlobalPerSec = 50
+	}
+	if c.VanityResolveGlobalBurst == 0 {
+		c.VanityResolveGlobalBurst = 200
+	}
 }
 
 // Server is the HTTP handler set.
 type Server struct {
-	st       *store.Store
-	cfg      Config
-	log      *slog.Logger
-	now      func() int64 // unix millis; injectable for tests
-	ipLimit  *limiter     // visible 429 on non-sensitive endpoints
-	knockLim *limiter     // silent cap on /knock (never a 429)
-	adminLim *limiter     // tight per-IP cap on /admin/* (visible 429)
-	inflight chan struct{}
-	mux      *http.ServeMux
-	metrics  *metrics.Metrics // blind aggregate self-telemetry (loopback only)
-	sender   Sender           // contentless Web Push delivery; nil disables it
+	st          *store.Store
+	cfg         Config
+	log         *slog.Logger
+	now         func() int64 // unix millis; injectable for tests
+	ipLimit     *limiter     // visible 429 on non-sensitive endpoints
+	knockLim    *limiter     // silent cap on /knock (never a 429)
+	adminLim    *limiter     // tight per-IP cap on /admin/* (visible 429)
+	uResolveLim *limiter     // single global bucket capping GET /u resolve (doc 17)
+	inflight    chan struct{}
+	mux         *http.ServeMux
+	metrics     *metrics.Metrics // blind aggregate self-telemetry (loopback only)
+	sender      Sender           // contentless Web Push delivery; nil disables it
 }
 
 // New builds a Server. now may be nil (defaults to the wall clock).
@@ -144,17 +157,18 @@ func New(st *store.Store, cfg Config, log *slog.Logger, now func() int64) *Serve
 		now = func() int64 { return time.Now().UnixMilli() }
 	}
 	s := &Server{
-		st:       st,
-		cfg:      cfg,
-		log:      log,
-		now:      now,
-		ipLimit:  newLimiter(cfg.IPRatePerSec, cfg.IPBurst),
-		knockLim: newLimiter(cfg.KnockRatePerID, cfg.KnockBurst),
-		adminLim: newLimiter(cfg.AdminRatePerSec, cfg.AdminBurst),
-		inflight: make(chan struct{}, cfg.MaxInflight),
-		mux:      http.NewServeMux(),
-		metrics:  metrics.New(),
-		sender:   cfg.Sender,
+		st:          st,
+		cfg:         cfg,
+		log:         log,
+		now:         now,
+		ipLimit:     newLimiter(cfg.IPRatePerSec, cfg.IPBurst),
+		knockLim:    newLimiter(cfg.KnockRatePerID, cfg.KnockBurst),
+		adminLim:    newLimiter(cfg.AdminRatePerSec, cfg.AdminBurst),
+		uResolveLim: newLimiter(cfg.VanityResolveGlobalPerSec, cfg.VanityResolveGlobalBurst),
+		inflight:    make(chan struct{}, cfg.MaxInflight),
+		mux:         http.NewServeMux(),
+		metrics:     metrics.New(),
+		sender:      cfg.Sender,
 	}
 	s.metrics.SetInflightMax(cfg.MaxInflight)
 	// Blind aggregate gauges: row counts of opaque rows and the db file size,
@@ -379,10 +393,13 @@ func (s *Server) fixedPayload(r *http.Request, id string, get storeReadFn, label
 // lookup, matching the form it is stored in.
 func (s *Server) handleVanityResolve(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
-	// A per-IP cap to slow bulk enumeration of the namespace (doc 17). The 429 is
-	// independent of whether the name exists, so it adds no existence signal. A
-	// GLOBAL limit and further resolve hardening are a follow-up slice (F3).
-	if !s.ipLimit.allow(clientIP(r), s.now()) {
+	// Two caps slow bulk enumeration of the namespace (doc 17): a per-IP bucket
+	// slows one scraper, and a single GLOBAL bucket caps a distributed scrape across
+	// many IPs. The 429 is independent of whether the name exists, so it adds no
+	// existence signal. The global bucket is keyed by a constant so all callers
+	// share it.
+	if !s.ipLimit.allow(clientIP(r), s.now()) ||
+		!s.uResolveLim.allow("u", s.now()) {
 		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
 		return
 	}
@@ -908,4 +925,5 @@ func (s *Server) SweepLimiters(now int64) {
 	s.ipLimit.sweep(cutoff)
 	s.knockLim.sweep(cutoff)
 	s.adminLim.sweep(cutoff)
+	s.uResolveLim.sweep(cutoff)
 }

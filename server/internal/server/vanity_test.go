@@ -268,3 +268,41 @@ func TestVanityReportGatedOff(t *testing.T) {
 		t.Fatalf("report while gated off: %d, want 404", rec.Code)
 	}
 }
+
+// The global resolve cap (doc 17) sheds bulk enumeration across ALL callers, not
+// just per IP: with a tiny global budget, distinct client IPs still share the one
+// bucket, so the (burst+1)th resolve is a 429 regardless of who sends it. A frozen
+// clock keeps the bucket from refilling mid-test.
+func TestVanityResolveGlobalRateLimit(t *testing.T) {
+	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	srv := New(st, Config{
+		DecoySecret: make([]byte, 32),
+		// Generous per-IP so it never trips first; tiny global so the cap is the global one.
+		IPRatePerSec:              1000,
+		IPBurst:                   1000,
+		VanityResolveGlobalPerSec: 0.000001,
+		VanityResolveGlobalBurst:  2,
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)), func() int64 { return 1000 })
+	h := srv.Handler()
+
+	get := func(ip string) int {
+		req := httptest.NewRequest("GET", contract.PathVanityPrefix+"nobody", nil)
+		req.Header.Set("X-Real-IP", ip) // a DIFFERENT IP each call
+		return do(h, req).Code
+	}
+	// Two resolves drain the global burst (each a 404 miss, but allowed);
+	if c := get("1.1.1.1"); c != http.StatusNotFound {
+		t.Fatalf("resolve 1: %d, want 404", c)
+	}
+	if c := get("2.2.2.2"); c != http.StatusNotFound {
+		t.Fatalf("resolve 2: %d, want 404", c)
+	}
+	// the third, from yet another IP, is shed by the shared global bucket.
+	if c := get("3.3.3.3"); c != http.StatusTooManyRequests {
+		t.Fatalf("resolve 3 (different IP): %d, want 429", c)
+	}
+}
