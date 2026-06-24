@@ -637,7 +637,7 @@ func TestVanityResolve(t *testing.T) {
 	h := srv.Handler()
 
 	aliasID := randID(t)
-	if err := st.PutVanityName(context.Background(), "robin", aliasID, 1); err != nil {
+	if _, err := st.ClaimVanityName(context.Background(), "robin", aliasID, 1); err != nil {
 		t.Fatal(err)
 	}
 

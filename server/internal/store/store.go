@@ -97,6 +97,19 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("add alias.expires_at: %w", err)
 		}
 	}
+	// vanity_name.locked_until: the post-release 24h lock (doc 17, Findable F2).
+	// Older databases have the F1 vanity_name without it; add it in place (0 = not
+	// locked).
+	hasLock, err := hasColumn(ctx, db, "vanity_name", "locked_until")
+	if err != nil {
+		return err
+	}
+	if !hasLock {
+		if _, err := db.ExecContext(ctx,
+			`ALTER TABLE vanity_name ADD COLUMN locked_until INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return fmt.Errorf("add vanity_name.locked_until: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -301,24 +314,77 @@ func (s *Store) GetAccount(ctx context.Context, id string) (ciphertext []byte, v
 }
 
 // --- Vanity name directory (doc 17, Findable) -------------------------------
-// name -> alias_id only. No status, key, or identity. Registration is gated and
-// not yet wired to an endpoint; these back the resolve read path and tests.
+// name -> alias_id only. No status, key, or identity. The endpoints are gated
+// behind STI_FINDABLE_ENABLED; ownership of a name is proven by holding the write
+// token of the alias it points at (no separate owner record).
 
-// PutVanityName registers (or re-points) a normalized name to an opaque alias id.
-func (s *Store) PutVanityName(ctx context.Context, name, aliasID string, now int64) error {
-	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO vanity_name (name, alias_id, created_at) VALUES (?, ?, ?)
-		 ON CONFLICT(name) DO UPDATE SET alias_id = excluded.alias_id`,
-		name, aliasID, now)
-	return err
+// VanityStatus is the outcome of a claim attempt.
+type VanityStatus int
+
+const (
+	// VanityClaimed: the name now points at the requested alias (a fresh claim, a
+	// reclaim of a lapsed-lock name, or an idempotent re-claim by the same alias).
+	VanityClaimed VanityStatus = iota
+	// VanityTaken: the name is actively held by a DIFFERENT alias (first-come).
+	VanityTaken
+	// VanityLocked: the name is in its post-release 24h lock, unclaimable by anyone.
+	VanityLocked
+)
+
+// ClaimVanityName attempts to register name -> aliasID first-come (doc 17). The
+// caller MUST have already proven the requester owns aliasID (the alias write
+// token); this enforces only the allocation rules. It is transactional so two
+// racing first-claims serialize: one wins, the other sees VanityTaken.
+func (s *Store) ClaimVanityName(ctx context.Context, name, aliasID string, now int64) (VanityStatus, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return VanityTaken, err
+	}
+	defer tx.Rollback()
+
+	var existingAlias string
+	var lockedUntil int64
+	switch err := tx.QueryRowContext(ctx,
+		`SELECT alias_id, locked_until FROM vanity_name WHERE name = ?`, name).
+		Scan(&existingAlias, &lockedUntil); {
+	case errors.Is(err, sql.ErrNoRows):
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO vanity_name (name, alias_id, created_at, locked_until) VALUES (?, ?, ?, 0)`,
+			name, aliasID, now); err != nil {
+			return VanityTaken, err
+		}
+	case err != nil:
+		return VanityTaken, err
+	default:
+		switch {
+		case existingAlias == aliasID:
+			// Idempotent re-claim by the same alias: nothing to change (created_at and
+			// the registration stand). Reaches here only because the caller proved it
+			// owns aliasID, so this is the genuine holder refreshing.
+			return VanityClaimed, tx.Commit()
+		case existingAlias != "":
+			return VanityTaken, nil // held by a different alias
+		case lockedUntil > now:
+			return VanityLocked, nil // released but still in the lock window
+		default:
+			// Released and the lock has lapsed: reclaimable first-come.
+			if _, err := tx.ExecContext(ctx,
+				`UPDATE vanity_name SET alias_id = ?, created_at = ?, locked_until = 0 WHERE name = ?`,
+				aliasID, now, name); err != nil {
+				return VanityTaken, err
+			}
+		}
+	}
+	return VanityClaimed, tx.Commit()
 }
 
-// ResolveVanityName returns the alias id a name points at, and whether it exists.
-// Existence is intentionally non-uniform here (doc 17): a missing name is a real
-// "not found", unlike the decoy-padded alias read.
+// ResolveVanityName returns the alias id an ACTIVE name points at, and whether it
+// is active. A released/locked name (alias_id = ”) resolves as not-found, so a
+// name in its lock window stops resolving immediately. Existence is intentionally
+// non-uniform here (doc 17): a miss is a real "not found", unlike the alias read.
 func (s *Store) ResolveVanityName(ctx context.Context, name string) (aliasID string, found bool, err error) {
 	err = s.db.QueryRowContext(ctx,
-		`SELECT alias_id FROM vanity_name WHERE name = ?`, name).Scan(&aliasID)
+		`SELECT alias_id FROM vanity_name WHERE name = ? AND alias_id != ''`, name).Scan(&aliasID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", false, nil
 	}
@@ -328,9 +394,15 @@ func (s *Store) ResolveVanityName(ctx context.Context, name string) (aliasID str
 	return aliasID, true, nil
 }
 
-// ReleaseVanityName frees a name (on alias deletion/revocation). Idempotent.
-func (s *Store) ReleaseVanityName(ctx context.Context, name string) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM vanity_name WHERE name = ?`, name)
+// ReleaseVanityName frees a name into the post-release lock (doc 17): it clears
+// the alias mapping (so the name stops resolving at once) and sets locked_until to
+// now+lockMs, during which the name is unclaimable. Idempotent (a missing name is
+// a no-op). The owner check is the caller's job; this is also the takedown path an
+// admin action reuses. Re-locking an already-locked name simply extends the lock.
+func (s *Store) ReleaseVanityName(ctx context.Context, name string, now, lockMs int64) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE vanity_name SET alias_id = '', locked_until = ? WHERE name = ?`,
+		now+lockMs, name)
 	return err
 }
 

@@ -406,42 +406,66 @@ func TestConcurrentWritesPersist(t *testing.T) {
 	}
 }
 
-func TestVanityNameDirectory(t *testing.T) {
+func TestVanityNameLifecycle(t *testing.T) {
 	s := openTestStore(t)
 	ctx := context.Background()
 	const name = "robin"
+	const lock = int64(24 * 60 * 60 * 1000) // 24h in ms
 
 	// Unknown name: a real not-found (the directory is non-uniform by design).
 	if _, found, err := s.ResolveVanityName(ctx, name); err != nil || found {
 		t.Fatalf("unknown name: found=%v err=%v, want found=false", found, err)
 	}
 
-	// Register, then resolve to the opaque alias id.
-	if err := s.PutVanityName(ctx, name, "alias-one", 1000); err != nil {
-		t.Fatal(err)
+	// First-come claim, then resolve to the opaque alias id.
+	if st, err := s.ClaimVanityName(ctx, name, "alias-one", 1000); err != nil || st != VanityClaimed {
+		t.Fatalf("claim: st=%v err=%v, want Claimed", st, err)
 	}
-	got, found, err := s.ResolveVanityName(ctx, name)
-	if err != nil || !found || got != "alias-one" {
+	if got, found, err := s.ResolveVanityName(ctx, name); err != nil || !found || got != "alias-one" {
 		t.Fatalf("resolve: got=%q found=%v err=%v, want alias-one/true", got, found, err)
 	}
 
-	// Re-pointing the same name updates in place (one row per name).
-	if err := s.PutVanityName(ctx, name, "alias-two", 1001); err != nil {
-		t.Fatal(err)
-	}
-	if got, _, _ := s.ResolveVanityName(ctx, name); got != "alias-two" {
-		t.Fatalf("re-point: got=%q, want alias-two", got)
+	// The same alias re-claiming is idempotent (still held, still alias-one).
+	if st, err := s.ClaimVanityName(ctx, name, "alias-one", 1001); err != nil || st != VanityClaimed {
+		t.Fatalf("idempotent re-claim: st=%v err=%v", st, err)
 	}
 
-	// Release frees it, and is idempotent.
-	if err := s.ReleaseVanityName(ctx, name); err != nil {
+	// A different alias cannot take a name another alias actively holds.
+	if st, _ := s.ClaimVanityName(ctx, name, "alias-two", 1002); st != VanityTaken {
+		t.Fatalf("claim by other: st=%v, want Taken", st)
+	}
+	if got, _, _ := s.ResolveVanityName(ctx, name); got != "alias-one" {
+		t.Fatalf("still held: got %q, want alias-one", got)
+	}
+
+	// Release into the post-release lock: it stops resolving at once.
+	const now = int64(2000)
+	if err := s.ReleaseVanityName(ctx, name, now, lock); err != nil {
 		t.Fatal(err)
 	}
 	if _, found, _ := s.ResolveVanityName(ctx, name); found {
 		t.Fatal("after release: want not found")
 	}
-	if err := s.ReleaseVanityName(ctx, name); err != nil {
-		t.Fatalf("release is not idempotent: %v", err)
+
+	// During the lock, NO ONE can reclaim it (not even the prior owner).
+	if st, _ := s.ClaimVanityName(ctx, name, "alias-one", now+lock-1); st != VanityLocked {
+		t.Fatalf("reclaim during lock (prior owner): st=%v, want Locked", st)
+	}
+	if st, _ := s.ClaimVanityName(ctx, name, "alias-three", now+lock-1); st != VanityLocked {
+		t.Fatalf("reclaim during lock (other): st=%v, want Locked", st)
+	}
+
+	// Once the lock lapses, it is reclaimable first-come by anyone.
+	if st, err := s.ClaimVanityName(ctx, name, "alias-three", now+lock); err != nil || st != VanityClaimed {
+		t.Fatalf("reclaim after lock: st=%v err=%v, want Claimed", st, err)
+	}
+	if got, _, _ := s.ResolveVanityName(ctx, name); got != "alias-three" {
+		t.Fatalf("after reclaim: got %q, want alias-three", got)
+	}
+
+	// Release is idempotent (re-releasing simply re-locks).
+	if err := s.ReleaseVanityName(ctx, name, now, lock); err != nil {
+		t.Fatalf("release not idempotent: %v", err)
 	}
 }
 

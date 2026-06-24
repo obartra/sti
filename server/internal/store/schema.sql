@@ -69,10 +69,17 @@ CREATE INDEX IF NOT EXISTS idx_cover_send_available ON cover_send (available_at)
 -- knock for. Unlike the existence-uniform alias table, existence here is
 -- intentionally revealed (a registered name is discoverable by design); the name
 -- and that it is registered are the only thing Findable adds over Gated.
+-- A name is in one of two states (doc 17 allocation lifecycle):
+--   active:   alias_id != '' and locked_until = 0   -> resolves to alias_id
+--   released: alias_id  = '' and locked_until > now  -> the 24h lock; unclaimable
+-- After the lock lapses (locked_until <= now) the row is reclaimable first-come.
+-- alias_id is the ONLY owning reference: ownership is proven by holding that
+-- alias's write token, so no separate owner column is stored.
 CREATE TABLE IF NOT EXISTS vanity_name (
-    name        TEXT PRIMARY KEY,   -- normalized [a-z0-9_]{3,30}
-    alias_id    TEXT NOT NULL,      -- the opaque alias the name resolves to
-    created_at  INTEGER NOT NULL
+    name         TEXT PRIMARY KEY,   -- normalized [a-z0-9_]{3,30}
+    alias_id     TEXT NOT NULL,      -- the opaque alias the name resolves to; '' when released
+    created_at   INTEGER NOT NULL,
+    locked_until INTEGER NOT NULL DEFAULT 0 -- epoch ms; > now => in the post-release lock
 ) WITHOUT ROWID;
 
 CREATE TABLE IF NOT EXISTS knock (
