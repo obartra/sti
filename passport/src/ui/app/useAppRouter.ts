@@ -31,6 +31,22 @@ export interface Router {
 const HOME: Route = { screen: "home", group: "app", data: null };
 const START: Route = { screen: "a1-landing", group: "public", data: null };
 
+// Extract the vanity name from a `/u/{name}` path (doc 17), or null if the path
+// isn't one. Decoding is fail-closed: a malformed percent-encoding falls back to
+// the raw segment rather than throwing during render (resolve then 404s → the
+// not-found screen). Exported for testing.
+export function findableNameFromPath(pathname: string): string | null {
+  const raw = /^\/u\/([^/]+)\/?$/.exec(pathname)?.[1];
+  if (raw === undefined) return null;
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    decoded = raw;
+  }
+  return normalizeVanityName(decoded);
+}
+
 // A screen can be deep-linked via the URL hash (#wallet, #circle-detail). Used
 // for internal shareable links and for the per-screen capture sweep.
 function routeFromHash(): Route | null {
@@ -52,10 +68,8 @@ function routeFromLocation(): Route | null {
   // to the resolve step, which looks the name up and hands into the knock flow (a
   // findable name carries no key, so it's the keyless gated path).
   if (FINDABLE_ENABLED) {
-    const m = /^\/u\/([^/]+)\/?$/.exec(window.location.pathname);
-    const raw = m?.[1];
-    if (raw !== undefined) {
-      const name = normalizeVanityName(decodeURIComponent(raw));
+    const name = findableNameFromPath(window.location.pathname);
+    if (name !== null) {
       return { screen: "u-resolve", group: "public", data: { name } };
     }
   }
