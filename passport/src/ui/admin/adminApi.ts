@@ -43,3 +43,83 @@ export async function pingAdmin(
   if (res.status === 401) return "unauthorized";
   return "error";
 }
+
+// --- Findable review (A2) ---------------------------------------------------
+
+const ADMIN_REPORTS_PATH = "/admin/reports";
+
+/** One reported name in the review queue (mirrors the server's AdminReport). */
+export interface AdminReport {
+  name: string;
+  reason: string;
+  count: number;
+  createdAt: number;
+}
+
+export type AdminReportsResult =
+  | { kind: "ok"; reports: AdminReport[] }
+  | { kind: "unauthorized" }
+  | { kind: "error" };
+
+/**
+ * Fetch the pending vanity-name report queue. 401 surfaces distinctly so the page
+ * can re-lock; any other non-200, a network failure, or a malformed body is a
+ * generic error the panel shows with a retry.
+ */
+export async function listAdminReports(
+  apiBase: string,
+  token: string,
+  fetchImpl: FetchLike = (input, init) => globalThis.fetch(input, init),
+): Promise<AdminReportsResult> {
+  let res: Response;
+  try {
+    res = await fetchImpl(apiBase + ADMIN_REPORTS_PATH, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    return { kind: "error" };
+  }
+  if (res.status === 401) return { kind: "unauthorized" };
+  if (res.status !== 200) return { kind: "error" };
+  try {
+    const body = (await res.json()) as { reports?: AdminReport[] };
+    return { kind: "ok", reports: body.reports ?? [] };
+  } catch {
+    return { kind: "error" };
+  }
+}
+
+export type AdminAction = "takedown" | "dismiss";
+export type AdminActionResult = "ok" | "unauthorized" | "error";
+
+/** What a reviewer action needs: the surface, the bearer, the name, the verb. */
+export interface VanityAction {
+  apiBase: string;
+  token: string;
+  name: string;
+  action: AdminAction;
+}
+
+/**
+ * Act on a reported name: `takedown` (revoke into the 24h lock + clear reports) or
+ * `dismiss` (clear reports, no action). 204 = done; 401 re-locks; anything else is
+ * a generic error. The name is path-encoded defensively (it is already [a-z0-9_]).
+ */
+export async function actOnVanityName(
+  { apiBase, token, name, action }: VanityAction,
+  fetchImpl: FetchLike = (input, init) => globalThis.fetch(input, init),
+): Promise<AdminActionResult> {
+  let res: Response;
+  try {
+    res = await fetchImpl(
+      `${apiBase}/admin/vanity/${encodeURIComponent(name)}/${action}`,
+      { method: "POST", headers: { Authorization: `Bearer ${token}` } },
+    );
+  } catch {
+    return "error";
+  }
+  if (res.status === 204) return "ok";
+  if (res.status === 401) return "unauthorized";
+  return "error";
+}

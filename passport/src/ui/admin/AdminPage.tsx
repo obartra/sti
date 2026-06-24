@@ -1,12 +1,18 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Card, Field, Input } from "../../design/components/index.ts";
 import { Lock, ShieldCheck } from "../../design/icons.tsx";
-import { pingAdmin, type AdminPingResult } from "./adminApi.ts";
+import {
+  actOnVanityName,
+  listAdminReports,
+  pingAdmin,
+  type AdminPingResult,
+} from "./adminApi.ts";
 import {
   clearAdminToken,
   readAdminToken,
   saveAdminToken,
 } from "./adminToken.ts";
+import { ReviewPanel, type ReviewOps } from "./ReviewPanel.tsx";
 
 // The operator surface (doc 20): a dedicated, gated /admin page, isolated from the
 // user flows and never linked from the app. It renders nothing actionable until a
@@ -21,12 +27,12 @@ const COPY = {
   unlock: "Unlock",
   checking: "Checking the token…",
   authedTitle: "Admin",
-  authedSub: "Token accepted. This surface is read-only for now.",
-  empty: "No actions yet. Findable review arrives in the next slice.",
+  authedSub: "Operator session active.",
   lockAgain: "Lock",
   errBadToken: "That token was not accepted.",
   errUnreachable:
     "Couldn't reach the admin service. Check your connection and try again.",
+  errExpired: "Your session ended. Enter the token again.",
 } as const;
 
 type Phase = "locked" | "checking" | "authed";
@@ -39,12 +45,26 @@ export interface AdminPageProps {
    * drive the gate without a server.
    */
   ping?: (token: string) => Promise<AdminPingResult>;
+  /**
+   * Review-queue transport. Defaults to the real admin endpoints bound to apiBase;
+   * injectable so tests and Storybook drive the panel without a server.
+   */
+  reviewOps?: ReviewOps;
 }
 
-export function AdminPage({ apiBase, ping }: AdminPageProps) {
+export function AdminPage({ apiBase, ping, reviewOps }: AdminPageProps) {
   const validate = useCallback(
     (token: string) => (ping ? ping(token) : pingAdmin(apiBase, token)),
     [ping, apiBase],
+  );
+  const ops = useMemo<ReviewOps>(
+    () =>
+      reviewOps ?? {
+        list: (t) => listAdminReports(apiBase, t),
+        act: (t, name, action) =>
+          actOnVanityName({ apiBase, token: t, name, action }),
+      },
+    [reviewOps, apiBase],
   );
 
   const [phase, setPhase] = useState<Phase>("locked");
@@ -118,6 +138,15 @@ export function AdminPage({ apiBase, ping }: AdminPageProps) {
     setPhase("locked");
   }, []);
 
+  // A 401 from a panel call means the token stopped being valid (rotated/expired):
+  // drop it and return to the gate with a notice, distinct from a manual lock.
+  const expire = useCallback(() => {
+    clearAdminToken();
+    setToken("");
+    setError(COPY.errExpired);
+    setPhase("locked");
+  }, []);
+
   // Admin bypasses the app's Chrome (it is an isolated takeover), so it owns its
   // own centered page frame rather than inheriting the consumer shell's.
   return (
@@ -141,7 +170,12 @@ export function AdminPage({ apiBase, ping }: AdminPageProps) {
         }}
       >
         {phase === "authed" ? (
-          <AuthedShell onLock={lock} />
+          <AuthedShell
+            token={token}
+            ops={ops}
+            onLock={lock}
+            onExpire={expire}
+          />
         ) : (
           <LockGate
             token={token}
@@ -224,7 +258,17 @@ function LockGate({
   );
 }
 
-function AuthedShell({ onLock }: { onLock: () => void }) {
+function AuthedShell({
+  token,
+  ops,
+  onLock,
+  onExpire,
+}: {
+  token: string;
+  ops: ReviewOps;
+  onLock: () => void;
+  onExpire: () => void;
+}) {
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -249,16 +293,7 @@ function AuthedShell({ onLock }: { onLock: () => void }) {
           {COPY.lockAgain}
         </Button>
       </div>
-      <Card
-        variant="flat"
-        style={{
-          fontSize: 13,
-          color: "var(--text-muted)",
-          lineHeight: 1.5,
-        }}
-      >
-        {COPY.empty}
-      </Card>
+      <ReviewPanel token={token} ops={ops} onUnauthorized={onExpire} />
     </>
   );
 }

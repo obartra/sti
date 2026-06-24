@@ -1,11 +1,12 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { Decorator, Meta, StoryObj } from "@storybook/react-vite";
 import { AdminPage } from "./AdminPage.tsx";
 import type { AdminPingResult } from "./adminApi.ts";
+import type { ReviewOps } from "./ReviewPanel.tsx";
 
 // The operator surface (doc 20): a dedicated, gated /admin page isolated from the
-// user flows. The stories stub the token validator so the two visual states (the
-// lock gate and the authed shell) render without a server. The meta decorator
-// clears any seeded token so each story starts from a known state.
+// user flows. The stories stub the token validator and the review transport so the
+// states (lock gate, authed-with-reports, authed-empty) render without a server.
+// The meta decorator clears any seeded token so each story starts from a known state.
 const meta: Meta<typeof AdminPage> = {
   title: "Passport/Admin/AdminPage",
   component: AdminPage,
@@ -22,19 +23,39 @@ type Story = StoryObj<typeof AdminPage>;
 
 const always = (result: AdminPingResult) => () => Promise.resolve(result);
 
+const reviewOps = (
+  reports: { name: string; reason: string; count: number; createdAt: number }[],
+): ReviewOps => ({
+  list: () => Promise.resolve({ kind: "ok", reports }),
+  act: () => Promise.resolve("ok"),
+});
+
+// Pre-seed a token so the page validates it on mount and lands authed without
+// interaction (the key is the one adminToken.ts uses).
+const seedToken: Decorator = (Story) => {
+  sessionStorage.setItem("sti.admin.token", "demo-token");
+  return <Story />;
+};
+
 // The default state: the locked token gate, before any token is entered.
 export const LockGate: Story = {
   args: { ping: always("ok") },
 };
 
-// The authed shell: a token is pre-seeded for the tab (the key adminToken.ts uses),
-// so the page validates it on mount and lands on the panel without interaction.
-export const Authed: Story = {
-  args: { ping: always("ok") },
-  decorators: [
-    (Story) => {
-      sessionStorage.setItem("sti.admin.token", "demo-token");
-      return <Story />;
-    },
-  ],
+// The authed shell with a couple of reported names in the review queue.
+export const AuthedWithReports: Story = {
+  args: {
+    ping: always("ok"),
+    reviewOps: reviewOps([
+      { name: "rob1n", reason: "impersonation", count: 3, createdAt: 1 },
+      { name: "free_money", reason: "spam", count: 1, createdAt: 2 },
+    ]),
+  },
+  decorators: [seedToken],
+};
+
+// The authed shell with an empty queue (the all-clear state).
+export const AuthedEmpty: Story = {
+  args: { ping: always("ok"), reviewOps: reviewOps([]) },
+  decorators: [seedToken],
 };
