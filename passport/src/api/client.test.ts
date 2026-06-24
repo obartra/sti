@@ -369,3 +369,26 @@ describe("vanity name (Findable, doc 17)", () => {
     ).rejects.toBeInstanceOf(ApiError);
   });
 });
+
+describe("reportVanityName (Findable report, doc 17)", () => {
+  it("POSTs the reason to /u/{name}/report and resolves on 202", async () => {
+    const m = mockFetch(() => new Response(null, { status: 202 }));
+    const api = createApiClient(BASE, m.fetch);
+    await expect(
+      api.reportVanityName("rob1n", "slur"),
+    ).resolves.toBeUndefined();
+    const { url, init } = m.last();
+    expect(url).toBe(BASE + "/u/rob1n/report");
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(init?.body as string)).toEqual({ reason: "slur" });
+  });
+
+  it("throws on a non-202 response", async () => {
+    const bad = createApiClient(BASE, () =>
+      Promise.resolve(new Response(null, { status: 400 })),
+    );
+    await expect(bad.reportVanityName("rob1n", "spam")).rejects.toBeInstanceOf(
+      ApiError,
+    );
+  });
+});

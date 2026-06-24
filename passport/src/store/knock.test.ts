@@ -49,6 +49,7 @@ describe("knock", () => {
       registerVanityName: unused,
       releaseVanityName: unused,
       resolveVanityName: unused,
+      reportVanityName: unused,
       health: unused,
       knock: (id, hash) => {
         seen = { id, hash };
