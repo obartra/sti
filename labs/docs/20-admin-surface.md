@@ -99,4 +99,10 @@ Every mutation writes an audit row and returns a uniform shape; none returns pla
 2. **A2 — Findable review:** report store + `GET /admin/reports`, the takedown/dismiss endpoints
    (consume doc 17's lifecycle), and the review panel. This is Findable's F4 reviewer step.
 3. **A3 — Account / alias management (post-Findable):** disable-account + revoke-alias + opaque lookup,
-   each a panel + endpoint, all within the blind-store boundary.
+   each a panel + endpoint, all within the blind-store boundary. Notes from the build: disable-account
+   deletes only the sync blob (the blind store keeps no account→alias link, so aliases are revoked
+   separately, not cascaded); and alias-revoke is two non-atomic steps (delete the alias row, then
+   release any vanity name pointing at it) — if the second fails the name briefly maps to a dead id (a
+   knock just fails) and re-running revoke, idempotent on both halves, completes it. The audit row is
+   written before either step, so the attempt is always recorded. The endpoints ship first; the panel
+   drops into the authed shell next, like A2.

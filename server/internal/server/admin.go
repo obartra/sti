@@ -9,6 +9,7 @@ import (
 
 	"sti.care/api/internal/contract"
 	"sti.care/api/internal/metrics"
+	"sti.care/api/internal/store"
 	"sti.care/api/internal/vanityname"
 )
 
@@ -21,10 +22,12 @@ import (
 // Audit action names. Stable, opaque verbs written to the admin_audit log; they
 // name an action, never user content.
 const (
-	auditActionPing         = "ping"
-	auditActionTakedown     = "vanity.takedown"
-	auditActionTakedownAuto = "vanity.takedown.auto" // hands-free, from a rule-match report
-	auditActionDismiss      = "vanity.dismiss"
+	auditActionPing           = "ping"
+	auditActionTakedown       = "vanity.takedown"
+	auditActionTakedownAuto   = "vanity.takedown.auto" // hands-free, from a rule-match report
+	auditActionDismiss        = "vanity.dismiss"
+	auditActionAccountDisable = "account.disable"
+	auditActionAliasRevoke    = "alias.revoke"
 )
 
 // adminReportsLimit caps the review queue page. The queue is operator-facing and
@@ -44,6 +47,11 @@ func (s *Server) registerAdminRoutes() {
 	s.mux.HandleFunc("GET "+contract.PathAdminReports, s.requireAdmin(s.handleAdminReports))
 	s.mux.HandleFunc("POST /admin/vanity/{name}/takedown", s.requireAdmin(s.handleVanityTakedown))
 	s.mux.HandleFunc("POST /admin/vanity/{name}/dismiss", s.requireAdmin(s.handleVanityDismiss))
+	// Account / alias management (doc 20 A3): all within the blind-store boundary —
+	// delete/revoke opaque records and read opaque metadata, never any content.
+	s.mux.HandleFunc("POST /admin/account/{id}/disable", s.requireAdmin(s.handleAccountDisable))
+	s.mux.HandleFunc("POST /admin/alias/{id}/revoke", s.requireAdmin(s.handleAliasRevoke))
+	s.mux.HandleFunc("GET /admin/lookup/{id}", s.requireAdmin(s.handleAdminLookup))
 }
 
 // requireAdmin gates an admin handler: a tight per-IP rate limit first (so an
@@ -179,4 +187,72 @@ func (s *Server) handleVanityDismiss(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleAccountDisable answers POST /admin/account/{id}/disable: a working-delete
+// of the account's sync blob (doc 20 A3). The blind store holds no link from an
+// account to its aliases, so this removes the blob only; the owner's aliases are
+// revoked separately via the alias endpoint. Idempotent + audited before acting.
+func (s *Server) handleAccountDisable(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if !contract.ValidID(id) {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed id")
+		return
+	}
+	if !s.auditOrFail(r.Context(), w, auditActionAccountDisable, id) {
+		return
+	}
+	if err := s.st.DeleteAccount(r.Context(), id); err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleAliasRevoke answers POST /admin/alias/{id}/revoke: force-remove an alias
+// row (it then reads back as a decoy, like a never-existed id) and free any vanity
+// name pointing at it into the 24h lock. Idempotent + audited before acting.
+func (s *Server) handleAliasRevoke(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if !contract.ValidID(id) {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed id")
+		return
+	}
+	if !s.auditOrFail(r.Context(), w, auditActionAliasRevoke, id) {
+		return
+	}
+	if err := s.st.AdminDeleteAlias(r.Context(), id); err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	if err := s.st.ReleaseVanityNamesForAlias(r.Context(), id, s.now(), s.cfg.VanityLockWindow.Milliseconds()); err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleAdminLookup answers GET /admin/lookup/{id}: opaque metadata for a record
+// (exists / byte size / last-written) across the alias, account, and inbox
+// namespaces. A read, so not audited; returns nothing but sizes and timestamps,
+// never content, so it stays within the blind-store boundary.
+func (s *Server) handleAdminLookup(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if !contract.ValidID(id) {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed id")
+		return
+	}
+	m, err := s.st.LookupRecord(r.Context(), id)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	info := func(ri store.RecordInfo) contract.AdminRecordInfo {
+		return contract.AdminRecordInfo{Exists: ri.Exists, SizeBytes: ri.SizeBytes, UpdatedAt: ri.UpdatedAt}
+	}
+	s.writeJSON(w, http.StatusOK, contract.AdminLookupResponse{
+		Alias:   info(m.Alias),
+		Account: info(m.Account),
+		Inbox:   info(m.Inbox),
+	})
 }

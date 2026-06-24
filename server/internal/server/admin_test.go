@@ -256,3 +256,80 @@ func TestAdminFindableReviewGatedOffWithAdmin(t *testing.T) {
 		t.Fatalf("reports while admin off: %d, want 404", rec.Code)
 	}
 }
+
+// Admin A3: account-disable deletes the account blob, alias-revoke removes the
+// alias (it reads back as a decoy) and frees its vanity name, and lookup returns
+// opaque metadata. All admin-gated and (mutations) audited.
+func TestAdminAccountAliasManagement(t *testing.T) {
+	h, st := newTestAdminServer(t, testAdminToken)
+	ctx := context.Background()
+	bearer := "Bearer " + testAdminToken
+	authed := func(method, path string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, nil)
+		req.Header.Set("Authorization", bearer)
+		return do(h, req)
+	}
+
+	// Disable an account blob.
+	acct := randID(t)
+	if _, err := st.PutAccount(ctx, acct, []byte("blob"), 1); err != nil {
+		t.Fatal(err)
+	}
+	if rec := authed("POST", "/admin/account/"+acct+"/disable"); rec.Code != http.StatusNoContent {
+		t.Fatalf("disable: %d", rec.Code)
+	}
+	if _, _, found, _ := st.GetAccount(ctx, acct); found {
+		t.Fatal("account blob still present after disable")
+	}
+
+	// Revoke an alias that a vanity name points at: the alias is gone and the name
+	// stops resolving.
+	alias := publishAlias(t, h, "owner-wt")
+	if _, err := st.ClaimVanityName(ctx, "robin", alias, 1); err != nil {
+		t.Fatal(err)
+	}
+	if rec := authed("POST", "/admin/alias/"+alias+"/revoke"); rec.Code != http.StatusNoContent {
+		t.Fatalf("revoke: %d", rec.Code)
+	}
+	if _, _, found, _ := st.GetAlias(ctx, alias); found {
+		t.Fatal("alias still present after revoke")
+	}
+	if _, found, _ := st.ResolveVanityName(ctx, "robin"); found {
+		t.Fatal("vanity name still resolves after its alias was revoked")
+	}
+
+	// Both mutations are audited.
+	a, _ := st.RecentAudits(ctx, 10)
+	verbs := map[string]bool{}
+	for _, e := range a {
+		verbs[e.Action] = true
+	}
+	if !verbs["account.disable"] || !verbs["alias.revoke"] {
+		t.Fatalf("missing audit verbs: %+v", a)
+	}
+
+	// Lookup returns opaque metadata for an existing record.
+	acct2 := randID(t)
+	if _, err := st.PutAccount(ctx, acct2, []byte("blob-data"), 5); err != nil {
+		t.Fatal(err)
+	}
+	rec := authed("GET", "/admin/lookup/"+acct2)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("lookup: %d", rec.Code)
+	}
+	var resp contract.AdminLookupResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if !resp.Account.Exists || resp.Account.SizeBytes != int64(len("blob-data")) || resp.Alias.Exists {
+		t.Fatalf("lookup body = %+v", resp)
+	}
+
+	// Gating: unauthed is 401, malformed id is 400.
+	if rec := do(h, httptest.NewRequest("POST", "/admin/alias/"+alias+"/revoke", nil)); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("revoke no auth: %d, want 401", rec.Code)
+	}
+	if rec := authed("GET", "/admin/lookup/not-a-valid-id"); rec.Code != http.StatusBadRequest {
+		t.Fatalf("lookup malformed id: %d, want 400", rec.Code)
+	}
+}
