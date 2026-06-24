@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { AdminPage } from "./AdminPage.tsx";
 import type { AdminPingResult } from "./adminApi.ts";
+import type { ReviewOps } from "./ReviewPanel.tsx";
 
 afterEach(() => {
   sessionStorage.clear();
@@ -11,8 +12,24 @@ afterEach(() => {
 
 const STORAGE_KEY = "sti.admin.token";
 
-function renderPage(ping: (token: string) => Promise<AdminPingResult>) {
-  return render(<AdminPage apiBase="https://api.example" ping={ping} />);
+// A panel transport stub so the authed shell renders without a real server (the
+// panel loads on mount). The review panel itself has dedicated tests.
+const emptyOps: ReviewOps = {
+  list: () => Promise.resolve({ kind: "ok", reports: [] }),
+  act: () => Promise.resolve("ok"),
+};
+
+function renderPage(
+  ping: (token: string) => Promise<AdminPingResult>,
+  reviewOps: ReviewOps = emptyOps,
+) {
+  return render(
+    <AdminPage
+      apiBase="https://api.example"
+      ping={ping}
+      reviewOps={reviewOps}
+    />,
+  );
 }
 
 describe("AdminPage", () => {
@@ -24,7 +41,9 @@ describe("AdminPage", () => {
     await user.type(screen.getByLabelText(/operator token/i), "good-token");
     await user.click(screen.getByRole("button", { name: /unlock/i }));
 
-    expect(await screen.findByText(/token accepted/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/operator session active/i),
+    ).toBeInTheDocument();
     expect(ping).toHaveBeenCalledWith("good-token");
     expect(sessionStorage.getItem(STORAGE_KEY)).toBe("good-token");
   });
@@ -37,7 +56,9 @@ describe("AdminPage", () => {
     await user.click(screen.getByRole("button", { name: /unlock/i }));
 
     expect(await screen.findByText(/was not accepted/i)).toBeInTheDocument();
-    expect(screen.queryByText(/token accepted/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/operator session active/i),
+    ).not.toBeInTheDocument();
     expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 
@@ -67,7 +88,9 @@ describe("AdminPage", () => {
     const ping = vi.fn(() => Promise.resolve("ok" as const));
     renderPage(ping);
 
-    expect(await screen.findByText(/token accepted/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/operator session active/i),
+    ).toBeInTheDocument();
     expect(ping).toHaveBeenCalledWith("stored-token");
   });
 
@@ -105,7 +128,9 @@ describe("AdminPage", () => {
 
     await user.type(screen.getByLabelText(/operator token/i), "good");
     await user.click(screen.getByRole("button", { name: /unlock/i }));
-    expect(await screen.findByText(/token accepted/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/operator session active/i),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /^lock$/i }));
     expect(await screen.findByLabelText(/operator token/i)).toBeInTheDocument();
