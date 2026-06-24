@@ -9,6 +9,8 @@ import {
 } from "./routes.ts";
 import { parseAliasLink } from "../../store/aliasLink.ts";
 import { parseContactInvite } from "../../store/contactInvite.ts";
+import { normalizeVanityName } from "../../store/vanityName.ts";
+import { FINDABLE_ENABLED } from "../../features.ts";
 
 export interface Nav {
   // Navigate to a screen, pushing the current one onto the history stack.
@@ -45,6 +47,17 @@ function routeFromLocation(): Route | null {
   // The public heads-up page (linked from the off-app text). Anonymous, no key.
   if (/^\/exposed\/?$/.test(window.location.pathname)) {
     return { screen: "exposed", group: "public", data: null };
+  }
+  // A Findable name link `/u/{name}` (doc 17). Gated until launch; when on, route
+  // to the resolve step, which looks the name up and hands into the knock flow (a
+  // findable name carries no key, so it's the keyless gated path).
+  if (FINDABLE_ENABLED) {
+    const m = /^\/u\/([^/]+)\/?$/.exec(window.location.pathname);
+    const raw = m?.[1];
+    if (raw !== undefined) {
+      const name = normalizeVanityName(decodeURIComponent(raw));
+      return { screen: "u-resolve", group: "public", data: { name } };
+    }
   }
   const link = parseAliasLink(window.location.pathname, window.location.hash);
   if (link) {

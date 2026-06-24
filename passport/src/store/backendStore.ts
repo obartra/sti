@@ -73,5 +73,15 @@ export function createBackendStore(
         return null;
       }
     },
+
+    async resolveVanityName(name: string) {
+      // Fail closed to null (unregistered / unreachable / malformed), so the
+      // resolve step never distinguishes those for a viewer.
+      try {
+        return await api.resolveVanityName(name);
+      } catch {
+        return null;
+      }
+    },
   };
 }

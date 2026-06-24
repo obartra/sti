@@ -39,4 +39,11 @@ export interface PassportStore {
    * knocked / on any failure. Existence-uniform and safe to call repeatedly.
    */
   redeemGrant(aliasId: string): Promise<ResolvedView | null>;
+  /**
+   * Findable (doc 17): resolve a public vanity name to the alias id it points at,
+   * or `null` if the name is unregistered / unreachable. The viewer then runs the
+   * normal knock flow against that id (a Findable name carries no key, so it is
+   * the keyless gated path). Fail-closed to `null` like the others.
+   */
+  resolveVanityName(name: string): Promise<string | null>;
 }

@@ -8,6 +8,7 @@ export const ALL_SCREENS = [
   "a2-public",
   "a3-alert",
   "exposed",
+  "u-resolve",
   "b1-claim",
   "b2-recovery",
   "b3-setup",
@@ -51,6 +52,8 @@ export interface RouteData {
   isLogin?: boolean;
   self?: boolean;
   preview?: boolean;
+  // The vanity name being resolved (u-resolve, Findable doc 17).
+  name?: string;
 }
 
 export interface Route {
@@ -59,7 +62,12 @@ export interface Route {
   data: RouteData | null;
 }
 
-const PUBLIC: readonly Screen[] = ["a1-landing", "a2-public", "exposed"];
+const PUBLIC: readonly Screen[] = [
+  "a1-landing",
+  "a2-public",
+  "exposed",
+  "u-resolve",
+];
 const ONBOARD: readonly Screen[] = ["b1-claim", "b2-recovery", "b3-setup"];
 
 // The bottom tab bar (mobile) / sidebar (desktop) destinations.
