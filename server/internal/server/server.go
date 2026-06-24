@@ -196,6 +196,7 @@ func (s *Server) routes() {
 		// (above) stays live and harmlessly 404s an empty directory.
 		s.mux.HandleFunc("PUT /u/{name}", s.handleVanityRegister)
 		s.mux.HandleFunc("DELETE /u/{name}", s.handleVanityRelease)
+		s.mux.HandleFunc("POST /u/{name}/report", s.handleVanityReport)
 	}
 	s.mux.HandleFunc("GET /acct/{id}", s.handleAccountGet)
 	s.mux.HandleFunc("PUT /acct/{id}", s.handleAccountPut)
@@ -496,6 +497,51 @@ func (s *Server) handleVanityRelease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleVanityReport answers POST /u/{name}/report (doc 17 report-and-takedown;
+// gated): public, unauthenticated intake of a report against a vanity name. It
+// records the report (a fixed reason code, no reporter identity), then auto-acts
+// ONLY on an objective rule match: a reported name that is now reserved or
+// blocklisted is taken down hands-free into the lock (covers a name registered
+// before a list grew). Volume never auto-acts (that would weaponize false
+// reports); a subjective name waits for the one-click admin reviewer. The 202 is
+// uniform whether or not the report auto-actioned, so intake leaks nothing.
+func (s *Server) handleVanityReport(w http.ResponseWriter, r *http.Request) {
+	name := vanityname.Normalize(r.PathValue("name"))
+	if !vanityname.ValidFormat(name) {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed name")
+		return
+	}
+	if !s.ipLimit.allow(clientIP(r), s.now()) {
+		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
+		return
+	}
+	var req contract.VanityReportRequest
+	if err := decodeJSON(r, &req); err != nil || !contract.ValidReportReason(req.Reason) {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "missing or invalid reason")
+		return
+	}
+	if err := s.st.AddVanityReport(r.Context(), name, req.Reason, s.now()); err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	// Hands-free auto-action on an objective rule match only (reserved/blocked).
+	// Recorded in the audit log too (best-effort), so every takedown — admin or
+	// automated — is reconstructable; the public request never fails on a log hiccup.
+	if vanityname.Reserved(name) || vanityname.Blocked(name) {
+		if err := s.st.ReleaseVanityName(r.Context(), name, s.now(), s.cfg.VanityLockWindow.Milliseconds()); err != nil {
+			s.metrics.Error(metrics.ErrStore)
+			s.log.Error("vanity auto-takedown", "err", err)
+		} else {
+			s.audit(r.Context(), auditActionTakedownAuto, name)
+			if err := s.st.ClearVanityReports(r.Context(), name); err != nil {
+				s.metrics.Error(metrics.ErrStore)
+				s.log.Error("vanity auto-takedown clear", "err", err)
+			}
+		}
+	}
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (s *Server) handleAliasPut(w http.ResponseWriter, r *http.Request) {

@@ -507,3 +507,51 @@ func TestAdminAuditAppendAndList(t *testing.T) {
 		t.Fatalf("limit 1: got %+v err %v", one, err)
 	}
 }
+
+// Vanity reports aggregate per name for the admin review queue: count, first-seen
+// time, and most-recent reason, busiest first; clearing removes a name's set.
+func TestVanityReports(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	if got, err := s.PendingVanityReports(ctx, 10); err != nil || len(got) != 0 {
+		t.Fatalf("empty queue: %d err %v", len(got), err)
+	}
+
+	if err := s.AddVanityReport(ctx, "robin", "impersonation", 100); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AddVanityReport(ctx, "robin", "abuse", 200); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AddVanityReport(ctx, "alice", "spam", 150); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := s.PendingVanityReports(ctx, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("queue rows = %d, want 2", len(got))
+	}
+	// Busiest first: robin (2 reports) before alice (1); robin's row aggregates to
+	// count 2, the earliest created_at (100), and the most-recent reason (abuse).
+	if got[0].Name != "robin" || got[0].Count != 2 || got[0].CreatedAt != 100 || got[0].Reason != "abuse" {
+		t.Fatalf("robin row = %+v", got[0])
+	}
+	if got[1].Name != "alice" || got[1].Count != 1 {
+		t.Fatalf("alice row = %+v", got[1])
+	}
+
+	// Clearing one name leaves the other; clearing an unreported name is a no-op.
+	if err := s.ClearVanityReports(ctx, "robin"); err != nil {
+		t.Fatal(err)
+	}
+	if got2, _ := s.PendingVanityReports(ctx, 10); len(got2) != 1 || got2[0].Name != "alice" {
+		t.Fatalf("after clear: %+v", got2)
+	}
+	if err := s.ClearVanityReports(ctx, "nobody"); err != nil {
+		t.Fatalf("clear no-op: %v", err)
+	}
+}

@@ -67,8 +67,9 @@ const (
 	// The operator surface (doc 20). Bearer + flag gated, rate-limited, audited.
 	// Registered only when admin is enabled; otherwise these paths are a bare 404,
 	// so the surface is invisible by default.
-	PathAdminPrefix = "/admin/"     // all admin endpoints share this prefix
-	PathAdminPing   = "/admin/ping" // GET: 204 if the admin bearer token is valid
+	PathAdminPrefix  = "/admin/"        // all admin endpoints share this prefix
+	PathAdminPing    = "/admin/ping"    // GET: 204 if the admin bearer token is valid
+	PathAdminReports = "/admin/reports" // GET: the vanity-name review queue (doc 17/20)
 )
 
 // --- JSON bodies (only the non-byte endpoints) ------------------------------
@@ -165,6 +166,49 @@ type VanityRegisterRequest struct {
 // 404 (no body); existence is intentionally non-uniform here, unlike GET /a.
 type VanityResolveResponse struct {
 	AliasID string `json:"aliasId"`
+}
+
+// Vanity report reason codes (doc 17 report-and-takedown). A FIXED set, so the
+// report store never holds free-form user text. The client report form maps to
+// exactly these; the server rejects anything else.
+const (
+	ReportImpersonation = "impersonation"
+	ReportAbuse         = "abuse"
+	ReportSlur          = "slur"
+	ReportSpam          = "spam"
+	ReportOther         = "other"
+)
+
+var reportReasons = map[string]struct{}{
+	ReportImpersonation: {}, ReportAbuse: {}, ReportSlur: {}, ReportSpam: {}, ReportOther: {},
+}
+
+// ValidReportReason reports whether r is one of the fixed reason codes.
+func ValidReportReason(r string) bool {
+	_, ok := reportReasons[r]
+	return ok
+}
+
+// VanityReportRequest is the body of POST /u/{name}/report: a fixed reason code.
+// The endpoint is public + rate-limited; the report record names no reporter.
+type VanityReportRequest struct {
+	Reason string `json:"reason"`
+}
+
+// AdminReport is one entry in the admin review queue (GET /admin/reports): a
+// reported name, its report count, the most recent reason, and when it was first
+// reported. The name is public and the reason is a fixed code; nothing here is
+// user content or a reporter identity.
+type AdminReport struct {
+	Name      string `json:"name"`
+	Reason    string `json:"reason"`
+	Count     int    `json:"count"`
+	CreatedAt int64  `json:"createdAt"`
+}
+
+// AdminReportsResponse is GET /admin/reports' body.
+type AdminReportsResponse struct {
+	Reports []AdminReport `json:"reports"`
 }
 
 // HeaderWriteToken authorizes a PUT to an alias. The owner holds it; viewers get

@@ -209,3 +209,62 @@ func TestVanityWritesGatedOffByDefault(t *testing.T) {
 		t.Fatalf("resolve while gated off: %d, want 404", rec.Code)
 	}
 }
+
+func reportName(h http.Handler, name, reason string) *httptest.ResponseRecorder {
+	body, _ := json.Marshal(contract.VanityReportRequest{Reason: reason})
+	return do(h, httptest.NewRequest("POST", contract.PathVanityPrefix+name+"/report", bytes.NewReader(body)))
+}
+
+// A well-formed report is accepted (202) and recorded; an unknown reason is 400.
+func TestVanityReportIntake(t *testing.T) {
+	h, st, _ := newFindableServer(t, time.Hour)
+
+	if rec := reportName(h, "robin", contract.ReportImpersonation); rec.Code != http.StatusAccepted {
+		t.Fatalf("report: %d, want 202", rec.Code)
+	}
+	if got, _ := st.PendingVanityReports(context.Background(), 10); len(got) != 1 || got[0].Name != "robin" {
+		t.Fatalf("report not recorded: %+v", got)
+	}
+	if rec := reportName(h, "robin", "nonsense"); rec.Code != http.StatusBadRequest {
+		t.Fatalf("bad reason: %d, want 400", rec.Code)
+	}
+}
+
+// Reporting a name that matches an objective rule (reserved/blocklisted) auto-takes
+// it down hands-free and clears the reports; volume is never needed. This is the
+// "a name became disallowed after the list grew" path (registration blocks such
+// names up front, so they only arrive here via the directly-seeded case).
+func TestVanityReportAutoTakedownOnRuleMatch(t *testing.T) {
+	h, st, _ := newFindableServer(t, time.Hour)
+	ctx := context.Background()
+	alias := publishAlias(t, h, "owner")
+	if _, err := st.ClaimVanityName(ctx, "admin", alias, 1); err != nil { // reserved; seeded directly
+		t.Fatal(err)
+	}
+	if _, found, _ := st.ResolveVanityName(ctx, "admin"); !found {
+		t.Fatal("seed: admin should resolve")
+	}
+
+	if rec := reportName(h, "admin", contract.ReportImpersonation); rec.Code != http.StatusAccepted {
+		t.Fatalf("report: %d", rec.Code)
+	}
+	if _, found, _ := st.ResolveVanityName(ctx, "admin"); found {
+		t.Fatal("auto-takedown: admin should no longer resolve")
+	}
+	if got, _ := st.PendingVanityReports(ctx, 10); len(got) != 0 {
+		t.Fatalf("auto-actioned reports not cleared: %+v", got)
+	}
+	// The hands-free takedown is recorded so it stays reconstructable.
+	if a, _ := st.RecentAudits(ctx, 10); len(a) == 0 || a[0].Action != "vanity.takedown.auto" || a[0].Target != "admin" {
+		t.Fatalf("auto-takedown not audited: %+v", a)
+	}
+}
+
+// With Findable disabled, /u/{name}/report is not registered at all (no GET on
+// that path either), so it is a bare 404.
+func TestVanityReportGatedOff(t *testing.T) {
+	h := newTestServer(t)
+	if rec := reportName(h, "robin", contract.ReportSpam); rec.Code != http.StatusNotFound {
+		t.Fatalf("report while gated off: %d, want 404", rec.Code)
+	}
+}
