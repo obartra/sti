@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { FindableResolve } from "./FindableResolve.tsx";
 
-// The resolve→knock handoff (doc 17, F5b). The "looking up" state and the
-// not-found state; a successful resolve navigates away, so it isn't a static story.
+// The resolve→knock handoff (doc 17, F5b). Only the not-found state is a static
+// story: a successful resolve navigates away, and the transient "looking up" state
+// needs a never-settling promise that the screenshot harness captures as blank, so
+// it's covered by the unit test instead of a visual baseline.
 const meta: Meta<typeof FindableResolve> = {
   title: "Passport/Findable/FindableResolve",
   component: FindableResolve,
@@ -10,11 +12,6 @@ const meta: Meta<typeof FindableResolve> = {
 };
 export default meta;
 type Story = StoryObj<typeof FindableResolve>;
-
-// Mid-lookup: a resolve that never settles holds the "Looking up …" state.
-export const Resolving: Story = {
-  args: { resolve: () => new Promise<string | null>(() => undefined) },
-};
 
 // The name isn't registered (or is unreachable): the uniform not-found state.
 export const NotFound: Story = {
