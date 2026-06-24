@@ -55,6 +55,7 @@ function stubApi(getAlias: ApiClient["getAlias"]): ApiClient {
     registerVanityName: unused,
     releaseVanityName: unused,
     resolveVanityName: unused,
+    reportVanityName: unused,
     health: unused,
   };
 }
@@ -143,6 +144,7 @@ describe("backend store knock", () => {
       registerVanityName: unused,
       releaseVanityName: unused,
       resolveVanityName: unused,
+      reportVanityName: unused,
       health: unused,
       knock: (id, hash, pubKey) => {
         calls.push({ id, requesterHash: hash, pubKey });
@@ -189,6 +191,7 @@ describe("backend store knock", () => {
       registerVanityName: unused,
       releaseVanityName: unused,
       resolveVanityName: unused,
+      reportVanityName: unused,
       health: unused,
     };
     const store = createBackendStore(

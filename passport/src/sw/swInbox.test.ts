@@ -50,6 +50,7 @@ function fakeApi(): ApiClient {
     registerVanityName: unused,
     releaseVanityName: unused,
     resolveVanityName: unused,
+    reportVanityName: unused,
     health: unused,
   };
 }

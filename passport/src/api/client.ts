@@ -116,11 +116,23 @@ export interface ApiClient {
   /** Resolve a name to its alias id, or null if unregistered. Backs the
    * availability pre-check and the resolve→knock handoff. */
   resolveVanityName(name: string): Promise<string | null>;
+  /** Report a vanity name for review (doc 17): public + rate-limited intake, a
+   * fixed reason code, no reporter identity. Resolves on accept (202), throws on
+   * a real failure. */
+  reportVanityName(name: string, reason: VanityReportReason): Promise<void>;
   health(): Promise<boolean>;
 }
 
 /** How a vanity-name registration resolved (doc 17). */
 export type VanityRegisterResult = "registered" | "unavailable" | "error";
+
+/** The fixed report reason codes (doc 17); mirrors the server's set. */
+export type VanityReportReason =
+  | "impersonation"
+  | "abuse"
+  | "slur"
+  | "spam"
+  | "other";
 
 const OCTET_STREAM = "application/octet-stream";
 
@@ -259,7 +271,10 @@ function vanityMethods(
   call: (path: string, init?: RequestInit) => Promise<Response>,
 ): Pick<
   ApiClient,
-  "registerVanityName" | "releaseVanityName" | "resolveVanityName"
+  | "registerVanityName"
+  | "releaseVanityName"
+  | "resolveVanityName"
+  | "reportVanityName"
 > {
   const at = (name: string) => PATHS.vanityPrefix + encodeURIComponent(name);
   return {
@@ -295,6 +310,17 @@ function vanityMethods(
       // Validate before handing the id to the knock flow, which every other id
       // path validates too; a malformed id from the server is unresolvable.
       return body.aliasId && validId(body.aliasId) ? body.aliasId : null;
+    },
+    async reportVanityName(name, reason) {
+      const res = await call(at(name) + "/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      // Intake is a uniform 202; anything else is a real failure to surface.
+      if (res.status !== 202) {
+        throw new ApiError(statusToKind(res.status), "vanity report");
+      }
     },
   };
 }
