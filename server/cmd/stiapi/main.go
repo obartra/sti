@@ -128,23 +128,29 @@ func main() {
 	// lock window defaults to 24h; a short value lets a test exercise reclaim.
 	findableEnabled := os.Getenv("STI_FINDABLE_ENABLED") == "true"
 	vanityLock := max(envDuration("STI_VANITY_LOCK", 0), 0)
+	// Global cap on GET /u resolve across all callers (doc 17), tunable for a busy
+	// deployment. Zero leaves the server defaults (50/sec, burst 200).
+	resolveRate := envFloat("STI_VANITY_RESOLVE_RATE", 0)
+	resolveBurst := envFloat("STI_VANITY_RESOLVE_BURST", 0)
 
 	srv := server.New(st, server.Config{
-		DecoySecret:      secret,
-		AllowedOrigins:   allowedOrigins,
-		NotifyEnabled:    notifyEnabled,
-		Sender:           sender,
-		VAPIDPublicKey:   vapidPublic,
-		IPRatePerSec:     ipRate,
-		IPBurst:          ipBurst,
-		MaxInflight:      maxInflight,
-		SensitiveWait:    sensitiveWait,
-		KnockTTL:         knockTTL,
-		CoverWindow:      coverWindow,
-		AdminEnabled:     adminEnabled,
-		AdminToken:       adminToken,
-		FindableEnabled:  findableEnabled,
-		VanityLockWindow: vanityLock,
+		DecoySecret:               secret,
+		AllowedOrigins:            allowedOrigins,
+		NotifyEnabled:             notifyEnabled,
+		Sender:                    sender,
+		VAPIDPublicKey:            vapidPublic,
+		IPRatePerSec:              ipRate,
+		IPBurst:                   ipBurst,
+		MaxInflight:               maxInflight,
+		SensitiveWait:             sensitiveWait,
+		KnockTTL:                  knockTTL,
+		CoverWindow:               coverWindow,
+		AdminEnabled:              adminEnabled,
+		AdminToken:                adminToken,
+		FindableEnabled:           findableEnabled,
+		VanityLockWindow:          vanityLock,
+		VanityResolveGlobalPerSec: resolveRate,
+		VanityResolveGlobalBurst:  resolveBurst,
 	}, log, nil)
 
 	// Host and process health gauges. All system facts, no subject data.
