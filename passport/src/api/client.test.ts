@@ -296,3 +296,76 @@ describe("notify, knock, health", () => {
     expect(await unreachable.health()).toBe(false);
   });
 });
+
+describe("vanity name (Findable, doc 17)", () => {
+  const resp = (status: number, body?: string) => () =>
+    Promise.resolve(new Response(body ?? null, { status }));
+
+  it("registerVanityName PUTs name->aliasId with the write token and maps outcomes", async () => {
+    const m = mockFetch(() => new Response(null, { status: 204 }));
+    const api = createApiClient(BASE, m.fetch);
+    await expect(api.registerVanityName("robin", GOOD_ID, "wt")).resolves.toBe(
+      "registered",
+    );
+    const { url, init } = m.last();
+    expect(url).toBe(BASE + "/u/robin");
+    expect(init?.method).toBe("PUT");
+    expect((init?.headers as Record<string, string>)[HEADER_WRITE_TOKEN]).toBe(
+      "wt",
+    );
+    expect(JSON.parse(init?.body as string)).toEqual({ aliasId: GOOD_ID });
+
+    expect(
+      await createApiClient(BASE, resp(409)).registerVanityName(
+        "robin",
+        GOOD_ID,
+        "wt",
+      ),
+    ).toBe("unavailable");
+    for (const status of [400, 403, 500]) {
+      expect(
+        await createApiClient(BASE, resp(status)).registerVanityName(
+          "robin",
+          GOOD_ID,
+          "wt",
+        ),
+      ).toBe("error");
+    }
+  });
+
+  it("releaseVanityName DELETEs, is idempotent on 204/404, throws otherwise", async () => {
+    for (const status of [204, 404]) {
+      const m = mockFetch(() => new Response(null, { status }));
+      const api = createApiClient(BASE, m.fetch);
+      await expect(
+        api.releaseVanityName("robin", "wt"),
+      ).resolves.toBeUndefined();
+      expect(m.last().init?.method).toBe("DELETE");
+    }
+    await expect(
+      createApiClient(BASE, resp(500)).releaseVanityName("robin", "wt"),
+    ).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it("resolveVanityName returns the alias id, or null on 404", async () => {
+    expect(
+      await createApiClient(
+        BASE,
+        resp(200, JSON.stringify({ aliasId: GOOD_ID })),
+      ).resolveVanityName("robin"),
+    ).toBe(GOOD_ID);
+    expect(
+      await createApiClient(BASE, resp(404)).resolveVanityName("nobody"),
+    ).toBeNull();
+    // A malformed id from the server is treated as unresolvable (validated).
+    expect(
+      await createApiClient(
+        BASE,
+        resp(200, JSON.stringify({ aliasId: "too-short" })),
+      ).resolveVanityName("robin"),
+    ).toBeNull();
+    await expect(
+      createApiClient(BASE, resp(500)).resolveVanityName("robin"),
+    ).rejects.toBeInstanceOf(ApiError);
+  });
+});

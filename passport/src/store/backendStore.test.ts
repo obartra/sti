@@ -52,6 +52,9 @@ function stubApi(getAlias: ApiClient["getAlias"]): ApiClient {
     knock: () => Promise.resolve(),
     registerPush: unused,
     getVapidPublicKey: unused,
+    registerVanityName: unused,
+    releaseVanityName: unused,
+    resolveVanityName: unused,
     health: unused,
   };
 }
@@ -137,6 +140,9 @@ describe("backend store knock", () => {
       putInbox: unused,
       registerPush: unused,
       getVapidPublicKey: unused,
+      registerVanityName: unused,
+      releaseVanityName: unused,
+      resolveVanityName: unused,
       health: unused,
       knock: (id, hash, pubKey) => {
         calls.push({ id, requesterHash: hash, pubKey });
@@ -180,6 +186,9 @@ describe("backend store knock", () => {
       putInbox: unused,
       registerPush: unused,
       getVapidPublicKey: unused,
+      registerVanityName: unused,
+      releaseVanityName: unused,
+      resolveVanityName: unused,
       health: unused,
     };
     const store = createBackendStore(

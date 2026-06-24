@@ -22,6 +22,7 @@ export const PATHS = {
   notify: "/notify",
   pushRegister: "/push/register",
   knockPrefix: "/knock/",
+  vanityPrefix: "/u/",
   health: "/healthz",
   vapid: "/vapid",
 } as const;

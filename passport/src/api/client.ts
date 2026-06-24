@@ -99,8 +99,28 @@ export interface ApiClient {
    * unreachable. Public and cacheable; a browser needs it to subscribe.
    */
   getVapidPublicKey(): Promise<string | null>;
+  /**
+   * Findable (doc 17): claim a vanity name for an alias the caller owns. Returns
+   * the outcome rather than throwing on the expected "unavailable" case (the name
+   * is taken / reserved / blocked). Caller should normalize + locally validate the
+   * name first; the server is the source of truth for availability.
+   */
+  registerVanityName(
+    name: string,
+    aliasId: string,
+    writeToken: string,
+  ): Promise<VanityRegisterResult>;
+  /** Release a vanity name into the 24h lock. Resolves on success OR if the name
+   * was already not registered (idempotent); throws only on a real failure. */
+  releaseVanityName(name: string, writeToken: string): Promise<void>;
+  /** Resolve a name to its alias id, or null if unregistered. Backs the
+   * availability pre-check and the resolve→knock handoff. */
+  resolveVanityName(name: string): Promise<string | null>;
   health(): Promise<boolean>;
 }
+
+/** How a vanity-name registration resolved (doc 17). */
+export type VanityRegisterResult = "registered" | "unavailable" | "error";
 
 const OCTET_STREAM = "application/octet-stream";
 
@@ -227,6 +247,56 @@ function statusToKind(status: number): ApiErrorKind {
   if (status === 503) return "unreachable"; // load-shed degrades to gray
   if (status >= 500) return "server";
   return "protocol";
+}
+
+/**
+ * The Findable vanity-name methods (doc 17), hoisted out of createApiClient to
+ * keep it within its size budget. All three share the `{prefix}{name}` path and
+ * write-token auth; registration returns its outcome rather than throwing on the
+ * expected "unavailable" case.
+ */
+function vanityMethods(
+  call: (path: string, init?: RequestInit) => Promise<Response>,
+): Pick<
+  ApiClient,
+  "registerVanityName" | "releaseVanityName" | "resolveVanityName"
+> {
+  const at = (name: string) => PATHS.vanityPrefix + encodeURIComponent(name);
+  return {
+    async registerVanityName(name, aliasId, writeToken) {
+      const res = await call(at(name), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          [HEADER_WRITE_TOKEN]: writeToken,
+        },
+        body: JSON.stringify({ aliasId }),
+      });
+      if (res.status === 204) return "registered";
+      if (res.status === 409) return "unavailable"; // taken / reserved / blocked
+      return "error"; // 400 (should be pre-validated), 403 (not owner), 5xx
+    },
+    async releaseVanityName(name, writeToken) {
+      const res = await call(at(name), {
+        method: "DELETE",
+        headers: { [HEADER_WRITE_TOKEN]: writeToken },
+      });
+      // 204 = released; 404 = already not active (idempotent). Else a real failure.
+      if (res.status !== 204 && res.status !== 404) {
+        throw new ApiError(statusToKind(res.status), "vanity release");
+      }
+    },
+    async resolveVanityName(name) {
+      const res = await call(at(name), { method: "GET", cache: "no-store" });
+      if (res.status === 404) return null;
+      if (!res.ok)
+        throw new ApiError(statusToKind(res.status), "vanity resolve");
+      const body = (await res.json()) as { aliasId?: string };
+      // Validate before handing the id to the knock flow, which every other id
+      // path validates too; a malformed id from the server is unresolvable.
+      return body.aliasId && validId(body.aliasId) ? body.aliasId : null;
+    },
+  };
 }
 
 export function createApiClient(
@@ -364,6 +434,8 @@ export function createApiClient(
     },
 
     getVapidPublicKey: () => fetchVapidPublicKey(call),
+
+    ...vanityMethods(call),
 
     async health() {
       // A liveness probe is a boolean: unreachable/shed = not healthy, not error.
