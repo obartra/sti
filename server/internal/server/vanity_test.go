@@ -341,3 +341,41 @@ func TestVanityResolveGlobalRateLimit(t *testing.T) {
 		t.Fatalf("resolve 3 (different IP): %d, want 429", c)
 	}
 }
+
+// The global report cap sheds a distributed report flood across ALL callers: with a
+// tiny global budget but a generous per-IP one, reports from distinct IPs share the
+// one bucket, so the (burst+1)th is a 429 regardless of who sends it. A reported
+// name is public, so the visible 429 leaks nothing. Frozen clock = no refill.
+func TestVanityReportGlobalRateLimit(t *testing.T) {
+	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	srv := New(st, Config{
+		DecoySecret:        make([]byte, 32),
+		FindableEnabled:    true,
+		IPRatePerSec:       1000, // generous, so the per-IP cap never trips first
+		IPBurst:            1000,
+		ReportGlobalPerSec: 0.000001,
+		ReportGlobalBurst:  2,
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)), func() int64 { return 1000 })
+	h := srv.Handler()
+
+	report := func(ip string) int {
+		body, _ := json.Marshal(contract.VanityReportRequest{Reason: contract.ReportSpam})
+		req := httptest.NewRequest("POST", contract.PathVanityPrefix+"robin/report", bytes.NewReader(body))
+		req.Header.Set("X-Real-IP", ip) // a DIFFERENT IP each call
+		return do(h, req).Code
+	}
+	if c := report("1.1.1.1"); c != http.StatusAccepted {
+		t.Fatalf("report 1: %d, want 202", c)
+	}
+	if c := report("2.2.2.2"); c != http.StatusAccepted {
+		t.Fatalf("report 2: %d, want 202", c)
+	}
+	// the third, from yet another IP, is shed by the shared global bucket.
+	if c := report("3.3.3.3"); c != http.StatusTooManyRequests {
+		t.Fatalf("report 3 (different IP): %d, want 429", c)
+	}
+}

@@ -467,6 +467,43 @@ func TestKnockIsUniform(t *testing.T) {
 	}
 }
 
+// The global knock cap bounds total knock writes across ALL callers, so a
+// distributed flood using many fresh requester hashes (which each get their own
+// per-key bucket and so never trip the per-(id,requester) cap) still can't bloat the
+// table. Crucially the cap is SILENT: every knock is a uniform 202, but once the
+// global bucket is drained the rows simply stop being recorded, so existence stays
+// hidden. Frozen clock = no refill.
+func TestKnockGlobalCapSilentlyDropsWrites(t *testing.T) {
+	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	srv := New(st, Config{
+		DecoySecret:       make([]byte, 32),
+		KnockRatePerID:    1000, // generous per-key, so distinct requesters never trip it
+		KnockBurst:        1000,
+		KnockGlobalPerSec: 0.000001,
+		KnockGlobalBurst:  2,
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)), func() int64 { return 1000 })
+	h := srv.Handler()
+
+	id := randID(t)
+	for i := 0; i < 5; i++ {
+		// A DIFFERENT requester each time, so the per-key cap always allows; only the
+		// shared global bucket can stop the write.
+		body, _ := json.Marshal(contract.KnockRequest{RequesterHash: fmt.Sprintf("req-%d", i)})
+		rec := do(h, httptest.NewRequest("POST", contract.PathKnockPrefix+id, bytes.NewReader(body)))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("knock %d: code %d, want 200 (uniform even when shed)", i, rec.Code)
+		}
+	}
+	// Only the first two (the global burst) were recorded; the rest were silently dropped.
+	if n, err := st.RecentKnockCount(context.Background(), id, 0); err != nil || n != 2 {
+		t.Fatalf("recorded knocks = %d (err %v), want 2 (global burst)", n, err)
+	}
+}
+
 // The limiter must key on the Caddy-set X-Real-IP, and only that: a fresh IP gets
 // a fresh bucket, the same IP gets throttled, and client-spoofable headers are
 // ignored.

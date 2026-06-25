@@ -132,6 +132,13 @@ func main() {
 	// deployment. Zero leaves the server defaults (50/sec, burst 200).
 	resolveRate := envFloat("STI_VANITY_RESOLVE_RATE", 0)
 	resolveBurst := envFloat("STI_VANITY_RESOLVE_BURST", 0)
+	// Global caps on the two public write-intake paths, bounding a distributed flood
+	// of the report / knock tables. Zero leaves the server defaults (report 20/sec
+	// burst 100; knock 50/sec burst 200).
+	reportRate := envFloat("STI_REPORT_GLOBAL_RATE", 0)
+	reportBurst := envFloat("STI_REPORT_GLOBAL_BURST", 0)
+	knockGlobalRate := envFloat("STI_KNOCK_GLOBAL_RATE", 0)
+	knockGlobalBurst := envFloat("STI_KNOCK_GLOBAL_BURST", 0)
 
 	srv := server.New(st, server.Config{
 		DecoySecret:               secret,
@@ -151,6 +158,10 @@ func main() {
 		VanityLockWindow:          vanityLock,
 		VanityResolveGlobalPerSec: resolveRate,
 		VanityResolveGlobalBurst:  resolveBurst,
+		ReportGlobalPerSec:        reportRate,
+		ReportGlobalBurst:         reportBurst,
+		KnockGlobalPerSec:         knockGlobalRate,
+		KnockGlobalBurst:          knockGlobalBurst,
 	}, log, nil)
 
 	// Host and process health gauges. All system facts, no subject data.

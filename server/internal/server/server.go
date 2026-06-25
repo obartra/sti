@@ -87,6 +87,16 @@ type Config struct {
 	// real use never trips it. Zero leaves the defaults (50/sec, burst 200).
 	VanityResolveGlobalPerSec float64
 	VanityResolveGlobalBurst  float64
+	// ReportGlobal* / KnockGlobal* bound the two public write-intake paths across ALL
+	// callers, so a DISTRIBUTED flood (many IPs, or many fake requester hashes) can't
+	// bloat the vanity_report / knock tables the way the per-IP and per-(id,requester)
+	// caps alone allow. Sized well above real use. Report over-limit is a visible 429
+	// (a public name, nothing to hide); knock over-limit stays silent like its per-key
+	// cap, so existence is never leaked. Zero leaves the defaults.
+	ReportGlobalPerSec float64
+	ReportGlobalBurst  float64
+	KnockGlobalPerSec  float64
+	KnockGlobalBurst   float64
 }
 
 func (c *Config) withDefaults() {
@@ -126,6 +136,18 @@ func (c *Config) withDefaults() {
 	if c.VanityLockWindow == 0 {
 		c.VanityLockWindow = 24 * time.Hour
 	}
+	if c.ReportGlobalPerSec == 0 {
+		c.ReportGlobalPerSec = 20
+	}
+	if c.ReportGlobalBurst == 0 {
+		c.ReportGlobalBurst = 100
+	}
+	if c.KnockGlobalPerSec == 0 {
+		c.KnockGlobalPerSec = 50
+	}
+	if c.KnockGlobalBurst == 0 {
+		c.KnockGlobalBurst = 200
+	}
 	if c.VanityResolveGlobalPerSec == 0 {
 		c.VanityResolveGlobalPerSec = 50
 	}
@@ -136,19 +158,21 @@ func (c *Config) withDefaults() {
 
 // Server is the HTTP handler set.
 type Server struct {
-	st          *store.Store
-	cfg         Config
-	log         *slog.Logger
-	now         func() int64 // unix millis; injectable for tests
-	ipLimit     *limiter     // visible 429 on non-sensitive endpoints
-	knockLim    *limiter     // silent cap on /knock (never a 429)
-	adminLim    *limiter     // tight per-IP cap on /admin/* (visible 429)
-	uResolveLim *limiter     // single global bucket capping GET /u resolve (doc 17)
-	inflight    chan struct{}
-	mux         *http.ServeMux
-	metrics     *metrics.Metrics // blind aggregate self-telemetry (loopback only)
-	sender      Sender           // contentless Web Push delivery; nil disables it
-	auditor     auditAppender    // narrow audit-append seam; defaults to st
+	st           *store.Store
+	cfg          Config
+	log          *slog.Logger
+	now          func() int64 // unix millis; injectable for tests
+	ipLimit      *limiter     // visible 429 on non-sensitive endpoints
+	knockLim     *limiter     // silent per-(id,requester) cap on /knock (never a 429)
+	knockGlobLim *limiter     // single global bucket capping /knock intake (silent)
+	reportLim    *limiter     // single global bucket capping /u report intake (429)
+	adminLim     *limiter     // tight per-IP cap on /admin/* (visible 429)
+	uResolveLim  *limiter     // single global bucket capping GET /u resolve (doc 17)
+	inflight     chan struct{}
+	mux          *http.ServeMux
+	metrics      *metrics.Metrics // blind aggregate self-telemetry (loopback only)
+	sender       Sender           // contentless Web Push delivery; nil disables it
+	auditor      auditAppender    // narrow audit-append seam; defaults to st
 }
 
 // auditAppender is the one store method the admin audit path depends on. It is a
@@ -167,19 +191,21 @@ func New(st *store.Store, cfg Config, log *slog.Logger, now func() int64) *Serve
 		now = func() int64 { return time.Now().UnixMilli() }
 	}
 	s := &Server{
-		st:          st,
-		cfg:         cfg,
-		log:         log,
-		now:         now,
-		ipLimit:     newLimiter(cfg.IPRatePerSec, cfg.IPBurst),
-		knockLim:    newLimiter(cfg.KnockRatePerID, cfg.KnockBurst),
-		adminLim:    newLimiter(cfg.AdminRatePerSec, cfg.AdminBurst),
-		uResolveLim: newLimiter(cfg.VanityResolveGlobalPerSec, cfg.VanityResolveGlobalBurst),
-		inflight:    make(chan struct{}, cfg.MaxInflight),
-		mux:         http.NewServeMux(),
-		metrics:     metrics.New(),
-		sender:      cfg.Sender,
-		auditor:     st,
+		st:           st,
+		cfg:          cfg,
+		log:          log,
+		now:          now,
+		ipLimit:      newLimiter(cfg.IPRatePerSec, cfg.IPBurst),
+		knockLim:     newLimiter(cfg.KnockRatePerID, cfg.KnockBurst),
+		knockGlobLim: newLimiter(cfg.KnockGlobalPerSec, cfg.KnockGlobalBurst),
+		reportLim:    newLimiter(cfg.ReportGlobalPerSec, cfg.ReportGlobalBurst),
+		adminLim:     newLimiter(cfg.AdminRatePerSec, cfg.AdminBurst),
+		uResolveLim:  newLimiter(cfg.VanityResolveGlobalPerSec, cfg.VanityResolveGlobalBurst),
+		inflight:     make(chan struct{}, cfg.MaxInflight),
+		mux:          http.NewServeMux(),
+		metrics:      metrics.New(),
+		sender:       cfg.Sender,
+		auditor:      st,
 	}
 	s.metrics.SetInflightMax(cfg.MaxInflight)
 	// Blind aggregate gauges: row counts of opaque rows and the db file size,
@@ -549,7 +575,9 @@ func (s *Server) handleVanityReport(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed name")
 		return
 	}
-	if !s.ipLimit.allow(clientIP(r), s.now()) {
+	// Per-IP slows one reporter; the global bucket caps a distributed report flood
+	// across many IPs. A reported name is public, so an over-limit 429 leaks nothing.
+	if !s.ipLimit.allow(clientIP(r), s.now()) || !s.reportLim.allow("report", s.now()) {
 		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
 		return
 	}
@@ -821,8 +849,13 @@ func (s *Server) handleKnock(w http.ResponseWriter, r *http.Request) {
 	// get purged. Over-limit is silent: it never becomes a visible 429.
 	if contract.ValidID(id) && req.RequesterHash != "" {
 		// Key per (id, requester) so a single flooder only exhausts its own bucket
-		// and can't silently suppress other requesters' knocks for the same id.
-		if s.knockLim.allow(id+"\x00"+req.RequesterHash, s.now()) {
+		// and can't silently suppress other requesters' knocks for the same id. The
+		// global bucket then bounds total knock writes so a distributed flood (many
+		// fake requester hashes, or spread across ids) can't bloat the table; checked
+		// second so it is only drawn down by knocks that already passed the per-key
+		// cap. Both caps are silent: dropping a knock keeps the 202 uniform.
+		if s.knockLim.allow(id+"\x00"+req.RequesterHash, s.now()) &&
+			s.knockGlobLim.allow("knock", s.now()) {
 			now := s.now()
 			expires := now + s.cfg.KnockTTL.Milliseconds()
 			// The grant key is opaque to us; drop anything malformed or over-bound
@@ -946,6 +979,8 @@ func (s *Server) SweepLimiters(now int64) {
 	cutoff := now - (10 * time.Minute).Milliseconds()
 	s.ipLimit.sweep(cutoff)
 	s.knockLim.sweep(cutoff)
+	s.knockGlobLim.sweep(cutoff)
+	s.reportLim.sweep(cutoff)
 	s.adminLim.sweep(cutoff)
 	s.uResolveLim.sweep(cutoff)
 }
