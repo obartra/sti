@@ -183,7 +183,14 @@ func main() {
 	if janitorInterval <= 0 {
 		janitorInterval = time.Minute
 	}
-	go background(ctx, st, srv, metricsState, janitorInterval, log)
+	// Retention windows for the age-based sweeps. Defaults are deliberately
+	// generous (storage reclamation, not policy): an expired link lingers a week
+	// before deletion, an un-actionable orphan report a month.
+	ttls := janitorTTLs{
+		aliasGrace:   envDuration("STI_ALIAS_PURGE_GRACE", 7*24*time.Hour),
+		reportMaxAge: envDuration("STI_REPORT_ORPHAN_MAX_AGE", 30*24*time.Hour),
+	}
+	go background(ctx, st, srv, metricsState, janitorInterval, ttls, log)
 
 	httpSrv := &http.Server{
 		Addr:              addr,
@@ -250,11 +257,19 @@ func saveMetrics(path string, srv *server.Server, log *slog.Logger) {
 	}
 }
 
-// background runs the periodic janitors: expire knocks, drain due wakes, and trim
-// idle rate-limit buckets. The send drain delivers contentless Web Push wakes via
-// the server's Sender, gated off by default (Config.NotifyEnabled), so it is inert
-// until targeted-wake delivery is explicitly enabled.
-func background(ctx context.Context, st *store.Store, srv *server.Server, metricsState string, interval time.Duration, log *slog.Logger) {
+// janitorTTLs holds the retention windows the age-based sweeps use. Zero or
+// negative disables that sweep (the env reader keeps the defaults positive).
+type janitorTTLs struct {
+	aliasGrace   time.Duration // delete an alias this long after its link expired
+	reportMaxAge time.Duration // delete an orphan vanity report once this old
+}
+
+// background runs the periodic janitors: expire knocks, purge long-dead alias and
+// orphan-report rows, drain due wakes, and trim idle rate-limit buckets. The send
+// drain delivers contentless Web Push wakes via the server's Sender, gated off by
+// default (Config.NotifyEnabled), so it is inert until targeted-wake delivery is
+// explicitly enabled.
+func background(ctx context.Context, st *store.Store, srv *server.Server, metricsState string, interval time.Duration, ttls janitorTTLs, log *slog.Logger) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
@@ -268,6 +283,22 @@ func background(ctx context.Context, st *store.Store, srv *server.Server, metric
 				log.Error("purge knocks", "err", err)
 			} else if n > 0 {
 				log.Info("purged expired knocks", "count", n)
+			}
+			if ttls.aliasGrace > 0 {
+				if n, err := st.PurgeExpiredAliases(ctx, now, ttls.aliasGrace.Milliseconds()); err != nil {
+					srv.Metrics().Error(metrics.ErrJanitor)
+					log.Error("purge aliases", "err", err)
+				} else if n > 0 {
+					log.Info("purged expired aliases", "count", n)
+				}
+			}
+			if ttls.reportMaxAge > 0 {
+				if n, err := st.PurgeOrphanVanityReports(ctx, now, ttls.reportMaxAge.Milliseconds()); err != nil {
+					srv.Metrics().Error(metrics.ErrJanitor)
+					log.Error("purge orphan reports", "err", err)
+				} else if n > 0 {
+					log.Info("purged orphan vanity reports", "count", n)
+				}
 			}
 			srv.DrainSends(ctx, now)
 			srv.SweepLimiters(now)

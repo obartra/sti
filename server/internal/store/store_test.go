@@ -634,3 +634,86 @@ func TestAdminRecordManagement(t *testing.T) {
 		t.Fatalf("release idempotent: %v", err)
 	}
 }
+
+// PurgeExpiredAliases deletes only aliases whose link expired more than the grace
+// ago. A never-expiring alias (NULL expiry), a not-yet-expired one, and one expired
+// but still inside the grace all survive; one well past expiry+grace is deleted.
+func TestPurgeExpiredAliases(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+	const day = 24 * 60 * 60 * 1000
+	exp := func(at int64) sql.NullInt64 { return sql.NullInt64{Int64: at, Valid: true} }
+
+	mustWrite := func(id string, expires sql.NullInt64, setExpiry bool) {
+		if ok, err := s.WriteAlias(ctx, id, []byte("c"), "tok", 1, expires, setExpiry); err != nil || !ok {
+			t.Fatalf("write %s: ok=%v err=%v", id, ok, err)
+		}
+	}
+	mustWrite("a-none", sql.NullInt64{}, false) // no expiry, immortal
+	mustWrite("a-future", exp(100*day), true)   // not yet expired
+	mustWrite("a-recent", exp(99*day), true)    // expired, but inside the grace
+	mustWrite("a-stale", exp(10*day), true)     // long past expiry + grace
+
+	// now = 100 days, grace = 7 days: only a-stale (expired >= 93 days ago) goes.
+	n, err := s.PurgeExpiredAliases(ctx, 100*day, 7*day)
+	if err != nil || n != 1 {
+		t.Fatalf("purge aliases: n=%d err=%v, want 1", n, err)
+	}
+	for _, id := range []string{"a-none", "a-future", "a-recent"} {
+		if _, _, found, _ := s.GetAlias(ctx, id); !found {
+			t.Fatalf("%s was purged but should survive", id)
+		}
+	}
+	if _, _, found, _ := s.GetAlias(ctx, "a-stale"); found {
+		t.Fatal("a-stale should have been purged")
+	}
+}
+
+// PurgeOrphanVanityReports deletes only old reports whose name has no active
+// registration. A report for an active name (any age) and a recent orphan report
+// both survive; an old orphan goes.
+func TestPurgeOrphanVanityReports(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+	const day = 24 * 60 * 60 * 1000
+
+	// "live" stays registered; "gone" is released, so its reports orphan.
+	if _, err := s.ClaimVanityName(ctx, "live", "alias-live", 1); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.ClaimVanityName(ctx, "gone", "alias-gone", 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ReleaseVanityName(ctx, "gone", 1, 0); err != nil {
+		t.Fatal(err)
+	}
+	// Old report on a live name (must survive: still actionable), old orphan (goes),
+	// recent orphan (survives: inside the window).
+	for _, r := range []struct {
+		name string
+		at   int64
+	}{{"live", 1 * day}, {"gone", 1 * day}, {"gone", 95 * day}} {
+		if err := s.AddVanityReport(ctx, r.name, "abuse", r.at); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// now = 100 days, max age = 30 days: only the old orphan (gone@1day) qualifies.
+	n, err := s.PurgeOrphanVanityReports(ctx, 100*day, 30*day)
+	if err != nil || n != 1 {
+		t.Fatalf("purge orphan reports: n=%d err=%v, want 1", n, err)
+	}
+	var liveCount, goneCount int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM vanity_report WHERE name='live'`).Scan(&liveCount); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM vanity_report WHERE name='gone'`).Scan(&goneCount); err != nil {
+		t.Fatal(err)
+	}
+	if liveCount != 1 {
+		t.Fatalf("live reports = %d, want 1 (active name, never purged)", liveCount)
+	}
+	if goneCount != 1 {
+		t.Fatalf("gone reports = %d, want 1 (recent orphan survives, old orphan purged)", goneCount)
+	}
+}

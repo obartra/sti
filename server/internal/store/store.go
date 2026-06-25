@@ -789,6 +789,42 @@ func (s *Store) PurgeExpiredKnocks(ctx context.Context, now int64) (int64, error
 	return res.RowsAffected()
 }
 
+// PurgeExpiredAliases deletes alias rows whose link expired more than graceMs ago,
+// returning how many went. An expired alias already reads as the decoy (see
+// aliasPayload), so this changes no observable behavior; it just reclaims storage
+// for links that stopped resolving. The grace keeps a just-expired row around long
+// enough that clock skew or a late republish can't race the sweep. Rows with no
+// expiry (expires_at IS NULL) are never touched.
+func (s *Store) PurgeExpiredAliases(ctx context.Context, now, graceMs int64) (int64, error) {
+	res, err := s.db.ExecContext(ctx,
+		`DELETE FROM alias WHERE expires_at IS NOT NULL AND expires_at <= ?`, now-graceMs)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
+// PurgeOrphanVanityReports deletes vanity reports older than maxAgeMs that name a
+// vanity name with no active registration, returning how many went. The review
+// queue (PendingVanityReports) only surfaces reports whose name is still active, so
+// a report for a released, taken-down, or never-registered name can never be
+// actioned and is never cleared by takedown/dismiss: it is dead weight. Bounding
+// it by age as well keeps a name that is briefly between owners from losing its
+// reports. Reports for active names are never touched, whatever their age.
+func (s *Store) PurgeOrphanVanityReports(ctx context.Context, now, maxAgeMs int64) (int64, error) {
+	res, err := s.db.ExecContext(ctx,
+		`DELETE FROM vanity_report
+		 WHERE created_at <= ?
+		   AND NOT EXISTS (
+		       SELECT 1 FROM vanity_name v
+		       WHERE v.name = vanity_report.name AND v.alias_id != ''
+		   )`, now-maxAgeMs)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 // --- Admin audit log (doc 20) -----------------------------------------------
 //
 // Append-only record of every admin action. The store never reads user content,
