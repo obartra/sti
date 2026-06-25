@@ -56,7 +56,7 @@ export const PROMISES: readonly UserPromise[] = [
     id: "cannot-read",
     plain: "We can't read what you save.",
     detail:
-      "Everything is scrambled on your phone before it is sent. Our servers only ever hold the scrambled version, and even our own admin tools can't unlock it.",
+      "It's encrypted on your phone before it's sent, and we only ever hold the encrypted version. We can't read it.",
     assertions: [
       {
         claim:
@@ -69,7 +69,7 @@ export const PROMISES: readonly UserPromise[] = [
       },
       {
         claim:
-          "Scrambling is authenticated encryption: a wrong key or any tampering fails to a blank, never a partial read.",
+          "It's authenticated encryption: a wrong key or any tampering fails to a blank, never a partial read.",
         backedBy: {
           kind: "test",
           file: "src/crypto/payload.test.ts",
