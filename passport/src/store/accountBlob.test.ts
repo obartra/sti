@@ -36,7 +36,7 @@ describe("account blob codec", () => {
     expect(parseAccountBlob(serializeAccountBlob(blob))).toEqual(blob);
   });
 
-  it("round-trips the v6 notify capabilities (myNotify + a contact's theirNotify)", () => {
+  it("round-trips a contact's per-contact notify capabilities (myInbox + theirNotify)", () => {
     const withNotify: AccountBlob = {
       handle: "robin",
       aliases: [],
@@ -52,13 +52,13 @@ describe("account blob codec", () => {
             key: "G".repeat(43),
             isPublic: false,
           },
+          myInbox: mintNotify(),
           theirNotify: mintNotify(),
         },
       ],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
       sharingMode: "link",
-      myNotify: mintNotify(),
     };
     expect(parseAccountBlob(serializeAccountBlob(withNotify))).toEqual(
       withNotify,
@@ -220,7 +220,7 @@ describe("account blob codec", () => {
     avatar: A,
   };
   reject("a non-object", 7);
-  reject("an unknown version", { ...base, v: 12, sharingMode: "link" });
+  reject("an unknown version", { ...base, v: 13, sharingMode: "link" });
   reject("a prior version (v6 is no longer accepted)", {
     v: 6,
     handle: "x",
@@ -250,8 +250,8 @@ describe("account blob codec", () => {
   });
   // A real current-version wire so these reach the findable validator (not the
   // version gate, which `base`'s v7 trips first).
-  const v11 = {
-    v: 11,
+  const vCurrent = {
+    v: 12,
     handle: "x",
     aliases: [],
     contacts: [],
@@ -260,14 +260,17 @@ describe("account blob codec", () => {
     sharingMode: "link" as const,
   };
   reject("a findable with a malformed alias id", {
-    ...v11,
+    ...vCurrent,
     findable: { name: "robin", aliasId: "short" },
   });
   reject("a findable with a bad-shaped name", {
-    ...v11,
+    ...vCurrent,
     findable: { name: "AB", aliasId: ID },
   });
-  reject("a findable that is not an object", { ...v11, findable: "robin" });
+  reject("a findable that is not an object", {
+    ...vCurrent,
+    findable: "robin",
+  });
   reject("an empty handle", { ...base, handle: "", sharingMode: "link" });
   reject("a non-array aliases", { ...base, aliases: {}, sharingMode: "link" });
   reject("an alias with a malformed id", {
@@ -306,14 +309,10 @@ describe("account blob codec", () => {
   });
   reject("a missing sharingMode", base);
   reject("an invalid sharingMode", { ...base, sharingMode: "secret" });
-  reject("a malformed myNotify (missing routingToken)", {
-    ...base,
-    sharingMode: "link",
-    myNotify: { inboxId: ID, writeToken: ID, key: ID },
-  });
-  reject("a contact theirNotify with a short token", {
-    ...base,
-    sharingMode: "link",
+  // A current-version wire (vCurrent) so these reach the contact validator rather
+  // than the version gate that base's v7 trips first.
+  const contactWith = (extra: Record<string, unknown>) => ({
+    ...vCurrent,
     contacts: [
       {
         id: ID,
@@ -321,10 +320,22 @@ describe("account blob codec", () => {
         createdDay: 1,
         expiresAt: null,
         alias: { id: ID, writeToken: ID, key: ID, isPublic: false },
-        theirNotify: { ...N, routingToken: "short" },
+        ...extra,
       },
     ],
   });
+  reject(
+    "a contact myInbox missing routingToken",
+    contactWith({ myInbox: { inboxId: ID, writeToken: ID, key: ID } }),
+  );
+  reject(
+    "a contact myInbox with a short token",
+    contactWith({ myInbox: { ...N, inboxId: "short" } }),
+  );
+  reject(
+    "a contact theirNotify with a short token",
+    contactWith({ theirNotify: { ...N, routingToken: "short" } }),
+  );
   reject("a circle with a non-array members", {
     ...base,
     sharingMode: "link",

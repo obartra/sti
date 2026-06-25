@@ -61,10 +61,10 @@ describe("account manager", () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
     const recovered = await accounts.recover(created.recoveryPhrase);
-    // myNotify is minted per account (random), so pin the rest and assert recovery
-    // sees exactly what was created (myNotify persists, not re-minted).
-    const { myNotify, ...rest } = recovered?.blob ?? {};
-    expect(rest).toEqual({
+    // A fresh account is fully deterministic now (no account-level notify inbox:
+    // those are minted per contact at link time), so recovery sees exactly what was
+    // created.
+    expect(recovered?.blob).toEqual({
       handle: "robin",
       aliases: [],
       contacts: [],
@@ -72,7 +72,7 @@ describe("account manager", () => {
       avatar: DEFAULT_AVATAR,
       sharingMode: "link",
     });
-    expect(myNotify).toEqual(created.blob.myNotify);
+    expect(recovered?.blob).toEqual(created.blob);
   });
 
   it("recover fails closed (null) on a malformed phrase, never deriving a key", async () => {

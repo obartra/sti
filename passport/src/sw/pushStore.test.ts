@@ -10,7 +10,10 @@ import {
 import { mintNotify } from "../store/notifyInbox.ts";
 
 function ctx(): PushContext {
-  return { apiBase: "https://api.sti.care", cap: mintNotify() };
+  return {
+    apiBase: "https://api.sti.care",
+    caps: [mintNotify(), mintNotify()],
+  };
 }
 
 describe("pushStore (IndexedDB capability for the service worker)", () => {

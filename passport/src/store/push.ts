@@ -1,11 +1,11 @@
 /**
  * Slice 7 push enable/disable (the client half). Enabling wires the browser's Web
  * Push to the partner-notify wake: register the service worker, ask permission,
- * subscribe with the server's VAPID key, tell the server which routing endpoint
- * this subscription answers (the hash of THIS device's notify routing token, the
- * SAME hash a notifier uses to wake it), and stash the device's notify capability
- * in IndexedDB so the worker can poll+decrypt its own inbox on a background wake.
- * Disabling unsubscribes and clears that context.
+ * subscribe with the server's VAPID key, tell the server which routing endpoints
+ * this subscription answers (the hash of each per-contact notify routing token, the
+ * SAME hash a notifier uses to wake it), and stash the per-contact notify
+ * capabilities in IndexedDB so the worker can poll+decrypt the inboxes on a
+ * background wake. Disabling unsubscribes and clears that context.
  *
  * The wake only actually fires once the server has a VAPID key and a real device
  * holds a subscription; this module is the in-browser flow, validated on a device.
@@ -56,16 +56,22 @@ export function pushSupported(): boolean {
 
 /**
  * True when push is enabled on this device FOR this account: the stored worker
- * context must belong to the given inbox. Checking the inbox (not mere existence)
- * keeps the toggle honest when more than one account is used on one device, since
- * the context is a single device-wide slot. Undefined (logged out) is never enabled.
+ * context must hold exactly this account's set of per-contact inboxes. Comparing the
+ * set (not mere existence) keeps the toggle honest when more than one account is used
+ * on one device, since the context is a single device-wide slot, and flips it back to
+ * "off" when the contact set changed so the UI prompts a refresh. An empty set
+ * (logged out, or no contacts) is never enabled.
  */
 export async function pushEnabled(
-  inboxId: string | undefined,
+  inboxIds: readonly string[],
 ): Promise<boolean> {
-  if (inboxId === undefined) return false;
+  if (inboxIds.length === 0) return false;
   const ctx = await readPushContext();
-  return ctx?.cap.inboxId === inboxId;
+  if (ctx === null) return false;
+  const stored = new Set(ctx.caps.map((c) => c.inboxId));
+  return (
+    stored.size === inboxIds.length && inboxIds.every((id) => stored.has(id))
+  );
 }
 
 // The endpoint id the server keys this subscription by: the hash of THIS device's
@@ -78,11 +84,14 @@ function routingEndpointId(cap: NotifyCapability): Promise<string> {
 
 // Subscribe to push with the server's VAPID key and register the subscription +
 // store the worker context. Split from enablePush so each stays within its
-// statement ceiling. Assumes permission is already granted.
+// statement ceiling. Assumes permission is already granted. Registers the one
+// device subscription under EACH per-contact routing endpoint, so a wake from any
+// contact reaches this device (the server then cover-broadcasts to the whole push
+// population, so which contact is never revealed).
 async function subscribeAndRegister(
   api: ApiClient,
   apiBase: string,
-  cap: NotifyCapability,
+  caps: readonly NotifyCapability[],
   reg: ServiceWorkerRegistration,
 ): Promise<PushEnableResult> {
   const vapid = await api.getVapidPublicKey();
@@ -101,11 +110,14 @@ async function subscribeAndRegister(
   ) {
     return { failed: "the push subscription had no endpoint or keys" };
   }
-  await api.registerPush({
-    routingEndpointId: await routingEndpointId(cap),
-    subscription: { endpoint: json.endpoint, keys: { p256dh, auth } },
-  });
-  await savePushContext({ apiBase, cap });
+  const subscription = { endpoint: json.endpoint, keys: { p256dh, auth } };
+  for (const cap of caps) {
+    await api.registerPush({
+      routingEndpointId: await routingEndpointId(cap),
+      subscription,
+    });
+  }
+  await savePushContext({ apiBase, caps });
   return "enabled";
 }
 
@@ -117,14 +129,14 @@ async function subscribeAndRegister(
 export async function enablePush(
   api: ApiClient,
   apiBase: string,
-  cap: NotifyCapability,
+  caps: readonly NotifyCapability[],
 ): Promise<PushEnableResult> {
   if (!pushSupported()) return "unsupported";
   try {
     const reg = await navigator.serviceWorker.register(SW_URL);
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return "denied";
-    return await subscribeAndRegister(api, apiBase, cap, reg);
+    return await subscribeAndRegister(api, apiBase, caps, reg);
   } catch (e) {
     // A blocked permission can surface here too: subscribe() throws a
     // NotAllowedError rather than requestPermission returning non-granted. Treat

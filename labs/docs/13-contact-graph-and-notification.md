@@ -94,7 +94,7 @@ From the [Decisions log](02-decisions.md) and [Design](03-design.md):
 
 3. **Notify-inbox as a blind channel (DECIDED 2026-06-20, new server surface).** Today the server has
    `notify_route` + `send_queue` + `push_endpoint`, but a contentless wake alone cannot tell a
-   recipient "this one is for you" once cover-wakes go to everyone. So we add a per-device
+   recipient "this one is for you" once cover-wakes go to everyone. So we add a per-contact
    **notify-inbox**: an opaque id holding an existence-uniform encrypted payload, addressed and
    read exactly like an alias (`GET` returns real-or-decoy fixed-size bytes; the client decrypts).
    A pairwise notify-token is the capability `{inbox_id, write_token, key}` for the contact's inbox,
@@ -129,15 +129,25 @@ contacts: [
     expiresOn?,               // for durational grants
     // what THEY can see of me: a per-contact alias I publish my card to
     myAlias: { id, writeToken, key, isPublic: false },
+    // how THEY notify ME: my OWN receiving inbox, minted fresh for THIS contact and
+    // handed to them at link time. One inbox per contact (not one shared inbox), so
+    // a recipient holding two of my links cannot tie them to one owner. I poll every
+    // contact's myInbox to receive nudges.
+    myInbox?: { inboxId, writeToken, key, routingToken },
     // how I notify THEM: their notify capability, given to me at link time. Carries
     // the routing token too, so I can both write a ping (inbox) and ask for a wake
     // (hash(routingToken)); absent until the exchange completes.
     theirNotify?: { inboxId, writeToken, key, routingToken },
   }
 ]
-myNotify: { inboxId, writeToken, key, routingToken }  // my own inbox + push routing
 circles: [ { id, name, memberContactIds: [...], display } ]
 ```
+
+There is no account-level notify inbox. The notify capability is minted **per
+contact** at link time and stored as that contact's `myInbox`; it IS the
+`theirNotify` the other side records. Two links from one owner therefore carry two
+unrelated inbox ids and routing tokens, so a recipient who holds both learns
+nothing tying them together.
 
 Each contact gets **its own alias** (`myAlias`), so revoking one contact (overwrite that alias to
 garbage, drop the record, exactly the existing revoke path) never affects another. This is the
@@ -148,8 +158,9 @@ link with a specific person.
 **On the server** (all opaque, all reusing existing or alias-shaped storage):
 
 - `alias` (exists): per-contact card ciphertext, fixed size, by opaque id, write-token gated.
-- `notify_inbox` (**new**, alias-shaped): per-device contentless-ping ciphertext, fixed size, by
-  opaque id, write-token gated. Same existence-uniform read as `alias`.
+- `notify_inbox` (**new**, alias-shaped): per-contact contentless-ping ciphertext, fixed size, by
+  opaque id, write-token gated. Same existence-uniform read as `alias`. One row per pairing, so
+  inbox ids never repeat across an owner's contacts.
 - `notify_route` (exists): `hash(routingToken) to opaque push routing endpoint`, for the wake.
 - `push_endpoint` (exists), `send_queue` (exists): the wake fan-out.
 
@@ -183,7 +194,8 @@ mutual link; deferred until A is solid.
 4. **Send cycle (server-side, never surfaced).** The existing jittered `send_queue` drain fires the
    wakes. **With decorrelation on, the drain ALSO cover-wakes the whole push population**, so the
    real recipients are hidden in the broadcast.
-5. **Recipient.** Woken (real or cover), the client polls its `myNotify` inbox: a real ping decrypts
+5. **Recipient.** Woken (real or cover), the client polls EACH contact's `myInbox` (one inbox per
+   contact, so a nudge from any of them is found): a real ping decrypts
    to "a recent contact suggests getting tested, here is where to test + PEP info"; a decoy or empty
    inbox decrypts to nothing and the app shows its normal state. Contentless throughout: never who,
    when, or what.
@@ -225,8 +237,9 @@ limits below: the server can tell that a knock was answered, just not by or for 
    client uniform poll of its inbox). Go tests for the fan-out; this is the gate-opener.
 5. **Draft/lock partner-notify batch** (client compose/edit/delete within the window; lock writes
    pings + queues wakes). Tested against the live store with the gate on in tests only.
-   Built as the channel logic: account model v6 carries `myNotify` (minted at signup) and a
-   contact's `theirNotify`; `composeNotifyDraft` seeds the in-window notifiable contacts and
+   Built as the channel logic: each contact carries the owner's per-contact `myInbox` (minted at
+   link time) and the contact's `theirNotify`; `composeNotifyDraft` seeds the in-window notifiable
+   contacts and
    `lockNotifyDraft` writes a contentless ping to each plus a best-effort `notify(hash(routingToken))`.
    The capability EXCHANGE that fills in `theirNotify` (mutual link / scan) and the wake actually
    landing (push routing + the gate) are the later linking and slice-7 work; until then a contact
@@ -247,12 +260,20 @@ limits below: the server can tell that a knock was answered, just not by or for 
   that contact. Inherent to partner notification; unfixable without not sending. Stated to users.
 - Forwarded private link: still forwardable, so a stranger can knock; reviewed + contentless, so it
   only ever generates ignorable knocks, never status. Accepted. A contact INVITE link additionally
-  carries the owner's notify capability (inbox + routing token) in the fragment, so a forwarded
-  invite also lets a stranger write the owner's single (overwritten) inbox ping and request a wake.
-  Bounded and accepted: notify/push stays gated off until the cover-wake ships, the inbox holds one
-  fixed-size ping, and the worst case is a spurious "a recent contact suggests testing" on the next
-  poll. The owner can rotate myNotify to cut off a leaked invite; same trust boundary as the link
-  channel itself.
+  carries the owner's PER-CONTACT notify capability (inbox + routing token) in the fragment, so a
+  forwarded invite lets a stranger write that ONE inbox's ping and request a wake. Bounded and
+  accepted: notify/push stays gated off until the cover-wake ships, the inbox holds one fixed-size
+  ping, and the worst case is a spurious "a recent contact suggests testing" on the next poll.
+  Because the inbox is per-contact, the blast radius is exactly that one pairing; the owner revokes
+  it by dropping that contact (same trust boundary as the link channel itself), and no other
+  contact's inbox is touched.
+- Recipient-side sibling correlation (FIXED): the notify inbox is now per contact, so two of the
+  owner's links held by one recipient carry unrelated inbox ids and routing tokens and cannot be
+  tied to a single owner. The cost is N polls (one per contact) instead of one. Residual: when push
+  is enabled, the owner registers each per-contact routing-token hash against the same Web Push
+  subscription, so the SERVER can count an owner's routes (a contact-count metadata signal, never an
+  identity). Unchanged by per-contact inboxes is the cover-broadcast, which still hides WHICH device
+  a wake is for; push delivery stays gated off by default.
 - A full-broadcast cover-wake scales with the push population; fine at current (zero) scale, and a
   sampled cover set is the documented later refinement. Two facets of the same limit: the drain
   delivers covers in bounded batches per pass (backpressure so one pass cannot block the loop), so a

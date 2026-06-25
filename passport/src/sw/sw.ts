@@ -59,7 +59,13 @@ async function handleWake(): Promise<void> {
   const ctx = await readPushContext();
   if (ctx === null) return; // push not enabled on this device; ignore the wake.
   const api = createApiClient(ctx.apiBase);
-  if (await consumePartnerPing(api, ctx.cap)) {
+  // One inbox per contact (doc 13). Poll them all; show the single contentless nudge
+  // if ANY holds a real ping. Each consume clears its own inbox so a later cover wake
+  // does not re-notify. Concurrent, and a failed read of one never masks another.
+  const hits = await Promise.all(
+    ctx.caps.map((cap) => consumePartnerPing(api, cap)),
+  );
+  if (hits.some((hit) => hit)) {
     await sw.registration.showNotification(NUDGE_TITLE, {
       body: NUDGE_BODY,
       tag: "partner-notify",

@@ -6,17 +6,33 @@ import { INITIAL_OWNER_STATE } from "../../core/badge.ts";
 import { DEFAULT_AVATAR } from "../../lib/avatars.ts";
 import { mintNotify } from "../../store/index.ts";
 
+// A session with one contact whose per-contact receiving inbox carries inboxId, so
+// the hook (which keys its poll on the set of contact inbox ids) re-pulls when it
+// changes.
 function sessionWithInbox(inboxId: string): OwnerSession {
   return {
     master: new Uint8Array(32),
     blob: {
       handle: "robin",
       aliases: [],
-      contacts: [],
+      contacts: [
+        {
+          id: "c".repeat(43),
+          label: "",
+          createdDay: 0,
+          expiresAt: null,
+          alias: {
+            id: "d".repeat(43),
+            writeToken: "e".repeat(43),
+            key: "f".repeat(43),
+            isPublic: false,
+          },
+          myInbox: { ...mintNotify(), inboxId },
+        },
+      ],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
       sharingMode: "link",
-      myNotify: { ...mintNotify(), inboxId },
     },
   };
 }

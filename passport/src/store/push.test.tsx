@@ -25,6 +25,12 @@ const cap: NotifyCapability = {
   key: "k",
   routingToken: "route-token-123",
 };
+const cap2: NotifyCapability = {
+  inboxId: "j".repeat(43),
+  writeToken: "x".repeat(43),
+  key: "m",
+  routingToken: "route-token-456",
+};
 
 function fakeApi(over: Partial<ApiClient> = {}): ApiClient {
   return {
@@ -88,7 +94,7 @@ describe("push enable/disable", () => {
     const registerPush = vi.fn(() => Promise.resolve());
     const api = fakeApi({ registerPush });
 
-    const result = await enablePush(api, "https://api.test", cap);
+    const result = await enablePush(api, "https://api.test", [cap]);
     expect(result).toBe("enabled");
 
     const expectedId = await sha256Base64url(utf8ToBytes(cap.routingToken));
@@ -99,14 +105,37 @@ describe("push enable/disable", () => {
         keys: { p256dh: "p256", auth: "authk" },
       },
     });
-    // The worker context (api base + this device's cap) is persisted.
-    expect(saved.ctx).toEqual({ apiBase: "https://api.test", cap });
+    // The worker context (api base + the per-contact caps) is persisted.
+    expect(saved.ctx).toEqual({ apiBase: "https://api.test", caps: [cap] });
+  });
+
+  it("registers EACH per-contact routing token under the one subscription", async () => {
+    installPushEnv();
+    const ids: string[] = [];
+    const registerPush = vi.fn((arg: { routingEndpointId: string }) => {
+      ids.push(arg.routingEndpointId);
+      return Promise.resolve();
+    });
+    const api = fakeApi({ registerPush });
+
+    const result = await enablePush(api, "https://api.test", [cap, cap2]);
+    expect(result).toBe("enabled");
+
+    // One registration per contact inbox, each under that contact's routing-token
+    // hash, so a wake from any contact reaches this device.
+    const id1 = await sha256Base64url(utf8ToBytes(cap.routingToken));
+    const id2 = await sha256Base64url(utf8ToBytes(cap2.routingToken));
+    expect(new Set(ids)).toEqual(new Set([id1, id2]));
+    expect(saved.ctx).toEqual({
+      apiBase: "https://api.test",
+      caps: [cap, cap2],
+    });
   });
 
   it("returns 'denied' and stores nothing when permission is refused", async () => {
     installPushEnv({ permission: "denied" });
     const registerPush = vi.fn(() => Promise.resolve());
-    const result = await enablePush(fakeApi({ registerPush }), "x", cap);
+    const result = await enablePush(fakeApi({ registerPush }), "x", [cap]);
     expect(result).toBe("denied");
     expect(registerPush).not.toHaveBeenCalled();
     expect(saved.ctx).toBeUndefined();
@@ -117,7 +146,7 @@ describe("push enable/disable", () => {
     const err = new Error("Registration failed - push service error");
     err.name = "AbortError";
     pushManager.subscribe = vi.fn(() => Promise.reject(err));
-    const result = await enablePush(fakeApi(), "x", cap);
+    const result = await enablePush(fakeApi(), "x", [cap]);
     expect(result).toEqual({
       failed: "AbortError: Registration failed - push service error",
     });
@@ -129,7 +158,7 @@ describe("push enable/disable", () => {
     const err = new Error("permission denied");
     err.name = "NotAllowedError";
     pushManager.subscribe = vi.fn(() => Promise.reject(err));
-    expect(await enablePush(fakeApi(), "x", cap)).toBe("denied");
+    expect(await enablePush(fakeApi(), "x", [cap])).toBe("denied");
   });
 
   it("returns 'unconfigured' when the server has no VAPID key", async () => {
@@ -137,24 +166,32 @@ describe("push enable/disable", () => {
     const result = await enablePush(
       fakeApi({ getVapidPublicKey: () => Promise.resolve(null) }),
       "x",
-      cap,
+      [cap],
     );
     expect(result).toBe("unconfigured");
     expect(saved.ctx).toBeUndefined();
   });
 
-  it("pushEnabled is true only for the inbox the stored context belongs to", async () => {
-    saved.ctx = { apiBase: "x", cap }; // cap.inboxId is this device's inbox
-    expect(await pushEnabled(cap.inboxId)).toBe(true);
-    expect(await pushEnabled("z".repeat(43))).toBe(false); // a different account
-    expect(await pushEnabled(undefined)).toBe(false); // logged out
+  it("pushEnabled is true only for the exact per-contact inbox set stored", async () => {
+    saved.ctx = { apiBase: "x", caps: [cap, cap2] };
+    // The full set matches (order-independent).
+    expect(await pushEnabled([cap.inboxId, cap2.inboxId])).toBe(true);
+    expect(await pushEnabled([cap2.inboxId, cap.inboxId])).toBe(true);
+    // A subset, a superset, a different set, and the empty set are all "off" so the
+    // UI re-prompts when the contact set changed.
+    expect(await pushEnabled([cap.inboxId])).toBe(false);
+    expect(await pushEnabled([cap.inboxId, cap2.inboxId, "z".repeat(43)])).toBe(
+      false,
+    );
+    expect(await pushEnabled(["z".repeat(43)])).toBe(false);
+    expect(await pushEnabled([])).toBe(false); // logged out / no contacts
     saved.ctx = undefined;
-    expect(await pushEnabled(cap.inboxId)).toBe(false);
+    expect(await pushEnabled([cap.inboxId, cap2.inboxId])).toBe(false);
   });
 
   it("disable unsubscribes and clears the worker context", async () => {
     const { sub } = installPushEnv();
-    saved.ctx = { apiBase: "x", cap };
+    saved.ctx = { apiBase: "x", caps: [cap] };
     await disablePush();
     expect(sub.unsubscribe).toHaveBeenCalledOnce();
     expect(saved.ctx).toBeUndefined();

@@ -47,11 +47,12 @@ export function mintInbox(): InboxCapability {
 
 /**
  * A pairwise notify capability: an inbox plus the routing token used to wake the
- * device that owns it. A device keeps its own as `myNotify` and hands a copy to
- * each contact at link time; the contact stores it as `theirNotify` and uses it to
- * write a ping (the inbox) and queue a wake (`hash(routingToken)`). The server only
- * ever sees the hash of the routing token, never the token itself, so it cannot
- * link a wake to an inbox or to a contact.
+ * device that owns it. The owner mints one PER CONTACT (stored as that contact's
+ * `myInbox`) and hands it over at link time; the contact stores it as `theirNotify`
+ * and uses it to write a ping (the inbox) and queue a wake (`hash(routingToken)`).
+ * The server only ever sees the hash of the routing token, never the token itself,
+ * so it cannot link a wake to an inbox or to a contact. Per-contact (not one shared
+ * inbox) is what stops a recipient holding two of the owner's links from linking them.
  */
 export interface NotifyCapability extends InboxCapability {
   readonly routingToken: string;

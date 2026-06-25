@@ -5,9 +5,10 @@
  * inviter's alias id being answered (`ref=`).
  *
  * Everything rides in the fragment, so the server never sees the key or the notify
- * capability. The notify capability is the inviter's `myNotify`, so opening an
- * invite gives the accepter both the means to read the inviter's status (the alias)
- * and to notify them back (the capability).
+ * capability. The notify capability is the inviter's receiving inbox minted FOR THIS
+ * contact (doc 13), so opening an invite gives the accepter both the means to read
+ * the inviter's status (the alias) and to notify them back (the capability). Each
+ * contact gets a distinct inbox, so two invites from one inviter cannot be linked.
  */
 
 import {
