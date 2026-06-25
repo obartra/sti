@@ -81,21 +81,41 @@ func TestBlockedAndCheckBlockedPath(t *testing.T) {
 	}
 }
 
-// The committed blocklist (seeded from LDNOOBW) MUST NOT block identity terms or
-// core sexual-health vocabulary: blocking those would push exactly this app's
-// audience out of the namespace. A regression here (e.g. a re-seed from a worse
-// list) is a real harm, so it is pinned rather than left to manual review.
-func TestCommittedBlocklistAllowsIdentityAndHealthTerms(t *testing.T) {
+// The committed blocklist blocks only HATEFUL terms (slurs, hate symbols, CSAM,
+// sexual violence, bestiality). On a sex-positive hookup/health app it MUST NOT
+// block: identity/community terms, core health vocabulary, or crude consensual
+// SEXUAL/anatomical language. Blocking any of those pushes this app's own audience
+// out of the namespace, so these are pinned rather than left to manual review.
+func TestCommittedBlocklistAllowsIdentityHealthAndSexualTerms(t *testing.T) {
 	mustAllow := []string{
-		// Identity.
+		// Identity / community.
 		"gay", "lesbian", "queer", "trans", "bisexual", "nonbinary", "lgbt",
+		"twink", "bear", "femme", "butch",
 		// Core health vocabulary.
 		"prep", "hiv", "condom", "condoms", "testing", "status", "positive",
 		"negative", "prophylaxis", "sexualhealth",
+		// Crude but consensual adult sexual/anatomical vocabulary (allowed).
+		"anal", "anus", "ass", "asshole", "anilingus", "dick", "cock", "sex",
+		"sexual", "slut", "kinky", "blowjob", "rimming", "bdsm", "horny",
 	}
 	for _, name := range mustAllow {
 		if Blocked(name) {
 			t.Errorf("Blocked(%q) = true; this term must stay registerable", name)
+		}
+	}
+}
+
+// The committed blocklist is non-empty and does block representative hate terms:
+// it is the curated hate subset, not the empty file or the raw profanity seed.
+func TestCommittedBlocklistBlocksHateTerms(t *testing.T) {
+	if len(blocklist) == 0 {
+		t.Fatal("committed blocklist is empty; expected the curated hate set")
+	}
+	// A racial slur and an anti-LGBTQ slur stand in for the categories; if either
+	// is unblocked the curation regressed.
+	for _, name := range []string{"kike", "faggot", "tranny"} {
+		if !Blocked(name) {
+			t.Errorf("Blocked(%q) = false; hate term must stay blocked", name)
 		}
 	}
 }
