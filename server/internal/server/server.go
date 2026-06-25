@@ -802,25 +802,22 @@ func (s *Server) handleNotify(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "")
 		return
 	}
-	// Gated off by default: enqueue nothing unless targeted-wake delivery is on,
-	// so the queue never builds (and so cannot flood when the gate flips). The
-	// response is uniform either way.
+	// Constant-time intake (doc 10 §F): the request does the SAME work whether or not
+	// the token maps to a registered route. We never look the route up here; we just
+	// enqueue the token hash itself at a jittered time. The drain (fanOutCover)
+	// resolves real-vs-unknown off the request path, so the response timing carries
+	// no existence oracle on the notify routes. Gated off by default: while
+	// NotifyEnabled is false nothing is enqueued, so the queue never builds and cannot
+	// flood when the gate flips.
 	if s.cfg.NotifyEnabled {
-		if ep, found, err := s.st.GetNotifyRoute(r.Context(), req.TokenHash); err == nil && found {
-			// Jittered single-send: spread wake timing to decorrelate from the event.
-			jitter := time.Duration(rand.Int64N(int64(s.cfg.SendMaxJitter) + 1))
-			at := s.now() + jitter.Milliseconds()
-			if err := s.st.EnqueueSend(r.Context(), ep, at, s.now()); err != nil {
-				s.metrics.Error(metrics.ErrEnqueue)
-				s.log.Error("enqueue send", "err", err)
-			}
-		} else if err != nil {
-			s.metrics.Error(metrics.ErrStore)
+		jitter := time.Duration(rand.Int64N(int64(s.cfg.SendMaxJitter) + 1))
+		at := s.now() + jitter.Milliseconds()
+		if err := s.st.EnqueueSend(r.Context(), req.TokenHash, at, s.now()); err != nil {
+			s.metrics.Error(metrics.ErrEnqueue)
+			s.log.Error("enqueue send", "err", err)
 		}
 	}
-	// Always 202, whether or not a route existed. The *response* is uniform, but a
-	// found route enqueues a send while a miss does no work, so timing is not yet
-	// equalized; constant-time work is a carried open item (doc 10 §F).
+	// Always 202, identical for a known and an unknown token.
 	w.WriteHeader(http.StatusAccepted)
 }
 
