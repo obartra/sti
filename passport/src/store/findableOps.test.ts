@@ -5,6 +5,7 @@ import {
   registerVanityName,
   releaseVanityName,
 } from "./findableOps.ts";
+import { setShareLinkExpiry } from "./shareOps.ts";
 import { createAccountManager } from "./account.ts";
 import type { ApiClient, VanityRegisterResult } from "../api/client.ts";
 import type { AccountBlob, AliasRecord } from "./accountBlob.ts";
@@ -173,6 +174,31 @@ describe("releaseVanityName", () => {
 
     expect(next).toBe(session);
     expect(release).not.toHaveBeenCalled();
+  });
+});
+
+// The findable alias must never be treated as the share-sheet link by ANY share
+// path; setShareLinkExpiry re-PUTs the share alias's card (which would reset the
+// findable alias's expiry + identity), so pin that it excludes it.
+describe("share-link expiry excludes the findable alias", () => {
+  it("is a no-op when the only public alias is the findable one", async () => {
+    const { api, putAlias } = fakeApi({ registerResult: "registered" });
+    const { accounts, session } = await freshSession(api);
+    const claimed = (await registerVanityName(api, accounts, session, "robin"))
+      .session;
+    // A public-mode owner whose only public alias is the dedicated findable one.
+    const pub: OwnerSession = {
+      ...claimed,
+      blob: { ...claimed.blob, sharingMode: "public" },
+    };
+    putAlias.mockClear();
+
+    const next = await setShareLinkExpiry(api, accounts, pub, 1000);
+
+    // No share alias exists (the findable one is excluded), so nothing is re-PUT:
+    // the findable card's expiry/identity stays untouched.
+    expect(next).toBe(pub);
+    expect(putAlias).not.toHaveBeenCalled();
   });
 });
 

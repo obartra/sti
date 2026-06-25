@@ -58,10 +58,12 @@ var reserved = toSet(reservedList)
 
 // The abuse/impersonation blocklist (doc 17 §63): slurs and harassment terms,
 // curated by the operator (and counsel) and grown reactively, kept in a data file
-// so it is editable without code and deliberately out of the design doc. Authority
-// look-alikes (`*_official`, `the_real_*`) are NOT auto-blocked here; those are
-// handled reactively. The committed file may be empty until curated; the mechanism
-// is what F1 delivers.
+// (no .go edit needed) and deliberately out of the design doc. NOTE: the file is
+// go:embed'd into the binary below, so a change to it only takes effect after a
+// rebuild + redeploy; for an already-registered name that needs to come down
+// immediately, the operator uses the runtime admin takedown endpoint (doc 20)
+// instead. Authority look-alikes (`*_official`, `the_real_*`) are NOT auto-blocked
+// here; those are handled reactively. The committed file may be empty until curated.
 //
 //go:embed blocklist.txt
 var blocklistData string

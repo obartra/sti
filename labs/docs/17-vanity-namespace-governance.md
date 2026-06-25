@@ -5,9 +5,10 @@ _New, June 22, 2026._
 _The full governance spec Findable mode is gated on. [Reach and Access](16-reach-and-access.md)
 confirmed the three modes and sketched this spec; this doc makes it implementable: the directory data
 model, the resolve endpoint and its handoff to the knock flow, the reserved + blocklist starter
-contents, the allocation lifecycle, and the metadata + legal posture. Findable mode does not launch
-until everything marked **gate** below is in place. It does not change any other mode; Direct and Gated
-ship and behave exactly as today._
+contents, the allocation lifecycle, and the metadata + legal posture. **Status: Findable LAUNCHED at
+the F6 flip** (client `FINDABLE_ENABLED` on, server `STI_FINDABLE_ENABLED` set on the box, a curated
+hate-only blocklist in place); the **gate** items below are the bar that was met, kept as a record.
+It does not change any other mode; Direct and Gated ship and behave exactly as today._
 
 ---
 
@@ -187,8 +188,8 @@ Findable mode ships only when all of the following are true:
 7. The conservative data posture (sensitive treatment, minimization, short retention, explicit consent)
    is in place. Counsel review is **not** a launch blocker; it is needed only to relax that posture.
 
-Until all seven hold, the onboarding Findable option stays disabled (shown, with "Soon"), exactly as
-it is today.
+All seven now hold, so the onboarding Findable option is enabled (the "Soon" state has been retired)
+and a name can be claimed from Settings.
 
 ## Honest limits (carried)
 
