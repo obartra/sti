@@ -39,20 +39,21 @@ const NAME_ERROR: Record<VanityNameError, string> = {
 };
 
 const COPY = {
-  title: "Findable name",
+  title: "Public name",
   lead: "Your name becomes public and searchable.",
-  // The bulk-harvest cost (doc 17 launch-gate item 5) is the non-obvious one, so
-  // it stays always-visible, with its consequence, never tucked behind the expander.
+  // The consent disclosure (doc 17 launch-gate item 5): being findable means people
+  // can see you're here. Always-visible, never behind the expander. This is honest
+  // consent for an opt-in public feature, not a leaked attack surface.
   harvest:
-    "Anyone can look up the full list of names in bulk, so registering reveals that a passport exists here.",
+    "A public name is listed openly, so anyone can see you have a passport here. That's the trade for being findable.",
   sub: "Your status itself stays private. People still ask to see it, and you still approve.",
   details: "What else this means",
   bullets: [
-    "Release the name and, after a short lock, anyone can claim it.",
+    "Release the name and, after a short delay, anyone can claim it.",
     "Names aren't verified; someone may pick one close to yours.",
   ],
   label: "Choose a name",
-  claim: "Make my name findable",
+  claim: "Make my name public",
   claiming: "Claiming…",
   taken: "That name is taken. Try another.",
   failed: "Couldn't reach the service. Try again.",

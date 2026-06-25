@@ -14,7 +14,7 @@ import { X } from "../../design/icons.tsx";
 
 const COPY = {
   title: "Scan a code",
-  hint: "Point your camera at someone’s passport QR.",
+  hint: "Point your camera at their code.",
   denied:
     "Camera access is off. Allow it in your browser settings, or ask them to send you the link instead.",
   unsupported:

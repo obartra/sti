@@ -26,7 +26,7 @@ describe("CircleCreate", () => {
     const cta = screen.getByRole("button", { name: "Create circle" });
     expect(cta).toBeDisabled();
 
-    await user.type(screen.getByPlaceholderText(/Thursday crew/), "Crew");
+    await user.type(screen.getByPlaceholderText(/Thursday group/), "Crew");
     await user.click(screen.getByRole("checkbox", { name: /Add sam/ }));
     expect(cta).toBeEnabled();
     await user.click(cta);

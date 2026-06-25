@@ -1,17 +1,17 @@
 import type { CSSProperties } from "react";
+import { CREATE_ACCOUNT_CTA } from "../../copy/canonical.ts";
 
 export const COPY = {
-  soft: "Claim your own passport",
+  soft: CREATE_ACCOUNT_CTA,
   verify: "How sti.care works",
-  selfBanner: "Visitor preview. This is exactly what others see.",
-  knockTitle: "Have their link?",
+  selfBanner: "This is what others see.",
+  knockTitle: "Have a link to them?",
   knockBody:
     "You can ask this person to share their status with you. They decide, and they’ll only know you asked if they choose to look.",
   knockCta: "Request access",
-  knockFootnote:
-    "Asking shares nothing about you, and never tells you whether this passport exists.",
+  knockFootnote: "Asking shares nothing about you and stays private.",
   knockSentBody:
-    "You won’t get a yes or no here. If they choose to share, their status will simply appear next time you open this link.",
+    "If they choose to share, their status appears next time you open this link.",
   knockDone: "Done",
   explainerTap: "What does this mean?",
   explainerTitle: "What this card means",
@@ -22,11 +22,11 @@ export const COPY = {
     ],
     [
       "What it doesn’t mean",
-      "Blue isn’t a green light for “no risk” or “no condoms.” It’s one honest signal, not a full check-up. Talking and testing together is still the move.",
+      "Blue means one thing: a recent test and steps to prevent HIV. It isn’t a reason to skip a conversation, testing, or protection.",
     ],
     [
       "A gray card",
-      "Gray just means there’s no status to show right now. That’s normal, not a red flag, and not an STI. People are gray for all kinds of reasons.",
+      "Gray just means there’s no status to show right now. That’s normal, not a warning, and not an STI. People are gray for all kinds of reasons.",
     ],
     [
       "What to do",
@@ -39,7 +39,7 @@ export const COPY = {
 // Sourced from the knock action's reply so the requester confirmation is
 // byte-identical to the action on every path.
 export const KNOCK_UNIFORM =
-  "If this passport exists, your request has been sent.";
+  "If this person registered, your request was sent.";
 
 export const backBtn: CSSProperties = {
   appearance: "none",

@@ -76,7 +76,7 @@ export function SharedSummary() {
       >
         This is everything shared: a{" "}
         <strong style={{ color: "var(--text-strong)" }}>status</strong>, plus
-        any protection facts they choose to add. No test names, no dates.
+        any protection details they choose to add. Just that.
       </div>
     </Card>
   );

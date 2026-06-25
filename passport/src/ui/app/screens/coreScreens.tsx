@@ -10,6 +10,7 @@ import { todayEpochDay } from "../../../core/clock.ts";
 import { RESOURCES, openResource } from "../../../lib/resources.ts";
 import { avatarSrc } from "../../../lib/avatars.ts";
 import type { ScreenRenderers } from "./context.ts";
+import { PARTNER_NOTIFY_PROMPT } from "../../../copy/canonical.ts";
 
 // The real inbox: a standing re-test nudge, plus a knock entry only when someone
 // has actually knocked (no requester, no count, no per-knock time). When a knock
@@ -86,7 +87,7 @@ export function notificationItems(
   if (nudge.show) {
     items.push({
       icon: "heart",
-      title: "A recent contact suggests getting tested",
+      title: PARTNER_NOTIFY_PROMPT,
       sub: "Find testing and PEP options in Care",
       onOpen: () => {
         nudge.dismiss();

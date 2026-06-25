@@ -22,8 +22,8 @@ const COPY = {
   additionalPrivate:
     "A roster only shows each person’s overall status, never results or conditions, and never the full picture.",
   noShame:
-    "Statuses change. If someone’s flips, their light just turns gray and they get a private nudge. Nobody is ever called out, and no one sees a tally.",
-  edit: "Edit name & members",
+    "If someone’s status changes, only they are told. No one else sees it, and there’s no count.",
+  edit: "Edit name and members",
   delete: "Delete circle",
   deleteNote: "Removes this grouping for you. Your contacts are not affected.",
 } as const;

@@ -7,7 +7,7 @@ import { QrCode, ArrowRight } from "../../design/icons.tsx";
 
 const COPY = {
   walletTitle: "Add to Apple or Google Wallet",
-  walletSub: "Keep your pass a swipe away",
+  walletSub: "Save your pass to your wallet",
 } as const;
 
 // The bottom-sheet grabber handle, mobile only.

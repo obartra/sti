@@ -319,8 +319,8 @@ function SavedHeader() {
           maxWidth: 300,
         }}
       >
-        Your card shows no status to others right now, gray, like any other
-        reason a card isn’t current. It never names what you tested for.
+        Your card shows gray to others, like any other reason a card isn’t
+        current. It never names what you tested for.
       </p>
     </div>
   );

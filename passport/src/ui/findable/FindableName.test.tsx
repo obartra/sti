@@ -27,7 +27,7 @@ describe("FindableName", () => {
 
     await user.type(screen.getByLabelText(/choose a name/i), "RoBiN");
     await user.click(
-      screen.getByRole("button", { name: /make my name findable/i }),
+      screen.getByRole("button", { name: /make my name public/i }),
     );
 
     expect(register).toHaveBeenCalledWith("robin"); // normalized
@@ -41,7 +41,7 @@ describe("FindableName", () => {
 
     await user.type(screen.getByLabelText(/choose a name/i), "ab"); // too short
     await user.click(
-      screen.getByRole("button", { name: /make my name findable/i }),
+      screen.getByRole("button", { name: /make my name public/i }),
     );
 
     expect(
@@ -60,7 +60,7 @@ describe("FindableName", () => {
     );
     await user.type(screen.getByLabelText(/choose a name/i), "robin");
     await user.click(
-      screen.getByRole("button", { name: /make my name findable/i }),
+      screen.getByRole("button", { name: /make my name public/i }),
     );
     expect(await screen.findByText(/that name is taken/i)).toBeInTheDocument();
   });
@@ -75,21 +75,21 @@ describe("FindableName", () => {
     );
     await user.type(screen.getByLabelText(/choose a name/i), "robin");
     await user.click(
-      screen.getByRole("button", { name: /make my name findable/i }),
+      screen.getByRole("button", { name: /make my name public/i }),
     );
     expect(await screen.findByText(/couldn't reach/i)).toBeInTheDocument();
   });
 
-  it("discloses the public-name consequences, with the bulk-harvest cost visible up front", async () => {
+  it("discloses the public-name consequences, with the findable cost visible up front", async () => {
     const user = userEvent.setup();
     render(<FindableName currentName={null} ops={ops()} />);
-    // The headline + the bulk-harvest cost are visible WITHOUT opening anything
-    // (doc 17 launch gate: the harvest impact must not be buried).
+    // The headline + the findable cost are visible WITHOUT opening anything
+    // (doc 17 launch gate: the impact must not be buried).
     expect(
       screen.getByText(/becomes public and searchable/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/look up the full list of names in bulk/i),
+      screen.getByText(/anyone can see you have a passport here/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/your status itself stays private/i),

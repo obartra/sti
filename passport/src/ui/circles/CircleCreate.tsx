@@ -21,12 +21,11 @@ const COPY = {
   editTitle: "Edit circle",
   nameLabel: "Name",
   nameHint: "Keep it neutral. It shows on lock screens and notifications.",
-  namePlaceholder: "e.g. Thursday crew",
+  namePlaceholder: "e.g. Thursday group",
   pickLabel: "Members",
   floorNote:
     "A roster of statuses appears once a circle reaches 5 people, never below, so no one is singled out.",
-  noContacts:
-    "Link with people first (from Connect), then group them into a circle here.",
+  noContacts: "Add connections first, then group them into a circle here.",
   create: "Create circle",
   save: "Save changes",
 } as const;

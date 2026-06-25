@@ -57,23 +57,19 @@ describe("previewFace", () => {
 describe("IdentityChoiceRow", () => {
   it("offers both faces and reports the chosen one", () => {
     const onChange = vi.fn();
-    render(
-      <IdentityChoiceRow handle="ari" choice="anonymous" onChange={onChange} />,
-    );
+    render(<IdentityChoiceRow choice="anonymous" onChange={onChange} />);
     expect(screen.getByText("Anonymous")).toBeInTheDocument();
-    fireEvent.click(screen.getByText(/Show @/));
+    fireEvent.click(screen.getByText(/Show my name/));
     expect(onChange).toHaveBeenCalledWith("main");
   });
 
   it("warns about findability only when the main face is chosen", () => {
     const warn = /can recognize you/;
     const { rerender } = render(
-      <IdentityChoiceRow handle="ari" choice="anonymous" onChange={vi.fn()} />,
+      <IdentityChoiceRow choice="anonymous" onChange={vi.fn()} />,
     );
     expect(screen.queryByText(warn)).toBeNull();
-    rerender(
-      <IdentityChoiceRow handle="ari" choice="main" onChange={vi.fn()} />,
-    );
+    rerender(<IdentityChoiceRow choice="main" onChange={vi.fn()} />);
     expect(screen.getByText(warn)).toBeInTheDocument();
   });
 });

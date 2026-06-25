@@ -54,7 +54,7 @@ describe("ContactLinks", () => {
       />,
     );
     expect(screen.getByText(/Linked both ways/)).toBeInTheDocument();
-    expect(screen.getByText(/Awaiting their link back/)).toBeInTheDocument();
+    expect(screen.getByText(/Waiting for their link/)).toBeInTheDocument();
   });
 
   it("surfaces a failure to create a link instead of silently doing nothing", async () => {

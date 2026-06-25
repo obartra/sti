@@ -326,7 +326,7 @@ describe("App onboarding flow", () => {
     expect(screen.queryByText(/#k=/)).toBeNull();
 
     // Revoke & renew swaps the displayed link for the freshly-minted one.
-    await user.click(screen.getByRole("button", { name: /Revoke & renew/ }));
+    await user.click(screen.getByRole("button", { name: /Revoke and renew/ }));
     expect(
       await screen.findByText(`sti.care/a/${"w".repeat(43)}`),
     ).toBeInTheDocument();

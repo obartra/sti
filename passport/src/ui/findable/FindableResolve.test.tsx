@@ -17,9 +17,7 @@ describe("FindableResolve", () => {
     );
     await waitFor(() => expect(onResolved).toHaveBeenCalledWith(ID));
     // It never falls to the not-found state on a hit.
-    expect(
-      screen.queryByText(/no passport at that name/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/no one at that name/i)).not.toBeInTheDocument();
   });
 
   it("shows a not-found state with a claim CTA when the name is unregistered", async () => {
@@ -34,12 +32,10 @@ describe("FindableResolve", () => {
         onClaim={onClaim}
       />,
     );
-    expect(
-      await screen.findByText(/no passport at that name/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/no one at that name/i)).toBeInTheDocument();
     expect(onResolved).not.toHaveBeenCalled();
     await user.click(
-      screen.getByRole("button", { name: /get your own private passport/i }),
+      screen.getByRole("button", { name: /create your own passport/i }),
     );
     expect(onClaim).toHaveBeenCalledTimes(1);
   });
@@ -63,7 +59,7 @@ describe("FindableResolve", () => {
     );
     await waitFor(() => expect(resolve).toHaveBeenCalledTimes(1));
     // Fresh closures (as the screen renderer passes each render) must NOT re-fire
-    // the lookup — only a changed `name` does.
+    // the lookup; only a changed `name` does.
     const resolve2 = vi.fn(() => Promise.resolve("B".repeat(43)));
     rerender(
       <FindableResolve name="robin" resolve={resolve2} onResolved={vi.fn()} />,

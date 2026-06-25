@@ -1,20 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, Card } from "../../design/components/index.ts";
 import { Globe, Lock } from "../../design/icons.tsx";
+import { CREATE_ACCOUNT_CTA } from "../../copy/canonical.ts";
 
 // The resolve→knock handoff (doc 17, F5b). A `/u/{name}` link lands here: look the
 // name up to its opaque alias id, then hand into the normal knock flow against
-// that id (a findable name carries no key, so it's the keyless gated path —
+// that id (a findable name carries no key, so it's the keyless gated path,
 // resolveAlias yields gray-nothing and the public screen shows "ask to view").
 // A miss/unreachable is the uniform "not found", so existence stays fail-closed.
 
 const COPY = {
   looking: "Looking up",
-  notFoundTitle: "No passport at that name",
+  notFoundTitle: "No one at that name",
   notFoundBody:
     "It might be unclaimed, recently released, or mistyped. Names aren't tied to a person, so double-check the spelling.",
   privacy: "Looking a name up reveals nothing about anyone's status.",
-  claim: "Get your own private passport",
+  claim: CREATE_ACCOUNT_CTA,
   back: "Back",
 } as const;
 
@@ -38,8 +39,8 @@ export function FindableResolve({
 }: FindableResolveProps) {
   const [state, setState] = useState<"resolving" | "notfound">("resolving");
 
-  // Keep the latest callbacks in refs so the lookup effect depends only on `name`
-  // — the screen renderer passes fresh `resolve`/`onResolved` closures each render,
+  // Keep the latest callbacks in refs so the lookup effect depends only on `name`:
+  // the screen renderer passes fresh `resolve`/`onResolved` closures each render,
   // and depending on them would re-run the lookup (and bounce the nav) every time.
   const resolveRef = useRef(resolve);
   resolveRef.current = resolve;
