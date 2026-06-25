@@ -1,13 +1,189 @@
 # Vanity-name blocklist (doc 17 §63 "Reserved names + blocklist").
 #
 # One normalized term per line: lowercase [a-z0-9_], 3-30 chars. Blank lines and
-# lines starting with '#' are ignored. Terms are matched exactly against an
-# already-normalized name at registration (and by the periodic re-scan).
+# lines starting with '#' are ignored. Terms are matched EXACTLY against an
+# already-normalized name at registration (whole-name, not substring: "sex" blocks
+# the name "sex", never "essex").
 #
-# This holds slurs and harassment terms. It is curated by the operator and
-# reviewed with counsel, and grown reactively via report-and-takedown. It is
-# DELIBERATELY left empty in source control and kept out of the design doc; the
-# operator populates it. Reserved operational/brand terms live in code
-# (reservedList in vanityname.go), not here.
+# POLICY (this is a sex-positive hookup/health app): crude SEXUAL and anatomical
+# language is allowed as a username (anal, ass, dick, cock, slut, kinky, etc.).
+# This list blocks only HATEFUL / harmful terms. It is curated by the operator and
+# reviewed with counsel, and grown reactively via report-and-takedown.
 #
-# Add terms below this line.
+# What belongs here:
+#   - slurs: racial, ethnic, anti-LGBTQ (NOT identity/community terms like gay,
+#     lesbian, queer, trans, twink), ableist, religious-hate
+#   - Nazi / organized-hate symbols and slogans
+#   - sexualization of minors (CSAM-coded terms)
+#   - sexual VIOLENCE (rape/assault), distinct from consensual kink
+#   - bestiality
+#
+# What does NOT belong here: consensual adult sexual/anatomical/kink terms, and
+# identity terms themselves (those are pinned allowed in vanityname_test.go).
+#
+# Sourcing note (important): there is NO clean importable "hate-only" wordlist.
+# LDNOOBW is general profanity (mostly legitimate sexual vocabulary here); HurtLex
+# is categorized but low-precision (it labels generic insults like "idiot"/"moron",
+# subcultures like "goth", neutral terms like "homophile"/"gays", and even LGBTQ
+# org names as offensive). So this is HAND-CURATED: genuine slurs cherry-picked
+# from those sources (including evasion spellings they surfaced) plus well-known
+# terms they missed. It is deliberately PRECISION-over-recall to avoid blocking
+# this app's own audience. It is NOT exhaustive: counsel should review + extend,
+# and report-and-takedown is the backstop for what a wordlist can't catch.
+#
+# Add terms below this line, keeping the category grouping.
+
+# --- Racial / ethnic slurs ---
+abo
+beaner
+beaners
+boche
+chernozhopyi
+chinaman
+chink
+chinks
+coolie
+coon
+coons
+dago
+darkey
+darkie
+darky
+gook
+gooks
+golliwog
+half_breed
+half_caste
+halfbreed
+halfcaste
+honkey
+honky
+jigaboo
+jiggaboo
+jiggerboo
+kike
+kikes
+kraut
+krauthead
+krauts
+ni66a
+niga
+nigga
+niggah
+niggar
+niggas
+niggaz
+nigger
+nigger_lover
+niggerlover
+niggers
+nig_nog
+nignog
+nigra
+nikker
+paki
+pakis
+pikey
+pikie
+quarter_caste
+quartercaste
+raghead
+redskin
+sambo
+slanteye
+spic
+spics
+squaw
+tar_baby
+tarbaby
+terrone
+towelhead
+wetback
+wop
+zipperhead
+
+# --- Anti-LGBTQ slurs (identity/community terms are NOT blocked) ---
+bulldyke
+carpet_muncher
+carpetmuncher
+fag
+fagala
+faggedy
+faggot
+faggotry
+faggoty
+faggy
+fagot
+fags
+fayg
+fudge_packer
+fudgepacker
+homo
+paederast
+pederast
+pidor
+pole_smoker
+polesmoker
+poof
+poove
+pouf
+shemale
+tranny
+trannies
+
+# --- Ableist slurs ---
+cretin
+midget
+mong
+mongloid
+mongolid
+mongoloid
+mongoloids
+retard
+retarded
+spacker
+spastic
+spaz
+
+# --- Nazi / organized-hate ---
+heil_hitler
+heilhitler
+kkk
+neonazi
+sieg_heil
+siegheil
+swastika
+white_power
+whitepower
+
+# --- Sexualization of minors (CSAM-coded) ---
+child_molester
+childmolester
+jail_bait
+jailbait
+lolita
+nambla
+paedophile
+pedobear
+pedophile
+pthc
+shota
+
+# --- Sexual violence (distinct from consensual kink) ---
+date_rape
+daterape
+how_to_kill
+how_to_murder
+howtokill
+howtomurder
+molester
+rape
+rapist
+raping
+
+# --- Bestiality ---
+beastiality
+bestiality
+mr_hands
+mrhands
+zoophilia
