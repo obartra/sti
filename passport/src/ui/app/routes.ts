@@ -29,6 +29,7 @@ export const ALL_SCREENS = [
   "report",
   "report-saved",
   "privacy",
+  "promises",
 ] as const;
 
 export type Screen = (typeof ALL_SCREENS)[number];
@@ -90,6 +91,7 @@ const SECTION: Partial<Record<Screen, Tab>> = {
   report: "home",
   "report-saved": "home",
   privacy: "home",
+  promises: "home",
   notifications: "home",
   wallet: "home",
   "avatar-edit": "home",
