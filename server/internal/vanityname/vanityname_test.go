@@ -63,10 +63,10 @@ func TestParseTermsSkipsCommentsBlanksAndNormalizes(t *testing.T) {
 }
 
 func TestBlockedAndCheckBlockedPath(t *testing.T) {
-	// The committed blocklist is empty (operator-curated), so nothing is blocked
-	// out of the box.
-	if Blocked("anything") {
-		t.Error("Blocked(anything) = true with an empty blocklist")
+	// A clearly-benign name is never blocked (the committed list holds only
+	// abuse/slur terms).
+	if Blocked("robin_2026") {
+		t.Error("Blocked(robin_2026) = true; benign name should pass")
 	}
 	// Seed the package set to exercise the blocked path end to end.
 	orig := blocklist
@@ -78,6 +78,25 @@ func TestBlockedAndCheckBlockedPath(t *testing.T) {
 	}
 	if _, err := Check("BadWord"); !errors.Is(err, ErrBlocked) {
 		t.Fatalf("Check(BadWord) err = %v, want ErrBlocked", err)
+	}
+}
+
+// The committed blocklist (seeded from LDNOOBW) MUST NOT block identity terms or
+// core sexual-health vocabulary: blocking those would push exactly this app's
+// audience out of the namespace. A regression here (e.g. a re-seed from a worse
+// list) is a real harm, so it is pinned rather than left to manual review.
+func TestCommittedBlocklistAllowsIdentityAndHealthTerms(t *testing.T) {
+	mustAllow := []string{
+		// Identity.
+		"gay", "lesbian", "queer", "trans", "bisexual", "nonbinary", "lgbt",
+		// Core health vocabulary.
+		"prep", "hiv", "condom", "condoms", "testing", "status", "positive",
+		"negative", "prophylaxis", "sexualhealth",
+	}
+	for _, name := range mustAllow {
+		if Blocked(name) {
+			t.Errorf("Blocked(%q) = true; this term must stay registerable", name)
+		}
 	}
 }
 
