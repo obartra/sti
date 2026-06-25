@@ -17,6 +17,7 @@ import {
   type ContactRecord,
 } from "./accountBlob.ts";
 import { contactInviteUrl, type ContactInvite } from "./contactInvite.ts";
+import { primaryShareAlias } from "./findableOps.ts";
 import {
   deriveAliasCard,
   withIdentity,
@@ -211,7 +212,7 @@ export async function setShareLinkExpiry(
   durationMs: number | null,
 ): Promise<OwnerSession> {
   const wantPublic = session.blob.sharingMode === "public";
-  const alias = session.blob.aliases.find((a) => a.isPublic === wantPublic);
+  const alias = primaryShareAlias(session.blob, wantPublic);
   if (alias === undefined) return session;
   const expiresAt = expiryFor(durationMs);
   const nowDay = todayEpochDay();
@@ -257,7 +258,7 @@ export async function shareLinkFor(
 ): Promise<ShareLinkResult> {
   const nowDay = todayEpochDay();
   const wantPublic = session.blob.sharingMode === "public";
-  const existing = session.blob.aliases.find((a) => a.isPublic === wantPublic);
+  const existing = primaryShareAlias(session.blob, wantPublic);
   if (existing !== undefined) {
     // Reuse keeps the existing alias's own identity (changing it = renewLink with a
     // fresh choice); only its badge is refreshed.

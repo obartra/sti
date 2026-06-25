@@ -39,3 +39,20 @@ export const Default: Story = {};
 
 // No links shared yet: the empty state.
 export const NoLinks: Story = { args: { aliases: [], contacts: [] } };
+
+// Findable (doc 17) wired in: the claim card with its consent disclosure sits
+// between the live links and the card attributes. The transport is stubbed so it
+// renders without a server.
+const findableOps = {
+  register: () => Promise.resolve("registered" as const),
+  release: () => Promise.resolve(),
+};
+
+export const FindableUnclaimed: Story = {
+  args: { vanityName: null, findableOps },
+};
+
+// The owner already holds a name: the registered view with the release control.
+export const FindableClaimed: Story = {
+  args: { vanityName: "robin", findableOps },
+};

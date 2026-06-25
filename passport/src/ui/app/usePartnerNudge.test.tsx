@@ -52,6 +52,8 @@ function stubController(
     createCircle: unused,
     updateCircle: unused,
     removeCircle: unused,
+    registerVanityName: unused,
+    releaseVanityName: unused,
     forget: unused,
   };
 }

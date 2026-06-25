@@ -65,6 +65,8 @@ function stubController(over: Partial<SessionController>): SessionController {
     createCircle: unused,
     updateCircle: unused,
     removeCircle: unused,
+    registerVanityName: unused,
+    releaseVanityName: unused,
     forget: unused,
     ...over,
   };

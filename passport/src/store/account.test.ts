@@ -350,6 +350,23 @@ describe("account manager", () => {
     ).rejects.toThrow();
   });
 
+  it("setFindable sets then clears the registration (clear omits the key)", async () => {
+    const accounts = createAccountManager(fakeAccountApi());
+    const created = await accounts.create("robin");
+    const reg = { name: "robin", aliasId: "A".repeat(43) };
+
+    const set = await accounts.setFindable(created.master, reg);
+    expect(set.findable).toEqual(reg);
+
+    const cleared = await accounts.setFindable(created.master, null);
+    expect(cleared.findable).toBeUndefined();
+    // Cleared by omission, not an explicit `findable: undefined` key, so the blob
+    // round-trips clean and never re-persists a dangling field.
+    expect(Object.prototype.hasOwnProperty.call(cleared, "findable")).toBe(
+      false,
+    );
+  });
+
   it("saves state even if a republish fails, and a retry converges", async () => {
     const accountStore = new Map<string, { blob: Bytes; version: number }>();
     const aliasStore = new Map<string, Bytes>();

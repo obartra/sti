@@ -5,6 +5,7 @@ import type {
   OwnerSession,
   SessionController,
 } from "../../store/index.ts";
+import type { VanityRegisterResult } from "../../api/client.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
 import { disablePush } from "../../store/push.ts";
 
@@ -43,6 +44,10 @@ export interface OwnerActions {
   ) => void;
   /** Delete one circle by id (a local grouping; contacts untouched). */
   onRemoveCircle: (id: string) => void;
+  /** Claim a public findable name; resolves with the outcome (the form shows it). */
+  onRegisterVanityName: (name: string) => Promise<VanityRegisterResult>;
+  /** Release the owner's claimed findable name (no-op if none). */
+  onReleaseVanityName: () => Promise<void>;
 }
 
 /**
@@ -167,6 +172,7 @@ export function useOwnerActions(
   );
 
   const circle = useCircleActions(controller, sessionRef, setSession);
+  const findable = useFindableActions(controller, sessionRef, setSession);
 
   return {
     onDeleteAccount,
@@ -178,7 +184,42 @@ export function useOwnerActions(
     onAcceptContactInvite,
     onIngestContactReturn,
     ...circle,
+    ...findable,
   };
+}
+
+// The findable (vanity-name) mutations (claim / release), split out so
+// useOwnerActions stays within its length ceiling. The claim returns its outcome so
+// the form can show "taken"/"try again"; both fold the resulting session.
+function useFindableActions(
+  controller: SessionController,
+  sessionRef: RefObject<OwnerSession | null>,
+  setSession: (s: OwnerSession | null) => void,
+): Pick<OwnerActions, "onRegisterVanityName" | "onReleaseVanityName"> {
+  const onRegisterVanityName = useCallback(
+    async (name: string): Promise<VanityRegisterResult> => {
+      const current = sessionRef.current;
+      if (current === null) return "error";
+      const { session, result } = await controller.registerVanityName(
+        current,
+        name,
+      );
+      sessionRef.current = session;
+      setSession(session);
+      return result;
+    },
+    [controller, sessionRef, setSession],
+  );
+
+  const onReleaseVanityName = useCallback(async (): Promise<void> => {
+    const current = sessionRef.current;
+    if (current === null) return;
+    const updated = await controller.releaseVanityName(current);
+    sessionRef.current = updated;
+    setSession(updated);
+  }, [controller, sessionRef, setSession]);
+
+  return { onRegisterVanityName, onReleaseVanityName };
 }
 
 // The profile mutation (avatar today), split out so useOwnerActions stays within

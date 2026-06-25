@@ -173,6 +173,9 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       };
       return Promise.resolve({ master, blob });
     },
+    registerVanityName: () =>
+      Promise.reject(new Error("not used in this test")),
+    releaseVanityName: () => Promise.reject(new Error("not used in this test")),
     forget: () => undefined,
   };
 }

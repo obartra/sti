@@ -51,6 +51,56 @@ describe("Privacy avatar editor entry (doc 19 slice 5)", () => {
   });
 });
 
+describe("Privacy findable section (doc 17)", () => {
+  const ops = {
+    register: () => Promise.resolve("registered" as const),
+    release: () => Promise.resolve(),
+  };
+
+  it("shows the claim card only when findable ops are provided", () => {
+    const claim = /make my name findable/i;
+    const { rerender } = render(
+      <Privacy
+        ownerState={INITIAL_OWNER_STATE}
+        setOwnerState={() => undefined}
+      />,
+    );
+    // Gated off (no ops): the wiring boundary decides; the screen stays clean.
+    expect(
+      screen.queryByRole("button", { name: claim }),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <Privacy
+        ownerState={INITIAL_OWNER_STATE}
+        setOwnerState={() => undefined}
+        vanityName={null}
+        findableOps={ops}
+      />,
+    );
+    // Unclaimed: the consent disclosure + the register affordance, not a release.
+    expect(
+      screen.getByText("Your name becomes public and searchable."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: claim })).toBeInTheDocument();
+  });
+
+  it("shows the registered view with the current name when one is claimed", () => {
+    render(
+      <Privacy
+        ownerState={INITIAL_OWNER_STATE}
+        setOwnerState={() => undefined}
+        vanityName="robin"
+        findableOps={ops}
+      />,
+    );
+    expect(screen.getByText("robin")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /release name/i }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("usePrivacyState card-attribute wiring", () => {
   it("reads the card attributes from the owner state", () => {
     const state: OwnerState = {

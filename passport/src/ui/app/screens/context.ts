@@ -10,6 +10,7 @@ import type {
   OwnerView,
   PassportStore,
 } from "../../../store/index.ts";
+import type { VanityRegisterResult } from "../../../api/client.ts";
 import type { OnboardingActions } from "../useOnboarding.ts";
 import type { PushControls } from "../usePush.ts";
 import type { ReportOutcome } from "../../../core/report.ts";
@@ -99,6 +100,12 @@ export interface ScreenCtx {
   ) => void;
   /** Delete one circle by id (a local grouping; contacts are untouched). */
   onRemoveCircle: (id: string) => void;
+  /** The owner's claimed findable name, or null (logged out, or none claimed). */
+  vanityName: string | null;
+  /** Claim a public findable name; resolves with the outcome (doc 17, gated). */
+  onRegisterVanityName: (name: string) => Promise<VanityRegisterResult>;
+  /** Release the owner's claimed findable name (no-op if none). */
+  onReleaseVanityName: () => Promise<void>;
   /** Device push controls (the partner-notify wake), for the Privacy toggle. */
   push: PushControls;
   store: PassportStore;

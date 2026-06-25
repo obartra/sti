@@ -15,6 +15,7 @@
 
 import { utf8ToBytes, type Bytes } from "../crypto/index.ts";
 import { validId } from "../api/contract.ts";
+import { hasVanityNameShape } from "./vanityName.ts";
 import { isOwnerState, type OwnerState } from "../core/badge.ts";
 import {
   isAvatarConfig,
@@ -37,7 +38,11 @@ import type { NotifyCapability } from "./notifyInbox.ts";
 // exclusively: an older or otherwise malformed blob fails the strict version check
 // and parseAccountBlob THROWS (recovery surfaces an error rather than silently
 // restoring it). Only a genuine account miss (404) maps to null/"no account".
-const SCHEMA_VERSION = 10;
+//
+// v11 adds the optional `findable` registration (doc 17): the public vanity name
+// the owner claimed plus the id of the dedicated alias it resolves to. Absent on a
+// pre-Findable account, and whenever the owner currently has no name.
+const SCHEMA_VERSION = 11;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -121,6 +126,19 @@ export interface CircleRecord {
   readonly memberContactIds: string[];
 }
 
+/**
+ * The owner's public vanity-name registration (doc 17): the claimed `name` and the
+ * id of the dedicated public alias it resolves to. The alias lives in the account's
+ * `aliases` list (so knocks to it are reviewed) but is managed solely through the
+ * Findable section, never the share sheet, so name and alias rotate together.
+ */
+export interface FindableRegistration {
+  /** The claimed public name (canonical, lowercase). */
+  readonly name: string;
+  /** The id of the dedicated alias this name resolves to. */
+  readonly aliasId: string;
+}
+
 /** The account-level sharing default: a public profile, or link-only (private). */
 export type SharingMode = "public" | "link";
 
@@ -150,6 +168,12 @@ export interface AccountBlob {
    * sites stay valid; absent means no circles. Never sent to the server.
    */
   readonly circles?: CircleRecord[];
+  /**
+   * The owner's public vanity-name registration (doc 17). Optional so pre-v11
+   * construction sites stay valid; absent means no name is claimed. The referenced
+   * alias is also present in `aliases`.
+   */
+  readonly findable?: FindableRegistration;
 }
 
 interface AccountBlobWire extends AccountBlob {
@@ -289,6 +313,24 @@ function isOptionalCircles(x: unknown): boolean {
   return x === undefined || (Array.isArray(x) && x.every(isCircleRecord));
 }
 
+// A findable registration: a well-SHAPED name (charset only, not the mutable
+// reserved/blocked sets, so a later blocklist growth never bricks a stored name)
+// plus an id-shaped alias id. Optional on the account (absent until the owner
+// claims a name).
+function isFindableRegistration(x: unknown): x is FindableRegistration {
+  if (typeof x !== "object" || x === null) return false;
+  const r = x as Record<string, unknown>;
+  return (
+    hasVanityNameShape(r.name) &&
+    typeof r.aliasId === "string" &&
+    validId(r.aliasId)
+  );
+}
+
+function isOptionalFindable(x: unknown): boolean {
+  return x === undefined || isFindableRegistration(x);
+}
+
 export function serializeAccountBlob(blob: AccountBlob): Bytes {
   // theirNotify rides inside each contact; myNotify and circles are omitted when
   // absent, so a contact-only account stays byte-identical plus the version bump.
@@ -302,6 +344,7 @@ export function serializeAccountBlob(blob: AccountBlob): Bytes {
     sharingMode: blob.sharingMode,
     ...(blob.myNotify !== undefined ? { myNotify: blob.myNotify } : {}),
     ...(blob.circles !== undefined ? { circles: blob.circles } : {}),
+    ...(blob.findable !== undefined ? { findable: blob.findable } : {}),
   };
   return utf8ToBytes(JSON.stringify(wire));
 }
@@ -338,6 +381,9 @@ function assertValidOptionalFields(o: Record<string, unknown>): void {
   if (!isOptionalCircles(o.circles)) {
     throw new Error("account blob: invalid circles");
   }
+  if (!isOptionalFindable(o.findable)) {
+    throw new Error("account blob: invalid findable");
+  }
 }
 
 /** Parse decrypted bytes into an AccountBlob, validating strictly (throws). */
@@ -355,5 +401,6 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
     ...(Array.isArray(o.circles)
       ? { circles: o.circles as CircleRecord[] }
       : {}),
+    ...(isFindableRegistration(o.findable) ? { findable: o.findable } : {}),
   };
 }

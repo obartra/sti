@@ -3,6 +3,7 @@ import type { OwnerState } from "../../core/badge.ts";
 import type { AliasRecord, ContactRecord } from "../../store/index.ts";
 import type { PushControls } from "../app/usePush.ts";
 import { LiveLinks } from "./Privacy.aliases.tsx";
+import { FindableName, type FindableOps } from "../findable/FindableName.tsx";
 import { AvatarCard } from "../onboarding/AvatarCard.tsx";
 import {
   AttributesCard,
@@ -23,6 +24,11 @@ export interface PrivacyProps {
   /** Live preview src for the current avatar; with onEditAvatar, shows the editor entry. */
   avatarSrc?: string | undefined;
   onEditAvatar?: (() => void) | undefined;
+  /** The owner's claimed findable name, or null when none (doc 17). */
+  vanityName?: string | null | undefined;
+  /** Findable claim/release transport; present (and the section shown) only when
+   * the feature is enabled and the owner is logged in. */
+  findableOps?: FindableOps | undefined;
 }
 
 const noop = (): void => undefined;
@@ -39,6 +45,8 @@ export function Privacy({
   onDeleted,
   avatarSrc,
   onEditAvatar,
+  vanityName = null,
+  findableOps,
 }: PrivacyProps) {
   const state = usePrivacyState(ownerState, setOwnerState);
   return (
@@ -76,6 +84,12 @@ export function Privacy({
           onRevokeContact={onRevokeContact}
           onViewAs={onViewAs}
         />
+
+        {/* Findable name (doc 17), shown only when the feature is wired in (the
+            caller gates on the flag + login). Self-contained claim/release card. */}
+        {findableOps && (
+          <FindableName currentName={vanityName} ops={findableOps} />
+        )}
 
         <AttributesCard state={state} />
         <ControlsCard state={state} push={push} />

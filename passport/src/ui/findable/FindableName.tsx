@@ -45,7 +45,7 @@ const COPY = {
   // it stays always-visible, with its consequence, never tucked behind the expander.
   harvest:
     "Anyone can look up the full list of names in bulk, so registering reveals that a passport exists here.",
-  sub: "Your status itself stays private — people still ask to see it, and you still approve.",
+  sub: "Your status itself stays private. People still ask to see it, and you still approve.",
   details: "What else this means",
   bullets: [
     "Release the name and, after a short lock, anyone can claim it.",

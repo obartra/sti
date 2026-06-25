@@ -45,6 +45,8 @@ function stubController(over: Partial<SessionController>): SessionController {
     createCircle: unused,
     updateCircle: unused,
     removeCircle: unused,
+    registerVanityName: unused,
+    releaseVanityName: unused,
     forget: unused,
     ...over,
   };
@@ -105,6 +107,86 @@ describe("useOwnerActions.onSetAvatar", () => {
     });
 
     expect(setProfile).not.toHaveBeenCalled();
+    expect(setSession).not.toHaveBeenCalled();
+  });
+});
+
+describe("useOwnerActions findable", () => {
+  it("claims a name, folds the session, and returns the outcome", async () => {
+    const claimed: OwnerSession = {
+      ...session,
+      blob: { ...session.blob, findable: { name: "robin", aliasId: "a" } },
+    };
+    const registerVanityName = vi
+      .fn()
+      .mockResolvedValue({ session: claimed, result: "registered" });
+    const ref = { current: session };
+    const setSession = vi.fn();
+    const { result } = renderHook(() =>
+      useOwnerActions(stubController({ registerVanityName }), ref, setSession),
+    );
+
+    let outcome: string | undefined;
+    await act(async () => {
+      outcome = await result.current.onRegisterVanityName("robin");
+    });
+
+    expect(registerVanityName).toHaveBeenCalledWith(session, "robin");
+    expect(outcome).toBe("registered");
+    expect(setSession).toHaveBeenCalledWith(claimed);
+    expect(ref.current).toBe(claimed);
+  });
+
+  it("on an unavailable name folds the (unchanged) session and surfaces the reason", async () => {
+    const registerVanityName = vi
+      .fn()
+      .mockResolvedValue({ session, result: "unavailable" });
+    const ref = { current: session };
+    const setSession = vi.fn();
+    const { result } = renderHook(() =>
+      useOwnerActions(stubController({ registerVanityName }), ref, setSession),
+    );
+
+    let outcome: string | undefined;
+    await act(async () => {
+      outcome = await result.current.onRegisterVanityName("taken");
+    });
+
+    expect(outcome).toBe("unavailable");
+  });
+
+  it("releases a name and folds the resulting session", async () => {
+    const released: OwnerSession = { ...session };
+    const releaseVanityName = vi.fn().mockResolvedValue(released);
+    const ref = { current: session };
+    const setSession = vi.fn();
+    const { result } = renderHook(() =>
+      useOwnerActions(stubController({ releaseVanityName }), ref, setSession),
+    );
+
+    await act(async () => {
+      await result.current.onReleaseVanityName();
+    });
+
+    expect(releaseVanityName).toHaveBeenCalledWith(session);
+    expect(setSession).toHaveBeenCalledWith(released);
+  });
+
+  it("registering is a no-op returning 'error' when logged out", async () => {
+    const registerVanityName = vi.fn();
+    const ref: { current: OwnerSession | null } = { current: null };
+    const setSession = vi.fn();
+    const { result } = renderHook(() =>
+      useOwnerActions(stubController({ registerVanityName }), ref, setSession),
+    );
+
+    let outcome: string | undefined;
+    await act(async () => {
+      outcome = await result.current.onRegisterVanityName("robin");
+    });
+
+    expect(outcome).toBe("error");
+    expect(registerVanityName).not.toHaveBeenCalled();
     expect(setSession).not.toHaveBeenCalled();
   });
 });
