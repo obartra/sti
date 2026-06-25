@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button, Card } from "../../design/components/index.ts";
-import type { AdminAuditEntry, AdminAuditResult } from "./adminApi.ts";
+import {
+  AUDIT_PAGE,
+  type AdminAuditEntry,
+  type AdminAuditResult,
+} from "./adminApi.ts";
 
 // The A4 recent-activity panel (doc 20): a read-only tail of the admin audit log,
 // newest first. It is the read surface for the "reconstructable" guarantee the rest
@@ -11,7 +15,8 @@ import type { AdminAuditEntry, AdminAuditResult } from "./adminApi.ts";
 // The transport the panel needs, injected so tests and Storybook drive it without a
 // server (and so AdminPage can bind it to its apiBase + token).
 export interface AuditOps {
-  list: (token: string) => Promise<AdminAuditResult>;
+  // `before` is a row-id cursor (0/omitted = newest page); used to page older.
+  list: (token: string, before?: number) => Promise<AdminAuditResult>;
 }
 
 // Human labels for the fixed server action verbs (admin.go's audit constants).
@@ -32,6 +37,8 @@ const COPY = {
   loadError: "Couldn't load activity. Check your connection and try again.",
   retry: "Retry",
   refresh: "Refresh",
+  loadOlder: "Load older",
+  loadingOlder: "Loading…",
 } as const;
 
 // Format an epoch-ms instant as a fixed UTC string ("2026-06-25 14:30 UTC"). UTC
@@ -55,6 +62,9 @@ export function ActivityPanel({
 }) {
   const [status, setStatus] = useState<Status>("loading");
   const [entries, setEntries] = useState<AdminAuditEntry[]>([]);
+  // A full page back means older entries may exist (the "load older" affordance).
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const load = useCallback(() => {
     setStatus("loading");
@@ -63,6 +73,7 @@ export function ActivityPanel({
       .then((r) => {
         if (r.kind === "ok") {
           setEntries(r.entries);
+          setHasMore(r.entries.length === AUDIT_PAGE);
           setStatus("ready");
         } else if (r.kind === "unauthorized") {
           onUnauthorized();
@@ -72,6 +83,27 @@ export function ActivityPanel({
       })
       .catch(() => setStatus("loadError"));
   }, [ops, token, onUnauthorized]);
+
+  // Page older entries after the oldest one shown (its id is the cursor). Appends;
+  // a short page means we've reached the bottom. A 401 still re-locks the page.
+  const loadMore = useCallback(() => {
+    const oldest = entries[entries.length - 1];
+    if (oldest === undefined || loadingMore) return;
+    setLoadingMore(true);
+    void ops
+      .list(token, oldest.id)
+      .then((r) => {
+        if (r.kind === "ok") {
+          setEntries((prev) => [...prev, ...r.entries]);
+          setHasMore(r.entries.length === AUDIT_PAGE);
+        } else if (r.kind === "unauthorized") {
+          onUnauthorized();
+        }
+        // A transient error just leaves the button for a retry.
+      })
+      .catch(() => undefined)
+      .finally(() => setLoadingMore(false));
+  }, [ops, token, entries, loadingMore, onUnauthorized]);
 
   useEffect(() => {
     load();
@@ -126,12 +158,19 @@ export function ActivityPanel({
 
       {status === "ready" && entries.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {entries.map((e, i) => (
-            <ActivityRow
-              key={`${e.createdAt}-${e.action}-${e.target}-${i}`}
-              entry={e}
-            />
+          {entries.map((e) => (
+            <ActivityRow key={e.id} entry={e} />
           ))}
+          {hasMore && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={loadingMore}
+              onClick={loadMore}
+            >
+              {loadingMore ? COPY.loadingOlder : COPY.loadOlder}
+            </Button>
+          )}
         </div>
       )}
     </Card>

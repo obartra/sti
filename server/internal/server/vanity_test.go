@@ -290,7 +290,7 @@ func TestVanityReportAutoTakedownOnRuleMatch(t *testing.T) {
 		t.Fatalf("auto-actioned reports not cleared: %+v", got)
 	}
 	// The hands-free takedown is recorded so it stays reconstructable.
-	if a, _ := st.RecentAudits(ctx, 10); len(a) == 0 || a[0].Action != "vanity.takedown.auto" || a[0].Target != "admin" {
+	if a, _ := st.RecentAudits(ctx, 0, 10); len(a) == 0 || a[0].Action != "vanity.takedown.auto" || a[0].Target != "admin" {
 		t.Fatalf("auto-takedown not audited: %+v", a)
 	}
 }

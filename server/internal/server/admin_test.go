@@ -113,14 +113,14 @@ func TestAdminPingAuditing(t *testing.T) {
 	adminPing(h, "")
 	adminPing(h, "Bearer wrong")
 	adminPing(h, "Basic "+testAdminToken)
-	if got, err := st.RecentAudits(ctx, 10); err != nil || len(got) != 0 {
+	if got, err := st.RecentAudits(ctx, 0, 10); err != nil || len(got) != 0 {
 		t.Fatalf("after failed auths: %d rows (err %v), want 0", len(got), err)
 	}
 
 	if rec := adminPing(h, "Bearer "+testAdminToken); rec.Code != http.StatusNoContent {
 		t.Fatalf("valid ping: %d", rec.Code)
 	}
-	got, err := st.RecentAudits(ctx, 10)
+	got, err := st.RecentAudits(ctx, 0, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,12 +214,49 @@ func TestAdminAudit(t *testing.T) {
 		t.Fatalf("entry1 = %+v", resp.Entries[1])
 	}
 	// Reading the audit log writes no audit row of its own.
-	if a, _ := st.RecentAudits(ctx, 10); len(a) != 2 {
+	if a, _ := st.RecentAudits(ctx, 0, 10); len(a) != 2 {
 		t.Fatalf("audit read recorded an audit row: %+v", a)
 	}
 	// An unauthed read is 401.
 	if rec := do(h, httptest.NewRequest("GET", contract.PathAdminAudit, nil)); rec.Code != http.StatusUnauthorized {
 		t.Fatalf("audit no auth: %d, want 401", rec.Code)
+	}
+}
+
+// GET /admin/audit paginates with ?limit + ?before (a row-id cursor), newest-first
+// (doc 20 A4): a first page of N, then an older page after the last id, no overlap.
+func TestAdminAuditPagination(t *testing.T) {
+	h, st := newTestAdminServer(t, testAdminToken)
+	ctx := context.Background()
+	for i := 1; i <= 3; i++ {
+		if err := st.AppendAudit(ctx, "ping", "", int64(i*100)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	page := func(query string) []contract.AdminAuditEntry {
+		req := httptest.NewRequest("GET", contract.PathAdminAudit+query, nil)
+		req.Header.Set("Authorization", "Bearer "+testAdminToken)
+		rec := do(h, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("audit %q: %d", query, rec.Code)
+		}
+		var resp contract.AdminAuditResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+			t.Fatal(err)
+		}
+		return resp.Entries
+	}
+
+	// First page: the two newest (ids 3, 2), newest first, each carrying its id.
+	first := page("?limit=2")
+	if len(first) != 2 || first[0].ID != 3 || first[1].ID != 2 {
+		t.Fatalf("first page = %+v", first)
+	}
+	// Older page after the last id: just the remaining oldest (id 1), no overlap.
+	older := page("?limit=2&before=2")
+	if len(older) != 1 || older[0].ID != 1 {
+		t.Fatalf("older page = %+v", older)
 	}
 }
 
@@ -273,7 +310,7 @@ func TestAdminFindableReview(t *testing.T) {
 	if got, _ := st.PendingVanityReports(ctx, 10); len(got) != 0 {
 		t.Fatalf("takedown left reports: %+v", got)
 	}
-	if a, _ := st.RecentAudits(ctx, 10); len(a) == 0 || a[0].Action != "vanity.takedown" || a[0].Target != "robin" {
+	if a, _ := st.RecentAudits(ctx, 0, 10); len(a) == 0 || a[0].Action != "vanity.takedown" || a[0].Target != "robin" {
 		t.Fatalf("takedown not audited: %+v", a)
 	}
 
@@ -291,7 +328,7 @@ func TestAdminFindableReview(t *testing.T) {
 	if got, _ := st.PendingVanityReports(ctx, 10); len(got) != 0 {
 		t.Fatalf("dismiss left reports: %+v", got)
 	}
-	if a, _ := st.RecentAudits(ctx, 10); a[0].Action != "vanity.dismiss" || a[0].Target != "alice" {
+	if a, _ := st.RecentAudits(ctx, 0, 10); a[0].Action != "vanity.dismiss" || a[0].Target != "alice" {
 		t.Fatalf("dismiss not audited: %+v", a)
 	}
 }
@@ -346,7 +383,7 @@ func TestAdminAccountAliasManagement(t *testing.T) {
 	}
 
 	// Both mutations are audited.
-	a, _ := st.RecentAudits(ctx, 10)
+	a, _ := st.RecentAudits(ctx, 0, 10)
 	verbs := map[string]bool{}
 	for _, e := range a {
 		verbs[e.Action] = true

@@ -795,8 +795,10 @@ func (s *Store) PurgeExpiredKnocks(ctx context.Context, now int64) (int64, error
 // so neither does the audit: action is a fixed verb and target is an opaque id or
 // vanity name. Backs the operator surface's "this is reconstructable" guarantee.
 
-// AuditEntry is one recorded admin action, newest-first when listed.
+// AuditEntry is one recorded admin action, newest-first when listed. ID is the
+// monotonic row id, used as a stable pagination cursor (newer rows have higher ids).
 type AuditEntry struct {
+	ID        int64
 	Action    string
 	Target    string
 	CreatedAt int64
@@ -811,12 +813,14 @@ func (s *Store) AppendAudit(ctx context.Context, action, target string, now int6
 	return err
 }
 
-// RecentAudits returns the most recent admin actions, newest first, up to limit.
-// Backs the admin "recent activity" view and the audit tests. id is monotonic, so
-// ordering by it is a stable proxy for time even when two rows share a timestamp.
-func (s *Store) RecentAudits(ctx context.Context, limit int) ([]AuditEntry, error) {
+// RecentAudits returns admin actions newest-first, up to limit, older than the
+// `before` cursor (a row id; 0 means "from the newest"). Backs the admin activity
+// view's first page (before=0) and its "load older" pages (before=oldest-shown-id).
+// id is monotonic, so it is a stable cursor even when two rows share a timestamp.
+func (s *Store) RecentAudits(ctx context.Context, before int64, limit int) ([]AuditEntry, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT action, target, created_at FROM admin_audit ORDER BY id DESC LIMIT ?`, limit)
+		`SELECT id, action, target, created_at FROM admin_audit
+		 WHERE (? = 0 OR id < ?) ORDER BY id DESC LIMIT ?`, before, before, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -824,7 +828,7 @@ func (s *Store) RecentAudits(ctx context.Context, limit int) ([]AuditEntry, erro
 	var out []AuditEntry
 	for rows.Next() {
 		var e AuditEntry
-		if err := rows.Scan(&e.Action, &e.Target, &e.CreatedAt); err != nil {
+		if err := rows.Scan(&e.ID, &e.Action, &e.Target, &e.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, e)

@@ -111,17 +111,18 @@ describe("listAdminReports", () => {
 });
 
 describe("listAdminAudit", () => {
-  it("returns the entries on 200, defaulting a missing array to empty", async () => {
+  it("returns the entries on 200, requests a page, defaulting a missing array to empty", async () => {
     const entries = [
-      { action: "vanity.takedown", target: "robin", createdAt: 5 },
+      { id: 5, action: "vanity.takedown", target: "robin", createdAt: 5 },
     ];
     const ok = vi.fn<FetchLike>().mockResolvedValue(jsonResp(200, { entries }));
-    expect(await listAdminAudit("https://api.example", "t", ok)).toEqual({
+    expect(await listAdminAudit("https://api.example", "t", 0, ok)).toEqual({
       kind: "ok",
       entries,
     });
+    // First page requests the page size, no cursor, bearer in the header only.
     expect(ok).toHaveBeenCalledWith(
-      "https://api.example/admin/audit",
+      "https://api.example/admin/audit?limit=50",
       expect.objectContaining({
         method: "GET",
         headers: { Authorization: "Bearer t" },
@@ -129,10 +130,19 @@ describe("listAdminAudit", () => {
     );
 
     const noField = vi.fn<FetchLike>().mockResolvedValue(jsonResp(200, {}));
-    expect(await listAdminAudit("https://api.example", "t", noField)).toEqual({
-      kind: "ok",
-      entries: [],
-    });
+    expect(
+      await listAdminAudit("https://api.example", "t", 0, noField),
+    ).toEqual({ kind: "ok", entries: [] });
+  });
+
+  it("passes a non-zero cursor as ?before for older pages", async () => {
+    const ok = vi
+      .fn<FetchLike>()
+      .mockResolvedValue(jsonResp(200, { entries: [] }));
+    await listAdminAudit("https://api.example", "t", 42, ok);
+    expect(ok.mock.calls[0]?.[0]).toBe(
+      "https://api.example/admin/audit?limit=50&before=42",
+    );
   });
 
   it("maps 401 to unauthorized and other failures to error", async () => {
@@ -142,19 +152,19 @@ describe("listAdminAudit", () => {
     ];
     for (const [status, kind] of codes) {
       const f = vi.fn<FetchLike>().mockResolvedValue(jsonResp(status, {}));
-      expect((await listAdminAudit("https://api.example", "t", f)).kind).toBe(
-        kind,
-      );
+      expect(
+        (await listAdminAudit("https://api.example", "t", 0, f)).kind,
+      ).toBe(kind);
     }
     const netDown = vi.fn<FetchLike>().mockRejectedValue(new Error("offline"));
     expect(
-      (await listAdminAudit("https://api.example", "t", netDown)).kind,
+      (await listAdminAudit("https://api.example", "t", 0, netDown)).kind,
     ).toBe("error");
     const badBody = vi
       .fn<FetchLike>()
       .mockResolvedValue(new Response("not json", { status: 200 }));
     expect(
-      (await listAdminAudit("https://api.example", "t", badBody)).kind,
+      (await listAdminAudit("https://api.example", "t", 0, badBody)).kind,
     ).toBe("error");
   });
 });

@@ -38,16 +38,23 @@ const auditOps = (entries: AdminAuditEntry[]): AuditOps => ({
 // Fixed UTC instants so the Activity panel's timestamps are deterministic.
 const SAMPLE_AUDIT: AdminAuditEntry[] = [
   {
+    id: 3,
     action: "vanity.takedown",
     target: "free_money",
     createdAt: Date.UTC(2026, 5, 25, 14, 30, 0),
   },
   {
+    id: 2,
     action: "account.disable",
     target: "kQ3xa9c2",
     createdAt: Date.UTC(2026, 5, 24, 9, 5, 0),
   },
-  { action: "ping", target: "", createdAt: Date.UTC(2026, 5, 24, 9, 4, 0) },
+  {
+    id: 1,
+    action: "ping",
+    target: "",
+    createdAt: Date.UTC(2026, 5, 24, 9, 4, 0),
+  },
 ];
 
 // Pre-seed a token so the page validates it on mount and lands authed without

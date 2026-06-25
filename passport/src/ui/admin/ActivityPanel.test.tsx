@@ -2,11 +2,17 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { ActivityPanel, type AuditOps } from "./ActivityPanel.tsx";
-import type { AdminAuditEntry, AdminAuditResult } from "./adminApi.ts";
+import {
+  AUDIT_PAGE,
+  type AdminAuditEntry,
+  type AdminAuditResult,
+} from "./adminApi.ts";
 
-const ok = (entries: AdminAuditEntry[]): AdminAuditResult => ({
+// Auto-assign descending ids (newest-first) so the literals stay terse; the panel
+// keys on id and pages by it.
+const ok = (entries: Omit<AdminAuditEntry, "id">[]): AdminAuditResult => ({
   kind: "ok",
-  entries,
+  entries: entries.map((e, i) => ({ ...e, id: 1000 - i })),
 });
 
 // A fixed UTC instant so the formatted label is deterministic across timezones.
@@ -106,5 +112,45 @@ describe("ActivityPanel", () => {
     await screen.findByText("Session opened");
     await user.click(screen.getByRole("button", { name: /refresh/i }));
     expect(list).toHaveBeenCalledTimes(2);
+  });
+
+  it("offers 'load older' after a full page and appends the next page", async () => {
+    const user = userEvent.setup();
+    // A FULL first page means older entries may exist; the next page is short, so
+    // after it the affordance is gone.
+    const fullPage: AdminAuditEntry[] = Array.from(
+      { length: AUDIT_PAGE },
+      (_, i) => ({
+        id: 200 - i,
+        action: "ping",
+        target: `t${i}`,
+        createdAt: T,
+      }),
+    );
+    const olderPage: AdminAuditEntry[] = [
+      { id: 100, action: "vanity.dismiss", target: "older1", createdAt: T },
+    ];
+    const list = vi
+      .fn<AuditOps["list"]>()
+      .mockResolvedValueOnce({ kind: "ok", entries: fullPage })
+      .mockResolvedValueOnce({ kind: "ok", entries: olderPage });
+    render(
+      <ActivityPanel
+        token="t"
+        ops={{ list }}
+        onUnauthorized={() => undefined}
+      />,
+    );
+
+    await user.click(
+      await screen.findByRole("button", { name: /load older/i }),
+    );
+    // Paged with the oldest-shown id as the cursor.
+    expect(list).toHaveBeenNthCalledWith(2, "t", 200 - (AUDIT_PAGE - 1));
+    // The older entry is appended; a short page means the button is now gone.
+    expect(await screen.findByText("older1")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /load older/i }),
+    ).not.toBeInTheDocument();
   });
 });
