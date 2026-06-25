@@ -3,6 +3,7 @@ import { Button, Card, Field, Input } from "../../design/components/index.ts";
 import { Lock, ShieldCheck } from "../../design/icons.tsx";
 import {
   actOnVanityName,
+  listAdminAudit,
   listAdminReports,
   pingAdmin,
   type AdminPingResult,
@@ -13,6 +14,7 @@ import {
   saveAdminToken,
 } from "./adminToken.ts";
 import { ReviewPanel, type ReviewOps } from "./ReviewPanel.tsx";
+import { ActivityPanel, type AuditOps } from "./ActivityPanel.tsx";
 
 // The operator surface (doc 20): a dedicated, gated /admin page, isolated from the
 // user flows and never linked from the app. It renders nothing actionable until a
@@ -50,13 +52,21 @@ export interface AdminPageProps {
    * injectable so tests and Storybook drive the panel without a server.
    */
   reviewOps?: ReviewOps;
+  /**
+   * Recent-activity transport (A4). Defaults to the real audit endpoint bound to
+   * apiBase; injectable so tests and Storybook drive the panel without a server.
+   */
+  auditOps?: AuditOps;
 }
 
-export function AdminPage({ apiBase, ping, reviewOps }: AdminPageProps) {
-  const validate = useCallback(
-    (token: string) => (ping ? ping(token) : pingAdmin(apiBase, token)),
-    [ping, apiBase],
-  );
+// Build the panel transports: each defaults to the real admin endpoints bound to
+// apiBase, or uses the injected stub (tests / Storybook). Hoisted out of AdminPage
+// so the component stays within its length ceiling.
+function useAdminTransports(
+  apiBase: string,
+  reviewOps: ReviewOps | undefined,
+  auditOps: AuditOps | undefined,
+): { ops: ReviewOps; audit: AuditOps } {
   const ops = useMemo<ReviewOps>(
     () =>
       reviewOps ?? {
@@ -66,6 +76,24 @@ export function AdminPage({ apiBase, ping, reviewOps }: AdminPageProps) {
       },
     [reviewOps, apiBase],
   );
+  const audit = useMemo<AuditOps>(
+    () => auditOps ?? { list: (t) => listAdminAudit(apiBase, t) },
+    [auditOps, apiBase],
+  );
+  return { ops, audit };
+}
+
+export function AdminPage({
+  apiBase,
+  ping,
+  reviewOps,
+  auditOps,
+}: AdminPageProps) {
+  const validate = useCallback(
+    (token: string) => (ping ? ping(token) : pingAdmin(apiBase, token)),
+    [ping, apiBase],
+  );
+  const { ops, audit } = useAdminTransports(apiBase, reviewOps, auditOps);
 
   const [phase, setPhase] = useState<Phase>("locked");
   const [token, setToken] = useState("");
@@ -173,6 +201,7 @@ export function AdminPage({ apiBase, ping, reviewOps }: AdminPageProps) {
           <AuthedShell
             token={token}
             ops={ops}
+            auditOps={audit}
             onLock={lock}
             onExpire={expire}
           />
@@ -261,11 +290,13 @@ function LockGate({
 function AuthedShell({
   token,
   ops,
+  auditOps,
   onLock,
   onExpire,
 }: {
   token: string;
   ops: ReviewOps;
+  auditOps: AuditOps;
   onLock: () => void;
   onExpire: () => void;
 }) {
@@ -294,6 +325,7 @@ function AuthedShell({
         </Button>
       </div>
       <ReviewPanel token={token} ops={ops} onUnauthorized={onExpire} />
+      <ActivityPanel token={token} ops={auditOps} onUnauthorized={onExpire} />
     </>
   );
 }

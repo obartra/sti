@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   actOnVanityName,
+  listAdminAudit,
   listAdminReports,
   pingAdmin,
   type FetchLike,
@@ -105,6 +106,55 @@ describe("listAdminReports", () => {
       .mockResolvedValue(new Response("not json", { status: 200 }));
     expect(
       (await listAdminReports("https://api.example", "t", badBody)).kind,
+    ).toBe("error");
+  });
+});
+
+describe("listAdminAudit", () => {
+  it("returns the entries on 200, defaulting a missing array to empty", async () => {
+    const entries = [
+      { action: "vanity.takedown", target: "robin", createdAt: 5 },
+    ];
+    const ok = vi.fn<FetchLike>().mockResolvedValue(jsonResp(200, { entries }));
+    expect(await listAdminAudit("https://api.example", "t", ok)).toEqual({
+      kind: "ok",
+      entries,
+    });
+    expect(ok).toHaveBeenCalledWith(
+      "https://api.example/admin/audit",
+      expect.objectContaining({
+        method: "GET",
+        headers: { Authorization: "Bearer t" },
+      }),
+    );
+
+    const noField = vi.fn<FetchLike>().mockResolvedValue(jsonResp(200, {}));
+    expect(await listAdminAudit("https://api.example", "t", noField)).toEqual({
+      kind: "ok",
+      entries: [],
+    });
+  });
+
+  it("maps 401 to unauthorized and other failures to error", async () => {
+    const codes: [number, "unauthorized" | "error"][] = [
+      [401, "unauthorized"],
+      [500, "error"],
+    ];
+    for (const [status, kind] of codes) {
+      const f = vi.fn<FetchLike>().mockResolvedValue(jsonResp(status, {}));
+      expect((await listAdminAudit("https://api.example", "t", f)).kind).toBe(
+        kind,
+      );
+    }
+    const netDown = vi.fn<FetchLike>().mockRejectedValue(new Error("offline"));
+    expect(
+      (await listAdminAudit("https://api.example", "t", netDown)).kind,
+    ).toBe("error");
+    const badBody = vi
+      .fn<FetchLike>()
+      .mockResolvedValue(new Response("not json", { status: 200 }));
+    expect(
+      (await listAdminAudit("https://api.example", "t", badBody)).kind,
     ).toBe("error");
   });
 });

@@ -4,6 +4,7 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { AdminPage } from "./AdminPage.tsx";
 import type { AdminPingResult } from "./adminApi.ts";
 import type { ReviewOps } from "./ReviewPanel.tsx";
+import type { AuditOps } from "./ActivityPanel.tsx";
 
 afterEach(() => {
   sessionStorage.clear();
@@ -19,6 +20,12 @@ const emptyOps: ReviewOps = {
   act: () => Promise.resolve("ok"),
 };
 
+// The activity panel also loads on mount; stub it so the authed shell stays
+// server-free. The panel has its own dedicated tests.
+const emptyAudit: AuditOps = {
+  list: () => Promise.resolve({ kind: "ok", entries: [] }),
+};
+
 function renderPage(
   ping: (token: string) => Promise<AdminPingResult>,
   reviewOps: ReviewOps = emptyOps,
@@ -28,6 +35,7 @@ function renderPage(
       apiBase="https://api.example"
       ping={ping}
       reviewOps={reviewOps}
+      auditOps={emptyAudit}
     />,
   );
 }

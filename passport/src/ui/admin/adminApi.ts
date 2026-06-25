@@ -90,6 +90,51 @@ export async function listAdminReports(
   }
 }
 
+// --- Recent activity (A4, doc 20) -------------------------------------------
+
+const ADMIN_AUDIT_PATH = "/admin/audit";
+
+/** One recorded admin action (mirrors the server's AdminAuditEntry). */
+export interface AdminAuditEntry {
+  action: string;
+  target: string;
+  createdAt: number;
+}
+
+export type AdminAuditResult =
+  | { kind: "ok"; entries: AdminAuditEntry[] }
+  | { kind: "unauthorized" }
+  | { kind: "error" };
+
+/**
+ * Fetch the recent admin actions (newest first). Same shape as the report list:
+ * 401 surfaces distinctly so the page can re-lock; any other non-200, a network
+ * failure, or a malformed body is a generic error the panel shows with a retry.
+ */
+export async function listAdminAudit(
+  apiBase: string,
+  token: string,
+  fetchImpl: FetchLike = (input, init) => globalThis.fetch(input, init),
+): Promise<AdminAuditResult> {
+  let res: Response;
+  try {
+    res = await fetchImpl(apiBase + ADMIN_AUDIT_PATH, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    return { kind: "error" };
+  }
+  if (res.status === 401) return { kind: "unauthorized" };
+  if (res.status !== 200) return { kind: "error" };
+  try {
+    const body = (await res.json()) as { entries?: AdminAuditEntry[] };
+    return { kind: "ok", entries: body.entries ?? [] };
+  } catch {
+    return { kind: "error" };
+  }
+}
+
 export type AdminAction = "takedown" | "dismiss";
 export type AdminActionResult = "ok" | "unauthorized" | "error";
 

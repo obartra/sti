@@ -70,6 +70,7 @@ const (
 	PathAdminPrefix  = "/admin/"        // all admin endpoints share this prefix
 	PathAdminPing    = "/admin/ping"    // GET: 204 if the admin bearer token is valid
 	PathAdminReports = "/admin/reports" // GET: the vanity-name review queue (doc 17/20)
+	PathAdminAudit   = "/admin/audit"   // GET: recent admin actions, newest first (doc 20 A4)
 )
 
 // --- JSON bodies (only the non-byte endpoints) ------------------------------
@@ -209,6 +210,20 @@ type AdminReport struct {
 // AdminReportsResponse is GET /admin/reports' body.
 type AdminReportsResponse struct {
 	Reports []AdminReport `json:"reports"`
+}
+
+// AdminAuditEntry is one recorded admin action (GET /admin/audit, doc 20 A4): the
+// fixed action verb, the opaque target (an id or a public name), and when it ran.
+// Never user content; the audit log carries none to begin with.
+type AdminAuditEntry struct {
+	Action    string `json:"action"`
+	Target    string `json:"target"`
+	CreatedAt int64  `json:"createdAt"`
+}
+
+// AdminAuditResponse is GET /admin/audit's body: recent actions, newest first.
+type AdminAuditResponse struct {
+	Entries []AdminAuditEntry `json:"entries"`
 }
 
 // AdminRecordInfo is opaque metadata about one stored record (doc 20 A3): whether
