@@ -45,6 +45,7 @@ function fakeApi(): ApiClient {
     putAccount: unused,
     deleteAccount: unused,
     notify: unused,
+    republish: unused,
     knock: unused,
     knockCount: unused,
     knockReview: unused,

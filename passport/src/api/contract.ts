@@ -20,6 +20,7 @@ export const PATHS = {
   inboxPrefix: "/inbox/",
   accountPrefix: "/acct/",
   notify: "/notify",
+  republish: "/republish",
   pushRegister: "/push/register",
   knockPrefix: "/knock/",
   vanityPrefix: "/u/",

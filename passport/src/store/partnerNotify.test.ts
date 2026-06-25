@@ -85,6 +85,7 @@ function fakeApi(poisonInboxId?: string): {
     getAccount: unused,
     putAccount: unused,
     deleteAccount: unused,
+    republish: unused,
     knock: unused,
     knockCount: unused,
     knockReview: unused,

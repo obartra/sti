@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  republishOwnerCard,
   deriveOwnerCard,
   deriveAliasCard,
   resolveCardIdentity,
@@ -236,5 +237,64 @@ describe("withIdentity (mint-time identity choice, doc 15)", () => {
     expect(deriveAliasCard(state(), r, NOW_DAY).identity.handle).toBe(
       pseudonymFor(r.id),
     );
+  });
+});
+
+describe("republishOwnerCard (sibling-alias decorrelation, doc 11)", () => {
+  const rec = (id: string): AliasRecord => ({
+    id,
+    writeToken: id + "-wt",
+    key: "k".repeat(43),
+    isPublic: false,
+  });
+
+  // A recording fake: counts direct alias PUTs vs deferred republish batches.
+  function recordingApi() {
+    const puts: string[] = [];
+    const batches: { id: string; writeToken: string }[][] = [];
+    const api = {
+      putAlias: (id: string) => {
+        puts.push(id);
+        return Promise.resolve();
+      },
+      republish: (ops: readonly { id: string; writeToken: string }[]) => {
+        batches.push(ops.map((o) => ({ id: o.id, writeToken: o.writeToken })));
+        return Promise.resolve();
+      },
+    } as unknown as import("../api/client.ts").ApiClient;
+    return { api, puts, batches };
+  }
+
+  it("publishes a single alias directly (no point deferring one card)", async () => {
+    const { api, puts, batches } = recordingApi();
+    await republishOwnerCard(api, [rec("a".repeat(43))], {
+      state: state(),
+      nowDay: NOW_DAY,
+    });
+    expect(puts).toHaveLength(1);
+    expect(batches).toHaveLength(0);
+  });
+
+  it("hands 2+ aliases to the server as ONE deferred batch, not direct PUTs", async () => {
+    const { api, puts, batches } = recordingApi();
+    const records = [
+      rec("a".repeat(43)),
+      rec("b".repeat(43)),
+      rec("c".repeat(43)),
+    ];
+    await republishOwnerCard(api, records, { state: state(), nowDay: NOW_DAY });
+    // No same-instant burst of direct writes; one batch carrying every alias.
+    expect(puts).toHaveLength(0);
+    expect(batches).toHaveLength(1);
+    expect((batches[0] ?? []).map((o) => o.id).sort()).toEqual(
+      records.map((r) => r.id).sort(),
+    );
+  });
+
+  it("does nothing for an empty set", async () => {
+    const { api, puts, batches } = recordingApi();
+    await republishOwnerCard(api, [], { state: state(), nowDay: NOW_DAY });
+    expect(puts).toHaveLength(0);
+    expect(batches).toHaveLength(0);
   });
 });

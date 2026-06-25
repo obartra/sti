@@ -20,6 +20,7 @@ import {
   bytesToUtf8,
   randomAliasId,
   randomWriteToken,
+  bytesToBase64url,
   deriveMasterKey,
   deriveAccountId,
   deriveAccountKey,
@@ -153,4 +154,58 @@ describe("api client against a live blind store", () => {
     await expect(api.knock(id, randomHex(16))).resolves.toBeUndefined();
     await expect(api.notify(randomHex(16))).resolves.toBeUndefined();
   });
+
+  // A republish batch round-trips end to end: the server accepts the base64url
+  // fixed-size payloads (so the client encoding matches the server decode) and the
+  // deferred overwrite actually lands. A dedicated instance with no jitter window and
+  // a fast janitor so the apply is observable within the test.
+  it("applies a deferred republish batch (decorrelation wire + encoding)", async () => {
+    const h = await startApi({
+      env: { STI_REPUBLISH_WINDOW: "0", STI_JANITOR_INTERVAL: "120ms" },
+    });
+    try {
+      const rapi = createApiClient(h.baseUrl);
+      const key = await importAesKey(
+        crypto.getRandomValues(new Uint8Array(32)),
+      );
+      // Two aliases, each bound with its write token by an initial publish.
+      const aliases = await Promise.all(
+        [1, 2].map(async () => {
+          const id = randomAliasId();
+          const writeToken = randomWriteToken();
+          await rapi.putAlias(
+            id,
+            await sealToSize(key, utf8ToBytes("old"), ALIAS_PAYLOAD_SIZE),
+            writeToken,
+          );
+          return { id, writeToken };
+        }),
+      );
+      // Hand both updates to the server as one decorrelation batch.
+      const next = await sealToSize(
+        key,
+        utf8ToBytes("new"),
+        ALIAS_PAYLOAD_SIZE,
+      );
+      await rapi.republish(
+        aliases.map((a) => ({
+          id: a.id,
+          ciphertext: bytesToBase64url(next),
+          writeToken: a.writeToken,
+        })),
+      );
+      // The janitor applies the deferred writes; poll until both cards update.
+      for (const a of aliases) {
+        let applied = false;
+        for (let i = 0; i < 40 && !applied; i++) {
+          const got = await rapi.getAlias(a.id);
+          applied = bytesToUtf8(await openSized(key, got)) === "new";
+          if (!applied) await new Promise((r) => setTimeout(r, 50));
+        }
+        expect(applied).toBe(true);
+      }
+    } finally {
+      h.stop();
+    }
+  }, 30_000);
 });

@@ -193,5 +193,8 @@ established assumption in `accountBlob.ts`), so there is nothing to migrate.
   adjectives x ~300 nouns); smaller wordlists make the pseudonym a correlation hint.
 - **Opt-in recognizability is linkable, by design.** Showing the same face to two contacts is a chosen
   linkable identity; the tool's duty is to make that an informed choice, not to prevent it.
-- **Behavioral correlation is out of scope:** per-alias faces do nothing about timing-based
-  correlation of the existing republish fan-out (`ownerCard.ts`, doc 11).
+- **Behavioral correlation is handled separately:** per-alias faces do nothing about timing-based
+  correlation of the republish fan-out, but that fan-out is now decorrelated server-side (the batch
+  is applied at independent jittered times, `ownerCard.ts` / doc 18), so the same-instant burst no
+  longer links an owner's aliases. The residual is the origin seeing the batch grouping (doc 18
+  honest limits), not a timing signal a downstream observer can read.

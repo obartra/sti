@@ -62,6 +62,14 @@ export interface KnockReview {
   readonly pending: PendingKnock[];
 }
 
+/** One alias overwrite in a decorrelation batch: the alias id, its base64url
+ * fixed-size sealed card, and the write token that gates the deferred write. */
+export interface RepublishOp {
+  readonly id: string;
+  readonly ciphertext: string;
+  readonly writeToken: string;
+}
+
 export interface ApiClient {
   getAlias(id: string): Promise<Bytes>;
   putAlias(
@@ -85,6 +93,13 @@ export interface ApiClient {
   ): Promise<{ version: string }>;
   deleteAccount(id: string, writeToken: string): Promise<void>;
   notify(tokenHash: string): Promise<void>;
+  /**
+   * Hand the server a batch of alias overwrites to apply at INDEPENDENT jittered
+   * times (sibling-alias decorrelation, doc 11), so an owner's shared cards do not
+   * all change in one correlatable instant. Each op is a normal write-token-gated
+   * alias write, just deferred; the ciphertext is the base64url fixed-size payload.
+   */
+  republish(ops: readonly RepublishOp[]): Promise<void>;
   /**
    * Knock on an alias. pubKey is an optional per-requester ephemeral public key
    * the requester keeps the private half of, so the owner can seal a grant to it.
@@ -456,6 +471,10 @@ export function createApiClient(
 
     async notify(tokenHash) {
       await postJson(call, PATHS.notify, { tokenHash }, "notify");
+    },
+
+    async republish(ops) {
+      await postJson(call, PATHS.republish, { ops }, "republish");
     },
 
     async knock(id, requesterHash, pubKey) {

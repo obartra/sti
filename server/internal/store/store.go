@@ -746,6 +746,48 @@ func (s *Store) deleteQueued(ctx context.Context, table string, id int64) error 
 	return err
 }
 
+// Republish is a pending deferred alias overwrite (decorrelation, doc 11).
+type Republish struct {
+	ID         int64
+	AliasID    string
+	Ciphertext []byte
+	WriteAuth  string
+}
+
+// EnqueueRepublish queues one alias overwrite to be applied at or after availableAt.
+func (s *Store) EnqueueRepublish(ctx context.Context, aliasID string, ciphertext []byte, writeAuth string, availableAt, now int64) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO republish_queue (alias_id, ciphertext, write_auth, available_at, created_at) VALUES (?, ?, ?, ?, ?)`,
+		aliasID, ciphertext, writeAuth, availableAt, now)
+	return err
+}
+
+// DueRepublishes returns up to limit deferred overwrites whose time has arrived.
+func (s *Store) DueRepublishes(ctx context.Context, now int64, limit int) ([]Republish, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, alias_id, ciphertext, write_auth FROM republish_queue
+		 WHERE available_at <= ? ORDER BY available_at LIMIT ?`, now, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Republish
+	for rows.Next() {
+		var r Republish
+		if err := rows.Scan(&r.ID, &r.AliasID, &r.Ciphertext, &r.WriteAuth); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// DeleteRepublish removes a deferred overwrite once it has been applied (or dropped).
+func (s *Store) DeleteRepublish(ctx context.Context, id int64) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM republish_queue WHERE id = ?`, id)
+	return err
+}
+
 // EnqueueSend adds a real wake job to be delivered at or after availableAt.
 func (s *Store) EnqueueSend(ctx context.Context, routingEndpointID string, availableAt, now int64) error {
 	return s.enqueueQueued(ctx, sendQueueTable, routingEndpointID, availableAt, now)

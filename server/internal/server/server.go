@@ -33,16 +33,17 @@ var landingHTML []byte
 // Config tunes the server. DecoySecret is required (>= 32 bytes); everything else
 // has sane defaults.
 type Config struct {
-	DecoySecret    []byte
-	KnockTTL       time.Duration // default 4 days
-	SendMaxJitter  time.Duration // default 2 min; spreads wake timing
-	CoverWindow    time.Duration // spreads the cover broadcast (doc 13 §2); set from STI_COVER_WINDOW, 0 = no spread
-	MaxInflight    int           // global concurrency cap; default 256
-	SensitiveWait  time.Duration // max wait for a slot on /a, /knock; default 5s
-	IPRatePerSec   float64       // non-sensitive endpoints; default 5
-	IPBurst        float64       // default 20
-	KnockRatePerID float64       // silent cap on /knock; default 1/sec
-	KnockBurst     float64       // default 10
+	DecoySecret     []byte
+	KnockTTL        time.Duration // default 4 days
+	SendMaxJitter   time.Duration // default 2 min; spreads wake timing
+	CoverWindow     time.Duration // spreads the cover broadcast (doc 13 §2); set from STI_COVER_WINDOW, 0 = no spread
+	RepublishWindow time.Duration // spreads a republish batch (doc 11); set from STI_REPUBLISH_WINDOW, 0 = apply now
+	MaxInflight     int           // global concurrency cap; default 256
+	SensitiveWait   time.Duration // max wait for a slot on /a, /knock; default 5s
+	IPRatePerSec    float64       // non-sensitive endpoints; default 5
+	IPBurst         float64       // default 20
+	KnockRatePerID  float64       // silent cap on /knock; default 1/sec
+	KnockBurst      float64       // default 10
 	// AllowedOrigins are the exact browser origins permitted to call the api
 	// cross-origin (e.g. https://sti.care). Empty means no CORS, which is correct
 	// for same-origin or non-browser callers. No wildcard: each origin is listed.
@@ -253,6 +254,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("PUT /acct/{id}", s.handleAccountPut)
 	s.mux.HandleFunc("DELETE /acct/{id}", s.handleAccountDelete)
 	s.mux.HandleFunc("POST /notify", s.handleNotify)
+	s.mux.HandleFunc("POST /republish", s.handleRepublish)
 	s.mux.HandleFunc("POST /push/register", s.handlePushRegister)
 	s.mux.HandleFunc("POST /knock/{id}", s.handleKnock)
 	s.mux.HandleFunc("GET /knock/{id}", s.handleKnockReview)

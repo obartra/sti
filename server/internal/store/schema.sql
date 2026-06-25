@@ -42,6 +42,22 @@ CREATE TABLE IF NOT EXISTS push_endpoint (
     PRIMARY KEY (routing_endpoint_id, endpoint)
 ) WITHOUT ROWID;
 
+-- Sibling-alias decorrelation (doc 11). An owner reporting a result republishes
+-- every shared card; submitting them as one batch lets the server APPLY each at an
+-- independent jittered time instead of a same-instant client burst, so a downstream
+-- observer watching two of the owner's aliases cannot see them change together. A
+-- row is an opaque pending alias overwrite (ciphertext + write-auth hash, exactly
+-- like the alias table), applied and deleted by the janitor when available_at passes.
+CREATE TABLE IF NOT EXISTS republish_queue (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    alias_id     TEXT NOT NULL,         -- the alias to overwrite
+    ciphertext   BLOB NOT NULL,         -- padded to contract.AliasPayloadSize
+    write_auth   TEXT NOT NULL,         -- hash(write token); gates the deferred write
+    available_at INTEGER NOT NULL,      -- jittered apply time (decorrelation)
+    created_at   INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_republish_available ON republish_queue (available_at);
+
 CREATE TABLE IF NOT EXISTS send_queue (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     routing_endpoint_id TEXT NOT NULL,

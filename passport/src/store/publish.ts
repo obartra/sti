@@ -74,6 +74,26 @@ async function sealAndPut(
 }
 
 /**
+ * Seal a card to the fixed-size payload for this record's key and return it
+ * base64url-encoded, ready for a deferred republish batch (api.republish). These
+ * are the same bytes a direct PUT would carry; the batch just hands them to the
+ * server to apply at a jittered time (decorrelation, doc 11). Expiry is not carried
+ * here: a batch never changes a link's lifetime, so the deferred write preserves it.
+ */
+export async function sealCardPayload(
+  record: Pick<AliasRecord, "key">,
+  view: ResolvedView,
+): Promise<string> {
+  const key = await importAesKey(base64urlToBytes(record.key));
+  const payload = await sealToSize(
+    key,
+    serializePublicCard(view),
+    ALIAS_PAYLOAD_SIZE,
+  );
+  return bytesToBase64url(payload);
+}
+
+/**
  * Mint a new alias and publish a card to it. Takes a `buildView(record)` callback
  * rather than a prebuilt view because the card's display identity is resolved from
  * the alias's own id (doc 15), which only exists once the record is minted here.

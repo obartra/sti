@@ -58,6 +58,7 @@ const (
 	PathInboxPrefix   = "/inbox/"        // GET/PUT: per-device notify inbox (alias-shaped)
 	PathAccountPrefix = "/acct/"         // GET/PUT: device-sync blob
 	PathNotify        = "/notify"        // POST: enqueue a contentless wake
+	PathRepublish     = "/republish"     // POST: deferred jittered batch of alias overwrites
 	PathPushRegister  = "/push/register" // POST: register a Web Push endpoint
 	PathKnockPrefix   = "/knock/"        // POST: contentless knock
 	PathVanityPrefix  = "/u/"            // GET resolve; PUT register / DELETE release (gated)
@@ -80,6 +81,30 @@ const (
 // token itself or who is notifying whom.
 type NotifyRequest struct {
 	TokenHash string `json:"tokenHash"`
+}
+
+// RepublishMaxOps caps a single decorrelation batch. Comfortably above any real
+// owner's alias count; a larger batch is a 400, never a silent truncation.
+const RepublishMaxOps = 256
+
+// RepublishOp is one alias overwrite in a decorrelation batch (doc 11). Ciphertext
+// is standard-base64 of exactly AliasPayloadSize bytes (the same fixed-size sealed
+// card a direct PUT /a carries); WriteToken gates the write exactly like PUT /a. A
+// batch never changes link expiry (that is only ever a single-alias action), so
+// there is no expiry field: the deferred write preserves the alias's current expiry.
+type RepublishOp struct {
+	ID         string `json:"id"`
+	Ciphertext string `json:"ciphertext"`
+	WriteToken string `json:"writeToken"`
+}
+
+// RepublishRequest is a batch of alias overwrites the owner hands the server to
+// apply at INDEPENDENT jittered times, so the public card updates do not land in one
+// correlatable burst (sibling-alias decorrelation, doc 11). The server learns the
+// grouping (it received the batch) but it is the blind-trusted party; what a
+// downstream observer watching the alias reads sees is decorrelated.
+type RepublishRequest struct {
+	Ops []RepublishOp `json:"ops"`
 }
 
 // VapidResponse carries the server's active Web Push (VAPID) public key, which a
