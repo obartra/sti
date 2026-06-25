@@ -31,7 +31,7 @@ func TestStatsCountsOpaqueRows(t *testing.T) {
 	if _, err := st.WriteAlias(ctx, "alias-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ct, "h", 1, sql.NullInt64{}, false); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.PutAccount(ctx, "acct-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ct, 1); err != nil {
+	if _, _, err := st.PutAccount(ctx, "acct-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ct, "wt", 1); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := st.RecordKnock(ctx, "alias-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "req", "", 1, 99); err != nil {

@@ -110,6 +110,21 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("add vanity_name.locked_until: %w", err)
 		}
 	}
+	// account.write_auth: the account write-token hash that gates overwrite/delete,
+	// making account writes symmetric with aliases (holding the on-wire id no longer
+	// authorizes a write). Older databases have an account table without it; add it
+	// in place. Existing rows default to '' (the empty capability), so the owner's
+	// next write rebinds the real token via PutAccount's first-write path.
+	hasAcctAuth, err := hasColumn(ctx, db, "account", "write_auth")
+	if err != nil {
+		return err
+	}
+	if !hasAcctAuth {
+		if _, err := db.ExecContext(ctx,
+			`ALTER TABLE account ADD COLUMN write_auth TEXT NOT NULL DEFAULT ''`); err != nil {
+			return fmt.Errorf("add account.write_auth: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -279,25 +294,83 @@ func (s *Store) GetInbox(ctx context.Context, id string) (ciphertext []byte, fou
 
 // --- Account sync blob ------------------------------------------------------
 
-// PutAccount stores or replaces the account blob (last-write-wins) and returns
-// the new monotonically increasing version.
-func (s *Store) PutAccount(ctx context.Context, id string, ciphertext []byte, now int64) (version int64, err error) {
-	err = s.db.QueryRowContext(ctx,
-		`INSERT INTO account (id, ciphertext, version, updated_at) VALUES (?, ?, 1, ?)
-		 ON CONFLICT(id) DO UPDATE SET
-		     ciphertext = excluded.ciphertext,
-		     version    = account.version + 1,
-		     updated_at = excluded.updated_at
-		 RETURNING version`,
-		id, ciphertext, now).Scan(&version)
-	return version, err
+// PutAccount stores or replaces the account blob (last-write-wins) and returns the
+// new monotonically increasing version. writeAuth is the account write-token hash:
+// the first write binds it as the row's capability, and a later overwrite must
+// present the same hash. authorized=false (with version 0) means the row exists
+// under a different token, so the caller (who only knows the id) is not the owner.
+// An empty stored write_auth is treated as UNBOUND and rebinds to writeAuth, so a
+// row migrated in before this column existed is claimable by its owner's next write.
+func (s *Store) PutAccount(ctx context.Context, id string, ciphertext []byte, writeAuth string, now int64) (version int64, authorized bool, err error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, false, err
+	}
+	defer tx.Rollback()
+
+	var stored string
+	switch err := tx.QueryRowContext(ctx, `SELECT write_auth FROM account WHERE id = ?`, id).Scan(&stored); {
+	case errors.Is(err, sql.ErrNoRows):
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO account (id, ciphertext, version, updated_at, write_auth) VALUES (?, ?, 1, ?, ?)`,
+			id, ciphertext, now, writeAuth); err != nil {
+			return 0, false, err
+		}
+		version = 1
+	case err != nil:
+		return 0, false, err
+	default:
+		// A non-empty stored token must match; an empty one is unbound and rebinds.
+		if stored != "" && subtle.ConstantTimeCompare([]byte(stored), []byte(writeAuth)) != 1 {
+			return 0, false, nil
+		}
+		if err := tx.QueryRowContext(ctx,
+			`UPDATE account SET ciphertext = ?, version = version + 1, updated_at = ?, write_auth = ?
+			 WHERE id = ? RETURNING version`,
+			ciphertext, now, writeAuth, id).Scan(&version); err != nil {
+			return 0, false, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, false, err
+	}
+	return version, true, nil
 }
 
-// DeleteAccount removes the account blob. Idempotent: deleting a nonexistent id
-// is not an error (the owner's aliases are separate rows, revoked client-side).
+// DeleteAccount removes the account blob unconditionally. This is the ADMIN path
+// (operator disable, doc 20); the owner path is DeleteAccountAuthorized. Idempotent:
+// deleting a nonexistent id is not an error.
 func (s *Store) DeleteAccount(ctx context.Context, id string) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM account WHERE id = ?`, id)
 	return err
+}
+
+// DeleteAccountAuthorized removes the account blob only when writeAuth matches the
+// row's bound capability (the owner path). authorized=false means the row exists
+// under a different token. A missing row is authorized=true (idempotent no-op), and
+// an empty stored token is unbound and accepts any writeAuth, mirroring PutAccount.
+func (s *Store) DeleteAccountAuthorized(ctx context.Context, id, writeAuth string) (authorized bool, err error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+
+	var stored string
+	switch err := tx.QueryRowContext(ctx, `SELECT write_auth FROM account WHERE id = ?`, id).Scan(&stored); {
+	case errors.Is(err, sql.ErrNoRows):
+		return true, tx.Commit() // nothing to delete; reveal nothing
+	case err != nil:
+		return false, err
+	default:
+		if stored != "" && subtle.ConstantTimeCompare([]byte(stored), []byte(writeAuth)) != 1 {
+			return false, nil
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM account WHERE id = ?`, id); err != nil {
+			return false, err
+		}
+		return true, tx.Commit()
+	}
 }
 
 // GetAccount returns the account blob, its version, and whether it exists.

@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS account (
     id          TEXT PRIMARY KEY,   -- opaque, derived from the owner's own key
     ciphertext  BLOB NOT NULL,
     version     INTEGER NOT NULL,   -- bumped on every write (reserved for later If-Match)
-    updated_at  INTEGER NOT NULL
+    updated_at  INTEGER NOT NULL,
+    write_auth  TEXT NOT NULL DEFAULT '' -- hash(account write token); gates overwrite/delete
 ) WITHOUT ROWID;
 
 CREATE TABLE IF NOT EXISTS notify_route (

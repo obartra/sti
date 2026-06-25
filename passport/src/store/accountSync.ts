@@ -16,6 +16,7 @@ import {
   open,
   deriveAccountId,
   deriveAccountKey,
+  deriveAccountWriteToken,
   type Bytes,
 } from "../crypto/index.ts";
 import {
@@ -57,12 +58,21 @@ export function createAccountSync(api: ApiClient): AccountSync {
 
     async save(master, blob) {
       const [id, key] = await derive(master);
-      await api.putAccount(id, await seal(key, serializeAccountBlob(blob)));
+      const [ct, writeToken] = await Promise.all([
+        seal(key, serializeAccountBlob(blob)),
+        deriveAccountWriteToken(master),
+      ]);
+      await api.putAccount(id, ct, writeToken);
     },
 
     async remove(master) {
-      // Only the account id is needed to delete; the blob key is irrelevant.
-      await api.deleteAccount(await deriveAccountId(master));
+      // The blob key is irrelevant to delete, but the write token still gates it:
+      // the id alone (which travels on the wire) must not authorize removal.
+      const [id, writeToken] = await Promise.all([
+        deriveAccountId(master),
+        deriveAccountWriteToken(master),
+      ]);
+      await api.deleteAccount(id, writeToken);
     },
   };
 }

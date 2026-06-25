@@ -80,9 +80,10 @@ export interface ApiClient {
   putAccount(
     id: string,
     blob: Bytes,
+    writeToken: string,
     ifVersion?: string,
   ): Promise<{ version: string }>;
-  deleteAccount(id: string): Promise<void>;
+  deleteAccount(id: string, writeToken: string): Promise<void>;
   notify(tokenHash: string): Promise<void>;
   /**
    * Knock on an alias. pubKey is an optional per-requester ephemeral public key
@@ -325,6 +326,58 @@ function vanityMethods(
   };
 }
 
+// The /acct methods, split out so createApiClient stays within its length ceiling.
+// `call` is the client's wrapped fetch (network failure -> ApiError "unreachable").
+// GET is open (the blob is encrypted at rest); PUT and DELETE carry the account
+// write token that gates overwrite/delete (symmetric with the alias capability).
+function accountMethods(
+  call: (path: string, init?: RequestInit) => Promise<Response>,
+): Pick<ApiClient, "getAccount" | "putAccount" | "deleteAccount"> {
+  return {
+    async getAccount(id) {
+      assertAccountId(id);
+      const res = await call(PATHS.accountPrefix + id, {
+        method: "GET",
+        cache: "no-store",
+      });
+      if (res.status === 404) return null; // no sync blob yet (the empty case)
+      if (!res.ok) throw new ApiError(statusToKind(res.status), "account get");
+      return {
+        blob: await readBytes(res),
+        version: requireVersion(res, "account get"),
+      };
+    },
+
+    async putAccount(id, blob, writeToken, ifVersion) {
+      assertAccountId(id);
+      const headers: Record<string, string> = {
+        "Content-Type": OCTET_STREAM,
+        [HEADER_WRITE_TOKEN]: writeToken,
+      };
+      // Advisory today (the server is last-write-wins); sent for forward-compat
+      // with optimistic concurrency.
+      if (ifVersion !== undefined) headers[HEADER_VERSION] = ifVersion;
+      const res = await call(PATHS.accountPrefix + id, {
+        method: "PUT",
+        headers,
+        body: blob,
+      });
+      if (!res.ok) throw new ApiError(statusToKind(res.status), "account put");
+      return { version: requireVersion(res, "account put") };
+    },
+
+    async deleteAccount(id, writeToken) {
+      assertAccountId(id);
+      const res = await call(PATHS.accountPrefix + id, {
+        method: "DELETE",
+        headers: { [HEADER_WRITE_TOKEN]: writeToken },
+      });
+      if (!res.ok)
+        throw new ApiError(statusToKind(res.status), "account delete");
+    },
+  };
+}
+
 export function createApiClient(
   baseUrl: string,
   fetchImpl?: FetchLike,
@@ -399,41 +452,7 @@ export function createApiClient(
       return putFixed(INBOX, id, payload, { [HEADER_WRITE_TOKEN]: writeToken });
     },
 
-    async getAccount(id) {
-      assertAccountId(id);
-      const res = await call(PATHS.accountPrefix + id, {
-        method: "GET",
-        cache: "no-store",
-      });
-      if (res.status === 404) return null; // no sync blob yet (the empty case)
-      if (!res.ok) throw new ApiError(statusToKind(res.status), "account get");
-      return {
-        blob: await readBytes(res),
-        version: requireVersion(res, "account get"),
-      };
-    },
-
-    async putAccount(id, blob, ifVersion) {
-      assertAccountId(id);
-      const headers: Record<string, string> = { "Content-Type": OCTET_STREAM };
-      // Advisory today (the server is last-write-wins); sent for forward-compat
-      // with optimistic concurrency.
-      if (ifVersion !== undefined) headers[HEADER_VERSION] = ifVersion;
-      const res = await call(PATHS.accountPrefix + id, {
-        method: "PUT",
-        headers,
-        body: blob,
-      });
-      if (!res.ok) throw new ApiError(statusToKind(res.status), "account put");
-      return { version: requireVersion(res, "account put") };
-    },
-
-    async deleteAccount(id) {
-      assertAccountId(id);
-      const res = await call(PATHS.accountPrefix + id, { method: "DELETE" });
-      if (!res.ok)
-        throw new ApiError(statusToKind(res.status), "account delete");
-    },
+    ...accountMethods(call),
 
     async notify(tokenHash) {
       await postJson(call, PATHS.notify, { tokenHash }, "notify");

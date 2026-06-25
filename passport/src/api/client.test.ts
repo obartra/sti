@@ -186,22 +186,24 @@ describe("account sync", () => {
     });
   });
 
-  it("sends ifVersion as the version header when provided", async () => {
+  it("sends the write token, and ifVersion as the version header when provided", async () => {
     const m = mockFetch(
       () =>
         new Response(null, { status: 204, headers: { [HEADER_VERSION]: "8" } }),
     );
     const api = createApiClient(BASE, m.fetch);
-    const res = await api.putAccount(GOOD_ID, new Uint8Array([9]), "7");
+    const res = await api.putAccount(GOOD_ID, new Uint8Array([9]), "wt", "7");
     expect(res.version).toBe("8");
-    expect(new Headers(m.last().init?.headers).get(HEADER_VERSION)).toBe("7");
+    const sent = new Headers(m.last().init?.headers);
+    expect(sent.get(HEADER_VERSION)).toBe("7");
+    expect(sent.get(HEADER_WRITE_TOKEN)).toBe("wt");
   });
 
   it("maps 413 to tooLarge", async () => {
     const m = mockFetch(() => new Response(null, { status: 413 }));
     const api = createApiClient(BASE, m.fetch);
     await expect(
-      api.putAccount(GOOD_ID, new Uint8Array(1)),
+      api.putAccount(GOOD_ID, new Uint8Array(1), "wt"),
     ).rejects.toMatchObject({ kind: "tooLarge" });
   });
 });
