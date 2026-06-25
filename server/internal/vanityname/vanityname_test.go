@@ -63,10 +63,10 @@ func TestParseTermsSkipsCommentsBlanksAndNormalizes(t *testing.T) {
 }
 
 func TestBlockedAndCheckBlockedPath(t *testing.T) {
-	// The committed blocklist is empty (operator-curated), so nothing is blocked
-	// out of the box.
-	if Blocked("anything") {
-		t.Error("Blocked(anything) = true with an empty blocklist")
+	// A clearly-benign name is never blocked (the committed list holds only
+	// abuse/slur terms).
+	if Blocked("robin_2026") {
+		t.Error("Blocked(robin_2026) = true; benign name should pass")
 	}
 	// Seed the package set to exercise the blocked path end to end.
 	orig := blocklist
@@ -78,6 +78,50 @@ func TestBlockedAndCheckBlockedPath(t *testing.T) {
 	}
 	if _, err := Check("BadWord"); !errors.Is(err, ErrBlocked) {
 		t.Fatalf("Check(BadWord) err = %v, want ErrBlocked", err)
+	}
+}
+
+// The committed blocklist blocks only HATEFUL terms (slurs, hate symbols, CSAM,
+// sexual violence, bestiality). On a sex-positive hookup/health app it MUST NOT
+// block: identity/community terms, core health vocabulary, or crude consensual
+// SEXUAL/anatomical language. Blocking any of those pushes this app's own audience
+// out of the namespace, so these are pinned rather than left to manual review.
+func TestCommittedBlocklistAllowsIdentityHealthAndSexualTerms(t *testing.T) {
+	mustAllow := []string{
+		// Identity / community.
+		"gay", "lesbian", "queer", "trans", "bisexual", "nonbinary", "lgbt",
+		"twink", "bear", "femme", "butch", "goth",
+		// Neutral group / nationality / religion terms (the derogatory variants
+		// are blocked; the groups themselves never are).
+		"asian", "african", "latino", "muslim", "jew", "jewish", "arab", "black",
+		// Neutral disability / condition terms (only the slurs are blocked).
+		"deaf", "blind", "autistic", "autism", "disabled", "wheelchair",
+		// Core health vocabulary.
+		"prep", "hiv", "condom", "condoms", "testing", "status", "positive",
+		"negative", "prophylaxis", "sexualhealth",
+		// Crude but consensual adult sexual/anatomical vocabulary (allowed).
+		"anal", "anus", "ass", "asshole", "anilingus", "dick", "cock", "sex",
+		"sexual", "slut", "kinky", "blowjob", "rimming", "bdsm", "horny",
+	}
+	for _, name := range mustAllow {
+		if Blocked(name) {
+			t.Errorf("Blocked(%q) = true; this term must stay registerable", name)
+		}
+	}
+}
+
+// The committed blocklist is non-empty and does block representative hate terms:
+// it is the curated hate subset, not the empty file or the raw profanity seed.
+func TestCommittedBlocklistBlocksHateTerms(t *testing.T) {
+	if len(blocklist) == 0 {
+		t.Fatal("committed blocklist is empty; expected the curated hate set")
+	}
+	// A racial slur and an anti-LGBTQ slur stand in for the categories; if either
+	// is unblocked the curation regressed.
+	for _, name := range []string{"kike", "faggot", "tranny"} {
+		if !Blocked(name) {
+			t.Errorf("Blocked(%q) = false; hate term must stay blocked", name)
+		}
 	}
 }
 
