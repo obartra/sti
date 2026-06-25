@@ -24,6 +24,7 @@ const ID_BYTES = 32; // 256-bit, encodes to the contract's fixed 43-char id
 const PBKDF2_ITERATIONS = 600_000; // OWASP 2023 floor for PBKDF2-HMAC-SHA256
 const HKDF_ACCOUNT_ID_INFO = "sti.care/account-id/v1";
 const HKDF_ACCOUNT_KEY_INFO = "sti.care/account-blob-key/v1";
+const HKDF_ACCOUNT_WRITE_INFO = "sti.care/account-write/v1";
 const HKDF_PRF_MASTER_INFO = "sti.care/master-key/prf/v1";
 
 // A fixed domain-separation salt, deliberately NOT a per-user anti-rainbow salt.
@@ -147,6 +148,20 @@ export async function deriveAccountId(master: Bytes): Promise<string> {
 /** Raw 32-byte AES key for the account-sync blob, separate from the id. */
 export function deriveAccountKey(master: Bytes): Promise<Bytes> {
   return hkdf(master, HKDF_ACCOUNT_KEY_INFO, 32);
+}
+
+/**
+ * The account write token (43-char base64url): the capability that gates overwrite
+ * and delete of the account blob, making account writes symmetric with aliases. A
+ * third independent derivation from the master, so it never equals the id (which
+ * travels on the wire) or the blob key (which never leaves the device). The server
+ * stores only its hash and constant-time compares, so observing the id alone does
+ * not let someone clobber the account.
+ */
+export async function deriveAccountWriteToken(master: Bytes): Promise<string> {
+  return bytesToBase64url(
+    await hkdf(master, HKDF_ACCOUNT_WRITE_INFO, ID_BYTES),
+  );
 }
 
 /**

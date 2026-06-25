@@ -77,17 +77,61 @@ func TestAccountVersioning(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
-	v1, err := s.PutAccount(ctx, "acc", []byte("v1"), 100)
-	if err != nil || v1 != 1 {
-		t.Fatalf("first put: version=%d err=%v, want 1", v1, err)
+	v1, ok, err := s.PutAccount(ctx, "acc", []byte("v1"), "wt", 100)
+	if err != nil || !ok || v1 != 1 {
+		t.Fatalf("first put: version=%d ok=%v err=%v, want 1/true", v1, ok, err)
 	}
-	v2, err := s.PutAccount(ctx, "acc", []byte("v2"), 200)
-	if err != nil || v2 != 2 {
-		t.Fatalf("second put: version=%d err=%v, want 2", v2, err)
+	v2, ok, err := s.PutAccount(ctx, "acc", []byte("v2"), "wt", 200)
+	if err != nil || !ok || v2 != 2 {
+		t.Fatalf("second put: version=%d ok=%v err=%v, want 2/true", v2, ok, err)
 	}
 	cipher, version, found, err := s.GetAccount(ctx, "acc")
 	if err != nil || !found || version != 2 || !bytes.Equal(cipher, []byte("v2")) {
 		t.Fatalf("get: cipher=%q version=%d found=%v err=%v", cipher, version, found, err)
+	}
+
+	// A write under a DIFFERENT token is refused and changes nothing: the bound
+	// capability gates overwrites, not just knowledge of the id.
+	if _, ok, err := s.PutAccount(ctx, "acc", []byte("evil"), "other-wt", 300); err != nil || ok {
+		t.Fatalf("foreign-token put: ok=%v err=%v, want false/nil", ok, err)
+	}
+	if cipher, version, _, _ := s.GetAccount(ctx, "acc"); version != 2 || !bytes.Equal(cipher, []byte("v2")) {
+		t.Fatalf("after refused put: version=%d cipher=%q, want 2/v2 unchanged", version, cipher)
+	}
+
+	// Delete is gated the same way: a foreign token is refused, the owner's succeeds,
+	// and a missing row is an idempotent success.
+	if ok, err := s.DeleteAccountAuthorized(ctx, "acc", "other-wt"); err != nil || ok {
+		t.Fatalf("foreign-token delete: ok=%v err=%v, want false/nil", ok, err)
+	}
+	if ok, err := s.DeleteAccountAuthorized(ctx, "acc", "wt"); err != nil || !ok {
+		t.Fatalf("owner delete: ok=%v err=%v, want true/nil", ok, err)
+	}
+	if _, _, found, _ := s.GetAccount(ctx, "acc"); found {
+		t.Fatal("account should be gone after owner delete")
+	}
+	if ok, err := s.DeleteAccountAuthorized(ctx, "acc", "wt"); err != nil || !ok {
+		t.Fatalf("delete of missing row: ok=%v err=%v, want true/nil (idempotent)", ok, err)
+	}
+}
+
+// A row whose write_auth is empty (a legacy row migrated in before the column
+// existed) is unbound: the owner's next write rebinds the real token, and after
+// that a foreign token is locked out.
+func TestAccountEmptyAuthRebinds(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	// Simulate a pre-migration row: insert directly with an empty write_auth.
+	if _, err := s.db.ExecContext(ctx,
+		`INSERT INTO account (id, ciphertext, version, updated_at, write_auth) VALUES ('acc', 'old', 1, 1, '')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, err := s.PutAccount(ctx, "acc", []byte("new"), "wt", 100); err != nil || !ok {
+		t.Fatalf("rebind put: ok=%v err=%v, want true (empty auth is claimable)", ok, err)
+	}
+	if _, ok, err := s.PutAccount(ctx, "acc", []byte("evil"), "other", 200); err != nil || ok {
+		t.Fatalf("after rebind, foreign token: ok=%v, want false (now bound)", ok)
 	}
 }
 
@@ -588,7 +632,7 @@ func TestAdminRecordManagement(t *testing.T) {
 	if _, err := s.WriteAlias(ctx, "a1", []byte("cipher6"), "wt", 100, sql.NullInt64{}, false); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.PutAccount(ctx, "acc1", []byte("blob"), 200); err != nil {
+	if _, _, err := s.PutAccount(ctx, "acc1", []byte("blob"), "wt", 200); err != nil {
 		t.Fatal(err)
 	}
 	if st, err := s.ClaimVanityName(ctx, "robin", "a1", 100); err != nil || st != VanityClaimed {

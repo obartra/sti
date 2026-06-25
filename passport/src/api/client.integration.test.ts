@@ -23,6 +23,7 @@ import {
   deriveMasterKey,
   deriveAccountId,
   deriveAccountKey,
+  deriveAccountWriteToken,
 } from "../crypto/index.ts";
 import {
   startApi,
@@ -116,18 +117,35 @@ describe("api client against a live blind store", () => {
     const master = await deriveMasterKey(phraseForTest("recovery phrase"));
     const accountId = await deriveAccountId(master);
     const key = await importAesKey(await deriveAccountKey(master));
+    const writeToken = await deriveAccountWriteToken(master);
 
     expect(await api.getAccount(accountId)).toBeNull(); // empty account
 
     const plaintext = utf8ToBytes(
       JSON.stringify({ aliases: ["a", "b"], circles: [] }),
     );
-    const put = await api.putAccount(accountId, await seal(key, plaintext));
+    const put = await api.putAccount(
+      accountId,
+      await seal(key, plaintext),
+      writeToken,
+    );
     expect(put.version).toBeTruthy();
 
     const got = await api.getAccount(accountId);
     if (got === null) throw new Error("expected an account blob");
     expect(bytesToUtf8(await open(key, got.blob))).toBe(bytesToUtf8(plaintext));
+
+    // The write token gates overwrite end to end: a different token (someone who
+    // only observed the id on the wire) is forbidden by the real server, and the
+    // owner's token still works.
+    const foreign = await api
+      .putAccount(accountId, await seal(key, plaintext), "not-the-write-token")
+      .catch((e: unknown) => e);
+    expect(foreign).toBeInstanceOf(ApiError);
+    expect((foreign as ApiError).kind).toBe("forbidden");
+    await expect(
+      api.deleteAccount(accountId, writeToken),
+    ).resolves.toBeUndefined();
   });
 
   it("knock and notify complete without leaking existence", async () => {

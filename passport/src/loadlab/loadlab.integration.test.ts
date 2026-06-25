@@ -25,6 +25,7 @@ import {
   randomWriteToken,
   deriveAccountId,
   deriveAccountKey,
+  deriveAccountWriteToken,
 } from "../crypto/index.ts";
 import { startApi, type Harness } from "../test-support/serverHarness.ts";
 import { scrapeMetrics } from "./metrics.ts";
@@ -185,8 +186,8 @@ describe("load & usage lab: behavior gates against a real blind store", () => {
     const ptA = utf8ToBytes(JSON.stringify({ v: "A" }));
     const ptB = utf8ToBytes(JSON.stringify({ v: "B" }));
     const [ra, rb] = await Promise.all([
-      api.putAccount(o.accountId, await seal(key, ptA)),
-      api.putAccount(o.accountId, await seal(key, ptB)),
+      api.putAccount(o.accountId, await seal(key, ptA), o.accountWriteToken),
+      api.putAccount(o.accountId, await seal(key, ptB), o.accountWriteToken),
     ]);
     expect(ra.version).not.toBe(rb.version);
     const finalRes = await api.getAccount(o.accountId);
@@ -449,9 +450,14 @@ describe("load & usage lab: behavior gates against a real blind store", () => {
     const master = crypto.getRandomValues(new Uint8Array(32));
     const accountId = await deriveAccountId(master);
     const key = await importAesKey(await deriveAccountKey(master));
-    await api.putAccount(accountId, await seal(key, utf8ToBytes("blob")));
+    const writeToken = await deriveAccountWriteToken(master);
+    await api.putAccount(
+      accountId,
+      await seal(key, utf8ToBytes("blob")),
+      writeToken,
+    );
     expect(await api.getAccount(accountId)).not.toBeNull();
-    await api.deleteAccount(accountId);
+    await api.deleteAccount(accountId, writeToken);
     expect(await api.getAccount(accountId)).toBeNull(); // gone after DELETE
   });
 

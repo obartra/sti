@@ -394,17 +394,32 @@ func TestAliasWriteRejectsWrongSize(t *testing.T) {
 	}
 }
 
+// accountPut issues PUT /acct/{id} with the given body and write token.
+func accountPut(h http.Handler, id, token, body string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest("PUT", contract.PathAccountPrefix+id, strings.NewReader(body))
+	if token != "" {
+		req.Header.Set(contract.HeaderWriteToken, token)
+	}
+	return do(h, req)
+}
+
+// accountDelete issues DELETE /acct/{id} with the given write token.
+func accountDelete(h http.Handler, id, token string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest("DELETE", contract.PathAccountPrefix+id, nil)
+	if token != "" {
+		req.Header.Set(contract.HeaderWriteToken, token)
+	}
+	return do(h, req)
+}
+
 func TestAccountSyncRoundTrip(t *testing.T) {
 	h := newTestServer(t)
 	id := randID(t)
 
-	put := httptest.NewRequest("PUT", contract.PathAccountPrefix+id, strings.NewReader("blob-v1"))
-	rec := do(h, put)
-	if rec.Code != http.StatusNoContent || rec.Header().Get(contract.HeaderVersion) != "1" {
+	if rec := accountPut(h, id, "owner-wt", "blob-v1"); rec.Code != http.StatusNoContent || rec.Header().Get(contract.HeaderVersion) != "1" {
 		t.Fatalf("put1: code=%d version=%q", rec.Code, rec.Header().Get(contract.HeaderVersion))
 	}
-	put2 := httptest.NewRequest("PUT", contract.PathAccountPrefix+id, strings.NewReader("blob-v2"))
-	if rec := do(h, put2); rec.Header().Get(contract.HeaderVersion) != "2" {
+	if rec := accountPut(h, id, "owner-wt", "blob-v2"); rec.Header().Get(contract.HeaderVersion) != "2" {
 		t.Fatalf("put2 version=%q, want 2", rec.Header().Get(contract.HeaderVersion))
 	}
 	get := do(h, httptest.NewRequest("GET", contract.PathAccountPrefix+id, nil))
@@ -413,17 +428,45 @@ func TestAccountSyncRoundTrip(t *testing.T) {
 	}
 }
 
+// The account write token gates overwrite and delete (symmetric with aliases):
+// knowing the id (which travels on the wire) is not enough. A PUT or DELETE with no
+// token is a 400; with a wrong token a 403 that changes nothing; GET stays open
+// since the blob is encrypted anyway.
+func TestAccountWriteTokenGate(t *testing.T) {
+	h := newTestServer(t)
+	id := randID(t)
+
+	if rec := accountPut(h, id, "", "blob"); rec.Code != http.StatusBadRequest {
+		t.Fatalf("put without token: %d, want 400", rec.Code)
+	}
+	if rec := accountPut(h, id, "owner-wt", "blob-v1"); rec.Code != http.StatusNoContent {
+		t.Fatalf("owner first put: %d", rec.Code)
+	}
+	// A second writer who only knows the id cannot overwrite or delete it.
+	if rec := accountPut(h, id, "thief-wt", "evil"); rec.Code != http.StatusForbidden {
+		t.Fatalf("foreign put: %d, want 403", rec.Code)
+	}
+	if rec := accountDelete(h, id, "thief-wt"); rec.Code != http.StatusForbidden {
+		t.Fatalf("foreign delete: %d, want 403", rec.Code)
+	}
+	// The blob is intact and still readable by anyone with the id (encrypted at rest).
+	if get := do(h, httptest.NewRequest("GET", contract.PathAccountPrefix+id, nil)); get.Code != http.StatusOK || get.Body.String() != "blob-v1" {
+		t.Fatalf("get after foreign writes: code=%d body=%q, want 200/blob-v1", get.Code, get.Body.String())
+	}
+	if rec := accountDelete(h, id, ""); rec.Code != http.StatusBadRequest {
+		t.Fatalf("delete without token: %d, want 400", rec.Code)
+	}
+}
+
 func TestAccountDelete(t *testing.T) {
 	h := newTestServer(t)
 	id := randID(t)
 
-	put := httptest.NewRequest("PUT", contract.PathAccountPrefix+id, strings.NewReader("blob"))
-	if rec := do(h, put); rec.Code != http.StatusNoContent {
+	if rec := accountPut(h, id, "owner-wt", "blob"); rec.Code != http.StatusNoContent {
 		t.Fatalf("put: code=%d", rec.Code)
 	}
 
-	del := do(h, httptest.NewRequest("DELETE", contract.PathAccountPrefix+id, nil))
-	if del.Code != http.StatusNoContent {
+	if del := accountDelete(h, id, "owner-wt"); del.Code != http.StatusNoContent {
 		t.Fatalf("delete: code=%d", del.Code)
 	}
 	// The blob is gone: GET now 404s like a never-existed account.
@@ -431,14 +474,14 @@ func TestAccountDelete(t *testing.T) {
 		t.Fatalf("get after delete: code=%d, want 404", get.Code)
 	}
 	// Idempotent: deleting again (or a never-existed id) still 204s, revealing nothing.
-	if again := do(h, httptest.NewRequest("DELETE", contract.PathAccountPrefix+id, nil)); again.Code != http.StatusNoContent {
+	if again := accountDelete(h, id, "owner-wt"); again.Code != http.StatusNoContent {
 		t.Fatalf("delete again: code=%d", again.Code)
 	}
-	if miss := do(h, httptest.NewRequest("DELETE", contract.PathAccountPrefix+randID(t), nil)); miss.Code != http.StatusNoContent {
+	if miss := accountDelete(h, randID(t), "any-wt"); miss.Code != http.StatusNoContent {
 		t.Fatalf("delete missing: code=%d", miss.Code)
 	}
 	// A malformed id is rejected.
-	if bad := do(h, httptest.NewRequest("DELETE", contract.PathAccountPrefix+"short", nil)); bad.Code != http.StatusBadRequest {
+	if bad := accountDelete(h, "short", "owner-wt"); bad.Code != http.StatusBadRequest {
 		t.Fatalf("delete malformed: code=%d, want 400", bad.Code)
 	}
 }

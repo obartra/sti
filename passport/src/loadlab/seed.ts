@@ -17,6 +17,7 @@ import {
   randomWriteToken,
   deriveAccountId,
   deriveAccountKey,
+  deriveAccountWriteToken,
   type Bytes,
 } from "../crypto/index.ts";
 
@@ -27,6 +28,7 @@ export interface SeededOwner {
   readonly aliasPlaintext: Bytes;
   readonly accountId: string;
   readonly accountKeyRaw: Bytes;
+  readonly accountWriteToken: string;
 }
 
 async function seedOne(api: ApiClient, i: number): Promise<SeededOwner> {
@@ -50,11 +52,12 @@ async function seedOne(api: ApiClient, i: number): Promise<SeededOwner> {
   const accountId = await deriveAccountId(master);
   const accountKeyRaw = await deriveAccountKey(master);
   const accountKey = await importAesKey(accountKeyRaw);
+  const accountWriteToken = await deriveAccountWriteToken(master);
   const blob = await seal(
     accountKey,
     utf8ToBytes(JSON.stringify({ aliases: [aliasId] })),
   );
-  await api.putAccount(accountId, blob);
+  await api.putAccount(accountId, blob, accountWriteToken);
 
   return {
     aliasId,
@@ -63,6 +66,7 @@ async function seedOne(api: ApiClient, i: number): Promise<SeededOwner> {
     aliasPlaintext,
     accountId,
     accountKeyRaw,
+    accountWriteToken,
   };
 }
 

@@ -735,19 +735,31 @@ func (s *Server) handleAccountPut(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusRequestEntityTooLarge, contract.ErrTooLarge, "")
 		return
 	}
-	version, err := s.st.PutAccount(r.Context(), id, body, s.now())
+	token := r.Header.Get(contract.HeaderWriteToken)
+	if token == "" {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "missing write token")
+		return
+	}
+	version, ok, err := s.st.PutAccount(r.Context(), id, body, hashToken(token), s.now())
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	if !ok {
+		// The blob exists under a different write token: whoever sent this knows the
+		// id but is not the owner. 403, like the alias PUT mismatch.
+		s.writeError(w, http.StatusForbidden, contract.ErrBadRequest, "write token does not match")
 		return
 	}
 	w.Header().Set(contract.HeaderVersion, strconv.FormatInt(version, 10))
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// handleAccountDelete removes the account blob. Like PUT, it is authorized by
-// holding the key-derived id (unguessable; only the master derives it), and it
-// is idempotent: a missing id still returns 204, revealing nothing. The owner's
-// aliases are separate rows the client revokes (overwrites) before calling this.
+// handleAccountDelete removes the account blob. Authorized by the account write
+// token (symmetric with the alias capability): holding the key-derived id is not
+// enough, since the id travels on the wire while the token does not. Idempotent: a
+// missing id still returns 204, revealing nothing; a wrong token is a uniform 403.
+// The owner's aliases are separate rows the client revokes (overwrites) first.
 func (s *Server) handleAccountDelete(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if !contract.ValidID(id) {
@@ -758,8 +770,18 @@ func (s *Server) handleAccountDelete(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
 		return
 	}
-	if err := s.st.DeleteAccount(r.Context(), id); err != nil {
+	token := r.Header.Get(contract.HeaderWriteToken)
+	if token == "" {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "missing write token")
+		return
+	}
+	ok, err := s.st.DeleteAccountAuthorized(r.Context(), id, hashToken(token))
+	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	if !ok {
+		s.writeError(w, http.StatusForbidden, contract.ErrBadRequest, "write token does not match")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
