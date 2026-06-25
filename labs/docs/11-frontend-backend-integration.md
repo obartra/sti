@@ -174,10 +174,12 @@ real browser.
   the same phrase-recoverable account, never standalone. What remains for the wiring slice: WHERE the
   `{credentialId, wrappedMaster}` lives (local storage) and the enroll/unlock UX. A passkey-only
   account must still never be createable.
-- **Sibling-alias decorrelation.** Republishing all of an owner's aliases on a state change
-  (`republishOwnerCard`) does it in one window from the owner's device, which lets the edge correlate
-  the opaque ids as one owner. The locked fix is server-mediated jittered/batched fan-out (the same
-  deferred decorrelation work as the notify cover-wake), built-but-gated-off when it lands.
+- **Sibling-alias decorrelation (BUILT).** Republishing all of an owner's aliases on a state change
+  used to fire one same-instant burst from the device, letting an observer correlate the opaque ids
+  as one owner. Now `republishOwnerCard` hands two-or-more aliases to `POST /republish` as one batch,
+  and the server applies each at an independent jittered time (`republish_queue` + `DrainRepublishes`,
+  on by default), so the public card changes are decorrelated. See doc 18 for the built design and
+  its honest limits (the batch is explicit to the blind-trusted, IP-stripped origin).
 - **Deletion and export** remain open product items (Data & storage), unchanged by this seam.
 
 ---

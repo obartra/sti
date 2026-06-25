@@ -105,6 +105,10 @@ func main() {
 	// Window over which the decorrelation cover broadcast spreads its per-route
 	// wakes (doc 13 §2). Default 2 min; only matters once notify delivery is on.
 	coverWindow := max(envDuration("STI_COVER_WINDOW", 2*time.Minute), 0)
+	// Window over which a republish batch's alias overwrites are spread (doc 11), so
+	// an owner's shared cards do not all change at the same instant. Default 3 min;
+	// the status update is delayed by at most this, which is fine for a badge refresh.
+	republishWindow := max(envDuration("STI_REPUBLISH_WINDOW", 3*time.Minute), 0)
 
 	// Operator surface (doc 20). OFF by default so production ships dark. Turning it
 	// on requires BOTH the flag AND a non-trivial bearer secret: if the flag is set
@@ -152,6 +156,7 @@ func main() {
 		SensitiveWait:             sensitiveWait,
 		KnockTTL:                  knockTTL,
 		CoverWindow:               coverWindow,
+		RepublishWindow:           republishWindow,
 		AdminEnabled:              adminEnabled,
 		AdminToken:                adminToken,
 		FindableEnabled:           findableEnabled,
@@ -311,6 +316,7 @@ func background(ctx context.Context, st *store.Store, srv *server.Server, metric
 					log.Info("purged orphan vanity reports", "count", n)
 				}
 			}
+			srv.DrainRepublishes(ctx, now)
 			srv.DrainSends(ctx, now)
 			srv.SweepLimiters(now)
 			// Heartbeat: a stalled loop shows up as this gauge going stale.

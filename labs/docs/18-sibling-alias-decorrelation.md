@@ -6,8 +6,37 @@ _Plan for the deferred "sibling-alias decorrelation" work named in
 [doc 11](11-frontend-backend-integration.md) and depended on by Findable
 ([doc 17](17-vanity-namespace-governance.md), gate item 4). It defines the threat,
 the options and their tension, a recommended phased approach, and the concrete
-work items, so the build is a known quantity. Nothing here is built yet; this is
-the spec to approve before implementation._
+work items, so the build is a known quantity._
+
+---
+
+## Status: BUILT (server-mixed apply queue, option 2)
+
+The server-mixed apply queue is built and ON by default. `republishOwnerCard`
+(`passport/src/store/ownerCard.ts`) no longer bursts: when an owner has two or more
+shared aliases it seals each card and hands the whole set to `POST /republish` as
+one batch. The server (`server/internal/server/republish.go`) queues each op in
+`republish_queue` at an INDEPENDENT jittered `available_at` over `RepublishWindow`
+(`STI_REPUBLISH_WINDOW`, default 3 min) and the janitor (`DrainRepublishes`) applies
+each as a normal write-token-gated alias overwrite when its time arrives. A
+single-alias owner still publishes directly (no sibling to decorrelate, so no point
+delaying the status update).
+
+**What this achieves and the trade taken.** The publicly observable thing, when
+each alias's ciphertext CHANGES, is now decorrelated: an observer polling two of an
+owner's aliases no longer sees them change in the same instant. Against a network /
+edge observer it is also strictly better than the old burst, which was N visible
+`PUT /a` requests: it is now ONE request whose contents are TLS-hidden, so the count
+and timing of the per-alias writes no longer leak to the edge at upload time.
+
+The trade, called out in "the core tension" below, is that the single batch makes
+the grouping EXPLICIT to the origin (N ciphertexts in one request). We accept it:
+the origin is the blind-trusted party, it is IP-stripped (so it already could infer
+the grouping from the old same-instant timing burst), and it can decrypt none of the
+batch. So the batch converts an inferable timing-grouping into an explicit one at the
+already-trusted origin, while removing the timing signal from the public apply
+stream and from the edge. Phase A (client-side upload spread) and Phase C (cover
+traffic) remain available if the origin-grouping residual ever matters.
 
 ---
 
@@ -114,12 +143,21 @@ Findable-specific work.
 
 ## Honest limits (carried)
 
-- The edge (Cloudflare) sees client IPs; no origin-side change fully removes
-  edge-side IP+timing correlation. Spreading + retention policy bound it; it is
-  not eliminated.
-- Jittered spread delays status propagation by up to the window; the window is a
-  privacy/latency trade to tune, not a free win.
-- Until Phase A ships, the current burst behaviour stands and is the stated gap.
+- The single batch makes the sibling grouping EXPLICIT to the origin (built trade,
+  above): the origin sees N ciphertexts in one request. Accepted because the origin
+  is blind-trusted, IP-stripped, and could already infer the grouping from the old
+  same-instant burst. Phase A (per-alias jittered uploads) would remove even this;
+  not built.
+- The edge (Cloudflare) sees client IPs; the batch removes the per-write upload
+  signal (one request, TLS-hidden contents), but the single upload's IP+timing is
+  still edge-visible. Retention policy bounds it; it is not eliminated.
+- Jittered apply delays status propagation by up to `RepublishWindow`; the window is
+  a privacy/latency trade to tune, not a free win. The time-sensitive partner-notify
+  ping is a separate, immediate path, so a positive result still reaches partners
+  promptly while the cards decorrelate.
+- Decorrelation granularity is the janitor tick (`STI_JANITOR_INTERVAL`): two ops
+  jittered into the same tick apply together. A window spanning several ticks keeps
+  the collision rate low; finer granularity would need a dedicated faster drain.
 
 ## Open
 

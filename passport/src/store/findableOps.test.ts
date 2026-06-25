@@ -39,6 +39,7 @@ function fakeApi(opts: {
     getAlias: unused,
     putAlias,
     notify: unused,
+    republish: unused,
     knockCount: () => Promise.resolve(0),
     knockReview: () => Promise.resolve({ count: 0, pending: [] }),
     getInbox: unused,

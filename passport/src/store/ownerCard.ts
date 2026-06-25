@@ -25,7 +25,7 @@ import type { ResolvedView } from "../ui/public/PublicResolution.tsx";
 import type { ApiClient } from "../api/client.ts";
 import type { AliasRecord } from "./accountBlob.ts";
 import { avatarSrc, pseudonymFor, type AvatarConfig } from "../lib/avatars.ts";
-import { republishCard } from "./publish.ts";
+import { republishCard, sealCardPayload } from "./publish.ts";
 
 // The condom preferences that have a public label ("none" shows nothing).
 const CONDOM_LABEL: Record<
@@ -145,9 +145,31 @@ export async function republishOwnerCard(
   records: readonly AliasRecord[],
   owner: OwnerCardInputs,
 ): Promise<void> {
-  await Promise.all(
-    records.map((r) =>
-      republishCard(api, r, deriveAliasCard(owner.state, r, owner.nowDay)),
-    ),
+  // One alias (or none) has no sibling to correlate with, so publish it immediately
+  // rather than deferring the owner's status update for no privacy gain.
+  if (records.length <= 1) {
+    await Promise.all(
+      records.map((r) =>
+        republishCard(api, r, deriveAliasCard(owner.state, r, owner.nowDay)),
+      ),
+    );
+    return;
+  }
+  // Two or more: hand the whole set to the server as one batch, which applies each
+  // alias write at an independent jittered time, so an observer watching two of the
+  // owner's cards does not see them change in the same instant (decorrelation,
+  // doc 11). The trade is that the badge update lands within the server's window
+  // rather than instantly; the partner-notify ping (if any) is a separate, immediate
+  // path, so the time-sensitive signal is not delayed.
+  const ops = await Promise.all(
+    records.map(async (r) => ({
+      id: r.id,
+      ciphertext: await sealCardPayload(
+        r,
+        deriveAliasCard(owner.state, r, owner.nowDay),
+      ),
+      writeToken: r.writeToken,
+    })),
   );
+  await api.republish(ops);
 }

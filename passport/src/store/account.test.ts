@@ -26,6 +26,7 @@ function fakeAccountApi(): ApiClient {
     // A no-op so deleteAccount's alias revocation (PUT garbage) succeeds here.
     putAlias: () => Promise.resolve(),
     notify: unused,
+    republish: unused,
     knockCount: () => Promise.resolve(0),
     knockReview: () => Promise.resolve({ count: 0, pending: [] }),
     getInbox: unused,
@@ -261,6 +262,7 @@ describe("account manager", () => {
     const api: ApiClient = {
       getAlias: unused,
       notify: unused,
+      republish: unused,
       knockCount: () => Promise.resolve(0),
       knockReview: () => Promise.resolve({ count: 0, pending: [] }),
       getInbox: unused,
@@ -385,6 +387,7 @@ describe("account manager", () => {
     const api: ApiClient = {
       getAlias: unused,
       notify: unused,
+      republish: unused,
       knockCount: () => Promise.resolve(0),
       knockReview: () => Promise.resolve({ count: 0, pending: [] }),
       getInbox: unused,
