@@ -227,3 +227,52 @@ describe("backend store knock", () => {
     expect(await store.redeemGrant(GOOD_ID)).toBeNull();
   });
 });
+
+describe("backend store reportVanityName", () => {
+  // Unlike resolveAlias/knock, a report's outcome IS shown to the reporter, so the
+  // store must NOT fail closed: it delegates and lets a transport error reject.
+  function reportApi(report: ApiClient["reportVanityName"]): ApiClient {
+    const unused = () => {
+      throw new Error("not used in this test");
+    };
+    return {
+      getAlias: unused,
+      putAlias: unused,
+      getAccount: unused,
+      putAccount: unused,
+      deleteAccount: unused,
+      notify: unused,
+      knockCount: () => Promise.resolve(0),
+      knockReview: () => Promise.resolve({ count: 0, pending: [] }),
+      getInbox: unused,
+      putInbox: unused,
+      knock: unused,
+      registerPush: unused,
+      getVapidPublicKey: unused,
+      registerVanityName: unused,
+      releaseVanityName: unused,
+      resolveVanityName: unused,
+      reportVanityName: report,
+      health: unused,
+    };
+  }
+
+  it("delegates the name + reason to the api", async () => {
+    const calls: [string, string][] = [];
+    const store = createBackendStore(
+      reportApi((name, reason) => {
+        calls.push([name, reason]);
+        return Promise.resolve();
+      }),
+    );
+    await store.reportVanityName("rob1n", "impersonation");
+    expect(calls).toEqual([["rob1n", "impersonation"]]);
+  });
+
+  it("propagates a transport failure (does not fail closed)", async () => {
+    const store = createBackendStore(
+      reportApi(() => Promise.reject(new ApiError("unreachable", "down"))),
+    );
+    await expect(store.reportVanityName("rob1n", "spam")).rejects.toThrow();
+  });
+});

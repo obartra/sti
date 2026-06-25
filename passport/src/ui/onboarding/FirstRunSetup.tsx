@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FINDABLE_ENABLED } from "../../features.ts";
 import { Card, Button, Segmented } from "../../design/components/index.ts";
 import {
   Hand,
@@ -35,6 +36,8 @@ const COPY = {
   reachFindableSoon: "Soon",
   reachFindableSub:
     "A memorable name people can find and put in a bio. It needs a public name to work, so it’s coming later.",
+  reachFindableReadySub:
+    "A memorable name people can find and put in a bio. Claim one anytime from Settings.",
   reachNote:
     "Either way, your status stays off the open web: no name to look up, and someone without a link can’t even tell you exist.",
   anonTitle: "A heads-up that looks out for you",
@@ -127,22 +130,30 @@ function FreshnessCard() {
   );
 }
 
-// The unbuilt third mode (Findable: vanity + request, doc 16), shown disabled so
-// the roadmap is honest without offering a path that needs a name directory we
-// have not built. Not selectable.
+// The Findable mode (vanity name + request, doc 16/17). Informational, not a
+// selectable sharing mode: a name is claimed separately from Settings, so this row
+// just points there. Until the feature ships (FINDABLE_ENABLED) it reads disabled
+// with a "Soon" badge so the roadmap stays honest.
 function FindableRow() {
+  const ready = FINDABLE_ENABLED;
   return (
     <div
       style={{
         display: "flex",
         alignItems: "flex-start",
         gap: 8,
-        opacity: 0.55,
+        opacity: ready ? 1 : 0.55,
         borderTop: "1px solid var(--border-card)",
         paddingTop: 12,
       }}
     >
-      <span style={{ flex: "none", marginTop: 1, color: "var(--text-subtle)" }}>
+      <span
+        style={{
+          flex: "none",
+          marginTop: 1,
+          color: ready ? "var(--text-accent)" : "var(--text-subtle)",
+        }}
+      >
         <Globe size={14} />
       </span>
       <div style={{ flex: 1 }}>
@@ -157,20 +168,22 @@ function FindableRow() {
           }}
         >
           {COPY.reachFindable}
-          <span
-            style={{
-              fontSize: 10.5,
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-              color: "var(--text-subtle)",
-              background: "var(--surface-sunken)",
-              borderRadius: "var(--radius-pill)",
-              padding: "2px 8px",
-            }}
-          >
-            {COPY.reachFindableSoon}
-          </span>
+          {!ready && (
+            <span
+              style={{
+                fontSize: 10.5,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                color: "var(--text-subtle)",
+                background: "var(--surface-sunken)",
+                borderRadius: "var(--radius-pill)",
+                padding: "2px 8px",
+              }}
+            >
+              {COPY.reachFindableSoon}
+            </span>
+          )}
         </div>
         <div
           style={{
@@ -180,7 +193,7 @@ function FindableRow() {
             marginTop: 2,
           }}
         >
-          {COPY.reachFindableSub}
+          {ready ? COPY.reachFindableReadySub : COPY.reachFindableSub}
         </div>
       </div>
     </div>

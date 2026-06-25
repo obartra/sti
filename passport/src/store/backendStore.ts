@@ -83,5 +83,11 @@ export function createBackendStore(
         return null;
       }
     },
+
+    reportVanityName(name, reason) {
+      // No fail-closed here: a report's success/failure IS shown to the reporter
+      // (the form retries on error), so let a transport failure reject.
+      return api.reportVanityName(name, reason);
+    },
   };
 }
