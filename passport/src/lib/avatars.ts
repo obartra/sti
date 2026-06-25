@@ -307,84 +307,20 @@ export function avatarFor(handle: string): string {
   return avatarSrc(randomAvatar(h));
 }
 
-// Wordlists for the id-derived pseudonym (doc 15). Lowercase [a-z] only, neutral,
-// and deliberately generic so the handle reads as a label, not a trait.
-const PSEUDONYM_ADJECTIVES: readonly string[] = [
-  "swift",
-  "quiet",
-  "bright",
-  "calm",
-  "brave",
-  "clever",
-  "cosmic",
-  "dapper",
-  "eager",
-  "fancy",
-  "gentle",
-  "happy",
-  "jolly",
-  "keen",
-  "lively",
-  "lucky",
-  "mellow",
-  "merry",
-  "noble",
-  "plucky",
-  "proud",
-  "quick",
-  "royal",
-  "sandy",
-  "sleepy",
-  "snug",
-  "spry",
-  "sunny",
-  "tidy",
-  "vivid",
-  "witty",
-  "zesty",
-];
-const PSEUDONYM_NOUNS: readonly string[] = [
-  "maple",
-  "river",
-  "pebble",
-  "cloud",
-  "ember",
-  "meadow",
-  "harbor",
-  "lantern",
-  "willow",
-  "cedar",
-  "comet",
-  "dune",
-  "fern",
-  "garnet",
-  "hazel",
-  "isle",
-  "jade",
-  "kite",
-  "lake",
-  "moss",
-  "nimbus",
-  "opal",
-  "pine",
-  "quartz",
-  "reef",
-  "summit",
-  "thistle",
-  "umber",
-  "vale",
-  "wave",
-  "yarn",
-  "zephyr",
-];
+// The pseudonym wordlists live in their own data module (they are large and static);
+// re-exported here so avatars.ts stays the single public face. See pseudonymWords.ts.
+import { PSEUDONYM_ADJECTIVES, PSEUDONYM_NOUNS } from "./pseudonymWords.ts";
+export { PSEUDONYM_ADJECTIVES, PSEUDONYM_NOUNS };
 
 /**
  * A deterministic, id-derived display handle for an alias with no chosen handle
  * (doc 15). The same id always yields the same `adjective_noun_NN`, distinct ids
- * differ, and it reveals nothing because the id is random per alias. The two-digit
- * suffix lifts the space to ~10^5 (32 x 32 x 100) so collisions across one owner's
- * aliases stay rare (see doc 15 limits). Output is in the handle charset, well
- * under the 64-char cap.
+ * differ, and it reveals nothing because the id is random per alias. With 256
+ * adjectives and 256 nouns the word pair alone is the separator (~65k pairs, the
+ * ~10^5 order doc 15 asks for), and the two-digit suffix lifts the full space to
+ * ~6.5M (256 x 256 x 100), so collisions across one owner's aliases stay rare and a
+ * shared word pair (a correlation hint) is rarer still. Output is in the handle
+ * charset, well under the 64-char cap.
  */
 export function pseudonymFor(id: string): string {
   // FNV-1a over the id, then an xorshift-multiply avalanche, so even ids that
@@ -401,9 +337,12 @@ export function pseudonymFor(id: string): string {
   h ^= h >>> 13;
   h = Math.imul(h, 3266489917) >>> 0;
   h = (h ^ (h >>> 16)) >>> 0; // keep unsigned: `^` yields a signed int otherwise
-  const adj = PSEUDONYM_ADJECTIVES[h % PSEUDONYM_ADJECTIVES.length] ?? "swift";
-  const noun =
-    PSEUDONYM_NOUNS[Math.floor(h / 32) % PSEUDONYM_NOUNS.length] ?? "river";
-  const num = String(Math.floor(h / 1024) % 100).padStart(2, "0");
+  // Each field reads a DISJOINT byte of the avalanched hash, so the adjective, noun,
+  // and suffix are independent: with 256 of each, both lists are indexed uniformly
+  // (a full byte, no modulo bias) and two ids share an adjective_noun pair only by a
+  // 1-in-65536 chance, well under the per-owner collision budget (doc 15).
+  const adj = PSEUDONYM_ADJECTIVES[h & 0xff] ?? "swift";
+  const noun = PSEUDONYM_NOUNS[(h >>> 8) & 0xff] ?? "river";
+  const num = String(((h >>> 16) & 0xffff) % 100).padStart(2, "0");
   return `${adj}_${noun}_${num}`;
 }
