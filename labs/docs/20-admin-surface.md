@@ -115,6 +115,5 @@ Every mutation writes an audit row and returns a uniform shape; none returns pla
    drops into the authed shell next, like A2.
 4. **A4 — Activity (audit read):** `GET /admin/audit` over the existing `RecentAudits` store reader,
    plus a read-only Activity panel in the authed shell. Closes the loop the audit log opened in A1: the
-   log was always written but had no read surface. A single capped fetch (like `/admin/reports`), no
-   cursor in v1 — admin actions are rare, so the recent window is enough; pagination can come later if
-   the volume ever warrants it.
+   log was always written but had no read surface. A capped fetch with `before`/`limit` cursor
+   pagination (newest-first; the panel's "Load older" walks back by row id, capped at 200 per page).
