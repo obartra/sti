@@ -52,6 +52,9 @@ export interface PublicResolutionProps {
   onClaim?: () => void;
   onVerify?: () => void;
   onKnock?: () => void;
+  // Present only when the viewer arrived via a public findable name (doc 17): a
+  // quiet affordance to report that name. Absent for keyed / sample links.
+  onReport?: (() => void) | undefined;
 }
 
 export function PublicResolution({
@@ -66,6 +69,7 @@ export function PublicResolution({
   onClaim,
   onVerify,
   onKnock,
+  onReport,
 }: PublicResolutionProps) {
   const [knockSent, setKnockSent] = useState(initialKnockSent);
   const doKnock = () => {
@@ -106,6 +110,32 @@ export function PublicResolution({
         onClaim={onClaim}
         onVerify={onVerify}
       />
+
+      {onReport && <ReportNameLink onReport={onReport} />}
     </div>
+  );
+}
+
+// A quiet "report this name" affordance, shown only when the viewer reached this
+// card through a public findable name. Understated on purpose: it sits below the
+// primary actions and never competes with them.
+function ReportNameLink({ onReport }: { onReport: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onReport}
+      style={{
+        background: "none",
+        border: "none",
+        padding: 0,
+        alignSelf: "center",
+        fontSize: 12.5,
+        color: "var(--text-subtle)",
+        textDecoration: "underline",
+        cursor: "pointer",
+      }}
+    >
+      Report this name
+    </button>
   );
 }

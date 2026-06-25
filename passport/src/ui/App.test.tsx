@@ -27,6 +27,7 @@ function stubStore(to: ResolvedView | null): PassportStore {
     knock: () => Promise.resolve(),
     redeemGrant: () => Promise.resolve(null),
     resolveVanityName: () => Promise.resolve(null),
+    reportVanityName: () => Promise.resolve(),
   };
 }
 

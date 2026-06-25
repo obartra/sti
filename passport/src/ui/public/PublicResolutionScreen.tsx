@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { PublicResolution, type ResolvedView } from "./PublicResolution.tsx";
+import { ReportName } from "../findable/ReportName.tsx";
 import type {
   AliasLink,
   ContactInvite,
   ContactLinkResult,
   PassportStore,
 } from "../../store/index.ts";
+import type { VanityReportReason } from "../../api/client.ts";
 
 // Resolves a shared link through the store and renders the public card. While
 // resolving (and on any failure) `resolved` is null, which is the uniform gray
@@ -24,6 +26,12 @@ export interface PublicResolutionScreenProps {
   onBack?: () => void;
   onClaim?: () => void;
   onVerify?: () => void;
+  // Set when the viewer reached this card through a public findable name (doc 17):
+  // the name plus the report transport enable the "report this name" affordance.
+  name?: string | undefined;
+  reportName?:
+    | ((name: string, reason: VanityReportReason) => Promise<void>)
+    | undefined;
 }
 
 const noop = (): void => undefined;
@@ -44,9 +52,12 @@ export function PublicResolutionScreen({
   onBack = noop,
   onClaim = noop,
   onVerify = noop,
+  name,
+  reportName,
 }: PublicResolutionScreenProps) {
   const [resolved, setResolved] = useState<ResolvedView | null>(null);
   const [requested, setRequested] = useState(false);
+  const [reporting, setReporting] = useState(false);
 
   // Key on the primitive id + key, not the link object: the renderer builds a
   // fresh { id, key } each render, so depending on the object would refetch
@@ -125,6 +136,19 @@ export function PublicResolutionScreen({
         onAcceptInvite(invite, label).then((result) => result.url)
     : undefined;
 
+  // The report affordance exists only when the viewer arrived via a findable name
+  // and a transport was wired (the gated path); otherwise it stays absent.
+  const canReport = name !== undefined && reportName !== undefined;
+  if (reporting && name !== undefined && reportName !== undefined) {
+    return (
+      <ReportName
+        name={name}
+        report={(reason) => reportName(name, reason)}
+        onClose={() => setReporting(false)}
+      />
+    );
+  }
+
   return (
     <PublicResolution
       resolved={resolved}
@@ -135,6 +159,7 @@ export function PublicResolutionScreen({
       onClaim={onClaim}
       onVerify={onVerify}
       onKnock={onKnock}
+      onReport={canReport ? () => setReporting(true) : undefined}
     />
   );
 }

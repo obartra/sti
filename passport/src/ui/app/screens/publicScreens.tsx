@@ -41,7 +41,7 @@ export const publicRenderers: ScreenRenderers = {
     // shows the knock affordance (the gated path). If the link is a contact invite
     // (it carried a notify capability) and the viewer is logged in, offer "Add to
     // contacts" instead of a knock; an invite always carries a key.
-    const { id, key, notify, ref } = ctx.data ?? {};
+    const { id, key, notify, ref, name } = ctx.data ?? {};
     if (id !== undefined) {
       const invite =
         ctx.isLoggedIn && key !== undefined && notify !== undefined
@@ -60,6 +60,14 @@ export const publicRenderers: ScreenRenderers = {
           onBack={ctx.nav.back}
           onClaim={onClaim}
           onVerify={onVerify}
+          // Only a findable-name arrival carries `name`, which turns on the report
+          // affordance; a keyed/sample link leaves it undefined.
+          name={name}
+          reportName={
+            name !== undefined
+              ? (n, reason) => ctx.store.reportVanityName(n, reason)
+              : undefined
+          }
         />
       );
     }
@@ -80,13 +88,17 @@ export const publicRenderers: ScreenRenderers = {
   exposed: ({ nav }) => <Exposed onClaim={() => nav.go("b1-claim")} />,
   // Findable resolve→knock (doc 17, F5b): look the name up, then hand the alias id
   // into the keyless knock flow (a2-public renders the "ask to view" affordance).
-  "u-resolve": (ctx) => (
-    <FindableResolve
-      name={ctx.data?.name ?? ""}
-      resolve={(n) => ctx.store.resolveVanityName(n)}
-      onResolved={(aliasId) => ctx.nav.go("a2-public", { id: aliasId })}
-      onClaim={() => ctx.nav.go("b1-claim")}
-      onBack={ctx.nav.back}
-    />
-  ),
+  "u-resolve": (ctx) => {
+    const name = ctx.data?.name ?? "";
+    return (
+      <FindableResolve
+        name={name}
+        resolve={(n) => ctx.store.resolveVanityName(n)}
+        // Carry the name into the knock screen so the viewer can report it there.
+        onResolved={(aliasId) => ctx.nav.go("a2-public", { id: aliasId, name })}
+        onClaim={() => ctx.nav.go("b1-claim")}
+        onBack={ctx.nav.back}
+      />
+    );
+  },
 };

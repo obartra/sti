@@ -6,6 +6,7 @@
  */
 
 import type { ResolvedView } from "../ui/public/PublicResolution.tsx";
+import type { VanityReportReason } from "../api/client.ts";
 
 /**
  * A shared passport link, split into the part that reaches the server (the
@@ -46,4 +47,11 @@ export interface PassportStore {
    * the keyless gated path). Fail-closed to `null` like the others.
    */
   resolveVanityName(name: string): Promise<string | null>;
+  /**
+   * Report a public vanity name (doc 17): file an anonymous, rate-limited report
+   * against a name for a fixed reason. Intake never confirms an outcome (volume
+   * alone never removes a name), so this resolves on accept and rejects only on a
+   * real transport failure, which the caller surfaces as "couldn't send".
+   */
+  reportVanityName(name: string, reason: VanityReportReason): Promise<void>;
 }

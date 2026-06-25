@@ -29,6 +29,7 @@ function storeResolving(
     knock,
     redeemGrant,
     resolveVanityName: () => Promise.resolve(null),
+    reportVanityName: () => Promise.resolve(),
   };
 }
 
@@ -71,6 +72,41 @@ describe("PublicResolutionScreen", () => {
       await screen.findByRole("button", { name: "Request access" }),
     );
     expect(knock).toHaveBeenCalledWith(LINK.id);
+  });
+
+  it("offers a report affordance for a findable name and files the chosen reason", async () => {
+    const user = userEvent.setup();
+    const reportName = vi.fn(() => Promise.resolve());
+    render(
+      <PublicResolutionScreen
+        store={storeResolving(null)}
+        link={LINK}
+        name="rob1n"
+        reportName={reportName}
+      />,
+    );
+
+    // The report affordance appears (the viewer arrived via a findable name).
+    await user.click(
+      await screen.findByRole("button", { name: /report this name/i }),
+    );
+    // The report form opens against that name; picking a reason + sending files it.
+    expect(screen.getByText("rob1n")).toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: /slur or hate/i }));
+    await user.click(screen.getByRole("button", { name: /send report/i }));
+
+    expect(reportName).toHaveBeenCalledWith("rob1n", "slur");
+    expect(
+      await screen.findByText(/thanks for the report/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no report affordance for a keyed/sample link (no name)", async () => {
+    render(<PublicResolutionScreen store={storeResolving(null)} link={LINK} />);
+    await screen.findByText("No status shared right now");
+    expect(
+      screen.queryByRole("button", { name: /report this name/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("resolves via an already-approved grant when the link key alone is gray", async () => {

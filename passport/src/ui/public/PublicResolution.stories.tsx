@@ -81,3 +81,13 @@ export const ColdGrayNothing: Story = {
     resolved: null,
   },
 };
+
+// Arrived via a public findable name (doc 17): same gray-nothing + knock, plus the
+// quiet "report this name" affordance under the actions.
+export const FindableNameWithReport: Story = {
+  args: {
+    linkHolder: true,
+    resolved: null,
+    onReport: () => undefined,
+  },
+};
