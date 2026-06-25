@@ -61,12 +61,16 @@ cmp -s "$tmp/payload" "$tmp/got" || fail "alias round-trip bytes differ"
 ecode="$(curl -s -o /dev/null -w '%{http_code}' -X PUT -H 'X-Write-Token: wrong' --data-binary @"$tmp/payload" "$BASE/a/$ALIAS")"
 [ "$ecode" = 403 ] || fail "non-owner overwrite got $ecode, want 403"
 
-# Account sync round-trip + version bump.
+# Account sync round-trip + version bump. PUT/DELETE are write-token-gated like
+# aliases; GET stays open (the blob is encrypted at rest).
 ACCT="$(id)"
-v1="$(curl -s -D - -o /dev/null -X PUT --data 'blob1' "$BASE/acct/$ACCT" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-version"{print $2}')"
+v1="$(curl -s -D - -o /dev/null -X PUT -H 'X-Write-Token: smoke' --data 'blob1' "$BASE/acct/$ACCT" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-version"{print $2}')"
 [ "$v1" = 1 ] || fail "acct version1 = $v1"
-curl -s -X PUT --data 'blob2' "$BASE/acct/$ACCT" >/dev/null
+curl -s -X PUT -H 'X-Write-Token: smoke' --data 'blob2' "$BASE/acct/$ACCT" >/dev/null
 [ "$(curl -fsS "$BASE/acct/$ACCT")" = blob2 ] || fail "acct read-back"
+# A caller who only knows the id (wrong token) cannot overwrite.
+acode="$(curl -s -o /dev/null -w '%{http_code}' -X PUT -H 'X-Write-Token: wrong' --data 'evil' "$BASE/acct/$ACCT")"
+[ "$acode" = 403 ] || fail "non-owner acct overwrite got $acode, want 403"
 
 # Knock is uniform for any id.
 [ "$(curl -fsS -X POST -H 'content-type: application/json' -d '{"requesterHash":"r"}' "$BASE/knock/$MISS")" = '{"status":"received"}' ] || fail "knock"
