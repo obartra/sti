@@ -98,6 +98,13 @@ export interface SessionController {
     profile: OwnerProfile,
   ): Promise<OwnerSession>;
   /**
+   * Enforce link expiry on the current session: revoke + drop any alias/contact
+   * link past its expiry, then return the session with the survivors. A no-op (no
+   * write) when nothing is expired. Mirrors the load-time sweep so an app left open
+   * across an expiry instant doesn't keep a dead link live until the next reload.
+   */
+  sweepExpiredLinks(session: OwnerSession): Promise<OwnerSession>;
+  /**
    * Persist a new owner state (a reported result, a pause), republish every
    * alias so the badge propagates, and return the session with the updated blob.
    */
@@ -382,6 +389,31 @@ async function unlockMaster(
   }
 }
 
+// The thin blob-folding controller delegators: each calls the matching account
+// mutation and wraps the resulting blob back into the session. Split out so
+// createSessionController stays within its length ceiling.
+function blobMethods(
+  accounts: AccountManager,
+): Pick<
+  SessionController,
+  "setProfile" | "setOwnerState" | "sweepExpiredLinks"
+> {
+  return {
+    setProfile: async (session, profile) => ({
+      master: session.master,
+      blob: await accounts.setProfile(session.master, profile),
+    }),
+    setOwnerState: async (session, state) => ({
+      master: session.master,
+      blob: await accounts.setOwnerState(session.master, state),
+    }),
+    sweepExpiredLinks: async (session) => ({
+      master: session.master,
+      blob: await accounts.sweepExpiredLinks(session.master),
+    }),
+  };
+}
+
 export function createSessionController(deps: SessionDeps): SessionController {
   const { accounts, sync, devices, passkey, api } = deps;
 
@@ -422,15 +454,7 @@ export function createSessionController(deps: SessionDeps): SessionController {
       });
     },
 
-    async setProfile(session, profile) {
-      const blob = await accounts.setProfile(session.master, profile);
-      return { master: session.master, blob };
-    },
-
-    async setOwnerState(session, state) {
-      const blob = await accounts.setOwnerState(session.master, state);
-      return { master: session.master, blob };
-    },
+    ...blobMethods(accounts),
 
     shareLink(session, identity = "anonymous") {
       return shareLinkFor(api, accounts, session, identity);
