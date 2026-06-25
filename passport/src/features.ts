@@ -17,11 +17,16 @@ export const WALLET_ENABLED = false;
 /**
  * FINDABLE (doc 17, the vanity-name reach mode): the registration UI, the
  * onboarding "Findable" option, and the resolve→knock handoff are built behind
- * this. It stays off until the launch gate is met (consent disclosure shipped,
- * blocklist curated) AND the server's STI_FINDABLE_ENABLED is flipped on the box.
- * Flipping this true client-side without the server flag would let people try to
- * register names the server refuses, so the two move together at launch (F6).
+ * this. This is the F6 launch flip (true).
+ *
+ * Launch coupling: this MUST go live together with the server's
+ * STI_FINDABLE_ENABLED (set on the box) and a populated blocklist.txt. With this
+ * true but the server flag off, the client shows the Findable UI while the write
+ * endpoints 405, so registration just fails. With both on but the blocklist empty,
+ * the public name directory launches with no proactive slur/abuse filter, leaving
+ * only reactive report-and-takedown. So this PR ships behind the operator enabling
+ * the server flag AND curating blocklist.txt (doc 17 launch gate), not before.
  */
-// Widened to `boolean` (not the literal `false`) so the `if (FINDABLE_ENABLED)`
-// gate isn't flagged as an always-falsy dead branch; it flips to true at F6.
-export const FINDABLE_ENABLED = false as boolean;
+// Kept widened to `boolean` (not the literal `true`) so the `if (FINDABLE_ENABLED)`
+// gate's other branch isn't flagged as dead code.
+export const FINDABLE_ENABLED = true as boolean;
