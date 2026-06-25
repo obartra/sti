@@ -158,10 +158,8 @@ export function Promises() {
           Our promises
         </h1>
         <p style={{ margin: 0, fontSize: 14, color: "var(--text-body)" }}>
-          Plain-English guarantees about your privacy. Every one is backed by an
-          automated test that fails our build if the guarantee ever breaks. Open
-          any promise to see exactly what we check, and where a limit is honest
-          rather than enforced.
+          Each one is backed by a test that fails our build the moment it stops
+          being true.
         </p>
       </Card>
 
@@ -177,7 +175,7 @@ export function Promises() {
           lineHeight: 1.5,
         }}
       >
-        {`A "tested" tag means an automated check pins the guarantee on every build. "by design" marks an honest limit or a structural property we state plainly rather than overclaim.`}
+        {`"tested" is enforced by a check on every build. "by design" is an honest limit, stated not hidden.`}
       </p>
     </div>
   );

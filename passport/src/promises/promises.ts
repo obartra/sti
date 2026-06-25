@@ -172,7 +172,7 @@ export const PROMISES: readonly UserPromise[] = [
       },
       {
         claim:
-          "Asking the server to wake a device does identical work whether or not the device is known, so the timing reveals nothing.",
+          "The server does the same work for a real notification and for noise, so it never learns who was notified.",
         backedBy: {
           kind: "test",
           file: "../server/internal/server/notify_test.go",
@@ -215,14 +215,6 @@ export const PROMISES: readonly UserPromise[] = [
           name: "TestRepublishSpreadsAcrossWindow",
         },
       },
-      {
-        claim:
-          "Our server does receive your batch of updates together, but it is the blind party and can read none of it.",
-        backedBy: {
-          kind: "reasoning",
-          why: "A stated trust boundary (doc 18): the blind, IP-stripped origin sees the grouping but no content; not something a client test can assert away.",
-        },
-      },
     ],
   },
   {
@@ -243,7 +235,7 @@ export const PROMISES: readonly UserPromise[] = [
       },
       {
         claim:
-          "Looking someone up by a findable name hands off without a key in the web address (a keyless knock).",
+          "Looking someone up by a findable name never carries a key in the web address.",
         backedBy: {
           kind: "test",
           file: "src/ui/app/screens/publicScreens.test.tsx",
