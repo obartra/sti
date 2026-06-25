@@ -67,6 +67,9 @@ A dedicated, gated route (`/admin`) in the existing app, isolated from the user 
 - **v1 panel — Findable review (doc 17 §146):** the queue of reported vanity names not auto-actioned,
   each with the reported name, the report reason, and two one-click actions: **Take down** (revoke →
   24h lock) or **Dismiss**. Volume is shown but never auto-acts.
+- **Activity panel (A4):** a read-only tail of recent admin actions (action, target, time), newest
+  first. This makes the audit log's "reconstructable" promise usable from the page instead of only via
+  SQLite on the box. Read-only, no actions; the same opaque rows the log already stores.
 - **Built to grow:** the page is a shell with panels, so the next tasks (account disable, alias revoke,
   metadata lookup by id) drop in as additional panels without re-architecting.
 
@@ -77,6 +80,10 @@ chrome and is never linked from the app.
 
 - `GET /admin/ping` — 204 if the token is valid (page gate).
 - `GET /admin/reports` — pending vanity-name reports (name, reason, count, created_at). Opaque only.
+- `GET /admin/audit` — the most recent admin actions (action verb, opaque target, timestamp), newest
+  first, capped. A read, so not itself audited. The read surface for the audit log the rest of the doc
+  leans on for "reconstructable"; without it the log is reachable only by querying SQLite on the box.
+  Opaque only (a fixed verb + an id/name + a time), never user content.
 - `POST /admin/vanity/{name}/takedown` — revoke the name's alias mapping → 24h lock (doc 17 lifecycle).
 - `POST /admin/vanity/{name}/dismiss` — clear the report(s) without action.
 - **Next (post-v1, same pattern):** `POST /admin/account/{id}/disable` (working-delete the blob +
@@ -106,3 +113,8 @@ Every mutation writes an audit row and returns a uniform shape; none returns pla
    knock just fails) and re-running revoke, idempotent on both halves, completes it. The audit row is
    written before either step, so the attempt is always recorded. The endpoints ship first; the panel
    drops into the authed shell next, like A2.
+4. **A4 — Activity (audit read):** `GET /admin/audit` over the existing `RecentAudits` store reader,
+   plus a read-only Activity panel in the authed shell. Closes the loop the audit log opened in A1: the
+   log was always written but had no read surface. A single capped fetch (like `/admin/reports`), no
+   cursor in v1 — admin actions are rare, so the recent window is enough; pagination can come later if
+   the volume ever warrants it.

@@ -180,6 +180,49 @@ func TestAdminCORSAllowsAuthorization(t *testing.T) {
 	}
 }
 
+// GET /admin/audit returns recent admin actions newest-first (doc 20 A4), authed
+// only, and is itself a read (writes no audit row).
+func TestAdminAudit(t *testing.T) {
+	h, st := newTestAdminServer(t, testAdminToken)
+	ctx := context.Background()
+
+	if err := st.AppendAudit(ctx, "vanity.takedown", "robin", 100); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.AppendAudit(ctx, "account.disable", "acc1", 200); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest("GET", contract.PathAdminAudit, nil)
+	req.Header.Set("Authorization", "Bearer "+testAdminToken)
+	rec := do(h, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("audit: %d", rec.Code)
+	}
+	var resp contract.AdminAuditResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	// Newest first: account.disable (id 2) before vanity.takedown (id 1).
+	if len(resp.Entries) != 2 {
+		t.Fatalf("entries = %d, want 2", len(resp.Entries))
+	}
+	if resp.Entries[0].Action != "account.disable" || resp.Entries[0].Target != "acc1" || resp.Entries[0].CreatedAt != 200 {
+		t.Fatalf("entry0 = %+v", resp.Entries[0])
+	}
+	if resp.Entries[1].Action != "vanity.takedown" || resp.Entries[1].Target != "robin" {
+		t.Fatalf("entry1 = %+v", resp.Entries[1])
+	}
+	// Reading the audit log writes no audit row of its own.
+	if a, _ := st.RecentAudits(ctx, 10); len(a) != 2 {
+		t.Fatalf("audit read recorded an audit row: %+v", a)
+	}
+	// An unauthed read is 401.
+	if rec := do(h, httptest.NewRequest("GET", contract.PathAdminAudit, nil)); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("audit no auth: %d, want 401", rec.Code)
+	}
+}
+
 // The Findable review flow over the admin endpoints: the queue lists reported
 // names (authed), takedown revokes the name + clears its reports + writes an audit
 // row, and dismiss clears reports without revoking. Reads stay unauthed-rejected.

@@ -34,6 +34,10 @@ const (
 // small in practice; a high bound keeps it a single fetch without unbounded reads.
 const adminReportsLimit = 200
 
+// adminAuditLimit caps the recent-activity page (doc 20 A4). Admin actions are
+// rare, so the most recent window is a single fetch; pagination can come later.
+const adminAuditLimit = 200
+
 // registerAdminRoutes mounts the operator surface, but ONLY when it is enabled.
 // When disabled (the default) nothing is registered, so every /admin path is a
 // bare 404 from the mux and the surface cannot even be probed for existence.
@@ -45,6 +49,8 @@ func (s *Server) registerAdminRoutes() {
 	// Findable review (doc 17/20 A2): the report queue and the two one-click
 	// reviewer actions. Both mutations are audited; volume never auto-acts.
 	s.mux.HandleFunc("GET "+contract.PathAdminReports, s.requireAdmin(s.handleAdminReports))
+	// Recent admin activity (doc 20 A4): a read-only tail of the audit log.
+	s.mux.HandleFunc("GET "+contract.PathAdminAudit, s.requireAdmin(s.handleAdminAudit))
 	s.mux.HandleFunc("POST /admin/vanity/{name}/takedown", s.requireAdmin(s.handleVanityTakedown))
 	s.mux.HandleFunc("POST /admin/vanity/{name}/dismiss", s.requireAdmin(s.handleVanityDismiss))
 	// Account / alias management (doc 20 A3): all within the blind-store boundary —
@@ -145,6 +151,23 @@ func (s *Server) handleAdminReports(w http.ResponseWriter, r *http.Request) {
 		out[i] = contract.AdminReport{Name: v.Name, Reason: v.Reason, Count: v.Count, CreatedAt: v.CreatedAt}
 	}
 	s.writeJSON(w, http.StatusOK, contract.AdminReportsResponse{Reports: out})
+}
+
+// handleAdminAudit answers GET /admin/audit: the most recent admin actions, newest
+// first (doc 20 A4). A read, so it is not itself audited (only mutations and the
+// session ping are). Opaque only: a fixed action verb plus an id/name target and a
+// timestamp, never user content, so it stays within the blind-store boundary.
+func (s *Server) handleAdminAudit(w http.ResponseWriter, r *http.Request) {
+	entries, err := s.st.RecentAudits(r.Context(), adminAuditLimit)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	out := make([]contract.AdminAuditEntry, len(entries))
+	for i, e := range entries {
+		out[i] = contract.AdminAuditEntry{Action: e.Action, Target: e.Target, CreatedAt: e.CreatedAt}
+	}
+	s.writeJSON(w, http.StatusOK, contract.AdminAuditResponse{Entries: out})
 }
 
 // handleVanityTakedown answers POST /admin/vanity/{name}/takedown: the reviewer

@@ -1,7 +1,8 @@
 import type { Decorator, Meta, StoryObj } from "@storybook/react-vite";
 import { AdminPage } from "./AdminPage.tsx";
-import type { AdminPingResult } from "./adminApi.ts";
+import type { AdminAuditEntry, AdminPingResult } from "./adminApi.ts";
 import type { ReviewOps } from "./ReviewPanel.tsx";
+import type { AuditOps } from "./ActivityPanel.tsx";
 
 // The operator surface (doc 20): a dedicated, gated /admin page isolated from the
 // user flows. The stories stub the token validator and the review transport so the
@@ -30,6 +31,25 @@ const reviewOps = (
   act: () => Promise.resolve("ok"),
 });
 
+const auditOps = (entries: AdminAuditEntry[]): AuditOps => ({
+  list: () => Promise.resolve({ kind: "ok", entries }),
+});
+
+// Fixed UTC instants so the Activity panel's timestamps are deterministic.
+const SAMPLE_AUDIT: AdminAuditEntry[] = [
+  {
+    action: "vanity.takedown",
+    target: "free_money",
+    createdAt: Date.UTC(2026, 5, 25, 14, 30, 0),
+  },
+  {
+    action: "account.disable",
+    target: "kQ3xa9c2",
+    createdAt: Date.UTC(2026, 5, 24, 9, 5, 0),
+  },
+  { action: "ping", target: "", createdAt: Date.UTC(2026, 5, 24, 9, 4, 0) },
+];
+
 // Pre-seed a token so the page validates it on mount and lands authed without
 // interaction (the key is the one adminToken.ts uses).
 const seedToken: Decorator = (Story) => {
@@ -42,7 +62,8 @@ export const LockGate: Story = {
   args: { ping: always("ok") },
 };
 
-// The authed shell with a couple of reported names in the review queue.
+// The authed shell with a couple of reported names in the review queue and a few
+// recent actions in the activity log below it.
 export const AuthedWithReports: Story = {
   args: {
     ping: always("ok"),
@@ -50,12 +71,17 @@ export const AuthedWithReports: Story = {
       { name: "rob1n", reason: "impersonation", count: 3, createdAt: 1 },
       { name: "free_money", reason: "spam", count: 1, createdAt: 2 },
     ]),
+    auditOps: auditOps(SAMPLE_AUDIT),
   },
   decorators: [seedToken],
 };
 
-// The authed shell with an empty queue (the all-clear state).
+// The authed shell with an empty queue and no recorded activity (the all-clear).
 export const AuthedEmpty: Story = {
-  args: { ping: always("ok"), reviewOps: reviewOps([]) },
+  args: {
+    ping: always("ok"),
+    reviewOps: reviewOps([]),
+    auditOps: auditOps([]),
+  },
   decorators: [seedToken],
 };
