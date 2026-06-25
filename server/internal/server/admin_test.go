@@ -234,7 +234,11 @@ func TestAdminFindableReview(t *testing.T) {
 		t.Fatalf("takedown not audited: %+v", a)
 	}
 
-	// Dismiss: clears a name's reports without revoking, and is audited.
+	// Dismiss: clears a name's reports without revoking, and is audited. The name is
+	// registered so the read-side queue surfaces it (only live names are actionable).
+	if _, err := st.ClaimVanityName(ctx, "alice", strings.Repeat("B", 43), 250); err != nil {
+		t.Fatal(err)
+	}
 	if err := st.AddVanityReport(ctx, "alice", contract.ReportSpam, 300); err != nil {
 		t.Fatal(err)
 	}

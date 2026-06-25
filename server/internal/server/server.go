@@ -513,6 +513,14 @@ func (s *Server) handleVanityRelease(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
 		return
 	}
+	// Drop any reports for the now-released name: they were about this registration,
+	// and the read-side queue would hide them anyway, so clearing keeps the table to
+	// live reports only. Best-effort, like the auto-takedown clear; a log hiccup
+	// never fails the owner's release.
+	if err := s.st.ClearVanityReports(r.Context(), name); err != nil {
+		s.metrics.Error(metrics.ErrStore)
+		s.log.Error("vanity release clear reports", "err", err)
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
