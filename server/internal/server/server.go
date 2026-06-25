@@ -552,8 +552,11 @@ func (s *Server) handleVanityReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Hands-free auto-action on an objective rule match only (reserved/blocked).
-	// Recorded in the audit log too (best-effort), so every takedown — admin or
-	// automated — is reconstructable; the public request never fails on a log hiccup.
+	// Recorded in the audit log too (best-effort), so every takedown (admin or
+	// automated) is reconstructable; the public request never fails on a log hiccup.
+	// Audit is written after a successful release on purpose: this best-effort path
+	// records only takedowns that happened (no false rows), unlike the admin
+	// handlers, which audit BEFORE acting so an audit-store failure blocks the act.
 	if vanityname.Reserved(name) || vanityname.Blocked(name) {
 		if err := s.st.ReleaseVanityName(r.Context(), name, s.now(), s.cfg.VanityLockWindow.Milliseconds()); err != nil {
 			s.metrics.Error(metrics.ErrStore)
@@ -830,7 +833,7 @@ func (s *Server) handleKnock(w http.ResponseWriter, r *http.Request) {
 
 // handleKnockReview lets the alias OWNER read the count of current knocks on one
 // of their aliases, authorized by the write token (the same capability that
-// authorizes PUT). Unlike POST /knock this is NOT existence-uniform — but a wrong
+// authorizes PUT). Unlike POST /knock this is NOT existence-uniform, but a wrong
 // or missing token returns 403 for both a real and a nonexistent alias, so it
 // still never reveals whether an alias exists to someone who lacks the token.
 func (s *Server) handleKnockReview(w http.ResponseWriter, r *http.Request) {
