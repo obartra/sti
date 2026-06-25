@@ -101,6 +101,15 @@ export default tseslint.config(
     },
   },
 
+  // A static wordlist data table (doc 15 pseudonym lists): one entry per line, sized
+  // for unlinkability, so the length is the data, not complexity.
+  {
+    files: ["src/lib/pseudonymWords.ts"],
+    rules: {
+      "max-lines": "off",
+    },
+  },
+
   // Stories enumerate every component state; the length is the point.
   {
     files: ["**/*.stories.{ts,tsx}"],

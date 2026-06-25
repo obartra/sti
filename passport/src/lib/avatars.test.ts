@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   pseudonymFor,
+  PSEUDONYM_ADJECTIVES,
+  PSEUDONYM_NOUNS,
   avatarFor,
   avatarSrc,
   randomAvatar,
@@ -57,9 +59,32 @@ describe("pseudonymFor (doc 15 id-derived handle)", () => {
 
   it("collides rarely across distinct ids (the unlinkability separator)", () => {
     const seen = new Set(ids.map(pseudonymFor));
-    // 1000 random ids over a ~10^5 space: by the birthday bound only a handful of
-    // collisions is expected, so the vast majority stay distinct.
-    expect(seen.size).toBeGreaterThan(ids.length * 0.97);
+    // 1000 random ids over a ~6.5M space (256 x 256 x 100): by the birthday bound a
+    // full collision is very unlikely, so essentially all stay distinct.
+    expect(seen.size).toBeGreaterThan(ids.length * 0.99);
+  });
+
+  it("shares a word pair rarely, even ignoring the numeric suffix", () => {
+    // The suffix guards full collisions; the WORD PAIR is the real correlation hint,
+    // so it must rarely repeat across one owner's aliases. Over 1000 ids and ~65k
+    // word pairs the birthday bound still keeps repeats to a small handful.
+    const pairs = ids.map((id) => pseudonymFor(id).replace(/_\d{2}$/, ""));
+    const distinct = new Set(pairs).size;
+    expect(distinct).toBeGreaterThan(ids.length * 0.95);
+  });
+
+  it("draws on the doc 15 sized wordlists: 256 unique, lowercase, each", () => {
+    // Doc 15 sizes the pseudonym for unlinkability (~10^5 word pairs). Pin the lists
+    // so a future trim, a duplicate, or a stray non-handle character fails here rather
+    // than silently shrinking the separator. The byte-slice indexing also assumes 256.
+    for (const [label, list] of [
+      ["adjectives", PSEUDONYM_ADJECTIVES],
+      ["nouns", PSEUDONYM_NOUNS],
+    ] as const) {
+      expect(list, label).toHaveLength(256);
+      expect(new Set(list).size, `${label} unique`).toBe(256);
+      for (const w of list) expect(w, `${label} entry`).toMatch(/^[a-z]+$/);
+    }
   });
 });
 
