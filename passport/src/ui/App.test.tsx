@@ -11,7 +11,6 @@ import type {
 } from "../store/index.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
-import { mintNotify } from "../store/index.ts";
 
 // End-to-end of the UI wiring: a real shared link in the URL routes through
 // parseAliasLink -> useAppRouter -> Chrome -> the a2-public screen ->
@@ -45,9 +44,6 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
     state: { ...INITIAL_OWNER_STATE, onPrep: opts.onPrep ?? false },
     avatar: DEFAULT_AVATAR,
     sharingMode: "link",
-    // Real accounts always mint a notify inbox at signup; carry one so the
-    // partner-notify channel (keyed on the inbox id) behaves as in production.
-    myNotify: mintNotify(),
   };
   return {
     signUp: (handle) => {

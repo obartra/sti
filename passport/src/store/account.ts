@@ -33,7 +33,6 @@ import {
   type FindableRegistration,
   type SharingMode,
 } from "./accountBlob.ts";
-import { mintNotify, type NotifyCapability } from "./notifyInbox.ts";
 import { normalizeCircleMembers } from "./circles.ts";
 
 /** The owner's presentation profile: avatar plus the account sharing default. */
@@ -78,14 +77,6 @@ export interface AccountManager {
   upsertCircle(master: Bytes, circle: CircleRecord): Promise<AccountBlob>;
   /** Drop a circle by id. Purely local; the server never knew it existed. */
   removeCircle(master: Bytes, circleId: string): Promise<AccountBlob>;
-  /**
-   * Return the account's notify capability, minting and persisting one if the
-   * account predates myNotify. The capability is stable once set. Used by the
-   * contact-link exchange, where both sides need a guaranteed myNotify.
-   */
-  ensureMyNotify(
-    master: Bytes,
-  ): Promise<{ blob: AccountBlob; myNotify: NotifyCapability }>;
   /**
    * Delete the account: revoke every published alias (so no shared link can ever
    * resolve to a status again) and remove the account blob. "Working delete"
@@ -132,9 +123,9 @@ export interface AccountManager {
   sweepExpiredLinks(master: Bytes): Promise<AccountBlob>;
 }
 
-// A brand-new account: empty links, default avatar, private (link) sharing, and a
-// freshly minted notify identity (doc 13 slice 5). Onboarding updates the avatar
-// and sharing default via setProfile; myNotify is minted once here and stays put.
+// A brand-new account: empty links, default avatar, private (link) sharing. The
+// notify inbox is no longer account-level; each contact gets its own at link time
+// (doc 13). Onboarding updates the avatar and sharing default via setProfile.
 function freshBlob(handle: string): AccountBlob {
   return {
     handle,
@@ -143,7 +134,6 @@ function freshBlob(handle: string): AccountBlob {
     state: INITIAL_OWNER_STATE,
     avatar: DEFAULT_AVATAR,
     sharingMode: "link",
-    myNotify: mintNotify(),
   };
 }
 
@@ -212,24 +202,6 @@ function withFindableAlias(
     aliases: [...blob.aliases.filter((a) => a.id !== alias.id), alias],
     findable,
   };
-}
-
-// Return the account's notify capability, minting and persisting one if absent.
-async function ensureMyNotifyOn(
-  sync: AccountSync,
-  master: Bytes,
-): Promise<{ blob: AccountBlob; myNotify: NotifyCapability }> {
-  const blob = await sync.load(master);
-  if (blob === null) {
-    throw new Error("account does not exist for this key");
-  }
-  if (blob.myNotify !== undefined) {
-    return { blob, myNotify: blob.myNotify };
-  }
-  const myNotify = mintNotify();
-  const next = { ...blob, myNotify };
-  await sync.save(master, next);
-  return { blob: next, myNotify };
 }
 
 // A link with an expiry is expired once now reaches its instant; a null/absent
@@ -406,8 +378,6 @@ export function createAccountManager(api: ApiClient): AccountManager {
     removeCircle(master, circleId) {
       return modify(master, (blob) => withCircleRemoved(blob, circleId));
     },
-
-    ensureMyNotify: (master) => ensureMyNotifyOn(sync, master),
 
     async deleteAccount(master) {
       const blob = await sync.load(master);

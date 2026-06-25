@@ -1,14 +1,14 @@
 /**
- * The push context the service worker reads on a wake: the api base + this device's
- * notify capability, so the worker can poll+decrypt its own inbox in the background
+ * The push context the service worker reads on a wake: the api base + the owner's
+ * per-contact notify inboxes, so the worker can poll+decrypt them in the background
  * (the app, foreground, has these in memory; the worker needs them at rest).
  *
  * Stored in IndexedDB because a service worker cannot read localStorage. This is the
- * deliberate, user-approved trade (doc 13 slice 7): the inbox capability lives at
- * rest outside the master-encrypted blob so a closed-app push can work. It is a
- * single, lower-sensitivity capability (it can read/clear the contentless "pending
- * nudge" bit, never who/what/when); the app writes it on push-enable and clears it
- * on disable.
+ * deliberate, user-approved trade (doc 13 slice 7): the inbox capabilities live at
+ * rest outside the master-encrypted blob so a closed-app push can work. They are
+ * lower-sensitivity capabilities (they can read/clear the contentless "pending
+ * nudge" bit, never who/what/when); the app writes the set on push-enable and clears
+ * it on disable.
  */
 
 import type { NotifyCapability } from "../store/notifyInbox.ts";
@@ -16,8 +16,11 @@ import type { NotifyCapability } from "../store/notifyInbox.ts";
 export interface PushContext {
   /** The api origin the worker calls (same value as the app's API_BASE_URL). */
   readonly apiBase: string;
-  /** This device's own notify capability (inbox id + key + write + routing token). */
-  readonly cap: NotifyCapability;
+  /**
+   * The owner's per-contact receiving inboxes (doc 13). One per contact, so a
+   * background wake polls them all (any real ping shows the contentless nudge).
+   */
+  readonly caps: readonly NotifyCapability[];
 }
 
 const DB_NAME = "sti-push";

@@ -185,16 +185,18 @@ describe("owner session against a live blind store", () => {
       ),
     );
 
-    // Each side holds the other's notify capability (the right way round).
-    expect(aContact.theirNotify).toEqual(accept.session.blob.myNotify);
-    expect(bContact.theirNotify).toEqual(invite.session.blob.myNotify);
+    // Each side holds the OTHER's per-contact inbox as theirNotify, and its own copy
+    // as myInbox: A's theirNotify for B is exactly B's myInbox for A, and vice-versa.
+    expect(aContact.theirNotify).toEqual(bContact.myInbox);
+    expect(bContact.theirNotify).toEqual(aContact.myInbox);
 
-    // And the notify path works: A notifies B, whose inbox decrypts the ping.
-    const bNotify = bSession.blob.myNotify;
-    if (bNotify === undefined) throw new Error("B has no notify identity");
+    // And the notify path works: A notifies B by writing to B's inbox-for-A, and B
+    // receives it by polling that same inbox (its own myInbox for A).
+    const bInboxForA = bContact.myInbox;
+    if (bInboxForA === undefined) throw new Error("B has no inbox for A");
     const sent = await lockNotifyDraft(a.api, aDone.blob, [aContact.id]);
     expect(sent.sent).toEqual([aContact.id]);
-    const ping = await pollInbox(b.api, bNotify);
+    const ping = await pollInbox(b.api, bInboxForA);
     if (ping === null) throw new Error("expected B to receive the ping");
     expect(parsePartnerPing(ping)?.kind).toBe("partner-notify");
   });
@@ -216,7 +218,7 @@ describe("owner session against a live blind store", () => {
     // A return whose ref matches no pending contact is a no-op.
     const noMatch = await a.ctl.ingestContactReturn(invite.session, {
       alias: { id: "Z".repeat(43), key: "Y".repeat(43) },
-      notify: invite.session.blob.myNotify ?? parsed.notify,
+      notify: parsed.notify,
       ref: "W".repeat(43),
     });
     expect(noMatch.blob.contacts).toEqual(invite.session.blob.contacts);
@@ -291,18 +293,35 @@ describe("owner session against a live blind store", () => {
     const { ctl } = controller(fakePasskey());
     const accounts = createAccountManager(createApiClient(baseUrl));
 
-    // The recipient: a fresh account mints its own notify inbox (myNotify).
-    const { session: recipient } = await ctl.signUp("ada");
-    const recipientNotify = recipient.blob.myNotify;
-    if (recipientNotify === undefined) {
-      throw new Error("expected a minted myNotify on a fresh account");
-    }
+    // The recipient (ada) holds a contact whose per-contact inbox is how THAT contact
+    // nudges her; she polls every such inbox for a ping. The inbox the sender will
+    // write to is exactly this contact's myInbox.
+    const { session: ada } = await ctl.signUp("ada");
+    const adaInboxForBen = mintNotify();
+    const recipientContact: ContactRecord = {
+      id: randomAliasId(),
+      label: "ben",
+      createdDay: todayEpochDay(),
+      expiresAt: null,
+      alias: {
+        id: randomAliasId(),
+        writeToken: randomWriteToken(),
+        key: bytesToBase64url(crypto.getRandomValues(new Uint8Array(32))),
+        isPublic: false,
+      },
+      myInbox: adaInboxForBen,
+    };
+    const recipientBlob = await accounts.addContact(
+      ada.master,
+      recipientContact,
+    );
+    const recipient = { master: ada.master, blob: recipientBlob };
 
-    // Before any ping the recipient's own inbox poll is an existence-uniform decoy.
+    // Before any ping the poll over her inboxes is an existence-uniform decoy.
     expect(await ctl.hasPartnerNudge(recipient)).toBe(false);
 
-    // The sender holds the recipient as a linked contact (its theirNotify IS the
-    // recipient's myNotify) and reports a positive.
+    // The sender (ben) holds ada as a linked contact; his theirNotify IS ada's inbox
+    // for him. He reports a positive, notifying every contact.
     const { session: sender } = await ctl.signUp("ben");
     const contact: ContactRecord = {
       id: randomAliasId(),
@@ -315,7 +334,7 @@ describe("owner session against a live blind store", () => {
         key: bytesToBase64url(crypto.getRandomValues(new Uint8Array(32))),
         isPublic: false,
       },
-      theirNotify: recipientNotify,
+      theirNotify: adaInboxForBen,
     };
     const senderBlob = await accounts.addContact(sender.master, contact);
     await ctl.notifyContactsOfPositive({
@@ -323,7 +342,7 @@ describe("owner session against a live blind store", () => {
       blob: senderBlob,
     });
 
-    // The recipient now finds the contentless nudge on its own inbox poll.
+    // The recipient now finds the contentless nudge on her per-contact inbox poll.
     expect(await ctl.hasPartnerNudge(recipient)).toBe(true);
   });
 

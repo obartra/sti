@@ -17,6 +17,7 @@ import {
   type ContactRecord,
 } from "./accountBlob.ts";
 import { contactInviteUrl, type ContactInvite } from "./contactInvite.ts";
+import { mintNotify } from "./notifyInbox.ts";
 import { primaryShareAlias } from "./findableOps.ts";
 import {
   deriveAliasCard,
@@ -65,7 +66,10 @@ export async function mintContactLink(
   const expiresAt = expiryFor(
     opts.durationMs === undefined ? CONTACT_LINK_MS : opts.durationMs,
   );
-  const { myNotify } = await accounts.ensureMyNotify(session.master);
+  // A fresh receiving inbox for THIS contact only, handed to them in the invite. Not
+  // a shared account inbox: per-contact is what keeps two of the owner's links
+  // uncorrelatable by a recipient who holds both (doc 13).
+  const myInbox = mintNotify();
   const nowDay = todayEpochDay();
   const stamp = (rec: AliasRecord): AliasRecord =>
     withIdentity(rec, identity, session.blob);
@@ -80,12 +84,13 @@ export async function mintContactLink(
     createdDay: nowDay,
     expiresAt,
     alias: stamp(record),
+    myInbox,
   };
   const blob = await accounts.addContact(session.master, contact);
   return {
     session: { master: session.master, blob },
     contact,
-    url: contactInviteUrl(record, myNotify),
+    url: contactInviteUrl(record, myInbox),
   };
 }
 
@@ -106,7 +111,7 @@ export async function acceptContactInvite(
   if (invite.ref !== undefined) {
     throw new Error("cannot accept a return invite");
   }
-  const { myNotify } = await accounts.ensureMyNotify(session.master);
+  const myInbox = mintNotify();
   const nowDay = todayEpochDay();
   const stamp = (rec: AliasRecord): AliasRecord =>
     withIdentity(rec, identity, session.blob);
@@ -122,6 +127,7 @@ export async function acceptContactInvite(
     createdDay: nowDay,
     expiresAt,
     alias: stamp(record),
+    myInbox,
     theirNotify: invite.notify,
     theirStatusAlias: invite.alias,
   };
@@ -129,7 +135,7 @@ export async function acceptContactInvite(
   return {
     session: { master: session.master, blob },
     contact,
-    url: contactInviteUrl(record, myNotify, invite.alias.id),
+    url: contactInviteUrl(record, myInbox, invite.alias.id),
   };
 }
 

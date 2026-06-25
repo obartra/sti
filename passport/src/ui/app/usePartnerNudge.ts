@@ -3,9 +3,10 @@ import type { OwnerSession, SessionController } from "../../store/index.ts";
 
 /**
  * Owner-pull partner-notify nudge (doc 13, recipient side). A linked contact who
- * reports a positive writes one contentless ping to this device's notify inbox;
- * this hook polls for it and exposes a single boolean: should the notifications
- * feed show the standard "a recent contact suggests getting tested" row.
+ * reports a positive writes one contentless ping to the owner's per-contact inbox
+ * for them; this hook polls every such inbox and exposes a single boolean: should
+ * the notifications feed show the standard "a recent contact suggests getting
+ * tested" row.
  *
  * The ping carries no who/when/what, so there is nothing to read past its
  * presence. Dismiss is session-scoped on purpose: the server is blind to a read,
@@ -21,10 +22,21 @@ export function usePartnerNudge(
   const [present, setPresent] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
-  // Key the auto-pull on the inbox id, not the session object, so a routine state
-  // edit (report, pause) doesn't refetch; only login / logout / an account swap
-  // (a different inbox, or none) does.
-  const inboxKey = session?.blob.myNotify?.inboxId ?? "";
+  // Key the auto-pull on the session's identity plus the set of per-contact inbox
+  // ids, not the session object, so a routine state edit (report, pause) doesn't
+  // refetch; only login / logout / an account swap / a change to which contacts
+  // exist does. The handle gives a login/swap trigger even for an account with no
+  // contacts yet (whose inbox set is empty); the inbox ids trigger on a new link.
+  const inboxKey =
+    session === null
+      ? ""
+      : [
+          session.blob.handle,
+          ...session.blob.contacts
+            .map((c) => c.myInbox?.inboxId ?? "")
+            .filter((id) => id !== "")
+            .sort(),
+        ].join("|");
 
   const refresh = useCallback(() => {
     if (session === null) {

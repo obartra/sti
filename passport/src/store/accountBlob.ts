@@ -42,7 +42,14 @@ import type { NotifyCapability } from "./notifyInbox.ts";
 // v11 adds the optional `findable` registration (doc 17): the public vanity name
 // the owner claimed plus the id of the dedicated alias it resolves to. Absent on a
 // pre-Findable account, and whenever the owner currently has no name.
-const SCHEMA_VERSION = 11;
+//
+// v12 moves the notify inbox per contact (doc 13): the single account-level
+// `myNotify` is gone; each contact carries the owner's own `myInbox` (the inbox
+// THAT contact nudges the owner through), minted fresh per link. One shared inbox
+// let a recipient with two of the owner's links correlate them to one owner; a
+// per-contact inbox does not. There are no real older accounts, so the version is
+// parsed exclusively and an older blob fails the strict check (see below).
+const SCHEMA_VERSION = 12;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -95,6 +102,14 @@ export interface ContactRecord {
   readonly expiresAt: number | null;
   /** The private alias this contact resolves; always isPublic=false. */
   readonly alias: AliasRecord;
+  /**
+   * The owner's OWN receiving inbox dedicated to THIS contact (doc 13): minted
+   * fresh per contact and handed only to them, so it is the capability this one
+   * contact uses to nudge the owner. Per-contact (not one shared inbox) is what
+   * stops a recipient who holds two of the owner's links from correlating them to a
+   * single owner. The owner polls every contact's `myInbox` to receive nudges.
+   */
+  readonly myInbox?: NotifyCapability;
   /**
    * The contact's notify capability, received when the link exchange completed.
    * Present only once exchanged; absent means this contact cannot yet be notified.
@@ -157,12 +172,6 @@ export interface AccountBlob {
   readonly avatar: AvatarConfig;
   /** The account-level sharing default chosen at onboarding. */
   readonly sharingMode: SharingMode;
-  /**
-   * The owner's own notify capability: their inbox (where contacts write pings) and
-   * routing token (how a wake reaches them). Minted once at signup and stable.
-   * Optional so pre-v6 construction sites stay valid; minted lazily where needed.
-   */
-  readonly myNotify?: NotifyCapability;
   /**
    * Client-side contact bundles (doc 13 slice 6). Optional so pre-v7 construction
    * sites stay valid; absent means no circles. Never sent to the server.
@@ -233,7 +242,7 @@ function isMsOrNull(x: unknown): boolean {
 }
 
 // A notify capability is four base64url tokens (inbox id, write token, key, and
-// routing token), each id-shaped. Used for both myNotify and a contact's theirNotify.
+// routing token), each id-shaped. Used for a contact's myInbox and theirNotify.
 function isNotifyCapability(x: unknown): x is NotifyCapability {
   if (typeof x !== "object" || x === null) return false;
   const r = x as Record<string, unknown>;
@@ -270,10 +279,12 @@ function isOptionalStatusAlias(x: unknown): boolean {
   return x === undefined || isStatusAlias(x);
 }
 
-// The alias plus the two optional exchange capabilities on a contact.
+// The alias plus the optional exchange capabilities on a contact: the owner's own
+// per-contact inbox, the contact's notify capability, and the read-only status alias.
 function hasValidContactAliases(r: Record<string, unknown>): boolean {
   return (
     isAliasRecord(r.alias) &&
+    isOptionalNotify(r.myInbox) &&
     isOptionalNotify(r.theirNotify) &&
     isOptionalStatusAlias(r.theirStatusAlias)
   );
@@ -332,8 +343,8 @@ function isOptionalFindable(x: unknown): boolean {
 }
 
 export function serializeAccountBlob(blob: AccountBlob): Bytes {
-  // theirNotify rides inside each contact; myNotify and circles are omitted when
-  // absent, so a contact-only account stays byte-identical plus the version bump.
+  // myInbox and theirNotify ride inside each contact; circles/findable are omitted
+  // when absent, so a contact-only account stays compact.
   const wire: AccountBlobWire = {
     v: SCHEMA_VERSION,
     handle: blob.handle,
@@ -342,7 +353,6 @@ export function serializeAccountBlob(blob: AccountBlob): Bytes {
     state: blob.state,
     avatar: blob.avatar,
     sharingMode: blob.sharingMode,
-    ...(blob.myNotify !== undefined ? { myNotify: blob.myNotify } : {}),
     ...(blob.circles !== undefined ? { circles: blob.circles } : {}),
     ...(blob.findable !== undefined ? { findable: blob.findable } : {}),
   };
@@ -373,11 +383,9 @@ function assertValidBlob(o: Record<string, unknown>): void {
   assertValidOptionalFields(o);
 }
 
-// The fields added in v6/v7, each optional (absent on a pre-feature account).
+// The optional account-level fields (absent on a pre-feature account). The notify
+// inboxes now live per contact (myInbox), validated inside isContactRecord.
 function assertValidOptionalFields(o: Record<string, unknown>): void {
-  if (!isOptionalNotify(o.myNotify)) {
-    throw new Error("account blob: invalid myNotify");
-  }
   if (!isOptionalCircles(o.circles)) {
     throw new Error("account blob: invalid circles");
   }
@@ -397,7 +405,6 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
     state: o.state as AccountBlob["state"],
     avatar: migrateAvatar(o.avatar),
     sharingMode: o.sharingMode as AccountBlob["sharingMode"],
-    ...(isNotifyCapability(o.myNotify) ? { myNotify: o.myNotify } : {}),
     ...(Array.isArray(o.circles)
       ? { circles: o.circles as CircleRecord[] }
       : {}),
