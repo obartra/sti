@@ -431,11 +431,20 @@ func (s *Store) AddVanityReport(ctx context.Context, name, reason string, now in
 
 // PendingVanityReports returns the review queue: one row per reported name with
 // its report count, first-reported time, and most recent reason, busiest first.
+//
+// Only names that are CURRENTLY registered are surfaced (alias_id != ”, the same
+// predicate ResolveVanityName uses). A report whose name no longer resolves (it was
+// released, taken down, or never existed) is not actionable, so it stays in the
+// table but never reaches the reviewer. Intake is existence-uniform on purpose, so
+// this read-side filter is where orphan reports are dropped, not at write time.
 func (s *Store) PendingVanityReports(ctx context.Context, limit int) ([]VanityReport, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT name, COUNT(*) AS cnt, MIN(created_at) AS first_at,
 		        (SELECT reason FROM vanity_report r2 WHERE r2.name = r1.name ORDER BY r2.id DESC LIMIT 1)
 		 FROM vanity_report r1
+		 WHERE EXISTS (
+		     SELECT 1 FROM vanity_name v WHERE v.name = r1.name AND v.alias_id != ''
+		 )
 		 GROUP BY name
 		 ORDER BY cnt DESC, first_at ASC
 		 LIMIT ?`, limit)

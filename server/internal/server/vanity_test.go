@@ -142,6 +142,35 @@ func TestVanityRegisterFirstComeAndIdempotent(t *testing.T) {
 
 // Release (owner-only) frees the name into the lock: it stops resolving, stays
 // unclaimable by anyone during the lock, then is reclaimable after it lapses.
+// Releasing a name clears its reports (they were about that registration, and the
+// review queue hides post-release names anyway, so clearing keeps the table tidy).
+func TestVanityReleaseClearsReports(t *testing.T) {
+	h, st, _ := newFindableServer(t, time.Hour)
+	ctx := context.Background()
+	mine := publishAlias(t, h, "me")
+
+	if rec := registerName(h, "robin", mine, "me"); rec.Code != http.StatusNoContent {
+		t.Fatalf("claim: %d", rec.Code)
+	}
+	if rec := reportName(h, "robin", contract.ReportAbuse); rec.Code != http.StatusAccepted {
+		t.Fatalf("report: %d", rec.Code)
+	}
+	// While registered, the report is actionable in the queue.
+	if got, _ := st.PendingVanityReports(ctx, 10); len(got) != 1 || got[0].Name != "robin" {
+		t.Fatalf("queue before release: %+v", got)
+	}
+
+	req := httptest.NewRequest("DELETE", contract.PathVanityPrefix+"robin", nil)
+	req.Header.Set(contract.HeaderWriteToken, "me")
+	if rec := do(h, req); rec.Code != http.StatusNoContent {
+		t.Fatalf("release: %d", rec.Code)
+	}
+	// The reports are gone from the table, not merely hidden.
+	if got, _ := st.PendingVanityReports(ctx, 10); len(got) != 0 {
+		t.Fatalf("queue after release: %+v", got)
+	}
+}
+
 func TestVanityReleaseAndLock(t *testing.T) {
 	const lock = time.Hour
 	h, _, clock := newFindableServer(t, lock)
@@ -218,11 +247,17 @@ func reportName(h http.Handler, name, reason string) *httptest.ResponseRecorder 
 // A well-formed report is accepted (202) and recorded; an unknown reason is 400.
 func TestVanityReportIntake(t *testing.T) {
 	h, st, _ := newFindableServer(t, time.Hour)
+	ctx := context.Background()
+	// The queue only surfaces registered names, so register the target first.
+	alias := publishAlias(t, h, "owner")
+	if _, err := st.ClaimVanityName(ctx, "robin", alias, 1); err != nil {
+		t.Fatal(err)
+	}
 
 	if rec := reportName(h, "robin", contract.ReportImpersonation); rec.Code != http.StatusAccepted {
 		t.Fatalf("report: %d, want 202", rec.Code)
 	}
-	if got, _ := st.PendingVanityReports(context.Background(), 10); len(got) != 1 || got[0].Name != "robin" {
+	if got, _ := st.PendingVanityReports(ctx, 10); len(got) != 1 || got[0].Name != "robin" {
 		t.Fatalf("report not recorded: %+v", got)
 	}
 	if rec := reportName(h, "robin", "nonsense"); rec.Code != http.StatusBadRequest {

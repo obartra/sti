@@ -518,6 +518,13 @@ func TestVanityReports(t *testing.T) {
 		t.Fatalf("empty queue: %d err %v", len(got), err)
 	}
 
+	// robin and alice are registered (a non-empty alias_id); ghost is not.
+	if _, err := s.ClaimVanityName(ctx, "robin", "alias-robin", 1); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.ClaimVanityName(ctx, "alice", "alias-alice", 1); err != nil {
+		t.Fatal(err)
+	}
 	if err := s.AddVanityReport(ctx, "robin", "impersonation", 100); err != nil {
 		t.Fatal(err)
 	}
@@ -527,13 +534,18 @@ func TestVanityReports(t *testing.T) {
 	if err := s.AddVanityReport(ctx, "alice", "spam", 150); err != nil {
 		t.Fatal(err)
 	}
+	// A report for an UNregistered name never reaches the queue: intake is
+	// existence-uniform, so orphans are dropped on read, not refused at write.
+	if err := s.AddVanityReport(ctx, "ghost", "spam", 120); err != nil {
+		t.Fatal(err)
+	}
 
 	got, err := s.PendingVanityReports(ctx, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) != 2 {
-		t.Fatalf("queue rows = %d, want 2", len(got))
+		t.Fatalf("queue rows = %d, want 2 (ghost excluded)", len(got))
 	}
 	// Busiest first: robin (2 reports) before alice (1); robin's row aggregates to
 	// count 2, the earliest created_at (100), and the most-recent reason (abuse).
@@ -544,12 +556,21 @@ func TestVanityReports(t *testing.T) {
 		t.Fatalf("alice row = %+v", got[1])
 	}
 
-	// Clearing one name leaves the other; clearing an unreported name is a no-op.
+	// Releasing a name (alias_id = '') drops it from the queue even though its report
+	// rows still exist: only a currently-registered name is actionable.
+	if err := s.ReleaseVanityName(ctx, "alice", 300, 0); err != nil {
+		t.Fatal(err)
+	}
+	if got2, _ := s.PendingVanityReports(ctx, 10); len(got2) != 1 || got2[0].Name != "robin" {
+		t.Fatalf("after release alice: %+v", got2)
+	}
+
+	// Clearing a name empties the queue; clearing an unreported name is a no-op.
 	if err := s.ClearVanityReports(ctx, "robin"); err != nil {
 		t.Fatal(err)
 	}
-	if got2, _ := s.PendingVanityReports(ctx, 10); len(got2) != 1 || got2[0].Name != "alice" {
-		t.Fatalf("after clear: %+v", got2)
+	if got3, _ := s.PendingVanityReports(ctx, 10); len(got3) != 0 {
+		t.Fatalf("after clear robin: %+v", got3)
 	}
 	if err := s.ClearVanityReports(ctx, "nobody"); err != nil {
 		t.Fatalf("clear no-op: %v", err)
