@@ -21,63 +21,144 @@
 # What does NOT belong here: consensual adult sexual/anatomical/kink terms, and
 # identity terms themselves (those are pinned allowed in vanityname_test.go).
 #
-# Provenance: the first pass was extracted from the LDNOOBW open-source wordlist by
-# keeping only its hateful subset and dropping the (large) sexual majority. LDNOOBW
-# is a general-profanity list and UNDER-COVERS slurs, so counsel should supplement
-# this with a dedicated hate-speech lexicon before relying on it. Reserved
-# operational/brand terms live in code (reservedList in vanityname.go), not here.
+# Sourcing note (important): there is NO clean importable "hate-only" wordlist.
+# LDNOOBW is general profanity (mostly legitimate sexual vocabulary here); HurtLex
+# is categorized but low-precision (it labels generic insults like "idiot"/"moron",
+# subcultures like "goth", neutral terms like "homophile"/"gays", and even LGBTQ
+# org names as offensive). So this is HAND-CURATED: genuine slurs cherry-picked
+# from those sources (including evasion spellings they surfaced) plus well-known
+# terms they missed. It is deliberately PRECISION-over-recall to avoid blocking
+# this app's own audience. It is NOT exhaustive: counsel should review + extend,
+# and report-and-takedown is the backstop for what a wordlist can't catch.
 #
 # Add terms below this line, keeping the category grouping.
 
 # --- Racial / ethnic slurs ---
+abo
 beaner
 beaners
+boche
+chernozhopyi
+chinaman
+chink
+chinks
+coolie
 coon
 coons
+dago
+darkey
 darkie
+darky
+gook
+gooks
+golliwog
+half_breed
+half_caste
+halfbreed
+halfcaste
 honkey
+honky
 jigaboo
 jiggaboo
 jiggerboo
 kike
-negro
-nig_nog
+kikes
+kraut
+krauthead
+krauts
+ni66a
+niga
 nigga
+niggah
+niggar
+niggas
+niggaz
 nigger
+nigger_lover
+niggerlover
+niggers
+nig_nog
 nignog
+nigra
+nikker
 paki
+pakis
 pikey
+pikie
+quarter_caste
+quartercaste
 raghead
+redskin
+sambo
 slanteye
 spic
+spics
+squaw
+tar_baby
+tarbaby
+terrone
 towelhead
 wetback
+wop
+zipperhead
 
 # --- Anti-LGBTQ slurs (identity/community terms are NOT blocked) ---
 bulldyke
 carpet_muncher
 carpetmuncher
 fag
+fagala
+faggedy
 faggot
+faggotry
+faggoty
+faggy
+fagot
+fags
+fayg
 fudge_packer
 fudgepacker
+homo
+paederast
+pederast
+pidor
 pole_smoker
 polesmoker
 poof
+poove
+pouf
 shemale
 tranny
+trannies
 
 # --- Ableist slurs ---
+cretin
+midget
 mong
+mongloid
+mongolid
+mongoloid
+mongoloids
+retard
+retarded
+spacker
 spastic
+spaz
 
 # --- Nazi / organized-hate ---
+heil_hitler
+heilhitler
+kkk
 neonazi
+sieg_heil
+siegheil
 swastika
 white_power
 whitepower
 
 # --- Sexualization of minors (CSAM-coded) ---
+child_molester
+childmolester
 jail_bait
 jailbait
 lolita
@@ -95,6 +176,7 @@ how_to_kill
 how_to_murder
 howtokill
 howtomurder
+molester
 rape
 rapist
 raping

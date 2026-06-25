@@ -90,7 +90,12 @@ func TestCommittedBlocklistAllowsIdentityHealthAndSexualTerms(t *testing.T) {
 	mustAllow := []string{
 		// Identity / community.
 		"gay", "lesbian", "queer", "trans", "bisexual", "nonbinary", "lgbt",
-		"twink", "bear", "femme", "butch",
+		"twink", "bear", "femme", "butch", "goth",
+		// Neutral group / nationality / religion terms (the derogatory variants
+		// are blocked; the groups themselves never are).
+		"asian", "african", "latino", "muslim", "jew", "jewish", "arab", "black",
+		// Neutral disability / condition terms (only the slurs are blocked).
+		"deaf", "blind", "autistic", "autism", "disabled", "wheelchair",
 		// Core health vocabulary.
 		"prep", "hiv", "condom", "condoms", "testing", "status", "positive",
 		"negative", "prophylaxis", "sexualhealth",
