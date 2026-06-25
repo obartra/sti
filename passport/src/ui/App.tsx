@@ -7,6 +7,8 @@ import { useOwnerInbox } from "./app/useOwnerInbox.ts";
 import { useFaves } from "./app/useFaves.ts";
 import { usePush } from "./app/usePush.ts";
 import { useOwnerActions } from "./app/useOwnerActions.ts";
+import { useExpirySweep } from "./app/useExpirySweep.ts";
+import { useOwnerStateActions } from "./app/useOwnerStateActions.ts";
 import { OWNER } from "./app/fixtures.ts";
 import { Chrome } from "./app/Chrome.tsx";
 import { createApiClient } from "../api/client.ts";
@@ -28,8 +30,7 @@ import {
 } from "../auth/deviceStore.ts";
 import type { AliasRecord } from "../store/index.ts";
 import { webAuthnPasskey } from "../auth/passkey.ts";
-import { applyReport, type ReportOutcome } from "../core/report.ts";
-import { INITIAL_OWNER_STATE, type OwnerState } from "../core/badge.ts";
+import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { todayEpochDay } from "../core/clock.ts";
 import { API_BASE_URL } from "../config.ts";
 
@@ -105,48 +106,12 @@ export function App({
   const sessionRef = useRef<OwnerSession | null>(null);
   sessionRef.current = session;
 
-  // Apply an update to the owner state, optimistically (so a follow-up edit sees
-  // it immediately) and persist + republish in the background; the server's
-  // answer reconciles. A no-op logged out. On a network failure the optimistic
-  // state stands and a later edit re-persists, matching the report path.
-  const setOwnerState = useCallback(
-    (update: (prev: OwnerState) => OwnerState) => {
-      const current = sessionRef.current;
-      if (current === null) return;
-      const next = update(current.blob.state);
-      const optimistic: OwnerSession = {
-        ...current,
-        blob: { ...current.blob, state: next },
-      };
-      sessionRef.current = optimistic;
-      setSession(optimistic);
-      void controller
-        .setOwnerState(current, next)
-        .then((saved) => {
-          sessionRef.current = saved;
-          setSession(saved);
-        })
-        .catch(() => undefined);
-    },
-    [controller],
-  );
-
-  // Apply a reported result on top of the current owner state, stamped with the
-  // report day so freshness ages from now.
-  const onReport = useCallback(
-    (outcome: ReportOutcome) => {
-      setOwnerState((s) => applyReport(s, outcome, todayEpochDay()));
-      // A reported active non-HIV positive silently notifies linked contacts (doc 13).
-      if (outcome.activeNonHivSti) {
-        const current = sessionRef.current;
-        if (current !== null) {
-          void controller
-            .notifyContactsOfPositive(current)
-            .catch(() => undefined);
-        }
-      }
-    },
-    [setOwnerState, controller],
+  // The owner's badge-state mutations: optimistic state updates + the report path
+  // (which is built on them). Both fold the persisted result back into the session.
+  const { setOwnerState, onReport } = useOwnerStateActions(
+    controller,
+    sessionRef,
+    setSession,
   );
 
   // Account deletion, per-contact links, and circles (each folds the result back
@@ -177,6 +142,10 @@ export function App({
     dismissPartnerNudge,
     refreshInbox,
   } = useOwnerInbox(controller, session);
+
+  // Enforce link expiry while the app stays open (doc 16): a no-op unless a link
+  // has actually passed its expiry, then it revokes the dead links in the session.
+  useExpirySweep(controller, sessionRef, setSession, session !== null);
 
   // Starred contacts (device-local; see useFaves). Unrelated to the session.
   const { faves, toggleFave } = useFaves();

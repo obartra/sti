@@ -53,6 +53,7 @@ function stubController(
     resume: unused,
     enrollPasskey: unused,
     setProfile: unused,
+    sweepExpiredLinks: unused,
     setOwnerState: unused,
     shareLink: unused,
     renewLink: unused,
