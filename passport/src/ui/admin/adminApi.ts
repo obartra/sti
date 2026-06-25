@@ -94,8 +94,15 @@ export async function listAdminReports(
 
 const ADMIN_AUDIT_PATH = "/admin/audit";
 
-/** One recorded admin action (mirrors the server's AdminAuditEntry). */
+/** Activity page size: how many actions a single fetch pulls. A full page back
+ * means there may be older ones, which is how the panel decides to offer "load
+ * older". Kept in step with the server's default `limit`. */
+export const AUDIT_PAGE = 50;
+
+/** One recorded admin action (mirrors the server's AdminAuditEntry). `id` is the
+ * monotonic cursor passed back as `before` to page to older entries. */
 export interface AdminAuditEntry {
+  id: number;
   action: string;
   target: string;
   createdAt: number;
@@ -107,21 +114,27 @@ export type AdminAuditResult =
   | { kind: "error" };
 
 /**
- * Fetch the recent admin actions (newest first). Same shape as the report list:
- * 401 surfaces distinctly so the page can re-lock; any other non-200, a network
- * failure, or a malformed body is a generic error the panel shows with a retry.
+ * Fetch a page of admin actions (newest first). `before` is a row-id cursor (the
+ * id of the oldest entry already shown, 0/omitted for the first page). Same error
+ * shape as the report list: 401 surfaces distinctly so the page can re-lock; any
+ * other non-200, a network failure, or a malformed body is a generic error.
  */
 export async function listAdminAudit(
   apiBase: string,
   token: string,
+  before = 0,
   fetchImpl: FetchLike = (input, init) => globalThis.fetch(input, init),
 ): Promise<AdminAuditResult> {
+  const cursor = before > 0 ? `&before=${before}` : "";
   let res: Response;
   try {
-    res = await fetchImpl(apiBase + ADMIN_AUDIT_PATH, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    res = await fetchImpl(
+      `${apiBase}${ADMIN_AUDIT_PATH}?limit=${AUDIT_PAGE}${cursor}`,
+      {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
   } catch {
     return { kind: "error" };
   }

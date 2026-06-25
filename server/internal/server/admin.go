@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"sti.care/api/internal/contract"
@@ -34,9 +35,31 @@ const (
 // small in practice; a high bound keeps it a single fetch without unbounded reads.
 const adminReportsLimit = 200
 
-// adminAuditLimit caps the recent-activity page (doc 20 A4). Admin actions are
-// rare, so the most recent window is a single fetch; pagination can come later.
-const adminAuditLimit = 200
+// adminAuditPage is the default activity page size; adminAuditLimit caps a
+// caller-supplied `limit` so a single request can't read the whole log (doc 20 A4).
+const (
+	adminAuditPage  = 50
+	adminAuditLimit = 200
+)
+
+// auditQuery parses the GET /admin/audit pagination params: `before` (a row-id
+// cursor, default 0 = newest) and `limit` (default adminAuditPage, clamped to
+// [1, adminAuditLimit]). Malformed values fall back to the defaults rather than
+// erroring, so a bad cursor degrades to the first page instead of a 400.
+func auditQuery(r *http.Request) (before int64, limit int) {
+	before, _ = strconv.ParseInt(r.URL.Query().Get("before"), 10, 64)
+	if before < 0 {
+		before = 0
+	}
+	limit = adminAuditPage
+	if n, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && n > 0 {
+		limit = n
+	}
+	if limit > adminAuditLimit {
+		limit = adminAuditLimit
+	}
+	return before, limit
+}
 
 // registerAdminRoutes mounts the operator surface, but ONLY when it is enabled.
 // When disabled (the default) nothing is registered, so every /admin path is a
@@ -158,14 +181,15 @@ func (s *Server) handleAdminReports(w http.ResponseWriter, r *http.Request) {
 // session ping are). Opaque only: a fixed action verb plus an id/name target and a
 // timestamp, never user content, so it stays within the blind-store boundary.
 func (s *Server) handleAdminAudit(w http.ResponseWriter, r *http.Request) {
-	entries, err := s.st.RecentAudits(r.Context(), adminAuditLimit)
+	before, limit := auditQuery(r)
+	entries, err := s.st.RecentAudits(r.Context(), before, limit)
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
 		return
 	}
 	out := make([]contract.AdminAuditEntry, len(entries))
 	for i, e := range entries {
-		out[i] = contract.AdminAuditEntry{Action: e.Action, Target: e.Target, CreatedAt: e.CreatedAt}
+		out[i] = contract.AdminAuditEntry{ID: e.ID, Action: e.Action, Target: e.Target, CreatedAt: e.CreatedAt}
 	}
 	s.writeJSON(w, http.StatusOK, contract.AdminAuditResponse{Entries: out})
 }

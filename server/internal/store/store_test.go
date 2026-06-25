@@ -476,7 +476,7 @@ func TestAdminAuditAppendAndList(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
-	if got, err := s.RecentAudits(ctx, 10); err != nil || len(got) != 0 {
+	if got, err := s.RecentAudits(ctx, 0, 10); err != nil || len(got) != 0 {
 		t.Fatalf("empty log: got %d err %v", len(got), err)
 	}
 
@@ -487,7 +487,7 @@ func TestAdminAuditAppendAndList(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := s.RecentAudits(ctx, 10)
+	got, err := s.RecentAudits(ctx, 0, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -503,7 +503,7 @@ func TestAdminAuditAppendAndList(t *testing.T) {
 	}
 
 	// limit bounds the result to the most recent rows.
-	if one, err := s.RecentAudits(ctx, 1); err != nil || len(one) != 1 || one[0].Action != "vanity.takedown" {
+	if one, err := s.RecentAudits(ctx, 0, 1); err != nil || len(one) != 1 || one[0].Action != "vanity.takedown" {
 		t.Fatalf("limit 1: got %+v err %v", one, err)
 	}
 }

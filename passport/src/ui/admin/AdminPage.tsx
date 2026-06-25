@@ -77,7 +77,8 @@ function useAdminTransports(
     [reviewOps, apiBase],
   );
   const audit = useMemo<AuditOps>(
-    () => auditOps ?? { list: (t) => listAdminAudit(apiBase, t) },
+    () =>
+      auditOps ?? { list: (t, before) => listAdminAudit(apiBase, t, before) },
     [auditOps, apiBase],
   );
   return { ops, audit };

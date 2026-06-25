@@ -213,9 +213,11 @@ type AdminReportsResponse struct {
 }
 
 // AdminAuditEntry is one recorded admin action (GET /admin/audit, doc 20 A4): the
-// fixed action verb, the opaque target (an id or a public name), and when it ran.
-// Never user content; the audit log carries none to begin with.
+// monotonic row id (the "load older" cursor), the fixed action verb, the opaque
+// target (an id or a public name), and when it ran. Never user content; the audit
+// log carries none to begin with.
 type AdminAuditEntry struct {
+	ID        int64  `json:"id"`
 	Action    string `json:"action"`
 	Target    string `json:"target"`
 	CreatedAt int64  `json:"createdAt"`
