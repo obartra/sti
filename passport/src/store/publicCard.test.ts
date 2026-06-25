@@ -16,6 +16,40 @@ describe("public card codec", () => {
     expect(parsePublicCard(serializePublicCard(view))).toEqual(view);
   });
 
+  it("the wire shape is a closed whitelist (never leaks per-site reasoning or any extra field)", () => {
+    // doc 02: per-site reasoning is NEVER transmitted; the viewer card carries
+    // only the badge facts. Pin the exact wire key set so a future field that
+    // smuggles internal state (exposed sites, panel detail, account ids) onto the
+    // wire fails this test.
+    const decode = (b: Uint8Array): Record<string, unknown> =>
+      JSON.parse(new TextDecoder().decode(b)) as Record<string, unknown>;
+
+    expect(Object.keys(decode(serializePublicCard(view))).sort()).toEqual([
+      "handle",
+      "labels",
+      "route",
+      "state",
+      "v",
+    ]);
+
+    const withAvatar: ResolvedView = {
+      ...view,
+      avatar: DEFAULT_AVATAR,
+      avatarSrc: avatarSrc(DEFAULT_AVATAR),
+    };
+    const wire = decode(serializePublicCard(withAvatar));
+    expect(Object.keys(wire).sort()).toEqual([
+      "avatar",
+      "handle",
+      "labels",
+      "route",
+      "state",
+      "v",
+    ]);
+    // avatarSrc is rebuilt from our template on read, never carried on the wire.
+    expect("avatarSrc" in wire).toBe(false);
+  });
+
   it("round-trips a card with an avatar and reconstructs its rendered src", () => {
     const withAvatar: ResolvedView = {
       ...view,

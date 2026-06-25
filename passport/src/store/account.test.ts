@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
+import { phraseForTest } from "../test-support/phrase.ts";
 import { createAccountManager } from "./account.ts";
 import type { ApiClient } from "../api/client.ts";
 import type { AliasRecord } from "./accountBlob.ts";
@@ -74,6 +75,13 @@ describe("account manager", () => {
     expect(myNotify).toEqual(created.blob.myNotify);
   });
 
+  it("recover fails closed (null) on a malformed phrase, never deriving a key", async () => {
+    const accounts = createAccountManager(fakeAccountApi());
+    for (const bad of ["", "hunter2", "not a recovery phrase"]) {
+      expect(await accounts.recover(bad)).toBeNull();
+    }
+  });
+
   it("appends an alias and reflects it on recovery", async () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
@@ -85,7 +93,7 @@ describe("account manager", () => {
 
   it("throws when adding an alias for a key with no account", async () => {
     const accounts = createAccountManager(fakeAccountApi());
-    const master = await deriveMasterKey("never-created");
+    const master = await deriveMasterKey(phraseForTest("never-created"));
     await expect(accounts.addAlias(master, record)).rejects.toThrow();
   });
 
