@@ -52,21 +52,52 @@ export function randomWriteToken(): string {
 }
 
 /**
+ * A recovery phrase the app generated (256-bit, app-format). Branded so the only
+ * way to obtain one is {@link randomRecoveryPhrase} (signup) or
+ * {@link parseRecoveryPhrase} (recovery, which validates the format). This is the
+ * enforcement of the {@link MASTER_KEY_SALT} entropy contract: a future
+ * user-CHOSEN passphrase cannot reach {@link deriveMasterKey} without going
+ * through the format check (which it would fail) or an explicit, review-visible
+ * cast. The fixed-salt KDF is safe ONLY for these, so the type makes that a
+ * compile-time invariant rather than a comment.
+ */
+export type AppGeneratedPhrase = string & {
+  readonly __appGeneratedPhrase: unique symbol;
+};
+
+// The app phrase is `bytesToBase64url(32 bytes)`: 43 base64url chars, no padding.
+const RECOVERY_PHRASE_RE = /^[A-Za-z0-9_-]{43}$/;
+
+/**
  * A high-entropy recovery phrase (256-bit): the single secret that unlocks an
  * account. It MUST be app-generated, not user-chosen (see {@link MASTER_KEY_SALT}).
  * A human-friendly word encoding is a UX follow-up; the crypto only needs the
- * entropy, and {@link deriveMasterKey} accepts any string.
+ * entropy.
  */
-export function randomRecoveryPhrase(): string {
-  return randomOpaqueId();
+export function randomRecoveryPhrase(): AppGeneratedPhrase {
+  return randomOpaqueId() as AppGeneratedPhrase;
 }
 
 /**
- * Derive a 32-byte master key from a recovery passphrase. The passphrase must be
- * app-generated and high-entropy (see {@link MASTER_KEY_SALT}); there is no
- * per-user salt by design.
+ * Validate user-entered recovery input against the app phrase format and brand it,
+ * or null if it is not a well-formed app phrase. Recovery routes user input through
+ * here so a malformed phrase fails closed (no account) instead of deriving a key
+ * from arbitrary low-entropy text.
  */
-export async function deriveMasterKey(passphrase: string): Promise<Bytes> {
+export function parseRecoveryPhrase(input: string): AppGeneratedPhrase | null {
+  return RECOVERY_PHRASE_RE.test(input.trim())
+    ? (input.trim() as AppGeneratedPhrase)
+    : null;
+}
+
+/**
+ * Derive a 32-byte master key from an app-generated recovery phrase. The phrase
+ * MUST be app-generated and high-entropy (see {@link MASTER_KEY_SALT}); there is no
+ * per-user salt by design, so the {@link AppGeneratedPhrase} brand gates the input.
+ */
+export async function deriveMasterKey(
+  passphrase: AppGeneratedPhrase,
+): Promise<Bytes> {
   const base = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(passphrase),

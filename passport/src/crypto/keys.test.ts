@@ -1,9 +1,11 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
+import { phraseForTest } from "../test-support/phrase.ts";
 import {
   randomAliasId,
   randomWriteToken,
   randomRecoveryPhrase,
+  parseRecoveryPhrase,
   deriveMasterKey,
   deriveAccountId,
   deriveAccountKey,
@@ -37,24 +39,46 @@ describe("random ids", () => {
     expect(phrases.size).toBe(50); // no collisions across draws
     for (const p of phrases) expect(p).toMatch(/^[A-Za-z0-9_-]{43}$/);
   });
+
+  it("parseRecoveryPhrase accepts the app format and rejects anything else", () => {
+    // The KDF uses a fixed salt, safe ONLY for app-generated high-entropy phrases.
+    // Recovery routes user input through here so a low-entropy / malformed phrase
+    // fails closed instead of deriving a key from arbitrary text.
+    expect(parseRecoveryPhrase(randomRecoveryPhrase())).not.toBeNull();
+    expect(parseRecoveryPhrase("  " + "A".repeat(43) + "  ")).not.toBeNull(); // trims
+    for (const bad of [
+      "",
+      "hunter2",
+      "short",
+      "A".repeat(42),
+      "A".repeat(44),
+      "!".repeat(43),
+    ]) {
+      expect(parseRecoveryPhrase(bad)).toBeNull();
+    }
+  });
 });
 
 describe("master key + account derivation", () => {
   it("derives the same master key for the same passphrase", async () => {
-    const a = await deriveMasterKey("correct horse battery staple");
-    const b = await deriveMasterKey("correct horse battery staple");
+    const a = await deriveMasterKey(
+      phraseForTest("correct horse battery staple"),
+    );
+    const b = await deriveMasterKey(
+      phraseForTest("correct horse battery staple"),
+    );
     expect(a).toEqual(b);
     expect(a).toHaveLength(32);
   });
 
   it("a different passphrase yields a different master key", async () => {
-    const a = await deriveMasterKey("passphrase one");
-    const b = await deriveMasterKey("passphrase two");
+    const a = await deriveMasterKey(phraseForTest("passphrase one"));
+    const b = await deriveMasterKey(phraseForTest("passphrase two"));
     expect(a).not.toEqual(b);
   });
 
   it("account id is deterministic, 43-char, and recoverable from the key alone", async () => {
-    const master = await deriveMasterKey("recovery");
+    const master = await deriveMasterKey(phraseForTest("recovery"));
     const id1 = await deriveAccountId(master);
     const id2 = await deriveAccountId(master);
     expect(id1).toBe(id2);
@@ -62,7 +86,7 @@ describe("master key + account derivation", () => {
   });
 
   it("account id and account key are distinct derivations from the same master", async () => {
-    const master = await deriveMasterKey("recovery");
+    const master = await deriveMasterKey(phraseForTest("recovery"));
     const id = await deriveAccountId(master);
     const key = await deriveAccountKey(master);
     expect(key).toHaveLength(32);
@@ -71,7 +95,7 @@ describe("master key + account derivation", () => {
   });
 
   it("the derived account key actually decrypts a blob sealed under it", async () => {
-    const master = await deriveMasterKey("recovery");
+    const master = await deriveMasterKey(phraseForTest("recovery"));
     const aesKey = await importAesKey(await deriveAccountKey(master));
     const blob = utf8ToBytes(JSON.stringify({ aliases: [], circles: [] }));
     const ct = await seal(aesKey, blob);
@@ -92,10 +116,10 @@ describe("master key + account derivation", () => {
 
   it("a master from a wrong passphrase cannot open the blob (recovery is key-bound)", async () => {
     const right = await importAesKey(
-      await deriveAccountKey(await deriveMasterKey("right")),
+      await deriveAccountKey(await deriveMasterKey(phraseForTest("right"))),
     );
     const wrong = await importAesKey(
-      await deriveAccountKey(await deriveMasterKey("wrong")),
+      await deriveAccountKey(await deriveMasterKey(phraseForTest("wrong"))),
     );
     const ct = await seal(right, utf8ToBytes("device blob"));
     await expect(open(wrong, ct)).rejects.toThrow();

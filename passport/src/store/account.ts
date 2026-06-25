@@ -9,6 +9,7 @@
 import type { ApiClient } from "../api/client.ts";
 import {
   deriveMasterKey,
+  parseRecoveryPhrase,
   randomRecoveryPhrase,
   type Bytes,
 } from "../crypto/index.ts";
@@ -313,6 +314,38 @@ function findableMethods(
   };
 }
 
+// Account lifecycle (mint + recover), split out so createAccountManager stays
+// within its length ceiling. Both derive the master from an app-generated phrase:
+// create mints one; recover validates the entered phrase against the app format
+// (parseRecoveryPhrase) so a malformed one fails closed instead of deriving a key
+// from arbitrary text.
+function lifecycleMethods(
+  sync: AccountSync,
+): Pick<AccountManager, "create" | "recover"> {
+  return {
+    async create(handle) {
+      // Validate up front: an invalid handle would seal fine but throw on
+      // parseAccountBlob during recovery, locking the owner out of an account
+      // that physically exists.
+      if (!isValidHandle(handle)) {
+        throw new Error("create: invalid handle");
+      }
+      const recoveryPhrase = randomRecoveryPhrase();
+      const master = await deriveMasterKey(recoveryPhrase);
+      const blob = freshBlob(handle);
+      await sync.save(master, blob);
+      return { recoveryPhrase, master, blob };
+    },
+    async recover(phrase) {
+      const parsed = parseRecoveryPhrase(phrase);
+      if (parsed === null) return null;
+      const master = await deriveMasterKey(parsed);
+      const blob = await sync.load(master);
+      return blob === null ? null : { master, blob };
+    },
+  };
+}
+
 export function createAccountManager(api: ApiClient): AccountManager {
   const sync = createAccountSync(api);
 
@@ -334,25 +367,7 @@ export function createAccountManager(api: ApiClient): AccountManager {
   };
 
   return {
-    async create(handle) {
-      // Validate up front: an invalid handle would seal fine but throw on
-      // parseAccountBlob during recovery, locking the owner out of an account
-      // that physically exists.
-      if (!isValidHandle(handle)) {
-        throw new Error("create: invalid handle");
-      }
-      const recoveryPhrase = randomRecoveryPhrase();
-      const master = await deriveMasterKey(recoveryPhrase);
-      const blob = freshBlob(handle);
-      await sync.save(master, blob);
-      return { recoveryPhrase, master, blob };
-    },
-
-    async recover(phrase) {
-      const master = await deriveMasterKey(phrase);
-      const blob = await sync.load(master);
-      return blob === null ? null : { master, blob };
-    },
+    ...lifecycleMethods(sync),
 
     addAlias(master, record) {
       // Upsert by id so a lost-response retry does not record the alias twice

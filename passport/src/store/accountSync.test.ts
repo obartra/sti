@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
+import { phraseForTest } from "../test-support/phrase.ts";
 import { createAccountSync } from "./accountSync.ts";
 import type { ApiClient } from "../api/client.ts";
 import type { AccountBlob } from "./accountBlob.ts";
@@ -66,27 +67,27 @@ function fakeAccountApi(): ApiClient {
 describe("account sync", () => {
   it("saves and loads the blob for the same master key", async () => {
     const sync = createAccountSync(fakeAccountApi());
-    const master = await deriveMasterKey("phrase-a");
+    const master = await deriveMasterKey(phraseForTest("phrase-a"));
     await sync.save(master, blob);
     expect(await sync.load(master)).toEqual(blob);
   });
 
   it("returns null for a master with no saved account", async () => {
     const sync = createAccountSync(fakeAccountApi());
-    const master = await deriveMasterKey("never-saved");
+    const master = await deriveMasterKey(phraseForTest("never-saved"));
     expect(await sync.load(master)).toBeNull();
   });
 
   it("a different master derives a different id, so it sees no account (null)", async () => {
     const sync = createAccountSync(fakeAccountApi());
-    await sync.save(await deriveMasterKey("phrase-a"), blob);
-    const other = await deriveMasterKey("phrase-b");
+    await sync.save(await deriveMasterKey(phraseForTest("phrase-a")), blob);
+    const other = await deriveMasterKey(phraseForTest("phrase-b"));
     expect(await sync.load(other)).toBeNull();
   });
 
   it("remove deletes the blob so a later load is null (idempotent)", async () => {
     const sync = createAccountSync(fakeAccountApi());
-    const master = await deriveMasterKey("phrase-a");
+    const master = await deriveMasterKey(phraseForTest("phrase-a"));
     await sync.save(master, blob);
     await sync.remove(master);
     expect(await sync.load(master)).toBeNull();

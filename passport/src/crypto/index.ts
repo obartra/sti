@@ -26,6 +26,8 @@ export {
   randomAliasId,
   randomWriteToken,
   randomRecoveryPhrase,
+  parseRecoveryPhrase,
+  type AppGeneratedPhrase,
   deriveMasterKey,
   deriveAccountId,
   deriveAccountKey,
