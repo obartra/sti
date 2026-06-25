@@ -139,7 +139,7 @@ func (s *Server) handleAdminPing(w http.ResponseWriter, r *http.Request) {
 // an audit hiccup. Mutating endpoints instead use auditOrFail, so no mutation is
 // ever performed without a durable record.
 func (s *Server) audit(ctx context.Context, action, target string) {
-	if err := s.st.AppendAudit(ctx, action, target, s.now()); err != nil {
+	if err := s.auditor.AppendAudit(ctx, action, target, s.now()); err != nil {
 		s.metrics.Error(metrics.ErrStore)
 		s.log.Error("admin audit", "action", action, "err", err)
 	}
@@ -150,7 +150,7 @@ func (s *Server) audit(ctx context.Context, action, target string) {
 // written and must NOT proceed: this is what guarantees no admin mutation is ever
 // performed without a durable audit record (doc 20).
 func (s *Server) auditOrFail(ctx context.Context, w http.ResponseWriter, action, target string) bool {
-	if err := s.st.AppendAudit(ctx, action, target, s.now()); err != nil {
+	if err := s.auditor.AppendAudit(ctx, action, target, s.now()); err != nil {
 		s.metrics.Error(metrics.ErrStore)
 		s.log.Error("admin audit", "action", action, "err", err)
 		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")

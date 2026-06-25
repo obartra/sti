@@ -148,6 +148,16 @@ type Server struct {
 	mux         *http.ServeMux
 	metrics     *metrics.Metrics // blind aggregate self-telemetry (loopback only)
 	sender      Sender           // contentless Web Push delivery; nil disables it
+	auditor     auditAppender    // narrow audit-append seam; defaults to st
+}
+
+// auditAppender is the one store method the admin audit path depends on. It is a
+// seam, not an abstraction: pulling just AppendAudit out (rather than an interface
+// over the whole store) lets a test inject an append failure and prove that no
+// admin mutation runs without a durable audit record (doc 20), which the ordering
+// in auditOrFail is the only thing guaranteeing.
+type auditAppender interface {
+	AppendAudit(ctx context.Context, action, target string, now int64) error
 }
 
 // New builds a Server. now may be nil (defaults to the wall clock).
@@ -169,6 +179,7 @@ func New(st *store.Store, cfg Config, log *slog.Logger, now func() int64) *Serve
 		mux:         http.NewServeMux(),
 		metrics:     metrics.New(),
 		sender:      cfg.Sender,
+		auditor:     st,
 	}
 	s.metrics.SetInflightMax(cfg.MaxInflight)
 	// Blind aggregate gauges: row counts of opaque rows and the db file size,

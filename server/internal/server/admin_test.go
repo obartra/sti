@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -17,9 +18,10 @@ import (
 
 const testAdminToken = "test-admin-secret-0123456789abcdef" // >= boot floor, but server.New imposes none
 
-// newTestAdminServer builds a server with the operator surface enabled and returns
-// the handler plus the store, so a test can assert on the audit log it writes.
-func newTestAdminServer(t *testing.T, token string) (http.Handler, *store.Store) {
+// newTestAdminSrv builds a *Server with the operator surface enabled, plus its
+// store. Tests that only need the handler use newTestAdminServer; this variant
+// hands back the Server so a test can swap a seam (e.g. the audit appender).
+func newTestAdminSrv(t *testing.T, token string) (*Server, *store.Store) {
 	t.Helper()
 	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "t.db"))
 	if err != nil {
@@ -38,6 +40,14 @@ func newTestAdminServer(t *testing.T, token string) (http.Handler, *store.Store)
 		AdminToken:   token,
 		AdminBurst:   1000,
 	}, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+	return srv, st
+}
+
+// newTestAdminServer builds a server with the operator surface enabled and returns
+// the handler plus the store, so a test can assert on the audit log it writes.
+func newTestAdminServer(t *testing.T, token string) (http.Handler, *store.Store) {
+	t.Helper()
+	srv, st := newTestAdminSrv(t, token)
 	return srv.Handler(), st
 }
 
@@ -330,6 +340,50 @@ func TestAdminFindableReview(t *testing.T) {
 	}
 	if a, _ := st.RecentAudits(ctx, 0, 10); a[0].Action != "vanity.dismiss" || a[0].Target != "alice" {
 		t.Fatalf("dismiss not audited: %+v", a)
+	}
+}
+
+// failingAuditor is an audit appender that always errors, so a test can drive the
+// audit-before-mutate failure path without corrupting the real store.
+type failingAuditor struct{}
+
+func (failingAuditor) AppendAudit(context.Context, string, string, int64) error {
+	return errors.New("audit unavailable")
+}
+
+// Audit-before-mutate (doc 20): if the audit append fails, the mutation must not
+// run. With a failing auditor a takedown is a 500 and leaves the name still
+// resolving, its reports intact, and nothing in the real audit log. The ordering
+// in auditOrFail is the only thing guaranteeing this, so it gets a test rather than
+// a comment: reorder it and this fails.
+func TestAdminAuditFailureBlocksMutation(t *testing.T) {
+	srv, st := newTestAdminSrv(t, testAdminToken)
+	srv.auditor = failingAuditor{}
+	h := srv.Handler()
+	ctx := context.Background()
+
+	if _, err := st.ClaimVanityName(ctx, "robin", strings.Repeat("A", 43), 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.AddVanityReport(ctx, "robin", contract.ReportAbuse, 100); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest("POST", "/admin/vanity/robin/takedown", nil)
+	req.Header.Set("Authorization", "Bearer "+testAdminToken)
+	if rec := do(h, req); rec.Code != http.StatusInternalServerError {
+		t.Fatalf("takedown with failing audit: %d, want 500", rec.Code)
+	}
+
+	if _, found, _ := st.ResolveVanityName(ctx, "robin"); !found {
+		t.Fatal("mutation ran despite audit failure: robin no longer resolves")
+	}
+	if got, _ := st.PendingVanityReports(ctx, 10); len(got) != 1 {
+		t.Fatalf("mutation ran despite audit failure: reports = %+v", got)
+	}
+	// The failing auditor wrote nothing, so the real log stays empty.
+	if a, _ := st.RecentAudits(ctx, 0, 10); len(a) != 0 {
+		t.Fatalf("audit log not empty after a failed append: %+v", a)
 	}
 }
 
