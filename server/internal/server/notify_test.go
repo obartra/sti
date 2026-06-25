@@ -82,10 +82,17 @@ func coverDepth(t *testing.T, s *Server) int {
 	return len(due)
 }
 
+// registerRoute mirrors handlePushRegister: a real device that enables push both
+// registers a subscription (push_endpoint, the broadcast target) AND maps its notify
+// token hash to that endpoint (notify_route, identity), so the token a notify
+// enqueues resolves to a real route in the drain. The cover tests enqueue `route` as
+// the notify token, so both rows must exist for it to count as a real wake.
 func registerRoute(t *testing.T, s *Server, route string) {
 	t.Helper()
-	ok(t, s.st.RegisterPush(context.Background(), route,
+	ctx := context.Background()
+	ok(t, s.st.RegisterPush(ctx, route,
 		store.PushTarget{Endpoint: "https://push/" + route, P256dh: "k", Auth: "a"}, 1))
+	ok(t, s.st.PutNotifyRoute(ctx, route, route))
 }
 
 // With CoverWindow 0 a real wake fans out and delivers to the whole push
@@ -324,5 +331,61 @@ func TestNotifyEnqueueIsGated(t *testing.T) {
 	}
 	if d := sendDepth(t, on); d != 1 {
 		t.Fatalf("notify should enqueue when on, depth %d", d)
+	}
+}
+
+// Constant-time intake (doc 10 §F): a notify for a REGISTERED token and one for an
+// UNKNOWN token do identical work, each enqueuing exactly one send. The request
+// never looks the route up, so its timing carries no existence oracle on the notify
+// routes. (Wall-clock equality can't be asserted in a unit test; pinning identical
+// DB work is the mechanism that makes the timing uniform.)
+func TestNotifyIntakeIsConstantTime(t *testing.T) {
+	s := newDrainServer(t, true, &mockSender{}, 0)
+	registerRoute(t, s, "known-token") // a real, resolvable route
+
+	if rec := do(s.Handler(), notifyReq("known-token")); rec.Code != 202 {
+		t.Fatalf("notify (known): want 202, got %d", rec.Code)
+	}
+	if rec := do(s.Handler(), notifyReq("totally-unknown-token")); rec.Code != 202 {
+		t.Fatalf("notify (unknown): want 202, got %d", rec.Code)
+	}
+	// Both enqueued one send each: the request did the same work regardless of
+	// whether the token resolves to a route.
+	if d := sendDepth(t, s); d != 2 {
+		t.Fatalf("known and unknown should each enqueue one send, depth %d", d)
+	}
+}
+
+// Anti-amplification: because intake is constant-time (it enqueues every token,
+// resolved or not), the drain must NOT broadcast for an unknown token, or a probe
+// could cheaply wake the whole push population. A drain over only unknown tokens
+// fires no covers and drops the rows; once a real token is also due, one broadcast
+// fires.
+func TestNotifyUnknownTokenWakesNobody(t *testing.T) {
+	ctx := context.Background()
+	ms := &mockSender{}
+	s := newDrainServer(t, true, ms, 0)
+	for _, r := range []string{"route-1", "route-2"} {
+		registerRoute(t, s, r)
+	}
+
+	// Two unknown tokens come due: no route resolves, so no one is woken and the
+	// rows are dropped.
+	ok(t, s.st.EnqueueSend(ctx, "probe-a", 100, 100))
+	ok(t, s.st.EnqueueSend(ctx, "probe-b", 100, 100))
+	s.DrainSends(ctx, 200)
+	if ms.count() != 0 {
+		t.Fatalf("unknown tokens must wake nobody, got %d", ms.count())
+	}
+	if d := sendDepth(t, s) + coverDepth(t, s); d != 0 {
+		t.Fatalf("unknown-token sends should be dropped: %d remain", d)
+	}
+
+	// Now a real token is due alongside another probe: exactly one broadcast fires.
+	ok(t, s.st.EnqueueSend(ctx, "route-1", 300, 300))
+	ok(t, s.st.EnqueueSend(ctx, "probe-c", 300, 300))
+	s.DrainSends(ctx, 400)
+	if ms.count() != 2 {
+		t.Fatalf("a real token must broadcast to both routes once, got %d", ms.count())
 	}
 }

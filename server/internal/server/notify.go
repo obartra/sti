@@ -47,6 +47,13 @@ func (s *Server) DrainSends(ctx context.Context, now int64) {
 // If scheduling the broadcast fails, the real jobs are left queued so a later pass
 // retries; a real wake is dropped only once its covers are safely scheduled (or
 // there is no one to wake at all, which is itself a clean drop).
+//
+// Each queued send carries the notify TOKEN HASH (handleNotify enqueues it without
+// looking it up, so the request path is constant-time). Here, off the request path,
+// we resolve it: a broadcast fires only if at least one due token maps to a real
+// registered route. Unknown tokens (probes, or a token whose device never
+// registered push) trigger no broadcast and are simply dropped, so the constant-time
+// intake cannot be turned into a cheap way to wake the whole population.
 func (s *Server) fanOutCover(ctx context.Context, now int64) {
 	real, err := s.st.DueSends(ctx, now, drainBatch)
 	if err != nil {
@@ -55,6 +62,18 @@ func (s *Server) fanOutCover(ctx context.Context, now int64) {
 		return
 	}
 	if len(real) == 0 {
+		return
+	}
+	anyReal, err := s.anyResolves(ctx, real)
+	if err != nil {
+		// A transient read failure: leave the jobs queued and retry next pass.
+		s.metrics.Error(metrics.ErrStore)
+		s.log.Error("resolve notify token", "err", err)
+		return
+	}
+	if !anyReal {
+		// All due tokens are unknown: nothing to wake. Drop them without broadcasting.
+		s.deleteAll(ctx, real)
 		return
 	}
 	routes, err := s.st.DistinctPushRoutes(ctx)
@@ -78,7 +97,29 @@ func (s *Server) fanOutCover(ctx context.Context, now int64) {
 	}
 	// The broadcast is scheduled (or there were no push routes, nobody to wake), so
 	// the real jobs have served their only purpose: triggering it. Drop them.
-	for _, snd := range real {
+	s.deleteAll(ctx, real)
+}
+
+// anyResolves reports whether any queued send's token hash maps to a registered
+// notify route. A read error is returned so the caller can retry rather than
+// silently treating a transient failure as "no real wake".
+func (s *Server) anyResolves(ctx context.Context, sends []store.Send) (bool, error) {
+	for _, snd := range sends {
+		_, found, err := s.st.GetNotifyRoute(ctx, snd.RoutingEndpointID)
+		if err != nil {
+			return false, err
+		}
+		if found {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// deleteAll drops every queued send by id, logging (not failing) on a hiccup: a
+// leftover row is reclaimed on the next pass, never delivered twice.
+func (s *Server) deleteAll(ctx context.Context, sends []store.Send) {
+	for _, snd := range sends {
 		if err := s.st.DeleteSend(ctx, snd.ID); err != nil {
 			s.metrics.Error(metrics.ErrJanitor)
 			s.log.Error("delete send", "err", err)

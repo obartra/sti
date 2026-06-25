@@ -705,7 +705,11 @@ const (
 	coverQueueTable = "cover_send"
 )
 
-// Send is a queued wake job (contentless).
+// Send is a queued wake job (contentless). RoutingEndpointID is the opaque string
+// the row carries: for a cover_send it is the push routing endpoint to deliver to;
+// for a send_queue row it is the notify TOKEN HASH the request enqueued (resolved to
+// a route later, off the request path, so intake stays constant-time). For a
+// registered route the two are the same value, so the field name fits both.
 type Send struct {
 	ID                int64
 	RoutingEndpointID string

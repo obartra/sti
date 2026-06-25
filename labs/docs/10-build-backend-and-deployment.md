@@ -247,9 +247,13 @@ need it.
   form.
 - **Read-path and write-path timing (not just response shape).** The decoy test pins the *shape*
   of `GET /a/{id}` (status, length, stable decoy), but a real read is a DB hit while a miss is the
-  decoy HMAC, so total time can still differ; likewise a real knock/notify writes a row while a
-  miss does no work (Decisions still-open 5; Design §Knock). Equalizing *total* response time
-  across real / fake / over-limit is not yet modeled by the prototype; carried.
+  decoy HMAC, so total time can still differ; likewise a real knock writes a row while a miss does
+  no work (Decisions still-open 5; Design §Knock). Equalizing *total* response time across
+  real / fake / over-limit is not yet modeled by the prototype; carried. **`POST /notify` is now
+  constant-time**: it enqueues the token hash without ever looking the route up, so the request
+  does identical work for a known and an unknown token (the drain resolves real-vs-unknown off the
+  request path, and an unknown token wakes nobody). `TestNotifyIntakeIsConstantTime` and
+  `TestNotifyUnknownTokenWakesNobody` pin both halves.
 - **Account deletion and export.** A self-serve "delete everything tied to me" and "download what
   is held about me." Since the server holds only ciphertext and opaque tokens, the open question
   is what is even meaningful to export. Carried from [Decisions log](/docs/decisions).
