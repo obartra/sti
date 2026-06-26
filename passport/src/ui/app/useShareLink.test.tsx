@@ -8,6 +8,7 @@ import type {
 } from "../../store/index.ts";
 import { INITIAL_OWNER_STATE } from "../../core/badge.ts";
 import { DEFAULT_AVATAR } from "../../lib/avatars.ts";
+import { fakeMasterKey } from "../../test-support/phrase.ts";
 
 function deferred<T>() {
   let resolve!: (v: T) => void;
@@ -20,7 +21,7 @@ function deferred<T>() {
 }
 
 const session: OwnerSession = {
-  master: new Uint8Array(32),
+  master: fakeMasterKey(),
   blob: {
     handle: "robin",
     aliases: [],
@@ -45,6 +46,9 @@ function stubController(over: Partial<SessionController>): SessionController {
     signUp: unused,
     recover: unused,
     resume: unused,
+    rememberDevice: unused,
+    forgetDevice: unused,
+    resumeFromStore: unused,
     enrollPasskey: unused,
     setProfile: unused,
     sweepExpiredLinks: unused,

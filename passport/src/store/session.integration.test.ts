@@ -38,7 +38,8 @@ import { createDeviceStore, type StorageLike } from "../auth/deviceStore.ts";
 import type { PasskeyAuth } from "../auth/passkey.ts";
 import type { AliasRecord } from "./accountBlob.ts";
 import type { AliasLink } from "./passportStore.ts";
-import { type Bytes } from "../crypto/index.ts";
+import { type Bytes, type MasterKey } from "../crypto/index.ts";
+import { createVolatileMasterKeyStore } from "../auth/masterKeyStore.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { startApi, type Harness } from "../test-support/serverHarness.ts";
 
@@ -100,6 +101,7 @@ describe("owner session against a live blind store", () => {
         sync: createAccountSync(api),
         devices,
         passkey,
+        keys: createVolatileMasterKeyStore(),
         api,
       }),
       devices,
@@ -111,10 +113,10 @@ describe("owner session against a live blind store", () => {
     const passkey = fakePasskey();
     const { ctl, devices } = controller(passkey);
 
-    const { session } = await ctl.signUp("robin");
+    const { session, recoveryPhrase } = await ctl.signUp("robin");
     expect(devices.load()).toBeNull(); // phrase-only until a passkey is enrolled
 
-    await ctl.enrollPasskey(session, "robin");
+    await ctl.enrollPasskey(recoveryPhrase, "robin");
     expect(devices.load()).not.toBeNull();
 
     // A reload: the same passkey + the persisted binding reload the account blob
@@ -450,8 +452,8 @@ describe("owner session against a live blind store", () => {
   it("a foreign passkey cannot resume another device's binding", async () => {
     const devices = createDeviceStore(memoryStorage());
     const { ctl } = controller(fakePasskey(), devices);
-    const { session } = await ctl.signUp("kai");
-    await ctl.enrollPasskey(session, "kai");
+    const { recoveryPhrase } = await ctl.signUp("kai");
+    await ctl.enrollPasskey(recoveryPhrase, "kai");
 
     // A different authenticator over the same stored binding: unlock rejects.
     const { ctl: foreign } = controller(fakePasskey(), devices);
@@ -825,6 +827,7 @@ describe("owner session against a live blind store", () => {
       sync: createAccountSync(gatedApi),
       devices: createDeviceStore(memoryStorage()),
       passkey: fakePasskey(),
+      keys: createVolatileMasterKeyStore(),
       api: gatedApi,
     });
 
@@ -861,7 +864,7 @@ describe("owner session against a live blind store", () => {
     let failRemove = true;
     const accounts = {
       ...realAccounts,
-      removeAlias: (master: Bytes, id: string) =>
+      removeAlias: (master: MasterKey, id: string) =>
         failRemove
           ? Promise.reject(new Error("remove failed"))
           : realAccounts.removeAlias(master, id),
@@ -871,6 +874,7 @@ describe("owner session against a live blind store", () => {
       sync: createAccountSync(api),
       devices: createDeviceStore(memoryStorage()),
       passkey: fakePasskey(),
+      keys: createVolatileMasterKeyStore(),
       api,
     });
 

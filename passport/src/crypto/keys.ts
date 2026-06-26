@@ -119,14 +119,31 @@ export async function deriveMasterKey(
   return new Uint8Array(bits);
 }
 
-async function hkdf(
-  master: Bytes,
+/**
+ * The owner's master key as a non-extractable WebCrypto key (doc 24). It derives
+ * the account id, blob key, and write token but can never be exported as raw
+ * bytes, so it is safe to persist for resume (a script that reaches the page can
+ * use it while open but cannot copy it out). Import it once from the transient
+ * bytes a sign-in produces (account create, recover, or passkey unlock), then
+ * drop the bytes.
+ */
+export type MasterKey = CryptoKey;
+
+/**
+ * Import raw master bytes into a non-extractable HKDF {@link MasterKey}. The
+ * caller drops the bytes afterwards; the key derives byte-identically to the old
+ * raw path, so existing accounts keep resolving.
+ */
+export function importMasterKey(master: Bytes): Promise<MasterKey> {
+  return crypto.subtle.importKey("raw", master, "HKDF", false, ["deriveBits"]);
+}
+
+// HKDF from an already-imported key (the master): salt empty, info domain-separates.
+async function hkdfFromKey(
+  key: CryptoKey,
   info: string,
   bytes: number,
 ): Promise<Bytes> {
-  const key = await crypto.subtle.importKey("raw", master, "HKDF", false, [
-    "deriveBits",
-  ]);
   const out = await crypto.subtle.deriveBits(
     {
       name: "HKDF",
@@ -140,14 +157,26 @@ async function hkdf(
   return new Uint8Array(out);
 }
 
+// HKDF from raw bytes: imports them as an HKDF key first. Used where the input is
+// a transient secret that is NOT the persisted master (the passkey PRF output).
+async function hkdfFromBytes(
+  raw: Bytes,
+  info: string,
+  bytes: number,
+): Promise<Bytes> {
+  return hkdfFromKey(await importMasterKey(raw), info, bytes);
+}
+
 /** Deterministic opaque account id (43-char base64url) for `GET/PUT /acct/{id}`. */
-export async function deriveAccountId(master: Bytes): Promise<string> {
-  return bytesToBase64url(await hkdf(master, HKDF_ACCOUNT_ID_INFO, ID_BYTES));
+export async function deriveAccountId(master: MasterKey): Promise<string> {
+  return bytesToBase64url(
+    await hkdfFromKey(master, HKDF_ACCOUNT_ID_INFO, ID_BYTES),
+  );
 }
 
 /** Raw 32-byte AES key for the account-sync blob, separate from the id. */
-export function deriveAccountKey(master: Bytes): Promise<Bytes> {
-  return hkdf(master, HKDF_ACCOUNT_KEY_INFO, 32);
+export function deriveAccountKey(master: MasterKey): Promise<Bytes> {
+  return hkdfFromKey(master, HKDF_ACCOUNT_KEY_INFO, 32);
 }
 
 /**
@@ -158,9 +187,11 @@ export function deriveAccountKey(master: Bytes): Promise<Bytes> {
  * stores only its hash and constant-time compares, so observing the id alone does
  * not let someone clobber the account.
  */
-export async function deriveAccountWriteToken(master: Bytes): Promise<string> {
+export async function deriveAccountWriteToken(
+  master: MasterKey,
+): Promise<string> {
   return bytesToBase64url(
-    await hkdf(master, HKDF_ACCOUNT_WRITE_INFO, ID_BYTES),
+    await hkdfFromKey(master, HKDF_ACCOUNT_WRITE_INFO, ID_BYTES),
   );
 }
 
@@ -172,7 +203,7 @@ export async function deriveAccountWriteToken(master: Bytes): Promise<string> {
  * standalone master that would lock out on passkey loss (see auth/keyVault).
  */
 export function wrapKeyFromPrf(prfOutput: Bytes): Promise<Bytes> {
-  return hkdf(prfOutput, HKDF_PRF_MASTER_INFO, ID_BYTES);
+  return hkdfFromBytes(prfOutput, HKDF_PRF_MASTER_INFO, ID_BYTES);
 }
 
 /** SHA-256 of `data`, base64url-encoded. Used for opaque routing/requester

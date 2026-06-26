@@ -6,7 +6,7 @@
 // prove nothing here. The server harness is shared with the other integration
 // tests (src/test-support/serverHarness.ts).
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { phraseForTest } from "../test-support/phrase.ts";
+import { masterForTest } from "../test-support/phrase.ts";
 
 import { createApiClient, ApiError } from "./client.ts";
 import { ALIAS_PAYLOAD_SIZE, ID_ENCODED_LEN } from "./contract.ts";
@@ -21,7 +21,6 @@ import {
   randomAliasId,
   randomWriteToken,
   bytesToBase64url,
-  deriveMasterKey,
   deriveAccountId,
   deriveAccountKey,
   deriveAccountWriteToken,
@@ -115,7 +114,7 @@ describe("api client against a live blind store", () => {
   });
 
   it("round-trips the account-sync blob and reports a version", async () => {
-    const master = await deriveMasterKey(phraseForTest("recovery phrase"));
+    const master = await masterForTest("recovery phrase");
     const accountId = await deriveAccountId(master);
     const key = await importAesKey(await deriveAccountKey(master));
     const writeToken = await deriveAccountWriteToken(master);

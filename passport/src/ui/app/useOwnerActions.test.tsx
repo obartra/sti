@@ -4,6 +4,7 @@ import { useOwnerActions } from "./useOwnerActions.ts";
 import type { OwnerSession, SessionController } from "../../store/index.ts";
 import { INITIAL_OWNER_STATE } from "../../core/badge.ts";
 import { DEFAULT_AVATAR, type AvatarConfig } from "../../lib/avatars.ts";
+import { fakeMasterKey } from "../../test-support/phrase.ts";
 
 // onDeleteAccount fires disablePush() (IndexedDB); stub it so the test stays on
 // localStorage and never touches a store jsdom may not provide.
@@ -12,7 +13,7 @@ vi.mock("../../store/push.ts", () => ({
 }));
 
 const session: OwnerSession = {
-  master: new Uint8Array(32),
+  master: fakeMasterKey(),
   blob: {
     handle: "robin",
     aliases: [],
@@ -31,6 +32,9 @@ function stubController(over: Partial<SessionController>): SessionController {
     signUp: unused,
     recover: unused,
     resume: unused,
+    rememberDevice: unused,
+    forgetDevice: unused,
+    resumeFromStore: unused,
     enrollPasskey: unused,
     setProfile: unused,
     sweepExpiredLinks: unused,

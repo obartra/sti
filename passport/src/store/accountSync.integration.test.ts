@@ -2,14 +2,13 @@
 // Account sync proven against a live blind store: save the device blob, load it
 // back to the same value, and confirm a fresh master key sees no account.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { phraseForTest } from "../test-support/phrase.ts";
+import { masterForTest } from "../test-support/phrase.ts";
 
 import { createApiClient } from "../api/client.ts";
 import { createAccountSync } from "./accountSync.ts";
 import type { AccountBlob } from "./accountBlob.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
-import { deriveMasterKey } from "../crypto/index.ts";
 import {
   startApi,
   randomHex,
@@ -30,7 +29,7 @@ describe("account sync against a live blind store", () => {
   it("saves and loads the device blob", async () => {
     // Unique passphrase per run so reruns against a persistent server do not
     // collide on the derived account id.
-    const master = await deriveMasterKey(phraseForTest(randomHex(16)));
+    const master = await masterForTest(randomHex(16));
     const blob: AccountBlob = {
       handle: "robin",
       aliases: [
@@ -53,7 +52,7 @@ describe("account sync against a live blind store", () => {
   });
 
   it("a fresh master sees no account", async () => {
-    const master = await deriveMasterKey(phraseForTest(randomHex(16)));
+    const master = await masterForTest(randomHex(16));
     expect(await sync.load(master)).toBeNull();
   });
 });

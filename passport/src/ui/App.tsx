@@ -35,6 +35,10 @@ import {
   createDeviceStore,
   type StorageLike,
 } from "../auth/deviceStore.ts";
+import {
+  browserMasterKeyStore,
+  createVolatileMasterKeyStore,
+} from "../auth/masterKeyStore.ts";
 import type { AliasRecord } from "../store/index.ts";
 import { webAuthnPasskey } from "../auth/passkey.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
@@ -79,6 +83,7 @@ const backendController = createSessionController({
   sync: offlineSync,
   devices: browserDeviceStore() ?? createDeviceStore(volatileStorage()),
   passkey: webAuthnPasskey(),
+  keys: browserMasterKeyStore() ?? createVolatileMasterKeyStore(),
   api,
 });
 

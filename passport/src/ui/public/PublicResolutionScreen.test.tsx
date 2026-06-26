@@ -8,6 +8,7 @@ import type {
   ContactLinkResult,
   PassportStore,
 } from "../../store/index.ts";
+import { fakeMasterKey } from "../../test-support/phrase.ts";
 
 const LINK = { id: "A".repeat(43), key: "B".repeat(43) };
 
@@ -139,7 +140,7 @@ describe("PublicResolutionScreen", () => {
     const onAcceptInvite = vi.fn(
       (): Promise<ContactLinkResult> =>
         Promise.resolve({
-          session: { master: new Uint8Array(), blob: {} as never },
+          session: { master: fakeMasterKey(), blob: {} as never },
           contact: {} as never,
           url: returnUrl,
         }),

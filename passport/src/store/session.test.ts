@@ -13,19 +13,26 @@ import {
   bytesToBase64url,
   base64urlToBytes,
   randomRecoveryPhrase,
+  parseRecoveryPhrase,
+  deriveMasterKey,
+  importMasterKey,
+  deriveAccountId,
   type Bytes,
 } from "../crypto/index.ts";
+import { createVolatileMasterKeyStore } from "../auth/masterKeyStore.ts";
 
-// An in-memory account backend keyed by the master bytes, standing in for the
-// blind store. The session controller treats the master opaquely, so a random
-// 32-byte master is faithful here; real crypto covers the wrap/unwrap path.
+// An in-memory account backend addressed by deriveAccountId(master), like the
+// real accountSync. The master is the phrase-derived non-extractable key (doc 24),
+// so a re-imported key (after a passkey unwrap or a store resume) addresses the
+// same account, and the enroll/resume round-trip is faithful.
 function fakeBackend() {
-  const byMaster = new Map<string, AccountBlob>();
-  const phraseToMaster = new Map<string, Bytes>();
+  const byId = new Map<string, AccountBlob>();
   const accounts: AccountManager = {
-    create(handle) {
+    async create(handle) {
       const recoveryPhrase = randomRecoveryPhrase();
-      const master = crypto.getRandomValues(new Uint8Array(32));
+      const master = await importMasterKey(
+        await deriveMasterKey(recoveryPhrase),
+      );
       const blob: AccountBlob = {
         handle,
         aliases: [],
@@ -34,15 +41,15 @@ function fakeBackend() {
         avatar: DEFAULT_AVATAR,
         sharingMode: "link",
       };
-      byMaster.set(bytesToBase64url(master), blob);
-      phraseToMaster.set(recoveryPhrase, master);
-      return Promise.resolve({ recoveryPhrase, master, blob });
+      byId.set(await deriveAccountId(master), blob);
+      return { recoveryPhrase, master, blob };
     },
-    recover(phrase) {
-      const master = phraseToMaster.get(phrase);
-      if (!master) return Promise.resolve(null);
-      const blob = byMaster.get(bytesToBase64url(master));
-      return Promise.resolve(blob ? { master, blob } : null);
+    async recover(phrase) {
+      const parsed = parseRecoveryPhrase(phrase);
+      if (parsed === null) return null;
+      const master = await importMasterKey(await deriveMasterKey(parsed));
+      const blob = byId.get(await deriveAccountId(master));
+      return blob ? { master, blob } : null;
     },
     addAlias: () => Promise.reject(new Error("unused")),
     removeAlias: () => Promise.reject(new Error("unused")),
@@ -50,32 +57,27 @@ function fakeBackend() {
     removeContact: () => Promise.reject(new Error("unused")),
     upsertCircle: () => Promise.reject(new Error("unused")),
     removeCircle: () => Promise.reject(new Error("unused")),
-    deleteAccount: (master) => {
-      byMaster.delete(bytesToBase64url(master));
-      return Promise.resolve();
+    deleteAccount: async (master) => {
+      byId.delete(await deriveAccountId(master));
     },
     setOwnerState: () => Promise.reject(new Error("unused")),
     setProfile: () => Promise.reject(new Error("unused")),
     setFindable: () => Promise.reject(new Error("unused")),
     recordFindable: () => Promise.reject(new Error("unused")),
-    sweepExpiredLinks: (master) => {
+    sweepExpiredLinks: async (master) => {
       // No links expire in these tests, so a sweep is a pure read of the blob.
-      const blob = byMaster.get(bytesToBase64url(master));
-      return blob
-        ? Promise.resolve(blob)
-        : Promise.reject(new Error("no account"));
+      const blob = byId.get(await deriveAccountId(master));
+      if (!blob) throw new Error("no account");
+      return blob;
     },
   };
   const sync: AccountSync = {
-    load: (master) =>
-      Promise.resolve(byMaster.get(bytesToBase64url(master)) ?? null),
-    save: (master, blob) => {
-      byMaster.set(bytesToBase64url(master), blob);
-      return Promise.resolve();
+    load: async (master) => byId.get(await deriveAccountId(master)) ?? null,
+    save: async (master, blob) => {
+      byId.set(await deriveAccountId(master), blob);
     },
-    remove: (master) => {
-      byMaster.delete(bytesToBase64url(master));
-      return Promise.resolve();
+    remove: async (master) => {
+      byId.delete(await deriveAccountId(master));
     },
   };
   return { accounts, sync };
@@ -124,7 +126,14 @@ const stubApi = new Proxy({} as ApiClient, {
 function setup(passkey: PasskeyAuth = fakePasskey()) {
   const { accounts, sync } = fakeBackend();
   const devices = createDeviceStore(memoryStorage());
-  const deps: SessionDeps = { accounts, sync, devices, passkey, api: stubApi };
+  const deps: SessionDeps = {
+    accounts,
+    sync,
+    devices,
+    passkey,
+    keys: createVolatileMasterKeyStore(),
+    api: stubApi,
+  };
   return { ctl: createSessionController(deps), devices, passkey };
 }
 
@@ -153,17 +162,16 @@ describe("session controller", () => {
 
   it("enrollPasskey stores only the wrapped master, not the master or phrase", async () => {
     const { ctl, devices } = setup();
-    const { session, recoveryPhrase } = await ctl.signUp("robin");
-    await ctl.enrollPasskey(session, "robin");
+    const { recoveryPhrase } = await ctl.signUp("robin");
+    await ctl.enrollPasskey(recoveryPhrase, "robin");
 
     const cred = devices.load();
     expect(cred).not.toBeNull();
     expect(cred?.wrappedMaster).not.toBe(recoveryPhrase);
-    // The wrapped master is GCM ciphertext over the master, never the plaintext:
-    // the decoded bytes differ from the master and carry the IV+tag overhead.
+    // The wrapped master is GCM ciphertext over the 32-byte master, never the
+    // plaintext: longer than the master by the IV + tag overhead.
     const wrappedBytes = base64urlToBytes(cred?.wrappedMaster ?? "");
-    expect(wrappedBytes).not.toEqual(session.master);
-    expect(wrappedBytes.length).toBeGreaterThan(session.master.length);
+    expect(wrappedBytes.length).toBeGreaterThan(32);
   });
 
   it("resume fails closed when the stored wrapped master is corrupt, leaving the binding intact", async () => {
@@ -172,8 +180,8 @@ describe("session controller", () => {
     // base64url that is too short to be a GCM payload.
     for (const corrupt of ["!!!", bytesToBase64url(new Uint8Array(4))]) {
       const { ctl, devices } = setup();
-      const { session } = await ctl.signUp("robin");
-      await ctl.enrollPasskey(session, "robin");
+      const { recoveryPhrase } = await ctl.signUp("robin");
+      await ctl.enrollPasskey(recoveryPhrase, "robin");
       const cred = devices.load();
       expect(cred).not.toBeNull();
 
@@ -190,8 +198,8 @@ describe("session controller", () => {
 
   it("resume after enroll unlocks the same session", async () => {
     const { ctl } = setup();
-    const { session } = await ctl.signUp("robin");
-    await ctl.enrollPasskey(session, "robin");
+    const { session, recoveryPhrase } = await ctl.signUp("robin");
+    await ctl.enrollPasskey(recoveryPhrase, "robin");
 
     const resumed = await ctl.resume();
     expect(resumed?.master).toEqual(session.master);
@@ -215,16 +223,18 @@ describe("session controller", () => {
       sync,
       devices,
       passkey: enrolled,
+      keys: createVolatileMasterKeyStore(),
       api: stubApi,
     });
-    const { session } = await ctlA.signUp("robin");
-    await ctlA.enrollPasskey(session, "robin");
+    const { session, recoveryPhrase } = await ctlA.signUp("robin");
+    await ctlA.enrollPasskey(recoveryPhrase, "robin");
 
     const ctlB = createSessionController({
       accounts,
       sync,
       devices,
       passkey: fakePasskey(),
+      keys: createVolatileMasterKeyStore(),
       api: stubApi,
     });
     expect(await ctlB.resume()).toBeNull();
@@ -247,15 +257,15 @@ describe("session controller", () => {
       },
     };
     const { ctl } = setup(drifting);
-    const { session } = await ctl.signUp("robin");
-    await ctl.enrollPasskey(session, "robin");
+    const { recoveryPhrase } = await ctl.signUp("robin");
+    await ctl.enrollPasskey(recoveryPhrase, "robin");
     expect(await ctl.resume()).toBeNull();
   });
 
   it("forget removes the binding so resume falls back to the phrase", async () => {
     const { ctl } = setup();
-    const { session } = await ctl.signUp("robin");
-    await ctl.enrollPasskey(session, "robin");
+    const { recoveryPhrase } = await ctl.signUp("robin");
+    await ctl.enrollPasskey(recoveryPhrase, "robin");
     expect(await ctl.resume()).not.toBeNull();
 
     ctl.forget();
@@ -265,7 +275,7 @@ describe("session controller", () => {
   it("deleteAccount removes the account AND forgets the device binding", async () => {
     const { ctl } = setup();
     const { session, recoveryPhrase } = await ctl.signUp("robin");
-    await ctl.enrollPasskey(session, "robin");
+    await ctl.enrollPasskey(recoveryPhrase, "robin");
     expect(await ctl.resume()).not.toBeNull();
 
     await ctl.deleteAccount(session);
@@ -297,6 +307,7 @@ describe("session controller", () => {
       sync,
       devices,
       passkey: fakePasskey(),
+      keys: createVolatileMasterKeyStore(),
       api,
     });
     const { session } = await ctl.signUp("robin");

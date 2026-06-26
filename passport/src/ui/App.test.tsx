@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, it, expect, vi } from "vitest";
+import { afterEach, beforeAll, describe, it, expect, vi } from "vitest";
 import { App } from "./App.tsx";
 import type { ResolvedView } from "./public/PublicResolution.tsx";
 import type {
@@ -11,6 +11,15 @@ import type {
 } from "../store/index.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
+import { masterForTest } from "../test-support/phrase.ts";
+
+// A real non-extractable master, so the app's background derivations (account id,
+// write token) run for real on it instead of rejecting on a placeholder. Built
+// once; the fake controller hands the same key to every session it returns.
+let testMaster: Awaited<ReturnType<typeof masterForTest>>;
+beforeAll(async () => {
+  testMaster = await masterForTest("app-test-account");
+});
 
 // End-to-end of the UI wiring: a real shared link in the URL routes through
 // parseAliasLink -> useAppRouter -> Chrome -> the a2-public screen ->
@@ -34,7 +43,7 @@ function stubStore(to: ResolvedView | null): PassportStore {
 // adapter cannot run in jsdom). It records the created handle + profile so the
 // derived owner view can be asserted after onboarding.
 function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
-  const master = new Uint8Array(32);
+  const master = testMaster;
   let blob: AccountBlob = {
     handle: "",
     aliases: [],
@@ -60,6 +69,9 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
         ? Promise.resolve({ master, blob: { ...blob, handle: "rosa" } })
         : Promise.resolve(null),
     resume: () => Promise.resolve(null),
+    rememberDevice: () => Promise.resolve(),
+    forgetDevice: () => Promise.resolve(),
+    resumeFromStore: () => Promise.resolve(null),
     enrollPasskey: () => Promise.resolve(),
     setProfile: (_session, profile) => {
       blob = {

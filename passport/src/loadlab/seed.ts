@@ -15,6 +15,7 @@ import {
   utf8ToBytes,
   randomAliasId,
   randomWriteToken,
+  importMasterKey,
   deriveAccountId,
   deriveAccountKey,
   deriveAccountWriteToken,
@@ -48,7 +49,9 @@ async function seedOne(api: ApiClient, i: number): Promise<SeededOwner> {
   const writeToken = randomWriteToken();
   await api.putAlias(aliasId, payload, writeToken);
 
-  const master = crypto.getRandomValues(new Uint8Array(32));
+  const master = await importMasterKey(
+    crypto.getRandomValues(new Uint8Array(32)),
+  );
   const accountId = await deriveAccountId(master);
   const accountKeyRaw = await deriveAccountKey(master);
   const accountKey = await importAesKey(accountKeyRaw);

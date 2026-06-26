@@ -17,7 +17,7 @@ import {
   deriveAccountId,
   deriveAccountKey,
   deriveAccountWriteToken,
-  type Bytes,
+  type MasterKey,
 } from "../crypto/index.ts";
 import {
   serializeAccountBlob,
@@ -32,17 +32,17 @@ export interface AccountSync {
    * decrypt or parse, which signals the wrong key (a wrong recovery passphrase),
    * distinct from "no account".
    */
-  load(master: Bytes): Promise<AccountBlob | null>;
+  load(master: MasterKey): Promise<AccountBlob | null>;
   /** Encrypt and store the account blob for this master key. */
-  save(master: Bytes, blob: AccountBlob): Promise<void>;
+  save(master: MasterKey, blob: AccountBlob): Promise<void>;
   /** Delete the account blob for this master key (idempotent). */
-  remove(master: Bytes): Promise<void>;
+  remove(master: MasterKey): Promise<void>;
 }
 
 export function createAccountSync(api: ApiClient): AccountSync {
   // The account id and the blob key are independent derivations from the master,
   // so derive them together rather than serially.
-  const derive = (master: Bytes) =>
+  const derive = (master: MasterKey) =>
     Promise.all([
       deriveAccountId(master),
       deriveAccountKey(master).then(importAesKey),

@@ -33,16 +33,22 @@ export interface OnboardingActions {
   recoverPhrase(phrase: string): Promise<boolean>;
 }
 
+// The created account + chosen avatar + the recovery phrase, carried from b1 to
+// b3 in memory only. The phrase is passed to enrollPasskey (which re-derives the
+// wrap key, doc 24); it is NEVER persisted.
+interface OnboardingDraft {
+  session: OwnerSession;
+  avatar: AvatarConfig;
+  recoveryPhrase: string;
+}
+
 export function useOnboarding(
   controller: SessionController,
   onSession: (session: OwnerSession) => void,
 ): OnboardingActions {
-  // The created account + chosen avatar, carried from b1 to b3. A ref, not
-  // state: it never drives a render, and reading it in finish must see the
-  // latest value without a stale closure.
-  const draft = useRef<{ session: OwnerSession; avatar: AvatarConfig } | null>(
-    null,
-  );
+  // A ref, not state: it never drives a render, and finish must read the latest
+  // value without a stale closure.
+  const draft = useRef<OnboardingDraft | null>(null);
   // A synchronous in-flight latch: `busy` only blocks after a re-render, so a
   // rapid double-click could fire two account creations before it takes effect.
   const inFlight = useRef(false);
@@ -58,7 +64,11 @@ export function useOnboarding(
       setError(null);
       try {
         const result = await controller.signUp(handle);
-        draft.current = { session: result.session, avatar };
+        draft.current = {
+          session: result.session,
+          avatar,
+          recoveryPhrase: result.recoveryPhrase,
+        };
         setRecoveryPhrase(result.recoveryPhrase);
         return true;
       } catch {
@@ -86,8 +96,13 @@ export function useOnboarding(
         });
         // Bind a passkey so reload can resume without the phrase. Best-effort:
         // a declined or unavailable passkey still enters (the phrase recovers).
+        // enrollPasskey re-derives the wrap key from the phrase (doc 24), so pass
+        // the in-memory phrase rather than the session's non-extractable master.
         try {
-          await controller.enrollPasskey(updated, updated.blob.handle);
+          await controller.enrollPasskey(
+            current.recoveryPhrase,
+            updated.blob.handle,
+          );
         } catch {
           // keep going; the account is already created and phrase-recoverable.
         }
