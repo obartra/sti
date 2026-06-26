@@ -117,7 +117,7 @@ A `public/manifest.webmanifest`, linked from `index.html`, with a matching
 | `categories`       | `["health", "medical"]`                                        | Store and launcher categorization.                                                  |
 | `description`      | One plain line: what it is and the privacy promise            | User-facing copy, voice-and-tone governed; shown by some install UIs.                |
 | `shortcuts`        | Care, Share, Connect                                           | Long-press launcher entries to the three primary routes.                            |
-| `screenshots`      | a few captured states (planned, not yet in the manifest)      | Richer install UI on Chromium; reuse the visual-baseline pipeline, do not hand-roll. Fixture data only (S7), never a real session capture, or a real badge or handle ships in a static asset. |
+| `screenshots`      | a narrow (mobile) capture, BUILT                              | Richer install UI on Chromium. The source of truth is a dedicated Storybook story (`PWA/Install screenshots`), and `scripts/screenshots/generate.mjs` screenshots it into `public/screenshots/`, so the manifest image stays in sync with the real UI. Fixture data only (S7), never a real session: no real badge or handle ships in a static asset. |
 
 Icons derive from the existing `public/favicon.svg` (teal rounded square, white mark). The maskable
 variant needs the mark inside the safe zone with the teal extended to the bleeders, so Android's mask

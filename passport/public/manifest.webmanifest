@@ -29,6 +29,15 @@
       "purpose": "maskable"
     }
   ],
+  "screenshots": [
+    {
+      "src": "screenshots/home.png",
+      "sizes": "880x1784",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Your passport, up to date and ready to share"
+    }
+  ],
   "shortcuts": [
     {
       "name": "Care",

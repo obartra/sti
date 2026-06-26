@@ -27,11 +27,17 @@ let stories = Object.values(indexJson.entries).filter(
 );
 
 // Skip the "Design System" styleguide (tokens, component galleries, avatar/QR
-// demos). It stays browsable in Storybook at /design, but it is a reference
-// catalogue, not product UI, so there is nothing to visually regress; capturing
-// it only slows the gate. check-baselines.sh applies the SAME filter so the
-// baseline corpus matches what is captured.
-stories = stories.filter((entry) => !entry.title.startsWith("Design System"));
+// demos) and the "PWA/Install screenshots" stories. The first is a reference
+// catalogue, not product UI; the second is the SOURCE for the manifest install
+// screenshots (scripts/screenshots/generate.mjs pulls from it), not a regression
+// target, and capturing it would also demand a phone-size baseline. Both stay
+// browsable in Storybook at /design. check-baselines.sh applies the SAME filter so
+// the baseline corpus matches what is captured.
+stories = stories.filter(
+  (entry) =>
+    !entry.title.startsWith("Design System") &&
+    !entry.title.startsWith("PWA/Install screenshots"),
+);
 
 // Targeted re-capture: when set, shoot only these story ids. A heavy story very
 // occasionally blanks under full-suite capture (resource race), and re-running
