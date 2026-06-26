@@ -215,8 +215,10 @@ cmd_sync() {
   # written to disk here or on the box. install sets owner+mode atomically. The
   # config vars expand here (client side, all trusted local values); only the
   # secret content crosses the wire, on stdin, never in the command string.
+  # printf '%s\n': $() stripped the trailing newline, so add exactly one back, a
+  # properly terminated env file (systemd is fine either way; this keeps it clean).
   # shellcheck disable=SC2029
-  printf '%s' "$plain" | ssh "$SSH_TARGET" \
+  printf '%s\n' "$plain" | ssh "$SSH_TARGET" \
     "${SUDO:+$SUDO }install -m '$REMOTE_MODE' -o '${REMOTE_OWNER%:*}' -g '${REMOTE_OWNER#*:}' /dev/stdin '$REMOTE_PATH' \
      && ${SUDO:+$SUDO }systemctl restart '$SERVICE' \
      && ${SUDO:+$SUDO }systemctl is-active '$SERVICE'"
