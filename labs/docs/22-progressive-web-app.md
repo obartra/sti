@@ -167,21 +167,25 @@ opt out of the shell cache. User data stays in the encrypted store, never in an 
 The app version is already stamped (`__APP_VERSION__`), so the cache name carries it
 (`shell-v{version}`). Policy:
 
-- **No AUTOMATIC `skipWaiting()` and no `clients.claim()`; control begins at the next navigation.** A
-  page that loaded WITHOUT the worker is never taken over mid-load. (We tried the aggressive pair
-  first; claiming an in-flight page cancels its requests and can serve the HTML shell for a
-  sub-resource, which then fails with a `text/html` script MIME error. Validated against the e2e
-  suite.) So the worker installs quietly on visit one and controls from visit two, the standard PWA
-  lifecycle. This is also what keeps old versions working: nothing is force-swapped under a running
-  page.
-- **Surface the update; let the user activate it.** When a newer worker is installed and waiting (a
-  worker reaching `installed` while one already controls the page), the app shows a quiet, dismissible
-  affordance. Tapping Reload posts the waiting worker a `SKIP_WAITING` message (the ONLY path that
-  calls `skipWaiting`, so activation is always user-initiated); the worker activates, `controllerchange`
-  fires, and the page reloads once onto the new version. Dismiss leaves the running version untouched;
-  the next cold start picks the update up regardless. Copy follows voice and tone, outcome-first:
-  **"A newer version is ready."** with **Reload** / **Not now** actions. (Implemented in slice 3:
-  `swUpdate.ts`, `registerSw.ts`, `UpdateBanner.tsx`.)
+- **No `clients.claim()`, and `skipWaiting()` only at a navigation boundary; a page is never taken
+  over mid-load.** (We tried the aggressive pair first; claiming an in-flight page cancels its
+  requests and can serve the HTML shell for a sub-resource, which then fails with a `text/html` script
+  MIME error. Validated against the e2e suite.) The worker installs quietly while the old one keeps
+  controlling the running page, so nothing is force-swapped under it. This is also what keeps old
+  versions working: an offline or untouched session stays on its current version.
+- **Adopt the update silently at the user's next screen change; no banner (revised).** The earlier
+  design surfaced a dismissible "A newer version is ready" affordance and waited for a tap. In
+  practice that prompt was noise for what is almost always a routine update, so it was removed. Now,
+  when a newer worker reaches `installed` while one controls the page (`registerSw` records it via
+  `notifyUpdateReady`), the app does nothing until the user's **next in-app navigation**; on that
+  screen change the router calls `applyPendingUpdate`, which posts the waiting worker `SKIP_WAITING`,
+  and the `controllerchange` that follows reloads once onto the new version, landing the user on the
+  same screen. Applying at a navigation (not mid-interaction) is what makes it discreet AND avoids a
+  still-running old page requesting a code chunk the new deploy dropped: the reload happens right at
+  the boundary. If the user never navigates, the worker adopts on the next cold start (standard
+  lifecycle). `skipWaiting` is thus automatic but still never fires under an in-flight load. There is
+  no minimum-version floor and no staleness threshold: every update, recent or old, adopts the same
+  quiet way. (`swUpdate.ts`, `registerSw.ts`, `useAppRouter.ts`.)
 - **No silent data migration risk.** The worker only ever touches the public shell cache. User data
   lives in the encrypted blob and is versioned by the app's own store-migration path, untouched here.
 
@@ -346,8 +350,9 @@ Each slice is independently shippable and leaves the app correct.
 2. **Offline shell (BUILT).** `install`/`activate`/`fetch` composed into the existing worker
    (section B), a build-time precache manifest, the cross-origin (incl. API) passthrough. Outcome:
    the installed app opens offline and renders the owner's own local status.
-3. **Update UX (BUILT).** Versioned shell cache, a user-initiated `SKIP_WAITING` activation, and the
-   voice-reviewed "reload to update" affordance (no automatic skipWaiting/claim; section E).
+3. **Update UX (BUILT, then revised).** Versioned shell cache plus update adoption. Originally a
+   voice-reviewed "reload to update" banner; revised to **silent adoption at the next screen change**,
+   with the banner removed (no `clients.claim`, `skipWaiting` only at a navigation boundary; section E).
 4. **Offline-created state (section H), BUILT.** This was the foundational change anticipated below:
    the encrypted blob is now cached in a master-key-sealed local store (`localBlobStore.ts`), and the
    sync (`offlineSync.ts`) reads **local-first** (so a reload restores the session offline) and writes
