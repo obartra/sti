@@ -1,7 +1,40 @@
 import { describe, it, expect } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { findableNameFromPath, useAppRouter } from "./useAppRouter.ts";
+import {
+  findableNameFromPath,
+  routeFromLocation,
+  useAppRouter,
+} from "./useAppRouter.ts";
 import { groupOf } from "./routes.ts";
+
+describe("routeFromLocation: shared alias links", () => {
+  const ID = "tW0gEbDrF_r7_70h-NRAYsSTDUQ8_SLbJdohXqFGYog";
+  const KEY = "A".repeat(43);
+  const at = (path: string) => {
+    window.history.replaceState(null, "", path);
+    return routeFromLocation();
+  };
+
+  it("routes a keyed /a/{id}#k= to a2-public with the id and key", () => {
+    const r = at(`/a/${ID}#k=${KEY}`);
+    expect(r?.screen).toBe("a2-public");
+    expect(r?.data?.id).toBe(ID);
+    expect(r?.data?.key).toBe(KEY);
+  });
+
+  it("routes a KEYLESS /a/{id} to the ask-to-view card, not the landing", () => {
+    // Regression: a gated "ask first" share has no #k=. It must still land on
+    // a2-public (which shows Request access), never fall through to a1-landing.
+    const r = at(`/a/${ID}`);
+    expect(r?.screen).toBe("a2-public");
+    expect(r?.data?.id).toBe(ID);
+    expect(r?.data?.key).toBeUndefined();
+  });
+
+  it("does not treat a malformed /a path as an alias link", () => {
+    expect(at("/a/too-short")).toBeNull();
+  });
+});
 
 describe("findableNameFromPath", () => {
   it("extracts and normalizes the name from /u/{name}", () => {

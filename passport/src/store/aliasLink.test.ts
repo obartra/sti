@@ -1,8 +1,26 @@
 import { describe, it, expect } from "vitest";
-import { parseAliasLink, parseScannedLink } from "./aliasLink.ts";
+import {
+  parseAliasLink,
+  parseScannedLink,
+  aliasIdFromPath,
+} from "./aliasLink.ts";
 
 const ID = "A".repeat(43);
 const KEY = "B".repeat(43);
+
+describe("aliasIdFromPath", () => {
+  it("returns the id whether or not a key fragment is present", () => {
+    // A keyless `/a/{id}` is a real (gated) link, so the id still parses out.
+    expect(aliasIdFromPath(`/a/${ID}`)).toBe(ID);
+    expect(aliasIdFromPath(`/a/${ID}/`)).toBe(ID); // trailing slash
+  });
+
+  it("returns null for a malformed id or a non-alias path", () => {
+    for (const p of ["/a/too-short", "/", "/home", "/u/robin", "/exposed"]) {
+      expect(aliasIdFromPath(p)).toBeNull();
+    }
+  });
+});
 
 describe("parseAliasLink", () => {
   it("parses a public link: id from the path, key from the fragment", () => {

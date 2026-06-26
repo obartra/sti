@@ -8,7 +8,7 @@ import {
   type Screen,
 } from "./routes.ts";
 import { applyPendingUpdate } from "../../pwa/swUpdate.ts";
-import { parseAliasLink } from "../../store/aliasLink.ts";
+import { parseAliasLink, aliasIdFromPath } from "../../store/aliasLink.ts";
 import { parseContactInvite } from "../../store/contactInvite.ts";
 import { normalizeVanityName } from "../../store/vanityName.ts";
 import { FINDABLE_ENABLED } from "../../features.ts";
@@ -59,7 +59,7 @@ function routeFromHash(): Route | null {
 // A real shared passport link is `/a/{id}#k={key}` (the SPA fallback serves the
 // app at that path). It resolves to a2-public carrying the id + key; the hash
 // here holds the decryption key, not a screen name.
-function routeFromLocation(): Route | null {
+export function routeFromLocation(): Route | null {
   if (typeof window === "undefined") return null;
   // The public heads-up page (linked from the off-app text). Anonymous, no key.
   if (/^\/exposed\/?$/.test(window.location.pathname)) {
@@ -79,14 +79,19 @@ function routeFromLocation(): Route | null {
       return { screen: "u-resolve", group: "public", data: { name } };
     }
   }
-  const link = parseAliasLink(window.location.pathname, window.location.hash);
+  return aliasRoute(window.location.pathname, window.location.hash);
+}
+
+// Resolve a shared alias link to its a2-public route, or fall through to hash
+// routing. A keyed `/a/{id}#k=` carries the decryption key (and maybe a contact
+// invite); a keyless `/a/{id}` is a gated "ask first" share (doc 16) that still
+// routes to a2-public so the viewer gets the ask-to-view flow rather than the
+// landing. A non-existent id resolves to the same gray-nothing, so neither leaks
+// whether the link exists.
+function aliasRoute(pathname: string, hash: string): Route | null {
+  const link = parseAliasLink(pathname, hash);
   if (link) {
-    // A contact invite is the same link plus a notify capability (and `ref` on a
-    // return). When present, carry it so a logged-in viewer can accept (doc 13).
-    const invite = parseContactInvite(
-      window.location.pathname,
-      window.location.hash,
-    );
+    const invite = parseContactInvite(pathname, hash);
     return {
       screen: "a2-public",
       group: "public",
@@ -97,6 +102,10 @@ function routeFromLocation(): Route | null {
         ...(invite?.ref !== undefined ? { ref: invite.ref } : {}),
       },
     };
+  }
+  const keylessId = aliasIdFromPath(pathname);
+  if (keylessId !== null) {
+    return { screen: "a2-public", group: "public", data: { id: keylessId } };
   }
   return routeFromHash();
 }
@@ -110,13 +119,13 @@ export function useAppRouter(initial: Route = START): Router {
 
   // Reflect the current screen in the URL hash so it is shareable and
   // refresh-stable, without polluting browser history. While actually showing a
-  // resolved shared link (a2-public carrying the key), leave the URL alone:
-  // rewriting it would clobber the `#k=` decryption key, and it is already the
-  // canonical shareable URL. Once navigated elsewhere, normalize back to the
-  // hash-routed root so a refresh restores that screen instead of re-resolving
-  // the now-stale `/a/{id}` link.
+  // shared link (a2-public carrying an id, keyed OR keyless), leave the URL alone:
+  // rewriting it would clobber the `#k=` key on a keyed link and drop the id on a
+  // keyless one, and the `/a/{id}` URL is already the canonical shareable address.
+  // The id-less a2-public (the "see a sample" demo, or a self-preview) carries no
+  // address, so it normalizes back to the hash-routed root like any other screen.
   useEffect(() => {
-    const onAliasLink = route.screen === "a2-public" && route.data?.key != null;
+    const onAliasLink = route.screen === "a2-public" && route.data?.id != null;
     // Leave the canonical public /exposed URL alone too (it is the shared link).
     if (onAliasLink || route.screen === "exposed") return;
     // promises has a clean, shareable, anonymous-reachable path; everything else
