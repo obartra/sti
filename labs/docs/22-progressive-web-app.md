@@ -24,9 +24,15 @@ offers, with one hard line drawn around what a cache is ever allowed to hold.
 1. **Offline is a correct state, not an outage.** The pure core resolves the badge, the 90-day
    clock, and all per-site logic with no network (doc 10). The only thing the network adds is the
    fresh confirmed read that turns a badge blue, and the locked rule is already
-   **gray, never stale-blue** ([02-decisions.md](02-decisions.md)). So an installed app that opens
-   with no signal is not broken: it shows the user's own data and a correct gray. The PWA work makes
-   that state reachable and fast, it does not invent new behavior.
+   **gray, never stale-blue** ([02-decisions.md:156](02-decisions.md)). So an installed app that
+   opens with no signal is not broken: it shows the user's own data and a correct gray. The PWA work
+   makes that state reachable and fast, it does not invent new behavior. Note the badge stays
+   **uniformly gray**: offline does not get a distinct "no connection" badge state. Gray must mean the
+   same thing whatever the cause (real gray status, paused owner, dead network), because a
+   network-specific badge reads as "this would be blue if you were online", which is the stale-blue
+   inference the lock exists to kill, and the lock explicitly drops the owner-facing "couldn't
+   refresh" message. Connectivity, if surfaced at all, is app chrome, never a badge state (open
+   question K).
 2. **A cache is storage the server can't see but an attacker with the phone can.** CacheStorage and
    IndexedDB are unencrypted at rest, exactly like the push context already is (doc 09, the one
    honest caveat). Everything we precache must be **public, non-sensitive app code**, the same bytes
@@ -244,3 +250,11 @@ Slices 4 and 5 are optional polish; 1 to 3 are the core "capable PWA".
 - **Wallet passes vs install.** The live-status wallet pass (doc 02, doc 03) is the OS-native offline
   status surface; the installed PWA is the app surface. They are complementary, not a choice; keep
   the two from implying different freshness rules to the user.
+- **A status-free offline indicator in app chrome.** The badge stays uniformly gray offline (the
+  lock), but connectivity and the badge are different kinds of thing: one is a status claim, the
+  other is app chrome. A neutral "You're offline" cue in the shell that never reinterprets the badge
+  or implies "it would be blue if connected" could be honest and useful. The catch: the lock dropped
+  the owner-facing "couldn't refresh" message as unnecessary, so any such cue is a deliberate
+  decision-log change, not a thing this doc bakes in. Decide whether the offline-install case (where
+  "no signal" is now an everyday state, not an outage) changes that call. If yes, it stays strictly
+  chrome, with voice-and-tone copy, and the badge semantics are untouched.
