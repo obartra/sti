@@ -93,7 +93,7 @@ it, the same discipline visual baselines follow.
 
 > One real risk to call out: composing a `fetch` handler into the worker that currently only does
 > push means a worker bug can now break navigation, not just a nudge. That is why the fetch handler
-> fails open to the network (section D) and why offline is exercised in CI (section H).
+> fails open to the network (section D) and why offline is exercised in CI (section K).
 
 ## C. The web app manifest (installable)
 
@@ -200,7 +200,60 @@ platform lacks it) and **privacy-reviewed**, because each adds a background acto
   delivers web push to an **installed** PWA. So "install" is not cosmetic on iOS; it is the gate for
   notifications at all. This is the strongest single reason the install path matters.
 
-## H. Platform reality: a capability floor, then progressive ceilings
+## H. Offline-created state: capture now, back up later
+
+Three things a user does offline produce state that has to reach the server later: reporting a
+result (republish the card so viewers see the new badge), backing up the account blob (cross-device
+recovery), and accepting a contact link (register notify routing and push). The badge and the data
+are already local and authoritative (principle 1); what is new is making the **outbound** half
+durable and honest. This is what lets us say, truthfully, that the app creates a badge, installs,
+and adds contacts with no signal.
+
+**What works offline, stated precisely (so the claim stays honest):**
+
+- **Report a result or change status:** fully local. The badge updates immediately on the owner's
+  own screens.
+- **See your own badge:** yes. **Show a verified badge to someone else:** no, that needs their
+  device to do a fresh confirmed read online. A badge trusted from a cached QR is stale-blue, which
+  the lock forbids, so we never render someone else's verified badge from offline data.
+- **Add a contact in person:** the link payload (the alias plus the notify capability) rides in the
+  fragment, so a scan captures it with no signal (`contactInvite.ts`). What waits for reconnect:
+  resolving the other card to actually see their badge, and arming notifications (routing and push
+  registration). So the honest line is **"swap contacts with no signal; you each see the other's
+  badge and get nudges once either of you is back online,"** not "fully offline contacts."
+
+**Storage: a durable outbound queue, not a different result format.** Results already persist in the
+encrypted blob, so nothing about how a result is stored changes. What we add is two small things:
+
+- a durable, encrypted **outbound queue** in IndexedDB holding the deferred server ops (republish
+  alias, push the account-blob backup, register an accepted contact's notify routing and push), and
+- a **"backed up as of" marker** so the app can tell, locally and honestly, that there are changes
+  the server has not yet received.
+
+The queue mirrors the at-rest posture already accepted for the push context (doc 09): it holds
+capabilities and ciphertext-shaped values, never readable status. It is drained by Background Sync
+(section G) on reconnect, with a foreground flush on app open as the fallback for platforms without
+Background Sync (iOS).
+
+**UI affordances: surface it once, passively, let it resolve itself.** The anti-pestering rule is
+the design:
+
+- **One passive, persistent, non-modal marker** in the chrome while the queue is non-empty: a quiet
+  indicator, not a toast, not a banner that recurs. It clears itself silently when the queue drains.
+- **At most one gentle inline line** at the moment of a consequential offline action, shown once and
+  never repeated: after reporting a result with no signal, a quiet "Saved on this device. It backs
+  up when you're online." (voice and tone: plain, outcome-first, "back up" not "sync", no alarm).
+- **Never block, never modal, never nag.** No "you are offline" interstitial, no repeated reminders,
+  no red. The default is silence; the marker is there for a user who looks.
+- **The honest stake, said once where it belongs:** until it backs up, changes live only on this
+  device, so a phone lost before reconnecting loses them. State it calmly in the backup/recovery
+  surface, not as a recurring warning on every screen.
+- **On reconnect** the queue drains in the background and the marker disappears. No success toast is
+  needed; any confirmation is brief and dismissible, never celebratory.
+
+All copy here is governed by [21-voice-and-tone.md](21-voice-and-tone.md) and reviewed before merge.
+
+## I. Platform reality: a capability floor, then progressive ceilings
 
 Every feature above degrades cleanly. The **floor** every supported browser gets is: an installable,
 offline-capable shell that renders the user's own status with no network. Ceilings stack on top
@@ -217,7 +270,7 @@ where the platform allows.
 The honest line for users, when we say anything at all, is the floor: it works offline and we still
 can't read it. We never promise a background feature a given phone won't deliver.
 
-## I. Build slices
+## J. Build slices
 
 Each slice is independently shippable and leaves the app correct.
 
@@ -229,12 +282,15 @@ Each slice is independently shippable and leaves the app correct.
    opens offline and renders the user's own gray/blue-from-local status.
 3. **Update UX.** Versioned caches, `skipWaiting`/`claim`, the voice-reviewed "reload to update"
    affordance.
-4. **Background Sync** for outbound actions.
+4. **Offline-created state (section H).** The durable outbound queue, the "backed up as of" marker,
+   the passive not-backed-up affordance, and Background Sync to drain it. Outcome: report a result,
+   change status, or scan a contact with no signal, and it backs up and propagates on reconnect with
+   no nagging.
 5. **Periodic Background Sync**, gated off by default, behind the same review the push wake passed.
 
 Slices 4 and 5 are optional polish; 1 to 3 are the core "capable PWA".
 
-## J. Testing and gates
+## K. Testing and gates
 
 - **Lighthouse PWA audit** wired into CI as a gate (installable, manifest valid, offline-200). It
   catches manifest and icon regressions mechanically.
@@ -247,7 +303,7 @@ Slices 4 and 5 are optional polish; 1 to 3 are the core "capable PWA".
 - **The standard gates** still apply: typecheck, lint, test, build, `build-storybook`, prettier,
   Go suite, no em dashes (CLAUDE.md).
 
-## K. Open questions and residuals
+## L. Open questions and residuals
 
 - **`share_target`** (receive a shared passport link into the installed app). Deferred: it is an
   existence-and-routing surface that belongs with link resolution (doc 16), not the manifest. Decide
