@@ -254,9 +254,10 @@ async function cacheFirst(request: Request): Promise<Response> {
 
 // ---- Update activation (doc 22 slice 3) ---------------------------------------
 
-// The app posts SKIP_WAITING only when the user taps "Reload" on the update
-// affordance, so activation is user-initiated, never a mid-use swap. On skipWaiting
-// the new worker activates and the page's controllerchange reloads it.
+// The app posts SKIP_WAITING when the router adopts a waiting update at the user's
+// NEXT screen change (doc 22 section E: silent adoption, no banner). Activation is
+// thus pinned to a navigation boundary, never a mid-use swap; on skipWaiting the new
+// worker activates and the page's controllerchange reloads it once onto the new build.
 sw.addEventListener("message", (event) => {
   if (isSkipWaiting(event.data)) void sw.skipWaiting();
 });

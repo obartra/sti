@@ -70,6 +70,22 @@ describe("mergeAccountBlobs (doc 22 S8, 3-way)", () => {
     ]);
   });
 
+  it("same id added on both sides with differing fields: mine wins (no ancestor)", () => {
+    // Both devices independently created a record under the same id while offline,
+    // with different labels. There is no ancestor for it, so it is a true divergence
+    // and the active device (mine) wins, matching the same-field policy.
+    const mine: AccountBlob = {
+      ...BASE,
+      contacts: [contact("c1"), contact("dup", "mine")],
+    };
+    const theirs: AccountBlob = {
+      ...BASE,
+      contacts: [contact("c1"), contact("dup", "theirs")],
+    };
+    const merged = mergeAccountBlobs(BASE, mine, theirs);
+    expect(merged.contacts.find((c) => c.id === "dup")?.label).toBe("mine");
+  });
+
   it("delete wins: a contact I revoked stays gone even if they edited it", () => {
     // I removed c1; they relabeled it. Revocation must not be resurrected.
     const mine: AccountBlob = { ...BASE, contacts: [] };

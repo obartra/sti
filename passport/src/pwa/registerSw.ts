@@ -26,8 +26,8 @@ async function registerAndWatch(): Promise<void> {
     registration.addEventListener("updatefound", () => {
       watchInstalling(registration.installing);
     });
-    // When the user accepts an update, the waiting worker activates and the
-    // controller changes; reload once onto the new version.
+    // When a waiting update is adopted at the next screen change (doc 22 E, silent),
+    // the waiting worker activates and the controller changes; reload once onto it.
     navigator.serviceWorker.addEventListener(
       "controllerchange",
       reloadForUpdate,
@@ -41,7 +41,8 @@ function watchInstalling(worker: ServiceWorker | null): void {
   if (worker === null) return;
   worker.addEventListener("statechange", () => {
     // A worker that reaches "installed" while one is already controlling is an
-    // UPDATE waiting to take over, not the first install. Offer the reload.
+    // UPDATE waiting to take over, not the first install. Record it; the router
+    // adopts it silently at the user's next screen change (doc 22 E).
     if (
       worker.state === "installed" &&
       navigator.serviceWorker.controller !== null

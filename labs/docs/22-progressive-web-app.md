@@ -150,10 +150,19 @@ one sharp edge, so it is worker-backed rather than a bare manifest line:
   body rather than in a loggable action URL, and the worker reads it with `request.formData()`. A GET
   target would place the key in the action URL's query string, worse on every axis (in history, in any
   referer, and one worker miss from the network).
-- **Fail closed; fall OPEN to the network never.** On anything off (a malformed share, a link with no
-  fragment, the worker not yet in control) the handler degrades to the app's benign no-key/gray state
-  and must NOT fall through to a plain network navigation that carries the key. This inverts the usual
-  "fetch handler fails open to the network" rule for this one path, because here the network is the leak.
+- **Fail closed; fall OPEN to the network never.** Once the handler is in control, anything off (a
+  malformed share, a link with no fragment, a foreign host) degrades to the app's benign no-key/gray
+  state and must NOT fall through to a plain network navigation that carries the key. This inverts the
+  usual "fetch handler fails open to the network" rule for this one path, because here the network is
+  the leak. The one case this cannot cover is a worker **not yet in control**: if the OS has read the
+  `share_target` manifest member while this device's cached worker still predates the handler (a
+  one-time window right after a release, before the worker updates on the next navigation), a share POST
+  is not intercepted and the browser delivers it to the **static app host** that serves the shell, not
+  to the blind store. That host is ours and never the API origin, so the key does not reach the blind
+  server, but it does momentarily reach our hosting rather than staying on the device. The clean
+  mitigation is a **phased rollout**: ship the worker handler in one release and add the manifest
+  `share_target` member only in a later release, so every device that can see the member already runs a
+  worker that intercepts. Shipping both together accepts that narrow window as a residual.
 - **No new existence surface, best-effort on the fragment.** Resolving a shared link is byte-for-byte
   the same `/a/{id}` read as opening it directly, existence-uniform per doc 12; share_target only adds
   an OS entry point. Whether the shared string still carries `#k={key}` is up to the sharing app (some
