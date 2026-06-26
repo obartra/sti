@@ -12,7 +12,6 @@ import { useExpirySweep } from "./app/useExpirySweep.ts";
 import { useOwnerStateActions } from "./app/useOwnerStateActions.ts";
 import { OWNER } from "./app/fixtures.ts";
 import { Chrome } from "./app/Chrome.tsx";
-import { UpdateBanner } from "./app/UpdateBanner.tsx";
 import { createApiClient } from "../api/client.ts";
 import {
   browserRequesterSecret,
@@ -182,7 +181,6 @@ export function App({
 
   return (
     <>
-      <UpdateBanner />
       <NotBackedUp pending={backupPending} />
       <Chrome
         // A logged-out visitor must never land on an app-group screen (e.g. a #home

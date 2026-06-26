@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   groupOf,
   isScreen,
@@ -7,6 +7,7 @@ import {
   type RouteData,
   type Screen,
 } from "./routes.ts";
+import { applyPendingUpdate } from "../../pwa/swUpdate.ts";
 import { parseAliasLink } from "../../store/aliasLink.ts";
 import { parseContactInvite } from "../../store/contactInvite.ts";
 import { normalizeVanityName } from "../../store/vanityName.ts";
@@ -126,6 +127,18 @@ export function useAppRouter(initial: Route = START): Router {
       window.history.replaceState(null, "", target);
     }
   }, [route.screen, route.data]);
+
+  // Silent PWA update (doc 22 section E): when a newer worker is waiting, adopt it at
+  // the user's next screen change, never mid-interaction. Skips the initial mount, so
+  // it only fires on a real navigation; a no-op unless an update is actually waiting.
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    applyPendingUpdate();
+  }, [route.screen]);
 
   const go = useCallback(
     (screen: Screen, data?: RouteData) => {
