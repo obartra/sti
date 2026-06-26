@@ -136,9 +136,9 @@ handle = alias.handle ?? pseudonymFor(id)
 avatar = alias.avatar                       // omitted if unset; viewer falls back to avatarFor(handle)
 ```
 
-`pseudonymFor` is a deterministic id-derived label (adjective + noun, emitted in the handle charset
-lowercase `[a-z0-9_]`, within the 64-char limit, the handle-slot counterpart of `avatarFor`); see
-Honest limits for its required wordlist size. `deriveOwnerCard` currently takes `(state, handle,
+`pseudonymFor` is a deterministic id-derived label of the form `adjective_noun_NN` (a word pair plus
+a two-digit suffix, emitted in the handle charset lowercase `[a-z0-9_]`, within the 64-char limit, the
+handle-slot counterpart of `avatarFor`); see Honest limits for its required wordlist size. `deriveOwnerCard` currently takes `(state, handle,
 nowDay, avatar?)`; it gains the alias's id + optional overrides so it resolves per alias.
 
 **Schema:** bump `accountBlob.ts` v8 to v9, adding the two optional fields on `AliasRecord`, parsed
@@ -189,10 +189,13 @@ established assumption in `accountBlob.ts`), so there is nothing to migrate.
   chance; the avatar is a weak signal.
 - **The pseudonym is the real separator, so it is sized for it.** Anonymous unlinkability rests on
   `pseudonymFor` rarely colliding across the aliases one owner mints. The shipped wordlists are
-  256 x 256 = 65,536 pairs (`pseudonymWords.ts`, matching the no-unique-tag promise). That keeps an
-  exact-pair collision uncommon for a heavy user minting dozens of links (a few percent at most), but
-  not vanishing; the handle is sized as a separator, not a promise of zero collisions, and growing the
-  lists toward ~10^5 is the lever if that margin ever needs to widen.
+  256 x 256 = 65,536 pairs (`pseudonymWords.ts`, matching the no-unique-tag promise), and the
+  `adjective_noun_NN` form appends a two-digit suffix, lifting the full label space to
+  256 x 256 x 100 = ~6.5M. The suffix guards full-label collisions; the word PAIR is still the real
+  correlation hint, so unlinkability is sized on the 65,536 pairs. That keeps an exact-pair collision
+  uncommon for a heavy user minting dozens of links (a few percent at most), but not vanishing; the
+  handle is sized as a separator, not a promise of zero collisions, and growing the lists toward
+  ~10^5 pairs is the lever if that margin ever needs to widen.
 - **Opt-in recognizability is linkable, by design.** Showing the same face to two contacts is a chosen
   linkable identity; the tool's duty is to make that an informed choice, not to prevent it.
 - **Behavioral correlation is handled separately:** per-alias faces do nothing about timing-based

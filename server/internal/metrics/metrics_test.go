@@ -89,6 +89,23 @@ func TestShedAndRateLimitAttribution(t *testing.T) {
 	}
 }
 
+// The /a p99 latency alert (doc 12) reads the 25ms and 100ms bucket boundaries:
+// it watches how the histogram fills around those edges. Dropping or moving either
+// boundary silently breaks the alert, so pin them here.
+func TestDurationBucketsPinAlertBoundaries(t *testing.T) {
+	want := map[float64]bool{0.025: false, 0.1: false}
+	for _, b := range durationBuckets {
+		if _, ok := want[b]; ok {
+			want[b] = true
+		}
+	}
+	for b, present := range want {
+		if !present {
+			t.Errorf("durationBuckets missing the %v boundary the /a p99 alert depends on: %v", b, durationBuckets)
+		}
+	}
+}
+
 func TestHistogramCumulativeBuckets(t *testing.T) {
 	m := New()
 	// 0.002 falls in le=0.005; 0.2 falls in le=0.5; 5 falls in +Inf only.

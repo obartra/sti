@@ -16,7 +16,9 @@ const PREVIEW_ALIAS_ID = "a7f3k9q2";
 // face only appears when they choose to show it (per link, at share time).
 function DefaultLinkCard({ aliasId }: { aliasId: string }) {
   const handle = pseudonymFor(aliasId);
-  const faceSrc = avatarFor(handle);
+  // Seed the avatar on the opaque alias id, not the derived handle (doc 19): the
+  // face derives from the same id the wire seals, so the preview is honest.
+  const faceSrc = avatarFor(aliasId);
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

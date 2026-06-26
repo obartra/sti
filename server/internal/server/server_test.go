@@ -276,6 +276,46 @@ func TestAliasReadIsExistenceUniform(t *testing.T) {
 	}
 }
 
+// Existence-timing uniformity (doc 02: existence uniformity is shape AND timing):
+// a hit must compute the decoy too, so it pays the same HMAC cost as a miss. We
+// count decoy computations on the read path via decoyComputeHook and assert a hit
+// and a miss compute it the same number of times (1 each). A future refactor that
+// returns the stored bytes BEFORE computing the decoy (e.g. an `if found { return }`
+// placed first) drops the hit-path count to 0 and turns this red.
+func TestAliasReadComputesDecoyOnHitAndMiss(t *testing.T) {
+	h := newTestServer(t)
+	real := randID(t)
+	missing := randID(t)
+	payload := bytes.Repeat([]byte{0x22}, contract.AliasPayloadSize)
+
+	put := httptest.NewRequest("PUT", contract.PathAliasPrefix+real, bytes.NewReader(payload))
+	put.Header.Set(contract.HeaderWriteToken, "tok")
+	do(h, put)
+
+	var computes int
+	decoyComputeHook = func() { computes++ }
+	t.Cleanup(func() { decoyComputeHook = nil })
+
+	computes = 0
+	hitBody := do(h, httptest.NewRequest("GET", contract.PathAliasPrefix+real, nil)).Body.Bytes()
+	hitComputes := computes
+	if !bytes.Equal(hitBody, payload) {
+		t.Fatal("hit did not return the stored payload")
+	}
+
+	computes = 0
+	do(h, httptest.NewRequest("GET", contract.PathAliasPrefix+missing, nil))
+	missComputes := computes
+
+	if hitComputes != missComputes {
+		t.Fatalf("decoy computed %d times on a hit, %d on a miss; a hit must pay the same HMAC cost",
+			hitComputes, missComputes)
+	}
+	if hitComputes != 1 {
+		t.Fatalf("expected exactly one decoy compute per read, got %d", hitComputes)
+	}
+}
+
 // The notify inbox is the same blind, fixed-size, write-token-gated, existence-
 // uniform protocol as alias, on its own /inbox path and table.
 func TestInboxRoundTripAndExistenceUniform(t *testing.T) {

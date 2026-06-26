@@ -42,14 +42,9 @@ func main() {
 	// from fighting over a fixed port.
 	metricsAddr := env("STI_METRICS_ADDR", "")
 
-	secretHex := os.Getenv("STI_DECOY_SECRET")
-	if secretHex == "" {
-		log.Error("STI_DECOY_SECRET is required (hex, >= 32 bytes)")
-		os.Exit(1)
-	}
-	secret, err := hex.DecodeString(secretHex)
-	if err != nil || len(secret) < 32 {
-		log.Error("STI_DECOY_SECRET must be hex-encoded and >= 32 bytes")
+	secret, err := decoySecret(os.Getenv("STI_DECOY_SECRET"))
+	if err != nil {
+		log.Error("STI_DECOY_SECRET", "err", err)
 		os.Exit(1)
 	}
 
@@ -78,11 +73,8 @@ func main() {
 	if priv := os.Getenv("STI_VAPID_PRIVATE_KEY"); vapidPublic != "" && priv != "" {
 		sender = server.NewWebPushSender(vapidPublic, priv, env("STI_VAPID_SUBJECT", "https://sti.care"))
 	}
-	if notifyEnabled && sender == nil {
-		log.Warn("STI_NOTIFY_ENABLED is set but no VAPID keys are configured; wakes are not delivered")
-	}
-	if sender != nil && !notifyEnabled {
-		log.Warn("a Web Push sender is configured but STI_NOTIFY_ENABLED is off; delivery stays gated")
+	if warn := notifyGateWarning(notifyEnabled, sender != nil); warn != "" {
+		log.Warn(warn)
 	}
 
 	// Per-IP request limit on the non-sensitive endpoints. Zero leaves the
@@ -115,16 +107,16 @@ func main() {
 	// without a secret at least adminTokenMinLen long, refuse to boot rather than
 	// expose admin with a weak or empty token (fail loud, like the decoy secret). A
 	// secret set without the flag is inert; warn so the operator knows admin is off.
-	adminEnabled := os.Getenv("STI_ADMIN_ENABLED") == "true"
-	adminToken := os.Getenv("STI_ADMIN_TOKEN")
-	if adminEnabled && len(adminToken) < adminTokenMinLen {
+	adminEnabled, adminWarn, err := adminConfig(os.Getenv("STI_ADMIN_ENABLED") == "true", os.Getenv("STI_ADMIN_TOKEN"))
+	if err != nil {
 		log.Error("STI_ADMIN_ENABLED is set but STI_ADMIN_TOKEN is missing or too short",
 			"min_len", adminTokenMinLen)
 		os.Exit(1)
 	}
-	if !adminEnabled && adminToken != "" {
-		log.Warn("STI_ADMIN_TOKEN is set but STI_ADMIN_ENABLED is off; the admin surface stays disabled")
+	if adminWarn != "" {
+		log.Warn(adminWarn)
 	}
+	adminToken := os.Getenv("STI_ADMIN_TOKEN")
 
 	// Findable directory writes (doc 17). OFF by default: GET /u resolve stays live
 	// (and 404s the empty directory), but PUT/DELETE /u are not registered until the
@@ -326,6 +318,55 @@ func background(ctx context.Context, st *store.Store, srv *server.Server, metric
 			saveMetrics(metricsState, srv, log)
 		}
 	}
+}
+
+// errAdminTokenFloor is returned by adminConfig when the admin surface is enabled
+// with a missing or too-short bearer token.
+var errAdminTokenFloor = errors.New("admin enabled but token shorter than the floor")
+
+// adminConfig is the pure boot-time decision for the operator surface (doc 20).
+// Enabling it requires BOTH the flag AND a non-trivial bearer secret: a flag set
+// without a token at least adminTokenMinLen long is a fail-loud error (the caller
+// refuses to boot, like the decoy secret). A token set without the flag is inert;
+// warn carries a non-empty message so the operator knows admin stays off. Pure so
+// the floor is unit-testable: weakening it turns the error-path test red.
+func adminConfig(enabled bool, token string) (enabledOut bool, warn string, err error) {
+	if enabled && len(token) < adminTokenMinLen {
+		return false, "", errAdminTokenFloor
+	}
+	if !enabled && token != "" {
+		return false, "STI_ADMIN_TOKEN is set but STI_ADMIN_ENABLED is off; the admin surface stays disabled", nil
+	}
+	return enabled, "", nil
+}
+
+// notifyGateWarning is the pure two-gate notify decision (doc 10 §F): delivery
+// needs BOTH the flag (enabled) AND a configured Web Push sender (hasSender).
+// Either alone delivers nothing, so it returns the matching warn string (empty
+// when the two gates agree). Pure so the warn-path is unit-testable.
+func notifyGateWarning(enabled, hasSender bool) string {
+	switch {
+	case enabled && !hasSender:
+		return "STI_NOTIFY_ENABLED is set but no VAPID keys are configured; wakes are not delivered"
+	case hasSender && !enabled:
+		return "a Web Push sender is configured but STI_NOTIFY_ENABLED is off; delivery stays gated"
+	default:
+		return ""
+	}
+}
+
+// decoySecret is the pure boot-time decode + floor for STI_DECOY_SECRET: it must
+// be hex-encoded and decode to >= 32 bytes, fail loud otherwise. Pure so the floor
+// is unit-testable without driving main().
+func decoySecret(secretHex string) ([]byte, error) {
+	if secretHex == "" {
+		return nil, errors.New("required (hex, >= 32 bytes)")
+	}
+	secret, err := hex.DecodeString(secretHex)
+	if err != nil || len(secret) < 32 {
+		return nil, errors.New("must be hex-encoded and >= 32 bytes")
+	}
+	return secret, nil
 }
 
 func env(key, def string) string {

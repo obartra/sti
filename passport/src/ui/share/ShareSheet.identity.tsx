@@ -31,8 +31,10 @@ export function previewFace(opts: {
   if (choice === "main" || !hasControl) {
     return { handle: identity.handle, avatarSrc };
   }
+  // Seed the avatar on the opaque alias id (`seed`), not the derived handle (doc 19):
+  // the handle is a readable label, the id is the unlinkable, per-alias seed.
   const handle = pseudonymFor(seed);
-  return { handle, avatarSrc: avatarFor(handle) };
+  return { handle, avatarSrc: avatarFor(seed) };
 }
 
 export function IdentityChoiceRow({
