@@ -1,15 +1,15 @@
 # Netlify configuration for sti.care.
-# deploy/build-site.sh assembles dist/: the passport app at the root, the
-# promises report at /promises, and Storybook at /design.
+# deploy/build-site.sh assembles dist/: the passport app at the root and Storybook
+# at /design. /promises is an app route (the in-app guarantees), not a static file.
 
 [build]
   publish = "dist"
   command = "bash deploy/build-site.sh"
 
-# Single-Page-App fallback. The passport app is one page that routes by URL
-# hash, so any path that isn't a real file serves the app's index.html. Real
-# files (the report, Storybook, /assets/*) are served normally, because
-# non-forced redirects never shadow existing files.
+# Single-Page-App fallback. The passport app is one page that routes by URL hash
+# (plus a few real paths like /promises and /exposed it reads itself), so any path
+# that isn't a real file serves the app's index.html. Real files (Storybook,
+# /assets/*) are served normally, because non-forced redirects never shadow them.
 [[redirects]]
   from = "/*"
   to = "/index.html"

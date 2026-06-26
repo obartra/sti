@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { findableNameFromPath } from "./useAppRouter.ts";
+import { renderHook } from "@testing-library/react";
+import { findableNameFromPath, useAppRouter } from "./useAppRouter.ts";
+import { groupOf } from "./routes.ts";
 
 describe("findableNameFromPath", () => {
   it("extracts and normalizes the name from /u/{name}", () => {
@@ -25,5 +27,24 @@ describe("findableNameFromPath", () => {
 
   it("decodes a valid percent-encoded segment", () => {
     expect(findableNameFromPath("/u/ro%62in")).toBe("robin"); // %62 = 'b'
+  });
+});
+
+describe("the /promises path", () => {
+  it("routes to the in-app promises page in the public group (anonymous-reachable)", () => {
+    window.history.pushState({}, "", "/promises");
+    try {
+      const { result } = renderHook(() => useAppRouter());
+      expect(result.current.route.screen).toBe("promises");
+      expect(result.current.route.group).toBe("public");
+    } finally {
+      window.history.pushState({}, "", "/");
+    }
+  });
+
+  it("keeps promises in the public group, so the login gate never clamps it", () => {
+    // App.tsx clamps app-group screens to the landing when logged out; a public
+    // group is what lets an anonymous visitor see /promises.
+    expect(groupOf("promises")).toBe("public");
   });
 });
