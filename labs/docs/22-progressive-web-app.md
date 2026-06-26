@@ -284,8 +284,15 @@ foreground**, not in a true-background `sync` event. Background Sync and the for
 just signal "there is work and the network is back"; the actual sealed-op replay happens with the
 key in memory. We accept that write-bearing outbound ops do not flush while the app is closed; only
 genuinely contentless, low-sensitivity ops (if any are ever added) may use a worker-drainable lane,
-and only at the push-context sensitivity bar. The drain still uses the decorrelated jitter path
-(S3), never a reconnect burst.
+and only at the push-context sensitivity bar.
+
+**The reconnect is jittered, not a synchronized burst (S3, BUILT).** When connectivity returns, the
+backup drain (the blob push) and the inbox catch-up reads (section M) would otherwise fire in the
+same instant, co-timing the account id with the contact inboxes. Each is instead scheduled with an
+independent random delay (`reconnectJitterMs`, `lib/jitter.ts`), so they land at different times. The
+republish was already server-side decorrelated (doc 18); this closes the gap for the blob push and
+the reads. It is defense-in-depth: the blind server keeps no per-request trail (doc 12) and so does
+not group them anyway, but the jitter denies a timing-only observer the burst.
 
 **UI affordances: surface it once, passively, let it resolve itself.** The anti-pestering rule is
 the design:
@@ -441,9 +448,11 @@ own reconnects have **no clean cadence to fingerprint**. So:
    having a subscription (iOS 16.4+ installed PWA qualifies). This is the biggest reach win and needs
    no periodic sync.
 2. **Reconnect and foreground catch-up as the fallback (BUILT).** `useCatchup` re-pulls the owner's
-   quiet inbox the moment connectivity returns OR the app comes back to the foreground (throttled, so
-   rapid tab switches do not spam the read), reusing the existing foreground owner-pull, so it adds
-   **no new cadence**. It covers the case where push is unavailable (declined, or an older platform).
+   quiet inbox when connectivity returns OR the app comes back to the foreground (throttled, so rapid
+   tab switches do not spam the read), reusing the existing foreground owner-pull, so it adds **no new
+   cadence**. It covers the case where push is unavailable (declined, or an older platform). The
+   RECONNECT read is jittered so it does not co-time with the backup drain (S3, section H); the
+   FOREGROUND read is prompt, since the user is present and it is a single read, not part of the burst.
 
    **On the co-read residual, an honest correction.** The owner-pull reads the owner's per-contact
    inbox hashes together, which in principle groups their contacts. But the client-side mitigations

@@ -5,6 +5,7 @@ import type {
   SyncStatus,
 } from "../../store/index.ts";
 import type { OwnerState } from "../../core/badge.ts";
+import { reconnectJitterMs } from "../../lib/jitter.ts";
 
 /**
  * Surfaces whether this device holds owner edits the server has not received yet,
@@ -49,15 +50,23 @@ export function useBackupSync(
     return syncStatus.subscribe(refresh);
   }, [accountId, syncStatus]);
 
-  // Drain on reconnect, and immediately if we are already online with work owed.
+  // Drain on reconnect, and if we are already online with work owed. The drain is
+  // jittered (S3) so the backup push does not co-time with the inbox catch-up reads
+  // when connectivity returns; each is scheduled with an independent random delay.
   useEffect(() => {
     if (accountId === null) return;
-    const maybeDrain = (): void => {
-      if (syncStatus.snapshot(accountId).pending) drain();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = (): void => {
+      if (!syncStatus.snapshot(accountId).pending) return;
+      clearTimeout(timer);
+      timer = setTimeout(drain, reconnectJitterMs());
     };
-    window.addEventListener("online", maybeDrain);
-    if (navigator.onLine) maybeDrain();
-    return () => window.removeEventListener("online", maybeDrain);
+    window.addEventListener("online", schedule);
+    if (navigator.onLine) schedule();
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("online", schedule);
+    };
   }, [accountId, syncStatus, drain]);
 
   return pending;

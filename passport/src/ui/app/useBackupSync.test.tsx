@@ -8,6 +8,9 @@ import {
 } from "../../store/index.ts";
 import { volatileSyncStorage } from "../../store/syncStatus.ts";
 
+// Zero the reconnect jitter so the scheduled drain runs on the next tick.
+vi.mock("../../lib/jitter.ts", () => ({ reconnectJitterMs: () => 0 }));
+
 const ID = "acct-1";
 // The hook only reads offlineSync.accountId and session.master.
 const offlineSync = {
@@ -32,7 +35,7 @@ describe("useBackupSync (slice 4 reconnect drain)", () => {
     // A reconnect with work still owed drains again. The handler only calls the
     // setOwnerState mock (no React state update), so no act() wrapping is needed.
     window.dispatchEvent(new Event("online"));
-    expect(setOwnerState).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(setOwnerState).toHaveBeenCalledTimes(2));
   });
 
   it("does nothing when nothing is pending", async () => {
