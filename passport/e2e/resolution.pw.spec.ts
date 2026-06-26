@@ -172,6 +172,26 @@ behaviorTest("client-gray-on-unreachable", async ({ page }) => {
   await expect(page.getByText(GRAY)).toBeVisible(); // fails closed to gray
 });
 
+// Not a cataloged status behavior (so it does not go through behaviorTest): the PWA
+// offline shell. Proves the headline of doc 22 slices 2 + 4: an installed app opens
+// with no network. The worker takes control on the second visit (no skipWaiting), so
+// we install, wait for it active, revisit to be controlled, then go offline.
+test("the installed shell opens offline (doc 22 slices 2 + 4)", async ({
+  page,
+}) => {
+  const ctx = page.context();
+  await page.goto(previewOrigin + "/", { waitUntil: "load" });
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.goto(previewOrigin + "/", { waitUntil: "load" });
+  await expect(page.locator("#root")).not.toBeEmpty();
+
+  await ctx.setOffline(true);
+  await page.reload({ waitUntil: "load" });
+  // Served from the precached shell; the app still mounts with no network.
+  await expect(page.locator("#root")).not.toBeEmpty();
+  await ctx.setOffline(false);
+});
+
 test("the Playwright suite covers every behavior it pins", () => {
   const ownedHere = BEHAVIORS.filter((b) => b.pin === E2E_PIN);
   for (const b of ownedHere) expect(covered.has(b.id)).toBe(true);
