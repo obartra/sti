@@ -42,4 +42,13 @@ describe("requester secret store", () => {
     const secret = createRequesterStore(storage).secret();
     expect(secret).toMatch(ID43);
   });
+
+  it("clear() forgets the secret, so the next call mints a fresh one", () => {
+    const storage = memoryStorage();
+    const store = createRequesterStore(storage);
+    const first = store.secret();
+    store.clear();
+    expect(storage.getItem("sti.requester.v1")).toBeNull();
+    expect(store.secret()).not.toBe(first);
+  });
 });

@@ -8,6 +8,10 @@ import type {
 import type { VanityRegisterResult } from "../../api/client.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
 import { disablePush } from "../../store/push.ts";
+import {
+  browserForgetRequesterSecret,
+  browserForgetGrantKeys,
+} from "../../store/index.ts";
 
 export interface OwnerActions {
   /** Permanently delete the account and log out (clamps to the landing). */
@@ -74,6 +78,11 @@ export function useOwnerActions(
     // Also forget this device's push context so the deleted account's notify
     // capability does not linger at rest in IndexedDB (best-effort, never throws).
     void disablePush();
+    // And wipe this device's viewer secrets (the requester secret and any grant
+    // keypairs), so leaving the device clears the traces of which aliases it
+    // knocked. Best-effort; both no-op when nothing was persisted.
+    browserForgetRequesterSecret();
+    browserForgetGrantKeys();
   }, [controller, sessionRef, setSession]);
 
   const { onSetAvatar } = useProfileActions(controller, sessionRef, setSession);

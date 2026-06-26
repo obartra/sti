@@ -1,9 +1,15 @@
 import { renderHook, act } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { useOwnerActions } from "./useOwnerActions.ts";
 import type { OwnerSession, SessionController } from "../../store/index.ts";
 import { INITIAL_OWNER_STATE } from "../../core/badge.ts";
 import { DEFAULT_AVATAR, type AvatarConfig } from "../../lib/avatars.ts";
+
+// onDeleteAccount fires disablePush() (IndexedDB); stub it so the test stays on
+// localStorage and never touches a store jsdom may not provide.
+vi.mock("../../store/push.ts", () => ({
+  disablePush: vi.fn().mockResolvedValue(undefined),
+}));
 
 const session: OwnerSession = {
   master: new Uint8Array(32),
@@ -54,6 +60,61 @@ function stubController(over: Partial<SessionController>): SessionController {
 }
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
+
+describe("useOwnerActions.onDeleteAccount", () => {
+  // The test env's global localStorage is unreliable (the store code guards every
+  // access for exactly this reason), so back it with an in-memory map here.
+  beforeEach(() => {
+    const map = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (k: string) => map.get(k) ?? null,
+      setItem: (k: string, v: string) => void map.set(k, v),
+      removeItem: (k: string) => void map.delete(k),
+      clear: () => map.clear(),
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("wipes this device's viewer secrets (requester + grant keys) on the way out", async () => {
+    localStorage.setItem("sti.requester.v1", "some-secret");
+    localStorage.setItem(
+      "sti.grantkeys.v1",
+      JSON.stringify({ "alias-1": { publicKey: "p", privateKey: "k" } }),
+    );
+    const deleteAccount = vi.fn().mockResolvedValue(undefined);
+    const ref: { current: OwnerSession | null } = { current: session };
+    const setSession = vi.fn();
+    const { result } = renderHook(() =>
+      useOwnerActions(stubController({ deleteAccount }), ref, setSession),
+    );
+
+    await act(async () => {
+      result.current.onDeleteAccount();
+      await flush();
+    });
+
+    expect(deleteAccount).toHaveBeenCalledWith(session);
+    expect(setSession).toHaveBeenCalledWith(null);
+    expect(ref.current).toBeNull();
+    expect(localStorage.getItem("sti.requester.v1")).toBeNull();
+    expect(localStorage.getItem("sti.grantkeys.v1")).toBeNull();
+  });
+
+  it("is a no-op when logged out (no session)", async () => {
+    const deleteAccount = vi.fn();
+    const ref: { current: OwnerSession | null } = { current: null };
+    const { result } = renderHook(() =>
+      useOwnerActions(stubController({ deleteAccount }), ref, vi.fn()),
+    );
+
+    await act(async () => {
+      result.current.onDeleteAccount();
+      await flush();
+    });
+
+    expect(deleteAccount).not.toHaveBeenCalled();
+  });
+});
 
 describe("useOwnerActions.onSetAvatar", () => {
   it("persists via setProfile keeping the current sharing mode, then folds the session", async () => {
