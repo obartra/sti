@@ -23,6 +23,8 @@ export interface GrantKeyStore {
   forAlias(aliasId: string): Promise<GrantKeyPair>;
   /** The stored private key for `aliasId`, or null if this device never knocked it. */
   privateKey(aliasId: string): string | null;
+  /** Forget every stored grant keypair (e.g. on logout). */
+  clear(): void;
 }
 
 type Stored = Record<string, GrantKeyPair>;
@@ -70,6 +72,9 @@ export function createGrantKeyStore(storage: StorageLike): GrantKeyStore {
     privateKey(aliasId) {
       return load(storage)[aliasId]?.privateKey ?? null;
     },
+    clear() {
+      storage.removeItem(KEY);
+    },
   };
 }
 
@@ -86,6 +91,20 @@ export function browserGrantKeyStore(): GrantKeyStore {
     return createGrantKeyStore(localStorage);
   } catch {
     return createGrantKeyStore(memory());
+  }
+}
+
+/**
+ * Forget every persisted grant keypair (e.g. on logout from a shared device), so
+ * the next person on the device cannot tell which aliases this one knocked.
+ * Best-effort: an unavailable store has nothing persisted to forget. Any pending
+ * grant on this device is abandoned, which is the intent when leaving.
+ */
+export function browserForgetGrantKeys(): void {
+  try {
+    if (typeof localStorage !== "undefined") localStorage.removeItem(KEY);
+  } catch {
+    // Storage unavailable (private mode / SSR): nothing was persisted.
   }
 }
 

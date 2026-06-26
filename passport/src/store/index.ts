@@ -8,10 +8,12 @@ export { createBackendStore } from "./backendStore.ts";
 export {
   createRequesterStore,
   browserRequesterSecret,
+  browserForgetRequesterSecret,
 } from "./requesterStore.ts";
 export {
   createGrantKeyStore,
   browserGrantKeyStore,
+  browserForgetGrantKeys,
   type GrantKeyStore,
 } from "./grantKeyStore.ts";
 export { serializePublicCard, parsePublicCard } from "./publicCard.ts";

@@ -56,6 +56,17 @@ describe("grant key store", () => {
     expect(kp.privateKey).toBeTruthy();
   });
 
+  it("clear() forgets every stored keypair", async () => {
+    const storage = memory();
+    const store = createGrantKeyStore(storage);
+    await store.forAlias("alias-1");
+    await store.forAlias("alias-2");
+    store.clear();
+    expect(storage.getItem("sti.grantkeys.v1")).toBeNull();
+    expect(store.privateKey("alias-1")).toBeNull();
+    expect(store.privateKey("alias-2")).toBeNull();
+  });
+
   it("ignores malformed entries but keeps well-formed ones", () => {
     const storage = memory({
       "sti.grantkeys.v1": JSON.stringify({

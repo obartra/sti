@@ -19,6 +19,8 @@ const KEY = "sti.requester.v1";
 export interface RequesterStore {
   /** The stable per-device requester secret, generated + persisted on first use. */
   secret(): string;
+  /** Forget the stored secret, so a later knock looks like a new device. */
+  clear(): void;
 }
 
 function newSecret(): string {
@@ -33,6 +35,9 @@ export function createRequesterStore(storage: StorageLike): RequesterStore {
       const secret = newSecret();
       storage.setItem(KEY, secret);
       return secret;
+    },
+    clear() {
+      storage.removeItem(KEY);
     },
   };
 }
@@ -49,5 +54,18 @@ export function browserRequesterSecret(): string {
     return createRequesterStore(localStorage).secret();
   } catch {
     return newSecret();
+  }
+}
+
+/**
+ * Forget the persisted requester secret (e.g. on logout from a shared device), so
+ * the next person on the device cannot tell this one ever knocked. Best-effort: an
+ * unavailable store has nothing persisted to forget.
+ */
+export function browserForgetRequesterSecret(): void {
+  try {
+    if (typeof localStorage !== "undefined") localStorage.removeItem(KEY);
+  } catch {
+    // Storage unavailable (private mode / SSR): nothing was persisted.
   }
 }
