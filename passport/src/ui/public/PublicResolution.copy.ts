@@ -4,7 +4,7 @@ import { CREATE_ACCOUNT_CTA } from "../../copy/canonical.ts";
 export const COPY = {
   soft: CREATE_ACCOUNT_CTA,
   verify: "How sti.care works",
-  selfBanner: "This is what others see.",
+  selfBanner: "Just your status, nothing else.",
   knockTitle: "Have a link to them?",
   knockBody:
     "You can ask this person to share their status with you. They decide, and they’ll only know you asked if they choose to look.",
@@ -36,8 +36,10 @@ export const COPY = {
   explainerClose: "Got it",
 } as const;
 
-// Sourced from the knock action's reply so the requester confirmation is
-// byte-identical to the action on every path.
+// A fixed client-side confirmation shown verbatim on every path: whether or not
+// the name is registered, the request flow ends on this exact line, so the reply
+// never reveals whether the person exists. (The server's own reply is a constant
+// "received" too; this string is the user-facing half of that uniformity.)
 export const KNOCK_UNIFORM =
   "If this person registered, your request was sent.";
 

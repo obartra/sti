@@ -32,7 +32,7 @@ type SharingMode = "public" | "link";
 const COPY = {
   titlePublic: "Share your passport",
   titleLink: "Share private link",
-  reassurance: "This is exactly what they see. Just your status.",
+  reassurance: "Just your status, nothing else.",
   labelPublic: "Public profile",
   labelLink: "Private link",
   notePublic: "Anyone who scans sees just this status.",

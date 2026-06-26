@@ -13,13 +13,23 @@ import type { AliasLink } from "./passportStore.ts";
 
 const ALIAS_PATH = /^\/a\/([^/]+)\/?$/;
 
+/**
+ * The opaque alias id from a `/a/{id}` path, or null if the path is not a
+ * well-formed alias link. A keyless link is still a real link (the gated "ask
+ * first" share, doc 16); it just carries no decryption key, so callers route it
+ * to the ask-to-view flow rather than treating it as not-a-link.
+ */
+export function aliasIdFromPath(pathname: string): string | null {
+  const id = ALIAS_PATH.exec(pathname)?.[1];
+  return id !== undefined && validId(id) ? id : null;
+}
+
 export function parseAliasLink(
   pathname: string,
   hash: string,
 ): AliasLink | null {
-  const match = ALIAS_PATH.exec(pathname);
-  const id = match?.[1];
-  if (id === undefined || !validId(id)) return null;
+  const id = aliasIdFromPath(pathname);
+  if (id === null) return null;
 
   const key = new URLSearchParams(hash.replace(/^#/, "")).get("k");
   // The key is a 32-byte AES key, so it has the same 43-char base64url shape as

@@ -104,6 +104,14 @@ describe("partner-notify ping codec", () => {
   it("round-trips a contentless partner-notify ping", () => {
     const ping = parsePartnerPing(encodePartnerPing());
     expect(ping?.kind).toBe("partner-notify");
+    // The contentlessness promise lives here: the bytes on the wire carry ONLY a
+    // version and a fixed kind marker, never a who/when/what field. Pin the exact
+    // key set so adding any field (an id, a name, a timestamp, a condition) fails
+    // the build, not just a round-trip that would still pass with extra keys.
+    const onWire = JSON.parse(
+      new TextDecoder().decode(encodePartnerPing()),
+    ) as Record<string, unknown>;
+    expect(Object.keys(onWire).sort()).toEqual(["kind", "v"]);
   });
 
   it("rejects garbage and a wrong version/kind", () => {

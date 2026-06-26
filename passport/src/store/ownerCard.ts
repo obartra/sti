@@ -68,18 +68,6 @@ export function deriveOwnerCard(
 }
 
 /**
- * Republish every one of the owner's aliases with their current derived card, so
- * a badge change (a new test result, a pause, a revoked condom commitment)
- * propagates to all shared links.
- *
- * KNOWN DECORRELATION GAP: republishing all aliases in one window from the
- * owner's device lets the edge correlate those opaque ids as one owner's sibling
- * aliases, against the behavioural-unlinkability goal (docs/03-design §Privacy).
- * The locked fix is server-mediated, jittered/batched fan-out with cross-user
- * timing (docs/10 §F), the same deferred decorrelation work as the notify
- * cover-wake; it is gated off / not built. Tracked in doc 11.
- */
-/**
  * The display identity a card shows for `record` (doc 15): its per-alias override
  * if the owner set one, else the deterministic id-derived default (a pseudonym
  * handle, and no avatar so the viewer falls back to the id-derived avatar). The

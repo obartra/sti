@@ -3,8 +3,8 @@ import {
   Hero,
   ValueBand,
   ClosingCTA,
-  LandingFooter,
 } from "./DesktopLandingParts.tsx";
+import { LandingFooter } from "./DesktopFooter.tsx";
 
 /* A1 desktop marketing landing. Faithful port of the design's app/desktop.jsx
    Landing: same content, composed from the section components in
@@ -15,6 +15,9 @@ export interface DesktopLandingProps {
   onSample?: () => void;
   onLogin?: () => void;
   onHome?: () => void;
+  onPromises?: () => void;
+  onPrivacyPolicy?: () => void;
+  onTerms?: () => void;
 }
 
 export function DesktopLanding({
@@ -22,6 +25,9 @@ export function DesktopLanding({
   onSample,
   onLogin,
   onHome,
+  onPromises,
+  onPrivacyPolicy,
+  onTerms,
 }: DesktopLandingProps) {
   return (
     <div
@@ -37,7 +43,11 @@ export function DesktopLanding({
       <Hero onClaim={onClaim} onSample={onSample} />
       <ValueBand />
       <ClosingCTA onClaim={onClaim} />
-      <LandingFooter />
+      <LandingFooter
+        onPromises={onPromises}
+        onPrivacyPolicy={onPrivacyPolicy}
+        onTerms={onTerms}
+      />
     </div>
   );
 }

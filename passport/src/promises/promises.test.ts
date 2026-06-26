@@ -22,6 +22,51 @@ function read(file: string): string {
   return body;
 }
 
+// Files CI executes every build: app specs run by `npm run test:cov` /
+// `test:integration`, Go tests run by `go test ./...`. A backing test MUST live
+// in one of these, so "backed by a test that goes red the moment it breaks" is
+// true rather than aspirational.
+const APP_TEST = /\.test\.tsx?$/;
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Why a backing is not a real, build-failing test, or null if it is one. This is
+ * what makes the promise honest: it is not enough for the file to mention the
+ * name. The name must be an actual declaration CI runs and that is not disabled,
+ * so a rename, a delete, a comment-out, or an `.only`/`.skip` fails the build.
+ */
+function backingError(file: string, name: string): string | null {
+  if (!existsSync(resolve(process.cwd(), file))) {
+    return `missing test file ${file}`;
+  }
+  const body = read(file);
+  const esc = escapeRegExp(name);
+  if (file.endsWith("_test.go")) {
+    // A top-level `func TestXxx(`, not a substring in a comment or a string.
+    return new RegExp(`(^|\\n)func ${esc}\\(`).test(body)
+      ? null
+      : `Go test func "${name}" is not declared in ${file}`;
+  }
+  if (APP_TEST.test(file)) {
+    // The name is an it()/test() title (or a substring of one). Capture an
+    // optional `.skip`/`.only` so a disabled or focused test is rejected.
+    const decl = new RegExp(
+      `\\b(?:it|test)(?:\\.(skip|only))?\\s*\\(\\s*['"\`][^'"\`]*${esc}`,
+    ).exec(body);
+    if (decl === null) {
+      return `no it()/test() titled like "${name}" in ${file}`;
+    }
+    if (decl[1] !== undefined) {
+      return `backing test "${name}" is .${decl[1]} (disabled) in ${file}`;
+    }
+    return null;
+  }
+  return `backing file ${file} is not a test CI runs (*.test.ts(x) or *_test.go)`;
+}
+
 describe("promises page is honestly backed (CI gate)", () => {
   it("has a non-empty, unique set of promises", () => {
     expect(PROMISES.length).toBeGreaterThan(0);
@@ -63,16 +108,15 @@ describe("promises page is honestly backed (CI gate)", () => {
 
   it.each(
     backings.map((b) => [`${b.promise} :: ${b.backing.name}`, b] as const),
-  )("%s: the backing test exists and contains the named test", (_label, b) => {
-    const path = resolve(process.cwd(), b.backing.file);
-    expect(existsSync(path), `missing test file ${b.backing.file}`).toBe(true);
-    // The named test (an it() title substring, or a Go func name) must really be
-    // in that file, so a rename can't leave a promise pointing at nothing.
-    expect(
-      read(b.backing.file).includes(b.backing.name),
-      `"${b.backing.name}" not found in ${b.backing.file} (promise ${b.promise})`,
-    ).toBe(true);
-  });
+  )(
+    "%s: is pinned by a real, un-skipped test CI runs every build",
+    (_label, b) => {
+      expect(
+        backingError(b.backing.file, b.backing.name),
+        `promise ${b.promise}`,
+      ).toBeNull();
+    },
+  );
 
   it("every reasoning-only assertion explains why it is not a test", () => {
     for (const p of PROMISES) {

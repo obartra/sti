@@ -264,7 +264,17 @@ async function fetchKnockReview(
     headers: { [HEADER_WRITE_TOKEN]: writeToken },
   });
   if (!res.ok) throw new ApiError(statusToKind(res.status), "knock review");
-  return parseKnockReview(await res.json());
+  return parseKnockReview(await jsonBody(res, "knock review"));
+}
+
+/** Parse a JSON body, mapping a malformed one to a typed `protocol` ApiError so a
+ * raw SyntaxError never escapes the client's error contract. */
+async function jsonBody(res: Response, op: string): Promise<unknown> {
+  try {
+    return (await res.json()) as unknown;
+  } catch {
+    throw new ApiError("protocol", `${op} malformed body`);
+  }
 }
 
 /** Map a non-ok HTTP status to the typed error kind. */
@@ -324,7 +334,9 @@ function vanityMethods(
       if (res.status === 404) return null;
       if (!res.ok)
         throw new ApiError(statusToKind(res.status), "vanity resolve");
-      const body = (await res.json()) as { aliasId?: string };
+      const body = (await jsonBody(res, "vanity resolve")) as {
+        aliasId?: string;
+      };
       // Validate before handing the id to the knock flow, which every other id
       // path validates too; a malformed id from the server is unresolvable.
       return body.aliasId && validId(body.aliasId) ? body.aliasId : null;

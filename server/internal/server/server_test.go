@@ -118,6 +118,14 @@ func TestAliasExpiryServerEnforced(t *testing.T) {
 	if resolves() {
 		t.Fatal("after expiry: link should return a decoy, not the payload")
 	}
+	// "Reads as the same blank decoy as a link that never existed": the body is
+	// exactly this id's deterministic decoy, byte for byte, not merely "not the
+	// payload". That equality is what makes an expired link indistinguishable from
+	// one that was never created (the promises page leans on this).
+	expired := do(h, httptest.NewRequest("GET", contract.PathAliasPrefix+id, nil)).Body.Bytes()
+	if !bytes.Equal(expired, decoyBytes(secret, id, contract.AliasPayloadSize)) {
+		t.Fatal("after expiry: body must equal this id's decoy, byte for byte")
+	}
 	// A republish (no expiry header) must not resurrect the link.
 	putWithExpiry("")
 	if resolves() {

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Find a place to get tested near you, plus simple info on common STIs.",
+  "description": "A privacy-first, blind-store sexual-health passport.",
   "license": "UNLICENSED",
   "scripts": {
     "dev": "cd passport && npm run dev",

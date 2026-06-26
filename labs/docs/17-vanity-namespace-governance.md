@@ -158,9 +158,10 @@ So the process is:
 - **Intake is automated.** An in-app / web report form creates a report record; no human is needed to
   receive a report.
 - **Objective violations are auto-actioned (hands-free).** A reported name that matches the reserved
-  list or blocklist is auto-revoked and enters the 24-hour lock, no judgment call. A periodic re-scan
-  applies the same rule when the lists grow, so a name that becomes disallowed later is swept
-  automatically.
+  list or blocklist is auto-revoked and enters the 24-hour lock, no judgment call. The match is
+  re-evaluated against the current lists every time a name is reported, so a name that a later
+  list-growth disallows is auto-actioned on its next report (there is no autonomous background sweep;
+  the report path, plus the admin endpoint, is the re-check).
 - **Volume never auto-acts.** A pile of reports against a name does **not** free it on its own; that
   would weaponize false reports as a griefing tool. Only objective rule matches auto-act.
 - **The subjective residual is a minimal, reversible review.** A name that is neither a rule match nor
@@ -177,8 +178,9 @@ Findable mode ships only when all of the following are true:
 
 1. Charset/normalization, length, and the allocation lifecycle (including the 24-hour release lock) are
    enforced server-side.
-2. The reserved + blocklist starter lists exist in the repo and are enforced at registration, with a
-   re-scan that sweeps names a later list-growth disallows.
+2. The reserved + blocklist starter lists exist in the repo and are enforced at registration, and a
+   reported name is re-checked against the current lists, so later list-growth is enforced on the next
+   report (not by a background sweep).
 3. `GET /u/{name}` is implemented with uniform `404`, defensive normalization, and rate limiting.
 4. Metadata discipline (no name-keyed read logs; decorrelation extends to named aliases) is in place
    and tested.
