@@ -27,6 +27,9 @@ interface PreviewOption {
   readonly handle: string;
   readonly kind: FaceKind;
   readonly resolved: ResolvedView;
+  // The alias's opaque id (doc 19): seeds the anonymous fallback face on the id,
+  // not the pseudonym handle, matching what a viewer resolves.
+  readonly id: string;
 }
 
 const KIND_TAG: Record<FaceKind, string> = {
@@ -54,6 +57,7 @@ function buildOptions(
         handle,
         kind: "anonymous",
         resolved: deriveOwnerCard(state, handle, nowDay),
+        id: EXAMPLE_ID,
       },
     ];
   }
@@ -64,6 +68,7 @@ function buildOptions(
       handle: resolved.identity.handle,
       kind: faceKind(a, accountHandle),
       resolved,
+      id: a.id,
     };
   });
 }
@@ -176,6 +181,7 @@ export function SelfPreview({
   return (
     <PublicResolution
       resolved={current.resolved}
+      aliasId={current.id}
       self
       picker={
         <AliasPicker
