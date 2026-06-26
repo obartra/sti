@@ -29,6 +29,12 @@ interface Manifest {
     form_factor?: string;
     label?: string;
   }[];
+  share_target?: {
+    action: string;
+    method: string;
+    enctype: string;
+    params: Record<string, string>;
+  };
 }
 
 // Vitest runs with the passport root as cwd, so resolve repo paths from there.
@@ -86,6 +92,18 @@ describe("web app manifest (PWA slice 1)", () => {
     for (const shortcut of manifest.shortcuts ?? []) {
       expect(shortcut.url.startsWith("./#")).toBe(true);
     }
+  });
+
+  it("declares a POST share_target the worker can resolve on-device", () => {
+    const target = manifest.share_target;
+    expect(target).toBeTruthy();
+    // POST + multipart keeps the shared link (and its key) out of the action URL, so
+    // the worker reads it from the body and never sends it upstream (doc 22 C).
+    expect(target?.method).toBe("POST");
+    expect(target?.enctype).toBe("multipart/form-data");
+    // Base-agnostic action, like start_url/scope, and a url param to carry the link.
+    expect(target?.action.startsWith("/")).toBe(false);
+    expect(target?.params.url).toBeTruthy();
   });
 
   it("ships at least one install screenshot, base-agnostic and on disk", () => {

@@ -127,9 +127,56 @@ never clips it.
 user-facing strings and follow [voice and tone](21-voice-and-tone.md): plain, no jargon, no
 internal words. Any in-app install nudge (section F) is fully governed by that guide.
 
-We do **not** add `share_target` in this pass. Receiving a shared passport link into the app is a
-real existence-and-routing surface and belongs to the link-resolution flow (doc 16), not the install
-manifest; noted as a deferred question.
+`share_target` (BUILT) registers the installed app in the OS share sheet, so someone who receives a
+passport link in a chat can Share it straight into sti.care. It is a real key-handling surface with
+one sharp edge, so it is worker-backed rather than a bare manifest line:
+
+- **The poison corner: the key is in the fragment, and `share_target` wants to put it in a request.** A
+  keyed link is `/a/{id}#k={key}`, and the whole blind-store model rests on the AES key living in the
+  URL **fragment**, which the browser never sends to a server (doc 16). But `share_target` delivers the
+  shared string as **GET query params** (`?url=...`) or a **POST body** to the action URL, and a normal
+  navigation to that action URL travels to the server. So a naive share_target would hand the blind
+  store the very key it is engineered never to see, in `?url=https%3A%2F%2F.../a/{id}%23k%3D{key}`. That
+  is strictly worse than opening a link the ordinary way, where the fragment stays on the device.
+- **The fix: the service worker resolves the share entirely on-device, no network round-trip.** The
+  action URL is same-origin and in the worker's scope, so the worker intercepts the request in its
+  `fetch` handler (section D), reads the shared string locally, pulls a passport link out of it with
+  the existing `parseAliasLink`, and answers with a **client-side redirect** to the in-app resolution
+  route, reconstructing the `#k={key}` fragment in the redirect target. The shared string (key and all)
+  is turned into a same-document redirect by the worker itself; **it is never fetched from the
+  network**, so the key never leaves the device. This is the discipline section D already applies to
+  the API origin (never forwarded), here applied to one same-origin action path.
+- **Method choice: POST, `enctype=multipart/form-data`.** POST keeps the shared data in the request
+  body rather than in a loggable action URL, and the worker reads it with `request.formData()`. A GET
+  target would place the key in the action URL's query string, worse on every axis (in history, in any
+  referer, and one worker miss from the network).
+- **Fail closed; fall OPEN to the network never.** Once the handler is in control, anything off (a
+  malformed share, a link with no fragment, a foreign host) degrades to the app's benign no-key/gray
+  state and must NOT fall through to a plain network navigation that carries the key. This inverts the
+  usual "fetch handler fails open to the network" rule for this one path, because here the network is
+  the leak. The one case this cannot cover is a worker **not yet in control**: if the OS has read the
+  `share_target` manifest member while this device's cached worker still predates the handler (a
+  one-time window right after a release, before the worker updates on the next navigation), a share POST
+  is not intercepted and the browser delivers it to the **static app host** that serves the shell, not
+  to the blind store. That host is ours and never the API origin, so the key does not reach the blind
+  server, but it does momentarily reach our hosting rather than staying on the device. The clean
+  mitigation is a **phased rollout**: ship the worker handler in one release and add the manifest
+  `share_target` member only in a later release, so every device that can see the member already runs a
+  worker that intercepts. Shipping both together accepts that narrow window as a residual.
+- **No new existence surface, best-effort on the fragment.** Resolving a shared link is byte-for-byte
+  the same `/a/{id}` read as opening it directly, existence-uniform per doc 12; share_target only adds
+  an OS entry point. Whether the shared string still carries `#k={key}` is up to the sharing app (some
+  flows strip fragments); a keyless arrival simply resolves to gray, the same honest dead-link state,
+  with no leak. Accepted residuals: the app appears in the OS "share to" list (the OS knows we handle
+  links, not a server-visible fact), and the worker grows one more request shape, kept minimal and
+  fail-safe per above.
+
+Concretely: a manifest member (`{ action: "./share-target", method: "POST", enctype:
+"multipart/form-data", params: { url, text, title } }`), and a worker handler that reads the form data
+and `Response.redirect`s on-device (`swShare.ts` decides the redirect via the existing
+`parseScannedLink`, strict about host and key shape; `sw.ts` intercepts the share POST and never
+`fetch`es it, redirecting to the app root on a miss). The decisions are pure and unit-tested
+(`swShare.test.ts`), with a manifest-test assertion of the shape, gated like the rest of the PWA work.
 
 ## D. The offline app shell: what the fetch handler does
 
@@ -530,9 +577,9 @@ timer.
 
 ## N. Open questions and residuals
 
-- **`share_target`** (receive a shared passport link into the installed app). Deferred: it is an
-  existence-and-routing surface that belongs with link resolution (doc 16), not the manifest. Decide
-  whether it ever pays for its privacy cost.
+- **`share_target`** (receive a shared passport link into the installed app), BUILT (section C): the
+  worker resolves the share on-device so the fragment key never reaches the network. The remaining
+  open call is purely product, not privacy: whether the OS-share entry point earns its keep in the UI.
 - **Periodic sync vs push overlap.** Both can drive a background refresh. If push covers the need on
   the platforms that matter, periodic sync may not be worth the second background actor; revisit when
   push graduates from gated.

@@ -93,7 +93,11 @@ function mergeById<T extends { readonly id: string }>(
     const mi = m.get(id);
     const ti = t.get(id);
     if (mi !== undefined && ti !== undefined) {
-      out.push(pickScalar(b.get(id) ?? mi, mi, ti));
+      // Both sides have it. With an ancestor, reconcile field-by-field. With NONE
+      // (both devices independently added the same id), it is a true divergence, so
+      // mine wins per the policy above; standing in `ti` as the pseudo-ancestor makes
+      // pickScalar return mine on any differing field (and either when identical).
+      out.push(pickScalar(b.get(id) ?? ti, mi, ti));
       continue;
     }
     // Present on one side only: kept only when it is a fresh add (not in the
