@@ -184,7 +184,9 @@ func TestRepublishSpreadsAcrossWindow(t *testing.T) {
 	const window = 100_000
 	srv, st := newRepublishServer(t, window*time.Millisecond, 1000)
 	h := srv.Handler()
-	ops := make([]contract.RepublishOp, 24)
+	// 60 ops so each window quarter expects ~15: an empty quarter then means the
+	// times genuinely failed to scatter, not bad luck (P(empty quarter) < 1e-6).
+	ops := make([]contract.RepublishOp, 60)
 	for i := range ops {
 		ops[i] = op(randID(t), fmt.Sprintf("wt-%d", i), payload(byte(i)))
 	}
@@ -197,6 +199,20 @@ func TestRepublishSpreadsAcrossWindow(t *testing.T) {
 	srv.DrainRepublishes(ctx, 1000)
 	if d := republishDepth(t, st); d < len(ops)/2 {
 		t.Fatalf("batch was not spread: only %d of %d remain after draining at submission", d, len(ops))
+	}
+
+	// Drain quarter by quarter across the window: each quarter must bring at least
+	// one fresh op due. Independently jittered times scatter across the WHOLE
+	// window, so a degenerate "half now, half at the end" schedule (which the old
+	// >= len/2 check accepted) would leave the middle quarters empty and fail here.
+	prev := republishDepth(t, st)
+	for q := 1; q <= 3; q++ {
+		srv.DrainRepublishes(ctx, 1000+int64(q)*window/4)
+		remaining := republishDepth(t, st)
+		if prev-remaining <= 0 {
+			t.Fatalf("quarter %d brought no op due: times are not scattered across the window", q)
+		}
+		prev = remaining
 	}
 
 	// Past the window every op is due and applied; the queue drains empty.

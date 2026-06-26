@@ -68,6 +68,26 @@ func TestCORSPreflightFromAllowedOrigin(t *testing.T) {
 	}
 }
 
+// Every HTTP method the browser client actually issues must be in the preflight
+// Allow-Methods, or the browser blocks the call before it is sent. DELETE is the
+// easy one to forget: it rides the Findable release (DELETE /u/{name}) and the
+// account-sync delete (DELETE /acct/{id}), and is never CORS-simple. Pin the full
+// set here because the Node integration suite does not exercise CORS.
+func TestCORSAllowsEveryClientMethod(t *testing.T) {
+	h := newTestServerWithOrigins(t, allowedOrigin)
+	req := httptest.NewRequest("OPTIONS", contract.PathAliasPrefix+randID(t), nil)
+	req.Header.Set("Origin", allowedOrigin)
+	req.Header.Set("Access-Control-Request-Method", "DELETE")
+	rec := do(h, req)
+
+	allow := rec.Header().Get("Access-Control-Allow-Methods")
+	for _, m := range []string{"GET", "PUT", "POST", "DELETE"} {
+		if !strings.Contains(allow, m) {
+			t.Fatalf("allow-methods %q missing %s (the client issues it)", allow, m)
+		}
+	}
+}
+
 func TestCORSDisallowedOriginGetsNoAllowHeaders(t *testing.T) {
 	h := newTestServerWithOrigins(t, allowedOrigin)
 	req := httptest.NewRequest("OPTIONS", contract.PathNotify, nil)

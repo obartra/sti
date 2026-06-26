@@ -3,106 +3,69 @@
 [![Netlify Status](https://api.netlify.com/api/v1/badges/56bdd737-fada-420f-8277-eb8edd5aa50a/deploy-status)](https://app.netlify.com/projects/sticare/deploys)
 [![labs.sti.care](https://img.shields.io/website?url=https%3A%2F%2Flabs.sti.care%2F&up_message=live&down_message=down&label=labs.sti.care)](https://labs.sti.care/)
 
-A tiny site that helps people find a place to get tested and read simple,
-judgment-free info on common STIs. Available in English, Spanish, Portuguese
-(Brazilian), and French.
+A privacy-first, blind-store sexual-health passport. You record your own status
+on your phone, it is encrypted there before it ever leaves the device, and you
+share it as a link that shows a simple card. The server only ever holds opaque
+ciphertext and opaque routing tokens: it can decrypt nothing, and even the admin
+secret unlocks no user content.
 
-## Structure
+The guarantees this makes to a user, each tied to a test that runs on every
+build, are on the in-app **/promises** page (source: `passport/src/promises/`).
 
-The site is plain HTML/CSS/JS — **no build step, no framework**. Source lives in
-`public/`, which Netlify publishes as-is. Tooling lives at the repo root.
+## Layout
+
+This is a monorepo with two deployables and the docs that govern them.
 
 ```
-public/
-  index.html        markup + <head> (SEO / social / favicon)
-  styles.css        all styles
-  favicon.svg
-  src/
-    data.js         content (all 4 languages) + decoration shape library/config
-    render.js       pure view functions (data in → HTML string out)
-    app.js          controller: state, routing, language toggle, DOM wiring
-netlify.toml        deploy + routing + security/HTTPS/cache headers
-test/               Node tests for the pure view layer
+passport/      Vite + React + TypeScript frontend: the app, Storybook, tests.
+                 All cryptography happens here; the server never sees plaintext.
+server/        Go + embedded SQLite "blind store" API. Stores and serves opaque
+                 bytes, runs no health or badge logic, audits admin actions.
+labs/docs/     Numbered design docs (NNN-*.md), including the privacy principles
+                 and the voice-and-tone guide. Published at labs.sti.care.
+deploy/        Site assembly (build-site.sh), the promises/behaviour report
+                 builders, and provisioning helpers.
+server/deploy/ systemd unit, provision.sh, and the Caddy config for the VPS.
+test/          Root-level Node tests for the docs render layer.
 ```
 
-The split is deliberate: `data.js` and `render.js` have no DOM access, so they
-import and test cleanly in Node; `app.js` is the only file that touches the
-browser.
-
-## URLs
-
-Routing uses real, shareable paths via the History API (no `#/` hash). The path
-encodes only the topic — **language is not in the URL**:
-
-| URL          | Shows          |
-| ------------ | -------------- |
-| `/`          | Home           |
-| `/gonorrhea` | Gonorrhea info |
-| `/hiv`       | HIV info       |
-| `/herpes`    | Herpes info    |
-
-Topics: `gonorrhea`, `chlamydia`, `syphilis`, `hiv`, `herpes`, `hpv`.
-
-So `sti.care/gonorrhea` is one clean link that everyone can share — each visitor
-sees it in their own language.
-
-### Language selection
-
-Language is chosen per visitor, in this order:
-
-1. `?lang=xx` query param, if present (e.g. `sti.care/hiv?lang=es`). Remembered
-   after the first visit.
-2. A previously remembered choice (saved in `localStorage`).
-3. The browser's language.
-4. English, as a fallback.
-
-Switching language with the toggle updates the page in place and remembers the
-choice; it never changes the URL.
+The blind-store boundary is the core principle and is documented in
+[labs/docs/03-design.md](labs/docs/03-design.md); the per-doc index lives in
+[CLAUDE.md](CLAUDE.md).
 
 ## Development
 
-Requires Node 22+. There's nothing to build — the scripts are just checks.
+The two halves are built and tested independently.
 
 ```sh
-npm install
-npm run dev          # serve public/ locally
-npm run format       # apply Prettier
-npm run lint         # ESLint (JS) + Stylelint (CSS)
-npm test             # Node tests for the view layer
-npm run check        # format:check + lint + test (what CI runs)
+# Frontend (run inside passport/)
+pnpm -C passport dev               # local dev server
+pnpm -C passport test              # unit + integration (Vitest)
+pnpm -C passport typecheck         # tsc, strict
+pnpm -C passport lint              # ESLint
+pnpm -C passport build             # production build
+pnpm -C passport build-storybook   # Storybook for Chromatic
+
+# Backend (run inside server/)
+go build ./... && go test ./... && go vet ./...
+
+# Repo root
+npx prettier --check .             # formatting gate (separate from ESLint)
 ```
 
-CI (GitHub Actions, `.github/workflows/ci.yml`) runs `npm run check` on every
-pull request.
+`labs.sti.care` (the design-docs site) is built from `labs/` and is independent
+of the app.
 
-## Deploying to Netlify
+## Deploying
 
-Connected for autodeploy: every push to `main` deploys to production, and every
-PR gets a Deploy Preview. Settings come from `netlify.toml`, so the dashboard
-fields can be left blank:
+- **Frontend:** Netlify autodeploys every push to `main`. `netlify.toml` runs
+  `deploy/build-site.sh`, which assembles `dist/` with the passport app at the
+  root, the promises report at `/promises`, and Storybook at `/design`.
+- **Backend:** `.github/workflows/deploy.yml` ships the Go binary to the Hetzner
+  VPS, where it runs under the hardened systemd unit behind Caddy.
 
-- **Build command:** _(none)_
-- **Publish directory:** `public`
-
-### Custom domain + always-on HTTPS
-
-1. Netlify → **Domain management → Add `sti.care`**, then point DNS (switching
-   the registrar's nameservers to Netlify's is easiest; otherwise `A` apex →
-   `75.2.60.5` and `CNAME` `www` → the `*.netlify.app` site).
-2. Netlify auto-provisions a free Let's Encrypt certificate.
-3. Enable **Force HTTPS** in Netlify (redirects http → https). On top of that,
-   `netlify.toml` sends an HSTS header (`Strict-Transport-Security`) so browsers
-   refuse to connect over plain http after the first visit.
-
-### Why the redirect in `netlify.toml` matters
-
-```toml
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-```
-
-Clean routes like `/gonorrhea` aren't real files, so this serves `index.html`
-for any unknown path and lets the in-page router render the topic. Real files
-(CSS, JS, the favicon) are still served normally.
+CI (`.github/workflows/ci.yml`) runs the frontend and backend gates plus the
+promises check on every pull request; visual baselines are handled by
+`.github/workflows/visual.yml` and regenerate via the `screenshot:update` label.
+</content>
+</invoke>
