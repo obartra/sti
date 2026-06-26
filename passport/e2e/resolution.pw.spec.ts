@@ -192,6 +192,30 @@ test("the installed shell opens offline (doc 22 slices 2 + 4)", async ({
   await ctx.setOffline(false);
 });
 
+// The blind-server cache line as an executable spec (doc 22 sections D + K): the
+// worker precaches the data-free shell but NEVER an api.sti.care response. We open a
+// real blue card online (the shell installs and the cross-origin API read happens),
+// let the worker take control, then go offline and reload the SAME card. The shell
+// still serves so the app mounts, but the card's API read is network-only with no
+// cache to fall back on, so it fails closed to GRAY. A cached API response would
+// instead render the stale BLUE headline, so GRAY proves no api.sti.care bytes were
+// ever written to CacheStorage (no per-id visit trail at rest, no stale-blue).
+test("the worker never serves an api.sti.care response from cache (doc 22 D/K)", async ({
+  page,
+}) => {
+  const ctx = page.context();
+  await page.goto(previewOrigin + cardPath, { waitUntil: "load" });
+  await expect(page.getByText(BLUE_HEADLINE)).toBeVisible(); // online: real read
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.goto(previewOrigin + cardPath, { waitUntil: "load" }); // now controlled
+
+  await ctx.setOffline(true);
+  await page.reload({ waitUntil: "load" });
+  await expect(page.getByText(GRAY)).toBeVisible();
+  await expect(page.getByText(BLUE_HEADLINE)).toHaveCount(0);
+  await ctx.setOffline(false);
+});
+
 test("the Playwright suite covers every behavior it pins", () => {
   const ownedHere = BEHAVIORS.filter((b) => b.pin === E2E_PIN);
   for (const b of ownedHere) expect(covered.has(b.id)).toBe(true);
