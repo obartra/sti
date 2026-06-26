@@ -5,6 +5,15 @@ import type { OwnerSession, SessionController } from "../../store/index.ts";
 import type { Nav } from "./useAppRouter.ts";
 import { INITIAL_OWNER_STATE } from "../../core/badge.ts";
 import { DEFAULT_AVATAR } from "../../lib/avatars.ts";
+import { browserForgetGrantKeys } from "../../store/grantKeyStore.ts";
+import { browserForgetRequesterSecret } from "../../store/requesterStore.ts";
+
+vi.mock("../../store/grantKeyStore.ts", () => ({
+  browserForgetGrantKeys: vi.fn(),
+}));
+vi.mock("../../store/requesterStore.ts", () => ({
+  browserForgetRequesterSecret: vi.fn(),
+}));
 
 const aSession = {
   master: {} as CryptoKey,
@@ -83,5 +92,15 @@ describe("useResumableSession", () => {
     expect(forget).toHaveBeenCalled();
     expect(result.current.session).toBeNull();
     expect(nav.jump).toHaveBeenLastCalledWith("a1-landing", "public");
+  });
+
+  it("logs out: also wipes the device's viewer secrets (shared-device hygiene)", () => {
+    const { ctl, nav } = setup();
+    const { result } = renderHook(() => useResumableSession(ctl, nav));
+
+    act(() => result.current.onSession(aSession));
+    act(() => result.current.onLogOut());
+    expect(browserForgetGrantKeys).toHaveBeenCalled();
+    expect(browserForgetRequesterSecret).toHaveBeenCalled();
   });
 });
