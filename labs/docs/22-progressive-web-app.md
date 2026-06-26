@@ -64,8 +64,10 @@ offers, with one hard line drawn around what a cache is ever allowed to hold.
   assets.
 - **All sensitive data is already on-device** in a passkey- or passphrase-derived AES-GCM blob in
   IndexedDB; the push context (lower-sensitivity inbox capabilities) sits beside it (doc 09).
-- **The build is static**, output to `gh-pages` under `/passport/`, with a repo-wide version stamped
-  into both the app and the worker via `__APP_VERSION__`.
+- **The build is static**, deployed via Netlify (`netlify.toml`) with the app served at the site root
+  (Storybook at `/design`), and a repo-wide version stamped into both the app and the worker via
+  `__APP_VERSION__`. The manifest and service worker are base-agnostic (relative paths), so the deploy
+  path is not baked in.
 - **What is missing for "installable, capable PWA":** a web app manifest, maskable icons, an offline
   app shell (precache + a `fetch` handler), an update-ready signal, an install affordance, and the
   optional background-sync capabilities. `index.html` today links only a favicon.
@@ -76,20 +78,21 @@ A browser runs **exactly one service worker per scope**. We already own scope `/
 worker. We therefore **do not register a second worker**; the offline and lifecycle responsibilities
 are composed **into the same bundled worker** at `src/sw/sw.ts`.
 
-Concretely, the worker grows three modules behind its existing push module, each its own file under
-`src/sw/` so the statement ceilings hold and each tests in isolation:
+In practice the `install`, `activate`, and `fetch` handlers live **inline in `sw.ts`** beside the
+existing push module (the file stays small enough that splitting them into separate files was not
+needed), with the one piece of real logic, the per-request routing decision, extracted to a **pure**
+`swCache.ts` (`classify()`) so it unit-tests in Node with no service worker:
 
-- `swPrecache.ts`: the `install` handler. Opens a versioned cache, adds the precache manifest
-  (hashed JS/CSS/fonts/icons + the navigation shell), and calls `skipWaiting()` per the update
-  policy in section E.
-- `swActivate.ts`: the `activate` handler. Deletes caches from prior versions and calls
-  `clients.claim()`.
-- `swFetch.ts`: the `fetch` handler. Routes by request, per the table in section D. The push module
-  is untouched.
+- **`install`** opens a versioned cache and adds the precache manifest (the data-free navigation
+  shell + the hashed JS/CSS/icons). It does **not** call `skipWaiting()` (see section E).
+- **`activate`** deletes caches from prior versions. It does **not** call `clients.claim()`; the new
+  worker takes control at the next navigation, the standard lifecycle (section E).
+- **`fetch`** routes by request, per the table in section D, failing open to the network. The push
+  module is untouched.
 
-The precache manifest is generated at build time. Vite already knows the hashed asset graph, so a
-small post-build step (or a manifest plugin) writes the list the worker imports; we do not hand-edit
-it, the same discipline visual baselines follow.
+The precache manifest is generated at build time by a Vite plugin (`src/pwa/precachePlugin.ts`),
+which writes `precache.json` (the hashed asset graph + shell) for the worker to fetch on install; we
+do not hand-edit it, the same discipline visual baselines follow.
 
 > One real risk to call out: composing a `fetch` handler into the worker that currently only does
 > push means a worker bug can now break navigation, not just a nudge. That is why the fetch handler
@@ -104,15 +107,17 @@ A `public/manifest.webmanifest`, linked from `index.html`, with a matching
 | ------------------ | ------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `name`             | `sti.care passport`                                            | Full name on the install dialog and splash.                                         |
 | `short_name`       | `sti.care`                                                     | Home-screen label, fits under the icon.                                             |
-| `start_url`        | `/passport/`                                                   | Honors the gh-pages base path. No tracking query param (S5): install-vs-browser is detected client-side via `display-mode: standalone`, never a URL the page host could log. |
-| `scope`            | `/passport/`                                                   | Matches the deploy path, so navigations stay in-app.                                 |
+| `id`               | `./`                                                           | A stable install identity independent of the URL the app happens to be served from.  |
+| `start_url`        | `./`                                                           | Base-agnostic (relative), so the install works wherever the app is served. No tracking query param (S5): install-vs-browser is detected client-side via `display-mode: standalone`, never a URL the page host could log. |
+| `scope`            | `./`                                                           | Base-agnostic; navigations stay in-app at whatever path the app is served from.      |
 | `display`          | `standalone`                                                   | No browser chrome; it reads as an app.                                               |
 | `theme_color`      | `#2F9BB3` (teal-500)                                           | Accent; status bar tint.                                                             |
 | `background_color` | `#FBF9F4` (warm-50)                                            | The app background, so the splash matches the first paint with no flash.             |
 | `icons`            | 192 and 512 px, plus a `purpose: "maskable"` variant          | Maskable so Android does not letterbox the favicon mark.                             |
 | `categories`       | `["health", "medical"]`                                        | Store and launcher categorization.                                                  |
+| `description`      | One plain line: what it is and the privacy promise            | User-facing copy, voice-and-tone governed; shown by some install UIs.                |
 | `shortcuts`        | Care, Share, Connect                                           | Long-press launcher entries to the three primary routes.                            |
-| `screenshots`      | a few captured states                                         | Richer install UI on Chromium; reuse the visual-baseline pipeline, do not hand-roll. Fixture data only (S7), never a real session capture, or a real badge or handle ships in a static asset. |
+| `screenshots`      | a few captured states (planned, not yet in the manifest)      | Richer install UI on Chromium; reuse the visual-baseline pipeline, do not hand-roll. Fixture data only (S7), never a real session capture, or a real badge or handle ships in a static asset. |
 
 Icons derive from the existing `public/favicon.svg` (teal rounded square, white mark). The maskable
 variant needs the mark inside the safe zone with the teal extended to the bleeders, so Android's mask
