@@ -13,6 +13,7 @@ import {
   Check,
   Chevron,
 } from "../../design/icons.tsx";
+import { PRIVACY_SCREEN_NAME } from "../../copy/canonical.ts";
 
 export const COPY = {
   home: {
@@ -24,11 +25,11 @@ export const COPY = {
     report: "Add a result",
     viewAs: "See what others see",
     viewAsSub: "Preview your profile as a visitor",
-    privacy: "Privacy & sharing",
+    privacy: PRIVACY_SCREEN_NAME,
     nextDue: "Next test",
     remind: "Remind me",
     remindOn: "Reminder on",
-    remindOnSub: "We’ll ping you 3 days before",
+    remindOnSub: "We’ll remind you 3 days before",
     remindOffSub: "Stay up to date to keep your status fresh",
   },
   pause: {

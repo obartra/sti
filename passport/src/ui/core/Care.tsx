@@ -27,7 +27,7 @@ const COPY = {
     heymistr:
       "New to testing? Heymistr ships discreet at-home screening kits on a regular schedule.",
     heymistrCta: "Sign up",
-    resourcesEyebrow: "Free & low-cost near you",
+    resourcesEyebrow: "Free and low-cost near you",
     // PEP is post-exposure and time-critical (under 72h), so it leads the resource
     // finders. Copy matches the public /exposed page for one voice across surfaces.
     pepTitle: "PEP, if it has been under 72 hours",
@@ -38,11 +38,11 @@ const COPY = {
     prepTitle: "Find free or low-cost PrEP near you",
     prepSub:
       "Daily HIV-prevention pill. Many clinics offer it free or on a sliding scale.",
-    finderCta: "Find nearby",
-    learn: "Learn & talk",
+    finderCta: "Find a clinic near you",
+    learn: "Learn and talk",
     rows: [
       ["How your passport works", "What’s shared, what stays private"],
-      ["Talk to someone", "CDC-INFO · free & confidential · 24/7"],
+      ["Talk to someone", "CDC-INFO · free and confidential · 24/7"],
     ],
     talkNumber: "18002324636",
     callLabel: "Call CDC-INFO",

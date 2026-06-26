@@ -1,21 +1,22 @@
 import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import type { CondomPreference, OwnerState } from "../../core/badge.ts";
+import { PRIVACY_SCREEN_NAME } from "../../copy/canonical.ts";
 
-// Privacy & sharing: the card-attribute + controls + danger state. The live link
+// Privacy and sharing: the card-attribute + controls + danger state. The live link
 // list is the real LiveLinks (Privacy.aliases.tsx); this module holds only what is
-// backed by real owner state. (An older seeded alias/knock UI lived here and was
-// removed once LiveLinks replaced it; the findable/vanity surface is doc 17, not
-// built yet, so nothing here fakes it.)
+// backed by real owner state. (An older seeded link UI lived here and was removed
+// once LiveLinks replaced it; the public-name surface is doc 17, not built yet, so
+// nothing here fakes it.)
 export const COPY = {
-  title: "Privacy & sharing",
+  title: PRIVACY_SCREEN_NAME,
   avatarTitle: "Your avatar",
   avatarSub: "The look you can choose to show on a link.",
   avatarEdit: "Edit",
   controlsTitle: "Controls",
   anonAlerts: "Anonymous partner alerts",
   anonAlertsSub:
-    "Built in. If you report a positive, recent linkups get an anonymous heads-up. Never optional, never traceable to you.",
+    "Built in. If you report a positive, recent connections get an anonymous heads-up. Never optional, never traceable to you.",
   pushRow: "Notify me on this device",
   pushRowSub:
     "Get the alert as a notification even when the app is closed. The heads-up stays the same: no name, no detail. You’ll still see it in-app either way.",

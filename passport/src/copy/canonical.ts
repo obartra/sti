@@ -21,3 +21,9 @@ export const PARTNER_NOTIFY_PROMPT = "A recent contact suggests getting tested";
  * name) to start their own passport. One wording everywhere it appears.
  */
 export const CREATE_ACCOUNT_CTA = "Create your own passport";
+
+/**
+ * The privacy screen's name: its own title, the home quick-action label, and the
+ * references to it from other screens. One source so a rename lands everywhere.
+ */
+export const PRIVACY_SCREEN_NAME = "Privacy and sharing";
