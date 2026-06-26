@@ -17,10 +17,7 @@ export function useInstallPrompt(): {
   install: () => void;
 } {
   const [available, setAvailable] = useState(installAvailable());
-  useEffect(
-    () => subscribeInstall(() => setAvailable(installAvailable())),
-    [],
-  );
+  useEffect(() => subscribeInstall(() => setAvailable(installAvailable())), []);
   return {
     canInstall: available && !isStandalone(),
     install: () => void promptInstall(),
