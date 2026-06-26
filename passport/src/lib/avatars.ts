@@ -9,7 +9,7 @@
    License: the Dylan style is MIT AND CC-BY-4.0. The CC-BY attribution lives in
    src/lib/credits.ts and is surfaced under the avatar editor.
 
-   API (unchanged seam): avatarParts, avatarSrc(cfgOrSeed), avatarFor(handle),
+   API (unchanged seam): avatarParts, avatarSrc(cfgOrSeed), avatarFor(seed),
    randomAvatar(seed), isAvatarConfig, migrateAvatar, DEFAULT_AVATAR, pseudonymFor. */
 
 import { createAvatar } from "@dicebear/core";
@@ -299,9 +299,15 @@ export function randomAvatar(seed: number): AvatarConfig {
   };
 }
 
-export function avatarFor(handle: string): string {
+/**
+ * The default face for an alias with no chosen avatar (doc 19). Seeds on the alias's
+ * opaque id (`seed`), NOT the handle: the handle can be user-chosen and identifying,
+ * while the opaque id is random and per-alias, so the derived face reveals nothing
+ * and the same id always yields the same face. Pure and on-device.
+ */
+export function avatarFor(seed: string): string {
   let h = 0;
-  const str = handle || "";
+  const str = seed || "";
   for (let i = 0; i < str.length; i++)
     h = (h * 31 + str.charCodeAt(i)) & 0x7fffffff;
   return avatarSrc(randomAvatar(h));

@@ -36,3 +36,10 @@
   for = "/index.html"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
+
+# The service worker is never cached, so a fresh sw.js is fetched on every visit
+# and a deploy takes effect at once (doc 22). A stale sw.js would pin the old app.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-store"

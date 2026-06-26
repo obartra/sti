@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { mintInbox, writePing, pollInbox } from "./notifyInbox.ts";
+import { mintInbox, mintNotify, writePing, pollInbox } from "./notifyInbox.ts";
 import type { ApiClient } from "../api/client.ts";
 import { ALIAS_PAYLOAD_SIZE } from "../api/contract.ts";
 import {
@@ -66,6 +66,19 @@ describe("notify inbox channel", () => {
     expect(a.inboxId).not.toBe(b.inboxId);
     expect(a.writeToken).not.toBe(b.writeToken);
     expect(a.key).not.toBe(b.key);
+  });
+
+  it("mints distinct notify capabilities, ROUTING TOKEN included, each time", () => {
+    // Per-contact decorrelation (doc 13): an owner mints one notify capability per
+    // contact, so every field, the routing token too, must differ across two mints.
+    // A shared/hoisted routing token would let a recipient holding two of the
+    // owner's links tie them to one owner, which is the invariant this guards.
+    const a = mintNotify();
+    const b = mintNotify();
+    expect(a.inboxId).not.toBe(b.inboxId);
+    expect(a.writeToken).not.toBe(b.writeToken);
+    expect(a.key).not.toBe(b.key);
+    expect(a.routingToken).not.toBe(b.routingToken);
   });
 
   it("writes a ping and polls it back, decrypted", async () => {

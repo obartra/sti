@@ -288,6 +288,66 @@ func TestCoverWakeNoPopulationDropsRealSend(t *testing.T) {
 	}
 }
 
+// The real recipient is indistinguishable from cover (doc 13 §2): after a real
+// wake drains, the recipient's push route is delivered as one anonymous member of
+// the population-wide cover broadcast. It appears in the delivered set exactly
+// once, never twice and never via a separate path, and the delivered set is the
+// FULL registered population. There is no marker (a distinct send count, an extra
+// delivery, a different route) that a delivery observer could use to single out the
+// real recipient. (Wall-clock jitter timing across CoverWindow is reasoning-only,
+// not asserted here; window 0 collapses the broadcast into one pass so the set is
+// checkable.)
+func TestRealWakeIndistinguishableFromCover(t *testing.T) {
+	ctx := context.Background()
+	ms := &mockSender{}
+	s := newDrainServer(t, true, ms, 0)
+	population := []string{"route-1", "route-2", "route-3", "route-4"}
+	for _, r := range population {
+		registerRoute(t, s, r)
+	}
+	const realRecipient = "route-2"
+	ok(t, s.st.EnqueueSend(ctx, realRecipient, 100, 100))
+
+	s.DrainSends(ctx, 200)
+
+	// The delivered set is exactly the full registered population: the real
+	// recipient is in it, and so is everyone else, so the recipient is hidden.
+	delivered := map[string]int{}
+	ms.mu.Lock()
+	for _, t := range ms.sent {
+		// PushTarget.Endpoint is "https://push/" + route (see registerRoute).
+		delivered[strings.TrimPrefix(t.Endpoint, "https://push/")]++
+	}
+	ms.mu.Unlock()
+
+	if len(delivered) != len(population) {
+		t.Fatalf("delivered set %v is not the full population %v", delivered, population)
+	}
+	for _, r := range population {
+		switch delivered[r] {
+		case 1:
+			// good: exactly one wake, like every other member
+		case 0:
+			t.Fatalf("route %q never delivered; the cover set is not the full population", r)
+		default:
+			t.Fatalf("route %q delivered %d times; the real recipient (or any route) must not be woken twice", r, delivered[r])
+		}
+	}
+	// Spell out the recipient invariant explicitly: present, exactly once, no extra path.
+	if delivered[realRecipient] != 1 {
+		t.Fatalf("real recipient %q delivered %d times, want exactly 1 (indistinguishable from cover)",
+			realRecipient, delivered[realRecipient])
+	}
+	// The real job is consumed (dropped), so it is NOT also delivered on a distinct
+	// direct path. Total deliveries equal the population, not population+1.
+	if got := ms.count(); got != len(population) {
+		t.Fatalf("total deliveries = %d, want %d (no extra direct send to the real recipient)", got, len(population))
+	}
+	if d := sendDepth(t, s) + coverDepth(t, s); d != 0 {
+		t.Fatalf("queues not drained: %d remain", d)
+	}
+}
+
 func notifyReq(tokenHash string) *http.Request {
 	return httptest.NewRequest("POST", contract.PathNotify,
 		strings.NewReader(`{"tokenHash":"`+tokenHash+`"}`))

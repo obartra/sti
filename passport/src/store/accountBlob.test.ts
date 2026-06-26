@@ -36,6 +36,29 @@ describe("account blob codec", () => {
     expect(parseAccountBlob(serializeAccountBlob(blob))).toEqual(blob);
   });
 
+  it("never serializes a real-name field anywhere in the blob (G11)", () => {
+    // The blob carries a self-chosen `handle`, never a legal/first/last name. A
+    // future blob field called `name` (or firstname/lastname/legal) would be a PII
+    // leak, so this fails on any such key recursively (the contact's nested alias
+    // and notify objects included).
+    const json = bytesToUtf8(serializeAccountBlob(blob));
+    const parsed: unknown = JSON.parse(json);
+    const NAMEY = /name|firstname|lastname|legal/i;
+    const walk = (v: unknown, path: string): void => {
+      if (Array.isArray(v)) {
+        v.forEach((x, i) => walk(x, `${path}[${i}]`));
+      } else if (v !== null && typeof v === "object") {
+        for (const [k, val] of Object.entries(v)) {
+          expect(NAMEY.test(k), `forbidden name-like key at ${path}.${k}`).toBe(
+            false,
+          );
+          walk(val, `${path}.${k}`);
+        }
+      }
+    };
+    walk(parsed, "blob");
+  });
+
   it("round-trips a contact's per-contact notify capabilities (myInbox + theirNotify)", () => {
     const withNotify: AccountBlob = {
       handle: "robin",

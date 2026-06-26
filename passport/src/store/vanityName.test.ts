@@ -5,7 +5,6 @@ import {
   vanityNameError,
   isValidVanityName,
   RESERVED_NAMES,
-  BLOCKED_NAMES,
   MIN_VANITY_LEN,
   MAX_VANITY_LEN,
 } from "./vanityName.ts";
@@ -51,9 +50,59 @@ describe("vanityNameError", () => {
     }
   });
 
-  it("rejects blocklisted scam / impersonation terms", () => {
-    for (const name of ["scam", "phishing", "fraud", "imposter"]) {
-      expect(vanityNameError(name)).toBe("blocked");
+  it("does NOT block names for abuse: that is the server's call, not the client's (G8)", () => {
+    // The client no longer ships a divergent scam/abuse blocklist; the server holds the
+    // single authoritative hate-only list and answers a blocked name with a 409. So the
+    // client's instant check passes these (they fail only at the server, if at all).
+    for (const name of ["scam", "phishing", "fraud", "impostor"]) {
+      expect(vanityNameError(name)).toBeNull();
+    }
+  });
+
+  it("never rejects the app's own audience: identity / health / sexual terms pass the client check (G8)", () => {
+    // Mirrors the server's allow-set (server/internal/vanityname vanityname_test.go):
+    // blocking any of these would push this sex-positive health app's own users out of
+    // the namespace, so the instant client check must let them all through.
+    const mustAllow = [
+      // Identity / community.
+      "gay",
+      "lesbian",
+      "queer",
+      "trans",
+      "bisexual",
+      "nonbinary",
+      "lgbt",
+      "twink",
+      "bear",
+      "femme",
+      "butch",
+      // Core health vocabulary (note: "status" is fine; "hiv" is fine).
+      "prep",
+      "hiv",
+      "condom",
+      "condoms",
+      "testing",
+      "positive",
+      "negative",
+      "prophylaxis",
+      "sexualhealth",
+      // Crude but consensual adult sexual / anatomical vocabulary.
+      "anal",
+      "ass",
+      "dick",
+      "cock",
+      "sex",
+      "sexual",
+      "slut",
+      "kinky",
+      "bdsm",
+      "horny",
+    ];
+    for (const name of mustAllow) {
+      expect(
+        vanityNameError(name),
+        `${name} must pass the client check`,
+      ).toBeNull();
     }
   });
 });
@@ -78,8 +127,9 @@ describe("isValidVanityName", () => {
           maxLength: MAX_VANITY_LEN,
         }),
         (name) => {
-          const expected =
-            !RESERVED_NAMES.has(name) && !BLOCKED_NAMES.has(name);
+          // The client check is shape + length + reserved only; abuse blocking is the
+          // server's job, so reserved is the only set that makes a well-shaped name fail.
+          const expected = !RESERVED_NAMES.has(name);
           return isValidVanityName(name) === expected;
         },
       ),

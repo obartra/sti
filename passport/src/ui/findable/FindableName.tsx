@@ -35,7 +35,6 @@ const NAME_ERROR: Record<VanityNameError, string> = {
   "too-long": "Use at most 30 characters.",
   "bad-chars": "Lowercase letters, numbers, and _ only.",
   reserved: "That name is reserved.",
-  blocked: "That name isn't available.",
 };
 
 const COPY = {

@@ -94,6 +94,16 @@ describe("web app manifest (PWA slice 1)", () => {
     }
   });
 
+  it("ships exactly the three named shortcuts: Care, Share, Connect (G17)", () => {
+    // The install shortcuts are user-facing labels; pin the exact set and order so a
+    // rename or a dropped/added shortcut is a deliberate, reviewed change.
+    expect((manifest.shortcuts ?? []).map((s) => s.name)).toEqual([
+      "Care",
+      "Share",
+      "Connect",
+    ]);
+  });
+
   it("declares a POST share_target the worker can resolve on-device", () => {
     const target = manifest.share_target;
     expect(target).toBeTruthy();
