@@ -162,18 +162,21 @@ opt out of the shell cache. User data stays in the encrypted store, never in an 
 The app version is already stamped (`__APP_VERSION__`), so the cache name carries it
 (`shell-v{version}`). Policy:
 
-- **No `skipWaiting()` and no `clients.claim()`; control begins at the next navigation.** A page
-  that loaded WITHOUT the worker is never taken over mid-load. (We tried the aggressive pair first;
-  claiming an in-flight page cancels its requests and can serve the HTML shell for a sub-resource,
-  which then fails with a `text/html` script MIME error. Validated against the e2e suite.) So the
-  worker installs quietly on visit one and controls from visit two, the standard PWA lifecycle, and a
-  new release activates once the old tabs go (the reload affordance below nudges it). This is also
-  what keeps old versions working: nothing is force-swapped under a running page.
-- **Surface the update, do not force a jarring reload.** When a new worker has installed and is
-  waiting/active, the app shows a quiet, dismissible "refresh to update" affordance. Reloading is the
-  user's choice; the next cold start picks it up regardless. The copy follows voice and tone:
-  outcome-first, no mechanism, no nag. Draft: **"A newer version is ready. Reload to use it."** with
-  a Reload action. (Final string reviewed against the guide before merge.)
+- **No AUTOMATIC `skipWaiting()` and no `clients.claim()`; control begins at the next navigation.** A
+  page that loaded WITHOUT the worker is never taken over mid-load. (We tried the aggressive pair
+  first; claiming an in-flight page cancels its requests and can serve the HTML shell for a
+  sub-resource, which then fails with a `text/html` script MIME error. Validated against the e2e
+  suite.) So the worker installs quietly on visit one and controls from visit two, the standard PWA
+  lifecycle. This is also what keeps old versions working: nothing is force-swapped under a running
+  page.
+- **Surface the update; let the user activate it.** When a newer worker is installed and waiting (a
+  worker reaching `installed` while one already controls the page), the app shows a quiet, dismissible
+  affordance. Tapping Reload posts the waiting worker a `SKIP_WAITING` message (the ONLY path that
+  calls `skipWaiting`, so activation is always user-initiated); the worker activates, `controllerchange`
+  fires, and the page reloads once onto the new version. Dismiss leaves the running version untouched;
+  the next cold start picks the update up regardless. Copy follows voice and tone, outcome-first:
+  **"A newer version is ready."** with **Reload** / **Not now** actions. (Implemented in slice 3:
+  `swUpdate.ts`, `registerSw.ts`, `UpdateBanner.tsx`.)
 - **No silent data migration risk.** The worker only ever touches the public shell cache. User data
   lives in the encrypted blob and is versioned by the app's own store-migration path, untouched here.
 

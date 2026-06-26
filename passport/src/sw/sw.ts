@@ -34,6 +34,9 @@ interface FetchEventLike extends ExtendableEventLike {
   readonly request: Request;
   respondWith(response: Response | Promise<Response>): void;
 }
+interface MessageEventLike {
+  readonly data: unknown;
+}
 interface WindowClientLike {
   focus(): Promise<unknown>;
 }
@@ -47,6 +50,8 @@ interface SwScope {
     l: (e: NotificationEventLike) => void,
   ): void;
   addEventListener(t: "fetch", l: (e: FetchEventLike) => void): void;
+  addEventListener(t: "message", l: (e: MessageEventLike) => void): void;
+  skipWaiting(): Promise<void>;
   readonly location: { readonly origin: string };
   registration: {
     readonly scope: string;
@@ -210,4 +215,22 @@ async function cacheFirst(request: Request): Promise<Response> {
     await cache.put(request, res.clone());
   }
   return res;
+}
+
+// ---- Update activation (doc 22 slice 3) ---------------------------------------
+
+// The app posts SKIP_WAITING only when the user taps "Reload" on the update
+// affordance, so activation is user-initiated, never a mid-use swap. On skipWaiting
+// the new worker activates and the page's controllerchange reloads it.
+sw.addEventListener("message", (event) => {
+  if (isSkipWaiting(event.data)) void sw.skipWaiting();
+});
+
+function isSkipWaiting(data: unknown): boolean {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "type" in data &&
+    data.type === "SKIP_WAITING"
+  );
 }
