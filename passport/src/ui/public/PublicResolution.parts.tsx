@@ -24,13 +24,26 @@ export function BackBar({ onBack }: { onBack?: (() => void) | undefined }) {
   );
 }
 
-export function ResolvedBadge({ resolved }: { resolved: ResolvedView | null }) {
+export function ResolvedBadge({
+  resolved,
+  aliasId,
+}: {
+  resolved: ResolvedView | null;
+  // The opaque id of the alias this card resolves (doc 19): when the card carries
+  // no chosen avatar, the fallback face seeds on it, not the (possibly user-chosen)
+  // handle the payload supplied.
+  aliasId?: string | undefined;
+}) {
   return (
     <BadgeCard
       state={resolved ? resolved.state : "gray"}
       labels={resolved?.labels ?? []}
       route={resolved?.route ?? null}
-      identity={resolved ? resolved.identity : null}
+      identity={
+        resolved
+          ? { ...resolved.identity, ...(aliasId ? { id: aliasId } : {}) }
+          : null
+      }
       avatarSrc={resolved?.avatarSrc}
       width="100%"
     />

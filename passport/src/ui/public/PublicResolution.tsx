@@ -35,6 +35,9 @@ export interface PublicResolutionProps {
   // The resolved card, or null for the uniform gray-nothing (no key /
   // nonexistent), which renders identically either way.
   resolved: ResolvedView | null;
+  // The opaque id of the alias being resolved (doc 19): seeds the fallback face on
+  // an unlinkable id rather than the handle when the card carries no avatar.
+  aliasId?: string | undefined;
   // Self-preview ("this is what others see"); no claim/verify CTAs.
   self?: boolean;
   // Optional control rendered under the self banner (the per-alias face picker,
@@ -59,6 +62,7 @@ export interface PublicResolutionProps {
 
 export function PublicResolution({
   resolved,
+  aliasId,
   self = false,
   picker,
   linkHolder = false,
@@ -92,7 +96,7 @@ export function PublicResolution({
       {self && <SelfBanner />}
       {self && picker}
 
-      <ResolvedBadge resolved={resolved} />
+      <ResolvedBadge resolved={resolved} aliasId={aliasId} />
 
       {resolved && <SharedSummary />}
 

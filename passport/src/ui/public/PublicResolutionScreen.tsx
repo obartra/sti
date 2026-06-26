@@ -152,6 +152,7 @@ export function PublicResolutionScreen({
   return (
     <PublicResolution
       resolved={resolved}
+      aliasId={id}
       linkHolder
       canAccept={canAccept}
       onAccept={onAccept}

@@ -43,6 +43,22 @@ test("with no avatarSrc, the card falls back to the handle-derived avatar", () =
   expect(img?.getAttribute("src")).toBe(avatarFor("robin"));
 });
 
+test("with an alias id, the fallback face seeds on the id, not the handle (doc 19)", () => {
+  // The opaque id is unlinkable; the handle can be user-chosen and identifying, so
+  // the fallback must derive from the id when one is supplied.
+  const id = "a7f3k9q2";
+  const { container } = render(
+    <BadgeCard
+      state="blue"
+      labels={["hiv"]}
+      identity={{ handle: "robin", id }}
+    />,
+  );
+  const img = container.querySelector(".sti-avatar img");
+  expect(img?.getAttribute("src")).toBe(avatarFor(id));
+  expect(img?.getAttribute("src")).not.toBe(avatarFor("robin"));
+});
+
 test("a provided avatarSrc (the owner's chosen avatar) overrides the fallback", () => {
   const chosen = avatarSrc(randomAvatar(7));
   const { container } = render(
