@@ -32,7 +32,7 @@ export const COPY = {
       "Someone living with HIV who’s undetectable on treatment can’t pass it on through sex.",
     ],
   ],
-  vaxTitle: "Vaccines & screening",
+  vaxTitle: "Vaccines and screening",
   vaxBody:
     "Free or low-cost at many clinics, and good for everyone, whatever your status.",
   vaxItems: [
@@ -41,7 +41,7 @@ export const COPY = {
       "Protects against the HPV types that cause most warts and, rarely, cancers. You can get it up to age 45.",
     ],
     [
-      "Cervical & anal screening",
+      "Cervical and anal screening",
       "Routine checks catch changes early. Ask a clinic which screening is right for you.",
     ],
   ],

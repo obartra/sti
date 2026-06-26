@@ -346,7 +346,7 @@ describe("App onboarding flow", () => {
     expect((await screen.findAllByText("@robin")).length).toBeGreaterThan(0);
 
     // Open Privacy, then the danger zone's two-step delete.
-    await user.click(await screen.findByText("Privacy & sharing"));
+    await user.click(await screen.findByText("Privacy and sharing"));
     await user.click(
       await screen.findByRole("button", { name: "Delete everything" }),
     );
