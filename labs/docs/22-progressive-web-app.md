@@ -104,7 +104,7 @@ A `public/manifest.webmanifest`, linked from `index.html`, with a matching
 | ------------------ | ------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `name`             | `sti.care passport`                                            | Full name on the install dialog and splash.                                         |
 | `short_name`       | `sti.care`                                                     | Home-screen label, fits under the icon.                                             |
-| `start_url`        | `/passport/?source=pwa`                                        | Honors the gh-pages base path; the param lets us see install opens in client logs only. |
+| `start_url`        | `/passport/`                                                   | Honors the gh-pages base path. No tracking query param (S5): install-vs-browser is detected client-side via `display-mode: standalone`, never a URL the page host could log. |
 | `scope`            | `/passport/`                                                   | Matches the deploy path, so navigations stay in-app.                                 |
 | `display`          | `standalone`                                                   | No browser chrome; it reads as an app.                                               |
 | `theme_color`      | `#2F9BB3` (teal-500)                                           | Accent; status bar tint.                                                             |
@@ -112,7 +112,7 @@ A `public/manifest.webmanifest`, linked from `index.html`, with a matching
 | `icons`            | 192 and 512 px, plus a `purpose: "maskable"` variant          | Maskable so Android does not letterbox the favicon mark.                             |
 | `categories`       | `["health", "medical"]`                                        | Store and launcher categorization.                                                  |
 | `shortcuts`        | Care, Share, Connect                                           | Long-press launcher entries to the three primary routes.                            |
-| `screenshots`      | a few captured states                                         | Richer install UI on Chromium; reuse the visual-baseline pipeline, do not hand-roll. |
+| `screenshots`      | a few captured states                                         | Richer install UI on Chromium; reuse the visual-baseline pipeline, do not hand-roll. Fixture data only (S7), never a real session capture, or a real badge or handle ships in a static asset. |
 
 Icons derive from the existing `public/favicon.svg` (teal rounded square, white mark). The maskable
 variant needs the mark inside the safe zone with the teal extended to the bleeders, so Android's mask
@@ -150,6 +150,13 @@ the app does not need the network to show it.
 The handler **fails open**: any unexpected error inside it falls through to `fetch(request)`, so a
 worker bug degrades to "normal online browser", never to a white screen.
 
+**Cache only the data-free shell (S6).** The privacy of the cache rests on the app being a
+client-rendered SPA, so a cached HTML response is the app frame only and never contains user content.
+This is an invariant, not an incidental: the precache and the navigation cache may hold **only the
+data-free shell**, never an HTML response hydrated with user data. A future server-rendered or
+prefilled route would silently write user content into CacheStorage at rest, so any such route must
+opt out of the shell cache. User data stays in the encrypted store, never in an HTTP cache.
+
 ## E. Updates: how a new version reaches an installed app
 
 The app version is already stamped (`__APP_VERSION__`), so the cache name carries it
@@ -165,6 +172,21 @@ The app version is already stamped (`__APP_VERSION__`), so the cache name carrie
   a Reload action. (Final string reviewed against the guide before merge.)
 - **No silent data migration risk.** The worker only ever touches the public shell cache. User data
   lives in the encrypted blob and is versioned by the app's own store-migration path, untouched here.
+
+**Old versions keep working, and that is a feature, not a bug to floor out (S2).** Offline-first means
+a stale app, like a stale badge, is a safe degraded state, so there is **no minimum-version floor**
+that would brick an old cached shell. A user who has not been online for a long time keeps a working
+app. The threat model around updates is therefore scoped precisely:
+
+- **Accepted residual: a hostile network can withhold an update.** Dropping the update request makes
+  network-first fall back to the shell the user already holds. That is a freshness denial-of-service
+  and nothing more; the user stays on *their own* current version, never on an attacker's choice.
+- **What still cannot happen: a forced downgrade to a chosen old version.** The worker only ever
+  adopts a *newer* worker fetched over TLS from the real origin, and never moves backward;
+  content-hashed immutable assets cannot be substituted byte-for-byte. So an attacker can suppress an
+  update but cannot push a specific older (e.g. known-bad) shell onto a fresh reload. `sw.js` is
+  served no-store so a genuine update is picked up the moment the network allows, which keeps
+  "withhold" the only move a network attacker has.
 
 ## F. Install affordance (progressive, never naggy)
 
@@ -189,13 +211,21 @@ platform lacks it) and **privacy-reviewed**, because each adds a background acto
 
 - **Background Sync** (one-shot): when the user fires an outbound action offline (a nudge, a knock,
   a vanity-name change), register a sync so the worker retries it on reconnect instead of failing at
-  the tap. Outbound only; it carries no new at-rest data beyond the queued job, and the server side
-  already batches sends to hide timing (doc 13).
+  the tap. **It must drain through the same jitter and cover path as the existing send queue (doc 13),
+  not in a synchronized reconnect burst (S3).** The server cannot read the ops (they are opaque), but
+  a burst of writes landing the instant a device comes online is a linkability signal ("these N
+  opaque ops belong to one device that just reconnected") that cuts against the sibling-alias
+  decorrelation work (doc 18). Reconnect schedules the drain; it does not fire it all at once.
 - **Periodic Background Sync:** lets an installed app go gray to blue, and poll notify inboxes,
-  **without a foreground open**. This overlaps the existing push wake and reuses its exact model:
-  contentless, cover-broadcast, decrypt-locally. It is gated **off by default**, same as push, and
-  only meaningful where the platform supports it (Chromium, installed). It must obey the same rule
-  the push worker does: poll, decrypt locally, reveal nothing to the server.
+  **without a foreground open**. It is gated **off by default**, same as push, and only meaningful
+  where the platform supports it (Chromium, installed). **It is not simply "the same as push", and the
+  gating review must treat it as its own shape (S4).** Push is server-to-device with cover-broadcast
+  hiding *which* device; periodic sync is device-*initiated*, so the device reaches out and reads its
+  per-contact inbox hashes on a regular cadence. That inverts the leak into two device-side signals
+  the review must clear: a **liveness/cadence fingerprint**, and **co-read correlation** (all of one
+  user's inbox hashes read together groups their contacts). Because of that inversion, periodic sync
+  may be net-negative versus push rather than a free add; it ships only if the review shows the
+  cadence and co-read are masked at least as well as the push path masks *which-device*.
 - **Web Push:** already built (doc 13). The PWA work unblocks it on **iOS 16.4+**, which only
   delivers web push to an **installed** PWA. So "install" is not cosmetic on iOS; it is the gate for
   notifications at all. This is the strongest single reason the install path matters.
@@ -230,10 +260,25 @@ encrypted blob, so nothing about how a result is stored changes. What we add is 
 - a **"backed up as of" marker** so the app can tell, locally and honestly, that there are changes
   the server has not yet received.
 
-The queue mirrors the at-rest posture already accepted for the push context (doc 09): it holds
-capabilities and ciphertext-shaped values, never readable status. It is drained by Background Sync
-(section G) on reconnect, with a foreground flush on app open as the fallback for platforms without
-Background Sync (iOS).
+**The queue is encrypted under the master key, and that constrains how it drains (S1).** The earlier
+instinct, to treat it like the push context, is wrong: the push-context exception (doc 09) is
+deliberately scoped to *low*-sensitivity inbox-read capabilities (read or clear the contentless
+pending-nudge bit, never who, what, or when). The outbound ops are higher: a republish or revoke
+carries the alias **write token**, a contact registration the **routing token**, and those exist
+today only inside the master-encrypted blob. Putting them in a plaintext queue is a new
+at-rest exposure for a thief-with-device (write tokens overwrite or revoke the owner's published
+aliases), not an equivalent trade. So the queue is sealed under the master key like the blob it
+mirrors.
+
+That has a real mechanism cost worth stating plainly: a `sync`-event handler runs in the worker,
+which **never holds the master key** (the key is never persisted). So a sealed queue cannot be
+drained headless by the worker. The resolution: **the queue drains on the next unlocked, online
+foreground**, not in a true-background `sync` event. Background Sync and the foreground flush both
+just signal "there is work and the network is back"; the actual sealed-op replay happens with the
+key in memory. We accept that write-bearing outbound ops do not flush while the app is closed; only
+genuinely contentless, low-sensitivity ops (if any are ever added) may use a worker-drainable lane,
+and only at the push-context sensitivity bar. The drain still uses the decorrelated jitter path
+(S3), never a reconnect burst.
 
 **UI affordances: surface it once, passively, let it resolve itself.** The anti-pestering rule is
 the design:
@@ -303,7 +348,45 @@ Slices 4 and 5 are optional polish; 1 to 3 are the core "capable PWA".
 - **The standard gates** still apply: typecheck, lint, test, build, `build-storybook`, prettier,
   Go suite, no em dashes (CLAUDE.md).
 
-## L. Open questions and residuals
+## L. Security and threat surface
+
+The PWA adds three new actors: a worker that intercepts navigations, a set of at-rest caches, and
+optional background runners. This section is the single place a reviewer checks that they did not
+weaken the project's invariants. The per-section fixes (S1 to S7) live where they bite; this
+summarizes what holds and what residuals are accepted.
+
+**Invariants the PWA must preserve (and how):**
+
+- **No `api.sti.care` response is ever cached** (section D), so no visit or existence trail at rest,
+  and the existence-blind endpoints stay network-uniform.
+- **Caches hold only the data-free shell** (S6), never an HTML response hydrated with user content.
+- **The outbound queue is master-key sealed** (S1); write and routing tokens never sit in plaintext
+  at rest, so a thief-with-device gains no capability the encrypted blob did not already gate.
+- **Outbound ops drain through the existing jitter and cover path** (S3), never a synchronized
+  reconnect burst, preserving sibling-alias decorrelation (doc 18).
+- **No usage beacons** (S5): no tracking query params; install state is read client-side.
+
+**The worker as a persistent actor.** A `fetch` handler at scope `/` outlives page loads and can
+serve a cached shell indefinitely. The integrity story rests on TLS plus content-hashed immutable
+assets plus a forward-only worker (section E): an attacker can suppress an update but cannot
+substitute or downgrade to a chosen shell. `sw.js` is served no-store, scope stays minimal, and the
+handler fails open to the network so a worker bug degrades to a plain online browser, never a brick.
+
+**Accepted residuals (named, not buried):**
+
+- **Update-withholding (S2).** A hostile network can pin a user to the version they already hold (a
+  freshness denial-of-service). Accepted: keeping old versions working is a deliberate capability,
+  and the user is never pushed *backward* to an attacker's choice.
+- **Device-at-rest.** CacheStorage and IndexedDB are unencrypted at rest, the same caveat doc 09
+  already discloses. The PWA does not widen it: the shell cache is public, and the sensitive queue is
+  sealed.
+- **Closed-app flush of write-bearing ops (S1).** Because the worker has no master key, sealed
+  outbound ops flush only on the next unlocked foreground, not headless. Accepted in exchange for not
+  exposing write tokens at rest.
+- **Periodic Background Sync (S4)** stays gated off until its review clears the device-side cadence
+  and co-read signals; it is not assumed safe by analogy to push.
+
+## M. Open questions and residuals
 
 - **`share_target`** (receive a shared passport link into the installed app). Deferred: it is an
   existence-and-routing surface that belongs with link resolution (doc 16), not the manifest. Decide
