@@ -200,20 +200,23 @@ app. The threat model around updates is therefore scoped precisely:
   served no-store so a genuine update is picked up the moment the network allows, which keeps
   "withhold" the only move a network attacker has.
 
-## F. Install affordance (progressive, never naggy)
+## F. Install affordance (progressive, never naggy), BUILT
 
-- **Chromium (Android, desktop):** capture `beforeinstallprompt`, stash it, and offer a single,
-  easy-to-ignore "Add to home screen" entry point in a sensible spot (for example, a one-time row in
-  settings or an occasional, dismissible hint), never a modal that blocks the flow. Fire the stored
-  prompt on tap.
-- **iOS Safari:** there is no install event. If we detect iOS and not-standalone, we can show brief
-  Add-to-Home-Screen guidance **only where it pays for itself** (notably: iOS only allows Web Push
-  inside an installed PWA, so the push-enable flow in doc 13 is the honest place to mention install).
-  Elsewhere we stay quiet.
-- **Already installed** (`display-mode: standalone`): never prompt.
+- **Chromium (Android, desktop):** the `beforeinstallprompt` event is captured at app boot
+  (`installPrompt.ts`, a small singleton, so it is never missed if it fires before a screen mounts)
+  and the browser's own mini-infobar is suppressed. The app surfaces instead a **single quiet row in
+  the Privacy/Controls section** (the settings surface), present only when the browser offered a
+  prompt and the app is not already installed; tapping it fires the stored prompt. No modal, no hint
+  that recurs. (`useInstallPrompt.ts`, `Privacy.install.tsx`.)
+- **iOS Safari:** there is no install event, so install is manual Add-to-Home-Screen. We show brief
+  A2HS guidance **only where it pays for itself**: iOS only allows Web Push inside an installed PWA,
+  so the push toggle's own sub-line becomes the install hint when we detect iOS and not-standalone
+  ("On iPhone, add sti.care to your Home Screen to turn this on."). Elsewhere we stay quiet.
+- **Already installed** (`display-mode: standalone`, or iOS `navigator.standalone`): never prompt; the
+  row and the hint both stay absent.
 
 Copy is minimal and voice-compliant: lead with the benefit ("Keep your passport one tap away. It
-works offline, and we still can't see your status."), no preamble, no hype. Reviewed against
+works offline, and we still can't read it."), no preamble, no hype. Reviewed against
 [21-voice-and-tone.md](21-voice-and-tone.md) before merge.
 
 ## G. Background capabilities (the "most capable" part), gated

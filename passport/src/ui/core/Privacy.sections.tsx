@@ -3,6 +3,8 @@ import { EyeOff, Trash, Users, Bell } from "../../design/icons.tsx";
 import { COPY, Chip, fieldLbl } from "./Privacy.parts.tsx";
 import type { Condoms, PrivacyState } from "./Privacy.parts.tsx";
 import type { PushControls } from "../app/usePush.ts";
+import { InstallRow } from "./Privacy.install.tsx";
+import { isIOS, isStandalone } from "../../pwa/installPrompt.ts";
 
 // What rides on the card besides the status, self-declared, optional.
 export function AttributesCard({ state }: { state: PrivacyState }) {
@@ -115,6 +117,15 @@ export function AttributesCard({ state }: { state: PrivacyState }) {
   );
 }
 
+// The push row's sub-line. On iOS, push only works once the app is installed, so
+// the "unavailable" case points at the Add-to-Home-Screen step (doc 22 F) rather
+// than a dead end; everywhere else it is the normal supported / not-supported copy.
+function pushSub(push: PushControls): string {
+  if (push.supported) return COPY.pushRowSub;
+  if (isIOS() && !isStandalone()) return COPY.pushIosInstall;
+  return COPY.pushUnsupported;
+}
+
 // Device push toggle (slice 7): an opt-in enhancement to the always-on in-app
 // alerts. The heads-up is identical (contentless); this only changes WHERE it
 // arrives (a closed-app notification). Disabled when the browser can't do push.
@@ -162,7 +173,7 @@ function PushRow({ push }: { push: PushControls }) {
               marginTop: 2,
             }}
           >
-            {push.supported ? COPY.pushRowSub : COPY.pushUnsupported}
+            {pushSub(push)}
           </div>
         </div>
         <Switch
@@ -245,6 +256,7 @@ export function ControlsCard({
           </div>
         </div>
         {push && <PushRow push={push} />}
+        <InstallRow />
         {/* Manual pause: show plain gray to everyone (CtrlRow). */}
         <div
           style={{
