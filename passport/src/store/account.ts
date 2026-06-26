@@ -330,10 +330,12 @@ export function createAccountManager(
   api: ApiClient,
   sync: AccountSync = createAccountSync(api),
 ): AccountManager {
-  // Load-modify-save for the synced blob. Single device today; multi-device
-  // concurrent edits are last-write-wins until X-Version is enforced. The list
-  // mutations below are upsert/filter by id, so a retry is idempotent (a partial
-  // save that landed but lost its response replays to the same result).
+  // Load-modify-save for the synced blob. Concurrent multi-device edits are
+  // handled by the injected sync: the offline sync (the app's default) carries an
+  // X-Version precondition and 3-way merges on a 409 (offlineSync.ts, doc 22 S8),
+  // so a concurrent edit is reconciled, not clobbered. The list mutations below
+  // are upsert/filter by id, so a retry is idempotent (a partial save that landed
+  // but lost its response replays to the same result).
   const modify = async (
     master: MasterKey,
     fn: (blob: AccountBlob) => AccountBlob,
