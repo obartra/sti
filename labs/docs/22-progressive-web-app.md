@@ -21,18 +21,32 @@ offers, with one hard line drawn around what a cache is ever allowed to hold.
 
 ## Two principles this build is organized around
 
-1. **Offline is a correct state, not an outage.** The pure core resolves the badge, the 90-day
-   clock, and all per-site logic with no network (doc 10). The only thing the network adds is the
-   fresh confirmed read that turns a badge blue, and the locked rule is already
-   **gray, never stale-blue** ([02-decisions.md:156](02-decisions.md)). So an installed app that
-   opens with no signal is not broken: it shows the user's own data and a correct gray. The PWA work
-   makes that state reachable and fast, it does not invent new behavior. Note the badge stays
-   **uniformly gray**: offline does not get a distinct "no connection" badge state. Gray must mean the
-   same thing whatever the cause (real gray status, paused owner, dead network), because a
-   network-specific badge reads as "this would be blue if you were online", which is the stale-blue
-   inference the lock exists to kill, and the lock explicitly drops the owner-facing "couldn't
-   refresh" message. Connectivity, if surfaced at all, is app chrome, never a badge state (open
-   question K).
+1. **Offline is a correct state, not an outage, because the device is the source of truth.** Every
+   client's encrypted IndexedDB store is the real system of record; the server is a sync/routing
+   cache, not the system of record ([10-build-backend-and-deployment.md:178](10-build-backend-and-deployment.md)).
+   The pure core resolves the badge, the 90-day clock, and all per-site logic locally (doc 10). Three
+   surfaces, three behaviors, and the network only matters for the second:
+   - **The owner's own self-view is fully offline and authoritative.** The owner's blue or gray is
+     computed on-device from their own data; the server is not consulted and is not needed. So an
+     installed app with no signal shows the owner their **real** badge, not a gray. "Fresh confirmed
+     read" is a property of a *viewer's* trust, not of the owner's knowledge of themselves, so it does
+     not gate the owner's own screen. (This scopes the "gray everywhere when offline" last-resort of
+     [doc 10:181](10-build-backend-and-deployment.md) to the served, viewer-facing surface, which is
+     what it was always describing; it sharpens, it does not reopen, the lock.)
+   - **What others see, the published or live badge, is server-mediated and fails closed to gray.**
+     A viewer trusts blue only on a fresh confirmed read; stale or an unreachable server gives
+     **gray, never stale-blue** ([02-decisions.md:156](02-decisions.md)). This is load-bearing:
+     "unreachable server → gray" is what stops someone killing their connection to **dodge** gray. A
+     "no internet" badge here would let a gray owner drop wifi and pass it off as a mere connection
+     problem, so this surface stays gray.
+   - **Viewing someone else's passport while offline can't render at all**, since it must fetch from
+     `api.sti.care` with nothing cached. There is no badge to fabricate, so show an honest **"no
+     internet, can't load this"** empty state. It is plainly about the viewer's own connection,
+     identical for a blue person and a gray one, so it leaks nothing and asserts nothing.
+
+   So the badge never gains a distinct "no connection" state, and connectivity is never paired with a
+   shown badge as a "would be blue if online" hint. The PWA work makes the owner's own offline view
+   first-class and fast; it does not invent new badge behavior.
 2. **A cache is storage the server can't see but an attacker with the phone can.** CacheStorage and
    IndexedDB are unencrypted at rest, exactly like the push context already is (doc 09, the one
    honest caveat). Everything we precache must be **public, non-sensitive app code**, the same bytes
@@ -250,11 +264,13 @@ Slices 4 and 5 are optional polish; 1 to 3 are the core "capable PWA".
 - **Wallet passes vs install.** The live-status wallet pass (doc 02, doc 03) is the OS-native offline
   status surface; the installed PWA is the app surface. They are complementary, not a choice; keep
   the two from implying different freshness rules to the user.
-- **A status-free offline indicator in app chrome.** The badge stays uniformly gray offline (the
-  lock), but connectivity and the badge are different kinds of thing: one is a status claim, the
-  other is app chrome. A neutral "You're offline" cue in the shell that never reinterprets the badge
-  or implies "it would be blue if connected" could be honest and useful. The catch: the lock dropped
-  the owner-facing "couldn't refresh" message as unnecessary, so any such cue is a deliberate
-  decision-log change, not a thing this doc bakes in. Decide whether the offline-install case (where
-  "no signal" is now an everyday state, not an outage) changes that call. If yes, it stays strictly
-  chrome, with voice-and-tone copy, and the badge semantics are untouched.
+- **The owner's offline self-view should be ratified in the decisions log.** Principle 1 reads the
+  device as authoritative for the owner's own badge, so it renders fully offline rather than graying.
+  This is the natural consequence of "client store is the source of truth" (doc 10:178), but it
+  sharpens decision 156's "fresh confirmed read" to be viewer-facing only. Worth a one-line decision
+  entry confirming that scope so no future reader takes 156 to gray the owner's own screen offline.
+- **Sync-staleness cue for the owner (separate from the badge).** Offline, the owner sees their true
+  badge, but their *published* reflection (what viewers get) may lag until they reconnect. Whether to
+  surface that lag at all, and how without implying anything about the badge, is an open call. Any
+  such cue is app chrome, voice-and-tone copy, badge semantics untouched, and a deliberate
+  decision-log change rather than something this doc bakes in.
