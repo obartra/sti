@@ -189,6 +189,7 @@ export const coreRenderers: ScreenRenderers = {
     ownerState,
     setOwnerState,
     onDeleteAccount,
+    onLogOut,
     aliases,
     contacts,
     onRevokeAlias,
@@ -211,6 +212,7 @@ export const coreRenderers: ScreenRenderers = {
       onEditAvatar={isLoggedIn ? () => nav.go("avatar-edit") : undefined}
       onViewAs={() => nav.go("a2-public", { self: true })}
       onViewPromises={() => nav.go("promises")}
+      onLogOut={isLoggedIn ? onLogOut : undefined}
       // The Findable section is gated here, at the wiring boundary, so the Privacy
       // screen + FindableName stay flag-agnostic (and storyable): present the ops
       // only when the flag is on and the owner is logged in.

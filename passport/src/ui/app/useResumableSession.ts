@@ -1,0 +1,73 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { OwnerSession, SessionController } from "../../store/index.ts";
+import type { Nav } from "./useAppRouter.ts";
+
+// The owner session plus its "stay signed in" lifecycle (doc 24): a silent resume
+// from the persisted master on load, persisting (or not) on each login per the
+// keep-signed-in choice, and a logout that forgets the stored key. Lifted out of
+// App so App stays under its size ceiling.
+export interface ResumableSession {
+  readonly session: OwnerSession | null;
+  readonly setSession: (s: OwnerSession | null) => void;
+  /** Enter the app with a session, persisting it for resume when keepSignedIn. */
+  readonly onSession: (s: OwnerSession) => void;
+  /** Log out: forget the persisted key and return to the public landing. */
+  readonly onLogOut: () => void;
+  /** "Keep me signed in on this device": default ON (a pocket app mostly lives
+   * on the owner's own phone); a shared device opts out at sign-up / login. */
+  readonly keepSignedIn: boolean;
+  readonly setKeepSignedIn: (v: boolean) => void;
+}
+
+export function useResumableSession(
+  controller: SessionController,
+  nav: Nav,
+): ResumableSession {
+  const [session, setSession] = useState<OwnerSession | null>(null);
+  const [keepSignedIn, setKeepSignedIn] = useState(true);
+
+  // Reload resume: if this device persisted its master, rebuild the session with
+  // no passkey and no phrase. Once per app load (a stored key exists only if the
+  // owner chose to stay signed in on a prior visit).
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (resumed.current) return;
+    resumed.current = true;
+    let active = true;
+    void controller.resumeFromStore().then((s) => {
+      if (active && s !== null) {
+        setSession(s);
+        nav.jump("home");
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [controller, nav]);
+
+  const onSession = useCallback(
+    (s: OwnerSession) => {
+      setSession(s);
+      void (keepSignedIn
+        ? controller.rememberDevice(s)
+        : controller.forgetDevice());
+      nav.jump("home");
+    },
+    [controller, nav, keepSignedIn],
+  );
+
+  const onLogOut = useCallback(() => {
+    void controller.forgetDevice();
+    setSession(null);
+    nav.jump("a1-landing", "public");
+  }, [controller, nav]);
+
+  return {
+    session,
+    setSession,
+    onSession,
+    onLogOut,
+    keepSignedIn,
+    setKeepSignedIn,
+  };
+}
