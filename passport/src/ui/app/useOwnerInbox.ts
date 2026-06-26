@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import type { OwnerSession, SessionController } from "../../store/index.ts";
 import { useKnockReview } from "./useKnockReview.ts";
 import { usePartnerNudge } from "./usePartnerNudge.ts";
-import { useReconnectCatchup } from "./useReconnectCatchup.ts";
+import { useCatchup } from "./useCatchup.ts";
 
 /**
  * The owner's quiet inbox: the two owner-pull channels behind the bell, combined.
@@ -37,7 +37,7 @@ export function useOwnerInbox(
     partner.refresh();
   }, [knocks, partner]);
 
-  useReconnectCatchup(session !== null, refreshInbox);
+  useCatchup(session !== null, refreshInbox);
 
   return {
     knockCount: knocks.knockCount,

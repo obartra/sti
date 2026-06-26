@@ -351,8 +351,9 @@ Each slice is independently shippable and leaves the app correct.
    which reach low-connectivity users without the device-initiated cadence leak. The timer is not
    shipped.
 
-Slices 1 to 4 are built; slice 5 is reconsidered as a reconnect catch-up plus long-TTL push (section
-M, both built; the catch-up's co-read decorrelation is the remaining refinement).
+Slices 1 to 4 are built; slice 5 is reconsidered as a reconnect-and-foreground catch-up plus long-TTL
+push (section M, both built; the catch-up's co-read is a server-mitigated accepted residual, analysed
+in M, not a client TODO).
 
 ## K. Testing and gates
 
@@ -439,12 +440,24 @@ own reconnects have **no clean cadence to fingerprint**. So:
    endpoint and delivery timing). The only limits are the push service's TTL ceiling and the device
    having a subscription (iOS 16.4+ installed PWA qualifies). This is the biggest reach win and needs
    no periodic sync.
-2. **Reconnect / foreground catch-up as the fallback (BUILT).** `useReconnectCatchup` re-pulls the
-   owner's quiet inbox the moment connectivity returns, reusing the existing foreground owner-pull
-   (the same read that opening the app already does), so it adds **no new cadence**. It covers the
-   case where push is unavailable (declined, or an older platform). The co-read correlation is the
-   one residual; because this is an occasional catch-up (not a constant stream) it is affordable to
-   decorrelate it (jittered per-inbox reads) and, later, mix in sampled cover reads.
+2. **Reconnect and foreground catch-up as the fallback (BUILT).** `useCatchup` re-pulls the owner's
+   quiet inbox the moment connectivity returns OR the app comes back to the foreground (throttled, so
+   rapid tab switches do not spam the read), reusing the existing foreground owner-pull, so it adds
+   **no new cadence**. It covers the case where push is unavailable (declined, or an older platform).
+
+   **On the co-read residual, an honest correction.** The owner-pull reads the owner's per-contact
+   inbox hashes together, which in principle groups their contacts. But the client-side mitigations
+   that first looked appealing do not survive scrutiny: time-jitter is defeated by a server that
+   groups reads by source IP or connection, and naive cover reads are defeated across pulls because
+   the *real* inbox hashes recur every pull while fresh decoys do not (and stable decoys are still
+   distinguished over time by the write pattern, since only a real inbox ever receives a ping). What
+   actually protects the co-read is the **server's design**: it keeps no per-request trail and logs no
+   id or IP (doc 12), so it does not group the reads in the first place; and the contact *count* is
+   already a named, accepted residual (doc 13). So the co-read is treated as a server-mitigated
+   accepted residual, not a client TODO. If the threat model ever tightens to a fully log-everything
+   server, the only real client defense is **stable cover reads** (decoy inboxes that recur like real
+   ones), with its own cost and the write-pattern caveat; it is documented here, not shipped, because
+   it trades the low-connectivity persona's data for an imperfect gain.
 
 **If a true background periodic poll is ever wanted** (app closed, online, push unavailable, a narrow
 niche), the hard requirements to make it "safe enough" are: a **randomized, non-fixed cadence** (kill
