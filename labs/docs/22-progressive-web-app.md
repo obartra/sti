@@ -333,18 +333,22 @@ Each slice is independently shippable and leaves the app correct.
    the installed app opens offline and renders the owner's own local status.
 3. **Update UX (BUILT).** Versioned shell cache, a user-initiated `SKIP_WAITING` activation, and the
    voice-reviewed "reload to update" affordance (no automatic skipWaiting/claim; section E).
-4. **Offline-created state (section H), NOT a bolt-on.** The durable master-key-sealed outbound
-   queue, the "backed up as of" marker, the passive not-backed-up affordance, and the
-   foreground-drain. **Prerequisite discovered during the build:** today every mutation is
-   load-modify-save against the server (`account.ts` `modify`), plus a republish, all online-only, so
-   `setOwnerState` throws offline at the `sync.load` step. Slice 4 therefore first requires making the
-   **in-memory blob authoritative** (mutate locally, then queue the save + republish + any notify
-   registration for reconnect). That is a foundational change to the encrypted-sync source-of-truth
-   model, not polish, and the most invariant-heavy layer in the app, so it is its own design and PR.
+4. **Offline-created state (section H), BUILT.** This was the foundational change anticipated below:
+   the encrypted blob is now cached in a master-key-sealed local store (`localBlobStore.ts`), and the
+   sync (`offlineSync.ts`) reads **local-first** (so a reload restores the session offline) and writes
+   **local-first then server** (`save` never throws offline; the edit is durable and the account is
+   marked pending). `setOwnerState` keeps its online path but, on any server-step failure, persists
+   the state change locally without throwing (aligning with decision 156's no-"couldn't refresh"
+   rule). A reconnect drain (`useBackupSync`) re-applies the current state to push the blob and
+   republish, in the foreground where the master lives (S1). A passive `NotBackedUp` marker shows
+   while pending and clears itself on backup. Tested at the sync layer and against the real server
+   (integration suite stays green). **Residuals (named):** minting a NEW share link and registering
+   push still need the network (a viewer fetches the alias from the server), so those stay online;
+   an expired link's server-side revoke lingers offline until reconnect (doc 16); and the reconnect
+   drain re-publishes even after a profile-only offline edit (one extra decorrelated write, harmless).
 5. **Periodic Background Sync**, gated off by default, behind the same review the push wake passed.
 
-Slices 1 to 3 are the core "capable PWA" and are built. Slice 4 is a foundational sync change (see
-its prerequisite above); slice 5 stays gated off by the security review (section L).
+Slices 1 to 4 are built. Slice 5 stays gated off by the security review (section L).
 
 ## K. Testing and gates
 

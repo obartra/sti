@@ -377,7 +377,7 @@ describe("account manager", () => {
     );
   });
 
-  it("saves state even if a republish fails, and a retry converges", async () => {
+  it("saves state without throwing when a republish fails, and a retry converges", async () => {
     const accountStore = new Map<string, { blob: Bytes; version: number }>();
     const aliasStore = new Map<string, Bytes>();
     let aliasPutsAllowed = false;
@@ -427,10 +427,10 @@ describe("account manager", () => {
     await accounts.addAlias(created.master, record);
     const paused = { ...INITIAL_OWNER_STATE, paused: true };
 
-    // Republish fails, so setOwnerState rejects, but the state is already saved.
-    await expect(
-      accounts.setOwnerState(created.master, paused),
-    ).rejects.toThrow();
+    // Republish (putAlias) is down. setOwnerState must NOT throw: the owner-facing
+    // "couldn't refresh" error is forbidden (decision 156), so the state is saved
+    // locally and left for a retry/drain to republish (doc 22 slice 4).
+    await accounts.setOwnerState(created.master, paused);
     expect(
       (await accounts.recover(created.recoveryPhrase))?.blob.state,
     ).toEqual(paused);

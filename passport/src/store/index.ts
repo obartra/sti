@@ -27,6 +27,16 @@ export {
 } from "./vanityName.ts";
 export type { AccountSync } from "./accountSync.ts";
 export { createAccountSync } from "./accountSync.ts";
+export { createLocalBlobStore } from "./localBlobStore.ts";
+export {
+  createSyncStatus,
+  browserSyncStorage,
+  type SyncStatus,
+} from "./syncStatus.ts";
+export {
+  createOfflineAccountSync,
+  type OfflineAccountSync,
+} from "./offlineSync.ts";
 export type {
   AccountBlob,
   AliasRecord,
