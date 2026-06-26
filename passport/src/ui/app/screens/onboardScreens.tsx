@@ -62,6 +62,8 @@ export const onboardRenderers: ScreenRenderers = {
       error={onboarding.error}
       onBack={nav.back}
       onEnter={(sharingMode) => void onboarding.finish(sharingMode)}
+      onViewPrivacyPolicy={() => nav.go("privacy-policy")}
+      onViewTerms={() => nav.go("terms")}
     />
   ),
   "avatar-edit": ({ nav, owner, onSetAvatar }) => (

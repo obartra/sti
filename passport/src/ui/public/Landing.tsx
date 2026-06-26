@@ -7,6 +7,8 @@ import {
   Bell,
   ArrowRight,
 } from "../../design/icons.tsx";
+import { TrustFooter } from "../trust/TrustFooter.tsx";
+import { LANDING_PROMISES_LINK } from "../trust/trustCopy.ts";
 
 // A1 logged-out landing. Faithful port of public.jsx Landing, copy verbatim
 // from copy.js (landing). Behavioral framing only, no verdict language.
@@ -209,6 +211,33 @@ function ValuePoints() {
   );
 }
 
+function PromisesLink({
+  onPromises,
+}: {
+  onPromises?: (() => void) | undefined;
+}) {
+  if (!onPromises) return null;
+  return (
+    <button
+      type="button"
+      onClick={onPromises}
+      style={{
+        alignSelf: "center",
+        marginTop: -8,
+        padding: 0,
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+        fontSize: 13,
+        fontWeight: 700,
+        color: "var(--text-accent)",
+      }}
+    >
+      {LANDING_PROMISES_LINK}
+    </button>
+  );
+}
+
 function PrivacyFootnote() {
   return (
     <div
@@ -231,9 +260,19 @@ export interface LandingProps {
   onClaim?: () => void;
   onSample?: () => void;
   onLogin?: () => void;
+  onPromises?: () => void;
+  onPrivacyPolicy?: () => void;
+  onTerms?: () => void;
 }
 
-export function Landing({ onClaim, onSample, onLogin }: LandingProps) {
+export function Landing({
+  onClaim,
+  onSample,
+  onLogin,
+  onPromises,
+  onPrivacyPolicy,
+  onTerms,
+}: LandingProps) {
   return (
     <div
       style={{
@@ -249,8 +288,14 @@ export function Landing({ onClaim, onSample, onLogin }: LandingProps) {
       <LandingHero />
       <SampleCard />
       <LandingActions onClaim={onClaim} onSample={onSample} />
+      <PromisesLink onPromises={onPromises} />
       <ValuePoints />
       <PrivacyFootnote />
+      <TrustFooter
+        onPromises={onPromises}
+        onPrivacy={onPrivacyPolicy}
+        onTerms={onTerms}
+      />
     </div>
   );
 }

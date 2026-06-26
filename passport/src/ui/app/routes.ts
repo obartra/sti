@@ -30,6 +30,8 @@ export const ALL_SCREENS = [
   "report-saved",
   "privacy",
   "promises",
+  "privacy-policy",
+  "terms",
 ] as const;
 
 export type Screen = (typeof ALL_SCREENS)[number];
@@ -68,9 +70,11 @@ const PUBLIC: readonly Screen[] = [
   "a2-public",
   "exposed",
   "u-resolve",
-  // The promises page is the public trust page (reachable at /promises without an
-  // account), so it renders in the public shell, not behind the app's login gate.
+  // The trust pages are full-page static content, reachable logged out from the
+  // landing footer (doc 22), so they live in the public group, not the app shell.
   "promises",
+  "privacy-policy",
+  "terms",
 ];
 const ONBOARD: readonly Screen[] = ["b1-claim", "b2-recovery", "b3-setup"];
 
@@ -94,7 +98,6 @@ const SECTION: Partial<Record<Screen, Tab>> = {
   report: "home",
   "report-saved": "home",
   privacy: "home",
-  promises: "home",
   notifications: "home",
   wallet: "home",
   "avatar-edit": "home",

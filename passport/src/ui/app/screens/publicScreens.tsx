@@ -14,6 +14,9 @@ export const publicRenderers: ScreenRenderers = {
       onClaim={() => nav.go("b1-claim")}
       onSample={() => nav.go("a2-public")}
       onLogin={() => nav.go("b1-claim", { isLogin: true })}
+      onPromises={() => nav.go("promises")}
+      onPrivacyPolicy={() => nav.go("privacy-policy")}
+      onTerms={() => nav.go("terms")}
     />
   ),
   "a2-public": (ctx) => {

@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { COPY, usePrivacyState } from "./Privacy.parts.tsx";
 import type { OwnerState } from "../../core/badge.ts";
 import type { AliasRecord, ContactRecord } from "../../store/index.ts";
@@ -23,6 +24,10 @@ export interface PrivacyProps {
   onDeleted?: (() => void) | undefined;
   /** Open the plain-English privacy promises page. */
   onViewPromises?: (() => void) | undefined;
+  /** Open the privacy policy page (doc 22). */
+  onViewPrivacyPolicy?: (() => void) | undefined;
+  /** Open the terms page (doc 22). */
+  onViewTerms?: (() => void) | undefined;
   /** Live preview src for the current avatar; with onEditAvatar, shows the editor entry. */
   avatarSrc?: string | undefined;
   onEditAvatar?: (() => void) | undefined;
@@ -35,6 +40,59 @@ export interface PrivacyProps {
 
 const noop = (): void => undefined;
 
+const legalLink: CSSProperties = {
+  alignSelf: "flex-start",
+  padding: 0,
+  background: "none",
+  border: "none",
+  cursor: "pointer",
+  fontSize: 13.5,
+  fontWeight: 700,
+  color: "var(--text-accent)",
+};
+
+// The app-native home for the trust links (doc 22): the logged-in app surfaces
+// promises, privacy, and terms here in settings rather than wearing a footer.
+function AboutLegal({
+  onViewPromises,
+  onViewPrivacyPolicy,
+  onViewTerms,
+}: {
+  onViewPromises?: (() => void) | undefined;
+  onViewPrivacyPolicy?: (() => void) | undefined;
+  onViewTerms?: (() => void) | undefined;
+}) {
+  if (!onViewPromises && !onViewPrivacyPolicy && !onViewTerms) return null;
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        marginTop: -8,
+      }}
+    >
+      {onViewPromises && (
+        <button type="button" onClick={onViewPromises} style={legalLink}>
+          See the promises we keep &rarr;
+        </button>
+      )}
+      <div style={{ display: "flex", gap: 16 }}>
+        {onViewPrivacyPolicy && (
+          <button type="button" onClick={onViewPrivacyPolicy} style={legalLink}>
+            Privacy
+          </button>
+        )}
+        {onViewTerms && (
+          <button type="button" onClick={onViewTerms} style={legalLink}>
+            Terms
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function Privacy({
   ownerState,
   setOwnerState,
@@ -46,6 +104,8 @@ export function Privacy({
   onViewAs,
   onDeleted,
   onViewPromises,
+  onViewPrivacyPolicy,
+  onViewTerms,
   avatarSrc,
   onEditAvatar,
   vanityName = null,
@@ -74,25 +134,11 @@ export function Privacy({
           {COPY.title}
         </h1>
 
-        {onViewPromises && (
-          <button
-            type="button"
-            onClick={onViewPromises}
-            style={{
-              alignSelf: "flex-start",
-              marginTop: -8,
-              padding: 0,
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 13.5,
-              fontWeight: 700,
-              color: "var(--text-accent)",
-            }}
-          >
-            See the promises we keep &rarr;
-          </button>
-        )}
+        <AboutLegal
+          onViewPromises={onViewPromises}
+          onViewPrivacyPolicy={onViewPrivacyPolicy}
+          onViewTerms={onViewTerms}
+        />
 
         {onEditAvatar && avatarSrc !== undefined && (
           <AvatarCard src={avatarSrc} onEdit={onEditAvatar} />
