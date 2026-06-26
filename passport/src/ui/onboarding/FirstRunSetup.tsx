@@ -1,12 +1,8 @@
 import { useState } from "react";
 import { FINDABLE_ENABLED } from "../../features.ts";
 import { ConsentLine } from "./ConsentLine.tsx";
-import {
-  Card,
-  Button,
-  Segmented,
-  Switch,
-} from "../../design/components/index.ts";
+import { KeepSignedInToggle } from "./KeepSignedInToggle.tsx";
+import { Card, Button, Segmented } from "../../design/components/index.ts";
 import {
   Hand,
   Calendar,
@@ -374,18 +370,10 @@ export function FirstRunSetup({
       <ReachCard sharing={sharing} onChange={setSharing} />
       <AnonCard />
 
-      {onKeepSignedInChange && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <Switch
-            checked={keepSignedIn}
-            onChange={onKeepSignedInChange}
-            label="Keep me signed in on this device"
-          />
-          <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-subtle)" }}>
-            Choose this only on a device that’s yours.
-          </p>
-        </div>
-      )}
+      <KeepSignedInToggle
+        checked={keepSignedIn}
+        onChange={onKeepSignedInChange}
+      />
 
       {error !== null && (
         <div
