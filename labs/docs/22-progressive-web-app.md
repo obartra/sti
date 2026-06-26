@@ -162,9 +162,13 @@ opt out of the shell cache. User data stays in the encrypted store, never in an 
 The app version is already stamped (`__APP_VERSION__`), so the cache name carries it
 (`shell-v{version}`). Policy:
 
-- **`skipWaiting()` + `clients.claim()`**, so a new worker takes over promptly rather than waiting
-  for every tab to close. Safe here because the shell is versioned and the fetch handler never mixes
-  asset versions within a load (cache-first on immutable hashes).
+- **No `skipWaiting()` and no `clients.claim()`; control begins at the next navigation.** A page
+  that loaded WITHOUT the worker is never taken over mid-load. (We tried the aggressive pair first;
+  claiming an in-flight page cancels its requests and can serve the HTML shell for a sub-resource,
+  which then fails with a `text/html` script MIME error. Validated against the e2e suite.) So the
+  worker installs quietly on visit one and controls from visit two, the standard PWA lifecycle, and a
+  new release activates once the old tabs go (the reload affordance below nudges it). This is also
+  what keeps old versions working: nothing is force-swapped under a running page.
 - **Surface the update, do not force a jarring reload.** When a new worker has installed and is
   waiting/active, the app shows a quiet, dismissible "refresh to update" affordance. Reloading is the
   user's choice; the next cold start picks it up regardless. The copy follows voice and tone:

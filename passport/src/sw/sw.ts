@@ -1,9 +1,17 @@
 /**
- * The push service worker (slice 7). On a wake it polls this device's own notify
- * inbox and shows the standard, contentless nudge ONLY when a real ping is present
- * (under broadcast cover-wake every device is woken; only the real recipient's
- * inbox decrypts). The notification names no contact and carries no detail; tapping
- * it opens Care.
+ * The one service worker (doc 22 section B: one worker per scope). It does two
+ * jobs in the same bundled file:
+ *
+ * 1. Push (slice 7): on a wake it polls this device's own notify inbox and shows
+ *    the standard, contentless nudge ONLY when a real ping is present (under
+ *    broadcast cover-wake every device is woken; only the real recipient's inbox
+ *    decrypts). The notification names no contact and tapping it opens Care.
+ * 2. Offline shell (doc 22 slice 2): install precaches the data-free app shell,
+ *    activate evicts old-version shells, and fetch serves same-origin navigations
+ *    network-first (falling back to the cached shell) and same-origin assets
+ *    cache-first. Everything cross-origin, including api.sti.care, passes through
+ *    untouched, so no response carrying user data is ever cached (doc 22 §D). The
+ *    handler fails open: any error falls through to a plain network fetch.
  *
  * Bundled to dist/sw.js by vite.sw.config.ts so it runs the SAME crypto as the app.
  * The SW global is hand-typed to the small surface used here, so this file stays in
@@ -14,6 +22,7 @@ import { createApiClient } from "../api/client.ts";
 import { consumePartnerPing } from "./swInbox.ts";
 import { readPushContext } from "./pushStore.ts";
 import { PARTNER_NOTIFY_PROMPT } from "../copy/canonical.ts";
+import { classify, shellCacheName, isStaleShellCache } from "./swCache.ts";
 
 interface ExtendableEventLike {
   waitUntil(p: Promise<unknown>): void;
@@ -21,16 +30,26 @@ interface ExtendableEventLike {
 interface NotificationEventLike extends ExtendableEventLike {
   readonly notification: { close(): void };
 }
+interface FetchEventLike extends ExtendableEventLike {
+  readonly request: Request;
+  respondWith(response: Response | Promise<Response>): void;
+}
 interface WindowClientLike {
   focus(): Promise<unknown>;
 }
 interface SwScope {
-  addEventListener(t: "push", l: (e: ExtendableEventLike) => void): void;
+  addEventListener(
+    t: "push" | "install" | "activate",
+    l: (e: ExtendableEventLike) => void,
+  ): void;
   addEventListener(
     t: "notificationclick",
     l: (e: NotificationEventLike) => void,
   ): void;
+  addEventListener(t: "fetch", l: (e: FetchEventLike) => void): void;
+  readonly location: { readonly origin: string };
   registration: {
+    readonly scope: string;
     showNotification(
       title: string,
       opts?: { body?: string; tag?: string; data?: unknown },
@@ -92,4 +111,103 @@ async function focusOrOpen(): Promise<void> {
     return;
   }
   await sw.clients.openWindow(CARE_URL);
+}
+
+// ---- Offline shell (doc 22 slice 2) -------------------------------------------
+
+// Versioned by the repo stamp, so a new release installs a fresh cache and the
+// activate sweep drops the old one. Only this prefix is touched; the push store
+// (a separate IndexedDB) is never an entry here.
+const SHELL_CACHE = shellCacheName(__APP_VERSION__);
+// The precache list (data-free shell + hashed assets) emitted at build by the
+// precache-manifest plugin, and the single shell document navigations fall back
+// to. Both resolve against the worker's own scope, so they track the deploy base.
+const PRECACHE_URL = sw.registration.scope + "precache.json";
+const SHELL_URL = sw.registration.scope + "index.html";
+
+sw.addEventListener("install", (event) => {
+  event.waitUntil(precacheShell());
+});
+
+async function precacheShell(): Promise<void> {
+  let urls: string[];
+  try {
+    const res = await fetch(new Request(PRECACHE_URL, { cache: "no-store" }));
+    if (!res.ok) return;
+    urls = (await res.json()) as string[];
+  } catch {
+    return; // first load offline: nothing to precache; runtime caching fills in.
+  }
+  const cache = await caches.open(SHELL_CACHE);
+  await cache.addAll(urls);
+}
+
+sw.addEventListener("activate", (event) => {
+  event.waitUntil(evictOldShells());
+});
+
+// Drop prior-version shells. We deliberately neither skipWaiting nor
+// clients.claim(): taking over a page that loaded WITHOUT the worker can change
+// the controller mid-load, which cancels in-flight requests and can serve the HTML
+// shell for a sub-resource (a script then fails with a text/html MIME error).
+// Instead the worker installs quietly and takes control at the NEXT navigation,
+// the normal PWA lifecycle: install on visit one, offline-capable from visit two.
+// A new release activates once existing tabs go (the in-app reload affordance
+// nudges it), which is also what keeps old versions working (doc 22 sections E, H).
+async function evictOldShells(): Promise<void> {
+  const names = await caches.keys();
+  await Promise.all(
+    names
+      .filter((name) => isStaleShellCache(name, SHELL_CACHE))
+      .map((name) => caches.delete(name)),
+  );
+}
+
+sw.addEventListener("fetch", (event) => {
+  const strategy = classify({
+    method: event.request.method,
+    url: event.request.url,
+    origin: sw.location.origin,
+    isNavigate: event.request.mode === "navigate",
+  });
+  if (strategy === "passthrough") return; // browser default fetch; never cached.
+  // Fail open: any unexpected error in our handling degrades to a plain fetch.
+  event.respondWith(
+    serve(strategy, event.request).catch(() => fetch(event.request)),
+  );
+});
+
+function serve(
+  strategy: "navigation" | "asset",
+  request: Request,
+): Promise<Response> {
+  return strategy === "navigation"
+    ? navigationFirst(request)
+    : cacheFirst(request);
+}
+
+// Network-first: try the live document, fall back to the one precached shell when
+// offline. The network response is NOT cached per-URL, so navigating to /a/{id}
+// leaves no per-id entry (no visit trail); the shell comes from precache.
+async function navigationFirst(request: Request): Promise<Response> {
+  try {
+    return await fetch(request);
+  } catch (err) {
+    const shell = await caches.match(SHELL_URL);
+    if (shell !== undefined) return shell;
+    throw err instanceof Error ? err : new Error("offline, no cached shell");
+  }
+}
+
+// Cache-first for hashed, immutable, same-origin assets (no user data). A cache
+// miss fetches and stores; a non-ok response is returned but not cached.
+async function cacheFirst(request: Request): Promise<Response> {
+  const cached = await caches.match(request);
+  if (cached !== undefined) return cached;
+  const res = await fetch(request);
+  if (res.ok) {
+    const cache = await caches.open(SHELL_CACHE);
+    await cache.put(request, res.clone());
+  }
+  return res;
 }
