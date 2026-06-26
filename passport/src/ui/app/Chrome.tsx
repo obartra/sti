@@ -251,6 +251,9 @@ function PublicChrome(props: ChromeProps) {
         onSample={() => nav.go("a2-public")}
         onLogin={() => nav.go("b1-claim", { isLogin: true })}
         onHome={() => nav.jump("a1-landing", "public")}
+        onPromises={() => nav.go("promises")}
+        onPrivacyPolicy={() => nav.go("privacy-policy")}
+        onTerms={() => nav.go("terms")}
       />
     );
   }

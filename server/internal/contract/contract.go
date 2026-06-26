@@ -153,7 +153,7 @@ const PubKeyMaxLen = 128
 
 // PendingKnock is one live knock as the alias OWNER sees it on review: the opaque
 // per-requester token plus the optional ephemeral key to seal a grant to. It
-// still names no one — both fields are opaque to the server.
+// still names no one; both fields are opaque to the server.
 type PendingKnock struct {
 	RequesterHash string `json:"requesterHash"`
 	PubKey        string `json:"pubKey,omitempty"`
@@ -314,4 +314,5 @@ const (
 	ErrMethodNotOk  = "method_not_allowed"
 	ErrUnauthorized = "unauthorized"       // admin bearer missing or wrong (doc 20)
 	ErrVanityTaken  = "vanity_unavailable" // a vanity name is reserved, blocked, taken, or locked (doc 17)
+	ErrConflict     = "conflict"           // an account PUT lost an optimistic-concurrency race (doc 22 S8)
 )

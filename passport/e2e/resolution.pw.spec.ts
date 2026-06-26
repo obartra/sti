@@ -192,6 +192,79 @@ test("the installed shell opens offline (doc 22 slices 2 + 4)", async ({
   await ctx.setOffline(false);
 });
 
+// The blind-server cache line as an executable spec (doc 22 sections D + K): the
+// worker precaches the data-free shell but NEVER an api.sti.care response, so no
+// per-id visit trail and no stale-blue can ever sit in CacheStorage. We open a real
+// blue card online (so a cross-origin API read definitely happens and HAS the chance
+// to be cached), wait for the worker, then enumerate every entry in every Cache the
+// worker owns and assert the shell IS cached but no api.sti.care URL ever is. This
+// asserts the invariant at its root (the fetch handler excludes the API origin, so
+// nothing from it is ever stored), which is stronger and steadier than driving the
+// offline UI: you cannot serve from a cache what was never written to one.
+test("the worker never writes an api.sti.care response into CacheStorage (doc 22 D/K)", async ({
+  page,
+}) => {
+  await page.goto(previewOrigin + cardPath, { waitUntil: "load" });
+  await expect(page.getByText(BLUE_HEADLINE)).toBeVisible(); // online: real API read
+  await page.evaluate(() => navigator.serviceWorker.ready);
+
+  const cachedUrls = await page.evaluate(async () => {
+    const names = await caches.keys();
+    const urls: string[] = [];
+    for (const name of names) {
+      const cache = await caches.open(name);
+      for (const req of await cache.keys()) urls.push(req.url);
+    }
+    return urls;
+  });
+
+  // The shell is cached (offline-capable), and nothing from the API origin is.
+  expect(cachedUrls.length).toBeGreaterThan(0);
+  expect(cachedUrls.filter((url) => url.startsWith(apiBase))).toEqual([]);
+});
+
+// Chrome's own manifest parse as an executable installability spec (doc 22 C/K).
+// Lighthouse dropped its PWA/installability audits (v12), so we ask the browser we
+// already drive, via CDP, for the manifest it resolved from the SERVED app, and
+// assert it is a well-formed installable manifest. This catches a regression a static
+// manifest test cannot: the manifest not linked, 404ing, or served with the wrong
+// type would leave Chrome with no manifest URL or with parse errors.
+test("Chrome resolves a valid installable web app manifest (doc 22 C/K)", async ({
+  page,
+}) => {
+  await page.goto(previewOrigin + "/", { waitUntil: "load" });
+  const cdp = await page.context().newCDPSession(page);
+  const got = (await cdp.send("Page.getAppManifest")) as {
+    url?: string;
+    errors?: { critical?: boolean }[];
+  };
+
+  // Chrome found and linked the manifest, and parsed it with no errors.
+  expect(got.url ?? "").toContain("manifest.webmanifest");
+  expect(got.errors ?? []).toEqual([]);
+
+  // The parsed manifest carries the installable basics (standalone, 192 + 512 icons).
+  const manifest = (await page.evaluate(
+    async (url) => {
+      const res = await fetch(url);
+      return res.ok ? ((await res.json()) as unknown) : null;
+    },
+    got.url ?? previewOrigin + "/manifest.webmanifest",
+  )) as {
+    name?: string;
+    display?: string;
+    start_url?: string;
+    icons?: { sizes?: string }[];
+  } | null;
+  expect(manifest).not.toBeNull();
+  expect(manifest?.name).toBeTruthy();
+  expect(manifest?.display).toBe("standalone");
+  expect(manifest?.start_url).toBeTruthy();
+  const sizes = (manifest?.icons ?? []).map((icon) => icon.sizes);
+  expect(sizes).toContain("192x192");
+  expect(sizes).toContain("512x512");
+});
+
 test("the Playwright suite covers every behavior it pins", () => {
   const ownedHere = BEHAVIORS.filter((b) => b.pin === E2E_PIN);
   for (const b of ownedHere) expect(covered.has(b.id)).toBe(true);

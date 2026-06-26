@@ -64,8 +64,10 @@ offers, with one hard line drawn around what a cache is ever allowed to hold.
   assets.
 - **All sensitive data is already on-device** in a passkey- or passphrase-derived AES-GCM blob in
   IndexedDB; the push context (lower-sensitivity inbox capabilities) sits beside it (doc 09).
-- **The build is static**, output to `gh-pages` under `/passport/`, with a repo-wide version stamped
-  into both the app and the worker via `__APP_VERSION__`.
+- **The build is static**, deployed via Netlify (`netlify.toml`) with the app served at the site root
+  (Storybook at `/design`), and a repo-wide version stamped into both the app and the worker via
+  `__APP_VERSION__`. The manifest and service worker are base-agnostic (relative paths), so the deploy
+  path is not baked in.
 - **What is missing for "installable, capable PWA":** a web app manifest, maskable icons, an offline
   app shell (precache + a `fetch` handler), an update-ready signal, an install affordance, and the
   optional background-sync capabilities. `index.html` today links only a favicon.
@@ -76,20 +78,21 @@ A browser runs **exactly one service worker per scope**. We already own scope `/
 worker. We therefore **do not register a second worker**; the offline and lifecycle responsibilities
 are composed **into the same bundled worker** at `src/sw/sw.ts`.
 
-Concretely, the worker grows three modules behind its existing push module, each its own file under
-`src/sw/` so the statement ceilings hold and each tests in isolation:
+In practice the `install`, `activate`, and `fetch` handlers live **inline in `sw.ts`** beside the
+existing push module (the file stays small enough that splitting them into separate files was not
+needed), with the one piece of real logic, the per-request routing decision, extracted to a **pure**
+`swCache.ts` (`classify()`) so it unit-tests in Node with no service worker:
 
-- `swPrecache.ts`: the `install` handler. Opens a versioned cache, adds the precache manifest
-  (hashed JS/CSS/fonts/icons + the navigation shell), and calls `skipWaiting()` per the update
-  policy in section E.
-- `swActivate.ts`: the `activate` handler. Deletes caches from prior versions and calls
-  `clients.claim()`.
-- `swFetch.ts`: the `fetch` handler. Routes by request, per the table in section D. The push module
-  is untouched.
+- **`install`** opens a versioned cache and adds the precache manifest (the data-free navigation
+  shell + the hashed JS/CSS/icons). It does **not** call `skipWaiting()` (see section E).
+- **`activate`** deletes caches from prior versions. It does **not** call `clients.claim()`; the new
+  worker takes control at the next navigation, the standard lifecycle (section E).
+- **`fetch`** routes by request, per the table in section D, failing open to the network. The push
+  module is untouched.
 
-The precache manifest is generated at build time. Vite already knows the hashed asset graph, so a
-small post-build step (or a manifest plugin) writes the list the worker imports; we do not hand-edit
-it, the same discipline visual baselines follow.
+The precache manifest is generated at build time by a Vite plugin (`src/pwa/precachePlugin.ts`),
+which writes `precache.json` (the hashed asset graph + shell) for the worker to fetch on install; we
+do not hand-edit it, the same discipline visual baselines follow.
 
 > One real risk to call out: composing a `fetch` handler into the worker that currently only does
 > push means a worker bug can now break navigation, not just a nudge. That is why the fetch handler
@@ -104,15 +107,17 @@ A `public/manifest.webmanifest`, linked from `index.html`, with a matching
 | ------------------ | ------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `name`             | `sti.care passport`                                            | Full name on the install dialog and splash.                                         |
 | `short_name`       | `sti.care`                                                     | Home-screen label, fits under the icon.                                             |
-| `start_url`        | `/passport/`                                                   | Honors the gh-pages base path. No tracking query param (S5): install-vs-browser is detected client-side via `display-mode: standalone`, never a URL the page host could log. |
-| `scope`            | `/passport/`                                                   | Matches the deploy path, so navigations stay in-app.                                 |
+| `id`               | `./`                                                           | A stable install identity independent of the URL the app happens to be served from.  |
+| `start_url`        | `./`                                                           | Base-agnostic (relative), so the install works wherever the app is served. No tracking query param (S5): install-vs-browser is detected client-side via `display-mode: standalone`, never a URL the page host could log. |
+| `scope`            | `./`                                                           | Base-agnostic; navigations stay in-app at whatever path the app is served from.      |
 | `display`          | `standalone`                                                   | No browser chrome; it reads as an app.                                               |
 | `theme_color`      | `#2F9BB3` (teal-500)                                           | Accent; status bar tint.                                                             |
 | `background_color` | `#FBF9F4` (warm-50)                                            | The app background, so the splash matches the first paint with no flash.             |
 | `icons`            | 192 and 512 px, plus a `purpose: "maskable"` variant          | Maskable so Android does not letterbox the favicon mark.                             |
 | `categories`       | `["health", "medical"]`                                        | Store and launcher categorization.                                                  |
+| `description`      | One plain line: what it is and the privacy promise            | User-facing copy, voice-and-tone governed; shown by some install UIs.                |
 | `shortcuts`        | Care, Share, Connect                                           | Long-press launcher entries to the three primary routes.                            |
-| `screenshots`      | a few captured states                                         | Richer install UI on Chromium; reuse the visual-baseline pipeline, do not hand-roll. Fixture data only (S7), never a real session capture, or a real badge or handle ships in a static asset. |
+| `screenshots`      | a narrow (mobile) capture, BUILT                              | Richer install UI on Chromium. The source of truth is a dedicated Storybook story (`PWA/Install screenshots`), and `scripts/screenshots/generate.mjs` screenshots it into `public/screenshots/`, so the manifest image stays in sync with the real UI. Fixture data only (S7), never a real session: no real badge or handle ships in a static asset. |
 
 Icons derive from the existing `public/favicon.svg` (teal rounded square, white mark). The maskable
 variant needs the mark inside the safe zone with the teal extended to the bleeders, so Android's mask
@@ -162,21 +167,25 @@ opt out of the shell cache. User data stays in the encrypted store, never in an 
 The app version is already stamped (`__APP_VERSION__`), so the cache name carries it
 (`shell-v{version}`). Policy:
 
-- **No AUTOMATIC `skipWaiting()` and no `clients.claim()`; control begins at the next navigation.** A
-  page that loaded WITHOUT the worker is never taken over mid-load. (We tried the aggressive pair
-  first; claiming an in-flight page cancels its requests and can serve the HTML shell for a
-  sub-resource, which then fails with a `text/html` script MIME error. Validated against the e2e
-  suite.) So the worker installs quietly on visit one and controls from visit two, the standard PWA
-  lifecycle. This is also what keeps old versions working: nothing is force-swapped under a running
-  page.
-- **Surface the update; let the user activate it.** When a newer worker is installed and waiting (a
-  worker reaching `installed` while one already controls the page), the app shows a quiet, dismissible
-  affordance. Tapping Reload posts the waiting worker a `SKIP_WAITING` message (the ONLY path that
-  calls `skipWaiting`, so activation is always user-initiated); the worker activates, `controllerchange`
-  fires, and the page reloads once onto the new version. Dismiss leaves the running version untouched;
-  the next cold start picks the update up regardless. Copy follows voice and tone, outcome-first:
-  **"A newer version is ready."** with **Reload** / **Not now** actions. (Implemented in slice 3:
-  `swUpdate.ts`, `registerSw.ts`, `UpdateBanner.tsx`.)
+- **No `clients.claim()`, and `skipWaiting()` only at a navigation boundary; a page is never taken
+  over mid-load.** (We tried the aggressive pair first; claiming an in-flight page cancels its
+  requests and can serve the HTML shell for a sub-resource, which then fails with a `text/html` script
+  MIME error. Validated against the e2e suite.) The worker installs quietly while the old one keeps
+  controlling the running page, so nothing is force-swapped under it. This is also what keeps old
+  versions working: an offline or untouched session stays on its current version.
+- **Adopt the update silently at the user's next screen change; no banner (revised).** The earlier
+  design surfaced a dismissible "A newer version is ready" affordance and waited for a tap. In
+  practice that prompt was noise for what is almost always a routine update, so it was removed. Now,
+  when a newer worker reaches `installed` while one controls the page (`registerSw` records it via
+  `notifyUpdateReady`), the app does nothing until the user's **next in-app navigation**; on that
+  screen change the router calls `applyPendingUpdate`, which posts the waiting worker `SKIP_WAITING`,
+  and the `controllerchange` that follows reloads once onto the new version, landing the user on the
+  same screen. Applying at a navigation (not mid-interaction) is what makes it discreet AND avoids a
+  still-running old page requesting a code chunk the new deploy dropped: the reload happens right at
+  the boundary. If the user never navigates, the worker adopts on the next cold start (standard
+  lifecycle). `skipWaiting` is thus automatic but still never fires under an in-flight load. There is
+  no minimum-version floor and no staleness threshold: every update, recent or old, adopts the same
+  quiet way. (`swUpdate.ts`, `registerSw.ts`, `useAppRouter.ts`.)
 - **No silent data migration risk.** The worker only ever touches the public shell cache. User data
   lives in the encrypted blob and is versioned by the app's own store-migration path, untouched here.
 
@@ -195,20 +204,23 @@ app. The threat model around updates is therefore scoped precisely:
   served no-store so a genuine update is picked up the moment the network allows, which keeps
   "withhold" the only move a network attacker has.
 
-## F. Install affordance (progressive, never naggy)
+## F. Install affordance (progressive, never naggy), BUILT
 
-- **Chromium (Android, desktop):** capture `beforeinstallprompt`, stash it, and offer a single,
-  easy-to-ignore "Add to home screen" entry point in a sensible spot (for example, a one-time row in
-  settings or an occasional, dismissible hint), never a modal that blocks the flow. Fire the stored
-  prompt on tap.
-- **iOS Safari:** there is no install event. If we detect iOS and not-standalone, we can show brief
-  Add-to-Home-Screen guidance **only where it pays for itself** (notably: iOS only allows Web Push
-  inside an installed PWA, so the push-enable flow in doc 13 is the honest place to mention install).
-  Elsewhere we stay quiet.
-- **Already installed** (`display-mode: standalone`): never prompt.
+- **Chromium (Android, desktop):** the `beforeinstallprompt` event is captured at app boot
+  (`installPrompt.ts`, a small singleton, so it is never missed if it fires before a screen mounts)
+  and the browser's own mini-infobar is suppressed. The app surfaces instead a **single quiet row in
+  the Privacy/Controls section** (the settings surface), present only when the browser offered a
+  prompt and the app is not already installed; tapping it fires the stored prompt. No modal, no hint
+  that recurs. (`useInstallPrompt.ts`, `Privacy.install.tsx`.)
+- **iOS Safari:** there is no install event, so install is manual Add-to-Home-Screen. We show brief
+  A2HS guidance **only where it pays for itself**: iOS only allows Web Push inside an installed PWA,
+  so the push toggle's own sub-line becomes the install hint when we detect iOS and not-standalone
+  ("On iPhone, add sti.care to your Home Screen to turn this on."). Elsewhere we stay quiet.
+- **Already installed** (`display-mode: standalone`, or iOS `navigator.standalone`): never prompt; the
+  row and the hint both stay absent.
 
 Copy is minimal and voice-compliant: lead with the benefit ("Keep your passport one tap away. It
-works offline, and we still can't see your status."), no preamble, no hype. Reviewed against
+works offline, and we still can't read it."), no preamble, no hype. Reviewed against
 [21-voice-and-tone.md](21-voice-and-tone.md) before merge.
 
 ## G. Background capabilities (the "most capable" part), gated
@@ -338,8 +350,9 @@ Each slice is independently shippable and leaves the app correct.
 2. **Offline shell (BUILT).** `install`/`activate`/`fetch` composed into the existing worker
    (section B), a build-time precache manifest, the cross-origin (incl. API) passthrough. Outcome:
    the installed app opens offline and renders the owner's own local status.
-3. **Update UX (BUILT).** Versioned shell cache, a user-initiated `SKIP_WAITING` activation, and the
-   voice-reviewed "reload to update" affordance (no automatic skipWaiting/claim; section E).
+3. **Update UX (BUILT, then revised).** Versioned shell cache plus update adoption. Originally a
+   voice-reviewed "reload to update" banner; revised to **silent adoption at the next screen change**,
+   with the banner removed (no `clients.claim`, `skipWaiting` only at a navigation boundary; section E).
 4. **Offline-created state (section H), BUILT.** This was the foundational change anticipated below:
    the encrypted blob is now cached in a master-key-sealed local store (`localBlobStore.ts`), and the
    sync (`offlineSync.ts`) reads **local-first** (so a reload restores the session offline) and writes
@@ -353,6 +366,8 @@ Each slice is independently shippable and leaves the app correct.
    push still need the network (a viewer fetches the alias from the server), so those stay online;
    an expired link's server-side revoke lingers offline until reconnect (doc 16); and the reconnect
    drain re-publishes even after a profile-only offline edit (one extra decorrelated write, harmless).
+   One more, named in full in section L: the blob push is **last-write-wins**, so two devices editing
+   the same account while one is offline can have the reconnecting device overwrite the other's edit.
 5. **Reconnect catch-up, RECONSIDERED (section M).** Periodic background sync is replaced by a
    reconnect/foreground inbox catch-up (`useReconnectCatchup`, BUILT) plus a recommended long-TTL push,
    which reach low-connectivity users without the device-initiated cadence leak. The timer is not
@@ -364,14 +379,32 @@ in M, not a client TODO).
 
 ## K. Testing and gates
 
-- **Lighthouse PWA audit** wired into CI as a gate (installable, manifest valid, offline-200). It
-  catches manifest and icon regressions mechanically.
-- **Playwright** already drives a service worker (doc 14) and can simulate offline: an e2e that
-  installs the worker, goes offline, reloads, and asserts the app shell renders and the badge is the
-  correct gray. A second asserts **no `api.sti.care` request is served from cache** (the privacy
-  invariant as an executable spec, the project's preferred shape).
-- **Unit:** the cache-routing decision (which strategy per request) is pure and tests in Node with
-  no DOM, like the rest of the core. `fake-indexeddb` already backs the store tests.
+- **Manifest and icon invariants as an executable unit spec (BUILT).** `manifest.test.ts` asserts the
+  manifest stays installable (standalone, hex theme/background, 192 + 512 + maskable icons that exist
+  on disk, base-agnostic relative srcs) and that `index.html` links it with a matching theme color and
+  an apple-touch icon. A regression that silently breaks "Add to home screen" fails the build.
+- **Playwright** drives the real worker against a throwaway server (doc 14) and exercises offline
+  (`e2e/resolution.pw.spec.ts`): one test installs the worker, goes offline, reloads, and asserts the
+  app shell still renders (BUILT); a second opens a real blue card online (so a cross-origin API read
+  definitely happens and could be cached), then enumerates every entry in every Cache the worker owns
+  and asserts the shell **is** cached but **no `api.sti.care` URL ever is** (BUILT). That asserts the
+  privacy invariant at its root, the fetch handler excludes the API origin so nothing from it is ever
+  stored, which is steadier than driving the offline UI (you cannot serve from a cache what was never
+  written to one). The pre-existing `client-gray-on-unreachable` separately pins the fail-closed-to-gray
+  rule online (API blocked), and the server sends `Cache-Control: no-store` on `/a/{id}` so the browser
+  HTTP cache cannot serve a stale blue either.
+- **Unit:** the cache-routing decision (which strategy per request) is pure (`swCache.ts`) and tests
+  in Node with no DOM, like the rest of the core (`swCache.test.ts`); the update flow is unit-tested
+  (`swUpdate.test.ts`) and `fake-indexeddb` backs the store tests.
+- **Installability via the browser (BUILT).** A third e2e (`resolution.pw.spec.ts`) opens the served
+  app and asks Chrome, over CDP (`Page.getAppManifest`), for the manifest it actually resolved, then
+  asserts it is well-formed and installable (a manifest URL was linked, no parse errors, standalone
+  display, 192 + 512 icons). This catches what the static `manifest.test.ts` cannot: the manifest not
+  linked, 404ing, or served with the wrong type. We assert installability through the browser directly
+  because **Lighthouse removed its PWA category and installability audits in v12**, so a "Lighthouse
+  PWA gate" is no longer buildable against current Lighthouse (and its `service-worker` audit fights
+  our deliberate no-`clients.claim` lifecycle anyway). The CDP check is deterministic and reuses the
+  e2e harness, with no extra dependency.
 - **The standard gates** still apply: typecheck, lint, test, build, `build-storybook`, prettier,
   Go suite, no em dashes (CLAUDE.md).
 
@@ -380,7 +413,8 @@ in M, not a client TODO).
 The PWA adds three new actors: a worker that intercepts navigations, a set of at-rest caches, and
 optional background runners. This section is the single place a reviewer checks that they did not
 weaken the project's invariants. The per-section fixes (S1 to S7) live where they bite; this
-summarizes what holds and what residuals are accepted.
+summarizes what holds and what residuals are accepted. S8 (below) is a residual named only here, with
+no in-place fix yet.
 
 **Invariants the PWA must preserve (and how):**
 
@@ -410,6 +444,23 @@ handler fails open to the network so a worker bug degrades to a plain online bro
 - **Closed-app flush of write-bearing ops (S1).** Because the worker has no master key, sealed
   outbound ops flush only on the next unlocked foreground, not headless. Accepted in exchange for not
   exposing write tokens at rest.
+- **Multi-device concurrent offline edits (S8): resolved by optimistic concurrency + a client merge.**
+  The account record carries a monotonic version. The account PUT honors an optional `X-Version`
+  precondition: a write naming a stale version is refused with `409` (the stored blob untouched, the
+  current version returned); a write with no header stays an unconditional last-write-wins overwrite.
+  The client (`offlineSync`) now caches the last-synced server blob as a common ancestor beside its
+  working copy, records the server version, and sends it on every push. On a `409` it reloads the
+  server's copy and **3-way merges** its edits onto it client-side (`blobMerge.ts`; the blind server
+  cannot merge) before re-pushing, rather than clobbering the other device. The merge is biased toward
+  safety: **delete wins** (a contact or alias revoked on either side stays gone, never resurrected by a
+  concurrent edit), and on a true same-field divergence the **actively-used device wins** (the badge is
+  recomputed locally and the owner can re-edit, so it is self-correcting). This is a correctness
+  concern, not a privacy one: the blob is the owner's own data, so nothing leaks and no other user is
+  affected. Named residuals: the in-memory session may briefly show the pre-merge value until the next
+  load reconciles it (a reconnect already triggers one); the badge republish on a state edit reflects
+  the pre-merge state until the next write; and the merge does not re-check cross-references (a
+  `findable` whose alias was concurrently revoked simply fails to resolve, the same harmless state an
+  expired link reaches).
 - **Periodic Background Sync (S4)** stays gated off until its review clears the device-side cadence
   and co-read signals; it is not assumed safe by analogy to push.
 - **Compromised build or hosting pipeline (the ceiling).** A service worker is a persistent actor:
@@ -488,9 +539,11 @@ timer.
 - **iOS install friction.** Manual Add-to-Home-Screen has real drop-off, and it gates push on iOS.
   Open question whether a one-time, dismissible explainer in the push-enable flow lifts it enough to
   justify the copy, or whether we stay silent and accept fewer iOS push opt-ins.
-- **Precache size budget.** The shell must stay small enough to install fast on a weak connection.
-  Set a budget and fail the build if the precache manifest exceeds it, rather than discovering it on
-  a phone.
+- **Precache size budget (BUILT).** The shell must stay small enough to install fast on a weak
+  connection, so the precache plugin sums the precached files' bytes and FAILS the build when they
+  exceed `PRECACHE_BUDGET_BYTES` (`precachePlugin.ts`), caught here rather than on a phone. Raising
+  the budget is a deliberate, reviewable one-line change that surfaces the growth; dynamically
+  imported chunks (the QR scanner) are excluded from the shell and so do not count against it.
 - **Wallet passes vs install.** The live-status wallet pass (doc 02, doc 03) is the OS-native offline
   status surface; the installed PWA is the app surface. They are complementary, not a choice; keep
   the two from implying different freshness rules to the user.

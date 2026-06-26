@@ -76,8 +76,8 @@ func (s *Server) registerAdminRoutes() {
 	s.mux.HandleFunc("GET "+contract.PathAdminAudit, s.requireAdmin(s.handleAdminAudit))
 	s.mux.HandleFunc("POST /admin/vanity/{name}/takedown", s.requireAdmin(s.handleVanityTakedown))
 	s.mux.HandleFunc("POST /admin/vanity/{name}/dismiss", s.requireAdmin(s.handleVanityDismiss))
-	// Account / alias management (doc 20 A3): all within the blind-store boundary —
-	// delete/revoke opaque records and read opaque metadata, never any content.
+	// Account / alias management (doc 20 A3): all within the blind-store boundary.
+	// Delete/revoke opaque records and read opaque metadata, never any content.
 	s.mux.HandleFunc("POST /admin/account/{id}/disable", s.requireAdmin(s.handleAccountDisable))
 	s.mux.HandleFunc("POST /admin/alias/{id}/revoke", s.requireAdmin(s.handleAliasRevoke))
 	s.mux.HandleFunc("GET /admin/lookup/{id}", s.requireAdmin(s.handleAdminLookup))

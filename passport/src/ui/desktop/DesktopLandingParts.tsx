@@ -374,37 +374,3 @@ export function ClosingCTA({ onClaim }: LandingHandlers) {
 }
 
 // ── Footer ───────────────────────────────────────────────────────────────────
-export function LandingFooter() {
-  return (
-    <footer style={{ borderTop: "1px solid var(--divider)" }}>
-      <div
-        style={{
-          ...SECTION_MAX,
-          padding: "32px 40px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 24,
-          flexWrap: "wrap",
-        }}
-      >
-        <img
-          src="/assets/logo/logo-wordmark.svg"
-          alt="sti.care"
-          style={{ height: 26, opacity: 0.9 }}
-        />
-        <div
-          style={{
-            fontSize: 12.5,
-            color: "var(--text-subtle)",
-            lineHeight: 1.5,
-            maxWidth: 560,
-          }}
-        >
-          General info, not medical advice. A clinic or doctor can tell you
-          what’s right for you. Based on U.S. CDC guidance.
-        </div>
-      </div>
-    </footer>
-  );
-}

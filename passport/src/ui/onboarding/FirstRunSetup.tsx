@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FINDABLE_ENABLED } from "../../features.ts";
+import { ConsentLine } from "./ConsentLine.tsx";
 import {
   Card,
   Button,
@@ -323,6 +324,9 @@ export interface FirstRunSetupProps {
   /** "Keep me signed in on this device" choice + setter (doc 24). */
   keepSignedIn?: boolean;
   onKeepSignedInChange?: (v: boolean) => void;
+  /** Open the privacy policy / terms from the consent line (doc 23). */
+  onViewPrivacyPolicy?: () => void;
+  onViewTerms?: () => void;
 }
 
 export function FirstRunSetup({
@@ -332,6 +336,8 @@ export function FirstRunSetup({
   error = null,
   keepSignedIn = true,
   onKeepSignedInChange,
+  onViewPrivacyPolicy,
+  onViewTerms,
 }: FirstRunSetupProps) {
   // Direct ("public") is the default reach mode (doc 16): a link you hand over
   // opens instantly. "Ask first" (Gated, "link") is the approve-each-viewer mode.
@@ -402,6 +408,10 @@ export function FirstRunSetup({
       >
         {COPY.cta} <ArrowRight size={18} />
       </Button>
+      <ConsentLine
+        onViewPrivacyPolicy={onViewPrivacyPolicy}
+        onViewTerms={onViewTerms}
+      />
     </div>
   );
 }

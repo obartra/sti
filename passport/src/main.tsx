@@ -7,6 +7,7 @@ import { AdminPage } from "./ui/admin/AdminPage.tsx";
 import { isAdminPath } from "./ui/admin/adminRoute.ts";
 import { API_BASE_URL } from "./config.ts";
 import { registerServiceWorker } from "./pwa/registerSw.ts";
+import { initInstallPrompt } from "./pwa/installPrompt.ts";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("missing #root element");
@@ -19,6 +20,9 @@ createRoot(root).render(
     {admin ? <AdminPage apiBase={API_BASE_URL} /> : <App />}
   </StrictMode>,
 );
-// The offline shell is for the consumer app only; the isolated admin surface stays
-// network-only and uncached.
-if (!admin) registerServiceWorker();
+// The offline shell and the install affordance are for the consumer app only; the
+// isolated admin surface stays network-only and is never offered for install.
+if (!admin) {
+  registerServiceWorker();
+  initInstallPrompt();
+}

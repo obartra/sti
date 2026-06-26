@@ -4,6 +4,7 @@ import type { ScreenCtx, ScreenRenderers } from "./context.ts";
 import { publicRenderers } from "./publicScreens.tsx";
 import { onboardRenderers } from "./onboardScreens.tsx";
 import { coreRenderers } from "./coreScreens.tsx";
+import { trustRenderers } from "./trustScreens.tsx";
 import { reportRenderers } from "./reportScreens.tsx";
 import { connectRenderers } from "./connectScreens.tsx";
 import { learnRenderers } from "./learnScreens.tsx";
@@ -13,6 +14,7 @@ const RENDERERS: ScreenRenderers = {
   ...publicRenderers,
   ...onboardRenderers,
   ...coreRenderers,
+  ...trustRenderers,
   ...reportRenderers,
   ...connectRenderers,
   ...learnRenderers,

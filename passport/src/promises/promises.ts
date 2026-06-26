@@ -90,11 +90,11 @@ export const PROMISES: readonly UserPromise[] = [
     id: "cannot-tell-existence",
     plain: "No one can tell whether you've saved anything.",
     detail:
-      "A link you never made and a link you've turned off look exactly the same to anyone who tries it. The one exception is a public findable name, which is public on purpose (see the last promise).",
+      "A link you never made and a link you've turned off look exactly the same to anyone who tries it. The one exception is a public name you claim, which is public on purpose (see the last promise).",
     assertions: [
       {
         claim:
-          "A link that was never created returns decoy data of the exact same size as a real one.",
+          "A link that was never created returns blank stand-in data the exact same size as a real one.",
         backedBy: {
           kind: "test",
           file: "src/api/client.integration.test.ts",
@@ -103,7 +103,7 @@ export const PROMISES: readonly UserPromise[] = [
       },
       {
         claim:
-          "An expired or turned-off link reads as that same decoy, not a distinguishable error.",
+          "An expired or turned-off link reads as that same blank stand-in, not a tell-tale error.",
         backedBy: {
           kind: "test",
           file: "../server/internal/server/server_test.go",
@@ -138,7 +138,7 @@ export const PROMISES: readonly UserPromise[] = [
       },
       {
         claim:
-          "After that, the link reads as the same blank decoy as a link that never existed.",
+          "After that, the link reads as the same blank as a link that never existed.",
         backedBy: {
           kind: "test",
           file: "../server/internal/server/server_test.go",
@@ -235,7 +235,7 @@ export const PROMISES: readonly UserPromise[] = [
       },
       {
         claim:
-          "Looking someone up by a findable name never carries a key in the web address.",
+          "Looking someone up by a public name never carries a key in the web address.",
         backedBy: {
           kind: "test",
           file: "src/ui/app/screens/publicScreens.test.tsx",
@@ -282,13 +282,13 @@ export const PROMISES: readonly UserPromise[] = [
   {
     id: "findable-honest",
     plain:
-      "Being findable is the one thing others can look up, and we tell you what that exposes.",
+      "A public name is the one thing others can look up, and we tell you what that exposes.",
     detail:
       "If you claim a public name, anyone can look it up and see it exists; that's the point. Nothing else about you becomes public, and we show you this trade before you opt in.",
     assertions: [
       {
         claim:
-          "A findable name resolves to a link anyone must still knock on; that the name exists is the only thing revealed.",
+          "A public name points to a link anyone must still ask to open; that the name exists is the only thing revealed.",
         backedBy: {
           kind: "test",
           file: "../server/internal/server/vanity_test.go",

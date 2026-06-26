@@ -28,6 +28,7 @@ export type ApiErrorKind =
   | "forbidden" // 403, e.g. a write-token mismatch
   | "badRequest" // 400, including a malformed id
   | "tooLarge" // 413, account blob over the cap
+  | "conflict" // 409, an account PUT lost an optimistic-concurrency race (doc 22 S8)
   | "protocol"; // a response that violates the contract
 
 export class ApiError extends Error {
@@ -263,13 +264,24 @@ async function fetchKnockReview(
     headers: { [HEADER_WRITE_TOKEN]: writeToken },
   });
   if (!res.ok) throw new ApiError(statusToKind(res.status), "knock review");
-  return parseKnockReview(await res.json());
+  return parseKnockReview(await jsonBody(res, "knock review"));
+}
+
+/** Parse a JSON body, mapping a malformed one to a typed `protocol` ApiError so a
+ * raw SyntaxError never escapes the client's error contract. */
+async function jsonBody(res: Response, op: string): Promise<unknown> {
+  try {
+    return (await res.json()) as unknown;
+  } catch {
+    throw new ApiError("protocol", `${op} malformed body`);
+  }
 }
 
 /** Map a non-ok HTTP status to the typed error kind. */
 function statusToKind(status: number): ApiErrorKind {
   if (status === 429) return "rateLimited";
   if (status === 403) return "forbidden";
+  if (status === 409) return "conflict"; // stale optimistic-concurrency version
   if (status === 413) return "tooLarge";
   if (status === 400) return "badRequest";
   if (status === 503) return "unreachable"; // load-shed degrades to gray
@@ -322,7 +334,9 @@ function vanityMethods(
       if (res.status === 404) return null;
       if (!res.ok)
         throw new ApiError(statusToKind(res.status), "vanity resolve");
-      const body = (await res.json()) as { aliasId?: string };
+      const body = (await jsonBody(res, "vanity resolve")) as {
+        aliasId?: string;
+      };
       // Validate before handing the id to the knock flow, which every other id
       // path validates too; a malformed id from the server is unresolvable.
       return body.aliasId && validId(body.aliasId) ? body.aliasId : null;
@@ -369,8 +383,9 @@ function accountMethods(
         "Content-Type": OCTET_STREAM,
         [HEADER_WRITE_TOKEN]: writeToken,
       };
-      // Advisory today (the server is last-write-wins); sent for forward-compat
-      // with optimistic concurrency.
+      // The optimistic-concurrency precondition (doc 22 S8): when sent, the server
+      // refuses a stale overwrite with 409 (ApiError "conflict"); when omitted, the
+      // write is an unconditional last-write-wins overwrite.
       if (ifVersion !== undefined) headers[HEADER_VERSION] = ifVersion;
       const res = await call(PATHS.accountPrefix + id, {
         method: "PUT",

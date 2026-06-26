@@ -6,13 +6,19 @@ import {
   deriveAccountKey,
   importAesKey,
   seal,
+  open,
+  randomAliasId,
   type Bytes,
   type MasterKey,
 } from "../crypto/index.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
-import { serializeAccountBlob, type AccountBlob } from "./accountBlob.ts";
-import type { ApiClient } from "../api/client.ts";
+import {
+  serializeAccountBlob,
+  parseAccountBlob,
+  type AccountBlob,
+} from "./accountBlob.ts";
+import { ApiError, type ApiClient } from "../api/client.ts";
 import { createLocalBlobStore } from "./localBlobStore.ts";
 import { createSyncStatus, volatileSyncStorage } from "./syncStatus.ts";
 import { createOfflineAccountSync } from "./offlineSync.ts";
@@ -123,6 +129,83 @@ describe("offline account sync (slice 4)", () => {
     await deleteLocalDb();
     const fresh = createOfflineAccountSync(api, createLocalBlobStore(), status);
     expect(await fresh.load(m)).toEqual(BLOB);
+  });
+
+  it("merges a concurrent edit from another device instead of clobbering (S8)", async () => {
+    // A version-enforcing server: a stale precondition is a 409 (ApiError conflict).
+    const server = new Map<string, { blob: Bytes; version: number }>();
+    const api = {
+      getAccount: (id: string) => {
+        const e = server.get(id);
+        return Promise.resolve(
+          e ? { blob: e.blob, version: String(e.version) } : null,
+        );
+      },
+      putAccount: (
+        id: string,
+        body: Bytes,
+        _wt: string,
+        ifVersion?: string,
+      ) => {
+        const e = server.get(id);
+        if (ifVersion !== undefined && e && String(e.version) !== ifVersion) {
+          return Promise.reject(new ApiError("conflict", "stale version"));
+        }
+        const version = (e?.version ?? 0) + 1;
+        server.set(id, { blob: body, version });
+        return Promise.resolve({ version: String(version) });
+      },
+      deleteAccount: (id: string) => {
+        server.delete(id);
+        return Promise.resolve();
+      },
+    } as unknown as ApiClient;
+
+    const status = createSyncStatus(volatileSyncStorage());
+    const sync = createOfflineAccountSync(api, createLocalBlobStore(), status);
+    const m = await master();
+    const id = await sync.accountId(m);
+    const key = await importAesKey(await deriveAccountKey(m));
+
+    // This device establishes version 1 and caches the ancestor.
+    await sync.save(m, BLOB);
+    expect(status.snapshot(id).version).toBe("1");
+
+    // Another of the owner's devices adds a contact, advancing the server to v2.
+    const contactId = randomAliasId();
+    const theirs: AccountBlob = {
+      ...BLOB,
+      contacts: [
+        {
+          id: contactId,
+          label: "",
+          createdDay: 100,
+          expiresAt: null,
+          alias: {
+            id: randomAliasId(),
+            writeToken: randomAliasId(),
+            key: randomAliasId(),
+            isPublic: false,
+          },
+        },
+      ],
+    };
+    server.set(id, {
+      blob: await seal(key, serializeAccountBlob(theirs)),
+      version: 2,
+    });
+
+    // This device changes a DIFFERENT field; the stale push 409s and is resolved by
+    // a 3-way merge, keeping BOTH edits rather than overwriting their contact.
+    await sync.save(m, { ...BLOB, handle: "wren" });
+
+    expect(status.snapshot(id).pending).toBe(false);
+    const final = server.get(id);
+    if (final === undefined) throw new Error("server lost the merged blob");
+    const merged = parseAccountBlob(await open(key, final.blob));
+    expect(merged.handle).toBe("wren"); // my field
+    expect(merged.contacts.map((c) => c.id)).toEqual([contactId]); // their contact kept
+    expect(final.version).toBe(3); // merged push landed on top of theirs
   });
 
   it("a clean device picks up a server-side change (not its stale local)", async () => {

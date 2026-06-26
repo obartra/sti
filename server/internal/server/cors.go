@@ -12,7 +12,10 @@ import (
 // credentials are involved: the write token is a header, not a cookie, so
 // Access-Control-Allow-Credentials is deliberately never set.
 var (
-	corsAllowMethods = "GET, PUT, POST, OPTIONS"
+	// DELETE rides the Findable release (DELETE /u/{name}) and the account-sync
+	// delete (DELETE /acct/{id}); it is never a CORS-simple method, so omitting it
+	// here makes the browser preflight block those calls before they are sent.
+	corsAllowMethods = "GET, PUT, POST, DELETE, OPTIONS"
 	// X-Expires-At rides the alias PUT (doc 16); Authorization carries the admin
 	// bearer on /admin/* (doc 20). Both MUST be allowed here or the browser's
 	// preflight rejects the request before it is sent (Node-based integration tests

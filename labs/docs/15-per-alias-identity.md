@@ -187,10 +187,12 @@ established assumption in `accountBlob.ts`), so there is nothing to migrate.
 - **Avatar entropy is low.** The id-derived avatar draws from a few hundred combinations
   (`avatars.ts`, doc 19: 12 hair x 7 mood x 5 tone), so two anonymous alias avatars can collide by
   chance; the avatar is a weak signal.
-- **The pseudonym is the real separator, so it must be sized for it.** Anonymous unlinkability rests on
-  `pseudonymFor` rarely colliding across the aliases one owner mints. For a heavy user minting dozens
-  of links, keeping collisions well under ~1% wants on the order of 10^5 combinations (e.g. ~300
-  adjectives x ~300 nouns); smaller wordlists make the pseudonym a correlation hint.
+- **The pseudonym is the real separator, so it is sized for it.** Anonymous unlinkability rests on
+  `pseudonymFor` rarely colliding across the aliases one owner mints. The shipped wordlists are
+  256 x 256 = 65,536 pairs (`pseudonymWords.ts`, matching the no-unique-tag promise). That keeps an
+  exact-pair collision uncommon for a heavy user minting dozens of links (a few percent at most), but
+  not vanishing; the handle is sized as a separator, not a promise of zero collisions, and growing the
+  lists toward ~10^5 is the lever if that margin ever needs to widen.
 - **Opt-in recognizability is linkable, by design.** Showing the same face to two contacts is a chosen
   linkable identity; the tool's duty is to make that an informed choice, not to prevent it.
 - **Behavioral correlation is handled separately:** per-alias faces do nothing about timing-based

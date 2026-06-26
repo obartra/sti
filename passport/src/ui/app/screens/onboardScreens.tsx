@@ -64,6 +64,8 @@ export const onboardRenderers: ScreenRenderers = {
       onEnter={(sharingMode) => void onboarding.finish(sharingMode)}
       keepSignedIn={keepSignedIn}
       onKeepSignedInChange={onKeepSignedInChange}
+      onViewPrivacyPolicy={() => nav.go("privacy-policy")}
+      onViewTerms={() => nav.go("terms")}
     />
   ),
   "avatar-edit": ({ nav, owner, onSetAvatar }) => (

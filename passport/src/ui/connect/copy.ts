@@ -1,7 +1,7 @@
 // Copy for Connect and its presentational sections.
 export const COPY = {
   title: "Connect",
-  sub: "Connections stay private and live only on your device. There’s no search, you connect by sharing or scanning a link.",
+  sub: "Connections stay private and live only on your device. There’s no search. You connect by sharing or scanning a link.",
   shareTile: "Share my link",
   shareTileSub: "Send your link for someone to open",
   scanTile: "Scan a code",

@@ -22,6 +22,12 @@ export const COPY = {
     "Get the alert as a notification even when the app is closed. The heads-up stays the same: no name, no detail. You’ll still see it in-app either way.",
   pushOn: "On",
   pushUnsupported: "Not available on this device",
+  pushIosInstall:
+    "On iPhone, add sti.care to your Home Screen to turn this on.",
+  installRow: "Install the app",
+  installRowSub:
+    "Keep your passport one tap away. It works offline, and we still can’t read it.",
+  installCta: "Install",
   attrsTitle: "What shows on your card",
   attrsSub:
     "Optional facts you stand behind. They show to anyone allowed to see your card, on gray too. None of them is required.",
