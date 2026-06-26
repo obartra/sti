@@ -157,4 +157,11 @@ export default tseslint.config(
       "no-undef": "off",
     },
   },
+
+  // Node tooling scripts (e.g. PWA icon generation): plain ESM run under Node,
+  // outside src/ and tsconfig, so they get node globals and no type-aware rules.
+  {
+    files: ["scripts/**/*.mjs"],
+    languageOptions: { globals: { ...globals.node } },
+  },
 );

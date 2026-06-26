@@ -101,8 +101,11 @@ test.beforeAll(async () => {
 
   // Build + preview the REAL app, pointed at the throwaway server. A preview of a
   // production build is quieter than dev (no HMR), so console assertions are stable.
+  // Use the full `build` (app + service worker), not just `vite build`: the app
+  // registers /sw.js on load (doc 22 slice 2), so a partial build would 404 it to
+  // the SPA fallback and log a "text/html" registration error the console gate catches.
   const env = { ...process.env, VITE_API_BASE_URL: apiBase };
-  execFileSync("npx", ["vite", "build"], { env, stdio: "inherit" });
+  execFileSync("npm", ["run", "build"], { env, stdio: "inherit" });
   preview = spawn(
     "npx",
     ["vite", "preview", "--port", String(previewPort), "--strictPort"],

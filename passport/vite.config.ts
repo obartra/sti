@@ -6,13 +6,14 @@ import react from "@vitejs/plugin-react";
 // drift: vMajor.Minor.Patch where the tag is major.minor and the patch is the
 // commit distance. One stamp for the whole repo (backend + frontend).
 import { version as repoVersion } from "../deploy/report-lib.mjs";
+import { precacheManifest } from "./src/pwa/precachePlugin.ts";
 
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(repoVersion()),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
   },
-  plugins: [react()],
+  plugins: [react(), precacheManifest()],
   test: {
     environment: "jsdom",
     setupFiles: ["src/test-setup.ts"],

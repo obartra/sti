@@ -1,0 +1,41 @@
+/* The update affordance (doc 22 slice 3): a small, calm pill floating above the
+   tab bar, only present when an update is waiting. Dark on the warm app bg, with a
+   teal "Reload" accent. Tokens only, so it tracks the design system. */
+.update-banner {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: max-content;
+  max-width: min(440px, calc(100vw - 2 * var(--space-4)));
+  padding: var(--space-3) var(--space-4);
+  background: var(--ink-900);
+  color: var(--white);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-lg);
+}
+.update-banner__text {
+  flex: 1;
+  font-size: 0.9rem;
+}
+.update-banner__reload,
+.update-banner__dismiss {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+}
+.update-banner__reload {
+  color: var(--teal-300);
+  font-weight: 600;
+}
+.update-banner__dismiss {
+  color: var(--ink-300);
+  font-weight: 500;
+}

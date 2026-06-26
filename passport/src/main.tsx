@@ -6,14 +6,19 @@ import { App } from "./ui/App.tsx";
 import { AdminPage } from "./ui/admin/AdminPage.tsx";
 import { isAdminPath } from "./ui/admin/adminRoute.ts";
 import { API_BASE_URL } from "./config.ts";
+import { registerServiceWorker } from "./pwa/registerSw.ts";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("missing #root element");
 // /admin is a fully isolated operator surface (doc 20): it takes over the page
 // before the consumer app mounts, so none of the user-flow machinery loads behind
 // it. It is never linked from the app and renders nothing until a valid token.
+const admin = isAdminPath();
 createRoot(root).render(
   <StrictMode>
-    {isAdminPath() ? <AdminPage apiBase={API_BASE_URL} /> : <App />}
+    {admin ? <AdminPage apiBase={API_BASE_URL} /> : <App />}
   </StrictMode>,
 );
+// The offline shell is for the consumer app only; the isolated admin surface stays
+// network-only and uncached.
+if (!admin) registerServiceWorker();

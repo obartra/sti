@@ -11,6 +11,7 @@ import { useExpirySweep } from "./app/useExpirySweep.ts";
 import { useOwnerStateActions } from "./app/useOwnerStateActions.ts";
 import { OWNER } from "./app/fixtures.ts";
 import { Chrome } from "./app/Chrome.tsx";
+import { UpdateBanner } from "./app/UpdateBanner.tsx";
 import { createApiClient } from "../api/client.ts";
 import {
   browserRequesterSecret,
@@ -154,49 +155,52 @@ export function App({
   const push = usePush(api, session);
 
   return (
-    <Chrome
-      // A logged-out visitor must never land on an app-group screen (e.g. a #home
-      // deep link): clamp those to the public landing until they sign in. Public
-      // screens (landing, a shared link, onboarding) are reachable either way.
-      route={
-        session === null && route.group === "app"
-          ? { screen: "a1-landing", group: "public", data: null }
-          : route
-      }
-      nav={nav}
-      owner={session ? deriveOwnerView(session.blob, todayEpochDay()) : OWNER}
-      ownerState={session ? session.blob.state : INITIAL_OWNER_STATE}
-      onboarding={onboarding}
-      onReport={onReport}
-      setOwnerState={setOwnerState}
-      store={store}
-      desktop={desktop}
-      shareOpen={shareOpen}
-      setShareOpen={handleSetShareOpen}
-      shareUrl={shareUrl}
-      onCopyShareLink={copyShareLink}
-      onRevokeShareLink={revokeLink}
-      shareIdentity={shareIdentity}
-      onShareIdentityChange={setShareIdentity}
-      shareDuration={shareDuration}
-      onShareDurationChange={setShareDuration}
-      knockCount={knockCount}
-      refreshKnocks={refreshInbox}
-      canApproveKnocks={canApproveKnocks}
-      showKnockInfo={showKnockInfo}
-      approveKnocks={approveKnocks}
-      approvingKnocks={approvingKnocks}
-      showPartnerNudge={showPartnerNudge}
-      dismissPartnerNudge={dismissPartnerNudge}
-      aliases={liveLinkAliases(session)}
-      contacts={session ? session.blob.contacts : []}
-      faves={faves}
-      onToggleFave={toggleFave}
-      isLoggedIn={session !== null}
-      circles={session ? (session.blob.circles ?? []) : []}
-      vanityName={findableName(session)}
-      push={push}
-      {...actions}
-    />
+    <>
+      <UpdateBanner />
+      <Chrome
+        // A logged-out visitor must never land on an app-group screen (e.g. a #home
+        // deep link): clamp those to the public landing until they sign in. Public
+        // screens (landing, a shared link, onboarding) are reachable either way.
+        route={
+          session === null && route.group === "app"
+            ? { screen: "a1-landing", group: "public", data: null }
+            : route
+        }
+        nav={nav}
+        owner={session ? deriveOwnerView(session.blob, todayEpochDay()) : OWNER}
+        ownerState={session ? session.blob.state : INITIAL_OWNER_STATE}
+        onboarding={onboarding}
+        onReport={onReport}
+        setOwnerState={setOwnerState}
+        store={store}
+        desktop={desktop}
+        shareOpen={shareOpen}
+        setShareOpen={handleSetShareOpen}
+        shareUrl={shareUrl}
+        onCopyShareLink={copyShareLink}
+        onRevokeShareLink={revokeLink}
+        shareIdentity={shareIdentity}
+        onShareIdentityChange={setShareIdentity}
+        shareDuration={shareDuration}
+        onShareDurationChange={setShareDuration}
+        knockCount={knockCount}
+        refreshKnocks={refreshInbox}
+        canApproveKnocks={canApproveKnocks}
+        showKnockInfo={showKnockInfo}
+        approveKnocks={approveKnocks}
+        approvingKnocks={approvingKnocks}
+        showPartnerNudge={showPartnerNudge}
+        dismissPartnerNudge={dismissPartnerNudge}
+        aliases={liveLinkAliases(session)}
+        contacts={session ? session.blob.contacts : []}
+        faves={faves}
+        onToggleFave={toggleFave}
+        isLoggedIn={session !== null}
+        circles={session ? (session.blob.circles ?? []) : []}
+        vanityName={findableName(session)}
+        push={push}
+        {...actions}
+      />
+    </>
   );
 }
