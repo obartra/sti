@@ -1,11 +1,7 @@
 import { Button } from "../../design/components/index.ts";
 import { BadgeCard } from "../badge-card.tsx";
 import type { ProtectionLabel, Route } from "../badge-card.tsx";
-import {
-  avatarFor,
-  avatarSrc,
-  type AvatarConfigInput,
-} from "../../lib/avatars.ts";
+import { avatarSrc, type AvatarConfigInput } from "../../lib/avatars.ts";
 import {
   COPY,
   TODAY,
@@ -75,7 +71,7 @@ function HomeHero({
         labels={labels}
         route={route}
         identity={{ handle }}
-        avatarSrc={avatar !== undefined ? avatarSrc(avatar) : avatarFor(handle)}
+        avatarSrc={avatar !== undefined ? avatarSrc(avatar) : undefined}
         width="100%"
       />
 

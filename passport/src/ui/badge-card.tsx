@@ -247,8 +247,12 @@ export interface BadgeCardProps {
   labels?: ProtectionLabel[];
   route?: Route;
   // Present only when the viewer is authorized; null renders the uniform
-  // private/nonexistent gray-nothing (no handle, no avatar, no labels).
-  identity?: { handle: string } | null;
+  // private/nonexistent gray-nothing (no handle, no avatar, no labels). The
+  // optional `id` is the alias's opaque identifier (doc 19): when no avatarSrc is
+  // supplied, the fallback face seeds on it, never on the handle (which can be
+  // user-chosen and identifying). Absent for surfaces with no per-alias id (the
+  // owner's own home, samples), which seed on the handle.
+  identity?: { handle: string; id?: string } | null;
   avatarSrc?: string | undefined;
   width?: number | string;
 }
@@ -322,10 +326,15 @@ function BadgeIdentity({
 }: {
   blue: boolean;
   labels: ProtectionLabel[];
-  identity: { handle: string };
+  identity: { handle: string; id?: string };
   avatarSrc: string | undefined;
   sentence: string | null;
 }) {
+  // With no chosen avatar, the fallback face seeds on the alias opaque id when we
+  // have one, else the handle (doc 19): the id is unlinkable, the handle may be
+  // user-chosen and identifying.
+  const seed = identity.id ?? identity.handle;
+  const src = avatarSrc ?? (seed ? avatarFor(seed) : undefined);
   return (
     <div
       style={{
@@ -338,11 +347,7 @@ function BadgeIdentity({
     >
       <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
         <Avatar
-          src={
-            avatarSrc ??
-            (identity.handle ? avatarFor(identity.handle) : undefined) ??
-            undefined
-          }
+          src={src}
           initials={identity.handle.slice(0, 2).toUpperCase()}
           size="sm"
         />
