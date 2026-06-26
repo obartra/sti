@@ -16,7 +16,12 @@ export const CreateAccount: Story = {
   args: { isLogin: false },
 };
 
-// Login variant: welcome back, unlock with passkey only.
+// Login variant: welcome back, unlock with passkey, plus the keep-signed-in
+// toggle (doc 24) so a returning user can opt out on a shared device.
 export const LogIn: Story = {
-  args: { isLogin: true },
+  args: {
+    isLogin: true,
+    keepSignedIn: true,
+    onKeepSignedInChange: () => undefined,
+  },
 };

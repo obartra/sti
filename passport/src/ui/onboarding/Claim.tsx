@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button, Card, Field, Input } from "../../design/components/index.ts";
 import { Fingerprint, Key } from "../../design/icons.tsx";
 import { TopBack } from "./TopBack.tsx";
+import { KeepSignedInToggle } from "./KeepSignedInToggle.tsx";
 import { CreateFlow } from "./ClaimCreateFlow.tsx";
 import { COPY, sectionLabel } from "./claimCopy.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
@@ -25,6 +26,9 @@ export interface ClaimProps {
   onLogin?: (() => void) | undefined;
   /** Login variant: recover the account from its phrase (new device). */
   onRecover?: ((phrase: string) => void) | undefined;
+  /** Login variant: "keep me signed in on this device" choice + setter (doc 24). */
+  keepSignedIn?: boolean;
+  onKeepSignedInChange?: (v: boolean) => void;
 }
 
 // Recovery-phrase entry: the no-passkey way back in on any device.
@@ -82,6 +86,63 @@ function RecoverFlow({
   );
 }
 
+// The account-key card. On login it carries the passkey unlock; on create it
+// just explains the account key (the passkey is enrolled at the end of setup).
+// Passkey / passphrase is the one MVP path: no email-or-phone field.
+function PasskeyCard({
+  isLogin,
+  busy,
+  onLogin,
+}: {
+  isLogin: boolean;
+  busy: boolean;
+  onLogin?: (() => void) | undefined;
+}) {
+  return (
+    <Card
+      variant="flat"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 12,
+        textAlign: "center",
+        padding: "22px 20px",
+      }}
+    >
+      <span
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: "50%",
+          background: "var(--accent-soft)",
+          color: "var(--text-accent)",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Fingerprint size={28} />
+      </span>
+      <div style={{ fontSize: 14, color: "var(--text-body)", lineHeight: 1.5 }}>
+        {COPY.passkeyHint}
+      </div>
+      {isLogin && (
+        <Button
+          variant="primary"
+          size="lg"
+          block
+          icon={<Fingerprint size={18} />}
+          disabled={busy}
+          onClick={onLogin}
+        >
+          {COPY.usePasskeyLogin}
+        </Button>
+      )}
+    </Card>
+  );
+}
+
 export function Claim({
   isLogin = false,
   busy = false,
@@ -90,6 +151,8 @@ export function Claim({
   onClaim,
   onLogin,
   onRecover,
+  keepSignedIn = true,
+  onKeepSignedInChange,
 }: ClaimProps) {
   return (
     <div
@@ -118,55 +181,13 @@ export function Claim({
         </p>
       </div>
       <div style={sectionLabel}>{COPY.keyLabel}</div>
-      {/* Passkey / passphrase is the one MVP path. Phone-as-identity is banned
-          and email/SSO is post-MVP, so there is no email-or-phone field. */}
-      <Card
-        variant="flat"
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 12,
-          textAlign: "center",
-          padding: "22px 20px",
-        }}
-      >
-        <span
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: "50%",
-            background: "var(--accent-soft)",
-            color: "var(--text-accent)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Fingerprint size={28} />
-        </span>
-        <div
-          style={{ fontSize: 14, color: "var(--text-body)", lineHeight: 1.5 }}
-        >
-          {COPY.passkeyHint}
-        </div>
-        {/* Login unlocks with the passkey here. On create there's nothing to do
-            yet: the passkey is enrolled at the end of setup (FirstRunSetup ->
-            finish), so this card is just explaining the account key, and the
-            action is the "Continue" button in the identity form below. */}
-        {isLogin && (
-          <Button
-            variant="primary"
-            size="lg"
-            block
-            icon={<Fingerprint size={18} />}
-            disabled={busy}
-            onClick={onLogin}
-          >
-            {COPY.usePasskeyLogin}
-          </Button>
-        )}
-      </Card>
+      <PasskeyCard isLogin={isLogin} busy={busy} onLogin={onLogin} />
+      {isLogin && (
+        <KeepSignedInToggle
+          checked={keepSignedIn}
+          onChange={onKeepSignedInChange}
+        />
+      )}
       {error !== null && (
         <div
           role="alert"

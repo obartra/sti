@@ -32,12 +32,20 @@ function AvatarEditRoute({
 }
 
 export const onboardRenderers: ScreenRenderers = {
-  "b1-claim": ({ nav, data, onboarding }) => (
+  "b1-claim": ({
+    nav,
+    data,
+    onboarding,
+    keepSignedIn,
+    onKeepSignedInChange,
+  }) => (
     <Claim
       isLogin={data?.isLogin ?? false}
       busy={onboarding.busy}
       error={onboarding.error}
       onBack={nav.back}
+      keepSignedIn={keepSignedIn}
+      onKeepSignedInChange={onKeepSignedInChange}
       onClaim={(handle, avatar) => {
         // Create the real account, then show its genuine recovery phrase. Stay
         // put on failure (the hook surfaces the error).
