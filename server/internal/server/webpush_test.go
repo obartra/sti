@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -32,7 +33,7 @@ func testSubKeys(t *testing.T) (p256dh, auth string) {
 }
 
 // The wake is shaped correctly: a POST carrying a VAPID Authorization header, an
-// encrypted (non-empty, aes128gcm) body, and a TTL — and it carries no plaintext
+// encrypted (non-empty, aes128gcm) body, and a TTL, and it carries no plaintext
 // content (the body is ciphertext of an empty payload).
 func TestWebPushSenderShapesRequest(t *testing.T) {
 	var got struct {
@@ -75,8 +76,11 @@ func TestWebPushSenderShapesRequest(t *testing.T) {
 	if got.encoding != "aes128gcm" {
 		t.Errorf("Content-Encoding = %q, want aes128gcm", got.encoding)
 	}
-	if got.ttl == "" {
-		t.Errorf("missing TTL header")
+	// A long store-and-forward TTL (doc 22 "Slice 5 reconsidered"): the push service
+	// holds an undelivered contentless wake and delivers it on the recipient's next
+	// reconnect, so an offline user is not silently skipped.
+	if want := strconv.Itoa(notifyWakeTTLSeconds); got.ttl != want {
+		t.Errorf("TTL = %q, want %q (long store-and-forward)", got.ttl, want)
 	}
 	if got.bodyLen == 0 {
 		t.Errorf("body was empty; expected an encrypted record")

@@ -351,8 +351,8 @@ Each slice is independently shippable and leaves the app correct.
    which reach low-connectivity users without the device-initiated cadence leak. The timer is not
    shipped.
 
-Slices 1 to 4 are built; slice 5 is reconsidered as a reconnect catch-up (section M, the catch-up
-hook is built; long-TTL push is the recommended server follow-up).
+Slices 1 to 4 are built; slice 5 is reconsidered as a reconnect catch-up plus long-TTL push (section
+M, both built; the catch-up's co-read decorrelation is the remaining refinement).
 
 ## K. Testing and gates
 
@@ -430,13 +430,15 @@ the worst of both: a fingerprint for the server and a data bill for the user.
 *unpredictable bursts*, and that irregularity is the privacy feature: reads that fire on the user's
 own reconnects have **no clean cadence to fingerprint**. So:
 
-1. **Lean on Web Push store-and-forward (no new device actor).** Give the contentless cover-wake a
-   **long TTL**. Web Push holds an undelivered wake and delivers it when the device next reconnects
-   (within TTL). This reuses the existing server-to-device cover-broadcast (which already hides
-   *which* device), stays contentless, and "just works" after hours offline, with no polling and no
-   battery cost. This is the biggest win and needs no periodic sync. Server-side change (the push
-   sender, doc 13), recommended next; limited only by the push service's TTL ceiling and by the
-   device having a subscription (iOS 16.4+ installed PWA qualifies).
+1. **Lean on Web Push store-and-forward (no new device actor) (BUILT).** The contentless cover-wake
+   now carries a **long TTL** (`notifyWakeTTLSeconds`, 7 days, in `webpush.go`, up from 30 seconds):
+   Web Push holds an undelivered wake and delivers it when the device next reconnects, within TTL.
+   This reuses the existing server-to-device cover-broadcast (which already hides *which* device),
+   stays contentless, and "just works" after hours or days offline, with no polling and no battery
+   cost. Holding a contentless cover wake leaks nothing the push service does not already see (the
+   endpoint and delivery timing). The only limits are the push service's TTL ceiling and the device
+   having a subscription (iOS 16.4+ installed PWA qualifies). This is the biggest reach win and needs
+   no periodic sync.
 2. **Reconnect / foreground catch-up as the fallback (BUILT).** `useReconnectCatchup` re-pulls the
    owner's quiet inbox the moment connectivity returns, reusing the existing foreground owner-pull
    (the same read that opening the app already does), so it adds **no new cadence**. It covers the

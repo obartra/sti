@@ -12,7 +12,7 @@ import (
 
 // WebPushSender is the concrete Sender: it delivers a contentless wake over the
 // Web Push protocol (RFC 8291 payload encryption, RFC 8292 VAPID auth) via the
-// webpush-go library. The body is EMPTY by design — a wake only tells the
+// webpush-go library. The body is EMPTY by design: a wake only tells the
 // recipient's device to open the app and check locally; it never carries who
 // notified them, why, or any status. The app's service worker turns the wake
 // into a generic "open the app" prompt; all conditional rendering is client-side.
@@ -31,14 +31,27 @@ type WebPushSender struct {
 	client  webpush.HTTPClient
 }
 
+// notifyWakeTTLSeconds is the Web Push TTL for a partner-notify wake: long
+// (store-and-forward), not seconds. The wake is contentless ("open the app and
+// check locally"), and a "go get tested" nudge is useful for days, not moments, so
+// the push service should HOLD an undelivered wake and deliver it when the
+// recipient's device next reconnects, rather than dropping it after a brief window.
+// This is what reaches a user with intermittent connectivity (doc 22 "Slice 5
+// reconsidered"): a short TTL silently loses the wake for exactly the people least
+// able to poll for it. Holding a contentless, cover-broadcast wake leaks nothing the
+// push service does not already see (the endpoint and delivery timing), so the trade
+// is reach for free. Seven days bounds it; beyond that the nudge is stale anyway.
+const notifyWakeTTLSeconds = 7 * 24 * 60 * 60
+
 // NewWebPushSender builds a sender from a VAPID keypair (base64url) and a contact
-// subject. ttl is the push TTL in seconds; a wake is only useful briefly.
+// subject. The TTL is a long store-and-forward window (notifyWakeTTLSeconds), so a
+// wake survives the recipient being offline and lands on their next reconnect.
 func NewWebPushSender(publicKey, privateKey, subject string) *WebPushSender {
 	return &WebPushSender{
 		publicKey:  publicKey,
 		privateKey: privateKey,
 		subject:    subject,
-		ttl:        30,
+		ttl:        notifyWakeTTLSeconds,
 		client:     http.DefaultClient,
 	}
 }
