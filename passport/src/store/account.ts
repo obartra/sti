@@ -318,9 +318,13 @@ function lifecycleMethods(
   };
 }
 
-export function createAccountManager(api: ApiClient): AccountManager {
-  const sync = createAccountSync(api);
-
+// The sync is injectable so the app can pass the offline-tolerant, local-first
+// sync (doc 22 slice 4); it defaults to the plain server sync for tests and any
+// caller that does not need offline durability.
+export function createAccountManager(
+  api: ApiClient,
+  sync: AccountSync = createAccountSync(api),
+): AccountManager {
   // Load-modify-save for the synced blob. Single device today; multi-device
   // concurrent edits are last-write-wins until X-Version is enforced. The list
   // mutations below are upsert/filter by id, so a retry is idempotent (a partial
@@ -402,12 +406,22 @@ export function createAccountManager(api: ApiClient): AccountManager {
         throw new Error("setOwnerState: no account exists for this key");
       }
       const nowDay = todayEpochDay();
-      // Sweep expired links (revoke + drop) before saving, then republish the
-      // new badge to the survivors. Expiry is ms; the badge clock is day-granular.
-      const next = await sweepExpired(api, blob, state, nowMs());
-      await sync.save(master, next);
-      await republishLiveLinks(api, next, nowDay);
-      return next;
+      try {
+        // Online path: sweep expired links (revoke + drop), save, then republish
+        // the new badge to the survivors. Expiry is ms; the clock is day-granular.
+        const next = await sweepExpired(api, blob, state, nowMs());
+        await sync.save(master, next);
+        await republishLiveLinks(api, next, nowDay);
+        return next;
+      } catch {
+        // Offline, or a server step failed: keep the state change durable WITHOUT
+        // the server steps (no revoke/republish offline; expired links linger per
+        // doc 16). The offline-tolerant sync saves locally and marks the account
+        // pending; the reconnect drain re-runs this path to sweep + republish.
+        const next: AccountBlob = { ...blob, state };
+        await sync.save(master, next);
+        return next;
+      }
     },
 
     async sweepExpiredLinks(master) {

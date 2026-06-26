@@ -284,8 +284,15 @@ foreground**, not in a true-background `sync` event. Background Sync and the for
 just signal "there is work and the network is back"; the actual sealed-op replay happens with the
 key in memory. We accept that write-bearing outbound ops do not flush while the app is closed; only
 genuinely contentless, low-sensitivity ops (if any are ever added) may use a worker-drainable lane,
-and only at the push-context sensitivity bar. The drain still uses the decorrelated jitter path
-(S3), never a reconnect burst.
+and only at the push-context sensitivity bar.
+
+**The reconnect is jittered, not a synchronized burst (S3, BUILT).** When connectivity returns, the
+backup drain (the blob push) and the inbox catch-up reads (section M) would otherwise fire in the
+same instant, co-timing the account id with the contact inboxes. Each is instead scheduled with an
+independent random delay (`reconnectJitterMs`, `lib/jitter.ts`), so they land at different times. The
+republish was already server-side decorrelated (doc 18); this closes the gap for the blob push and
+the reads. It is defense-in-depth: the blind server keeps no per-request trail (doc 12) and so does
+not group them anyway, but the jitter denies a timing-only observer the burst.
 
 **UI affordances: surface it once, passively, let it resolve itself.** The anti-pestering rule is
 the design:
@@ -333,18 +340,27 @@ Each slice is independently shippable and leaves the app correct.
    the installed app opens offline and renders the owner's own local status.
 3. **Update UX (BUILT).** Versioned shell cache, a user-initiated `SKIP_WAITING` activation, and the
    voice-reviewed "reload to update" affordance (no automatic skipWaiting/claim; section E).
-4. **Offline-created state (section H), NOT a bolt-on.** The durable master-key-sealed outbound
-   queue, the "backed up as of" marker, the passive not-backed-up affordance, and the
-   foreground-drain. **Prerequisite discovered during the build:** today every mutation is
-   load-modify-save against the server (`account.ts` `modify`), plus a republish, all online-only, so
-   `setOwnerState` throws offline at the `sync.load` step. Slice 4 therefore first requires making the
-   **in-memory blob authoritative** (mutate locally, then queue the save + republish + any notify
-   registration for reconnect). That is a foundational change to the encrypted-sync source-of-truth
-   model, not polish, and the most invariant-heavy layer in the app, so it is its own design and PR.
-5. **Periodic Background Sync**, gated off by default, behind the same review the push wake passed.
+4. **Offline-created state (section H), BUILT.** This was the foundational change anticipated below:
+   the encrypted blob is now cached in a master-key-sealed local store (`localBlobStore.ts`), and the
+   sync (`offlineSync.ts`) reads **local-first** (so a reload restores the session offline) and writes
+   **local-first then server** (`save` never throws offline; the edit is durable and the account is
+   marked pending). `setOwnerState` keeps its online path but, on any server-step failure, persists
+   the state change locally without throwing (aligning with decision 156's no-"couldn't refresh"
+   rule). A reconnect drain (`useBackupSync`) re-applies the current state to push the blob and
+   republish, in the foreground where the master lives (S1). A passive `NotBackedUp` marker shows
+   while pending and clears itself on backup. Tested at the sync layer and against the real server
+   (integration suite stays green). **Residuals (named):** minting a NEW share link and registering
+   push still need the network (a viewer fetches the alias from the server), so those stay online;
+   an expired link's server-side revoke lingers offline until reconnect (doc 16); and the reconnect
+   drain re-publishes even after a profile-only offline edit (one extra decorrelated write, harmless).
+5. **Reconnect catch-up, RECONSIDERED (section M).** Periodic background sync is replaced by a
+   reconnect/foreground inbox catch-up (`useReconnectCatchup`, BUILT) plus a recommended long-TTL push,
+   which reach low-connectivity users without the device-initiated cadence leak. The timer is not
+   shipped.
 
-Slices 1 to 3 are the core "capable PWA" and are built. Slice 4 is a foundational sync change (see
-its prerequisite above); slice 5 stays gated off by the security review (section L).
+Slices 1 to 4 are built; slice 5 is reconsidered as a reconnect-and-foreground catch-up plus long-TTL
+push (section M, both built; the catch-up's co-read is a server-mitigated accepted residual, analysed
+in M, not a client TODO).
 
 ## K. Testing and gates
 
@@ -405,7 +421,63 @@ handler fails open to the network so a worker bug degrades to a plain online bro
   ever want to raise it: pin the worker build in CI, keep the worker scope minimal, and prefer a
   short, auditable worker over a large one.
 
-## M. Open questions and residuals
+## M. Slice 5 reconsidered: reach for low-connectivity users without the leak
+
+Slice 5 was "periodic background sync." On a closer look it is the wrong tool for the user it would
+most help, so this section replaces it. The persona is someone with **intermittent** internet
+(limited data, rural, travelling). Their real need is not "poll on a clock"; it is **don't miss a
+partner-notify** ("go get tested"), and **don't burn battery or data, and don't nag**.
+
+**Why a timer fights itself here.** The security review's two leaks (S4) are a *cadence fingerprint*
+(regular polling is a clock the server sees) and *co-read correlation* (reading all your inbox hashes
+in one pass groups your contacts). The standard fixes, decorrelate the reads and add cover reads,
+cost *more requests and more data*, which is exactly what this persona cannot spend. A fixed timer is
+the worst of both: a fingerprint for the server and a data bill for the user.
+
+**The better shape: catch up on reconnect, not on a clock.** A low-connectivity device is online in
+*unpredictable bursts*, and that irregularity is the privacy feature: reads that fire on the user's
+own reconnects have **no clean cadence to fingerprint**. So:
+
+1. **Lean on Web Push store-and-forward (no new device actor) (BUILT).** The contentless cover-wake
+   now carries a **long TTL** (`notifyWakeTTLSeconds`, 7 days, in `webpush.go`, up from 30 seconds):
+   Web Push holds an undelivered wake and delivers it when the device next reconnects, within TTL.
+   This reuses the existing server-to-device cover-broadcast (which already hides *which* device),
+   stays contentless, and "just works" after hours or days offline, with no polling and no battery
+   cost. Holding a contentless cover wake leaks nothing the push service does not already see (the
+   endpoint and delivery timing). The only limits are the push service's TTL ceiling and the device
+   having a subscription (iOS 16.4+ installed PWA qualifies). This is the biggest reach win and needs
+   no periodic sync.
+2. **Reconnect and foreground catch-up as the fallback (BUILT).** `useCatchup` re-pulls the owner's
+   quiet inbox when connectivity returns OR the app comes back to the foreground (throttled, so rapid
+   tab switches do not spam the read), reusing the existing foreground owner-pull, so it adds **no new
+   cadence**. It covers the case where push is unavailable (declined, or an older platform). The
+   RECONNECT read is jittered so it does not co-time with the backup drain (S3, section H); the
+   FOREGROUND read is prompt, since the user is present and it is a single read, not part of the burst.
+
+   **On the co-read residual, an honest correction.** The owner-pull reads the owner's per-contact
+   inbox hashes together, which in principle groups their contacts. But the client-side mitigations
+   that first looked appealing do not survive scrutiny: time-jitter is defeated by a server that
+   groups reads by source IP or connection, and naive cover reads are defeated across pulls because
+   the *real* inbox hashes recur every pull while fresh decoys do not (and stable decoys are still
+   distinguished over time by the write pattern, since only a real inbox ever receives a ping). What
+   actually protects the co-read is the **server's design**: it keeps no per-request trail and logs no
+   id or IP (doc 12), so it does not group the reads in the first place; and the contact *count* is
+   already a named, accepted residual (doc 13). So the co-read is treated as a server-mitigated
+   accepted residual, not a client TODO. If the threat model ever tightens to a fully log-everything
+   server, the only real client defense is **stable cover reads** (decoy inboxes that recur like real
+   ones), with its own cost and the write-pattern caveat; it is documented here, not shipped, because
+   it trades the low-connectivity persona's data for an imperfect gain.
+
+**If a true background periodic poll is ever wanted** (app closed, online, push unavailable, a narrow
+niche), the hard requirements to make it "safe enough" are: a **randomized, non-fixed cadence** (kill
+the fingerprint), **decorrelated + cover reads** (kill the co-read), **per-pass sampling** (the rest
+catch up via push or the next pass), **opt-in and off by default**, and **gated to charging +
+unmetered**. The irony to state plainly: those mitigations spend the very data the low-connectivity
+persona is conserving, so that path serves the *high*-connectivity-but-app-closed user, not the one
+this section is about. Hence the recommendation: ship push-TTL + reconnect catch-up; do not ship the
+timer.
+
+## N. Open questions and residuals
 
 - **`share_target`** (receive a shared passport link into the installed app). Deferred: it is an
   existence-and-routing surface that belongs with link resolution (doc 16), not the manifest. Decide

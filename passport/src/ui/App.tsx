@@ -1,5 +1,6 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useAppRouter } from "./app/useAppRouter.ts";
+import { useSyncedRef } from "./app/useSyncedRef.ts";
 import { useDesktop } from "./desktop/Desktop.tsx";
 import { useOnboarding } from "./app/useOnboarding.ts";
 import { useShareLink } from "./app/useShareLink.ts";
@@ -16,14 +17,19 @@ import { createApiClient } from "../api/client.ts";
 import {
   browserRequesterSecret,
   createAccountManager,
-  createAccountSync,
   createBackendStore,
   createSessionController,
+  createLocalBlobStore,
+  createSyncStatus,
+  browserSyncStorage,
+  createOfflineAccountSync,
   deriveOwnerView,
   type OwnerSession,
   type PassportStore,
   type SessionController,
 } from "../store/index.ts";
+import { useBackupSync } from "./app/useBackupSync.ts";
+import { NotBackedUp } from "./app/NotBackedUp.tsx";
 import {
   browserDeviceStore,
   createDeviceStore,
@@ -53,12 +59,24 @@ function volatileStorage(): StorageLike {
   };
 }
 
+// The offline-tolerant account sync (doc 22 slice 4): the owner's blob is cached
+// in a master-key-sealed local store, so the app works offline and an offline edit
+// is durable, backing up to the server when connectivity returns. syncStatus drives
+// the not-backed-up marker; both are module-level so the App component and the
+// controller share one instance.
+const syncStatus = createSyncStatus(browserSyncStorage());
+const offlineSync = createOfflineAccountSync(
+  api,
+  createLocalBlobStore(),
+  syncStatus,
+);
+
 // The real session controller: account lifecycle + the device passkey binding +
 // the WebAuthn adapter. Injectable so tests and Storybook drive a fake (the
 // WebAuthn calls cannot run outside a real browser).
 const backendController = createSessionController({
-  accounts: createAccountManager(api),
-  sync: createAccountSync(api),
+  accounts: createAccountManager(api, offlineSync),
+  sync: offlineSync,
   devices: browserDeviceStore() ?? createDeviceStore(volatileStorage()),
   passkey: webAuthnPasskey(),
   api,
@@ -104,8 +122,7 @@ export function App({
   // The latest session, readable synchronously. setOwnerState applies its update
   // against THIS (not a render-time capture), so rapid successive edits compose
   // instead of clobbering each other while a write is in flight.
-  const sessionRef = useRef<OwnerSession | null>(null);
-  sessionRef.current = session;
+  const sessionRef = useSyncedRef(session);
 
   // The owner's badge-state mutations: optimistic state updates + the report path
   // (which is built on them). Both fold the persisted result back into the session.
@@ -154,9 +171,19 @@ export function App({
   // Device push for the partner-notify wake (slice 7); a Privacy toggle drives it.
   const push = usePush(api, session);
 
+  // Offline durability (doc 22 slice 4): track whether local owner edits are backed
+  // up, and on reconnect re-apply the current state to push the blob and republish.
+  const backupPending = useBackupSync(
+    syncStatus,
+    offlineSync,
+    session,
+    setOwnerState,
+  );
+
   return (
     <>
       <UpdateBanner />
+      <NotBackedUp pending={backupPending} />
       <Chrome
         // A logged-out visitor must never land on an app-group screen (e.g. a #home
         // deep link): clamp those to the public landing until they sign in. Public
