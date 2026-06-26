@@ -59,7 +59,7 @@ describe("Connect", () => {
     await user.click(
       screen.getByRole("button", { name: "Options for blue shirt" }),
     );
-    await user.click(screen.getByText("Delete linkup"));
+    await user.click(screen.getByText("Delete connection"));
     expect(onRemoveContact).toHaveBeenCalledWith("b");
   });
 });

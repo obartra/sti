@@ -7,6 +7,7 @@ import {
   Lock,
 } from "../../design/icons.tsx";
 import { RESOURCES, openResource } from "../../lib/resources.ts";
+import { CREATE_ACCOUNT_CTA } from "../../copy/canonical.ts";
 
 // The public page the off-app heads-up text links to (sti.care/exposed). Fully
 // anonymous: no account, no sign-in, no identity, no token. It just turns "a
@@ -112,7 +113,7 @@ export function Exposed({ onClaim }: ExposedProps) {
       </div>
 
       <Button variant="ghost" size="md" block onClick={onClaim}>
-        Get your own private passport
+        {CREATE_ACCOUNT_CTA}
       </Button>
     </div>
   );

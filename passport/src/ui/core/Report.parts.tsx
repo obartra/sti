@@ -20,7 +20,7 @@ export const COPY = {
   notTested: "Not tested",
   coreTitle: "Core panel coverage",
   coreBody:
-    "The core panel is HIV, syphilis, gonorrhea and chlamydia. For gonorrhea and chlamydia, each spot counts, mark the ones that aren’t a part of your body you use.",
+    "The core panel is HIV, syphilis, gonorrhea and chlamydia. For gonorrhea and chlamydia, each spot counts. Mark only the ones that apply to you.",
   coreCovered: "Core panel covered, this can show blue.",
   coreIncomplete:
     "Not the full core panel yet. Until it’s complete your card stays gray, never a half-status.",
@@ -94,7 +94,7 @@ export const COPY = {
     "Refreshes your status and last-tested date. Nothing else is shown.",
   privacyNoteTitle: "Your privacy is protected",
   privacyNote:
-    "Your card never names a condition. A positive simply shows no status, gray, the same as any other reason a card isn’t current.",
+    "Your card never names a condition. A positive just shows no status (gray), the same as any other reason a card isn’t current.",
   save: "Save results",
   cancel: "Cancel",
 } as const;

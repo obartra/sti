@@ -58,7 +58,7 @@ describe("Privacy findable section (doc 17)", () => {
   };
 
   it("shows the claim card only when findable ops are provided", () => {
-    const claim = /make my name findable/i;
+    const claim = /make my name public/i;
     const { rerender } = render(
       <Privacy
         ownerState={INITIAL_OWNER_STATE}

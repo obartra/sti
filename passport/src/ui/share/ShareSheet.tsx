@@ -32,7 +32,7 @@ type SharingMode = "public" | "link";
 const COPY = {
   titlePublic: "Share your passport",
   titleLink: "Share private link",
-  reassurance: "This is everything they see. No test names, no dates.",
+  reassurance: "This is exactly what they see. Just your status.",
   labelPublic: "Public profile",
   labelLink: "Private link",
   notePublic: "Anyone who scans sees just this status.",
@@ -40,7 +40,7 @@ const COPY = {
   copyLink: "Copy link",
   copied: "Copied",
   saveQr: "Save QR image",
-  revoke: "Revoke & renew",
+  revoke: "Revoke and renew",
   share: "Share",
   done: "Done",
   shareTitle: "My sti.care passport",
@@ -432,7 +432,6 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
           <Eye size={14} /> {COPY.reassurance}
         </div>
         <IdentityChoiceRow
-          handle={identity.handle}
           choice={identityChoice}
           onChange={onIdentityChange}
         />

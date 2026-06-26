@@ -31,7 +31,7 @@ describe("Exposed", () => {
     expect(screen.getByText(/PrEP for prevention/i)).toBeInTheDocument();
 
     await user.click(
-      screen.getByRole("button", { name: /Get your own private passport/i }),
+      screen.getByRole("button", { name: /create your own passport/i }),
     );
     expect(onClaim).toHaveBeenCalledTimes(1);
   });

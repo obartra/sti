@@ -50,11 +50,11 @@ export const COPY = {
   open: "Open",
   confirmTitle: (handle: string) => `Make @${handle} public to go live?`,
   confirmBody:
-    "A live pass puts this alias’s key in its own link, so anyone who has the pass can see your status. That’s what makes it public.",
+    "A live pass puts this profile’s key in its own link, so anyone who has the pass can see your status. That’s what makes it public.",
   confirmPoints: [
     "Anyone with the pass or link sees your blue/gray status, and it stays current.",
     "It still never shows what you tested for, or any dates.",
-    "Switch this alias back to private anytime, the live pass falls to gray.",
+    "Switch this link back to private anytime, the live pass becomes gray.",
   ],
   keepPrivate: "Keep private",
   makePublicGoLive: "Make public & go live",
@@ -67,10 +67,10 @@ export const COPY = {
   livePassTitle: "Live status pass",
   livePassSubPublic:
     "Shows your current status on the pass, and keeps it up to date.",
-  livePassSubPrivate: "Needs a public alias.",
+  livePassSubPrivate: "Needs a public link.",
   liveNeedsPublic:
-    "A live pass shows your status to anyone who has it, so it only works on a public alias.",
-  makeAliasPublic: "Make this alias public…",
+    "A live pass shows your status to anyone who has it, so it only works on a public link.",
+  makeAliasPublic: "Make this link public…",
   orShareCard: "Or share a card",
   copyLink: "Copy link",
   saveCardImage: "Save card image",
@@ -78,12 +78,12 @@ export const COPY = {
   trustLive: [
     "The pass shows a status and a code, no test names, no dates.",
     "Blue only ever means a fresh, current read. If it can’t refresh, it quietly shows gray, never an old status.",
-    "Lose your phone? Make the alias private from Privacy & sharing and the live pass falls to gray.",
+    "Lose your phone? Make the link private from Privacy & sharing and the live pass becomes gray.",
   ],
   trustQr: [
     "The pass shows a code and your handle, no status, no test names, no dates.",
     "What a scanner sees is decided when they open the link, never by the pass itself.",
-    "Lose your phone? Rotate the alias from Privacy & sharing and the code stops resolving.",
+    "Lose your phone? Rotate the link from Privacy & sharing and the code stops working.",
   ],
 } as const;
 

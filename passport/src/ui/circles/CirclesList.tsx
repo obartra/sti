@@ -13,7 +13,7 @@ const COPY = {
   title: "Circles",
   create: "Create",
   sub: "Private groups. Everyone shares their own status, so the group can look out for each other.",
-  empty: "No circles yet. Create one for your crew, your house, or a night.",
+  empty: "No circles yet. Create one for a group, a household, or an event.",
   members: "members",
 } as const;
 

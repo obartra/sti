@@ -104,11 +104,11 @@ export function AcceptInviteSection({
           color: "var(--text-muted)",
         }}
       >
-        You will see each other&apos;s status and can notify each other. They
-        are not added until you send the link back.
+        You’ll see each other&apos;s status and can alert each other. They’re
+        added once you send the link back.
       </p>
       <Input
-        placeholder="A private nickname for them (optional)"
+        placeholder="A private nickname for them"
         value={label}
         onChange={(e) => setLabel(e.target.value)}
         maxLength={64}

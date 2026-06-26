@@ -1,17 +1,17 @@
 import type { CSSProperties } from "react";
+import { PARTNER_NOTIFY_PROMPT } from "../../copy/canonical.ts";
 
 export const C = {
   eyebrow: "A private heads-up",
-  title: "A recent contact suggests getting tested.",
-  sub: "It’s quick, often free, and nothing to worry about, just a heads-up to look after your health.",
+  title: `${PARTNER_NOTIFY_PROMPT}.`,
+  sub: "It’s quick, and often free. A good moment to look after your health.",
   findTesting: "Find free testing near me",
   findCondoms: "Find free condoms near me",
   findPrep: "Find free or low-cost PrEP near me",
   findPepNear: "Find PEP near me",
   findPepNearSub: "After a possible HIV exposure",
   resourcesTitle: "Free help nearby",
-  whyTesting:
-    "Go in person. After a recent exposure, at-home and telehealth results can lag.",
+  whyTesting: "In person is best, especially soon after a possible exposure.",
   inAppNote:
     "This reached you anonymously. Whoever sent it can’t see that you’ve opened it.",
   reassureTitle: "What this means",

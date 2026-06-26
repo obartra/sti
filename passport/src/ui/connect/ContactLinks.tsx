@@ -86,7 +86,7 @@ function CreateCard({
       style={{ display: "flex", flexDirection: "column", gap: 10 }}
     >
       <Input
-        placeholder="Who is this for? (a nickname)"
+        placeholder="Who is this for?"
         value={label}
         onChange={(e) => setLabel(e.target.value)}
         maxLength={64}
@@ -287,7 +287,7 @@ function ContactRow({
   const status =
     contact.theirStatusAlias !== undefined
       ? "Linked both ways"
-      : "Awaiting their link back";
+      : "Waiting for their link";
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <div

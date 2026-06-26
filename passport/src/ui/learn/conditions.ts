@@ -105,12 +105,12 @@ export const COPY = {
       label: "Curable",
       tone: "clear",
       intro:
-        "An infection from sex that gets worse over time if you do not treat it.",
+        "An infection from sex. It's curable, and it can get worse if it's not treated.",
       test: "A blood test. Part of a full STI check.",
       qa: [
         [
           "Would I know if I had it?",
-          "The first sign is often one sore that does <b>not</b> hurt, so it is easy to miss. Then it can hide for a long time. A blood test finds it.",
+          "The first sign is often a single painless sore, so it's easy to miss. A blood test finds it.",
         ],
         [
           "Can it be cured?",

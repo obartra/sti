@@ -13,6 +13,7 @@
 import { createApiClient } from "../api/client.ts";
 import { consumePartnerPing } from "./swInbox.ts";
 import { readPushContext } from "./pushStore.ts";
+import { PARTNER_NOTIFY_PROMPT } from "../copy/canonical.ts";
 
 interface ExtendableEventLike {
   waitUntil(p: Promise<unknown>): void;
@@ -46,9 +47,10 @@ interface SwScope {
 
 const sw = self as unknown as SwScope;
 
-// Constant copy: contentless, never names the contact (matches the in-app nudge).
+// Constant copy: contentless, never names the contact. The body is the one
+// canonical partner-notify prompt, shared with the in-app nudge and Alert screen.
 const NUDGE_TITLE = "sti.care";
-const NUDGE_BODY = "A recent contact suggests getting tested";
+const NUDGE_BODY = PARTNER_NOTIFY_PROMPT;
 const CARE_URL = "/#care";
 
 sw.addEventListener("push", (event) => {

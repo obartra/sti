@@ -11,8 +11,8 @@ import type { AliasIdentity } from "../../store/index.ts";
 
 const COPY = {
   anonymous: "Anonymous",
-  main: "Show @",
-  warn: "Anyone you share this with can recognize you, and can link this to your other aliases.",
+  main: "Show my name",
+  warn: "Anyone you share this with can recognize you, and can connect it to your other links.",
 } as const;
 
 /**
@@ -36,11 +36,9 @@ export function previewFace(opts: {
 }
 
 export function IdentityChoiceRow({
-  handle,
   choice,
   onChange,
 }: {
-  handle: string;
   choice: AliasIdentity;
   // Absent hides the control (e.g. Storybook), so the parent can render it
   // unconditionally without a wrapping guard.
@@ -65,7 +63,6 @@ export function IdentityChoiceRow({
           onClick={() => onChange("main")}
         >
           {COPY.main}
-          {handle}
         </Button>
       </div>
       {choice === "main" && (
