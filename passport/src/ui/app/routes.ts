@@ -71,7 +71,7 @@ const PUBLIC: readonly Screen[] = [
   "exposed",
   "u-resolve",
   // The trust pages are full-page static content, reachable logged out from the
-  // landing footer (doc 22), so they live in the public group, not the app shell.
+  // landing footer (doc 23), so they live in the public group, not the app shell.
   "promises",
   "privacy-policy",
   "terms",

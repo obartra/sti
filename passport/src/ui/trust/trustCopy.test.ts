@@ -1,6 +1,6 @@
 // @vitest-environment node
 //
-// The trust copy (doc 22) is user-facing, so it is governed by the voice guide
+// The trust copy (doc 23) is user-facing, so it is governed by the voice guide
 // (doc 21) and by the honesty rule: it may never say more than the system does.
 // This pins both: no banned vocabulary, no em dashes, and the load-bearing honest
 // clauses (the contact, the age line, the "not a medical test" framing) stay

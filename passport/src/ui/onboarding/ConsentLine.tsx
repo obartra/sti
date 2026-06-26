@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-// The consent line at the point of account creation (doc 22). Links the terms and
+// The consent line at the point of account creation (doc 23). Links the terms and
 // privacy policy inline; renders nothing if neither is wired.
 
 const consentLink: CSSProperties = {

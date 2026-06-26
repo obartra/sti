@@ -24,9 +24,9 @@ export interface PrivacyProps {
   onDeleted?: (() => void) | undefined;
   /** Open the plain-English privacy promises page. */
   onViewPromises?: (() => void) | undefined;
-  /** Open the privacy policy page (doc 22). */
+  /** Open the privacy policy page (doc 23). */
   onViewPrivacyPolicy?: (() => void) | undefined;
-  /** Open the terms page (doc 22). */
+  /** Open the terms page (doc 23). */
   onViewTerms?: (() => void) | undefined;
   /** Live preview src for the current avatar; with onEditAvatar, shows the editor entry. */
   avatarSrc?: string | undefined;
@@ -51,7 +51,7 @@ const legalLink: CSSProperties = {
   color: "var(--text-accent)",
 };
 
-// The app-native home for the trust links (doc 22): the logged-in app surfaces
+// The app-native home for the trust links (doc 23): the logged-in app surfaces
 // promises, privacy, and terms here in settings rather than wearing a footer.
 function AboutLegal({
   onViewPromises,

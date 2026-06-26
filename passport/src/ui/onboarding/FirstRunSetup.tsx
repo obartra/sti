@@ -316,7 +316,7 @@ export interface FirstRunSetupProps {
   busy?: boolean;
   /** A user-facing error if finishing setup failed. */
   error?: string | null;
-  /** Open the privacy policy / terms from the consent line (doc 22). */
+  /** Open the privacy policy / terms from the consent line (doc 23). */
   onViewPrivacyPolicy?: () => void;
   onViewTerms?: () => void;
 }

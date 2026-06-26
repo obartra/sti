@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { TRUST_FOOTER } from "./trustCopy.ts";
 
-// The quiet trust footer shown on the public surfaces (doc 22): the landing, the
+// The quiet trust footer shown on the public surfaces (doc 23): the landing, the
 // trust pages themselves, and the marketing site. Not worn by the logged-in app,
 // which surfaces the same links from Privacy settings instead.
 

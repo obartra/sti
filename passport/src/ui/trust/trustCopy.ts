@@ -1,4 +1,4 @@
-// The user-facing copy for the trust surfaces (doc 22): the footer, the privacy
+// The user-facing copy for the trust surfaces (doc 23): the footer, the privacy
 // policy, and the terms. Centralized here so it is the single source the pages
 // render and the voice test checks. Every protective claim is true of the
 // shipped code; the strength is that it can be read aloud and is simply true.

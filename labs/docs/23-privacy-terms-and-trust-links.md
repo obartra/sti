@@ -1,4 +1,4 @@
-# 22 - Privacy policy, terms, and the trust footer
+# 23 - Privacy policy, terms, and the trust footer
 
 Status: APPROVED. Decisions locked in "Resolved decisions" below; implementation
 follows.

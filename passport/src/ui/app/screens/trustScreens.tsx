@@ -4,7 +4,7 @@ import { LegalPage } from "../../trust/LegalPage.tsx";
 import { PRIVACY_POLICY, TERMS } from "../../trust/trustCopy.ts";
 import type { ScreenCtx, ScreenRenderers } from "./context.ts";
 
-// The public trust pages (doc 22): promises, privacy, and terms. Each is full-page
+// The public trust pages (doc 23): promises, privacy, and terms. Each is full-page
 // static content wrapped in TrustPage (a back control + the shared footer), and
 // each footer link routes to a sibling so the set is reachable from any of them.
 

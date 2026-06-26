@@ -1,7 +1,7 @@
 import type { LegalDoc } from "./trustCopy.ts";
 
 // Renders a legal document (privacy policy or terms) from its structured copy
-// (doc 22). Pure and static, so both pages share one component and stay storyable.
+// (doc 23). Pure and static, so both pages share one component and stay storyable.
 
 export function LegalPage({ doc }: { doc: LegalDoc }) {
   return (

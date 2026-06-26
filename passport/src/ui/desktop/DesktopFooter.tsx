@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { TRUST_FOOTER } from "../trust/trustCopy.ts";
 
-// The desktop marketing-landing footer (doc 22): logo, the trust links, and the
+// The desktop marketing-landing footer (doc 23): logo, the trust links, and the
 // medical disclaimer. Split out of DesktopLandingParts so that file stays under
 // the line ceiling.
 
