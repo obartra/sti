@@ -2,10 +2,16 @@
 import "fake-indexeddb/auto";
 import { describe, it, expect, beforeEach } from "vitest";
 import { phraseForTest } from "../test-support/phrase.ts";
-import { deriveMasterKey, type Bytes } from "../crypto/index.ts";
+import {
+  deriveMasterKey,
+  deriveAccountKey,
+  importAesKey,
+  seal,
+  type Bytes,
+} from "../crypto/index.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
-import type { AccountBlob } from "./accountBlob.ts";
+import { serializeAccountBlob, type AccountBlob } from "./accountBlob.ts";
 import type { ApiClient } from "../api/client.ts";
 import { createLocalBlobStore } from "./localBlobStore.ts";
 import { createSyncStatus, volatileSyncStorage } from "./syncStatus.ts";
@@ -117,5 +123,24 @@ describe("offline account sync (slice 4)", () => {
     await deleteLocalDb();
     const fresh = createOfflineAccountSync(api, createLocalBlobStore(), status);
     expect(await fresh.load(m)).toEqual(BLOB);
+  });
+
+  it("a clean device picks up a server-side change (not its stale local)", async () => {
+    const { api, server } = fakeApi();
+    const status = createSyncStatus(volatileSyncStorage());
+    const sync = createOfflineAccountSync(api, createLocalBlobStore(), status);
+    const m = await master();
+
+    await sync.save(m, BLOB); // clean + synced: local and server both hold BLOB
+    const id = await sync.accountId(m);
+
+    // Another of the owner's devices updates the server (sealed under the same key).
+    const key = await importAesKey(await deriveAccountKey(m));
+    const changed: AccountBlob = { ...BLOB, handle: "wren" };
+    server.set(id, await seal(key, serializeAccountBlob(changed)));
+
+    // Online and clean: the device must reflect the server's newer value, not the
+    // stale local copy (regression guard for the local-first read).
+    expect(await sync.load(m)).toEqual(changed);
   });
 });

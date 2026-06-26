@@ -57,12 +57,28 @@ export function createOfflineAccountSync(
   return {
     async load(master) {
       const [id, key] = await derive(master);
-      const localCt = await local.get(id);
-      if (localCt !== null) return parseAccountBlob(await open(key, localCt));
-      const got = await api.getAccount(id);
-      if (got === null) return null;
-      await local.put(id, got.blob);
-      return parseAccountBlob(await open(key, got.blob));
+      const readLocal = async (): Promise<AccountBlob | null> => {
+        const ct = await local.get(id);
+        return ct === null ? null : parseAccountBlob(await open(key, ct));
+      };
+      // Unsynced local edits always win, so an offline change is never lost to a
+      // read (the device is the source of truth while it holds pending work).
+      if (status.snapshot(id).pending) {
+        const cached = await readLocal();
+        if (cached !== null) return cached;
+      }
+      // Otherwise prefer the server, so edits from this owner's OTHER devices show
+      // up, caching what it returns; fall back to the local copy when the server is
+      // unreachable (offline) or has none. This keeps a clean device fresh while a
+      // reload still works offline.
+      try {
+        const got = await api.getAccount(id);
+        if (got === null) return await readLocal();
+        await local.put(id, got.blob);
+        return parseAccountBlob(await open(key, got.blob));
+      } catch {
+        return await readLocal();
+      }
     },
 
     async save(master, blob) {
