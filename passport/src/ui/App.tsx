@@ -115,10 +115,14 @@ export function App({
   const desktop = useDesktop();
   // Session + the "stay signed in" lifecycle (doc 24): silent resume on load,
   // persist on login, forget on logout.
-  const { session, setSession, onSession, onLogOut } = useResumableSession(
-    controller,
-    nav,
-  );
+  const {
+    session,
+    setSession,
+    onSession,
+    onLogOut,
+    keepSignedIn,
+    setKeepSignedIn,
+  } = useResumableSession(controller, nav);
   const onboarding = useOnboarding(controller, onSession);
 
   // The latest session, readable synchronously. setOwnerState applies its update
@@ -200,6 +204,8 @@ export function App({
         ownerState={session ? session.blob.state : INITIAL_OWNER_STATE}
         onboarding={onboarding}
         onLogOut={onLogOut}
+        keepSignedIn={keepSignedIn}
+        onKeepSignedInChange={setKeepSignedIn}
         onReport={onReport}
         setOwnerState={setOwnerState}
         store={store}

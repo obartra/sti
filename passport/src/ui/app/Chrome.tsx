@@ -26,6 +26,8 @@ export interface ChromeProps {
   ownerState: OwnerState;
   onboarding: OnboardingActions;
   onLogOut: () => void;
+  keepSignedIn: boolean;
+  onKeepSignedInChange: (v: boolean) => void;
   onReport: (outcome: ReportOutcome) => void;
   setOwnerState: (update: (prev: OwnerState) => OwnerState) => void;
   store: PassportStore;
@@ -145,6 +147,8 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     openShare: () => setShareOpen(true),
     onDeleteAccount: props.onDeleteAccount,
     onLogOut: props.onLogOut,
+    keepSignedIn: props.keepSignedIn,
+    onKeepSignedInChange: props.onKeepSignedInChange,
     onSetAvatar: props.onSetAvatar,
     knockCount: props.knockCount,
     refreshKnocks: props.refreshKnocks,

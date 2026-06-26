@@ -56,12 +56,14 @@ export const onboardRenderers: ScreenRenderers = {
       onContinue={() => nav.go("b3-setup")}
     />
   ),
-  "b3-setup": ({ nav, onboarding }) => (
+  "b3-setup": ({ nav, onboarding, keepSignedIn, onKeepSignedInChange }) => (
     <FirstRunSetup
       busy={onboarding.busy}
       error={onboarding.error}
       onBack={nav.back}
       onEnter={(sharingMode) => void onboarding.finish(sharingMode)}
+      keepSignedIn={keepSignedIn}
+      onKeepSignedInChange={onKeepSignedInChange}
     />
   ),
   "avatar-edit": ({ nav, owner, onSetAvatar }) => (

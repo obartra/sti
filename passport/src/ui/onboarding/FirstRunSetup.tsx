@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { FINDABLE_ENABLED } from "../../features.ts";
-import { Card, Button, Segmented } from "../../design/components/index.ts";
+import {
+  Card,
+  Button,
+  Segmented,
+  Switch,
+} from "../../design/components/index.ts";
 import {
   Hand,
   Calendar,
@@ -315,6 +320,9 @@ export interface FirstRunSetupProps {
   busy?: boolean;
   /** A user-facing error if finishing setup failed. */
   error?: string | null;
+  /** "Keep me signed in on this device" choice + setter (doc 24). */
+  keepSignedIn?: boolean;
+  onKeepSignedInChange?: (v: boolean) => void;
 }
 
 export function FirstRunSetup({
@@ -322,6 +330,8 @@ export function FirstRunSetup({
   onEnter,
   busy = false,
   error = null,
+  keepSignedIn = true,
+  onKeepSignedInChange,
 }: FirstRunSetupProps) {
   // Direct ("public") is the default reach mode (doc 16): a link you hand over
   // opens instantly. "Ask first" (Gated, "link") is the approve-each-viewer mode.
@@ -357,6 +367,19 @@ export function FirstRunSetup({
       <FreshnessCard />
       <ReachCard sharing={sharing} onChange={setSharing} />
       <AnonCard />
+
+      {onKeepSignedInChange && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <Switch
+            checked={keepSignedIn}
+            onChange={onKeepSignedInChange}
+            label="Keep me signed in on this device"
+          />
+          <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-subtle)" }}>
+            Choose this only on a device that’s yours.
+          </p>
+        </div>
+      )}
 
       {error !== null && (
         <div
