@@ -326,21 +326,25 @@ can't read it. We never promise a background feature a given phone won't deliver
 
 Each slice is independently shippable and leaves the app correct.
 
-1. **Installable.** Manifest, maskable icons, `theme-color`, `index.html` links. No worker change
-   yet. Outcome: the app installs and launches standalone; offline still shows nothing cached, but
-   nothing regresses.
-2. **Offline shell.** Compose `install`/`activate`/`fetch` into the existing worker (section B),
-   generate the precache manifest at build, ship the API-origin exclusion. Outcome: the installed app
-   opens offline and renders the user's own gray/blue-from-local status.
-3. **Update UX.** Versioned caches, `skipWaiting`/`claim`, the voice-reviewed "reload to update"
-   affordance.
-4. **Offline-created state (section H).** The durable outbound queue, the "backed up as of" marker,
-   the passive not-backed-up affordance, and Background Sync to drain it. Outcome: report a result,
-   change status, or scan a contact with no signal, and it backs up and propagates on reconnect with
-   no nagging.
+1. **Installable (BUILT).** Manifest, maskable icons, `theme-color`, `index.html` links. No worker
+   change. Outcome: the app installs and launches standalone; nothing regresses.
+2. **Offline shell (BUILT).** `install`/`activate`/`fetch` composed into the existing worker
+   (section B), a build-time precache manifest, the cross-origin (incl. API) passthrough. Outcome:
+   the installed app opens offline and renders the owner's own local status.
+3. **Update UX (BUILT).** Versioned shell cache, a user-initiated `SKIP_WAITING` activation, and the
+   voice-reviewed "reload to update" affordance (no automatic skipWaiting/claim; section E).
+4. **Offline-created state (section H), NOT a bolt-on.** The durable master-key-sealed outbound
+   queue, the "backed up as of" marker, the passive not-backed-up affordance, and the
+   foreground-drain. **Prerequisite discovered during the build:** today every mutation is
+   load-modify-save against the server (`account.ts` `modify`), plus a republish, all online-only, so
+   `setOwnerState` throws offline at the `sync.load` step. Slice 4 therefore first requires making the
+   **in-memory blob authoritative** (mutate locally, then queue the save + republish + any notify
+   registration for reconnect). That is a foundational change to the encrypted-sync source-of-truth
+   model, not polish, and the most invariant-heavy layer in the app, so it is its own design and PR.
 5. **Periodic Background Sync**, gated off by default, behind the same review the push wake passed.
 
-Slices 4 and 5 are optional polish; 1 to 3 are the core "capable PWA".
+Slices 1 to 3 are the core "capable PWA" and are built. Slice 4 is a foundational sync change (see
+its prerequisite above); slice 5 stays gated off by the security review (section L).
 
 ## K. Testing and gates
 
