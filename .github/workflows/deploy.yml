@@ -51,8 +51,7 @@ jobs:
 
       - name: Build static binary
         if: steps.gate.outputs.enabled == 'true'
-        working-directory: server
-        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o /tmp/stiapi ./cmd/stiapi
+        run: make build-release
 
       - name: Ship binary and restart (restricted)
         if: steps.gate.outputs.enabled == 'true'
