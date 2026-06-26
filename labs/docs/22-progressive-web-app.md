@@ -385,6 +385,14 @@ handler fails open to the network so a worker bug degrades to a plain online bro
   exposing write tokens at rest.
 - **Periodic Background Sync (S4)** stays gated off until its review clears the device-side cadence
   and co-read signals; it is not assumed safe by analogy to push.
+- **Compromised build or hosting pipeline (the ceiling).** A service worker is a persistent actor:
+  if the build, gh-pages, or the CDN is ever compromised, a malicious worker can install itself and
+  outlive the cleanup of the origin. The integrity story above defends against the *network*, not a
+  compromised *origin*, and merging the fetch handler into the worker raises the blast radius and
+  lengthens recovery. This is largely out of scope (a compromised origin defeats most web apps), but
+  it is the honest ceiling of this design, so it is named rather than implied. Practical hedges if we
+  ever want to raise it: pin the worker build in CI, keep the worker scope minimal, and prefer a
+  short, auditable worker over a large one.
 
 ## M. Open questions and residuals
 

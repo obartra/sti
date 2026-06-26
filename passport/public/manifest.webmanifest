@@ -1,0 +1,49 @@
+{
+  "name": "sti.care passport",
+  "short_name": "sti.care",
+  "description": "Your sexual-health passport. You choose who sees it, and we can't read it.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "theme_color": "#2F9BB3",
+  "background_color": "#FBF9F4",
+  "categories": ["health", "medical"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Care",
+      "short_name": "Care",
+      "url": "./#care"
+    },
+    {
+      "name": "Share",
+      "short_name": "Share",
+      "url": "./#alias-share"
+    },
+    {
+      "name": "Connect",
+      "short_name": "Connect",
+      "url": "./#connect"
+    }
+  ]
+}
