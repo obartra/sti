@@ -3,6 +3,7 @@ import { Care } from "../../core/Care.tsx";
 import { Notifications } from "../../core/Notifications.tsx";
 import type { NotificationItem } from "../../core/Notifications.tsx";
 import { Privacy } from "../../core/Privacy.tsx";
+import { Promises } from "../../promises/Promises.tsx";
 import { FINDABLE_ENABLED } from "../../../features.ts";
 import { extendClearance } from "../../../core/report.ts";
 import { todayEpochDay } from "../../../core/clock.ts";
@@ -208,6 +209,7 @@ export const coreRenderers: ScreenRenderers = {
       avatarSrc={avatarSrc(owner.avatar)}
       onEditAvatar={isLoggedIn ? () => nav.go("avatar-edit") : undefined}
       onViewAs={() => nav.go("a2-public", { self: true })}
+      onViewPromises={() => nav.go("promises")}
       // The Findable section is gated here, at the wiring boundary, so the Privacy
       // screen + FindableName stay flag-agnostic (and storyable): present the ops
       // only when the flag is on and the owner is logged in.
@@ -225,4 +227,5 @@ export const coreRenderers: ScreenRenderers = {
       }}
     />
   ),
+  promises: () => <Promises />,
 };

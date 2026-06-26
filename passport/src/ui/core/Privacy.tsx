@@ -21,6 +21,8 @@ export interface PrivacyProps {
   push?: PushControls | undefined;
   onViewAs?: (() => void) | undefined;
   onDeleted?: (() => void) | undefined;
+  /** Open the plain-English privacy promises page. */
+  onViewPromises?: (() => void) | undefined;
   /** Live preview src for the current avatar; with onEditAvatar, shows the editor entry. */
   avatarSrc?: string | undefined;
   onEditAvatar?: (() => void) | undefined;
@@ -43,6 +45,7 @@ export function Privacy({
   push,
   onViewAs,
   onDeleted,
+  onViewPromises,
   avatarSrc,
   onEditAvatar,
   vanityName = null,
@@ -70,6 +73,26 @@ export function Privacy({
         >
           {COPY.title}
         </h1>
+
+        {onViewPromises && (
+          <button
+            type="button"
+            onClick={onViewPromises}
+            style={{
+              alignSelf: "flex-start",
+              marginTop: -8,
+              padding: 0,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 13.5,
+              fontWeight: 700,
+              color: "var(--text-accent)",
+            }}
+          >
+            See the promises we keep &rarr;
+          </button>
+        )}
 
         {onEditAvatar && avatarSrc !== undefined && (
           <AvatarCard src={avatarSrc} onEdit={onEditAvatar} />
