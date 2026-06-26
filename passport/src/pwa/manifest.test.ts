@@ -22,6 +22,13 @@ interface Manifest {
   background_color: string;
   icons: ManifestIcon[];
   shortcuts?: { name: string; url: string }[];
+  screenshots?: {
+    src: string;
+    sizes: string;
+    type: string;
+    form_factor?: string;
+    label?: string;
+  }[];
 }
 
 // Vitest runs with the passport root as cwd, so resolve repo paths from there.
@@ -78,6 +85,18 @@ describe("web app manifest (PWA slice 1)", () => {
   it("points its shortcuts at in-scope app routes", () => {
     for (const shortcut of manifest.shortcuts ?? []) {
       expect(shortcut.url.startsWith("./#")).toBe(true);
+    }
+  });
+
+  it("ships at least one install screenshot, base-agnostic and on disk", () => {
+    const shots = manifest.screenshots ?? [];
+    expect(shots.length).toBeGreaterThan(0);
+    for (const shot of shots) {
+      expect(shot.type).toBe("image/png");
+      expect(shot.sizes).toMatch(/^\d+x\d+$/);
+      // Relative src like the icons, so it works at any deploy path.
+      expect(shot.src.startsWith("/")).toBe(false);
+      expect(existsSync(root(`public/${shot.src}`))).toBe(true);
     }
   });
 });
