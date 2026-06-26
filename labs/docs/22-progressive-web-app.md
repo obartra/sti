@@ -372,11 +372,14 @@ in M, not a client TODO).
   an apple-touch icon. A regression that silently breaks "Add to home screen" fails the build.
 - **Playwright** drives the real worker against a throwaway server (doc 14) and exercises offline
   (`e2e/resolution.pw.spec.ts`): one test installs the worker, goes offline, reloads, and asserts the
-  app shell still renders (BUILT); a second opens a real blue card, goes offline, reloads, and asserts
-  it fails to the correct **gray**, which proves **no `api.sti.care` response is served from cache**
-  (the privacy invariant as an executable spec, the project's preferred shape; BUILT). The
-  pre-existing `client-gray-on-unreachable` covers the same fail-closed rule online (API blocked, not
-  the SW cache path), so the two together pin both ways the API read can be denied.
+  app shell still renders (BUILT); a second opens a real blue card online (so a cross-origin API read
+  definitely happens and could be cached), then enumerates every entry in every Cache the worker owns
+  and asserts the shell **is** cached but **no `api.sti.care` URL ever is** (BUILT). That asserts the
+  privacy invariant at its root, the fetch handler excludes the API origin so nothing from it is ever
+  stored, which is steadier than driving the offline UI (you cannot serve from a cache what was never
+  written to one). The pre-existing `client-gray-on-unreachable` separately pins the fail-closed-to-gray
+  rule online (API blocked), and the server sends `Cache-Control: no-store` on `/a/{id}` so the browser
+  HTTP cache cannot serve a stale blue either.
 - **Unit:** the cache-routing decision (which strategy per request) is pure (`swCache.ts`) and tests
   in Node with no DOM, like the rest of the core (`swCache.test.ts`); the update flow is unit-tested
   (`swUpdate.test.ts`) and `fake-indexeddb` backs the store tests.
