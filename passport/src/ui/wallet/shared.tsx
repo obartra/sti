@@ -60,7 +60,7 @@ export const COPY = {
   makePublicGoLive: "Make public & go live",
   screenTitle: "Add to your wallet",
   screenSub:
-    "Keep your passport a swipe away. Pick how the pass works, a quiet link you can carry anywhere, or a live status that updates itself.",
+    "Keep your passport on hand. Pick how the pass works, a quiet link you can carry anywhere, or a live status that updates itself.",
   qrPassTitle: "QR pass",
   qrPassSub:
     "Carries a link. Shows your handle and a code, no status on the pass itself.",
@@ -78,12 +78,12 @@ export const COPY = {
   trustLive: [
     "The pass shows a status and a code, no test names, no dates.",
     "Blue only ever means a fresh, current read. If it can’t refresh, it quietly shows gray, never an old status.",
-    "Lose your phone? Make the link private from Privacy & sharing and the live pass becomes gray.",
+    "Lose your device? Make the link private from Privacy & sharing and the live pass becomes gray.",
   ],
   trustQr: [
     "The pass shows a code and your handle, no status, no test names, no dates.",
     "What a scanner sees is decided when they open the link, never by the pass itself.",
-    "Lose your phone? Rotate the link from Privacy & sharing and the code stops working.",
+    "Lose your device? Rotate the link from Privacy & sharing and the code stops working.",
   ],
 } as const;
 

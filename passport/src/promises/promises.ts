@@ -56,7 +56,7 @@ export const PROMISES: readonly UserPromise[] = [
     id: "cannot-read",
     plain: "We can't read what you save.",
     detail:
-      "It's encrypted on your phone before it's sent, and we only ever hold the encrypted version. We can't read it.",
+      "It's encrypted on your device before it's sent, and we only ever hold the encrypted version. We can't read it.",
     assertions: [
       {
         claim:
