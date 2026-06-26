@@ -11,7 +11,7 @@ export const COPY = {
   whyBody:
     "Your account lives on this device, with no email or phone attached. If you lose the device, this phrase is the only way back in. We can’t recover it for you.",
   phraseLabel: "Your recovery phrase",
-  revealHint: "Tap to reveal your phrase",
+  revealHint: "Reveal your phrase",
   copy: "Copy phrase",
   copied: "Copied",
   saveTip:
