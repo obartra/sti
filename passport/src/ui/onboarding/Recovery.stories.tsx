@@ -19,7 +19,7 @@ export const PhraseHidden: Story = {};
 export const PhraseRevealed: Story = {
   play: ({ canvasElement }) => {
     Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button"))
-      .find((b) => b.textContent.includes("Tap to reveal"))
+      .find((b) => b.textContent.includes("Reveal your phrase"))
       ?.click();
   },
 };

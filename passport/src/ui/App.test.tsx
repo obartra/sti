@@ -221,7 +221,7 @@ async function onboard(
   );
   await user.click(screen.getByRole("button", { name: "Continue" }));
   await user.click(
-    await screen.findByRole("button", { name: /Tap to reveal/ }),
+    await screen.findByRole("button", { name: /Reveal your phrase/ }),
   );
   await user.click(screen.getByRole("button", { name: /saved it/i }));
   await user.click(
@@ -277,7 +277,7 @@ describe("App onboarding flow", () => {
     );
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await user.click(
-      await screen.findByRole("button", { name: /Tap to reveal/ }),
+      await screen.findByRole("button", { name: /Reveal your phrase/ }),
     );
     await user.click(screen.getByRole("button", { name: /saved it/i }));
     // Choose Gated ("Ask first") so this account's links are bare /a/{id} (no key

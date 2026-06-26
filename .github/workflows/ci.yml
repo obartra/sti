@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+# Every job runs `make <target>` rather than inlining commands; the Makefile is
+# the single source of truth (see `make help`). Steps that remain inline are
+# environment setup (toolchains, deps, browsers), not gate commands.
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -18,15 +22,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run format:check
-      - run: npm run lint
-      - run: npm test
+      - run: make check-root
 
   passport:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: passport
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -35,12 +34,12 @@ jobs:
           cache: npm
           cache-dependency-path: passport/package-lock.json
       - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run test:cov
+        working-directory: passport
+      - run: make check-web
       # Browsable report of the spec/Gherkin scenarios (and every unit test),
       # uploaded so reviewers can open it from the run's Artifacts.
       - run: npm run test:report
+        working-directory: passport
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -66,8 +65,7 @@ jobs:
           cache-dependency-path: passport/package-lock.json
       - run: npm ci
         working-directory: passport
-      - run: npm run test:integration
-        working-directory: passport
+      - run: make test-integration
 
   e2e:
     # The real app driven by a browser against a throwaway server: build + preview
@@ -89,32 +87,16 @@ jobs:
         working-directory: passport
       - run: npx playwright install --with-deps chromium
         working-directory: passport
-      - run: npm run test:e2e
-        working-directory: passport
+      - run: make test-e2e
 
   server:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.26.4"
           cache-dependency-path: server/go.sum
-      - run: test -z "$(gofmt -l .)" || { echo "gofmt:"; gofmt -l .; exit 1; }
-      - run: go vet ./...
-      - run: go test ./...
-      - name: Alert script logic tests
-        run: bash deploy/alert_test.sh
-      - name: Vulnerability scan (stdlib + deps the code actually calls)
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@v1.4.0
-          "$(go env GOPATH)/bin/govulncheck" ./...
-      - name: Full smoke against a local instance
-        run: |
-          go build -o /tmp/stiapi ./cmd/stiapi
-          STI_DECOY_SECRET="$(openssl rand -hex 32)" STI_ADDR=127.0.0.1:8080 STI_DB_PATH="$(mktemp -u).db" /tmp/stiapi &
-          for _ in $(seq 1 40); do curl -sf http://127.0.0.1:8080/healthz >/dev/null && break; sleep 0.25; done
-          bash deploy/smoke.sh http://127.0.0.1:8080
+      - run: make check-server
+      - run: make vulncheck
+      - run: make smoke
