@@ -11,4 +11,7 @@ const meta: Meta<typeof FirstRunSetup> = {
 export default meta;
 type Story = StoryObj<typeof FirstRunSetup>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  // Wire the "keep me signed in" toggle so the story shows it (doc 24); default ON.
+  args: { keepSignedIn: true, onKeepSignedInChange: () => undefined },
+};

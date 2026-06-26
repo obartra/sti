@@ -30,6 +30,7 @@ import {
   deriveAccountKey,
   deriveAccountWriteToken,
   type Bytes,
+  type MasterKey,
 } from "../crypto/index.ts";
 import {
   serializeAccountBlob,
@@ -44,9 +45,9 @@ import { nowMs } from "../core/clock.ts";
 
 export interface OfflineAccountSync extends AccountSync {
   /** The opaque, key-derived account id, to read its sync snapshot. */
-  accountId(master: Bytes): Promise<string>;
+  accountId(master: MasterKey): Promise<string>;
   /** Re-push the locally cached blob if it is pending; clears pending on success. */
-  drainBlob(master: Bytes): Promise<void>;
+  drainBlob(master: MasterKey): Promise<void>;
 }
 
 // The per-account derivations a push needs, bundled so the helpers stay small.
@@ -145,7 +146,7 @@ export function createOfflineAccountSync(
   local: LocalBlobStore,
   status: SyncStatus,
 ): OfflineAccountSync {
-  const derive = (master: Bytes) =>
+  const derive = (master: MasterKey) =>
     Promise.all([
       deriveAccountId(master),
       deriveAccountKey(master).then(importAesKey),

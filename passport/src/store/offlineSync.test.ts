@@ -1,15 +1,15 @@
 // @vitest-environment node
 import "fake-indexeddb/auto";
 import { describe, it, expect, beforeEach } from "vitest";
-import { phraseForTest } from "../test-support/phrase.ts";
+import { masterForTest } from "../test-support/phrase.ts";
 import {
-  deriveMasterKey,
   deriveAccountKey,
   importAesKey,
   seal,
   open,
   randomAliasId,
   type Bytes,
+  type MasterKey,
 } from "../crypto/index.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
@@ -60,8 +60,8 @@ function deleteLocalDb(): Promise<void> {
   });
 }
 
-async function master(): Promise<Bytes> {
-  return deriveMasterKey(phraseForTest("slice4-offline"));
+async function master(): Promise<MasterKey> {
+  return masterForTest("slice4-offline");
 }
 
 describe("offline account sync (slice 4)", () => {

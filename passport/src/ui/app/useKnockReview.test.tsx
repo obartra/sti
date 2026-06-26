@@ -9,10 +9,11 @@ import type {
 } from "../../store/index.ts";
 import { INITIAL_OWNER_STATE } from "../../core/badge.ts";
 import { DEFAULT_AVATAR } from "../../lib/avatars.ts";
+import { fakeMasterKey } from "../../test-support/phrase.ts";
 
 function sessionWithAlias(aliasId: string): OwnerSession {
   return {
-    master: new Uint8Array(32),
+    master: fakeMasterKey(),
     blob: {
       handle: "robin",
       aliases: [
@@ -51,6 +52,9 @@ function stubController(
     signUp: unused,
     recover: unused,
     resume: unused,
+    rememberDevice: unused,
+    forgetDevice: unused,
+    resumeFromStore: unused,
     enrollPasskey: unused,
     setProfile: unused,
     sweepExpiredLinks: unused,

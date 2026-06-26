@@ -1,8 +1,8 @@
-import { useCallback, useState } from "react";
 import { useAppRouter } from "./app/useAppRouter.ts";
 import { useSyncedRef } from "./app/useSyncedRef.ts";
 import { useDesktop } from "./desktop/Desktop.tsx";
 import { useOnboarding } from "./app/useOnboarding.ts";
+import { useResumableSession } from "./app/useResumableSession.ts";
 import { useShareLink } from "./app/useShareLink.ts";
 import { useOwnerInbox } from "./app/useOwnerInbox.ts";
 import { useFaves } from "./app/useFaves.ts";
@@ -34,6 +34,10 @@ import {
   createDeviceStore,
   type StorageLike,
 } from "../auth/deviceStore.ts";
+import {
+  browserMasterKeyStore,
+  createVolatileMasterKeyStore,
+} from "../auth/masterKeyStore.ts";
 import type { AliasRecord } from "../store/index.ts";
 import { webAuthnPasskey } from "../auth/passkey.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
@@ -78,6 +82,7 @@ const backendController = createSessionController({
   sync: offlineSync,
   devices: browserDeviceStore() ?? createDeviceStore(volatileStorage()),
   passkey: webAuthnPasskey(),
+  keys: browserMasterKeyStore() ?? createVolatileMasterKeyStore(),
   api,
 });
 
@@ -107,15 +112,16 @@ export function App({
 }: { store?: PassportStore; controller?: SessionController } = {}) {
   const { route, nav, shareOpen, setShareOpen } = useAppRouter();
   const desktop = useDesktop();
-  const [session, setSession] = useState<OwnerSession | null>(null);
-
-  const onSession = useCallback(
-    (s: OwnerSession) => {
-      setSession(s);
-      nav.jump("home");
-    },
-    [nav],
-  );
+  // Session + the "stay signed in" lifecycle (doc 24): silent resume on load,
+  // persist on login, forget on logout.
+  const {
+    session,
+    setSession,
+    onSession,
+    onLogOut,
+    keepSignedIn,
+    setKeepSignedIn,
+  } = useResumableSession(controller, nav);
   const onboarding = useOnboarding(controller, onSession);
 
   // The latest session, readable synchronously. setOwnerState applies its update
@@ -195,6 +201,9 @@ export function App({
         owner={session ? deriveOwnerView(session.blob, todayEpochDay()) : OWNER}
         ownerState={session ? session.blob.state : INITIAL_OWNER_STATE}
         onboarding={onboarding}
+        onLogOut={onLogOut}
+        keepSignedIn={keepSignedIn}
+        onKeepSignedInChange={setKeepSignedIn}
         onReport={onReport}
         setOwnerState={setOwnerState}
         store={store}

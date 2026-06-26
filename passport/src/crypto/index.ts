@@ -29,6 +29,8 @@ export {
   parseRecoveryPhrase,
   type AppGeneratedPhrase,
   deriveMasterKey,
+  importMasterKey,
+  type MasterKey,
   deriveAccountId,
   deriveAccountKey,
   deriveAccountWriteToken,

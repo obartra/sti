@@ -24,6 +24,8 @@ export interface PrivacyProps {
   onDeleted?: (() => void) | undefined;
   /** Open the plain-English privacy promises page. */
   onViewPromises?: (() => void) | undefined;
+  /** Log out of this device (forgets the saved sign-in; the phrase still works). */
+  onLogOut?: (() => void) | undefined;
   /** Open the privacy policy page (doc 23). */
   onViewPrivacyPolicy?: (() => void) | undefined;
   /** Open the terms page (doc 23). */
@@ -104,6 +106,7 @@ export function Privacy({
   onViewAs,
   onDeleted,
   onViewPromises,
+  onLogOut,
   onViewPrivacyPolicy,
   onViewTerms,
   avatarSrc,
@@ -162,6 +165,24 @@ export function Privacy({
 
         <AttributesCard state={state} />
         <ControlsCard state={state} push={push} />
+        {onLogOut && (
+          <button
+            type="button"
+            onClick={onLogOut}
+            style={{
+              alignSelf: "flex-start",
+              padding: 0,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 14,
+              fontWeight: 700,
+              color: "var(--text-accent)",
+            }}
+          >
+            Log out
+          </button>
+        )}
         <DangerZone state={state} onDeleted={onDeleted} />
       </div>
     </div>

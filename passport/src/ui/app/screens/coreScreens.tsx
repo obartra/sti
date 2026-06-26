@@ -188,6 +188,7 @@ export const coreRenderers: ScreenRenderers = {
     ownerState,
     setOwnerState,
     onDeleteAccount,
+    onLogOut,
     aliases,
     contacts,
     onRevokeAlias,
@@ -210,6 +211,7 @@ export const coreRenderers: ScreenRenderers = {
       onEditAvatar={isLoggedIn ? () => nav.go("avatar-edit") : undefined}
       onViewAs={() => nav.go("a2-public", { self: true })}
       onViewPromises={() => nav.go("promises")}
+      onLogOut={isLoggedIn ? onLogOut : undefined}
       onViewPrivacyPolicy={() => nav.go("privacy-policy")}
       onViewTerms={() => nav.go("terms")}
       // The Findable section is gated here, at the wiring boundary, so the Privacy

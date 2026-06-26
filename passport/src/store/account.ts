@@ -9,9 +9,10 @@
 import type { ApiClient } from "../api/client.ts";
 import {
   deriveMasterKey,
+  importMasterKey,
   parseRecoveryPhrase,
   randomRecoveryPhrase,
-  type Bytes,
+  type MasterKey,
 } from "../crypto/index.ts";
 import {
   INITIAL_OWNER_STATE,
@@ -44,12 +45,12 @@ export interface OwnerProfile {
 export interface NewAccount {
   /** Shown once to the owner; the only way back into the account. */
   readonly recoveryPhrase: string;
-  readonly master: Bytes;
+  readonly master: MasterKey;
   readonly blob: AccountBlob;
 }
 
 export interface RecoveredAccount {
-  readonly master: Bytes;
+  readonly master: MasterKey;
   readonly blob: AccountBlob;
 }
 
@@ -59,40 +60,40 @@ export interface AccountManager {
   /** Recover with a phrase. Returns null when no account exists for it. */
   recover(phrase: string): Promise<RecoveredAccount | null>;
   /** Record a published alias into the account and persist it. */
-  addAlias(master: Bytes, record: AliasRecord): Promise<AccountBlob>;
+  addAlias(master: MasterKey, record: AliasRecord): Promise<AccountBlob>;
   /** Drop an alias record from the account (after its payload is revoked). */
-  removeAlias(master: Bytes, id: string): Promise<AccountBlob>;
+  removeAlias(master: MasterKey, id: string): Promise<AccountBlob>;
   /** Record a per-contact link into the account and persist it. */
-  addContact(master: Bytes, contact: ContactRecord): Promise<AccountBlob>;
+  addContact(master: MasterKey, contact: ContactRecord): Promise<AccountBlob>;
   /**
    * Drop a contact record (after its alias payload is revoked). Also strips the
    * contact from every circle, so a circle never references a contact that is gone.
    */
-  removeContact(master: Bytes, contactId: string): Promise<AccountBlob>;
+  removeContact(master: MasterKey, contactId: string): Promise<AccountBlob>;
   /**
    * Create or update a circle (doc 13 slice 6), upserting by id. Members are
    * normalized against current contacts (unknown/removed ids dropped, deduped), so
    * a circle never references a contact that does not exist.
    */
-  upsertCircle(master: Bytes, circle: CircleRecord): Promise<AccountBlob>;
+  upsertCircle(master: MasterKey, circle: CircleRecord): Promise<AccountBlob>;
   /** Drop a circle by id. Purely local; the server never knew it existed. */
-  removeCircle(master: Bytes, circleId: string): Promise<AccountBlob>;
+  removeCircle(master: MasterKey, circleId: string): Promise<AccountBlob>;
   /**
    * Delete the account: revoke every published alias (so no shared link can ever
    * resolve to a status again) and remove the account blob. "Working delete"
    * (doc 01 data minimization). Idempotent and best-effort on the aliases.
    */
-  deleteAccount(master: Bytes): Promise<void>;
+  deleteAccount(master: MasterKey): Promise<void>;
   /**
    * Update the owner's state (a reported result, a pause), persist it, and
    * republish every alias so the new badge propagates to all shared links.
    */
-  setOwnerState(master: Bytes, state: OwnerState): Promise<AccountBlob>;
+  setOwnerState(master: MasterKey, state: OwnerState): Promise<AccountBlob>;
   /**
    * Update the owner's presentation profile (avatar + sharing default) and
    * persist it. Does not touch the badge, so no republish is needed.
    */
-  setProfile(master: Bytes, profile: OwnerProfile): Promise<AccountBlob>;
+  setProfile(master: MasterKey, profile: OwnerProfile): Promise<AccountBlob>;
   /**
    * Record (or clear, when null) the owner's findable registration (doc 17): the
    * claimed name and the alias it resolves to. Pure persistence; the server-side
@@ -100,7 +101,7 @@ export interface AccountManager {
    * (findableOps), so this just writes the blob field after that has succeeded.
    */
   setFindable(
-    master: Bytes,
+    master: MasterKey,
     findable: FindableRegistration | null,
   ): Promise<AccountBlob>;
   /**
@@ -110,7 +111,7 @@ export interface AccountManager {
    * public link). Called by findableOps after the server bind succeeds.
    */
   recordFindable(
-    master: Bytes,
+    master: MasterKey,
     alias: AliasRecord,
     findable: FindableRegistration,
   ): Promise<AccountBlob>;
@@ -120,7 +121,7 @@ export interface AccountManager {
    * expired. No republish, the badge is unchanged. This closes the passive-owner
    * gap so expiry no longer waits for the next setOwnerState.
    */
-  sweepExpiredLinks(master: Bytes): Promise<AccountBlob>;
+  sweepExpiredLinks(master: MasterKey): Promise<AccountBlob>;
 }
 
 // A brand-new account: empty links, default avatar, private (link) sharing. The
@@ -268,7 +269,7 @@ async function republishLiveLinks(
 
 // A load-modify-save over the synced blob (the closure createAccountManager builds).
 type BlobModify = (
-  master: Bytes,
+  master: MasterKey,
   fn: (blob: AccountBlob) => AccountBlob,
 ) => Promise<AccountBlob>;
 
@@ -303,7 +304,11 @@ function lifecycleMethods(
         throw new Error("create: invalid handle");
       }
       const recoveryPhrase = randomRecoveryPhrase();
-      const master = await deriveMasterKey(recoveryPhrase);
+      // Derive the transient bytes, import them into the non-extractable master
+      // key (doc 24), then drop the bytes: no layer below holds raw master bytes.
+      const master = await importMasterKey(
+        await deriveMasterKey(recoveryPhrase),
+      );
       const blob = freshBlob(handle);
       await sync.save(master, blob);
       return { recoveryPhrase, master, blob };
@@ -311,7 +316,7 @@ function lifecycleMethods(
     async recover(phrase) {
       const parsed = parseRecoveryPhrase(phrase);
       if (parsed === null) return null;
-      const master = await deriveMasterKey(parsed);
+      const master = await importMasterKey(await deriveMasterKey(parsed));
       const blob = await sync.load(master);
       return blob === null ? null : { master, blob };
     },
@@ -330,7 +335,7 @@ export function createAccountManager(
   // mutations below are upsert/filter by id, so a retry is idempotent (a partial
   // save that landed but lost its response replays to the same result).
   const modify = async (
-    master: Bytes,
+    master: MasterKey,
     fn: (blob: AccountBlob) => AccountBlob,
   ): Promise<AccountBlob> => {
     const blob = await sync.load(master);

@@ -4,12 +4,13 @@ import { useExpirySweep } from "./useExpirySweep.ts";
 import type { OwnerSession, SessionController } from "../../store/index.ts";
 import { INITIAL_OWNER_STATE } from "../../core/badge.ts";
 import { DEFAULT_AVATAR } from "../../lib/avatars.ts";
+import { fakeMasterKey } from "../../test-support/phrase.ts";
 
 // A session whose single alias has the given expiry (epoch ms; 1 = long past,
 // null = until-revoked).
 function sessionWith(expiresAt: number | null): OwnerSession {
   return {
-    master: new Uint8Array(32),
+    master: fakeMasterKey(),
     blob: {
       handle: "robin",
       aliases: [

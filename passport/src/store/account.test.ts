@@ -1,12 +1,12 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { phraseForTest } from "../test-support/phrase.ts";
+import { masterForTest } from "../test-support/phrase.ts";
 import { createAccountManager } from "./account.ts";
 import type { ApiClient } from "../api/client.ts";
 import type { AliasRecord } from "./accountBlob.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
-import { deriveMasterKey, type Bytes } from "../crypto/index.ts";
+import { type Bytes } from "../crypto/index.ts";
 
 const record: AliasRecord = {
   id: "A".repeat(43),
@@ -94,7 +94,7 @@ describe("account manager", () => {
 
   it("throws when adding an alias for a key with no account", async () => {
     const accounts = createAccountManager(fakeAccountApi());
-    const master = await deriveMasterKey(phraseForTest("never-created"));
+    const master = await masterForTest("never-created");
     await expect(accounts.addAlias(master, record)).rejects.toThrow();
   });
 

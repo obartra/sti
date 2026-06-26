@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { phraseForTest } from "../test-support/phrase.ts";
+import { phraseForTest, masterForTest } from "../test-support/phrase.ts";
 import {
   randomAliasId,
   randomWriteToken,
@@ -78,7 +78,7 @@ describe("master key + account derivation", () => {
   });
 
   it("account id is deterministic, 43-char, and recoverable from the key alone", async () => {
-    const master = await deriveMasterKey(phraseForTest("recovery"));
+    const master = await masterForTest("recovery");
     const id1 = await deriveAccountId(master);
     const id2 = await deriveAccountId(master);
     expect(id1).toBe(id2);
@@ -86,7 +86,7 @@ describe("master key + account derivation", () => {
   });
 
   it("account id and account key are distinct derivations from the same master", async () => {
-    const master = await deriveMasterKey(phraseForTest("recovery"));
+    const master = await masterForTest("recovery");
     const id = await deriveAccountId(master);
     const key = await deriveAccountKey(master);
     expect(key).toHaveLength(32);
@@ -95,7 +95,7 @@ describe("master key + account derivation", () => {
   });
 
   it("the derived account key actually decrypts a blob sealed under it", async () => {
-    const master = await deriveMasterKey(phraseForTest("recovery"));
+    const master = await masterForTest("recovery");
     const aesKey = await importAesKey(await deriveAccountKey(master));
     const blob = utf8ToBytes(JSON.stringify({ aliases: [], circles: [] }));
     const ct = await seal(aesKey, blob);
@@ -116,10 +116,10 @@ describe("master key + account derivation", () => {
 
   it("a master from a wrong passphrase cannot open the blob (recovery is key-bound)", async () => {
     const right = await importAesKey(
-      await deriveAccountKey(await deriveMasterKey(phraseForTest("right"))),
+      await deriveAccountKey(await masterForTest("right")),
     );
     const wrong = await importAesKey(
-      await deriveAccountKey(await deriveMasterKey(phraseForTest("wrong"))),
+      await deriveAccountKey(await masterForTest("wrong")),
     );
     const ct = await seal(right, utf8ToBytes("device blob"));
     await expect(open(wrong, ct)).rejects.toThrow();
