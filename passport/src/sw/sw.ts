@@ -23,6 +23,7 @@ import { consumePartnerPing } from "./swInbox.ts";
 import { readPushContext } from "./pushStore.ts";
 import { PARTNER_NOTIFY_PROMPT } from "../copy/canonical.ts";
 import { classify, shellCacheName, isStaleShellCache } from "./swCache.ts";
+import { isShareTargetRequest, shareTargetRedirect } from "./swShare.ts";
 
 interface ExtendableEventLike {
   waitUntil(p: Promise<unknown>): void;
@@ -169,6 +170,19 @@ async function evictOldShells(): Promise<void> {
 }
 
 sw.addEventListener("fetch", (event) => {
+  // A shared link (doc 22 section C) is resolved ON-DEVICE: the worker reads it from
+  // the POST body and redirects, never forwarding the request, so the fragment key
+  // never reaches the network. This is the one path that must NOT fail open to fetch.
+  if (
+    isShareTargetRequest(
+      event.request.method,
+      event.request.url,
+      sw.registration.scope,
+    )
+  ) {
+    event.respondWith(handleShareTarget(event.request));
+    return;
+  }
   const strategy = classify({
     method: event.request.method,
     url: event.request.url,
@@ -181,6 +195,27 @@ sw.addEventListener("fetch", (event) => {
     serve(strategy, event.request).catch(() => fetch(event.request)),
   );
 });
+
+// Read the shared link from the form body and redirect to its in-app card route, with
+// the `#k={key}` fragment rebuilt locally. The body is never fetched upstream, and any
+// error (or a non-link share) falls back to the app root, never to the network, so the
+// key cannot leak even on a malformed share (doc 22 section C).
+async function handleShareTarget(request: Request): Promise<Response> {
+  const scope = sw.registration.scope;
+  try {
+    const form = await request.formData();
+    const str = (value: FormDataEntryValue | null): string | null =>
+      typeof value === "string" ? value : null;
+    const target = shareTargetRedirect(
+      { url: str(form.get("url")), text: str(form.get("text")) },
+      scope,
+      new URL(sw.location.origin).host,
+    );
+    return Response.redirect(target, 303);
+  } catch {
+    return Response.redirect(scope, 303);
+  }
+}
 
 function serve(
   strategy: "navigation" | "asset",

@@ -127,10 +127,9 @@ never clips it.
 user-facing strings and follow [voice and tone](21-voice-and-tone.md): plain, no jargon, no
 internal words. Any in-app install nudge (section F) is fully governed by that guide.
 
-We do **not** wire `share_target` in the first manifest pass. Registering the installed app in the OS
-share sheet (so someone who receives a passport link in a chat can Share it straight into sti.care)
-is a real key-handling surface with one sharp edge, so it gets a worker-backed design rather than a
-bare manifest line, and ships only after review:
+`share_target` (BUILT) registers the installed app in the OS share sheet, so someone who receives a
+passport link in a chat can Share it straight into sti.care. It is a real key-handling surface with
+one sharp edge, so it is worker-backed rather than a bare manifest line:
 
 - **The poison corner: the key is in the fragment, and `share_target` wants to put it in a request.** A
   keyed link is `/a/{id}#k={key}`, and the whole blind-store model rests on the AES key living in the
@@ -163,11 +162,12 @@ bare manifest line, and ships only after review:
   links, not a server-visible fact), and the worker grows one more request shape, kept minimal and
   fail-safe per above.
 
-When built, this is a manifest member (`{ action: "./share-target", method: "POST", enctype:
-"multipart/form-data", params: { url, text, title } }`), a worker handler that `parseAliasLink`s the
-form data and `Response.redirect`s on-device (never `fetch(request)` on this path, redirect to the app
-root on a miss), a pure unit test for the parse-and-redirect, and a manifest-test assertion of the
-shape, gated like the rest of the PWA work.
+Concretely: a manifest member (`{ action: "./share-target", method: "POST", enctype:
+"multipart/form-data", params: { url, text, title } }`), and a worker handler that reads the form data
+and `Response.redirect`s on-device (`swShare.ts` decides the redirect via the existing
+`parseScannedLink`, strict about host and key shape; `sw.ts` intercepts the share POST and never
+`fetch`es it, redirecting to the app root on a miss). The decisions are pure and unit-tested
+(`swShare.test.ts`), with a manifest-test assertion of the shape, gated like the rest of the PWA work.
 
 ## D. The offline app shell: what the fetch handler does
 
@@ -568,10 +568,9 @@ timer.
 
 ## N. Open questions and residuals
 
-- **`share_target`** (receive a shared passport link into the installed app). Designed in **section C**
-  (the worker resolves the share on-device so the fragment key never reaches the network). Pending a
-  review of that design before it is built; the open call is whether the convenience is worth the one
-  extra worker-handled request shape.
+- **`share_target`** (receive a shared passport link into the installed app), BUILT (section C): the
+  worker resolves the share on-device so the fragment key never reaches the network. The remaining
+  open call is purely product, not privacy: whether the OS-share entry point earns its keep in the UI.
 - **Periodic sync vs push overlap.** Both can drive a background refresh. If push covers the need on
   the platforms that matter, periodic sync may not be worth the second background actor; revisit when
   push graduates from gated.
