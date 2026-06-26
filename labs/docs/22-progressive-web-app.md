@@ -127,9 +127,10 @@ never clips it.
 user-facing strings and follow [voice and tone](21-voice-and-tone.md): plain, no jargon, no
 internal words. Any in-app install nudge (section F) is fully governed by that guide.
 
-We do **not** add `share_target` in this pass. Receiving a shared passport link into the app is a
-real existence-and-routing surface and belongs to the link-resolution flow (doc 16), not the install
-manifest; noted as a deferred question.
+We do **not** add `share_target` in the first manifest pass. Receiving a shared passport link is a
+real key-handling surface (the AES key rides in the fragment, doc 16), so it gets its own design with
+a service-worker mitigation rather than a bare manifest line. That design is **section O** (proposed,
+pending review before build).
 
 ## D. The offline app shell: what the fetch handler does
 
@@ -528,11 +529,75 @@ persona is conserving, so that path serves the *high*-connectivity-but-app-close
 this section is about. Hence the recommendation: ship push-TTL + reconnect catch-up; do not ship the
 timer.
 
+## O. share_target: receive a shared link without surrendering the key (PROPOSED, design-first)
+
+The ask: register the installed app in the OS share sheet, so someone who receives a passport link in
+a chat can Share it straight into sti.care instead of pasting it into a browser. Mechanically, a
+manifest `share_target` member tells the OS to open the app's action URL with the shared `url`/`text`
+when the user picks us. This is a small feature with one sharp privacy edge, so it is written up here
+and NOT shipped until reviewed.
+
+**The poison corner: the key is in the fragment, and share_target wants to put it in a request.** A
+keyed link is `/a/{id}#k={key}`, and the whole blind-store model rests on the AES key living in the
+URL **fragment**, which the browser never sends to a server (doc 16). But `share_target` delivers the
+shared string as **GET query params** (`?url=...`) or a **POST body** to the action URL, and a normal
+navigation to that action URL travels to the server. So a naive share_target would hand the blind
+store the very key it is engineered never to see, in `?url=https%3A%2F%2F.../a/{id}%23k%3D{key}`. That
+is strictly worse than opening a link the ordinary way, where the fragment stays on the device. This
+single fact is why share_target was deferred, and it is the thing the design has to neutralize.
+
+**The fix: the service worker resolves the share entirely on-device, no network round-trip.** The
+action URL is same-origin and in the worker's scope, so the worker intercepts the share_target request
+in its `fetch` handler, reads the shared string locally, pulls a passport link out of it with the
+existing `parseAliasLink`, and answers with a **client-side redirect** to the in-app resolution route,
+reconstructing the `#k={key}` fragment in the redirect target. The shared string (key and all) is read
+from the request body and turned into a same-document redirect by the worker itself; **it is never
+fetched from the network**, so the key never leaves the device. The model is preserved by keeping the
+action a worker-handled, network-never request, exactly the discipline section D already applies to the
+API origin (never forwarded), here applied to one same-origin action path.
+
+**Method choice: POST, `enctype=multipart/form-data`.** POST keeps the shared data in the request body
+rather than in a loggable action URL, and the worker reads it with `request.formData()`. A GET target
+would place the key in the action URL's query string, which is worse on every axis (in history, in any
+referer, and one worker miss from the network). POST + worker-intercept keeps the key out of the URL
+entirely.
+
+**Fail closed, fail OPEN to the network never.** If anything is off, a malformed share, a link with no
+fragment, the worker not yet in control, the handler must degrade to **showing the app's benign
+no-key/gray state**, and must NEVER fall through to a plain network navigation that carries the key.
+Concretely: the worker parses on-device and redirects to either the resolved route or the app root;
+the one thing it may not do on the share path is forward the request upstream. (This inverts the usual
+"fetch handler fails open to the network" rule for this one path, because here the network is the leak.)
+
+**What it does and does not change:**
+
+- **No new existence surface.** Resolving a shared link is byte-for-byte the same `/a/{id}` read as
+  opening it directly, existence-uniform per doc 12. share_target only adds an OS entry point; it does
+  not add a new way for the server to learn anything.
+- **Best-effort on the fragment.** Whether the shared string still carries `#k={key}` is up to the
+  sharing app; some flows strip fragments. A keyless arrival simply resolves to gray ("can't open this
+  / no status"), the same honest dead-link state, with no leak. So share_target is a convenience that
+  works when the source app preserves the full URL and degrades safely when it does not.
+- **Accepted residuals:** the app appears in the OS "share to" list (the OS knows we handle links, not
+  a server-visible fact); and the worker grows one more request shape to handle, kept minimal and
+  fail-safe per above.
+
+**Implementation sketch (for the build, once this is approved):**
+
+- Manifest: `"share_target": { "action": "./share-target", "method": "POST", "enctype":
+  "multipart/form-data", "params": { "url": "url", "text": "text", "title": "title" } }`.
+- Worker: intercept POST to `{scope}share-target`, `await request.formData()`, find a passport link in
+  `url`/`text` via `parseAliasLink`, and `Response.redirect` (303) to the reconstructed in-app route
+  on-device; on any miss, redirect to the app root. Never `fetch(request)` on this path.
+- A small unit test for the parse-and-redirect (pure), plus the manifest test asserting the
+  `share_target` shape, mirroring how the rest of the PWA work is gated.
+
 ## N. Open questions and residuals
 
-- **`share_target`** (receive a shared passport link into the installed app). Deferred: it is an
-  existence-and-routing surface that belongs with link resolution (doc 16), not the manifest. Decide
-  whether it ever pays for its privacy cost.
+- **`share_target`** (receive a shared passport link into the installed app). Designed in **section O**
+  (the worker resolves the share on-device so the fragment key never reaches the network). Pending a
+  review of that design before it is built; the open call is whether the convenience is worth the one
+  extra worker-handled request shape.
 - **Periodic sync vs push overlap.** Both can drive a background refresh. If push covers the need on
   the platforms that matter, periodic sync may not be worth the second background actor; revisit when
   push graduates from gated.
