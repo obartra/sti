@@ -535,9 +535,11 @@ timer.
 - **iOS install friction.** Manual Add-to-Home-Screen has real drop-off, and it gates push on iOS.
   Open question whether a one-time, dismissible explainer in the push-enable flow lifts it enough to
   justify the copy, or whether we stay silent and accept fewer iOS push opt-ins.
-- **Precache size budget.** The shell must stay small enough to install fast on a weak connection.
-  Set a budget and fail the build if the precache manifest exceeds it, rather than discovering it on
-  a phone.
+- **Precache size budget (BUILT).** The shell must stay small enough to install fast on a weak
+  connection, so the precache plugin sums the precached files' bytes and FAILS the build when they
+  exceed `PRECACHE_BUDGET_BYTES` (`precachePlugin.ts`), caught here rather than on a phone. Raising
+  the budget is a deliberate, reviewable one-line change that surfaces the growth; dynamically
+  imported chunks (the QR scanner) are excluded from the shell and so do not count against it.
 - **Wallet passes vs install.** The live-status wallet pass (doc 02, doc 03) is the OS-native offline
   status surface; the installed PWA is the app surface. They are complementary, not a choice; keep
   the two from implying different freshness rules to the user.
