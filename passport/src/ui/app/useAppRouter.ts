@@ -64,6 +64,11 @@ function routeFromLocation(): Route | null {
   if (/^\/exposed\/?$/.test(window.location.pathname)) {
     return { screen: "exposed", group: "public", data: null };
   }
+  // The public promises page owns /promises (the in-app, test-backed guarantees,
+  // not a separate static report). Anonymous-reachable, like /exposed.
+  if (/^\/promises\/?$/.test(window.location.pathname)) {
+    return { screen: "promises", group: "public", data: null };
+  }
   // A Findable name link `/u/{name}` (doc 17). Gated until launch; when on, route
   // to the resolve step, which looks the name up and hands into the knock flow (a
   // findable name carries no key, so it's the keyless gated path).
@@ -113,7 +118,10 @@ export function useAppRouter(initial: Route = START): Router {
     const onAliasLink = route.screen === "a2-public" && route.data?.key != null;
     // Leave the canonical public /exposed URL alone too (it is the shared link).
     if (onAliasLink || route.screen === "exposed") return;
-    const target = `/#${route.screen}`;
+    // promises has a clean, shareable, anonymous-reachable path; everything else
+    // is hash-routed off the root.
+    const target =
+      route.screen === "promises" ? "/promises" : `/#${route.screen}`;
     if (window.location.pathname + window.location.hash !== target) {
       window.history.replaceState(null, "", target);
     }

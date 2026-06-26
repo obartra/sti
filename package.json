@@ -10,7 +10,6 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
-    "promises": "node deploy/build-promises.mjs",
     "behaviors": "node deploy/build-behaviors.mjs",
     "site": "bash deploy/build-site.sh",
     "test": "node --test 'test/**/*.test.mjs'",

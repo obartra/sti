@@ -68,6 +68,9 @@ const PUBLIC: readonly Screen[] = [
   "a2-public",
   "exposed",
   "u-resolve",
+  // The promises page is the public trust page (reachable at /promises without an
+  // account), so it renders in the public shell, not behind the app's login gate.
+  "promises",
 ];
 const ONBOARD: readonly Screen[] = ["b1-claim", "b2-recovery", "b3-setup"];
 
