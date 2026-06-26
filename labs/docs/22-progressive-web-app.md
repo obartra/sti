@@ -346,9 +346,13 @@ Each slice is independently shippable and leaves the app correct.
    push still need the network (a viewer fetches the alias from the server), so those stay online;
    an expired link's server-side revoke lingers offline until reconnect (doc 16); and the reconnect
    drain re-publishes even after a profile-only offline edit (one extra decorrelated write, harmless).
-5. **Periodic Background Sync**, gated off by default, behind the same review the push wake passed.
+5. **Reconnect catch-up, RECONSIDERED (section M).** Periodic background sync is replaced by a
+   reconnect/foreground inbox catch-up (`useReconnectCatchup`, BUILT) plus a recommended long-TTL push,
+   which reach low-connectivity users without the device-initiated cadence leak. The timer is not
+   shipped.
 
-Slices 1 to 4 are built. Slice 5 stays gated off by the security review (section L).
+Slices 1 to 4 are built; slice 5 is reconsidered as a reconnect catch-up (section M, the catch-up
+hook is built; long-TTL push is the recommended server follow-up).
 
 ## K. Testing and gates
 
@@ -409,7 +413,47 @@ handler fails open to the network so a worker bug degrades to a plain online bro
   ever want to raise it: pin the worker build in CI, keep the worker scope minimal, and prefer a
   short, auditable worker over a large one.
 
-## M. Open questions and residuals
+## M. Slice 5 reconsidered: reach for low-connectivity users without the leak
+
+Slice 5 was "periodic background sync." On a closer look it is the wrong tool for the user it would
+most help, so this section replaces it. The persona is someone with **intermittent** internet
+(limited data, rural, travelling). Their real need is not "poll on a clock"; it is **don't miss a
+partner-notify** ("go get tested"), and **don't burn battery or data, and don't nag**.
+
+**Why a timer fights itself here.** The security review's two leaks (S4) are a *cadence fingerprint*
+(regular polling is a clock the server sees) and *co-read correlation* (reading all your inbox hashes
+in one pass groups your contacts). The standard fixes, decorrelate the reads and add cover reads,
+cost *more requests and more data*, which is exactly what this persona cannot spend. A fixed timer is
+the worst of both: a fingerprint for the server and a data bill for the user.
+
+**The better shape: catch up on reconnect, not on a clock.** A low-connectivity device is online in
+*unpredictable bursts*, and that irregularity is the privacy feature: reads that fire on the user's
+own reconnects have **no clean cadence to fingerprint**. So:
+
+1. **Lean on Web Push store-and-forward (no new device actor).** Give the contentless cover-wake a
+   **long TTL**. Web Push holds an undelivered wake and delivers it when the device next reconnects
+   (within TTL). This reuses the existing server-to-device cover-broadcast (which already hides
+   *which* device), stays contentless, and "just works" after hours offline, with no polling and no
+   battery cost. This is the biggest win and needs no periodic sync. Server-side change (the push
+   sender, doc 13), recommended next; limited only by the push service's TTL ceiling and by the
+   device having a subscription (iOS 16.4+ installed PWA qualifies).
+2. **Reconnect / foreground catch-up as the fallback (BUILT).** `useReconnectCatchup` re-pulls the
+   owner's quiet inbox the moment connectivity returns, reusing the existing foreground owner-pull
+   (the same read that opening the app already does), so it adds **no new cadence**. It covers the
+   case where push is unavailable (declined, or an older platform). The co-read correlation is the
+   one residual; because this is an occasional catch-up (not a constant stream) it is affordable to
+   decorrelate it (jittered per-inbox reads) and, later, mix in sampled cover reads.
+
+**If a true background periodic poll is ever wanted** (app closed, online, push unavailable, a narrow
+niche), the hard requirements to make it "safe enough" are: a **randomized, non-fixed cadence** (kill
+the fingerprint), **decorrelated + cover reads** (kill the co-read), **per-pass sampling** (the rest
+catch up via push or the next pass), **opt-in and off by default**, and **gated to charging +
+unmetered**. The irony to state plainly: those mitigations spend the very data the low-connectivity
+persona is conserving, so that path serves the *high*-connectivity-but-app-closed user, not the one
+this section is about. Hence the recommendation: ship push-TTL + reconnect catch-up; do not ship the
+timer.
+
+## N. Open questions and residuals
 
 - **`share_target`** (receive a shared passport link into the installed app). Deferred: it is an
   existence-and-routing surface that belongs with link resolution (doc 16), not the manifest. Decide
