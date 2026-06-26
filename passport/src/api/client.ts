@@ -28,6 +28,7 @@ export type ApiErrorKind =
   | "forbidden" // 403, e.g. a write-token mismatch
   | "badRequest" // 400, including a malformed id
   | "tooLarge" // 413, account blob over the cap
+  | "conflict" // 409, an account PUT lost an optimistic-concurrency race (doc 22 S8)
   | "protocol"; // a response that violates the contract
 
 export class ApiError extends Error {
@@ -270,6 +271,7 @@ async function fetchKnockReview(
 function statusToKind(status: number): ApiErrorKind {
   if (status === 429) return "rateLimited";
   if (status === 403) return "forbidden";
+  if (status === 409) return "conflict"; // stale optimistic-concurrency version
   if (status === 413) return "tooLarge";
   if (status === 400) return "badRequest";
   if (status === 503) return "unreachable"; // load-shed degrades to gray
@@ -369,8 +371,9 @@ function accountMethods(
         "Content-Type": OCTET_STREAM,
         [HEADER_WRITE_TOKEN]: writeToken,
       };
-      // Advisory today (the server is last-write-wins); sent for forward-compat
-      // with optimistic concurrency.
+      // The optimistic-concurrency precondition (doc 22 S8): when sent, the server
+      // refuses a stale overwrite with 409 (ApiError "conflict"); when omitted, the
+      // write is an unconditional last-write-wins overwrite.
       if (ifVersion !== undefined) headers[HEADER_VERSION] = ifVersion;
       const res = await call(PATHS.accountPrefix + id, {
         method: "PUT",

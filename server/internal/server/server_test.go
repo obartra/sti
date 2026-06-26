@@ -428,6 +428,49 @@ func TestAccountSyncRoundTrip(t *testing.T) {
 	}
 }
 
+// A PUT may carry an X-Version precondition for optimistic concurrency (doc 22 S8):
+// naming the current version overwrites and bumps it; naming a stale one is a 409
+// that leaves the blob untouched and reports the current version back; a malformed
+// version is a 400; and no header stays unconditional (last-write-wins, as before).
+func TestAccountVersionPrecondition(t *testing.T) {
+	h := newTestServer(t)
+	id := randID(t)
+
+	put := func(body, ifVersion string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest("PUT", contract.PathAccountPrefix+id, strings.NewReader(body))
+		req.Header.Set(contract.HeaderWriteToken, "owner-wt")
+		if ifVersion != "" {
+			req.Header.Set(contract.HeaderVersion, ifVersion)
+		}
+		return do(h, req)
+	}
+
+	if rec := put("v1", ""); rec.Code != http.StatusNoContent {
+		t.Fatalf("create: %d, want 204", rec.Code)
+	}
+	// Naming the current version (1) succeeds and bumps to 2.
+	if rec := put("v2", "1"); rec.Code != http.StatusNoContent || rec.Header().Get(contract.HeaderVersion) != "2" {
+		t.Fatalf("matched precondition: code=%d version=%q, want 204/2", rec.Code, rec.Header().Get(contract.HeaderVersion))
+	}
+	// Naming the now-stale version (1) is a 409; the current version comes back so
+	// the client can reload, merge, and retry against it.
+	stale := put("v3", "1")
+	if stale.Code != http.StatusConflict || stale.Header().Get(contract.HeaderVersion) != "2" {
+		t.Fatalf("stale precondition: code=%d version=%q, want 409/2", stale.Code, stale.Header().Get(contract.HeaderVersion))
+	}
+	if get := do(h, httptest.NewRequest("GET", contract.PathAccountPrefix+id, nil)); get.Body.String() != "v2" {
+		t.Fatalf("after 409: body=%q, want v2 unchanged", get.Body.String())
+	}
+	// A malformed version is a 400, never a silent unconditional write.
+	if rec := put("v4", "not-a-number"); rec.Code != http.StatusBadRequest {
+		t.Fatalf("malformed version: %d, want 400", rec.Code)
+	}
+	// No header stays unconditional: it overwrites regardless of the current version.
+	if rec := put("v5", ""); rec.Code != http.StatusNoContent || rec.Header().Get(contract.HeaderVersion) != "3" {
+		t.Fatalf("unconditional overwrite: code=%d version=%q, want 204/3", rec.Code, rec.Header().Get(contract.HeaderVersion))
+	}
+}
+
 // The account write token gates overwrite and delete (symmetric with aliases):
 // knowing the id (which travels on the wire) is not enough. A PUT or DELETE with no
 // token is a 400; with a wrong token a 403 that changes nothing; GET stays open

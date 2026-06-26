@@ -294,47 +294,69 @@ func (s *Store) GetInbox(ctx context.Context, id string) (ciphertext []byte, fou
 
 // --- Account sync blob ------------------------------------------------------
 
-// PutAccount stores or replaces the account blob (last-write-wins) and returns the
-// new monotonically increasing version. writeAuth is the account write-token hash:
-// the first write binds it as the row's capability, and a later overwrite must
-// present the same hash. authorized=false (with version 0) means the row exists
-// under a different token, so the caller (who only knows the id) is not the owner.
+// PutAccount stores or replaces the account blob and returns the new monotonically
+// increasing version. writeAuth is the account write-token hash: the first write
+// binds it as the row's capability, and a later overwrite must present the same
+// hash. authorized=false (with version 0) means the row exists under a different
+// token, so the caller (who only knows the id) is not the owner.
+//
+// expectedVersion gates the write for optimistic concurrency (doc 22 S8). Zero means
+// UNCONDITIONAL (last-write-wins, the legacy behavior for a client that sends no
+// X-Version). A positive value asserts the caller based its edit on that stored
+// version: if the row has moved on (another device wrote first) or no longer exists,
+// the write is refused with conflict=true and the stored blob is left untouched
+// (returning the current version), so the caller can reload, merge, and retry rather
+// than clobber. Authorization is checked before the version, so a wrong-token caller
+// always gets the uniform not-authorized result and never learns the version.
+//
 // An empty stored write_auth is treated as UNBOUND and rebinds to writeAuth, so a
 // row migrated in before this column existed is claimable by its owner's next write.
-func (s *Store) PutAccount(ctx context.Context, id string, ciphertext []byte, writeAuth string, now int64) (version int64, authorized bool, err error) {
+func (s *Store) PutAccount(ctx context.Context, id string, ciphertext []byte, writeAuth string, expectedVersion, now int64) (version int64, authorized, conflict bool, err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return 0, false, err
+		return 0, false, false, err
 	}
 	defer tx.Rollback()
 
 	var stored string
-	switch err := tx.QueryRowContext(ctx, `SELECT write_auth FROM account WHERE id = ?`, id).Scan(&stored); {
+	var current int64
+	switch err := tx.QueryRowContext(ctx, `SELECT write_auth, version FROM account WHERE id = ?`, id).Scan(&stored, &current); {
 	case errors.Is(err, sql.ErrNoRows):
+		// No row yet. A precondition on a specific version cannot hold against a
+		// missing row (deleted, or never created), so refuse rather than silently
+		// create a competing first version that would discard the caller's premise.
+		if expectedVersion != 0 {
+			return 0, true, true, tx.Commit()
+		}
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO account (id, ciphertext, version, updated_at, write_auth) VALUES (?, ?, 1, ?, ?)`,
 			id, ciphertext, now, writeAuth); err != nil {
-			return 0, false, err
+			return 0, false, false, err
 		}
 		version = 1
 	case err != nil:
-		return 0, false, err
+		return 0, false, false, err
 	default:
 		// A non-empty stored token must match; an empty one is unbound and rebinds.
 		if stored != "" && subtle.ConstantTimeCompare([]byte(stored), []byte(writeAuth)) != 1 {
-			return 0, false, nil
+			return 0, false, false, nil
+		}
+		// Optimistic-concurrency precondition: refuse a write based on a stale
+		// version, leaving the stored blob untouched (the caller reloads and merges).
+		if expectedVersion != 0 && current != expectedVersion {
+			return current, true, true, tx.Commit()
 		}
 		if err := tx.QueryRowContext(ctx,
 			`UPDATE account SET ciphertext = ?, version = version + 1, updated_at = ?, write_auth = ?
 			 WHERE id = ? RETURNING version`,
 			ciphertext, now, writeAuth, id).Scan(&version); err != nil {
-			return 0, false, err
+			return 0, false, false, err
 		}
 	}
 	if err := tx.Commit(); err != nil {
-		return 0, false, err
+		return 0, false, false, err
 	}
-	return version, true, nil
+	return version, true, false, nil
 }
 
 // DeleteAccount removes the account blob unconditionally. This is the ADMIN path

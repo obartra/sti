@@ -427,19 +427,20 @@ handler fails open to the network so a worker bug degrades to a plain online bro
 - **Closed-app flush of write-bearing ops (S1).** Because the worker has no master key, sealed
   outbound ops flush only on the next unlocked foreground, not headless. Accepted in exchange for not
   exposing write tokens at rest.
-- **Multi-device concurrent offline edits are last-write-wins (S8).** `offlineSync.save` and
-  `drainBlob` push the whole sealed blob with the account write token and no version guard, so the
-  server keeps whatever lands last. If one device edits while offline and another edits the same
-  account meanwhile, the reconnecting device's drain overwrites the other's change. This is a
-  correctness residual, not a privacy one (the blob is the owner's own data, so nothing leaks and no
-  other user is affected), and a lost edit is recoverable by redoing it. It is accepted for now
-  because the dominant case is a single writing device. The fix, when it is wanted, is optimistic
-  concurrency: the server stores an opaque version/etag for the account record, `putAccount` carries
-  the version the edit was based on, the server rejects a stale push, and the client then re-loads,
-  **merges the two blobs client-side** (the server is blind and cannot merge), and re-pushes. That
-  merge is its own correctness surface and touches the deliberately minimal blind-store contract, so
-  it is a scoped follow-up rather than something this slice bakes in (see also the multi-device
-  X-Version note in doc 09/10 if it lands there first).
+- **Multi-device concurrent offline edits (S8): server half enforced, client merge pending.** The
+  account record already carries a monotonic version, and the account PUT now honors an optional
+  `X-Version` precondition: a write that names a stale version is refused with `409` (the stored blob
+  untouched, the current version returned), while a write with no header stays an unconditional
+  last-write-wins overwrite, exactly as before. This is a correctness concern, not a privacy one (the
+  blob is the owner's own data, so nothing leaks and no other user is affected). What remains is the
+  CLIENT half: `offlineSync` still pushes without a precondition (so today's behavior is unchanged),
+  and to actually resolve a conflict it must track the base version it loaded, send it on save/drain,
+  and on a `409` re-load the server blob and **3-way merge it client-side** (base, mine, theirs, since
+  the blind server cannot merge) before retrying. The merge needs the common-ancestor blob stored
+  alongside the working copy and is its own correctness surface, so it is the next scoped slice rather
+  than something baked in here. Until it lands, a stale write simply does what it does today; the
+  enforced precondition is the foundation that makes the safe merge possible without changing the
+  blind-store contract's shape.
 - **Periodic Background Sync (S4)** stays gated off until its review clears the device-side cadence
   and co-read signals; it is not assumed safe by analogy to push.
 - **Compromised build or hosting pipeline (the ceiling).** A service worker is a persistent actor:

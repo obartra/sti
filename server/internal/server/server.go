@@ -742,7 +742,15 @@ func (s *Server) handleAccountPut(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "missing write token")
 		return
 	}
-	version, ok, err := s.st.PutAccount(r.Context(), id, body, hashToken(token), s.now())
+	// Optional optimistic-concurrency precondition (doc 22 S8). Absent means an
+	// unconditional last-write-wins overwrite, exactly as before; present asserts the
+	// version the edit was based on, so a stale write is refused rather than clobbering.
+	expectedVersion, err := parseExpectedVersion(r.Header.Get(contract.HeaderVersion))
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed version")
+		return
+	}
+	version, ok, conflict, err := s.st.PutAccount(r.Context(), id, body, hashToken(token), expectedVersion, s.now())
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
 		return
@@ -753,8 +761,30 @@ func (s *Server) handleAccountPut(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusForbidden, contract.ErrBadRequest, "write token does not match")
 		return
 	}
+	if conflict {
+		// Another device wrote first (or the row is gone): the stored blob is
+		// untouched. Hand back the current version so the client can reload, merge,
+		// and retry against it rather than overwrite the other device's edit.
+		w.Header().Set(contract.HeaderVersion, strconv.FormatInt(version, 10))
+		s.writeError(w, http.StatusConflict, contract.ErrConflict, "version is stale")
+		return
+	}
 	w.Header().Set(contract.HeaderVersion, strconv.FormatInt(version, 10))
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// parseExpectedVersion reads the optional X-Version precondition on an account PUT.
+// Empty is the unconditional case (0). A present value must be a positive integer
+// (a real stored version starts at 1); anything else is a malformed request.
+func parseExpectedVersion(h string) (int64, error) {
+	if h == "" {
+		return 0, nil
+	}
+	v, err := strconv.ParseInt(h, 10, 64)
+	if err != nil || v < 1 {
+		return 0, errors.New("malformed version")
+	}
+	return v, nil
 }
 
 // handleAccountDelete removes the account blob. Authorized by the account write
