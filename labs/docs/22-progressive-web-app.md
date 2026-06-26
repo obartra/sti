@@ -396,11 +396,15 @@ in M, not a client TODO).
 - **Unit:** the cache-routing decision (which strategy per request) is pure (`swCache.ts`) and tests
   in Node with no DOM, like the rest of the core (`swCache.test.ts`); the update flow is unit-tested
   (`swUpdate.test.ts`) and `fake-indexeddb` backs the store tests.
-- **Lighthouse PWA audit (RECOMMENDED follow-up, not yet wired).** A category audit (installable,
-  manifest valid, offline-200) would catch mechanical regressions the unit/e2e specs above do not, but
-  it needs a served build plus Chrome in CI and is more flaky than the deterministic specs, so it is a
-  named follow-up rather than a shipped gate. The invariants it would assert are already covered
-  deterministically above; Lighthouse would add breadth, not replace them.
+- **Installability via the browser (BUILT).** A third e2e (`resolution.pw.spec.ts`) opens the served
+  app and asks Chrome, over CDP (`Page.getAppManifest`), for the manifest it actually resolved, then
+  asserts it is well-formed and installable (a manifest URL was linked, no parse errors, standalone
+  display, 192 + 512 icons). This catches what the static `manifest.test.ts` cannot: the manifest not
+  linked, 404ing, or served with the wrong type. We assert installability through the browser directly
+  because **Lighthouse removed its PWA category and installability audits in v12**, so a "Lighthouse
+  PWA gate" is no longer buildable against current Lighthouse (and its `service-worker` audit fights
+  our deliberate no-`clients.claim` lifecycle anyway). The CDP check is deterministic and reuses the
+  e2e harness, with no extra dependency.
 - **The standard gates** still apply: typecheck, lint, test, build, `build-storybook`, prettier,
   Go suite, no em dashes (CLAUDE.md).
 
