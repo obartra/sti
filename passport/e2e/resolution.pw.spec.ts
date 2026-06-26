@@ -192,6 +192,37 @@ test("the installed shell opens offline (doc 22 slices 2 + 4)", async ({
   await ctx.setOffline(false);
 });
 
+// The blind-server cache line as an executable spec (doc 22 sections D + K): the
+// worker precaches the data-free shell but NEVER an api.sti.care response, so no
+// per-id visit trail and no stale-blue can ever sit in CacheStorage. We open a real
+// blue card online (so a cross-origin API read definitely happens and HAS the chance
+// to be cached), wait for the worker, then enumerate every entry in every Cache the
+// worker owns and assert the shell IS cached but no api.sti.care URL ever is. This
+// asserts the invariant at its root (the fetch handler excludes the API origin, so
+// nothing from it is ever stored), which is stronger and steadier than driving the
+// offline UI: you cannot serve from a cache what was never written to one.
+test("the worker never writes an api.sti.care response into CacheStorage (doc 22 D/K)", async ({
+  page,
+}) => {
+  await page.goto(previewOrigin + cardPath, { waitUntil: "load" });
+  await expect(page.getByText(BLUE_HEADLINE)).toBeVisible(); // online: real API read
+  await page.evaluate(() => navigator.serviceWorker.ready);
+
+  const cachedUrls = await page.evaluate(async () => {
+    const names = await caches.keys();
+    const urls: string[] = [];
+    for (const name of names) {
+      const cache = await caches.open(name);
+      for (const req of await cache.keys()) urls.push(req.url);
+    }
+    return urls;
+  });
+
+  // The shell is cached (offline-capable), and nothing from the API origin is.
+  expect(cachedUrls.length).toBeGreaterThan(0);
+  expect(cachedUrls.filter((url) => url.startsWith(apiBase))).toEqual([]);
+});
+
 test("the Playwright suite covers every behavior it pins", () => {
   const ownedHere = BEHAVIORS.filter((b) => b.pin === E2E_PIN);
   for (const b of ownedHere) expect(covered.has(b.id)).toBe(true);

@@ -353,6 +353,8 @@ Each slice is independently shippable and leaves the app correct.
    push still need the network (a viewer fetches the alias from the server), so those stay online;
    an expired link's server-side revoke lingers offline until reconnect (doc 16); and the reconnect
    drain re-publishes even after a profile-only offline edit (one extra decorrelated write, harmless).
+   One more, named in full in section L: the blob push is **last-write-wins**, so two devices editing
+   the same account while one is offline can have the reconnecting device overwrite the other's edit.
 5. **Reconnect catch-up, RECONSIDERED (section M).** Periodic background sync is replaced by a
    reconnect/foreground inbox catch-up (`useReconnectCatchup`, BUILT) plus a recommended long-TTL push,
    which reach low-connectivity users without the device-initiated cadence leak. The timer is not
@@ -364,14 +366,28 @@ in M, not a client TODO).
 
 ## K. Testing and gates
 
-- **Lighthouse PWA audit** wired into CI as a gate (installable, manifest valid, offline-200). It
-  catches manifest and icon regressions mechanically.
-- **Playwright** already drives a service worker (doc 14) and can simulate offline: an e2e that
-  installs the worker, goes offline, reloads, and asserts the app shell renders and the badge is the
-  correct gray. A second asserts **no `api.sti.care` request is served from cache** (the privacy
-  invariant as an executable spec, the project's preferred shape).
-- **Unit:** the cache-routing decision (which strategy per request) is pure and tests in Node with
-  no DOM, like the rest of the core. `fake-indexeddb` already backs the store tests.
+- **Manifest and icon invariants as an executable unit spec (BUILT).** `manifest.test.ts` asserts the
+  manifest stays installable (standalone, hex theme/background, 192 + 512 + maskable icons that exist
+  on disk, base-agnostic relative srcs) and that `index.html` links it with a matching theme color and
+  an apple-touch icon. A regression that silently breaks "Add to home screen" fails the build.
+- **Playwright** drives the real worker against a throwaway server (doc 14) and exercises offline
+  (`e2e/resolution.pw.spec.ts`): one test installs the worker, goes offline, reloads, and asserts the
+  app shell still renders (BUILT); a second opens a real blue card online (so a cross-origin API read
+  definitely happens and could be cached), then enumerates every entry in every Cache the worker owns
+  and asserts the shell **is** cached but **no `api.sti.care` URL ever is** (BUILT). That asserts the
+  privacy invariant at its root, the fetch handler excludes the API origin so nothing from it is ever
+  stored, which is steadier than driving the offline UI (you cannot serve from a cache what was never
+  written to one). The pre-existing `client-gray-on-unreachable` separately pins the fail-closed-to-gray
+  rule online (API blocked), and the server sends `Cache-Control: no-store` on `/a/{id}` so the browser
+  HTTP cache cannot serve a stale blue either.
+- **Unit:** the cache-routing decision (which strategy per request) is pure (`swCache.ts`) and tests
+  in Node with no DOM, like the rest of the core (`swCache.test.ts`); the update flow is unit-tested
+  (`swUpdate.test.ts`) and `fake-indexeddb` backs the store tests.
+- **Lighthouse PWA audit (RECOMMENDED follow-up, not yet wired).** A category audit (installable,
+  manifest valid, offline-200) would catch mechanical regressions the unit/e2e specs above do not, but
+  it needs a served build plus Chrome in CI and is more flaky than the deterministic specs, so it is a
+  named follow-up rather than a shipped gate. The invariants it would assert are already covered
+  deterministically above; Lighthouse would add breadth, not replace them.
 - **The standard gates** still apply: typecheck, lint, test, build, `build-storybook`, prettier,
   Go suite, no em dashes (CLAUDE.md).
 
@@ -380,7 +396,8 @@ in M, not a client TODO).
 The PWA adds three new actors: a worker that intercepts navigations, a set of at-rest caches, and
 optional background runners. This section is the single place a reviewer checks that they did not
 weaken the project's invariants. The per-section fixes (S1 to S7) live where they bite; this
-summarizes what holds and what residuals are accepted.
+summarizes what holds and what residuals are accepted. S8 (below) is a residual named only here, with
+no in-place fix yet.
 
 **Invariants the PWA must preserve (and how):**
 
@@ -410,6 +427,19 @@ handler fails open to the network so a worker bug degrades to a plain online bro
 - **Closed-app flush of write-bearing ops (S1).** Because the worker has no master key, sealed
   outbound ops flush only on the next unlocked foreground, not headless. Accepted in exchange for not
   exposing write tokens at rest.
+- **Multi-device concurrent offline edits are last-write-wins (S8).** `offlineSync.save` and
+  `drainBlob` push the whole sealed blob with the account write token and no version guard, so the
+  server keeps whatever lands last. If one device edits while offline and another edits the same
+  account meanwhile, the reconnecting device's drain overwrites the other's change. This is a
+  correctness residual, not a privacy one (the blob is the owner's own data, so nothing leaks and no
+  other user is affected), and a lost edit is recoverable by redoing it. It is accepted for now
+  because the dominant case is a single writing device. The fix, when it is wanted, is optimistic
+  concurrency: the server stores an opaque version/etag for the account record, `putAccount` carries
+  the version the edit was based on, the server rejects a stale push, and the client then re-loads,
+  **merges the two blobs client-side** (the server is blind and cannot merge), and re-pushes. That
+  merge is its own correctness surface and touches the deliberately minimal blind-store contract, so
+  it is a scoped follow-up rather than something this slice bakes in (see also the multi-device
+  X-Version note in doc 09/10 if it lands there first).
 - **Periodic Background Sync (S4)** stays gated off until its review clears the device-side cadence
   and co-read signals; it is not assumed safe by analogy to push.
 - **Compromised build or hosting pipeline (the ceiling).** A service worker is a persistent actor:
