@@ -77,11 +77,11 @@ func TestAccountVersioning(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
-	v1, ok, err := s.PutAccount(ctx, "acc", []byte("v1"), "wt", 100)
+	v1, ok, _, err := s.PutAccount(ctx, "acc", []byte("v1"), "wt", 0, 100)
 	if err != nil || !ok || v1 != 1 {
 		t.Fatalf("first put: version=%d ok=%v err=%v, want 1/true", v1, ok, err)
 	}
-	v2, ok, err := s.PutAccount(ctx, "acc", []byte("v2"), "wt", 200)
+	v2, ok, _, err := s.PutAccount(ctx, "acc", []byte("v2"), "wt", 0, 200)
 	if err != nil || !ok || v2 != 2 {
 		t.Fatalf("second put: version=%d ok=%v err=%v, want 2/true", v2, ok, err)
 	}
@@ -92,7 +92,7 @@ func TestAccountVersioning(t *testing.T) {
 
 	// A write under a DIFFERENT token is refused and changes nothing: the bound
 	// capability gates overwrites, not just knowledge of the id.
-	if _, ok, err := s.PutAccount(ctx, "acc", []byte("evil"), "other-wt", 300); err != nil || ok {
+	if _, ok, _, err := s.PutAccount(ctx, "acc", []byte("evil"), "other-wt", 0, 300); err != nil || ok {
 		t.Fatalf("foreign-token put: ok=%v err=%v, want false/nil", ok, err)
 	}
 	if cipher, version, _, _ := s.GetAccount(ctx, "acc"); version != 2 || !bytes.Equal(cipher, []byte("v2")) {
@@ -115,6 +115,50 @@ func TestAccountVersioning(t *testing.T) {
 	}
 }
 
+// TestAccountOptimisticConcurrency exercises the X-Version precondition (doc 22 S8):
+// a write naming the current version succeeds and bumps it; one naming a stale
+// version is refused as a conflict with the stored blob left untouched; and a
+// precondition against a missing row is a conflict, never a silent create.
+func TestAccountOptimisticConcurrency(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	// A precondition against a row that does not exist yet is a conflict, not a
+	// silent first write that would discard the caller's premise.
+	if _, authorized, conflict, err := s.PutAccount(ctx, "acc", []byte("x"), "wt", 1, 100); err != nil || !authorized || !conflict {
+		t.Fatalf("precondition on missing row: authorized=%v conflict=%v err=%v, want true/true/nil", authorized, conflict, err)
+	}
+	if _, _, found, _ := s.GetAccount(ctx, "acc"); found {
+		t.Fatal("a refused precondition must not create the row")
+	}
+
+	// Unconditional create, then a conditional overwrite naming the right version.
+	v1, _, _, err := s.PutAccount(ctx, "acc", []byte("v1"), "wt", 0, 100)
+	if err != nil || v1 != 1 {
+		t.Fatalf("create: version=%d err=%v, want 1", v1, err)
+	}
+	v2, _, conflict, err := s.PutAccount(ctx, "acc", []byte("v2"), "wt", 1, 200)
+	if err != nil || conflict || v2 != 2 {
+		t.Fatalf("matched precondition: version=%d conflict=%v err=%v, want 2/false", v2, conflict, err)
+	}
+
+	// A stale precondition (the version has moved to 2) is refused; the stored blob
+	// and version are untouched, and the current version is reported back to merge on.
+	cur, authorized, conflict, err := s.PutAccount(ctx, "acc", []byte("stale"), "wt", 1, 300)
+	if err != nil || !authorized || !conflict || cur != 2 {
+		t.Fatalf("stale precondition: version=%d authorized=%v conflict=%v err=%v, want 2/true/true", cur, authorized, conflict, err)
+	}
+	if cipher, version, _, _ := s.GetAccount(ctx, "acc"); version != 2 || !bytes.Equal(cipher, []byte("v2")) {
+		t.Fatalf("after refused write: version=%d cipher=%q, want 2/v2 unchanged", version, cipher)
+	}
+
+	// A wrong token is refused as not-authorized even when the version WOULD match,
+	// so a non-owner never learns the version through the conflict path.
+	if _, authorized, conflict, err := s.PutAccount(ctx, "acc", []byte("evil"), "other", 2, 400); err != nil || authorized || conflict {
+		t.Fatalf("foreign token, right version: authorized=%v conflict=%v err=%v, want false/false/nil", authorized, conflict, err)
+	}
+}
+
 // A row whose write_auth is empty (a legacy row migrated in before the column
 // existed) is unbound: the owner's next write rebinds the real token, and after
 // that a foreign token is locked out.
@@ -127,10 +171,10 @@ func TestAccountEmptyAuthRebinds(t *testing.T) {
 		`INSERT INTO account (id, ciphertext, version, updated_at, write_auth) VALUES ('acc', 'old', 1, 1, '')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok, err := s.PutAccount(ctx, "acc", []byte("new"), "wt", 100); err != nil || !ok {
+	if _, ok, _, err := s.PutAccount(ctx, "acc", []byte("new"), "wt", 0, 100); err != nil || !ok {
 		t.Fatalf("rebind put: ok=%v err=%v, want true (empty auth is claimable)", ok, err)
 	}
-	if _, ok, err := s.PutAccount(ctx, "acc", []byte("evil"), "other", 200); err != nil || ok {
+	if _, ok, _, err := s.PutAccount(ctx, "acc", []byte("evil"), "other", 0, 200); err != nil || ok {
 		t.Fatalf("after rebind, foreign token: ok=%v, want false (now bound)", ok)
 	}
 }
@@ -623,7 +667,7 @@ func TestVanityReports(t *testing.T) {
 
 // Admin record management (doc 20 A3): force-delete an alias (it then reads as a
 // miss), release the vanity names pointing at it into the lock, and read opaque
-// metadata across the alias/account/inbox tables — never any content.
+// metadata across the alias/account/inbox tables, never any content.
 func TestAdminRecordManagement(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -632,7 +676,7 @@ func TestAdminRecordManagement(t *testing.T) {
 	if _, err := s.WriteAlias(ctx, "a1", []byte("cipher6"), "wt", 100, sql.NullInt64{}, false); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := s.PutAccount(ctx, "acc1", []byte("blob"), "wt", 200); err != nil {
+	if _, _, _, err := s.PutAccount(ctx, "acc1", []byte("blob"), "wt", 0, 200); err != nil {
 		t.Fatal(err)
 	}
 	if st, err := s.ClaimVanityName(ctx, "robin", "a1", 100); err != nil || st != VanityClaimed {

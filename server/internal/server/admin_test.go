@@ -410,7 +410,7 @@ func TestAdminAccountAliasManagement(t *testing.T) {
 
 	// Disable an account blob.
 	acct := randID(t)
-	if _, _, err := st.PutAccount(ctx, acct, []byte("blob"), "wt", 1); err != nil {
+	if _, _, _, err := st.PutAccount(ctx, acct, []byte("blob"), "wt", 0, 1); err != nil {
 		t.Fatal(err)
 	}
 	if rec := authed("POST", "/admin/account/"+acct+"/disable"); rec.Code != http.StatusNoContent {
@@ -448,7 +448,7 @@ func TestAdminAccountAliasManagement(t *testing.T) {
 
 	// Lookup returns opaque metadata for an existing record.
 	acct2 := randID(t)
-	if _, _, err := st.PutAccount(ctx, acct2, []byte("blob-data"), "wt", 5); err != nil {
+	if _, _, _, err := st.PutAccount(ctx, acct2, []byte("blob-data"), "wt", 0, 5); err != nil {
 		t.Fatal(err)
 	}
 	rec := authed("GET", "/admin/lookup/"+acct2)

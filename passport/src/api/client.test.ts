@@ -206,6 +206,14 @@ describe("account sync", () => {
       api.putAccount(GOOD_ID, new Uint8Array(1), "wt"),
     ).rejects.toMatchObject({ kind: "tooLarge" });
   });
+
+  it("maps 409 to conflict (a stale optimistic-concurrency version)", async () => {
+    const m = mockFetch(() => new Response(null, { status: 409 }));
+    const api = createApiClient(BASE, m.fetch);
+    await expect(
+      api.putAccount(GOOD_ID, new Uint8Array(1), "wt", "3"),
+    ).rejects.toMatchObject({ kind: "conflict" });
+  });
 });
 
 describe("notify, knock, health", () => {
