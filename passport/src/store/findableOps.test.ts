@@ -176,6 +176,36 @@ describe("releaseVanityName", () => {
     expect(next).toBe(session);
     expect(release).not.toHaveBeenCalled();
   });
+
+  // A revoke failure (the card overwrite did not land) must NOT tear down local
+  // state: dropping the alias while its card is still live would leave a "deleted"
+  // status card readable to anyone holding the bare alias id. The release rejects so
+  // the owner retries, with the alias + registration still in the blob.
+  it("keeps the alias and registration when the revoke fails", async () => {
+    const { api } = fakeApi({ registerResult: "registered" });
+    const accounts = createAccountManager(api);
+    const created = await accounts.create("robin");
+    const session: OwnerSession = {
+      master: created.master,
+      blob: created.blob,
+    };
+    const claimed = (await registerVanityName(api, accounts, session, "robin"))
+      .session;
+    const alias = claimed.blob.aliases[0];
+    // The revoke is a PUT to the alias id; make that PUT fail (the mint already ran).
+    api.putAlias = (id) =>
+      id === alias?.id
+        ? Promise.reject(new Error("network"))
+        : Promise.resolve();
+
+    await expect(releaseVanityName(api, accounts, claimed)).rejects.toThrow();
+
+    // Nothing was torn down: the persisted blob still has the registration and its
+    // alias, so the owner can retry.
+    const reloaded = (await accounts.recover(created.recoveryPhrase))?.blob;
+    expect(reloaded?.findable).toBeDefined();
+    expect(reloaded?.aliases.map((a) => a.id)).toContain(alias?.id);
+  });
 });
 
 // The findable alias must never be treated as the share-sheet link by ANY share

@@ -288,6 +288,53 @@ func TestCoverWakeNoPopulationDropsRealSend(t *testing.T) {
 	}
 }
 
+// With intake ON but NO Sender configured (a box without VAPID keys), the drain
+// must still reclaim queued real wakes, resolving nothing and delivering nothing,
+// so send_queue can never grow unbounded while it waits for keys. It must also not
+// fan out covers there is no transport to deliver, and must not panic dereferencing
+// the nil sender.
+func TestDrainReclaimsSendsWithNoSender(t *testing.T) {
+	ctx := context.Background()
+	s := newDrainServer(t, true, nil, 0) // enabled, but no Sender
+	registerRoute(t, s, "route-1")
+	ok(t, s.st.EnqueueSend(ctx, "route-1", 100, 100)) // a real, resolvable wake
+	ok(t, s.st.EnqueueSend(ctx, "probe", 100, 100))   // an unknown token
+
+	s.DrainSends(ctx, 200)
+
+	if d := sendDepth(t, s); d != 0 {
+		t.Fatalf("send queue must drain with no sender, depth %d", d)
+	}
+	if d := coverDepth(t, s); d != 0 {
+		t.Fatalf("no covers should be fanned out with no sender, depth %d", d)
+	}
+}
+
+// A push service reporting a subscription gone (404/410 -> ErrSubscriptionGone)
+// prunes that endpoint and clears the cover, rather than retaining it for a retry
+// that could only fail again and keeping a dead route in every future broadcast.
+func TestCoverWakePrunesGoneSubscription(t *testing.T) {
+	ctx := context.Background()
+	ms := &mockSender{err: ErrSubscriptionGone}
+	s := newDrainServer(t, true, ms, 0)
+	registerRoute(t, s, "route-1")
+	ok(t, s.st.EnqueueSend(ctx, "route-1", 100, 100))
+
+	s.DrainSends(ctx, 200)
+
+	if ms.count() != 1 {
+		t.Fatalf("want 1 delivery attempt, got %d", ms.count())
+	}
+	eps, err := s.st.PushEndpoints(ctx, "route-1")
+	ok(t, err)
+	if len(eps) != 0 {
+		t.Fatalf("gone subscription should be pruned, %d remain", len(eps))
+	}
+	if d := coverDepth(t, s); d != 0 {
+		t.Fatalf("cover must clear after pruning a gone target, depth %d", d)
+	}
+}
+
 func notifyReq(tokenHash string) *http.Request {
 	return httptest.NewRequest("POST", contract.PathNotify,
 		strings.NewReader(`{"tokenHash":"`+tokenHash+`"}`))

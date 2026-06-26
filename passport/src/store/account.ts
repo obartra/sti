@@ -413,19 +413,25 @@ export function createAccountManager(
         throw new Error("setOwnerState: no account exists for this key");
       }
       const nowDay = todayEpochDay();
+      // swept holds the pruned blob once the sweep (server revoke + drop) lands, so
+      // the catch can persist THAT rather than the pre-sweep blob. Resurrecting the
+      // already-revoked expired links (the old behavior) would list dead links whose
+      // server payloads are gone.
+      let swept: AccountBlob | null = null;
       try {
         // Online path: sweep expired links (revoke + drop), save, then republish
         // the new badge to the survivors. Expiry is ms; the clock is day-granular.
-        const next = await sweepExpired(api, blob, state, nowMs());
-        await sync.save(master, next);
-        await republishLiveLinks(api, next, nowDay);
-        return next;
+        swept = await sweepExpired(api, blob, state, nowMs());
+        await sync.save(master, swept);
+        await republishLiveLinks(api, swept, nowDay);
+        return swept;
       } catch {
-        // Offline, or a server step failed: keep the state change durable WITHOUT
-        // the server steps (no revoke/republish offline; expired links linger per
-        // doc 16). The offline-tolerant sync saves locally and marks the account
-        // pending; the reconnect drain re-runs this path to sweep + republish.
-        const next: AccountBlob = { ...blob, state };
+        // Offline, or a server step failed. If the sweep already completed, keep its
+        // pruned result (never the pre-sweep blob, which would resurrect the revoked
+        // links); otherwise fall back to a state-only durable save that lets expired
+        // links linger (doc 16, the genuinely-offline case). Either way the state
+        // change is durable and the reconnect drain re-runs sweep + republish.
+        const next: AccountBlob = swept ?? { ...blob, state };
         await sync.save(master, next);
         return next;
       }

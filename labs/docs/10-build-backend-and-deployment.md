@@ -69,14 +69,18 @@ the hot path (resolving a public alias from a shared link) is a single indexed l
 
 ### The whole API surface
 
-It is small on purpose. Every value below is opaque to the server.
+It is small on purpose. Every value below is opaque to the server. This is the v1
+core read/write surface; later work adds routes around it (the notify inbox in doc
+13, the Findable `/u` directory in doc 17, `/republish` in doc 11, and the gated
+`/admin/*` surface in doc 20), all still opaque-only.
 
 | Route                       | Does                                                            | Notes                                                                 |
 | --------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------- |
 | `GET /a/{id}`               | Return alias ciphertext (the hot read: passport resolution)    | Cloudflare proxies but does not cache it in v1 (see §C). Decoy bytes on a miss. |
-| `GET /acct/{id}`            | Return the account sync blob                                    | Addressed by an opaque, key-derived id.                             |
-| `PUT /acct/{id}`            | Replace the account sync blob                                   | Last-write-wins in v1; the `version` column is reserved so optimistic `If-Match` can be added later without a migration. |
-| `POST /notify`             | Enqueue a contentless wake for `hash(notify_token)`            | Server resolves token-hash, then `routing_endpoint_id`, then enqueues. |
+| `GET /acct/{id}`            | Return the account sync blob                                    | Addressed by an opaque, key-derived id. Returns the stored `version`. |
+| `PUT /acct/{id}`            | Replace the account sync blob                                   | Write-token gated, a per-account second factor symmetric with aliases (a leaked id alone cannot overwrite). Optional `X-Version` precondition gives optimistic concurrency: a stale write is refused with 409, not clobbered. |
+| `DELETE /acct/{id}`        | Remove the account sync blob                                   | Write-token gated like the PUT; idempotent. |
+| `POST /notify`             | Enqueue a contentless wake for `hash(notify_token)`            | Constant-time intake: enqueues the token hash without a lookup; the drain resolves real-vs-unknown off the request path (§F). |
 | `POST /push/register`      | Store a Web Push subscription for a `routing_endpoint_id`       | Contentless pings only.                                             |
 | `POST /knock/{id}`         | Contentless, rate-limited knock against an alias               | Auto-expiry ~4 days; per-requester and per-id limits (locked).     |
 
@@ -93,7 +97,7 @@ same value `opaque_handle`; the server never sees a user-visible handle, which l
 ciphertext, so the backend names it for what it is.)
 
 - `alias(id PK, ciphertext, updated_at)`: public and private passport payloads.
-- `account(id PK, ciphertext, version, updated_at)`: per-account sync blob; `version` is reserved for later optimistic concurrency (v1 is last-write-wins).
+- `account(id PK, ciphertext, version, updated_at, write_auth)`: per-account sync blob. `write_auth` (hash of the account write token) gates overwrite/delete; `version` backs the optimistic-concurrency precondition (`X-Version`, 409 on a stale write).
 - `notify_route(token_hash PK, routing_endpoint_id)`: routing for the anonymous nudge.
 - `push_endpoint(routing_endpoint_id, subscription, created_at)`: contentless wake targets.
 - `send_queue(id PK, routing_endpoint_id, available_at, created_at)`: the server-side send cycle (never surfaced to a user, per the locked two-timing-jobs rule). **v1 is a simple jittered single send** (a random delay before fan-out gives most of the observable timing decorrelation); the true cross-user batching cycle lands when there is a population to batch across. The two-timing-jobs principle stays locked either way.

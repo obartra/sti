@@ -515,12 +515,25 @@ type VanityReport struct {
 	CreatedAt int64
 }
 
-// AddVanityReport records one report against a name. reason is a fixed code the
-// caller has already validated. Append-only; cleared as a set on takedown/dismiss.
+// vanityReportsPerNameCap bounds how many report rows a single name can accumulate.
+// A sustained report flood against one registered name (which the read-side queue
+// aggregates anyway, and which volume never auto-acts on) would otherwise bloat the
+// table without bound until the name is released or taken down. The cap is generous:
+// the review queue prioritizes busiest-first, so a four-figure count already pins a
+// name to the top and capping past it loses no actionable signal.
+const vanityReportsPerNameCap = 1000
+
+// AddVanityReport records one report against a name, up to vanityReportsPerNameCap
+// rows per name. reason is a fixed code the caller has already validated. The
+// conditional insert caps the table without a second round trip; intake stays
+// existence-uniform because the caller returns the same 202 whether or not a row was
+// actually written. Append-only; cleared as a set on takedown/dismiss.
 func (s *Store) AddVanityReport(ctx context.Context, name, reason string, now int64) error {
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO vanity_report (name, reason, created_at) VALUES (?, ?, ?)`,
-		name, reason, now)
+		`INSERT INTO vanity_report (name, reason, created_at)
+		 SELECT ?, ?, ?
+		 WHERE (SELECT COUNT(*) FROM vanity_report WHERE name = ?) < ?`,
+		name, reason, now, name, vanityReportsPerNameCap)
 	return err
 }
 
@@ -694,6 +707,17 @@ func (s *Store) PushEndpoints(ctx context.Context, routingEndpointID string) ([]
 		out = append(out, t)
 	}
 	return out, rows.Err()
+}
+
+// DeletePushEndpoint removes a single Web Push subscription (a routing endpoint /
+// endpoint-URL pair). Called when the push service reports the subscription is gone
+// (404/410), so a dead endpoint stops inflating the cover-broadcast population and
+// is never retried. Idempotent: removing a missing pair is a no-op.
+func (s *Store) DeletePushEndpoint(ctx context.Context, routingEndpointID, endpoint string) error {
+	_, err := s.db.ExecContext(ctx,
+		`DELETE FROM push_endpoint WHERE routing_endpoint_id = ? AND endpoint = ?`,
+		routingEndpointID, endpoint)
+	return err
 }
 
 // DistinctPushRoutes returns every routing endpoint that has at least one

@@ -48,10 +48,12 @@ type Config struct {
 	// cross-origin (e.g. https://sti.care). Empty means no CORS, which is correct
 	// for same-origin or non-browser callers. No wildcard: each origin is listed.
 	AllowedOrigins []string
-	// NotifyEnabled gates targeted-wake delivery. Default false: the
-	// not-fully-blind targeted wake must not ship until the cover-wake
-	// decorrelation fix lands (doc 10 §F). Off => /notify enqueues nothing and the
-	// drain delivers nothing, so the feature is inert end to end.
+	// NotifyEnabled gates targeted-wake intake. main.go defaults it ON now that the
+	// cover-wake decorrelation fix has landed (doc 10 §F): a real wake fans out as a
+	// contentless broadcast across the whole push population, never reaching its
+	// recipient directly. Off => /notify enqueues nothing and the drain is a no-op.
+	// On but with no Sender => intake stays constant-time and the drain reclaims each
+	// queued wake without delivering, so the queue never grows unbounded.
 	NotifyEnabled bool
 	// Sender delivers contentless Web Push wakes. nil disables delivery (the
 	// default); set it only alongside NotifyEnabled.

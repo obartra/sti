@@ -184,9 +184,10 @@ established assumption in `accountBlob.ts`), so there is nothing to migrate.
 
 ## Honest limits (carried, stated)
 
-- **Avatar entropy is low.** The id-derived avatar draws from a few hundred combinations
-  (`avatars.ts`, doc 19: 12 hair x 7 mood x 5 tone), so two anonymous alias avatars can collide by
-  chance; the avatar is a weak signal.
+- **Avatar entropy is low.** The id-derived avatar draws from only a few hundred combinations
+  (`avatars.ts`, doc 19: a small set each of hairstyle x mood x skin tone x hair color; see the live
+  arrays for exact counts), so two anonymous alias avatars can collide by chance; the avatar is a weak
+  signal.
 - **The pseudonym is the real separator, so it is sized for it.** Anonymous unlinkability rests on
   `pseudonymFor` rarely colliding across the aliases one owner mints. The shipped wordlists are
   256 x 256 = 65,536 pairs (`pseudonymWords.ts`, matching the no-unique-tag promise). That keeps an

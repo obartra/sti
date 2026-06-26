@@ -131,8 +131,9 @@ The minimum required before findable mode ships:
 
 - **Charset + normalization:** `[a-z0-9_]` only, normalized to lowercase. No Unicode, which removes
   homoglyph/confusable attacks at the namespace level. Length 3 to 30.
-- **Allocation:** first-come-first-served. **Released on alias deletion or revocation** (the name
-  returns to the pool). No transfers, no marketplace.
+- **Allocation:** first-come-first-served. **Released on alias deletion or revocation**, into a
+  24-hour lock before the name returns to the pool (the lock prevents instant re-grab of a just-freed
+  name; see doc 17 for the allocation lifecycle). No transfers, no marketplace.
 - **Reserved + blocklist:** admin/support/official-style terms and an impersonation/abuse blocklist are
   unclaimable.
 - **Abuse handling:** look-alike impersonation within the charset is possible and handled **reactively**

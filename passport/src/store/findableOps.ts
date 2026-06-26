@@ -98,10 +98,10 @@ export async function registerVanityName(
 
 /**
  * Release the owner's claimed name: drop the server binding (into the 24h lock),
- * revoke the dedicated alias, and clear the registration. Order is fail-safe, the
- * server release first (so the name stops resolving), then the local teardown; a
- * release failure leaves everything in place for a retry. A no-op when no name is
- * claimed.
+ * revoke the dedicated alias (overwrite its card), and clear the registration. Order
+ * is fail-safe, the server release first (so the name stops resolving), then the
+ * revoke, then the local teardown; any server failure leaves everything in the blob
+ * for a retry. A no-op when no name is claimed.
  */
 export async function releaseVanityName(
   api: ApiClient,
@@ -115,9 +115,13 @@ export async function releaseVanityName(
   // blob) we cannot prove ownership, so skip the server call and just clear locally.
   if (alias !== undefined) {
     await api.releaseVanityName(reg.name, alias.writeToken);
-    await revokeAlias(api, alias).catch(() => undefined);
-  }
-  if (alias !== undefined) {
+    // Overwrite the public card so the released alias is not a reachable orphan. Do
+    // NOT swallow a failure here: if the revoke does not land, the card is still
+    // live, so the local teardown must not run (it would drop the alias from the
+    // blob and leave a status card the owner believes is gone, readable to anyone
+    // holding the bare alias id). Throwing keeps the alias + registration in place;
+    // a retry re-releases (idempotent on the server's 404) and re-revokes.
+    await revokeAlias(api, alias);
     await accounts.removeAlias(session.master, alias.id);
   }
   const blob = await accounts.setFindable(session.master, null);

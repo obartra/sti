@@ -93,8 +93,9 @@ aggregate form (section 9).
 All origin metrics below are **counters, gauges, and histograms** held in process and exposed on a
 loopback-only scrape endpoint (section 5). Every label space is small and fixed. The endpoint label
 is always the **route template** (`/a/{id}`, `/acct/{id}`, `/knock/{id}`, `/notify`,
-`/push/register`, `/healthz`, `/`), **never** the concrete path, so an id can never become a label
-value. That single discipline is the difference between safe and catastrophic, so it is called out
+`/push/register`, `/healthz`, `/`) or the catch-all `other` (into which every less-trafficked route
+collapses: the notify inbox, `/u`, `/republish`, `/vapid`, and `/admin/*`), **never** the concrete
+path, so an id can never become a label value. That single discipline is the difference between safe and catastrophic, so it is called out
 again in the audit.
 
 ### 3a. Capacity alerting: the first deliverable

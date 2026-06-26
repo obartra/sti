@@ -39,12 +39,12 @@ The two halves are built and tested independently.
 
 ```sh
 # Frontend (run inside passport/)
-pnpm -C passport dev               # local dev server
-pnpm -C passport test              # unit + integration (Vitest)
-pnpm -C passport typecheck         # tsc, strict
-pnpm -C passport lint              # ESLint
-pnpm -C passport build             # production build
-pnpm -C passport build-storybook   # Storybook for Chromatic
+npm --prefix passport run dev               # local dev server
+npm --prefix passport test                  # unit + integration (Vitest)
+npm --prefix passport run typecheck         # tsc, strict
+npm --prefix passport run lint              # ESLint
+npm --prefix passport run build             # production build
+npm --prefix passport run build-storybook   # Storybook for Chromatic
 
 # Backend (run inside server/)
 go build ./... && go test ./... && go vet ./...

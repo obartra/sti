@@ -665,6 +665,29 @@ func TestVanityReports(t *testing.T) {
 	}
 }
 
+// A sustained report flood against one name is capped so it can't bloat the table
+// without bound. Rows past the per-name cap are silently dropped (intake still
+// answers uniformly), and the aggregate count is pinned at the cap.
+func TestVanityReportPerNameCap(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+	if _, err := s.ClaimVanityName(ctx, "target", "alias-target", 1); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < vanityReportsPerNameCap+50; i++ {
+		if err := s.AddVanityReport(ctx, "target", "spam", int64(i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := s.PendingVanityReports(ctx, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Count != vanityReportsPerNameCap {
+		t.Fatalf("report count = %+v, want capped at %d", got, vanityReportsPerNameCap)
+	}
+}
+
 // Admin record management (doc 20 A3): force-delete an alias (it then reads as a
 // miss), release the vanity names pointing at it into the lock, and read opaque
 // metadata across the alias/account/inbox tables, never any content.

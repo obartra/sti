@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"math/rand/v2"
 
 	"sti.care/api/internal/metrics"
@@ -21,9 +22,9 @@ type Sender interface {
 // worked down steadily rather than in one unbounded sweep.
 const drainBatch = 256
 
-// DrainSends advances the two-stage wake pipeline (doc 13 §2). It is GATED OFF by
-// default: with NotifyEnabled false (or no Sender) it is a no-op, and since
-// handleNotify enqueues nothing while off, both queues stay empty.
+// DrainSends advances the two-stage wake pipeline (doc 13 §2). With NotifyEnabled
+// false it is a no-op, and since handleNotify enqueues nothing while off, both
+// queues stay empty.
 //
 // Stage 1 (fanOutCover): a real wake coming due never goes to its recipient
 // directly. Instead it fans out one cover wake per registered push route into the
@@ -33,14 +34,21 @@ const drainBatch = 256
 // Stage 2 (deliverCovers): cover wakes whose time has arrived are delivered
 // contentlessly and removed. Failed deliveries are retained for the next pass.
 //
+// With intake on but NO Sender configured, fanOutCover still runs and reclaims the
+// queued real jobs (so send_queue can never grow unbounded), but it skips the cover
+// broadcast (there is no transport to deliver), and deliverCovers is skipped so
+// s.sender is never dereferenced nil.
+//
 // Single-process: read, deliver, delete, with no claim step, which is correct for
 // the one background loop that calls this.
 func (s *Server) DrainSends(ctx context.Context, now int64) {
-	if !s.cfg.NotifyEnabled || s.sender == nil {
+	if !s.cfg.NotifyEnabled {
 		return
 	}
 	s.fanOutCover(ctx, now)
-	s.deliverCovers(ctx, now)
+	if s.sender != nil {
+		s.deliverCovers(ctx, now)
+	}
 }
 
 // fanOutCover turns every due real wake into a population-wide cover broadcast.
@@ -62,6 +70,14 @@ func (s *Server) fanOutCover(ctx context.Context, now int64) {
 		return
 	}
 	if len(real) == 0 {
+		return
+	}
+	if s.sender == nil {
+		// Intake is on but no Web Push transport is configured, so a cover broadcast
+		// could never be delivered. The constant-time intake already ran uniformly on
+		// the request path; here, off it, we simply reclaim the queued jobs rather than
+		// let send_queue grow forever waiting for a sender.
+		s.deleteAll(ctx, real)
 		return
 	}
 	anyReal, err := s.anyResolves(ctx, real)
@@ -149,11 +165,24 @@ func (s *Server) deliverCovers(ctx context.Context, now int64) {
 		}
 		delivered := true
 		for _, t := range targets {
-			if err := s.sender.Send(ctx, t); err != nil {
-				delivered = false
-				s.metrics.Error(metrics.ErrJanitor)
-				s.log.Error("push send", "err", err)
+			err := s.sender.Send(ctx, t)
+			if err == nil {
+				continue
 			}
+			if errors.Is(err, ErrSubscriptionGone) {
+				// A permanently dead subscription (the push service returned 404/410):
+				// prune it so it stops inflating every future cover broadcast and is
+				// never retried. Not counted as a delivery failure, retrying a gone
+				// endpoint can only fail again, so it must not pin the cover for retry.
+				if derr := s.st.DeletePushEndpoint(ctx, cover.RoutingEndpointID, t.Endpoint); derr != nil {
+					s.metrics.Error(metrics.ErrJanitor)
+					s.log.Error("prune dead push endpoint", "err", derr)
+				}
+				continue
+			}
+			delivered = false
+			s.metrics.Error(metrics.ErrJanitor)
+			s.log.Error("push send", "err", err)
 		}
 		if delivered {
 			if err := s.st.DeleteCover(ctx, cover.ID); err != nil {
