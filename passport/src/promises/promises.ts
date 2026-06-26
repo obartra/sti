@@ -186,11 +186,11 @@ export const PROMISES: readonly UserPromise[] = [
     plain:
       "Two people you share with can't tell they're both connected to you.",
     detail:
-      "Each link you hand out has its own made-up face, its own private inbox, and updates at its own time, so two of your links can't be matched back to one person.",
+      "Each link you hand out has its own made-up handle and avatar, its own private inbox, and updates at its own time, so two of your links can't be matched back to one person.",
     assertions: [
       {
         claim:
-          "Each link's face comes from its random id out of tens of thousands of combinations, so two links rarely look alike.",
+          "Each link's handle comes from its random id out of tens of thousands of combinations, so two links rarely match.",
         backedBy: {
           kind: "test",
           file: "src/lib/avatars.test.ts",
@@ -220,9 +220,9 @@ export const PROMISES: readonly UserPromise[] = [
   {
     id: "no-unique-tag",
     plain:
-      "Your name and face are never a unique tag, and never sit in a link.",
+      "Your handle and avatar are never a unique tag, and never sit in a link.",
     detail:
-      "The face and handle on a private link are invented from the link's random id, not from you, and the web address never contains your name or face.",
+      "The handle and avatar on a private link are made up from the link's random id, not from you, and the web address never contains them.",
     assertions: [
       {
         claim:
