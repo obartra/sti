@@ -2,11 +2,9 @@ package server
 
 import (
 	"bytes"
-	"context"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -18,17 +16,11 @@ import (
 // slog writes to, so a test can scrape metrics and inspect log output.
 func newInstrumented(t *testing.T) (*Server, *store.Store, *bytes.Buffer) {
 	t.Helper()
-	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "t.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { st.Close() })
-	secret := make([]byte, 32)
-	for i := range secret {
-		secret[i] = byte(i + 1)
-	}
+	st := openTestStore(t)
+	// This is the one constructor that captures logs (to assert no id leaks into
+	// them), so it wires its own buffer-backed logger rather than using newServer.
 	var logBuf bytes.Buffer
-	srv := New(st, Config{DecoySecret: secret}, slog.New(slog.NewTextHandler(&logBuf, nil)), nil)
+	srv := New(st, Config{DecoySecret: rampSecret()}, slog.New(slog.NewTextHandler(&logBuf, nil)), nil)
 	return srv, st, &logBuf
 }
 

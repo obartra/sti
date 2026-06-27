@@ -3,11 +3,8 @@ package server
 import (
 	"context"
 	"errors"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -48,17 +45,8 @@ func (m *mockSender) setErr(err error) {
 
 func newDrainServer(t *testing.T, enabled bool, sender Sender, coverWindow time.Duration) *Server {
 	t.Helper()
-	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "t.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { st.Close() })
-	secret := make([]byte, 32)
-	for i := range secret {
-		secret[i] = byte(i + 1)
-	}
-	return New(st, Config{DecoySecret: secret, NotifyEnabled: enabled, Sender: sender, CoverWindow: coverWindow},
-		slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+	srv, _ := newServer(t, Config{NotifyEnabled: enabled, Sender: sender, CoverWindow: coverWindow}, nil)
+	return srv
 }
 
 func ok(t *testing.T, err error) {

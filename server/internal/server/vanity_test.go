@@ -21,21 +21,11 @@ import (
 // handler, the store, and the injectable clock so tests can advance past the lock.
 func newFindableServer(t *testing.T, lock time.Duration) (http.Handler, *store.Store, *int64) {
 	t.Helper()
-	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "t.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { st.Close() })
-	secret := make([]byte, 32)
-	for i := range secret {
-		secret[i] = byte(i + 1)
-	}
 	clock := int64(1_000_000)
-	srv := New(st, Config{
-		DecoySecret:      secret,
+	srv, st := newServer(t, Config{
 		FindableEnabled:  true,
 		VanityLockWindow: lock,
-	}, slog.New(slog.NewTextHandler(io.Discard, nil)), func() int64 { return clock })
+	}, func() int64 { return clock })
 	return srv.Handler(), st, &clock
 }
 
