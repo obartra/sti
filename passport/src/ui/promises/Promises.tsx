@@ -158,7 +158,7 @@ export function Promises() {
           Our promises
         </h1>
         <p style={{ margin: 0, fontSize: 14, color: "var(--text-body)" }}>
-          Each one is backed by a real test that runs on every build, and goes
+          Each one is backed by a real test that runs on every version, and goes
           red the moment the promise stops being true.
         </p>
       </Card>
@@ -175,7 +175,7 @@ export function Promises() {
           lineHeight: 1.5,
         }}
       >
-        {`A "tested" line is pinned by a real test CI runs every build; break it, skip it, or delete it and the build fails. "by design" is an honest limit, stated not hidden.`}
+        {`A "tested" line is backed by a real test that runs on every version; remove or skip it and that version won't go out. "by design" is an honest limit, stated not hidden.`}
       </p>
     </div>
   );
