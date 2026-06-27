@@ -78,7 +78,16 @@ export const PROMISES: readonly UserPromise[] = [
       },
       {
         claim:
-          "An admin sign-in unlocks none of your content: the admin secret is never a decryption key, and admin tools only ever touch opaque records.",
+          "Our admin and stats tools never read your encrypted bytes: every server lookup except the two that return your encrypted card reads only its size and timestamps, never the content.",
+        backedBy: {
+          kind: "test",
+          file: "../server/internal/store/ciphertext_projection_test.go",
+          name: "TestCiphertextProjectionAllowlist",
+        },
+      },
+      {
+        claim:
+          "An admin sign-in is never a decryption key: the admin path holds no key material, so it can act on opaque records but read none of your content.",
         backedBy: {
           kind: "reasoning",
           why: "A structural property of the design (the admin path holds no key material); doc 20 and the blind-store boundary, not a single headless assertion.",
@@ -199,11 +208,11 @@ export const PROMISES: readonly UserPromise[] = [
       },
       {
         claim:
-          "Each contact gets their own notify inbox, not one shared inbox two contacts could compare.",
+          "Each contact gets their own inbox id, write token, key, and routing token, so two contacts can't compare their links and find they both reach you.",
         backedBy: {
           kind: "test",
-          file: "src/store/session.integration.test.ts",
-          name: "a mutual contact-link exchange links two owners both ways",
+          file: "src/store/shareOps.test.ts",
+          name: "fully distinct notify capability",
         },
       },
       {
@@ -240,6 +249,15 @@ export const PROMISES: readonly UserPromise[] = [
           kind: "test",
           file: "src/ui/app/screens/publicScreens.test.tsx",
           name: "hands a resolved name to a2-public WITHOUT a key",
+        },
+      },
+      {
+        claim:
+          "The face on a private link is drawn from the link's random id, not from any name you pick, so it is the same for that link every time and never a tag tied to you.",
+        backedBy: {
+          kind: "test",
+          file: "src/ui/share/ShareSheet.identity.test.tsx",
+          name: "deterministic per alias id",
         },
       },
     ],
