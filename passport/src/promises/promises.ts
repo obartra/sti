@@ -96,6 +96,32 @@ export const PROMISES: readonly UserPromise[] = [
     ],
   },
   {
+    id: "no-name",
+    plain: "We never ask for or hold your name.",
+    detail:
+      "There is no name field anywhere in what we store. A public name you can choose to claim is a label for a link, not your real name, and it exists only if you opt in.",
+    assertions: [
+      {
+        claim:
+          "The account we store for you has no real-name field of any kind: the saved shape is a fixed set of allowed fields, and a name is not one of them.",
+        backedBy: {
+          kind: "test",
+          file: "src/store/accountBlob.test.ts",
+          name: "never serializes a real-name field",
+        },
+      },
+      {
+        claim:
+          "The card a viewer reads carries a self-chosen handle and a status, never a real-name field.",
+        backedBy: {
+          kind: "test",
+          file: "src/store/publicCard.test.ts",
+          name: "the wire shape is a closed whitelist",
+        },
+      },
+    ],
+  },
+  {
     id: "cannot-tell-existence",
     plain: "No one can tell whether you've saved anything.",
     detail:
