@@ -93,6 +93,15 @@ describe("mintContactLink per-contact decorrelation (doc 13)", () => {
     expect(a.key).not.toBe(b.key);
     expect(a.routingToken).not.toBe(b.routingToken);
 
+    // The READ alias each contact resolves must also be freshly minted, not shared:
+    // a recipient holding two of the owner's links must see unrelated id/key/token,
+    // so they cannot tie the links to one owner. A hoisted publishCard fails here.
+    expect(first.contact.alias.id).not.toBe(second.contact.alias.id);
+    expect(first.contact.alias.key).not.toBe(second.contact.alias.key);
+    expect(first.contact.alias.writeToken).not.toBe(
+      second.contact.alias.writeToken,
+    );
+
     // The two invite URLs must carry different notify payloads (`n=`): the recipient
     // sees no shared bytes that could correlate the links to one owner.
     const nOf = (url: string): string => {
