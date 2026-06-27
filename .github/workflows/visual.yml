@@ -106,10 +106,18 @@ jobs:
       run:
         working-directory: passport
     steps:
+      # Push baselines with a PAT when one is configured. A commit pushed with the
+      # default GITHUB_TOKEN does NOT fire `push`/`pull_request`, so the required
+      # checks (check/passport/e2e/integration/server/visual) never run on the new
+      # head commit and the PR sits BLOCKED until someone close+reopens it. A
+      # fine-grained PAT (repo contents:write) in `SCREENSHOT_BOT_TOKEN` makes the
+      # baseline push re-trigger them automatically. Absent the secret this falls
+      # back to GITHUB_TOKEN (the prior behavior); the close+reopen workaround then
+      # still applies, and the push step logs a notice saying so.
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           ref: ${{ github.head_ref || github.ref_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.SCREENSHOT_BOT_TOKEN || secrets.GITHUB_TOKEN }}
           fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -124,6 +132,7 @@ jobs:
           REASON: ${{ github.event.inputs.reason || 'screenshot:update label triggered regeneration' }}
           ACTOR: ${{ github.actor }}
           BRANCH: ${{ github.head_ref || github.ref_name }}
+          HAS_PAT: ${{ secrets.SCREENSHOT_BOT_TOKEN != '' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -135,3 +144,6 @@ jobs:
           git diff --staged --stat visual-baselines/ | tail -20
           git commit -m "chore(visual): update baselines" -m "${REASON}" -m "Triggered by @${ACTOR} on ${BRANCH}."
           git push origin "HEAD:${BRANCH}"
+          if [ "${HAS_PAT}" != "true" ]; then
+            echo "::notice title=Baselines pushed with GITHUB_TOKEN::Required checks will not auto-rerun on this commit. Close+reopen the PR to trigger them, or set the SCREENSHOT_BOT_TOKEN secret (fine-grained PAT, contents:write) so future baseline pushes re-trigger CI automatically."
+          fi
