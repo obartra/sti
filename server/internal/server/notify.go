@@ -83,10 +83,16 @@ func (s *Server) fanOutCover(ctx context.Context, now int64) {
 		s.log.Error("cover routes", "err", err)
 		return
 	}
+	window := s.cfg.CoverWindow.Milliseconds()
 	for _, route := range routes {
 		// Jitter each cover independently across the window so the broadcast is a
-		// smear, not a synchronized burst. Window 0 means fire now (used in tests).
-		at := now + rand.Int64N(int64(s.cfg.CoverWindow.Milliseconds())+1)
+		// smear, not a synchronized burst. Window 0 (tests) or any non-positive value
+		// fires now; the guard mirrors the republish jitter so neither path can panic
+		// rand.Int64N on a non-positive bound.
+		at := now
+		if window > 0 {
+			at += rand.Int64N(window + 1)
+		}
 		if err := s.st.EnqueueCover(ctx, route, at, now); err != nil {
 			// A partial fan-out: leave the real jobs queued so the next pass redoes
 			// the whole broadcast. Duplicate contentless wakes are harmless.

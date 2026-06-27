@@ -121,6 +121,25 @@ func TestCoverWakeBroadcastsToWholePopulation(t *testing.T) {
 	}
 }
 
+// A non-positive CoverWindow (only reachable by constructing Config directly; the
+// boot path clamps it with max(..., 0)) must not panic rand.Int64N when fanning out
+// covers. This pins the guard that mirrors the republish jitter, so the two sibling
+// jitter paths stay consistent and a future unclamped caller cannot crash the
+// janitor goroutine.
+func TestCoverWakeNonPositiveWindowDoesNotPanic(t *testing.T) {
+	ctx := context.Background()
+	ms := &mockSender{}
+	s := newDrainServer(t, true, ms, -1*time.Millisecond)
+	registerRoute(t, s, "route-1")
+	ok(t, s.st.EnqueueSend(ctx, "route-1", 100, 100))
+
+	s.DrainSends(ctx, 200) // must not panic on the negative window
+
+	if ms.count() != 1 {
+		t.Fatalf("want 1 delivery to the single route, got %d", ms.count())
+	}
+}
+
 // The real recipient is woken exactly once (via the broadcast), never also
 // directly: the real job is dropped, not delivered.
 func TestCoverWakeDoesNotDoubleWakeRecipient(t *testing.T) {
