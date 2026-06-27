@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { previewFace, IdentityChoiceRow } from "./ShareSheet.identity.tsx";
+import { avatarFor, pseudonymFor } from "../../lib/avatars.ts";
 
 describe("previewFace", () => {
   const identity = { handle: "ari" };
@@ -28,6 +29,10 @@ describe("previewFace", () => {
     // owner's avatar) so it cannot be linked back.
     expect(face.handle).not.toBe("ari");
     expect(face.avatarSrc).not.toBe("data:avatar");
+    // G7: the avatar is seeded on the OPAQUE ID, not the (user-readable) derived
+    // handle. Seeding on the handle would re-introduce an identifying seed.
+    expect(face.avatarSrc).toBe(avatarFor("a7f3k9q2"));
+    expect(face.avatarSrc).not.toBe(avatarFor(pseudonymFor("a7f3k9q2")));
   });
 
   it("is deterministic per alias id (same seed, same face)", () => {

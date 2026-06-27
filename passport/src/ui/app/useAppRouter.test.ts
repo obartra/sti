@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { renderHook, act } from "@testing-library/react";
 import {
   findableNameFromPath,
   routeFromLocation,
@@ -33,6 +33,41 @@ describe("routeFromLocation: shared alias links", () => {
 
   it("does not treat a malformed /a path as an alias link", () => {
     expect(at("/a/too-short")).toBeNull();
+  });
+});
+
+describe("useAppRouter: a decryption key never leaves the URL fragment", () => {
+  const ID = "tW0gEbDrF_r7_70h-NRAYsSTDUQ8_SLbJdohXqFGYog";
+  const KEY = "B".repeat(43);
+
+  it("leaves a keyed /a/{id}#k= URL untouched", () => {
+    // The URL-sync effect must NOT rewrite a keyed alias link: the #k= fragment is
+    // the only place the key lives, and /a/{id} is the canonical shareable address.
+    window.history.replaceState(null, "", `/a/${ID}#k=${KEY}`);
+    try {
+      renderHook(() => useAppRouter());
+      expect(window.location.pathname).toBe(`/a/${ID}`);
+      expect(window.location.hash).toBe(`#k=${KEY}`);
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
+  it("wipes the key from window.location when navigating away", () => {
+    // Leaving the public-resolution screen must drop the key entirely: the
+    // away-target is built from the screen name alone, never by relocating the
+    // fragment into a viewer-visible, referrer-leaking path or query.
+    window.history.replaceState(null, "", `/a/${ID}#k=${KEY}`);
+    try {
+      const { result } = renderHook(() => useAppRouter());
+      act(() => result.current.nav.jump("home"));
+      expect(window.location.href).not.toContain(KEY);
+      expect(window.location.pathname).not.toContain(KEY);
+      expect(window.location.search).not.toContain(KEY);
+      expect(window.location.hash).not.toContain(KEY);
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
   });
 });
 

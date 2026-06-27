@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { createSessionController, type SessionDeps } from "./session.ts";
 import { createDeviceStore, type StorageLike } from "../auth/deviceStore.ts";
 import type { PasskeyAuth } from "../auth/passkey.ts";
@@ -332,5 +332,60 @@ describe("session controller", () => {
     // removed (phrase recovers nothing).
     expect(released).toEqual(["robin", "B".repeat(43)]);
     expect(await ctl.recover("ignored")).toBeNull();
+  });
+
+  it("deleteAccount leaves no resumable key: clears the key store AND the device binding (doc 24, G15)", async () => {
+    // A deleted account must not stay resumable. The recover/resume coverage above
+    // proves the effect end-to-end; this pins the mechanism so a refactor that drops
+    // either clear (the persisted master key, or the on-device binding) fails here.
+    const { accounts, sync } = fakeBackend();
+    const devices = createDeviceStore(memoryStorage());
+    const keys = createVolatileMasterKeyStore();
+    const keysClear = vi.spyOn(keys, "clear");
+    const devicesClear = vi.spyOn(devices, "clear");
+    const ctl = createSessionController({
+      accounts,
+      sync,
+      devices,
+      passkey: fakePasskey(),
+      keys,
+      api: stubApi,
+    });
+    const { session } = await ctl.signUp("robin");
+
+    await ctl.deleteAccount(session);
+
+    expect(keysClear).toHaveBeenCalled();
+    expect(devicesClear).toHaveBeenCalled();
+  });
+
+  it("deleteAccount wipes the resumable key even when the server delete fails (doc 24, G15)", async () => {
+    // A transient backend error mid-delete (e.g. a network blip during revoke-all)
+    // must not leave a usable master persisted on this device, or a reload would
+    // silently resume into an account the owner believes they deleted. The local
+    // wipe is independent of the network outcome.
+    const { accounts, sync } = fakeBackend();
+    accounts.deleteAccount = () =>
+      Promise.reject(new Error("network blip mid-delete"));
+    const devices = createDeviceStore(memoryStorage());
+    const keys = createVolatileMasterKeyStore();
+    const keysClear = vi.spyOn(keys, "clear");
+    const devicesClear = vi.spyOn(devices, "clear");
+    const ctl = createSessionController({
+      accounts,
+      sync,
+      devices,
+      passkey: fakePasskey(),
+      keys,
+      api: stubApi,
+    });
+    const { session } = await ctl.signUp("robin");
+    await ctl.rememberDevice(session);
+
+    await expect(ctl.deleteAccount(session)).rejects.toThrow();
+
+    expect(keysClear).toHaveBeenCalled();
+    expect(devicesClear).toHaveBeenCalled();
+    expect(await keys.load()).toBeNull();
   });
 });

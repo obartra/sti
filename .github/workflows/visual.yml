@@ -53,10 +53,8 @@ jobs:
         working-directory: passport
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: ./.github/actions/setup-node
         with:
-          node-version: 22
-          cache: npm
           cache-dependency-path: passport/package-lock.json
       - run: npm ci
       - run: npm run build-storybook
@@ -94,27 +92,41 @@ jobs:
           test "${result}" = "success"
 
   update:
+    # Only on the label being ADDED (not on every push while it is present), so the
+    # PAT baseline push below (a `synchronize`) does not re-run this whole job.
     if: |
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' &&
-        contains(github.event.pull_request.labels.*.name, 'screenshot:update'))
+        github.event.action == 'labeled' &&
+        github.event.label.name == 'screenshot:update')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: write
+      pull-requests: write
     defaults:
       run:
         working-directory: passport
     steps:
+      # Push baselines with a PAT when one is configured. A commit pushed with the
+      # default GITHUB_TOKEN does NOT fire `push`/`pull_request`, so the required
+      # checks (check/passport/e2e/integration/server/visual) never run on the new
+      # head commit and the PR sits BLOCKED until someone close+reopens it. A
+      # fine-grained PAT (repo contents:write) in `SCREENSHOT_BOT_TOKEN` makes the
+      # baseline push re-trigger them automatically: this job removes the
+      # screenshot:update label (with the built-in token, so that bot-authored
+      # `unlabeled` fires nothing) and THEN pushes with the PAT, so the push's
+      # `synchronize` re-runs CI and the visual gate (now label-off) on the new
+      # commit, and the PR ends green with the label already gone. Absent the
+      # secret this falls back to GITHUB_TOKEN (no auto-rerun); the close+reopen
+      # workaround then applies and the step logs a notice saying so.
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           ref: ${{ github.head_ref || github.ref_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.SCREENSHOT_BOT_TOKEN || secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: ./.github/actions/setup-node
         with:
-          node-version: 22
-          cache: npm
           cache-dependency-path: passport/package-lock.json
       - run: npm ci
       - run: npm run build-storybook
@@ -124,9 +136,20 @@ jobs:
           REASON: ${{ github.event.inputs.reason || 'screenshot:update label triggered regeneration' }}
           ACTOR: ${{ github.actor }}
           BRANCH: ${{ github.head_ref || github.ref_name }}
+          HAS_PAT: ${{ secrets.SCREENSHOT_BOT_TOKEN != '' }}
+          # The label is removed as the bot (built-in token) so its `unlabeled`
+          # event fires no workflow; the push below is what re-triggers the checks.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Drop the label now (idempotent, best-effort) so it never lingers and so
+          # the upcoming push runs the visual gate with the label already off.
+          if [ -n "${PR}" ]; then
+            gh pr edit "${PR}" --remove-label "screenshot:update" || true
+          fi
           git add -A visual-baselines/
           if git diff --staged --quiet; then
             echo "No baseline changes."
@@ -135,3 +158,6 @@ jobs:
           git diff --staged --stat visual-baselines/ | tail -20
           git commit -m "chore(visual): update baselines" -m "${REASON}" -m "Triggered by @${ACTOR} on ${BRANCH}."
           git push origin "HEAD:${BRANCH}"
+          if [ "${HAS_PAT}" != "true" ]; then
+            echo "::notice title=Baselines pushed with GITHUB_TOKEN::Required checks will not auto-rerun on this commit. Close+reopen the PR to trigger them, or set the SCREENSHOT_BOT_TOKEN secret (fine-grained PAT, contents:write) so future baseline pushes re-trigger CI automatically."
+          fi

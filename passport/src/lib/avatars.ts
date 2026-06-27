@@ -9,7 +9,7 @@
    License: the Dylan style is MIT AND CC-BY-4.0. The CC-BY attribution lives in
    src/lib/credits.ts and is surfaced under the avatar editor.
 
-   API (unchanged seam): avatarParts, avatarSrc(cfgOrSeed), avatarFor(handle),
+   API (unchanged seam): avatarParts, avatarSrc(cfgOrSeed), avatarFor(seed),
    randomAvatar(seed), isAvatarConfig, migrateAvatar, DEFAULT_AVATAR, pseudonymFor. */
 
 import { createAvatar } from "@dicebear/core";
@@ -299,9 +299,15 @@ export function randomAvatar(seed: number): AvatarConfig {
   };
 }
 
-export function avatarFor(handle: string): string {
+/**
+ * The default face for an alias with no chosen avatar (doc 19). Seeds on the alias's
+ * opaque id (`seed`), NOT the handle: the handle can be user-chosen and identifying,
+ * while the opaque id is random and per-alias, so the derived face reveals nothing
+ * and the same id always yields the same face. Pure and on-device.
+ */
+export function avatarFor(seed: string): string {
   let h = 0;
-  const str = handle || "";
+  const str = seed || "";
   for (let i = 0; i < str.length; i++)
     h = (h * 31 + str.charCodeAt(i)) & 0x7fffffff;
   return avatarSrc(randomAvatar(h));
@@ -345,4 +351,19 @@ export function pseudonymFor(id: string): string {
   const noun = PSEUDONYM_NOUNS[(h >>> 8) & 0xff] ?? "river";
   const num = String(((h >>> 16) & 0xffff) % 100).padStart(2, "0");
   return `${adj}_${noun}_${num}`;
+}
+
+/**
+ * The complete anonymous identity for an alias with no chosen handle or avatar
+ * (doc 15/19): the id-derived pseudonym handle paired with the id-derived face,
+ * BOTH seeded on the same opaque alias id. Centralized so every "default link
+ * face" surface (the share preview, the onboarding default-link card) derives
+ * the pair the same way and no one can accidentally seed the face on the
+ * readable, user-chosen handle.
+ */
+export function anonymousFace(id: string): {
+  handle: string;
+  avatarSrc: string;
+} {
+  return { handle: pseudonymFor(id), avatarSrc: avatarFor(id) };
 }

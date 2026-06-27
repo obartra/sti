@@ -48,6 +48,21 @@ describe("public card codec", () => {
     ]);
     // avatarSrc is rebuilt from our template on read, never carried on the wire.
     expect("avatarSrc" in wire).toBe(false);
+
+    // G11: the wire carries a self-chosen `handle`, never a real-name field. A future
+    // field called name/firstname/lastname/legal would be a PII leak, so fail on any
+    // such key in either wire shape (with and without an avatar).
+    const NAMEY = /name|firstname|lastname|legal/i;
+    for (const shape of [
+      decode(serializePublicCard(view)),
+      decode(serializePublicCard(withAvatar)),
+    ]) {
+      for (const key of Object.keys(shape)) {
+        expect(NAMEY.test(key), `forbidden name-like wire key: ${key}`).toBe(
+          false,
+        );
+      }
+    }
   });
 
   it("round-trips a card with an avatar and reconstructs its rendered src", () => {

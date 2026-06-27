@@ -50,6 +50,23 @@ describe("FindableName", () => {
     expect(register).not.toHaveBeenCalled();
   });
 
+  it("does not block abuse names locally: it asks the server, which is authoritative (G8)", async () => {
+    // The client no longer ships a scam/abuse blocklist; a name like "scam" passes the
+    // instant check and reaches the server, which answers blocked names with a 409
+    // surfaced as "unavailable". So the client must NOT short-circuit it.
+    const user = userEvent.setup();
+    const register = vi.fn(() => Promise.resolve("unavailable" as const));
+    render(<FindableName currentName={null} ops={ops({ register })} />);
+
+    await user.type(screen.getByLabelText(/choose a name/i), "scam");
+    await user.click(
+      screen.getByRole("button", { name: /make my name public/i }),
+    );
+
+    expect(register).toHaveBeenCalledWith("scam");
+    expect(await screen.findByText(/that name is taken/i)).toBeInTheDocument();
+  });
+
   it("shows 'taken' when the name is unavailable", async () => {
     const user = userEvent.setup();
     render(

@@ -566,10 +566,15 @@ export function createSessionController(deps: SessionDeps): SessionController {
           .releaseVanityName(reg.name, alias.writeToken)
           .catch(() => undefined);
       }
-      await accounts.deleteAccount(session.master);
+      // Wipe the local resumable key material FIRST (doc 24): a deleted account
+      // must leave no resumable key, and these clears are local and cheap. If the
+      // server-side delete below throws (a transient network blip mid-revoke), the
+      // device must still be left un-resumable, not silently resume into an account
+      // the owner believes is gone. The server delete is retryable; the local wipe
+      // is the part that protects this device, so it can't be gated on the network.
       devices.clear();
-      // A deleted account must leave no resumable key (doc 24).
       await keys.clear();
+      await accounts.deleteAccount(session.master);
     },
 
     reviewKnocks(session) {

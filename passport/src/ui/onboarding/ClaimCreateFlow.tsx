@@ -1,22 +1,23 @@
 import { useState } from "react";
 import { Button, Card, Input, Field } from "../../design/components/index.ts";
 import { Info, Check, ShieldCheck, ArrowRight } from "../../design/icons.tsx";
-import { randomAvatar, avatarFor, pseudonymFor } from "../../lib/avatars.ts";
+import { randomAvatar, anonymousFace } from "../../lib/avatars.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
 import { COPY, sectionLabel } from "./claimCopy.ts";
 
 // The opaque id of the previewed default link. Fixed here (no session yet); the
 // real one is a random id minted at publish. The anonymous face is derived from
-// it the same way the wire does (pseudonymFor + avatarFor), so the preview is
-// honest: this is the face a link wears by default, not the identity above.
+// it the same way the wire does (anonymousFace), so the preview is honest: this
+// is the face a link wears by default, not the identity above.
 const PREVIEW_ALIAS_ID = "a7f3k9q2";
 
 // The default-link preview: the anonymous, id-derived face (doc 15) and the
 // opaque URL. Deliberately NOT the identity the owner is building above; that
 // face only appears when they choose to show it (per link, at share time).
 function DefaultLinkCard({ aliasId }: { aliasId: string }) {
-  const handle = pseudonymFor(aliasId);
-  const faceSrc = avatarFor(handle);
+  // The id-derived anonymous identity (doc 19): handle and face both seed on the
+  // opaque alias id the wire seals, so the preview is honest.
+  const { handle, avatarSrc: faceSrc } = anonymousFace(aliasId);
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

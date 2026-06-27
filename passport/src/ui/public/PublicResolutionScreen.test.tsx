@@ -9,6 +9,7 @@ import type {
   PassportStore,
 } from "../../store/index.ts";
 import { fakeMasterKey } from "../../test-support/phrase.ts";
+import { avatarFor } from "../../lib/avatars.ts";
 
 const LINK = { id: "A".repeat(43), key: "B".repeat(43) };
 
@@ -46,6 +47,24 @@ describe("PublicResolutionScreen", () => {
 
     expect(await screen.findByText("@robin")).toBeInTheDocument();
     expect(screen.getByText("Tested & on HIV prevention")).toBeInTheDocument();
+  });
+
+  it("seeds the no-avatar fallback face on the alias id, not the handle (doc 19)", async () => {
+    // A resolved card with no chosen avatar must derive its face from the opaque
+    // alias id (the link the viewer holds), never the payload's handle.
+    const view: ResolvedView = {
+      state: "blue",
+      labels: ["hiv"],
+      route: "hiv",
+      identity: { handle: "robin" },
+    };
+    const { container } = render(
+      <PublicResolutionScreen store={storeResolving(view)} link={LINK} />,
+    );
+    await screen.findByText("@robin");
+    const img = container.querySelector(".sti-avatar img");
+    expect(img?.getAttribute("src")).toBe(avatarFor(LINK.id));
+    expect(img?.getAttribute("src")).not.toBe(avatarFor("robin"));
   });
 
   it("renders the uniform gray-nothing when resolution returns null", async () => {

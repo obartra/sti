@@ -21,7 +21,7 @@ findable, decoy), rewrite it plainly.
 
 ## Gates before a PR
 
-- `(cd passport && npm run typecheck && npm run lint && npm test && npm run build && npm run build-storybook)`
+- `(cd passport && npm run typecheck && npm run lint && npm run test && npm run build && npm run build-storybook)` (passport is npm-based, not pnpm; the Makefile and CI invoke it the same way)
 - `npx prettier --check .` from the repo root (passport's lint is eslint-only and misses formatting)
 - `(cd server && go build ./... && go test ./... && go vet ./... && gofmt -l internal/ cmd/)`
 - No em dashes anywhere (code, copy, docs, commits). Visual/baseline changes regenerate via the `screenshot:update` PR label, never hand-edited.

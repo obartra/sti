@@ -1,5 +1,20 @@
 import { describe, it, expect } from "vitest";
-import { classify, shellCacheName, isStaleShellCache } from "./swCache.ts";
+import {
+  classify,
+  shellCacheName,
+  isStaleShellCache,
+  isCacheableAssetResponse,
+} from "./swCache.ts";
+
+// A minimal Response stand-in: the guard only reads .ok and the content-type.
+const resp = (ok: boolean, contentType: string): Response =>
+  ({
+    ok,
+    headers: {
+      get: (name: string) =>
+        name.toLowerCase() === "content-type" ? contentType : null,
+    },
+  }) as unknown as Response;
 
 const ORIGIN = "https://sti.care";
 const nav = (url: string, method = "GET"): string =>
@@ -46,5 +61,30 @@ describe("service worker route classification (slice 2)", () => {
     expect(isStaleShellCache("shell-v1.2.3", "shell-v1.2.3")).toBe(false);
     // A non-shell cache (e.g. the push store) is never touched.
     expect(isStaleShellCache("sti-push", "shell-v1.2.3")).toBe(false);
+  });
+});
+
+describe("shell-cache asset guard", () => {
+  it("caches a real hashed JS/CSS asset", () => {
+    expect(isCacheableAssetResponse(resp(true, "application/javascript"))).toBe(
+      true,
+    );
+    expect(isCacheableAssetResponse(resp(true, "text/css"))).toBe(true);
+    expect(isCacheableAssetResponse(resp(true, "image/png"))).toBe(true);
+  });
+
+  it("never caches an HTML response (the SPA fallback for a non-file path)", () => {
+    // The host returns index.html (200) for any same-origin path that is not a
+    // file. Caching that under a sub-resource key would serve HTML with the wrong
+    // type until the next release; the guard keeps it out of the shell cache.
+    expect(
+      isCacheableAssetResponse(resp(true, "text/html; charset=utf-8")),
+    ).toBe(false);
+  });
+
+  it("never caches a non-ok response", () => {
+    expect(
+      isCacheableAssetResponse(resp(false, "application/javascript")),
+    ).toBe(false);
   });
 });

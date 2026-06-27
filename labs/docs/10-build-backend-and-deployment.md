@@ -106,6 +106,12 @@ ciphertext, so the backend names it for what it is.)
 Rate-limit token buckets live in memory for speed (optionally checkpointed to SQLite), so a
 restart costs at most a brief window of looser limits, never correctness.
 
+Writes serialize through a single connection (the pool is capped to one) and every transaction opens
+with `BEGIN IMMEDIATE`, so concurrent writers wait and serialize cleanly instead of racing into a
+snapshot-upgrade conflict that silently drops an acked write. This single-writer serialization is
+load-bearing for durability, not a tuning knob, and is pinned by the concurrency tests (a many-writer
+run asserts every acked write persisted).
+
 ### Decoy and uniformity (a correctness requirement, not an optimization)
 
 `GET /a/{id}` for a missing or undecryptable id returns **decoy, ciphertext-shaped bytes uniform in

@@ -73,6 +73,30 @@ func TestAliasWriteTokenRejectsNonOwner(t *testing.T) {
 	}
 }
 
+// TestVerifyAliasWriteHidesNonexistence pins that the write-token check (the
+// ownership gate for knock-review and vanity register/release) returns a uniform
+// false for BOTH a wrong token and a never-written id, with no error and no
+// distinction, so it never leaks whether an alias exists.
+func TestVerifyAliasWriteHidesNonexistence(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	if ok, err := s.WriteAlias(ctx, "id1", []byte("c"), "tok", 100, sql.NullInt64{}, false); err != nil || !ok {
+		t.Fatalf("seed write: ok=%v err=%v", ok, err)
+	}
+	if ok, err := s.VerifyAliasWrite(ctx, "id1", "tok"); err != nil || !ok {
+		t.Fatalf("right token: ok=%v err=%v, want true/nil", ok, err)
+	}
+	if ok, err := s.VerifyAliasWrite(ctx, "id1", "wrong"); err != nil || ok {
+		t.Fatalf("wrong token: ok=%v err=%v, want false/nil", ok, err)
+	}
+	// A never-written id must look exactly like a wrong token: false, nil, no error
+	// and no distinguishing branch.
+	if ok, err := s.VerifyAliasWrite(ctx, "never-written", "tok"); err != nil || ok {
+		t.Fatalf("nonexistent id: ok=%v err=%v, want false/nil (existence hidden)", ok, err)
+	}
+}
+
 func TestAccountVersioning(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -359,6 +383,42 @@ func TestKnockDedupeCountAndPurge(t *testing.T) {
 	}
 	if n, _ := s.RecentKnockCount(ctx, "target", 0); n != 0 {
 		t.Fatalf("after purge count = %d, want 0", n)
+	}
+}
+
+// TestRecordKnockAfterExpiryRefreshes pins that a re-knock landing after the prior
+// row expired (but before the janitor purged it) produces a fresh live knock the
+// owner can see, carrying the new key, rather than being dropped by the dedup. The
+// purge runs only every ~60s, so an expired row is routinely still present when a
+// requester knocks again; a plain DO NOTHING would make that requester invisible.
+func TestRecordKnockAfterExpiryRefreshes(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+	const day = 24 * 60 * 60 * 1000
+
+	// First knock expires at t=1000.
+	if _, err := s.RecordKnock(ctx, "t", "req", "keyA", 0, 1000); err != nil {
+		t.Fatal(err)
+	}
+	// The row has expired (now=2000 > 1000) but the janitor has not purged it. The
+	// re-knock must refresh it into a live knock carrying the fresh key, not no-op.
+	created, err := s.RecordKnock(ctx, "t", "req", "keyB", 2000, 2000+4*day)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !created {
+		t.Fatal("re-knock after expiry: created=false, want true (expired row refreshed)")
+	}
+	knocks, err := s.CurrentKnocks(ctx, "t", 2000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(knocks) != 1 || knocks[0].PubKey != "keyB" {
+		t.Fatalf("re-knock after expiry = %+v, want one live knock with keyB", knocks)
+	}
+	// Still one row, not a duplicate: the refresh updates in place.
+	if n, _ := s.RecentKnockCount(ctx, "t", 0); n != 1 {
+		t.Fatalf("row count after refresh = %d, want 1", n)
 	}
 }
 

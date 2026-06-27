@@ -5,6 +5,9 @@ import { LegalPage } from "./LegalPage.tsx";
 import { TrustFooter } from "./TrustFooter.tsx";
 import { TrustPage } from "./TrustPage.tsx";
 import { PRIVACY_POLICY, TERMS } from "./trustCopy.ts";
+import { footerLinks } from "../app/screens/trustScreens.tsx";
+import { isScreen, type Screen } from "../app/routes.ts";
+import type { Nav } from "../app/useAppRouter.ts";
 
 describe("LegalPage", () => {
   it("renders the doc title, lead, and every block heading", () => {
@@ -43,6 +46,27 @@ describe("TrustFooter", () => {
     expect(onPromises).toHaveBeenCalledOnce();
     expect(onPrivacy).toHaveBeenCalledOnce();
     expect(onTerms).toHaveBeenCalledOnce();
+  });
+});
+
+describe("footerLinks", () => {
+  it("routes each footer link to a real screen id (G16)", () => {
+    // The trust footer must navigate to screens that actually exist; a typo'd target
+    // (e.g. "privacy_policy" or "promise") would route nowhere. Pin both the exact
+    // ids and that each one is in ALL_SCREENS, so a future rename keeps them honest.
+    const go = vi.fn<(screen: Screen) => void>();
+    const nav = { go, back: vi.fn(), jump: vi.fn() } as unknown as Nav;
+    const links = footerLinks(nav);
+
+    links.onPromises();
+    links.onPrivacy();
+    links.onTerms();
+
+    const targets = go.mock.calls.map((c) => c[0]);
+    expect(targets).toEqual(["promises", "privacy-policy", "terms"]);
+    for (const target of targets) {
+      expect(isScreen(target), `${target} is not a real screen`).toBe(true);
+    }
   });
 });
 

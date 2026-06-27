@@ -333,19 +333,27 @@ describe("load & usage lab: behavior gates against a real blind store", () => {
         },
         async (h, client, metrics) => {
           // Non-sensitive flood: with one inflight slot, excess sheds with 503.
-          const puts = await Promise.all(
-            Array.from({ length: 100 }, () =>
-              fetch(`${h.baseUrl}/acct/${randomAliasId()}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/octet-stream" },
-                body: new Uint8Array(64),
-              }).then((r) => r.status),
-            ),
-          );
-          expect(puts.filter((s) => s === 503).length).toBeGreaterThan(0);
-          expect(
-            (await scrapeMetrics(metrics)).sum("sti_shed_total"),
-          ).toBeGreaterThan(0);
+          // Fire concurrent rounds until the shed counter moves, so the assertion
+          // does not hinge on one round's scheduling (a fast runner can drain the
+          // single slot between arrivals so a lone flood never overlaps).
+          let shed = 0;
+          let sawShed503 = false;
+          const shedDeadline = Date.now() + 5000;
+          while (shed === 0 && Date.now() < shedDeadline) {
+            const puts = await Promise.all(
+              Array.from({ length: 100 }, () =>
+                fetch(`${h.baseUrl}/acct/${randomAliasId()}`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/octet-stream" },
+                  body: new Uint8Array(64),
+                }).then((r) => r.status),
+              ),
+            );
+            if (puts.some((s) => s === 503)) sawShed503 = true;
+            shed = (await scrapeMetrics(metrics)).sum("sti_shed_total");
+          }
+          expect(sawShed503).toBe(true); // excess shed with 503, not another code
+          expect(shed).toBeGreaterThan(0);
 
           // Sensitive reads under the same single-slot pressure must stay
           // 200/decoy (never 429/503) and must exercise the uniform overload

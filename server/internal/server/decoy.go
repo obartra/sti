@@ -6,6 +6,12 @@ import (
 	"encoding/binary"
 )
 
+// decoyComputeHook, when non-nil, is invoked once at the start of every
+// decoyBytes call. It is a test-only seam (nil in production, so zero overhead)
+// that lets a test count decoy computations and assert a hit pays the same HMAC
+// cost as a miss on the read path (existence-timing uniformity, doc 02).
+var decoyComputeHook func()
+
 // decoyBytes deterministically derives size pseudorandom bytes for an id, keyed
 // by a server secret. It is stable per id (a repeated miss returns identical
 // bytes, exactly as a real stored ciphertext would) and is indistinguishable
@@ -13,6 +19,9 @@ import (
 // decrypt" byte-identical on the wire: every GET /a response is size bytes of
 // high-entropy data, real or not.
 func decoyBytes(secret []byte, id string, size int) []byte {
+	if decoyComputeHook != nil {
+		decoyComputeHook()
+	}
 	out := make([]byte, size)
 	// Key the HMAC once and Reset per block: re-creating it each iteration
 	// re-pads the key (two extra SHA-256 compressions per block), which on a

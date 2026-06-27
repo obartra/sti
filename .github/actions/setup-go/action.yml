@@ -1,0 +1,9 @@
+name: Setup Go
+description: Install the Go toolchain with a module cache. Pinned here so the version and action SHA are bumped in one place, not per job.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+      with:
+        go-version: "1.26.4"
+        cache-dependency-path: server/go.sum

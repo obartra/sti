@@ -70,8 +70,8 @@ A dedicated, gated route (`/admin`) in the existing app, isolated from the user 
 - **Activity panel (A4):** a read-only tail of recent admin actions (action, target, time), newest
   first. This makes the audit log's "reconstructable" promise usable from the page instead of only via
   SQLite on the box. Read-only, no actions; the same opaque rows the log already stores.
-- **Built to grow:** the page is a shell with panels, so the next tasks (account disable, alias revoke,
-  metadata lookup by id) drop in as additional panels without re-architecting.
+- **Built to grow:** the page is a shell with panels, so account disable, alias revoke, and metadata
+  lookup by id dropped in as additional panels (now shipped) without re-architecting.
 
 The page renders nothing and calls nothing until a valid token is present; it carries no user-facing
 chrome and is never linked from the app.
@@ -86,8 +86,12 @@ chrome and is never linked from the app.
   Opaque only (a fixed verb + an id/name + a time), never user content.
 - `POST /admin/vanity/{name}/takedown` — revoke the name's alias mapping → 24h lock (doc 17 lifecycle).
 - `POST /admin/vanity/{name}/dismiss` — clear the report(s) without action.
-- **Next (post-v1, same pattern):** `POST /admin/account/{id}/disable` (working-delete the blob +
-  aliases), `POST /admin/alias/{id}/revoke`, `GET /admin/lookup/{id}` (opaque metadata for a record).
+- `POST /admin/account/{id}/disable` — working-delete the account sync blob (aliases are revoked
+  separately, not cascaded). Shipped.
+- `POST /admin/alias/{id}/revoke` — force-remove an alias row and release any vanity name pointing at
+  it, so the id reads back as a decoy. Shipped.
+- `GET /admin/lookup/{id}` — opaque metadata for a record (existence, ciphertext byte size, last
+  written), never content. Shipped.
 
 Every mutation writes an audit row and returns a uniform shape; none returns plaintext content.
 
@@ -105,14 +109,14 @@ Every mutation writes an audit row and returns a uniform shape; none returns pla
    `/admin` route with the token gate. Nothing actionable yet.
 2. **A2 — Findable review:** report store + `GET /admin/reports`, the takedown/dismiss endpoints
    (consume doc 17's lifecycle), and the review panel. This is Findable's F4 reviewer step.
-3. **A3 — Account / alias management (post-Findable):** disable-account + revoke-alias + opaque lookup,
-   each a panel + endpoint, all within the blind-store boundary. Notes from the build: disable-account
+3. **A3 — Account / alias management (shipped):** disable-account + revoke-alias + opaque lookup, each a
+   panel + endpoint, all within the blind-store boundary (admin.go + admin_test.go). Notes from the build: disable-account
    deletes only the sync blob (the blind store keeps no account→alias link, so aliases are revoked
    separately, not cascaded); and alias-revoke is two non-atomic steps (delete the alias row, then
    release any vanity name pointing at it) — if the second fails the name briefly maps to a dead id (a
    knock just fails) and re-running revoke, idempotent on both halves, completes it. The audit row is
-   written before either step, so the attempt is always recorded. The endpoints ship first; the panel
-   drops into the authed shell next, like A2.
+   written before either step, so the attempt is always recorded. Both the endpoints and the panel are
+   live in the authed shell, like A2.
 4. **A4 — Activity (audit read):** `GET /admin/audit` over the existing `RecentAudits` store reader,
    plus a read-only Activity panel in the authed shell. Closes the loop the audit log opened in A1: the
    log was always written but had no read surface. A capped fetch with `before`/`limit` cursor

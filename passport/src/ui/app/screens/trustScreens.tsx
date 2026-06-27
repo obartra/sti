@@ -8,7 +8,9 @@ import type { ScreenCtx, ScreenRenderers } from "./context.ts";
 // static content wrapped in TrustPage (a back control + the shared footer), and
 // each footer link routes to a sibling so the set is reachable from any of them.
 
-function footerLinks(nav: ScreenCtx["nav"]): {
+// Exported so a test can pin that each footer link targets a real screen id (an id
+// in ALL_SCREENS), not a typo that would route nowhere (G16).
+export function footerLinks(nav: ScreenCtx["nav"]): {
   onPromises: () => void;
   onPrivacy: () => void;
   onTerms: () => void;

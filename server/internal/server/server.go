@@ -1018,12 +1018,14 @@ func (s *Server) writeError(w http.ResponseWriter, status int, code, msg string)
 	s.writeJSON(w, status, contract.ErrorResponse{Error: contract.ErrorBody{Code: code, Message: msg}})
 }
 
-// clientIP returns the address the rate limiter keys on. The origin is reachable
-// ONLY through the local Caddy reverse proxy, which sets X-Real-IP to the true
-// client address and overwrites any client-supplied value. We therefore trust
-// only that one header. We deliberately do NOT read X-Forwarded-For or
-// CF-Connecting-IP: both are client-spoofable here (there is no Cloudflare), and
-// trusting them would make the limit bypassable.
+// clientIP returns the address the rate limiter keys on. In production the only
+// hop in front of the origin is the local Caddy reverse proxy: it sets X-Real-IP
+// to the Cloudflare edge address it received the request from, and strips any
+// client-supplied X-Forwarded-For and CF-Connecting-IP, so those reach us only if
+// a client forged them. We therefore trust ONLY X-Real-IP and deliberately do NOT
+// read the stripped headers: trusting them would make the limit bypassable. This
+// in-process limiter is a coarse backstop to the edge's per-client rule, never the
+// primary control, and must never start trusting the stripped headers.
 func clientIP(r *http.Request) string {
 	if ip := r.Header.Get("X-Real-IP"); ip != "" {
 		return ip
