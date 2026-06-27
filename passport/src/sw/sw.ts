@@ -22,7 +22,12 @@ import { createApiClient } from "../api/client.ts";
 import { consumePartnerPing } from "./swInbox.ts";
 import { readPushContext } from "./pushStore.ts";
 import { PARTNER_NOTIFY_PROMPT } from "../copy/canonical.ts";
-import { classify, shellCacheName, isStaleShellCache } from "./swCache.ts";
+import {
+  classify,
+  shellCacheName,
+  isStaleShellCache,
+  isCacheableAssetResponse,
+} from "./swCache.ts";
 import { isShareTargetRequest, shareTargetRedirect } from "./swShare.ts";
 
 interface ExtendableEventLike {
@@ -245,7 +250,11 @@ async function cacheFirst(request: Request): Promise<Response> {
   const cached = await caches.match(request);
   if (cached !== undefined) return cached;
   const res = await fetch(request);
-  if (res.ok) {
+  // Only store real static assets. A same-origin GET to a non-file path gets the
+  // SPA fallback (index.html, 200) from the host; caching that as a sub-resource
+  // would serve HTML under the wrong key, with the wrong type, until the next
+  // release. Hashed JS/CSS assets are non-HTML, so they still cache.
+  if (isCacheableAssetResponse(res)) {
     const cache = await caches.open(SHELL_CACHE);
     await cache.put(request, res.clone());
   }
