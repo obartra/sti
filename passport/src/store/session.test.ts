@@ -358,4 +358,34 @@ describe("session controller", () => {
     expect(keysClear).toHaveBeenCalled();
     expect(devicesClear).toHaveBeenCalled();
   });
+
+  it("deleteAccount wipes the resumable key even when the server delete fails (doc 24, G15)", async () => {
+    // A transient backend error mid-delete (e.g. a network blip during revoke-all)
+    // must not leave a usable master persisted on this device, or a reload would
+    // silently resume into an account the owner believes they deleted. The local
+    // wipe is independent of the network outcome.
+    const { accounts, sync } = fakeBackend();
+    accounts.deleteAccount = () =>
+      Promise.reject(new Error("network blip mid-delete"));
+    const devices = createDeviceStore(memoryStorage());
+    const keys = createVolatileMasterKeyStore();
+    const keysClear = vi.spyOn(keys, "clear");
+    const devicesClear = vi.spyOn(devices, "clear");
+    const ctl = createSessionController({
+      accounts,
+      sync,
+      devices,
+      passkey: fakePasskey(),
+      keys,
+      api: stubApi,
+    });
+    const { session } = await ctl.signUp("robin");
+    await ctl.rememberDevice(session);
+
+    await expect(ctl.deleteAccount(session)).rejects.toThrow();
+
+    expect(keysClear).toHaveBeenCalled();
+    expect(devicesClear).toHaveBeenCalled();
+    expect(await keys.load()).toBeNull();
+  });
 });
