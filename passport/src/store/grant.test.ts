@@ -86,6 +86,15 @@ describe("grant slot id derivation", () => {
     expect(await deriveGrantSlotId("alias-2", "req-1")).not.toBe(base);
     expect(await deriveGrantSlotId("alias-1", "req-2")).not.toBe(base);
   });
+
+  it("frames its components so a separator in one cannot collide with another", async () => {
+    // Length-prefixed framing: distinct (alias, requester) splits can never hash the
+    // same input even if a component contains the separator. Without it, the inputs
+    // "a:b" + "c" and "a" + "b:c" would both flatten to the same string and collide.
+    expect(await deriveGrantSlotId("a:b", "c")).not.toBe(
+      await deriveGrantSlotId("a", "b:c"),
+    );
+  });
 });
 
 describe("grantAccess / redeemGrant round trip", () => {
