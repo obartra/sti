@@ -1,0 +1,15 @@
+name: Setup Node
+description: Install Node with an npm cache. Pinned here so the version and action SHA are bumped in one place, not per job.
+inputs:
+  cache-dependency-path:
+    description: Lockfile that keys the npm cache. Defaults to the root lockfile; pass passport/package-lock.json for the passport workspace.
+    required: false
+    default: package-lock.json
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      with:
+        node-version: "22"
+        cache: npm
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
