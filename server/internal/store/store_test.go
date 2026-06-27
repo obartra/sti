@@ -73,6 +73,30 @@ func TestAliasWriteTokenRejectsNonOwner(t *testing.T) {
 	}
 }
 
+// TestVerifyAliasWriteHidesNonexistence pins that the write-token check (the
+// ownership gate for knock-review and vanity register/release) returns a uniform
+// false for BOTH a wrong token and a never-written id, with no error and no
+// distinction, so it never leaks whether an alias exists.
+func TestVerifyAliasWriteHidesNonexistence(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	if ok, err := s.WriteAlias(ctx, "id1", []byte("c"), "tok", 100, sql.NullInt64{}, false); err != nil || !ok {
+		t.Fatalf("seed write: ok=%v err=%v", ok, err)
+	}
+	if ok, err := s.VerifyAliasWrite(ctx, "id1", "tok"); err != nil || !ok {
+		t.Fatalf("right token: ok=%v err=%v, want true/nil", ok, err)
+	}
+	if ok, err := s.VerifyAliasWrite(ctx, "id1", "wrong"); err != nil || ok {
+		t.Fatalf("wrong token: ok=%v err=%v, want false/nil", ok, err)
+	}
+	// A never-written id must look exactly like a wrong token: false, nil, no error
+	// and no distinguishing branch.
+	if ok, err := s.VerifyAliasWrite(ctx, "never-written", "tok"); err != nil || ok {
+		t.Fatalf("nonexistent id: ok=%v err=%v, want false/nil (existence hidden)", ok, err)
+	}
+}
+
 func TestAccountVersioning(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)

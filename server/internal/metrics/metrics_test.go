@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -253,6 +254,43 @@ func TestRestoreIgnoresUnknownAndGarbage(t *testing.T) {
 	// Malformed JSON is an error, not a panic.
 	if err := m.Restore([]byte("not json")); err == nil {
 		t.Errorf("malformed snapshot should error")
+	}
+}
+
+// TestSnapshotExcludesGauges pins doc 12: the persisted snapshot holds only
+// counters and histograms, never gauges. The blind row-count gauges
+// (sti_alias_rows etc.) are a live count of how many passports exist; persisting
+// them would write that subject-adjacent number to disk. A regression that taught
+// snapshot() to include gauges is caught here; the round-trip test would not flip.
+func TestSnapshotExcludesGauges(t *testing.T) {
+	m := New()
+	// Wire the blind row-count gauges with nonzero values, and drive a counter so
+	// the snapshot has real content alongside which a regression could include them.
+	m.RegisterStats(func(context.Context) (StatsGauge, error) {
+		return StatsGauge{DBSizeBytes: 999, AliasRows: 7, AccountRows: 3, KnockRows: 2, SendQueueDepth: 1}, nil
+	})
+	m.Error(ErrStore)
+	scrape(t, m) // sample the gauge funcs at least once so they hold live values
+
+	blob, err := m.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var d dump
+	if err := json.Unmarshal(blob, &d); err != nil {
+		t.Fatal(err)
+	}
+	if len(d.Series) == 0 {
+		t.Fatal("snapshot is empty; the counter should have been persisted")
+	}
+	for _, s := range d.Series {
+		if s.Kind != "counter" && s.Kind != "histogram" {
+			t.Errorf("snapshot persisted a %q series %q; only counters and histograms may be durable", s.Kind, s.Name)
+		}
+		switch s.Name {
+		case "sti_alias_rows", "sti_account_rows", "sti_knock_rows", "sti_db_size_bytes", "sti_send_queue_depth":
+			t.Errorf("snapshot persisted gauge %q (a count of existing rows); it must never be durable", s.Name)
+		}
 	}
 }
 
