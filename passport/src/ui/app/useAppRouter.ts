@@ -48,6 +48,17 @@ export function findableNameFromPath(pathname: string): string | null {
   return normalizeVanityName(decoded);
 }
 
+// The canonical URL a screen normalizes to. Most screens are hash-routed off the
+// root (`/#home`), but a few public surfaces own a clean path: the landing IS the
+// root `/` (so visiting sti.care does not bounce to `/#a1-landing`), and `/promises`
+// is its own anonymous-reachable page. `/exposed` and a real `/a/{id}` link are left
+// untouched by the caller, so they are not handled here.
+function canonicalUrl(screen: Screen): string {
+  if (screen === "a1-landing") return "/";
+  if (screen === "promises") return "/promises";
+  return `/#${screen}`;
+}
+
 // A screen can be deep-linked via the URL hash (#wallet, #circle-detail). Used
 // for internal shareable links and for the per-screen capture sweep.
 function routeFromHash(): Route | null {
@@ -128,10 +139,9 @@ export function useAppRouter(initial: Route = START): Router {
     const onAliasLink = route.screen === "a2-public" && route.data?.id != null;
     // Leave the canonical public /exposed URL alone too (it is the shared link).
     if (onAliasLink || route.screen === "exposed") return;
-    // promises has a clean, shareable, anonymous-reachable path; everything else
-    // is hash-routed off the root.
-    const target =
-      route.screen === "promises" ? "/promises" : `/#${route.screen}`;
+    // The landing owns the clean root `/` and promises owns `/promises`; everything
+    // else is hash-routed off the root.
+    const target = canonicalUrl(route.screen);
     if (window.location.pathname + window.location.hash !== target) {
       window.history.replaceState(null, "", target);
     }

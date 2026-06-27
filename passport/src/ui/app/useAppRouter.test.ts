@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import {
   findableNameFromPath,
   routeFromLocation,
@@ -114,5 +114,35 @@ describe("the /promises path", () => {
     // App.tsx clamps app-group screens to the landing when logged out; a public
     // group is what lets an anonymous visitor see /promises.
     expect(groupOf("promises")).toBe("public");
+  });
+});
+
+describe("the landing keeps the clean root URL", () => {
+  it("visiting / stays at / and does not bounce to /#a1-landing", async () => {
+    window.history.replaceState(null, "", "/");
+    try {
+      const { result } = renderHook(() => useAppRouter());
+      // The bare root resolves to the landing...
+      expect(result.current.route.screen).toBe("a1-landing");
+      // ...and the URL is normalized to the clean root, not /#a1-landing.
+      await waitFor(() => {
+        expect(window.location.pathname).toBe("/");
+        expect(window.location.hash).toBe("");
+      });
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
+  it("normalizes a stale /#a1-landing back to the clean root", async () => {
+    window.history.replaceState(null, "", "/#a1-landing");
+    try {
+      const { result } = renderHook(() => useAppRouter());
+      expect(result.current.route.screen).toBe("a1-landing");
+      await waitFor(() => expect(window.location.hash).toBe(""));
+      expect(window.location.pathname).toBe("/");
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
   });
 });
