@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { Button } from "../../design/components/index.ts";
 import { Globe } from "../../design/icons.tsx";
-import { pseudonymFor, avatarFor } from "../../lib/avatars.ts";
+import { anonymousFace } from "../../lib/avatars.ts";
 import type { AliasIdentity } from "../../store/index.ts";
 
 /* The share sheet's per-alias identity choice (doc 15): a link shows either the
@@ -31,10 +31,9 @@ export function previewFace(opts: {
   if (choice === "main" || !hasControl) {
     return { handle: identity.handle, avatarSrc };
   }
-  // Seed the avatar on the opaque alias id (`seed`), not the derived handle (doc 19):
-  // the handle is a readable label, the id is the unlinkable, per-alias seed.
-  const handle = pseudonymFor(seed);
-  return { handle, avatarSrc: avatarFor(seed) };
+  // The anonymous identity: id-derived handle + id-seeded face (doc 19). Both come
+  // from the opaque alias id, never the readable handle.
+  return anonymousFace(seed);
 }
 
 export function IdentityChoiceRow({

@@ -352,3 +352,18 @@ export function pseudonymFor(id: string): string {
   const num = String(((h >>> 16) & 0xffff) % 100).padStart(2, "0");
   return `${adj}_${noun}_${num}`;
 }
+
+/**
+ * The complete anonymous identity for an alias with no chosen handle or avatar
+ * (doc 15/19): the id-derived pseudonym handle paired with the id-derived face,
+ * BOTH seeded on the same opaque alias id. Centralized so every "default link
+ * face" surface (the share preview, the onboarding default-link card) derives
+ * the pair the same way and no one can accidentally seed the face on the
+ * readable, user-chosen handle.
+ */
+export function anonymousFace(id: string): {
+  handle: string;
+  avatarSrc: string;
+} {
+  return { handle: pseudonymFor(id), avatarSrc: avatarFor(id) };
+}

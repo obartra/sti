@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   pseudonymFor,
+  anonymousFace,
   PSEUDONYM_ADJECTIVES,
   PSEUDONYM_NOUNS,
   avatarFor,
@@ -85,6 +86,25 @@ describe("pseudonymFor (doc 15 id-derived handle)", () => {
       expect(new Set(list).size, `${label} unique`).toBe(256);
       for (const w of list) expect(w, `${label} entry`).toMatch(/^[a-z]+$/);
     }
+  });
+});
+
+describe("anonymousFace (id-derived link identity, doc 19)", () => {
+  it("pairs the id-derived pseudonym handle with the id-seeded face", () => {
+    const id = randomAliasId();
+    expect(anonymousFace(id)).toEqual({
+      handle: pseudonymFor(id),
+      avatarSrc: avatarFor(id),
+    });
+  });
+
+  it("seeds the face on the opaque id, never on the readable handle", () => {
+    // Fixed id so the inequality is deterministic, not a 1-in-6552 config flake.
+    const id = "a7f3k9q2";
+    const { handle, avatarSrc: face } = anonymousFace(id);
+    expect(face).toBe(avatarFor(id));
+    // The doc-19 trap: the face must NOT derive from the (user-readable) handle.
+    expect(face).not.toBe(avatarFor(handle));
   });
 });
 
