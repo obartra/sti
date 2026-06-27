@@ -53,3 +53,16 @@ export function shellCacheName(version: string): string {
 export function isStaleShellCache(name: string, current: string): boolean {
   return name.startsWith(CACHE_PREFIX) && name !== current;
 }
+
+/**
+ * Whether a fetched response is a real static asset safe to store in the shell
+ * cache. The host serves the SPA fallback (index.html, 200) for any same-origin
+ * path that is not a file, so without this guard a same-origin GET to a non-asset
+ * path would cache that HTML under the wrong key and serve it with the wrong type
+ * until the next release. Hashed JS/CSS assets are non-HTML, so they still cache.
+ * A non-ok response (404/redirect/opaque) is never cached.
+ */
+export function isCacheableAssetResponse(res: Response): boolean {
+  if (!res.ok) return false;
+  return !(res.headers.get("content-type") ?? "").includes("text/html");
+}
