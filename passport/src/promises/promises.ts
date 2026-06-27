@@ -305,6 +305,15 @@ export const PROMISES: readonly UserPromise[] = [
       },
       {
         claim:
+          "That account write key is a separate secret, never derivable from the id that travels on the wire, so a leaked id cannot stand in for it.",
+        backedBy: {
+          kind: "test",
+          file: "src/crypto/keys.test.ts",
+          name: "account write token is deterministic, 43-char, and independent of the id and key",
+        },
+      },
+      {
+        claim:
           "Each link can only be overwritten by whoever holds its write token, never by a viewer who only has the link.",
         backedBy: {
           kind: "test",

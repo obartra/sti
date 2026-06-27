@@ -32,10 +32,18 @@ export function useOwnerInbox(
   const knocks = useKnockReview(controller, session);
   const partner = usePartnerNudge(controller, session);
 
+  // Depend on the two stable refresh callbacks, NOT the hook return objects. Those
+  // objects are fresh literals every render, so depending on them made refreshInbox
+  // change identity every render, which churned useCatchup's effect and cancelled a
+  // pending jittered reconnect catch-up (rescheduled only on the next `online`
+  // event) before it could fire. The refresh callbacks are stable across ordinary
+  // re-renders (they re-key only on session change), so refreshInbox now is too.
+  const { refresh: refreshKnocks } = knocks;
+  const { refresh: refreshPartner } = partner;
   const refreshInbox = useCallback(() => {
-    knocks.refresh();
-    partner.refresh();
-  }, [knocks, partner]);
+    refreshKnocks();
+    refreshPartner();
+  }, [refreshKnocks, refreshPartner]);
 
   useCatchup(session !== null, refreshInbox);
 

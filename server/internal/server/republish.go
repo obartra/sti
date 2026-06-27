@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"io"
@@ -98,20 +97,18 @@ func (s *Server) DrainRepublishes(ctx context.Context, now int64) {
 		return
 	}
 	for _, op := range due {
-		// setExpiry=false: a batch never changes a link's lifetime, so the deferred
-		// write preserves whatever expiry the alias already has.
-		ok, err := s.st.WriteAlias(ctx, op.AliasID, op.Ciphertext, op.WriteAuth, now, sql.NullInt64{}, false)
-		if err != nil {
+		// ApplyRepublish overwrites only when the alias still exists, the token
+		// matches, and no newer write landed since the op was enqueued (op.CreatedAt),
+		// so a stale snapshot can never revert a later edit or un-revoke a card. It
+		// preserves the link's expiry and never recreates a deleted alias.
+		if _, err := s.st.ApplyRepublish(ctx, op.AliasID, op.Ciphertext, op.WriteAuth, now, op.CreatedAt); err != nil {
 			// Transient: leave it queued for the next pass.
 			s.metrics.Error(metrics.ErrStore)
 			s.log.Error("apply republish", "err", err)
 			continue
 		}
-		if !ok {
-			// The write token no longer matches this alias: it will never apply, so
-			// drop it rather than retry forever.
-			s.metrics.Error(metrics.ErrStore)
-		}
+		// Applied, or intentionally skipped (token mismatch / alias gone / superseded
+		// by a newer write): drop the queue row either way rather than retry a no-op.
 		if err := s.st.DeleteRepublish(ctx, op.ID); err != nil {
 			s.metrics.Error(metrics.ErrJanitor)
 			s.log.Error("delete republish", "err", err)

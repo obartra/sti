@@ -213,10 +213,13 @@ limits below: the server can tell that a knock was answered, just not by or for 
 
 ## What is gated, and on what
 
-- **notify + push stay OFF** behind `STI_NOTIFY_ENABLED` + configured VAPID keys until the
-  decorrelation cover-wake (decision 2) is built and reviewed. The Web Push sender already exists
-  (gated). Flipping on also needs the browser service worker + Push subscription, which need a real
-  browser to verify, and the prod VAPID keys provisioned.
+- **notify intake is now ON by default** (`STI_NOTIFY_ENABLED` defaults true, set it to `false` to
+  disable). The decorrelation cover-wake (decision 2) it was waiting on has landed and is the only
+  delivery path. The constant-time intake runs whenever this is on; actual Web Push **delivery** is
+  the second gate, it needs a configured sender (VAPID keys). A box with no VAPID keys keeps the
+  intake live and the drain reclaims each queued wake without delivering, so the queue never grows
+  unbounded; it simply wakes no one until keys are provisioned. End-to-end delivery still needs the
+  browser service worker + Push subscription verified on a real device, and prod VAPID keys.
 - **scan-to-autolink UI** ships behind a real-device verification, sharing logic with the chat-link
   path.
 - Everything else (per-contact aliases, the notify-inbox channel, circles as client bundles, the

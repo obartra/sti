@@ -440,4 +440,77 @@ describe("account manager", () => {
     await accounts.setOwnerState(created.master, paused);
     expect(aliasStore.has(record.id)).toBe(true);
   });
+
+  // Regression: if the sweep revokes an expired link but the later republish of a
+  // SURVIVOR fails, the durable blob must keep the sweep's pruned result, not
+  // resurrect the link whose payload was already revoked.
+  it("does not resurrect a swept link when the survivor republish fails", async () => {
+    const accountStore = new Map<string, { blob: Bytes; version: number }>();
+    const liveAliasId = "1".repeat(43);
+    const unused = () => {
+      throw new Error("not used");
+    };
+    const api: ApiClient = {
+      ...fakeAccountApi(),
+      // Revokes (sweep) land, but the republish of the live contact's alias fails.
+      putAlias: (id) =>
+        id === liveAliasId
+          ? Promise.reject(new Error("republish down"))
+          : Promise.resolve(),
+      getAccount: (id) => {
+        const e = accountStore.get(id);
+        return Promise.resolve(
+          e ? { blob: e.blob, version: String(e.version) } : null,
+        );
+      },
+      putAccount: (id, body) => {
+        const version = (accountStore.get(id)?.version ?? 0) + 1;
+        accountStore.set(id, { blob: body, version });
+        return Promise.resolve({ version: String(version) });
+      },
+    };
+    void unused;
+    const accounts = createAccountManager(api);
+    const created = await accounts.create("robin");
+    const live = {
+      id: "L".repeat(43),
+      label: "Live",
+      createdDay: 1,
+      expiresAt: 9_999_999_999_999,
+      alias: {
+        id: liveAliasId,
+        writeToken: "2".repeat(43),
+        key: "3".repeat(43),
+        isPublic: false,
+      },
+    };
+    const expired = {
+      id: "X".repeat(43),
+      label: "Old",
+      createdDay: 1,
+      expiresAt: 1,
+      alias: {
+        id: "4".repeat(43),
+        writeToken: "5".repeat(43),
+        key: "6".repeat(43),
+        isPublic: false,
+      },
+    };
+    await accounts.addContact(created.master, live);
+    await accounts.addContact(created.master, expired);
+
+    const next = await accounts.setOwnerState(created.master, {
+      ...INITIAL_OWNER_STATE,
+      paused: true,
+    });
+
+    // The expired contact stays dropped (its payload was revoked); only the live one
+    // remains, and the change is durable.
+    expect(next.contacts.map((c) => c.id)).toEqual([live.id]);
+    expect(
+      (await accounts.recover(created.recoveryPhrase))?.blob.contacts.map(
+        (c) => c.id,
+      ),
+    ).toEqual([live.id]);
+  });
 });

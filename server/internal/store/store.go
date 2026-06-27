@@ -515,12 +515,25 @@ type VanityReport struct {
 	CreatedAt int64
 }
 
-// AddVanityReport records one report against a name. reason is a fixed code the
-// caller has already validated. Append-only; cleared as a set on takedown/dismiss.
+// vanityReportsPerNameCap bounds how many report rows a single name can accumulate.
+// A sustained report flood against one registered name (which the read-side queue
+// aggregates anyway, and which volume never auto-acts on) would otherwise bloat the
+// table without bound until the name is released or taken down. The cap is generous:
+// the review queue prioritizes busiest-first, so a four-figure count already pins a
+// name to the top and capping past it loses no actionable signal.
+const vanityReportsPerNameCap = 1000
+
+// AddVanityReport records one report against a name, up to vanityReportsPerNameCap
+// rows per name. reason is a fixed code the caller has already validated. The
+// conditional insert caps the table without a second round trip; intake stays
+// existence-uniform because the caller returns the same 202 whether or not a row was
+// actually written. Append-only; cleared as a set on takedown/dismiss.
 func (s *Store) AddVanityReport(ctx context.Context, name, reason string, now int64) error {
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO vanity_report (name, reason, created_at) VALUES (?, ?, ?)`,
-		name, reason, now)
+		`INSERT INTO vanity_report (name, reason, created_at)
+		 SELECT ?, ?, ?
+		 WHERE (SELECT COUNT(*) FROM vanity_report WHERE name = ?) < ?`,
+		name, reason, now, name, vanityReportsPerNameCap)
 	return err
 }
 
@@ -696,6 +709,17 @@ func (s *Store) PushEndpoints(ctx context.Context, routingEndpointID string) ([]
 	return out, rows.Err()
 }
 
+// DeletePushEndpoint removes a single Web Push subscription (a routing endpoint /
+// endpoint-URL pair). Called when the push service reports the subscription is gone
+// (404/410), so a dead endpoint stops inflating the cover-broadcast population and
+// is never retried. Idempotent: removing a missing pair is a no-op.
+func (s *Store) DeletePushEndpoint(ctx context.Context, routingEndpointID, endpoint string) error {
+	_, err := s.db.ExecContext(ctx,
+		`DELETE FROM push_endpoint WHERE routing_endpoint_id = ? AND endpoint = ?`,
+		routingEndpointID, endpoint)
+	return err
+}
+
 // DistinctPushRoutes returns every routing endpoint that has at least one
 // registered push subscription: the cover-broadcast population. A real wake fans
 // out one cover to each of these so the recipient is hidden among them (doc 13 §2).
@@ -769,11 +793,14 @@ func (s *Store) deleteQueued(ctx context.Context, table string, id int64) error 
 }
 
 // Republish is a pending deferred alias overwrite (decorrelation, doc 11).
+// CreatedAt is the enqueue time, used by ApplyRepublish to skip a stale snapshot
+// that a newer write has superseded.
 type Republish struct {
 	ID         int64
 	AliasID    string
 	Ciphertext []byte
 	WriteAuth  string
+	CreatedAt  int64
 }
 
 // EnqueueRepublish queues one alias overwrite to be applied at or after availableAt.
@@ -787,7 +814,7 @@ func (s *Store) EnqueueRepublish(ctx context.Context, aliasID string, ciphertext
 // DueRepublishes returns up to limit deferred overwrites whose time has arrived.
 func (s *Store) DueRepublishes(ctx context.Context, now int64, limit int) ([]Republish, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, alias_id, ciphertext, write_auth FROM republish_queue
+		`SELECT id, alias_id, ciphertext, write_auth, created_at FROM republish_queue
 		 WHERE available_at <= ? ORDER BY available_at LIMIT ?`, now, limit)
 	if err != nil {
 		return nil, err
@@ -796,12 +823,57 @@ func (s *Store) DueRepublishes(ctx context.Context, now int64, limit int) ([]Rep
 	var out []Republish
 	for rows.Next() {
 		var r Republish
-		if err := rows.Scan(&r.ID, &r.AliasID, &r.Ciphertext, &r.WriteAuth); err != nil {
+		if err := rows.Scan(&r.ID, &r.AliasID, &r.Ciphertext, &r.WriteAuth, &r.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, r)
 	}
 	return out, rows.Err()
+}
+
+// ApplyRepublish applies a deferred alias overwrite from the republish queue. Unlike
+// WriteAlias (the direct PUT path, which is plain last-write-wins) it is guarded for
+// the decorrelation window: it overwrites the alias only when the alias still exists,
+// the write token matches, AND the alias has not been written since enqueuedAt. A
+// direct edit, a later status change, or a revoke that landed during the window is
+// newer, so it wins and this stale snapshot is skipped rather than reverting it (or
+// un-revoking a just-killed card). It never CREATES an alias: a deferred republish
+// for a deleted or never-existent id is a no-op, not a resurrection. expires_at is
+// preserved (a republish never changes a link's lifetime). applied reports whether
+// the overwrite actually landed; the caller drops the queue row either way, and only
+// a transient error leaves it queued for retry.
+func (s *Store) ApplyRepublish(ctx context.Context, id string, ciphertext []byte, writeAuth string, now, enqueuedAt int64) (applied bool, err error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+
+	var existing string
+	var updatedAt int64
+	switch err := tx.QueryRowContext(ctx,
+		"SELECT write_auth, updated_at FROM alias WHERE id = ?", id).Scan(&existing, &updatedAt); {
+	case errors.Is(err, sql.ErrNoRows):
+		return false, nil // alias gone: never recreate it from a stale snapshot
+	case err != nil:
+		return false, err
+	default:
+		if subtle.ConstantTimeCompare([]byte(existing), []byte(writeAuth)) != 1 {
+			return false, nil // not the owner's op (token rotated / foreign): drop it
+		}
+		if updatedAt > enqueuedAt {
+			return false, nil // a newer write already won: skip, never revert
+		}
+		if _, err := tx.ExecContext(ctx,
+			"UPDATE alias SET ciphertext = ?, updated_at = ? WHERE id = ?",
+			ciphertext, now, id); err != nil {
+			return false, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // DeleteRepublish removes a deferred overwrite once it has been applied (or dropped).

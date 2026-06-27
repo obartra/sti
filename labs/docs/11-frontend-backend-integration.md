@@ -62,9 +62,10 @@ resolves, and bind that store to fixtures in Storybook. Nothing below the root c
 We add two layers under that boundary:
 
 - **`passport/src/api/` (transport).** A typed client over the contract: one function per endpoint
-  (`getAlias`, `putAlias`, `getAccount`, `putAccount`, `notify`, `registerPush`, `knock`,
-  `health`), opaque-id validation (43-char base64url), the `X-Write-Token` and `X-Version`
-  headers, and the gray-on-failure mapping. It knows nothing about plaintext.
+  (`getAlias`, `putAlias`, `getAccount`, `putAccount`, `deleteAccount`, `getInbox`, `putInbox`,
+  `notify`, `registerPush`, `knock`, `knockReview`, `republish`, the Findable `resolve/register/
+  release/report`, `health`), opaque-id validation (43-char base64url), the `X-Write-Token` and
+  `X-Version` headers, and the gray-on-failure mapping. It knows nothing about plaintext.
 - **`passport/src/crypto/` (the blind boundary).** Key derivation (passkey- or passphrase-derived
   master key), authenticated encryption (WebCrypto AES-GCM) of the device blob and alias payloads,
   fixed-size padding to `AliasPayloadSize`, and the id/token derivation, which is **not one

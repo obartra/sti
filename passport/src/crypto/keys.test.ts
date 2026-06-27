@@ -9,6 +9,7 @@ import {
   deriveMasterKey,
   deriveAccountId,
   deriveAccountKey,
+  deriveAccountWriteToken,
   wrapKeyFromPrf,
 } from "./keys.ts";
 import { importAesKey, seal, open } from "./payload.ts";
@@ -92,6 +93,28 @@ describe("master key + account derivation", () => {
     expect(key).toHaveLength(32);
     // The id must not equal the raw key material, even encoded.
     expect(id).not.toBe(Buffer.from(key).toString("base64url"));
+  });
+
+  // The account write token is the SECOND FACTOR that gates overwrite/delete of the
+  // account blob: the id travels on the wire, the token does not, so a leaked id
+  // alone cannot clobber the account. The whole guarantee rests on the token being an
+  // independent derivation, never equal to the id (or the blob key). An accidental
+  // info-label collapse would silently defeat it, so pin it here.
+  it("account write token is deterministic, 43-char, and independent of the id and key", async () => {
+    const master = await masterForTest("recovery");
+    const t1 = await deriveAccountWriteToken(master);
+    const t2 = await deriveAccountWriteToken(master);
+    expect(t1).toBe(t2); // deterministic, recoverable from the master alone
+    expect(t1).toMatch(/^[A-Za-z0-9_-]{43}$/);
+
+    const id = await deriveAccountId(master);
+    const key = await deriveAccountKey(master);
+    expect(t1).not.toBe(id); // never equal to the on-wire id (the second factor)
+    expect(t1).not.toBe(Buffer.from(key).toString("base64url"));
+
+    // A different account (different master) yields a different token.
+    const other = await masterForTest("different");
+    expect(await deriveAccountWriteToken(other)).not.toBe(t1);
   });
 
   it("the derived account key actually decrypts a blob sealed under it", async () => {

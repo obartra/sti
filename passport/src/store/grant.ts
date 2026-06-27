@@ -46,6 +46,15 @@ import { requesterHash } from "./knock.ts";
 const SLOT_INFO = "sti-grant-slot-v1";
 const WTOKEN_INFO = "sti-grant-wtoken-v1";
 
+// Length-prefix each component (like requesterHash in knock.ts) so the framing is
+// unambiguous regardless of what a component holds: distinct splits can never hash
+// the same input even if a value contains the separator. The components are
+// fixed-length opaque tokens today, so this is defense-in-depth that keeps the
+// derivation robust if any of them ever became variable-length.
+function framed(...parts: string[]): string {
+  return parts.map((p) => `${p.length}:${p}`).join("");
+}
+
 /** The opaque /a id holding a grant for (aliasId, requesterHash). Both the owner
  * and that one requester can derive it; no one else can. */
 export function deriveGrantSlotId(
@@ -53,7 +62,7 @@ export function deriveGrantSlotId(
   requesterHashValue: string,
 ): Promise<string> {
   return sha256Base64url(
-    utf8ToBytes(`${SLOT_INFO}:${aliasId}:${requesterHashValue}`),
+    utf8ToBytes(framed(SLOT_INFO, aliasId, requesterHashValue)),
   );
 }
 
@@ -65,7 +74,7 @@ function deriveGrantWriteToken(
   requesterHashValue: string,
 ): Promise<string> {
   return sha256Base64url(
-    utf8ToBytes(`${WTOKEN_INFO}:${aliasWriteToken}:${requesterHashValue}`),
+    utf8ToBytes(framed(WTOKEN_INFO, aliasWriteToken, requesterHashValue)),
   );
 }
 

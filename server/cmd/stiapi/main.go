@@ -63,11 +63,15 @@ func main() {
 	// non-browser callers.
 	allowedOrigins := splitList(os.Getenv("STI_ALLOWED_ORIGINS"))
 
-	// Targeted-wake delivery (notify/push) is OFF by default and stays off in prod
-	// until the cover-wake decorrelation fix lands (doc 10 §F). Two independent
-	// gates must BOTH be on to deliver: STI_NOTIFY_ENABLED, and a configured Web
-	// Push sender (VAPID keys). Either alone delivers nothing.
-	notifyEnabled := os.Getenv("STI_NOTIFY_ENABLED") == "true"
+	// Targeted-wake intake is ON by default now that the cover-wake decorrelation
+	// fix has landed (doc 10 §F, doc 13 §2): a real wake never reaches its recipient
+	// directly, it fans out one contentless cover wake across the whole push
+	// population. STI_NOTIFY_ENABLED=false disables it. Two things still gate actual
+	// DELIVERY: this flag AND a configured Web Push sender (VAPID keys). A box with
+	// the flag on but no VAPID keys keeps the constant-time intake live and the drain
+	// reclaims each queued wake instead of delivering it, so the queue never grows
+	// unbounded; it simply wakes no one until keys are configured.
+	notifyEnabled := os.Getenv("STI_NOTIFY_ENABLED") != "false"
 	vapidPublic := os.Getenv("STI_VAPID_PUBLIC_KEY")
 	var sender server.Sender
 	if priv := os.Getenv("STI_VAPID_PRIVATE_KEY"); vapidPublic != "" && priv != "" {
@@ -274,9 +278,9 @@ type janitorTTLs struct {
 
 // background runs the periodic janitors: expire knocks, purge long-dead alias and
 // orphan-report rows, drain due wakes, and trim idle rate-limit buckets. The send
-// drain delivers contentless Web Push wakes via the server's Sender, gated off by
-// default (Config.NotifyEnabled), so it is inert until targeted-wake delivery is
-// explicitly enabled.
+// drain delivers contentless Web Push wakes via the server's Sender; intake is on by
+// default (Config.NotifyEnabled), but with no Sender configured the drain reclaims
+// queued wakes without delivering, so the queues stay bounded either way.
 func background(ctx context.Context, st *store.Store, srv *server.Server, metricsState string, interval time.Duration, ttls janitorTTLs, log *slog.Logger) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()

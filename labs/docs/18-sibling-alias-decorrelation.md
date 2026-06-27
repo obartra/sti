@@ -18,9 +18,12 @@ shared aliases it seals each card and hands the whole set to `POST /republish` a
 one batch. The server (`server/internal/server/republish.go`) queues each op in
 `republish_queue` at an INDEPENDENT jittered `available_at` over `RepublishWindow`
 (`STI_REPUBLISH_WINDOW`, default 3 min) and the janitor (`DrainRepublishes`) applies
-each as a normal write-token-gated alias overwrite when its time arrives. A
-single-alias owner still publishes directly (no sibling to decorrelate, so no point
-delaying the status update).
+each as a write-token-gated alias overwrite when its time arrives. The apply is
+guarded (`ApplyRepublish`): it overwrites the alias only when the alias still exists
+and has NOT been written since the op was enqueued, so a deferred snapshot can never
+revert a newer write or un-revoke a card (see "Honest limits"). A single-alias owner
+still publishes directly (no sibling to decorrelate, so no point delaying the status
+update).
 
 **What this achieves and the trade taken.** The publicly observable thing, when
 each alias's ciphertext CHANGES, is now decorrelated: an observer polling two of an
@@ -154,7 +157,12 @@ Findable-specific work.
 - Jittered apply delays status propagation by up to `RepublishWindow`; the window is
   a privacy/latency trade to tune, not a free win. The time-sensitive partner-notify
   ping is a separate, immediate path, so a positive result still reaches partners
-  promptly while the cards decorrelate.
+  promptly while the cards decorrelate. This is a LATENCY limit only: a card may look
+  stale for up to the window, but it is never reverted to an older value. The earlier
+  concern (a deferred op applying out of order behind a newer write, or behind a
+  revoke, and flipping the card back) is NOT carried, the `ApplyRepublish` guard
+  resolves it. A queued snapshot is skipped once the alias has been written past the
+  op's enqueue time, so the newest write always wins and a revoked card stays revoked.
 - Decorrelation granularity is the janitor tick (`STI_JANITOR_INTERVAL`): two ops
   jittered into the same tick apply together. A window spanning several ticks keeps
   the collision rate low; finer granularity would need a dedicated faster drain.

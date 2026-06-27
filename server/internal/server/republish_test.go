@@ -136,6 +136,73 @@ func TestRepublishDrainApplies(t *testing.T) {
 	}
 }
 
+// A deferred overwrite must NOT revert a newer write that landed during the
+// decorrelation window: a status change, a direct edit, or a revoke all bump the
+// alias's updated_at past the op's enqueue time, so the stale snapshot is skipped.
+// This is the foot-gun the window would otherwise create (the card flips back, or a
+// revoked card comes back, minutes later).
+func TestRepublishSkipsSupersededWrite(t *testing.T) {
+	ctx := context.Background()
+	// Fixed clock at 1000, so the republish op is enqueued with created_at = 1000.
+	srv, st := newRepublishServer(t, 0, 1000)
+	h := srv.Handler()
+	id := randID(t)
+	// Bind the alias (and its write token) with the card the republish will carry.
+	if _, err := st.WriteAlias(ctx, id, payload(7), hashToken("owner-wt"), 1, sql.NullInt64{}, false); err != nil {
+		t.Fatal(err)
+	}
+	if rec := do(h, republishBody([]contract.RepublishOp{op(id, "owner-wt", payload(7))})); rec.Code != http.StatusAccepted {
+		t.Fatalf("republish: %d", rec.Code)
+	}
+	// A NEWER direct write lands during the window (updated_at 2000 > enqueuedAt 1000),
+	// e.g. a fresh status change or a revoke: byte 9.
+	if _, err := st.WriteAlias(ctx, id, payload(9), hashToken("owner-wt"), 2000, sql.NullInt64{}, false); err != nil {
+		t.Fatal(err)
+	}
+
+	// Draining must keep the newer byte-9 card, not revert to the stale byte-7 snapshot.
+	srv.DrainRepublishes(ctx, 3000)
+
+	ct, _, found, err := st.GetAlias(ctx, id)
+	if err != nil || !found {
+		t.Fatalf("alias gone: found=%v err=%v", found, err)
+	}
+	if ct[0] != 9 {
+		t.Fatalf("stale republish reverted a newer write: first byte %d, want 9", ct[0])
+	}
+	if d := republishDepth(t, st); d != 0 {
+		t.Fatalf("superseded op not dropped: %d remain", d)
+	}
+}
+
+// A deferred republish for an alias that no longer exists (deleted/revoked away) is a
+// clean no-op: it must NOT recreate the alias from the stale snapshot.
+func TestRepublishDoesNotRecreateDeletedAlias(t *testing.T) {
+	ctx := context.Background()
+	srv, st := newRepublishServer(t, 0, 1000)
+	h := srv.Handler()
+	id := randID(t)
+	if _, err := st.WriteAlias(ctx, id, payload(7), hashToken("owner-wt"), 1, sql.NullInt64{}, false); err != nil {
+		t.Fatal(err)
+	}
+	if rec := do(h, republishBody([]contract.RepublishOp{op(id, "owner-wt", payload(7))})); rec.Code != http.StatusAccepted {
+		t.Fatalf("republish: %d", rec.Code)
+	}
+	// The alias is force-deleted (e.g. an admin takedown) before the op drains.
+	if err := st.AdminDeleteAlias(ctx, id); err != nil {
+		t.Fatal(err)
+	}
+
+	srv.DrainRepublishes(ctx, 2000)
+
+	if _, _, found, _ := st.GetAlias(ctx, id); found {
+		t.Fatal("republish resurrected a deleted alias")
+	}
+	if d := republishDepth(t, st); d != 0 {
+		t.Fatalf("op for a gone alias not dropped: %d remain", d)
+	}
+}
+
 // A deferred overwrite whose write token does NOT match the alias is dropped, not
 // retried forever, and leaves the alias untouched.
 func TestRepublishDrainDropsForeignToken(t *testing.T) {

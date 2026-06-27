@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -9,6 +10,12 @@ import (
 
 	"sti.care/api/internal/store"
 )
+
+// ErrSubscriptionGone marks a permanently dead Web Push subscription: the push
+// service returned 404 (unknown) or 410 (gone), so the endpoint will never accept
+// another wake. The drain prunes such targets rather than retaining the cover and
+// retrying forever (which would also keep a dead route in every cover broadcast).
+var ErrSubscriptionGone = errors.New("web push: subscription gone")
 
 // WebPushSender is the concrete Sender: it delivers a contentless wake over the
 // Web Push protocol (RFC 8291 payload encryption, RFC 8292 VAPID auth) via the
@@ -57,8 +64,9 @@ func NewWebPushSender(publicKey, privateKey, subject string) *WebPushSender {
 }
 
 // Send delivers one empty wake to a single subscription. A 404/410 means the
-// subscription has expired; that surfaces as an error so the drain loop's
-// retain-on-failure behavior applies (the caller may later prune dead targets).
+// subscription is permanently gone; that surfaces as ErrSubscriptionGone so the
+// drain prunes the dead target instead of retrying it forever. Any other non-2xx
+// is a plain error, which the drain retains and retries.
 func (w *WebPushSender) Send(ctx context.Context, t store.PushTarget) error {
 	sub := &webpush.Subscription{
 		Endpoint: t.Endpoint,
@@ -75,6 +83,9 @@ func (w *WebPushSender) Send(ctx context.Context, t store.PushTarget) error {
 		return err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone {
+		return fmt.Errorf("%w (status %d)", ErrSubscriptionGone, resp.StatusCode)
+	}
 	if resp.StatusCode/100 != 2 {
 		return fmt.Errorf("web push: unexpected status %d", resp.StatusCode)
 	}
