@@ -84,6 +84,16 @@ core read/write surface; later work adds routes around it (the notify inbox in d
 | `POST /push/register`      | Store a Web Push subscription for a `routing_endpoint_id`       | Contentless pings only.                                             |
 | `POST /knock/{id}`         | Contentless, rate-limited knock against an alias               | Auto-expiry ~4 days; per-requester and per-id limits (locked).     |
 
+**The server runs no badge logic, and is authoritative for nothing about a user's
+status.** The blue/gray badge is computed on the OWNER's device and sealed into the
+card; the server stores and returns opaque bytes and could not tell blue from gray if
+it tried. "Resolving a badge" everywhere in these docs means the CLIENT got the
+ciphertext (from `GET /a`, or in person over a QR code) and computed the badge
+LOCALLY. The client is the source of truth for status; the server is dumb storage.
+This is a common source of confusion, so it is stated plainly: a status is never
+"on the server" in any readable sense, the server only ever holds bytes it cannot
+read.
+
 The pull "go get tested" fallback (Decisions §Partner notification) is a **static client page**, not a
 server endpoint, so there is no `/poll` route in v1. A server poll only becomes safe paired with its
 cover-traffic mitigation (broadcast wake + uniform "anything for me?"); that endpoint lands together
