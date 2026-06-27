@@ -1,38 +1,19 @@
 package server
 
 import (
-	"context"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"sti.care/api/internal/contract"
-	"sti.care/api/internal/store"
 )
 
 const allowedOrigin = "https://sti.care"
 
 func newTestServerWithOrigins(t *testing.T, origins ...string) http.Handler {
 	t.Helper()
-	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "t.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { st.Close() })
-	secret := make([]byte, 32)
-	for i := range secret {
-		secret[i] = byte(i + 1)
-	}
-	srv := New(
-		st,
-		Config{DecoySecret: secret, AllowedOrigins: origins},
-		slog.New(slog.NewTextHandler(io.Discard, nil)),
-		nil,
-	)
+	srv, _ := newServer(t, Config{AllowedOrigins: origins}, nil)
 	return srv.Handler()
 }
 

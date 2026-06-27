@@ -23,24 +23,13 @@ const testAdminToken = "test-admin-secret-0123456789abcdef" // >= boot floor, bu
 // hands back the Server so a test can swap a seam (e.g. the audit appender).
 func newTestAdminSrv(t *testing.T, token string) (*Server, *store.Store) {
 	t.Helper()
-	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "t.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { st.Close() })
-	secret := make([]byte, 32)
-	for i := range secret {
-		secret[i] = byte(i + 1)
-	}
-	// A generous limit so the auth/audit assertions (which fire several requests
+	// A generous burst so the auth/audit assertions (which fire several requests
 	// back to back) are never throttled; TestAdminRateLimited pins the tight budget.
-	srv := New(st, Config{
-		DecoySecret:  secret,
+	return newServer(t, Config{
 		AdminEnabled: true,
 		AdminToken:   token,
 		AdminBurst:   1000,
-	}, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
-	return srv, st
+	}, nil)
 }
 
 // newTestAdminServer builds a server with the operator surface enabled and returns

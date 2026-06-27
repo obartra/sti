@@ -23,16 +23,7 @@ import (
 
 func newTestServer(t *testing.T) http.Handler {
 	t.Helper()
-	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "t.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { st.Close() })
-	secret := make([]byte, 32)
-	for i := range secret {
-		secret[i] = byte(i + 1)
-	}
-	srv := New(st, Config{DecoySecret: secret}, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+	srv, _ := newServer(t, Config{}, nil)
 	return srv.Handler()
 }
 
