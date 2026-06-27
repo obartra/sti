@@ -843,22 +843,36 @@ func (s *Store) DeleteCover(ctx context.Context, id int64) error {
 // --- Knocks -----------------------------------------------------------------
 
 // RecordKnock records a contentless knock, deduplicated per (target, requester).
-// created reports whether a new row was written (an existing, unexpired knock is
-// a no-op). The caller equalizes total work regardless of this result.
+// created reports whether a row was written: a brand-new knock, or a re-knock that
+// refreshed an EXPIRED row in place. An existing, still-live knock stays a no-op.
+// The caller equalizes total work regardless of this result.
 //
 // pubKey is the requester's opaque ephemeral grant key (or "" for a knock that
-// only wants the quiet indicator). It is written on the FIRST knock and left
-// untouched on a dedup'd repeat (ON CONFLICT DO NOTHING). This assumes a requester
-// reuses a stable per-alias key, so the stored value still matches the key it
-// holds. The assumption has two known gaps the owner-seal slice must handle: a
-// first contentless knock ("") is NOT upgraded by a later keyed re-knock (the
-// owner sees ""), and a device that regenerates its key (reinstall) leaves the
-// owner sealing to a key the requester no longer holds. Both degrade to "no grant
-// arrives", never to a wrong-recipient grant, so failing safe is preserved.
+// only wants the quiet indicator). A re-knock that lands while the prior row is
+// still LIVE is deduped and leaves the stored key untouched; a re-knock that lands
+// after the prior row EXPIRED (but before the janitor purged it) refreshes the row
+// in place with the fresh key and expiry, so an actively-knocking requester stays
+// visible to the owner instead of being silently dropped for the window between
+// expiry and purge.
+//
+// The live-dedup assumes a requester reuses a stable per-alias key, so the stored
+// value still matches the key it holds. That has two known gaps the owner-seal
+// slice must handle: a first contentless knock ("") is NOT upgraded by a later
+// keyed re-knock while the row is still live (the owner sees ""), and a device that
+// regenerates its key (reinstall) leaves the owner sealing to a key the requester
+// no longer holds. Both degrade to "no grant arrives", never to a wrong-recipient
+// grant, so failing safe is preserved.
 func (s *Store) RecordKnock(ctx context.Context, targetID, requesterHash, pubKey string, now, expiresAt int64) (created bool, err error) {
+	// DO UPDATE only when the existing row has already expired (the WHERE guard), so
+	// a live re-knock stays a no-op (dedup) while an expired row is reclaimed by its
+	// fresh re-knock rather than being blocked by a plain DO NOTHING.
 	res, err := s.db.ExecContext(ctx,
 		`INSERT INTO knock (target_id, requester_hash, pub_key, created_at, expires_at) VALUES (?, ?, ?, ?, ?)
-		 ON CONFLICT(target_id, requester_hash) DO NOTHING`,
+		 ON CONFLICT(target_id, requester_hash) DO UPDATE SET
+		     pub_key = excluded.pub_key,
+		     created_at = excluded.created_at,
+		     expires_at = excluded.expires_at
+		   WHERE knock.expires_at <= excluded.created_at`,
 		targetID, requesterHash, pubKey, now, expiresAt)
 	if err != nil {
 		return false, err

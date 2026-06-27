@@ -362,6 +362,42 @@ func TestKnockDedupeCountAndPurge(t *testing.T) {
 	}
 }
 
+// TestRecordKnockAfterExpiryRefreshes pins that a re-knock landing after the prior
+// row expired (but before the janitor purged it) produces a fresh live knock the
+// owner can see, carrying the new key, rather than being dropped by the dedup. The
+// purge runs only every ~60s, so an expired row is routinely still present when a
+// requester knocks again; a plain DO NOTHING would make that requester invisible.
+func TestRecordKnockAfterExpiryRefreshes(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+	const day = 24 * 60 * 60 * 1000
+
+	// First knock expires at t=1000.
+	if _, err := s.RecordKnock(ctx, "t", "req", "keyA", 0, 1000); err != nil {
+		t.Fatal(err)
+	}
+	// The row has expired (now=2000 > 1000) but the janitor has not purged it. The
+	// re-knock must refresh it into a live knock carrying the fresh key, not no-op.
+	created, err := s.RecordKnock(ctx, "t", "req", "keyB", 2000, 2000+4*day)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !created {
+		t.Fatal("re-knock after expiry: created=false, want true (expired row refreshed)")
+	}
+	knocks, err := s.CurrentKnocks(ctx, "t", 2000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(knocks) != 1 || knocks[0].PubKey != "keyB" {
+		t.Fatalf("re-knock after expiry = %+v, want one live knock with keyB", knocks)
+	}
+	// Still one row, not a duplicate: the refresh updates in place.
+	if n, _ := s.RecentKnockCount(ctx, "t", 0); n != 1 {
+		t.Fatalf("row count after refresh = %d, want 1", n)
+	}
+}
+
 // TestKnockPubKeyNotUpgradedOnReknock pins the known dedup limitation: a first
 // contentless knock ("") is NOT upgraded by a later keyed re-knock. The owner
 // keeps seeing "" (no grant slot) rather than the new key; this is the safe
