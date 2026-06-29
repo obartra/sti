@@ -11,6 +11,7 @@
 //   - src/ui/onboarding/claimCopy.ts   (COPY)
 //   - src/ui/onboarding/recovery.copy.ts (COPY)
 //   - src/ui/public/PublicResolution.copy.ts (COPY + KNOCK_UNIFORM)
+//   - src/ui/findable/shareLinkGuideCopy.ts (SHARE_LINK_GUIDE + BIO_MOCKS)
 // The trust pages (PRIVACY_POLICY/TERMS/TRUST_FOOTER) are already covered by
 // trustCopy.test.ts, so they are not re-checked here.
 // NOT covered (copy is inlined in the component, not a separate importable table, so a
@@ -30,6 +31,10 @@ import {
   COPY as RESOLVE_COPY,
   KNOCK_UNIFORM,
 } from "../ui/public/PublicResolution.copy.ts";
+import {
+  SHARE_LINK_GUIDE,
+  BIO_MOCKS,
+} from "../ui/findable/shareLinkGuideCopy.ts";
 
 // Collect every string leaf in a copy table (nested objects and arrays included),
 // tagged with a path so a failure points at the offending entry.
@@ -59,6 +64,8 @@ const ALL: [string, string][] = [
   ...strings("recovery.COPY", RECOVERY_COPY),
   ...strings("resolve.COPY", RESOLVE_COPY),
   ...strings("resolve.KNOCK_UNIFORM", KNOCK_UNIFORM),
+  ...strings("shareLinkGuide.SHARE_LINK_GUIDE", SHARE_LINK_GUIDE),
+  ...strings("shareLinkGuide.BIO_MOCKS", BIO_MOCKS),
 ];
 
 describe("centralized user copy obeys the voice and honesty rules (G13)", () => {

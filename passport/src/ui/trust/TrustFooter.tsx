@@ -20,12 +20,15 @@ export interface TrustFooterProps {
   onPromises?: (() => void) | undefined;
   onPrivacy?: (() => void) | undefined;
   onTerms?: (() => void) | undefined;
+  /** Open the public "share your link" guide (docs 16, 17). */
+  onShareLink?: (() => void) | undefined;
 }
 
 export function TrustFooter({
   onPromises,
   onPrivacy,
   onTerms,
+  onShareLink,
 }: TrustFooterProps) {
   return (
     <footer
@@ -57,6 +60,11 @@ export function TrustFooter({
         <button type="button" style={linkBtn} onClick={onTerms}>
           {TRUST_FOOTER.terms}
         </button>
+        {onShareLink && (
+          <button type="button" style={linkBtn} onClick={onShareLink}>
+            {TRUST_FOOTER.shareLink}
+          </button>
+        )}
       </div>
       <div style={{ fontSize: 12, color: "var(--text-subtle)" }}>
         {TRUST_FOOTER.tagline}

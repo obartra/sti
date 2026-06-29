@@ -58,19 +58,32 @@ describe("TrustFooter", () => {
     const onPromises = vi.fn();
     const onPrivacy = vi.fn();
     const onTerms = vi.fn();
+    const onShareLink = vi.fn();
     render(
       <TrustFooter
         onPromises={onPromises}
         onPrivacy={onPrivacy}
         onTerms={onTerms}
+        onShareLink={onShareLink}
       />,
     );
     await userEvent.click(screen.getByRole("button", { name: "Our promises" }));
     await userEvent.click(screen.getByRole("button", { name: "Privacy" }));
     await userEvent.click(screen.getByRole("button", { name: "Terms" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Share your link" }),
+    );
     expect(onPromises).toHaveBeenCalledOnce();
     expect(onPrivacy).toHaveBeenCalledOnce();
     expect(onTerms).toHaveBeenCalledOnce();
+    expect(onShareLink).toHaveBeenCalledOnce();
+  });
+
+  it("omits the share-your-link button when no handler is given", () => {
+    render(<TrustFooter onPromises={vi.fn()} />);
+    expect(
+      screen.queryByRole("button", { name: "Share your link" }),
+    ).toBeNull();
   });
 
   it("offers a mailto feedback link to the published address", () => {
@@ -95,9 +108,15 @@ describe("footerLinks", () => {
     links.onPromises();
     links.onPrivacy();
     links.onTerms();
+    links.onShareLink();
 
     const targets = go.mock.calls.map((c) => c[0]);
-    expect(targets).toEqual(["promises", "privacy-policy", "terms"]);
+    expect(targets).toEqual([
+      "promises",
+      "privacy-policy",
+      "terms",
+      "share-link",
+    ]);
     for (const target of targets) {
       expect(isScreen(target), `${target} is not a real screen`).toBe(true);
     }

@@ -5,6 +5,7 @@ import type { AliasRecord, ContactRecord } from "../../store/index.ts";
 import type { PushControls } from "../app/usePush.ts";
 import { LiveLinks } from "./Privacy.aliases.tsx";
 import { FindableName, type FindableOps } from "../findable/FindableName.tsx";
+import { ShareLinkGuide } from "../findable/ShareLinkGuide.tsx";
 import { AvatarCard } from "../onboarding/AvatarCard.tsx";
 import {
   AttributesCard,
@@ -95,6 +96,26 @@ function AboutLegal({
   );
 }
 
+// The public-name section: the claim/release card, plus the share guide once a
+// name is held. Both depend on the feature being wired in (findableOps present),
+// so they live together; this keeps the Privacy body's branching low.
+function FindableSection({
+  vanityName,
+  findableOps,
+}: {
+  vanityName: string | null | undefined;
+  findableOps: FindableOps | undefined;
+}) {
+  if (!findableOps) return null;
+  const name = vanityName ?? null;
+  return (
+    <>
+      <FindableName currentName={name} ops={findableOps} />
+      {name !== null && name !== "" && <ShareLinkGuide handle={name} />}
+    </>
+  );
+}
+
 export function Privacy({
   ownerState,
   setOwnerState,
@@ -157,11 +178,10 @@ export function Privacy({
           onViewAs={onViewAs}
         />
 
-        {/* Findable name (doc 17), shown only when the feature is wired in (the
-            caller gates on the flag + login). Self-contained claim/release card. */}
-        {findableOps && (
-          <FindableName currentName={vanityName} ops={findableOps} />
-        )}
+        {/* Public name (doc 17): the claim/release card, plus the share guide right
+            after a name is claimed. Shown only when the section is wired in (the
+            caller gates on the flag + login). */}
+        <FindableSection vanityName={vanityName} findableOps={findableOps} />
 
         <AttributesCard state={state} />
         <ControlsCard state={state} push={push} />

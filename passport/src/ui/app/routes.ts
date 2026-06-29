@@ -33,6 +33,7 @@ export const ALL_SCREENS = [
   "promises",
   "privacy-policy",
   "terms",
+  "share-link",
 ] as const;
 
 export type Screen = (typeof ALL_SCREENS)[number];
@@ -77,6 +78,7 @@ const PUBLIC: readonly Screen[] = [
   "promises",
   "privacy-policy",
   "terms",
+  "share-link",
 ];
 const ONBOARD: readonly Screen[] = ["b1-claim", "b2-recovery", "b3-setup"];
 

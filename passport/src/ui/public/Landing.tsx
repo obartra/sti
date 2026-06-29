@@ -309,6 +309,7 @@ export interface LandingProps {
   pendingCount?: number;
   /** Open the list of requests this viewer has made. */
   onRequests?: () => void;
+  onShareLink?: () => void;
 }
 
 export function Landing({
@@ -320,6 +321,7 @@ export function Landing({
   onTerms,
   pendingCount,
   onRequests,
+  onShareLink,
 }: LandingProps) {
   return (
     <div
@@ -344,6 +346,7 @@ export function Landing({
         onPromises={onPromises}
         onPrivacy={onPrivacyPolicy}
         onTerms={onTerms}
+        onShareLink={onShareLink}
       />
     </div>
   );

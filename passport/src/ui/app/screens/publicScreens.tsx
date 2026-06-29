@@ -20,6 +20,7 @@ export const publicRenderers: ScreenRenderers = {
       onTerms={() => nav.go("terms")}
       pendingCount={pendingRequests.length}
       onRequests={() => nav.go("requests")}
+      onShareLink={() => nav.go("share-link")}
     />
   ),
   requests: ({ nav, store, pendingRequests, onForgetRequest }) => (

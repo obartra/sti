@@ -20,6 +20,7 @@ export interface DesktopLandingProps {
   onTerms?: () => void;
   pendingCount?: number;
   onRequests?: () => void;
+  onShareLink?: () => void;
 }
 
 export function DesktopLanding({
@@ -32,6 +33,7 @@ export function DesktopLanding({
   onTerms,
   pendingCount,
   onRequests,
+  onShareLink,
 }: DesktopLandingProps) {
   return (
     <div
@@ -57,6 +59,7 @@ export function DesktopLanding({
         onPromises={onPromises}
         onPrivacyPolicy={onPrivacyPolicy}
         onTerms={onTerms}
+        onShareLink={onShareLink}
       />
     </div>
   );
