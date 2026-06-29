@@ -137,7 +137,10 @@ export function createDemoController(): SessionController {
     renewLink: (s) => Promise.resolve({ session: s, url: demoUrl() }),
     setShareLinkDuration: () => session(),
     deleteAccount: () => Promise.resolve(),
-    reviewKnocks: () => Promise.resolve({ count: 0, pending: [] }),
+    // One contentless ask, so the demo inbox shows "someone asked to see your
+    // status" (faithful to real behavior: a count with no grantable pending is an
+    // informational row, never a dead-end the demo can't honor).
+    reviewKnocks: () => Promise.resolve({ count: 1, pending: [] }),
     approveKnocks: (_s, approvals) => Promise.resolve(approvals.length),
     createContactLink: async (_s, label) => {
       const contact = demoContact(label, 0);
