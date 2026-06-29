@@ -1,19 +1,20 @@
 import type { CSSProperties } from "react";
+import { NavLink } from "../app/NavLink.tsx";
+import { pathForScreen } from "../app/useAppRouter.ts";
 import { TRUST_FOOTER, SUPPORT_EMAIL } from "./trustCopy.ts";
 
 // The quiet trust footer shown on the public surfaces (doc 23): the landing, the
 // trust pages themselves, and the marketing site. Not worn by the logged-in app,
-// which surfaces the same links from Privacy settings instead.
+// which surfaces the same links from Privacy settings instead. Each destination is a
+// real anchor (NavLink): it has a genuine href and reads as a link, but a plain click
+// routes through the SPA. (Accessible, and "real links, not /#fragments".)
 
-const linkBtn: CSSProperties = {
-  appearance: "none",
-  border: "none",
-  background: "none",
-  padding: 0,
-  cursor: "pointer",
+const linkStyle: CSSProperties = {
   fontSize: 12.5,
   fontWeight: 700,
   color: "var(--text-accent)",
+  textDecoration: "none",
+  cursor: "pointer",
 };
 
 export interface TrustFooterProps {
@@ -51,19 +52,41 @@ export function TrustFooter({
           justifyContent: "center",
         }}
       >
-        <button type="button" style={linkBtn} onClick={onPromises}>
-          {TRUST_FOOTER.promises}
-        </button>
-        <button type="button" style={linkBtn} onClick={onPrivacy}>
-          {TRUST_FOOTER.privacy}
-        </button>
-        <button type="button" style={linkBtn} onClick={onTerms}>
-          {TRUST_FOOTER.terms}
-        </button>
+        {onPromises && (
+          <NavLink
+            href={pathForScreen("promises")}
+            onNavigate={onPromises}
+            style={linkStyle}
+          >
+            {TRUST_FOOTER.promises}
+          </NavLink>
+        )}
+        {onPrivacy && (
+          <NavLink
+            href={pathForScreen("privacy-policy")}
+            onNavigate={onPrivacy}
+            style={linkStyle}
+          >
+            {TRUST_FOOTER.privacy}
+          </NavLink>
+        )}
+        {onTerms && (
+          <NavLink
+            href={pathForScreen("terms")}
+            onNavigate={onTerms}
+            style={linkStyle}
+          >
+            {TRUST_FOOTER.terms}
+          </NavLink>
+        )}
         {onShareLink && (
-          <button type="button" style={linkBtn} onClick={onShareLink}>
+          <NavLink
+            href={pathForScreen("share-link")}
+            onNavigate={onShareLink}
+            style={linkStyle}
+          >
             {TRUST_FOOTER.shareLink}
-          </button>
+          </NavLink>
         )}
       </div>
       <div style={{ fontSize: 12, color: "var(--text-subtle)" }}>

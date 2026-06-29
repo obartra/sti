@@ -265,12 +265,18 @@ function PublicChrome(props: ChromeProps) {
     );
   }
   const ctx: ScreenCtx = buildCtx(props);
+  // The trust pages (promises, privacy, terms, share-link) own a full-width
+  // "trust center" layout on desktop; the rest of the public canvas stays a
+  // narrow reading column.
+  const isTrust =
+    route.screen === "promises" ||
+    route.screen === "privacy-policy" ||
+    route.screen === "terms" ||
+    route.screen === "share-link";
   return (
     <CanvasWrap
       desktop={desktop}
-      // The promises page is a multi-column grid on desktop; the rest of the
-      // public canvas stays a narrow reading column.
-      wide={route.screen === "promises"}
+      full={isTrust}
       onHome={() => nav.jump("a1-landing", "public")}
     >
       <ScreenView screen={route.screen} ctx={ctx} />

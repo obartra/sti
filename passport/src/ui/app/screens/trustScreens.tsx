@@ -1,14 +1,14 @@
 import { Promises } from "../../promises/Promises.tsx";
-import { TrustPage } from "../../trust/TrustPage.tsx";
+import { TrustShell } from "../../trust/TrustShell.tsx";
 import { LegalPage } from "../../trust/LegalPage.tsx";
 import { PRIVACY_POLICY, TERMS } from "../../trust/trustCopy.ts";
 import { ShareLinkPage } from "../../findable/ShareLinkPage.tsx";
 import type { ScreenCtx, ScreenRenderers } from "./context.ts";
 
 // The public trust pages (doc 23): promises, privacy, terms, and the "share your
-// link" guide (docs 16, 17). Each is full-page static content wrapped in TrustPage
-// (a back control + the shared footer), and each footer link routes to a sibling so
-// the set is reachable from any of them.
+// link" guide (docs 16, 17). Each is full-page static content wrapped in TrustShell
+// (a back control + a sticky section rail on large screens + the shared footer), and
+// each rail/footer link routes to a sibling so the set is reachable from any of them.
 
 // Exported so a test can pin that each footer link targets a real screen id (an id
 // in ALL_SCREENS), not a typo that would route nowhere (G16).
@@ -28,23 +28,38 @@ export function footerLinks(nav: ScreenCtx["nav"]): {
 
 export const trustRenderers: ScreenRenderers = {
   promises: ({ nav }) => (
-    <TrustPage onBack={nav.back} wide {...footerLinks(nav)}>
+    <TrustShell
+      current="promises"
+      onBack={nav.back}
+      wideContent
+      {...footerLinks(nav)}
+    >
       <Promises />
-    </TrustPage>
+    </TrustShell>
   ),
   "privacy-policy": ({ nav }) => (
-    <TrustPage onBack={nav.back} wide {...footerLinks(nav)}>
+    <TrustShell
+      current="privacy"
+      onBack={nav.back}
+      wideContent
+      {...footerLinks(nav)}
+    >
       <LegalPage doc={PRIVACY_POLICY} />
-    </TrustPage>
+    </TrustShell>
   ),
   terms: ({ nav }) => (
-    <TrustPage onBack={nav.back} wide {...footerLinks(nav)}>
+    <TrustShell
+      current="terms"
+      onBack={nav.back}
+      wideContent
+      {...footerLinks(nav)}
+    >
       <LegalPage doc={TERMS} />
-    </TrustPage>
+    </TrustShell>
   ),
   "share-link": ({ nav }) => (
-    <TrustPage onBack={nav.back} {...footerLinks(nav)}>
+    <TrustShell current="share-link" onBack={nav.back} {...footerLinks(nav)}>
       <ShareLinkPage />
-    </TrustPage>
+    </TrustShell>
   ),
 };

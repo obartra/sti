@@ -117,6 +117,57 @@ describe("the /promises path", () => {
   });
 });
 
+describe("the trust pages own clean, real paths", () => {
+  const at = (path: string) => {
+    window.history.replaceState(null, "", path);
+    try {
+      const { result } = renderHook(() => useAppRouter());
+      return result.current.route;
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  };
+
+  it("routes /privacy and /terms to the public trust pages (no #fragment)", () => {
+    expect(at("/privacy").screen).toBe("privacy-policy");
+    expect(at("/privacy").group).toBe("public");
+    expect(at("/terms").screen).toBe("terms");
+    expect(at("/terms").group).toBe("public");
+    // A trailing slash is tolerated.
+    expect(at("/privacy/").screen).toBe("privacy-policy");
+  });
+
+  it("normalizes the screen to its clean path, not a /#fragment", async () => {
+    window.history.replaceState(null, "", "/");
+    try {
+      const { result } = renderHook(() => useAppRouter());
+      act(() => result.current.nav.go("terms"));
+      await waitFor(() => {
+        expect(window.location.pathname).toBe("/terms");
+        expect(window.location.hash).toBe("");
+      });
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
+  it("follows the browser back button (popstate) to the new URL", () => {
+    window.history.replaceState(null, "", "/privacy");
+    try {
+      const { result } = renderHook(() => useAppRouter());
+      expect(result.current.route.screen).toBe("privacy-policy");
+      act(() => {
+        // Simulate the browser back button: the URL changes, then popstate fires.
+        window.history.replaceState(null, "", "/");
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+      expect(result.current.route.screen).toBe("a1-landing");
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+});
+
 describe("the landing keeps the clean root URL", () => {
   it("visiting / stays at / and does not bounce to /#a1-landing", async () => {
     window.history.replaceState(null, "", "/");
