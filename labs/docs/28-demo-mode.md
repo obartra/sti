@@ -152,6 +152,10 @@ and the notes never drift.
 
 - **Entry:** the landing page **"Try the demo"** action, plus an optional stable route (`/#demo`) for
   the review notes and for sharing a link straight into the demo.
+- **Entry for development:** a build-time flag (`VITE_DEMO`) boots straight into the demo, so the whole
+  app can be run and exercised with no server at all (the same simulated backend the demo ships with).
+  This is a developer convenience, not a user surface; it only seeds the initial state, so the in-app
+  **"Leave demo"** still drops to the real, logged-out app.
 - **Exit to real:** the persistent **"Claim your passport"** drops the demo entirely and begins real
   onboarding. Nothing from the demo (no fixture data, no chosen result) carries into the real account,
   so a user cannot accidentally start their real passport pre-filled with demo state.

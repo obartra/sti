@@ -5,7 +5,7 @@ import "./demo-banner.css";
 // null outside demo mode, so the demo branch never adds to the App's complexity.
 
 /**
- * The persistent demo banner (doc 27, demo mode): an always-present bar marking
+ * The persistent demo banner (doc 28, demo mode): an always-present bar marking
  * every demo screen, so a person can tell at a glance, even from a screenshot,
  * that this is the demo and never their real passport. It never dismisses; the
  * only control is the way out. Copy follows the voice guide (doc 21): plain and
