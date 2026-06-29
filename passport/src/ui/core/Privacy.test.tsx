@@ -2,7 +2,7 @@ import { render, screen, renderHook, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, it, expect, vi, type Mock } from "vitest";
 import { Privacy } from "./Privacy.tsx";
-import { usePrivacyState } from "./Privacy.parts.tsx";
+import { usePrivacyState, keepUntilLabel } from "./Privacy.parts.tsx";
 import {
   INITIAL_OWNER_STATE,
   computeBadge,
@@ -201,6 +201,29 @@ describe("usePrivacyState card-attribute wiring", () => {
     const afterBoth = applyLast(set, afterPrep);
     expect(afterBoth.onPrep).toBe(true);
     expect(afterBoth.onDoxyPep).toBe(true);
+  });
+});
+
+describe("Privacy retention notice (auto-delete after inactivity)", () => {
+  it("states the policy and the date the backup would be deleted if unused", () => {
+    // Pinned reference instant (mid-June 2025) + the 2-year window = June 2027.
+    render(
+      <Privacy
+        ownerState={INITIAL_OWNER_STATE}
+        setOwnerState={() => undefined}
+        now={1_750_000_000_000}
+      />,
+    );
+    expect(screen.getByText("How long we keep this")).toBeInTheDocument();
+    expect(
+      screen.getByText(/delete your backup about two years later/i),
+    ).toBeInTheDocument();
+    // The concrete "kept until" date is shown, computed from now + the window.
+    expect(screen.getByText("June 2027")).toBeInTheDocument();
+  });
+
+  it("keepUntilLabel adds the retention window as a plain Month YYYY", () => {
+    expect(keepUntilLabel(1_750_000_000_000)).toBe("June 2027");
   });
 });
 

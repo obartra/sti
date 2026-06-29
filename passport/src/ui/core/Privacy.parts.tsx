@@ -49,7 +49,39 @@ export const COPY = {
   deleteTitle: "Delete everything",
   deleteSub: "Remove your passport, results and links. Instant, and for good.",
   deleteCta: "Delete everything",
+  keepTitle: "How long we keep this",
+  keepBody:
+    "We keep your saved data while you use the app. Stop using it and we delete your backup about two years later. Opening sti.care any time keeps it, and we have no other way to reach you, so we cannot warn you first.",
+  keepPrefix: "As things stand, that would be around ",
 } as const;
+
+// The inactivity window after which the server deletes an untouched account backup
+// (server STI_ACCOUNT_INACTIVITY_TTL, default 2 years). Kept here so the in-app
+// retention notice states the same number the backend enforces.
+export const RETENTION_YEARS = 2;
+
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+// The plain "Month YYYY" the data would be deleted if the owner stopped now: the
+// reference instant plus the retention window. Formatted from a fixed month table
+// (not toLocaleDateString) so it is deterministic across locales and test/CI hosts.
+export function keepUntilLabel(fromMs: number): string {
+  const d = new Date(fromMs);
+  return `${MONTHS[d.getMonth()]} ${d.getFullYear() + RETENTION_YEARS}`;
+}
 
 export type Condoms = "off" | "raw" | "either" | "always";
 

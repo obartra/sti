@@ -240,6 +240,24 @@ a cache-state oracle (HIT vs MISS leaks whether an id was recently fetched), and
 would force a Cloudflare API token onto the blind origin. The single indexed SQLite lookup does not
 need it.
 
+**Edge mitigation is rate-limit-only, never a visible challenge.** The two things the live config
+above does not state, and that any future edge change must preserve, are:
+
+- **Bot Fight Mode (and Super Bot Fight Mode) stays OFF on the API zone.** It answers suspected
+  bots with a managed/JS challenge. The app calls the API with `fetch`, which cannot solve a
+  challenge, so it would break legitimate clients; and a challenge on an existence-sensitive read
+  is itself an existence oracle. Bot defense here is the rate-limit rule plus the origin lock-down,
+  not a challenge.
+- **No rule ever issues a challenge (Managed Challenge, JS Challenge, Interactive/CAPTCHA) on the
+  existence-sensitive paths,** above all `GET /a/{id}` and `POST /knock/{id}`. A challenge page
+  served on a real id but not a decoy (or vice versa) leaks whether the id exists, breaking the
+  existence-uniform guarantee the decoy response is built to hold. The only edge action on these
+  paths is Block (429) past the rate limit.
+
+These are operator-verifiable in the dashboard (Security > Bots shows Bot Fight Mode off; the WAF /
+rate-limiting rules show Block, not Challenge, as the action). Everything else in this subsection is
+recorded as live.
+
 ---
 
 ## E. Build order

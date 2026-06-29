@@ -1,5 +1,10 @@
 import type { CSSProperties } from "react";
-import { COPY, usePrivacyState } from "./Privacy.parts.tsx";
+import {
+  COPY,
+  usePrivacyState,
+  keepUntilLabel,
+  fieldLbl,
+} from "./Privacy.parts.tsx";
 import type { OwnerState } from "../../core/badge.ts";
 import type { AliasRecord, ContactRecord } from "../../store/index.ts";
 import type { PushControls } from "../app/usePush.ts";
@@ -34,6 +39,9 @@ export interface PrivacyProps {
   /** Live preview src for the current avatar; with onEditAvatar, shows the editor entry. */
   avatarSrc?: string | undefined;
   onEditAvatar?: (() => void) | undefined;
+  /** Reference instant for the retention notice (defaults to now). Pinned by
+   * stories/tests so the "kept until" date is deterministic. */
+  now?: number | undefined;
   /** The owner's claimed findable name, or null when none (doc 17). */
   vanityName?: string | null | undefined;
   /** Findable claim/release transport; present (and the section shown) only when
@@ -116,6 +124,42 @@ function FindableSection({
   );
 }
 
+// A calm transparency note (not an alarm): the server deletes an abandoned backup
+// after the inactivity window (server STI_ACCOUNT_INACTIVITY_TTL), and using the app
+// resets it. Since opening the app IS the reset, this is honest disclosure rather
+// than an actionable countdown; the date is the reference instant plus the window.
+function RetentionNote({ now }: { now: number }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+        padding: "2px 2px 0",
+      }}
+    >
+      <div style={fieldLbl}>{COPY.keepTitle}</div>
+      <p
+        style={{
+          margin: 0,
+          fontSize: 13,
+          lineHeight: 1.5,
+          color: "var(--text-muted)",
+        }}
+      >
+        {COPY.keepBody}
+      </p>
+      <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>
+        {COPY.keepPrefix}
+        <strong style={{ color: "var(--text-strong)", fontWeight: 700 }}>
+          {keepUntilLabel(now)}
+        </strong>
+        .
+      </p>
+    </div>
+  );
+}
+
 export function Privacy({
   ownerState,
   setOwnerState,
@@ -132,6 +176,7 @@ export function Privacy({
   onViewTerms,
   avatarSrc,
   onEditAvatar,
+  now,
   vanityName = null,
   findableOps,
 }: PrivacyProps) {
@@ -203,6 +248,7 @@ export function Privacy({
             Log out
           </button>
         )}
+        <RetentionNote now={now ?? Date.now()} />
         <DangerZone state={state} onDeleted={onDeleted} />
       </div>
     </div>
