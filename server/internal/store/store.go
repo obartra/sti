@@ -125,6 +125,25 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("add account.write_auth: %w", err)
 		}
 	}
+	// account.last_seen_at: the epoch ms of the last read or write, so the janitor
+	// can delete a backup left untouched past the inactivity window (data
+	// minimization, disclosed in Privacy). Older databases have the account table
+	// without it; add it in place and backfill to updated_at so an existing account
+	// is aged from its last write, not deleted at the moment of upgrade.
+	hasLastSeen, err := hasColumn(ctx, db, "account", "last_seen_at")
+	if err != nil {
+		return err
+	}
+	if !hasLastSeen {
+		if _, err := db.ExecContext(ctx,
+			`ALTER TABLE account ADD COLUMN last_seen_at INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return fmt.Errorf("add account.last_seen_at: %w", err)
+		}
+		if _, err := db.ExecContext(ctx,
+			`UPDATE account SET last_seen_at = updated_at WHERE last_seen_at = 0`); err != nil {
+			return fmt.Errorf("backfill account.last_seen_at: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -329,8 +348,8 @@ func (s *Store) PutAccount(ctx context.Context, id string, ciphertext []byte, wr
 			return 0, true, true, tx.Commit()
 		}
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO account (id, ciphertext, version, updated_at, write_auth) VALUES (?, ?, 1, ?, ?)`,
-			id, ciphertext, now, writeAuth); err != nil {
+			`INSERT INTO account (id, ciphertext, version, updated_at, write_auth, last_seen_at) VALUES (?, ?, 1, ?, ?, ?)`,
+			id, ciphertext, now, writeAuth, now); err != nil {
 			return 0, false, false, err
 		}
 		version = 1
@@ -347,9 +366,9 @@ func (s *Store) PutAccount(ctx context.Context, id string, ciphertext []byte, wr
 			return current, true, true, tx.Commit()
 		}
 		if err := tx.QueryRowContext(ctx,
-			`UPDATE account SET ciphertext = ?, version = version + 1, updated_at = ?, write_auth = ?
+			`UPDATE account SET ciphertext = ?, version = version + 1, updated_at = ?, write_auth = ?, last_seen_at = ?
 			 WHERE id = ? RETURNING version`,
-			ciphertext, now, writeAuth, id).Scan(&version); err != nil {
+			ciphertext, now, writeAuth, now, id).Scan(&version); err != nil {
 			return 0, false, false, err
 		}
 	}
@@ -395,7 +414,9 @@ func (s *Store) DeleteAccountAuthorized(ctx context.Context, id, writeAuth strin
 	}
 }
 
-// GetAccount returns the account blob, its version, and whether it exists.
+// GetAccount returns the account blob, its version, and whether it exists. It does
+// NOT bump last_seen_at; the read path calls TouchAccount for that, so the hot read
+// stays a pure SELECT and the activity write is coarsened/throttled separately.
 func (s *Store) GetAccount(ctx context.Context, id string) (ciphertext []byte, version int64, found bool, err error) {
 	err = s.db.QueryRowContext(ctx, `SELECT ciphertext, version FROM account WHERE id = ?`, id).
 		Scan(&ciphertext, &version)
@@ -406,6 +427,23 @@ func (s *Store) GetAccount(ctx context.Context, id string) (ciphertext []byte, v
 		return nil, 0, false, err
 	}
 	return ciphertext, version, true, nil
+}
+
+// accountTouchThrottleMs coarsens the read-path activity bump: a read only rewrites
+// last_seen_at when the stored value is at least this stale. Day granularity is
+// ample for a multi-year inactivity window and keeps reads from writing every poll.
+const accountTouchThrottleMs = 24 * 60 * 60 * 1000
+
+// TouchAccount records that the account was just read by advancing last_seen_at to
+// now, but only when the stored value is already older than the throttle, so a busy
+// client polling its blob does not turn every GET into a write. It is best-effort
+// (the read has already succeeded); a missing row updates nothing. Writes set
+// last_seen_at directly in PutAccount, so this is the read path only.
+func (s *Store) TouchAccount(ctx context.Context, id string, now int64) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE account SET last_seen_at = ? WHERE id = ? AND last_seen_at <= ?`,
+		now, id, now-accountTouchThrottleMs)
+	return err
 }
 
 // --- Vanity name directory (doc 17, Findable) -------------------------------
@@ -1069,6 +1107,21 @@ func (s *Store) PurgeOrphanVanityReports(ctx context.Context, now, maxAgeMs int6
 		       SELECT 1 FROM vanity_name v
 		       WHERE v.name = vanity_report.name AND v.alias_id != ''
 		   )`, now-maxAgeMs)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
+// PurgeInactiveAccounts deletes account backups whose last read or write is older
+// than ttlMs, returning how many went. An account blob otherwise persists until the
+// owner deletes it; this reclaims the backups of abandoned accounts (data
+// minimization, disclosed in Privacy). last_seen_at is bumped on every read (via
+// TouchAccount) and write (PutAccount), so any real use of the account, even a
+// read-only sign-in, keeps it alive. The window is generous and configurable.
+func (s *Store) PurgeInactiveAccounts(ctx context.Context, now, ttlMs int64) (int64, error) {
+	res, err := s.db.ExecContext(ctx,
+		`DELETE FROM account WHERE last_seen_at <= ?`, now-ttlMs)
 	if err != nil {
 		return 0, err
 	}

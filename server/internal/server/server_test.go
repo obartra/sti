@@ -467,6 +467,42 @@ func TestAccountSyncRoundTrip(t *testing.T) {
 	}
 }
 
+// A GET on an account counts as activity: the read advances last_seen_at, so the
+// inactivity janitor spares an account the owner still signs in to (even read-only),
+// while an account that is never touched is reaped by the same sweep.
+func TestAccountGetCountsAsActivity(t *testing.T) {
+	now := int64(1_000_000_000)
+	srv, st := newServer(t, Config{}, func() int64 { return now })
+	h := srv.Handler()
+	ctx := context.Background()
+	const day = 24 * 60 * 60 * 1000
+
+	warm, cold := randID(t), randID(t)
+	for _, id := range []string{warm, cold} {
+		if rec := accountPut(h, id, "wt", "blob"); rec.Code != http.StatusNoContent {
+			t.Fatalf("put %s: %d", id, rec.Code)
+		}
+	}
+
+	// Time passes; the owner signs in and the app reads only the warm account's blob.
+	now += 2 * day
+	if rec := do(h, httptest.NewRequest("GET", contract.PathAccountPrefix+warm, nil)); rec.Code != http.StatusOK {
+		t.Fatalf("get warm: %d", rec.Code)
+	}
+
+	// A sweep with a one-day window: warm was just read (kept alive), cold has not
+	// been touched since creation two days ago, so only cold is reaped.
+	if n, err := st.PurgeInactiveAccounts(ctx, now, day); err != nil || n != 1 {
+		t.Fatalf("purge: n=%d err=%v, want 1 (only the untouched account)", n, err)
+	}
+	if _, _, found, _ := st.GetAccount(ctx, warm); !found {
+		t.Fatal("the read account should survive the sweep")
+	}
+	if _, _, found, _ := st.GetAccount(ctx, cold); found {
+		t.Fatal("the never-read account should be reaped")
+	}
+}
+
 // A PUT may carry an X-Version precondition for optimistic concurrency (doc 22 S8):
 // naming the current version overwrites and bumps it; naming a stale one is a 409
 // that leaves the blob untouched and reports the current version back; a malformed

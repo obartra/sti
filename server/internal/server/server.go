@@ -757,6 +757,12 @@ func (s *Server) handleAccountGet(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusNotFound, contract.ErrNotFound, "")
 		return
 	}
+	// Reading the backup counts as activity: refresh last_seen_at so the inactivity
+	// janitor never deletes an account a read-only owner still signs in to. Throttled
+	// in the store and best-effort, so it never fails or slows the read it follows.
+	if err := s.st.TouchAccount(r.Context(), id, s.now()); err != nil {
+		s.log.Warn("touch account", "err", err)
+	}
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set(contract.HeaderVersion, strconv.FormatInt(version, 10))
 	w.Header().Set("Cache-Control", "no-store")

@@ -927,3 +927,90 @@ func TestPurgeOrphanVanityReports(t *testing.T) {
 		t.Fatalf("gone reports = %d, want 1 (recent orphan survives, old orphan purged)", goneCount)
 	}
 }
+
+// PurgeInactiveAccounts deletes only account backups whose last read or write is
+// older than the inactivity window. A fresh account and one inside the window both
+// survive; a long-abandoned one goes.
+func TestPurgeInactiveAccounts(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+	const day = 24 * 60 * 60 * 1000
+	const year = 365 * day
+
+	// PutAccount stamps last_seen_at = now, so the write time IS the activity time.
+	mustWrite := func(id string, now int64) {
+		if _, ok, _, err := s.PutAccount(ctx, id, []byte("blob"), "wt", 0, now); err != nil || !ok {
+			t.Fatalf("write %s: ok=%v err=%v", id, ok, err)
+		}
+	}
+	mustWrite("acc-fresh", 100*year)        // just used
+	mustWrite("acc-inside", 100*year-year)  // a year idle, inside the 2y window
+	mustWrite("acc-stale", 100*year-3*year) // three years idle, past the window
+
+	// now = 100 years, window = 2 years: only acc-stale (idle >= 2y) goes.
+	n, err := s.PurgeInactiveAccounts(ctx, 100*year, 2*year)
+	if err != nil || n != 1 {
+		t.Fatalf("purge inactive accounts: n=%d err=%v, want 1", n, err)
+	}
+	for _, id := range []string{"acc-fresh", "acc-inside"} {
+		if _, _, found, _ := s.GetAccount(ctx, id); !found {
+			t.Fatalf("%s was purged but should survive", id)
+		}
+	}
+	if _, _, found, _ := s.GetAccount(ctx, "acc-stale"); found {
+		t.Fatal("acc-stale should have been purged")
+	}
+}
+
+// TouchAccount advances last_seen_at on read, but only once the stored value is past
+// the throttle, and a read keeps an otherwise-stale account alive past the window.
+func TestTouchAccountThrottleAndKeepAlive(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+	const throttle = accountTouchThrottleMs
+
+	lastSeen := func(id string) int64 {
+		var v int64
+		if err := s.db.QueryRowContext(ctx, `SELECT last_seen_at FROM account WHERE id = ?`, id).Scan(&v); err != nil {
+			t.Fatalf("read last_seen_at: %v", err)
+		}
+		return v
+	}
+
+	if _, ok, _, err := s.PutAccount(ctx, "acc", []byte("blob"), "wt", 0, 1000); err != nil || !ok {
+		t.Fatalf("write: ok=%v err=%v", ok, err)
+	}
+	// A near-immediate read is within the throttle, so it does not rewrite.
+	if err := s.TouchAccount(ctx, "acc", 2000); err != nil {
+		t.Fatal(err)
+	}
+	if got := lastSeen("acc"); got != 1000 {
+		t.Fatalf("last_seen_at = %d, want 1000 (throttled, unchanged)", got)
+	}
+	// A read past the throttle advances it.
+	later := int64(1000 + throttle + 1)
+	if err := s.TouchAccount(ctx, "acc", later); err != nil {
+		t.Fatal(err)
+	}
+	if got := lastSeen("acc"); got != later {
+		t.Fatalf("last_seen_at = %d, want %d (advanced past throttle)", got, later)
+	}
+
+	// Keep-alive: an account written long ago but read recently survives the sweep.
+	const day = 24 * 60 * 60 * 1000
+	const year = 365 * day
+	if _, ok, _, err := s.PutAccount(ctx, "old", []byte("blob"), "wt", 0, 100*year-3*year); err != nil || !ok {
+		t.Fatalf("write old: ok=%v err=%v", ok, err)
+	}
+	if err := s.TouchAccount(ctx, "old", 100*year); err != nil { // a fresh sign-in
+		t.Fatal(err)
+	}
+	// The sweep may reap the much older "acc" from earlier in this test; what matters
+	// is that the recent read kept "old" alive past the window.
+	if _, err := s.PurgeInactiveAccounts(ctx, 100*year, 2*year); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, found, _ := s.GetAccount(ctx, "old"); !found {
+		t.Fatal("a recent read should keep an old account alive past the window")
+	}
+}
