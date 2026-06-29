@@ -39,7 +39,7 @@ export function Library({
         flexDirection: "column",
         gap: 16,
         width: "100%",
-        maxWidth: 390,
+        maxWidth: 600,
       }}
     >
       <div>
@@ -119,7 +119,7 @@ export function Detail({ id, onOpenUU, onFindTesting, onShare }: DetailProps) {
         flexDirection: "column",
         gap: 16,
         width: "100%",
-        maxWidth: 390,
+        maxWidth: 600,
       }}
     >
       <DetailHeader cond={cond} />

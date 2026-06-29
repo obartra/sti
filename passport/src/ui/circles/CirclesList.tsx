@@ -153,7 +153,7 @@ export function CirclesList({
         flexDirection: "column",
         gap: 16,
         width: "100%",
-        maxWidth: 390,
+        maxWidth: 600,
       }}
     >
       <div
@@ -196,7 +196,13 @@ export function CirclesList({
       {circles.length === 0 ? (
         <EmptyState onCreate={onCreate} />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+            gap: 10,
+          }}
+        >
           {circles.map((c) => (
             <CircleRow key={c.id} circle={c} onOpenCircle={onOpenCircle} />
           ))}

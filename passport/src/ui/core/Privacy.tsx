@@ -189,7 +189,7 @@ export function Privacy({
           flexDirection: "column",
           gap: 18,
           width: "100%",
-          maxWidth: 390,
+          maxWidth: 600,
         }}
       >
         <h1

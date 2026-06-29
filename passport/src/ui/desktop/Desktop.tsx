@@ -117,7 +117,7 @@ export function DesktopShell({
   wide: wideProp,
   children,
 }: DesktopShellProps) {
-  const colW = roomy ? 720 : 560;
+  const colW = roomy ? 860 : 600;
   const headerTitle = title ?? NAV_ITEMS.find((n) => n.id === tab)?.label ?? "";
   const autoWide = useMinWidth(1400);
   const wide = wideProp ?? autoWide;

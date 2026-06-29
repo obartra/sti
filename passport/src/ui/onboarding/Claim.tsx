@@ -163,7 +163,7 @@ export function Claim({
         flexDirection: "column",
         gap: 18,
         width: "100%",
-        maxWidth: 390,
+        maxWidth: 600,
       }}
     >
       <TopBack title={isLogin ? COPY.loginStep : COPY.step} onBack={onBack} />

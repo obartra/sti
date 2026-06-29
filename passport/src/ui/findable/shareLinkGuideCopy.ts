@@ -28,6 +28,12 @@ export const SHARE_LINK_GUIDE = {
   // One calm line for the post-claim moment. Outcome first (doc 21 rule 3).
   lead: "Your public name is live. Drop this link wherever people meet you.",
   linkLabel: "Your public link",
+  // The editable handle field on the standalone page: type your own public name to
+  // see the link, QR, and bio examples adapt.
+  handleLabel: "Your public name",
+  handleHint:
+    "Letters, numbers, and underscores. This is what people look you up by.",
+  handlePlaceholder: SAMPLE_HANDLE,
   copy: "Copy link",
   copied: "Copied",
   saveQr: "Save QR image",

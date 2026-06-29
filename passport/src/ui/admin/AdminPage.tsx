@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Card, Field, Input } from "../../design/components/index.ts";
 import { Lock, ShieldCheck } from "../../design/icons.tsx";
+import { useMinWidth } from "../desktop/Desktop.tsx";
 import {
   actOnVanityName,
   listAdminAudit,
@@ -195,7 +196,9 @@ export function AdminPage({
           flexDirection: "column",
           gap: 16,
           width: "100%",
-          maxWidth: 390,
+          // The authed console spreads its panels across the desktop width; the
+          // lock gate stays a compact, centered sign-in card.
+          maxWidth: phase === "authed" ? 1080 : 420,
         }}
       >
         {phase === "authed" ? (
@@ -301,6 +304,7 @@ function AuthedShell({
   onLock: () => void;
   onExpire: () => void;
 }) {
+  const twoCol = useMinWidth(900);
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -325,8 +329,17 @@ function AuthedShell({
           {COPY.lockAgain}
         </Button>
       </div>
-      <ReviewPanel token={token} ops={ops} onUnauthorized={onExpire} />
-      <ActivityPanel token={token} ops={auditOps} onUnauthorized={onExpire} />
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: twoCol ? "minmax(0, 1fr) minmax(0, 1fr)" : "1fr",
+          gap: 16,
+          alignItems: "start",
+        }}
+      >
+        <ReviewPanel token={token} ops={ops} onUnauthorized={onExpire} />
+        <ActivityPanel token={token} ops={auditOps} onUnauthorized={onExpire} />
+      </div>
     </>
   );
 }

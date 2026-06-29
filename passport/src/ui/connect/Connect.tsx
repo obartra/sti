@@ -41,7 +41,7 @@ export function Connect({
   const faveContacts = recent.filter((c) => faves.has(c.id));
 
   return (
-    <div style={{ width: "100%", maxWidth: 390 }}>
+    <div style={{ width: "100%", maxWidth: 600 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <div>
           <h1

@@ -144,7 +144,7 @@ export function Wallet(props: WalletProps) {
     <div
       style={{
         width: "100%",
-        maxWidth: 390,
+        maxWidth: 600,
         display: "flex",
         flexDirection: "column",
         gap: 18,

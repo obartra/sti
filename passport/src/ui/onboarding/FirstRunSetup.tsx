@@ -345,7 +345,7 @@ export function FirstRunSetup({
         flexDirection: "column",
         gap: 18,
         width: "100%",
-        maxWidth: 390,
+        maxWidth: 600,
       }}
     >
       <TopBack title="Step 3 of 3" onBack={onBack} />
