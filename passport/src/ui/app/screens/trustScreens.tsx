@@ -29,12 +29,12 @@ export const trustRenderers: ScreenRenderers = {
     </TrustPage>
   ),
   "privacy-policy": ({ nav }) => (
-    <TrustPage onBack={nav.back} {...footerLinks(nav)}>
+    <TrustPage onBack={nav.back} wide {...footerLinks(nav)}>
       <LegalPage doc={PRIVACY_POLICY} />
     </TrustPage>
   ),
   terms: ({ nav }) => (
-    <TrustPage onBack={nav.back} {...footerLinks(nav)}>
+    <TrustPage onBack={nav.back} wide {...footerLinks(nav)}>
       <LegalPage doc={TERMS} />
     </TrustPage>
   ),

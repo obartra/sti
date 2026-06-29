@@ -22,9 +22,34 @@ describe("LegalPage", () => {
     }
   });
 
-  it("renders the terms doc too", () => {
+  it("shows the page-level note that the full text is what applies", () => {
+    render(<LegalPage doc={PRIVACY_POLICY} />);
+    expect(screen.getByText(PRIVACY_POLICY.summaryNote)).toBeInTheDocument();
+  });
+
+  it("layers a plain summary on top of every section's binding text", () => {
+    // The layered notice (doc 23) keeps both: a plain summary AND the full binding
+    // text. A summary that replaced the terms would undermine enforceability, so we
+    // pin that each block renders its summary and still renders its binding prose.
+    render(<LegalPage doc={PRIVACY_POLICY} />);
+    for (const block of PRIVACY_POLICY.blocks) {
+      if (block.summary) {
+        expect(screen.getByText(block.summary)).toBeInTheDocument();
+      }
+      for (const p of block.paragraphs ?? []) {
+        expect(screen.getByText(p)).toBeInTheDocument();
+      }
+    }
+  });
+
+  it("renders the terms doc too, binding text intact", () => {
     render(<LegalPage doc={TERMS} />);
     expect(screen.getByText(/not a medical test/i)).toBeInTheDocument();
+    for (const block of TERMS.blocks) {
+      expect(
+        screen.getByRole("heading", { level: 2, name: block.heading }),
+      ).toBeInTheDocument();
+    }
   });
 });
 
