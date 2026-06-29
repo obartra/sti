@@ -331,7 +331,7 @@ export function Landing({
         gap: 22,
         paddingBottom: 8,
         width: "100%",
-        maxWidth: 390,
+        maxWidth: 600,
       }}
     >
       <LandingHeader onLogin={onLogin} />

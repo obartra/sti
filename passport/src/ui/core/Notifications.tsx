@@ -15,7 +15,7 @@ import {
 // the privacy-safe wording is the whole point of the screen.
 // The default items mirror what the app actually renders (see coreScreens
 // notificationItems): the re-test nudge shown once freshness has lapsed and a
-// CONTENTLESS knock entry — no requester, no count, no per-knock timing. The
+// CONTENTLESS knock entry - no requester, no count, no per-knock timing. The
 // partner-notify row is added live when a contact reports. Kept in sync so
 // Storybook and the privacy-invariant test model the real contract, not an older one.
 const COPY = {
@@ -31,7 +31,7 @@ const COPY = {
       {
         icon: "users",
         // Contentless: never names the requester, never shows a count or a time
-        // (doc 02 — the owner-pull indicator carries none of that).
+        // (doc 02 - the owner-pull indicator carries none of that).
         title: "Someone with your link asked to see your status",
         sub: "Share an up-to-date link with people you choose",
       },
@@ -91,7 +91,7 @@ export function Notifications({
         flexDirection: "column",
         gap: 16,
         width: "100%",
-        maxWidth: 390,
+        maxWidth: 600,
       }}
     >
       <h1
@@ -138,7 +138,7 @@ export function Notifications({
               <Chevron size={18} />
             );
             // A row with an action isn't itself tappable (only its button is), so
-            // it must NOT render as a <button> — that would nest a button in a
+            // it must NOT render as a <button> - that would nest a button in a
             // button. It's interactive only when it navigates via onOpen.
             return (
               <Row

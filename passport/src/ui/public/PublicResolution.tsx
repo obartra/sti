@@ -88,7 +88,7 @@ export function PublicResolution({
         flexDirection: "column",
         gap: 18,
         width: "100%",
-        maxWidth: 390,
+        maxWidth: 600,
       }}
     >
       <BackBar onBack={onBack} />

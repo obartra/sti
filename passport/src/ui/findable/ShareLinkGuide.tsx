@@ -1,11 +1,12 @@
 import { useState, type CSSProperties } from "react";
-import { Button, Card } from "../../design/components/index.ts";
+import { Button, Card, Field, Input } from "../../design/components/index.ts";
 import { Globe, Lock, Copy, Check, Download } from "../../design/icons.tsx";
 import { Matrix, downloadPNG } from "../../lib/qr.tsx";
 import { copyText } from "../../lib/clipboard.ts";
 import { BioMock } from "./BioMock.tsx";
 import {
   BIO_MOCKS,
+  SAMPLE_HANDLE,
   SHARE_LINK_GUIDE as C,
   publicLinkFor,
   publicHttpsLinkFor,
@@ -163,20 +164,69 @@ function Placements({ link }: { link: string }) {
   );
 }
 
+// Keep a typed handle to the vanity charset ([a-z0-9_], <= 30) so the previewed
+// link and QR are always well-formed as the operator edits.
+function sanitizeHandle(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, "")
+    .slice(0, 30);
+}
+
+// The editable public-name field: typing it updates the link, QR, copy, and every
+// bio mockup live. Only shown on the standalone page (editable), not the in-app
+// post-claim moment, where the owner's real claimed name is fixed.
+function HandleField({
+  handle,
+  onChange,
+}: {
+  handle: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <Field label={C.handleLabel} htmlFor="share-handle" hint={C.handleHint}>
+      <Input
+        id="share-handle"
+        value={handle}
+        autoComplete="off"
+        spellCheck={false}
+        placeholder={C.handlePlaceholder}
+        onChange={(e) => onChange(sanitizeHandle(e.target.value))}
+      />
+    </Field>
+  );
+}
+
 export interface ShareLinkGuideProps {
-  /** The public name to build the link from (the owner's real one in-app, or a
-   * sample on the public page). */
+  /** The public name to build the link from (the owner's real one in-app, or the
+   * logged-in / sample one on the public page). Seeds the editable field. */
   handle: string;
   /** Show the guide's own title + lead (the in-app post-claim moment). The public
    * page supplies its own heading, so it sets this false. Defaults true. */
   showHeader?: boolean | undefined;
+  /** Offer an input to change the handle so the link/QR/copy adapt (the standalone
+   * page). Off for the in-app moment, where the claimed name is fixed. */
+  editable?: boolean | undefined;
+  /** Lay the link + alternative beside the bio mockups (wide screens). */
+  wide?: boolean | undefined;
 }
 
 export function ShareLinkGuide({
-  handle,
+  handle: initialHandle,
   showHeader = true,
+  editable = false,
+  wide = false,
 }: ShareLinkGuideProps) {
-  const link = publicLinkFor(handle);
+  const [handle, setHandle] = useState(() => sanitizeHandle(initialHandle));
+  const effective = handle || SAMPLE_HANDLE;
+  const link = publicLinkFor(effective);
+  const summary = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {editable && <HandleField handle={handle} onChange={setHandle} />}
+      <LinkCard handle={effective} />
+      <ExposureNote />
+    </div>
+  );
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {showHeader && (
@@ -204,9 +254,24 @@ export function ShareLinkGuide({
           </div>
         </div>
       )}
-      <LinkCard handle={handle} />
-      <ExposureNote />
-      <Placements link={link} />
+      {wide ? (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+            gap: 16,
+            alignItems: "start",
+          }}
+        >
+          {summary}
+          <Placements link={link} />
+        </div>
+      ) : (
+        <>
+          {summary}
+          <Placements link={link} />
+        </>
+      )}
     </div>
   );
 }

@@ -87,7 +87,7 @@ export function UU({ onShare }: UUProps) {
         flexDirection: "column",
         gap: 16,
         width: "100%",
-        maxWidth: 390,
+        maxWidth: 600,
       }}
     >
       <Card

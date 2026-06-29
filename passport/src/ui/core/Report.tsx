@@ -238,7 +238,7 @@ export function Report({
         flexDirection: "column",
         gap: 20,
         width: "100%",
-        maxWidth: 390,
+        maxWidth: 600,
       }}
     >
       <h1
@@ -362,7 +362,7 @@ export function ReportSaved({
         gap: 20,
         paddingTop: 8,
         width: "100%",
-        maxWidth: 390,
+        maxWidth: 600,
       }}
     >
       <SavedHeader />

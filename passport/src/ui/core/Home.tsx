@@ -150,7 +150,7 @@ export function Home({
         flexDirection: "column",
         gap: 16,
         width: "100%",
-        maxWidth: 420,
+        maxWidth: 600,
       }}
     >
       <HomeHero

@@ -22,7 +22,7 @@ export function CanvasWrap({
   onHome?: (() => void) | undefined;
   children: ReactNode;
 }) {
-  const mainMax = full ? 1160 : wide && desktop ? 760 : 460;
+  const mainMax = full ? 1160 : wide && desktop ? 760 : 600;
   return (
     <div
       style={{

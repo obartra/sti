@@ -75,7 +75,7 @@ export function Requests({
         flexDirection: "column",
         gap: 16,
         width: "100%",
-        maxWidth: 390,
+        maxWidth: 600,
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

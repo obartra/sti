@@ -98,7 +98,7 @@ export function FindableResolve({
         flexDirection: "column",
         gap: 16,
         width: "100%",
-        maxWidth: 390,
+        maxWidth: 600,
       }}
     >
       <div>

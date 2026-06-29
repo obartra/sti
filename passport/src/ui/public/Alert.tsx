@@ -47,7 +47,7 @@ export function Alert({
         flexDirection: "column",
         gap: 20,
         width: "100%",
-        maxWidth: 390,
+        maxWidth: 600,
       }}
     >
       {preview && <PreviewBanner onBack={onBack} />}
