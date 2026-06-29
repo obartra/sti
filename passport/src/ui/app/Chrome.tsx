@@ -209,6 +209,7 @@ function AppChrome(props: ChromeProps) {
           onBell={() => nav.go("notifications")}
           onReport={() => nav.go("report")}
           onViewAs={() => nav.go("a2-public", { self: true })}
+          handle={owner.handle}
           avatarSrc={avatarSrc(owner.avatar)}
         >
           {content}

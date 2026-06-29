@@ -111,9 +111,11 @@ function ShareCardBlurb({ isPublic }: { isPublic: boolean }) {
 export function ShareSection({
   isPublic,
   avatarSrc,
+  handle,
 }: {
   isPublic: boolean;
   avatarSrc: string;
+  handle?: string | undefined;
 }) {
   return (
     <div
@@ -142,7 +144,7 @@ export function ShareSection({
         <div style={{ display: "flex", justifyContent: "center" }}>
           <ShareCard
             format="qr"
-            handle={HANDLE}
+            handle={handle ?? HANDLE}
             avatarSrc={avatarSrc}
             isPublic={isPublic}
           />

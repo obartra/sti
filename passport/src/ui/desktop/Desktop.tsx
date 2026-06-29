@@ -91,6 +91,8 @@ export interface DesktopShellProps {
   onReport?: () => void;
   /** Owner chip: opens the visitor preview. */
   onViewAs?: () => void;
+  /** Handle shown in the owner chip. */
+  handle?: string | undefined;
   /** Avatar shown in the owner chip. */
   avatarSrc?: string | undefined;
   /** Content column width. */
@@ -112,6 +114,7 @@ export function DesktopShell({
   onBell,
   onReport,
   onViewAs,
+  handle,
   avatarSrc,
   roomy = false,
   wide: wideProp,
@@ -138,6 +141,7 @@ export function DesktopShell({
         onTab={onTab}
         onReport={onReport}
         onViewAs={onViewAs}
+        handle={handle}
         avatarSrc={avatarSrc}
       />
 

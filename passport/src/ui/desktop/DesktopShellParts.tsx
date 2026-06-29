@@ -99,9 +99,11 @@ function NavItem({
 
 // ── Owner chip (sidebar footer) ─────────────────────────────────────────────
 function OwnerChip({
+  handle,
   avatarSrc,
   onViewAs,
 }: {
+  handle?: string | undefined;
   avatarSrc?: string | undefined;
   onViewAs?: (() => void) | undefined;
 }) {
@@ -124,7 +126,10 @@ function OwnerChip({
         background: "var(--surface-app)",
       }}
     >
-      <Avatar src={avatarSrc ?? avatarFor("robin")} size="sm" />
+      <Avatar
+        src={avatarSrc ?? (handle ? avatarFor(handle) : undefined)}
+        size="sm"
+      />
       <span style={{ flex: 1, minWidth: 0 }}>
         <span
           style={{
@@ -134,7 +139,7 @@ function OwnerChip({
             color: "var(--text-strong)",
           }}
         >
-          @robin
+          {handle ? `@${handle}` : ""}
         </span>
         <span
           style={{
@@ -157,12 +162,14 @@ export function Sidebar({
   onTab,
   onReport,
   onViewAs,
+  handle,
   avatarSrc,
 }: {
   tab: DesktopTab;
   onTab?: ((tab: DesktopTab) => void) | undefined;
   onReport?: (() => void) | undefined;
   onViewAs?: (() => void) | undefined;
+  handle?: string | undefined;
   avatarSrc?: string | undefined;
 }) {
   return (
@@ -213,7 +220,7 @@ export function Sidebar({
 
       <div style={{ flex: 1 }} />
 
-      <OwnerChip avatarSrc={avatarSrc} onViewAs={onViewAs} />
+      <OwnerChip handle={handle} avatarSrc={avatarSrc} onViewAs={onViewAs} />
     </aside>
   );
 }

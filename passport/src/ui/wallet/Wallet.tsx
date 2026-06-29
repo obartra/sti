@@ -42,6 +42,7 @@ export interface WalletProps {
   labels?: ProtectionLabel[];
   blueRoute?: Route;
   avatar?: AvatarConfigInput;
+  handle?: string;
   // Driven by the dev panel in the real app so a reviewer can reach the
   // QR-carrier, Live-fresh, and Live-stale→gray faces; in-screen controls write
   // back through onSetTweak.
@@ -113,7 +114,7 @@ function useWalletDerived({
 }
 
 export function Wallet(props: WalletProps) {
-  const { labels = [], blueRoute = null } = props;
+  const { labels = [], blueRoute = null, handle } = props;
   const {
     isPublic,
     format,
@@ -184,7 +185,7 @@ export function Wallet(props: WalletProps) {
           state={passState}
           labels={labels}
           route={blueRoute}
-          handle={HANDLE}
+          handle={handle ?? HANDLE}
           avatarSrc={avatarSrc}
           isPublic={isPublic}
         />
@@ -203,13 +204,14 @@ export function Wallet(props: WalletProps) {
       />
 
       {/* 4 · standalone shareable card */}
-      <ShareSection isPublic={isPublic} avatarSrc={avatarSrc} />
+      <ShareSection isPublic={isPublic} avatarSrc={avatarSrc} handle={handle} />
 
       {/* trust footer, format-aware */}
       <TrustFooter live={live} />
 
       {confirm && (
         <ConfirmPublic
+          handle={handle}
           onKeep={() => setConfirm(false)}
           onConfirm={() => {
             props.onSetTweak?.("sharing", "public");

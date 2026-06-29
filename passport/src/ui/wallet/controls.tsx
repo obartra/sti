@@ -118,9 +118,11 @@ export function FormatOption({
 /* ── Make-public confirmation (the only path to enable Live on a private
       alias). On confirm it flips this alias public, THEN switches to Live. ── */
 export function ConfirmPublic({
+  handle,
   onKeep,
   onConfirm,
 }: {
+  handle?: string | undefined;
   onKeep?: (() => void) | undefined;
   onConfirm?: (() => void) | undefined;
 }) {
@@ -179,7 +181,7 @@ export function ConfirmPublic({
               color: "var(--text-strong)",
             }}
           >
-            {COPY.confirmTitle(HANDLE)}
+            {COPY.confirmTitle(handle ?? HANDLE)}
           </div>
           <p
             style={{
