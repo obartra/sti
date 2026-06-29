@@ -51,7 +51,7 @@ var reservedList = []string{
 	"info", "abuse", "security", "legal", "privacy", "billing", "payments",
 	"api", "app", "www", "mail", "email", "noreply", "no_reply", "sti",
 	"sticare", "care", "health", "clinic", "verify", "verified", "test",
-	"null", "undefined",
+	"null", "undefined", "demo",
 }
 
 var reserved = toSet(reservedList)
