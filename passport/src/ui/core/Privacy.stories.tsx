@@ -19,6 +19,9 @@ const meta: Meta<typeof Privacy> = {
   args: {
     ownerState: INITIAL_OWNER_STATE,
     setOwnerState: () => undefined,
+    // Pin the retention-notice reference instant so the "kept until" date is stable
+    // in the visual baseline (mid-June 2025 -> kept until June 2027).
+    now: 1_750_000_000_000,
     aliases: [sampleAlias("A", true), sampleAlias("B", false)],
     contacts: [
       {
