@@ -17,7 +17,6 @@ import { PRIVACY_SCREEN_NAME } from "../../copy/canonical.ts";
 export const COPY = {
   home: {
     greeting: "Good to see you,",
-    name: "@robin",
     meansTitle: "What this means",
     share: "Share my passport",
     quick: "Quick actions",

@@ -31,6 +31,7 @@ export const reportRenderers: ScreenRenderers = {
       labels={owner.labels}
       blueRoute={owner.blueRoute}
       avatar={owner.avatar}
+      {...(owner.handle !== undefined ? { handle: owner.handle } : {})}
     />
   ),
 };
