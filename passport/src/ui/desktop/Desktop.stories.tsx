@@ -23,7 +23,7 @@ export const Shell: Story = {
   render: function ShellStory() {
     const [tab, setTab] = useState<DesktopTab>("home");
     return (
-      <DesktopShell tab={tab} onTab={setTab}>
+      <DesktopShell tab={tab} onTab={setTab} handle="robin">
         <BadgeCard
           state="blue"
           labels={["hiv", "condoms_always"]}
@@ -42,7 +42,7 @@ export const WideWithShareRail: Story = {
   render: function WideStory() {
     const [tab, setTab] = useState<DesktopTab>("home");
     return (
-      <DesktopShell tab={tab} onTab={setTab} wide>
+      <DesktopShell tab={tab} onTab={setTab} wide handle="robin">
         <BadgeCard
           state="blue"
           labels={["hiv", "condoms_always"]}

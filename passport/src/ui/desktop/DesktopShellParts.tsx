@@ -126,7 +126,10 @@ function OwnerChip({
         background: "var(--surface-app)",
       }}
     >
-      <Avatar src={avatarSrc ?? (handle ? avatarFor(handle) : undefined)} size="sm" />
+      <Avatar
+        src={avatarSrc ?? (handle ? avatarFor(handle) : undefined)}
+        size="sm"
+      />
       <span style={{ flex: 1, minWidth: 0 }}>
         <span
           style={{
