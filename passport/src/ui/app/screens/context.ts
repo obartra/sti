@@ -89,7 +89,7 @@ export interface ScreenCtx {
   onForgetRequest: (aliasId: string) => void;
   /** Whether a session is active (a logged-in owner), for screens shown to both. */
   isLoggedIn: boolean;
-  /** Enter the demo (the landing's "try the demo" action, doc 27). */
+  /** Enter the demo (the landing's "try the demo" action, doc 28). */
   onTryDemo: () => void;
   /**
    * Accept a contact invite (doc 13 path A): record the inviter as a two-way

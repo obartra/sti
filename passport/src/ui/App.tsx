@@ -113,7 +113,7 @@ function networkSession(
   return demoMode ? null : session;
 }
 
-// Demo mode (doc 27) as one prop, so the App's parameter list and complexity do
+// Demo mode (doc 28) as one prop, so the App's parameter list and complexity do
 // not grow per demo concern: the mode flag plus the enter/leave callbacks.
 interface DemoControls {
   readonly mode: boolean;
@@ -134,7 +134,7 @@ const NO_DEMO: DemoControls = {
 export function App({
   store = backendStore,
   controller = backendController,
-  // Demo mode (doc 27): the app runs over an in-memory demo store + controller,
+  // Demo mode (doc 28): the app runs over an in-memory demo store + controller,
   // wears a persistent banner, and never touches the network (the two hooks that
   // hold the real api/offlineSync are gated off via networkSession below).
   demo = NO_DEMO,

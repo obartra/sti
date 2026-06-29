@@ -7,6 +7,9 @@ declare const __BUILD_DATE__: string;
 // Typed build-time env (see src/config.ts).
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string;
+  // Client-only dev mode (see src/ui/Root.tsx): "1"/"true" boots straight into
+  // the in-memory demo runtime, so the app runs with no server.
+  readonly VITE_DEMO?: string;
 }
 interface ImportMeta {
   readonly env: ImportMetaEnv;

@@ -1,5 +1,5 @@
 /**
- * The demo runtime (doc 27, "demo mode"): a fully in-memory, seeded stand-in for
+ * The demo runtime (doc 28, "demo mode"): a fully in-memory, seeded stand-in for
  * the real backend, so anyone can use the whole passport without an account and
  * without a single request to the server. It is the REAL app over a local store
  * with a locally simulated backend, so every feature behaves the same; the only
