@@ -1,7 +1,6 @@
 # 23 - Privacy policy, terms, and the trust footer
 
-Status: APPROVED. Decisions locked in "Resolved decisions" below; implementation
-follows.
+Status: BUILT (the trust footer, the `/privacy-policy` and `/terms` pages, and the landing link all shipped).
 
 ## Why now
 

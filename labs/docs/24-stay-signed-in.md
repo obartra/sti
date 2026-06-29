@@ -1,6 +1,6 @@
 # 24 - Stay signed in (session resume across reload)
 
-Status: APPROVED, building.
+Status: BUILT (non-extractable `MasterKey`, `masterKeyStore`, resumable session, and the keep-signed-in toggle all shipped).
 
 ## Why
 

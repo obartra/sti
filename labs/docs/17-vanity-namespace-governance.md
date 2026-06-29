@@ -1,8 +1,5 @@
 # sti.care: Vanity Namespace Governance (v1 spec)
 
-_New, June 22, 2026. Revised June 27, 2026: updated for multi-handle model — handles are per public
-link (set at link creation, not account creation), up to 5 per account instead of 1._
-
 _The full governance spec Public link mode is gated on. [Reach and Access](16-reach-and-access.md)
 describes the two-mode model (Private link / Public link) and the role of this namespace; this doc
 makes the public-link namespace implementable: the directory data model, the resolve endpoint and

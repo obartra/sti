@@ -1,12 +1,10 @@
 # sti.care: Contact Graph & Partner Notification
 
-_New, June 20, 2026._
-
 _The design doc for the contact graph (pairwise links and circles) and the partner-notification
 loop that rides on it. It synthesizes the locked choices in the [Decisions log](02-decisions.md)
 and [Design](03-design.md) into an implementable spec, reuses the blind-store primitives from
 [Build & Deployment](10-build-backend-and-deployment.md), and records the six product decisions the
-owner confirmed on 2026-06-20 (see "Decisions" below). Built in tested slices; nothing implemented
+owner confirmed (see "Decisions" below). Built in tested slices; nothing implemented
 at the time of writing._
 
 ---
@@ -60,9 +58,9 @@ From the [Decisions log](02-decisions.md) and [Design](03-design.md):
   in-window contact count and degrades toward deanonymizing at one contact. Both are inherent and
   stated, not hidden. (02, 03, 10 §F)
 
-## Decisions (confirmed 2026-06-20)
+## Decisions
 
-1. **Grant model: in-app Approve, via an end-to-end-encrypted grant slot (DECIDED 2026-06-20).**
+1. **Grant model: in-app Approve, via an end-to-end-encrypted grant slot (DECIDED).**
    The owner gets an in-app "Approve" button on a knock, and approving silently delivers access to
    that knocker, with the server still blind (it never sees the key). Mechanism:
    - When a viewer knocks, the client generates a **per-knock ephemeral keypair** and sends its
@@ -84,7 +82,7 @@ From the [Decisions log](02-decisions.md) and [Design](03-design.md):
      written; indistinguishable from not-yet-reviewed). Revoke later = the existing alias revoke.
    This is more surface than an out-of-band grant, but it is fully blind and is the chosen UX.
 
-2. **Decorrelation cover-wake: full broadcast in v1 (DECIDED 2026-06-20).** When any real wake is due, the
+2. **Decorrelation cover-wake: full broadcast in v1 (DECIDED).** When any real wake is due, the
    server fires a contentless wake to **every currently-registered push endpoint** inside a
    jittered window, so the woken set is the whole population rather than the recipients. Each woken
    client then polls its own blind notify-inbox (existence-uniform, see below); only a real
@@ -92,7 +90,7 @@ From the [Decisions log](02-decisions.md) and [Design](03-design.md):
    trivially cheap and maximally private; a sampled cover set is a later refinement if scale ever
    demands it. **This is the gate that lets notify/push turn on.**
 
-3. **Notify-inbox as a blind channel (DECIDED 2026-06-20, new server surface).** Today the server has
+3. **Notify-inbox as a blind channel (DECIDED, new server surface).** Today the server has
    `notify_route` + `send_queue` + `push_endpoint`, but a contentless wake alone cannot tell a
    recipient "this one is for you" once cover-wakes go to everyone. So we add a per-contact
    **notify-inbox**: an opaque id holding an existence-uniform encrypted payload, addressed and
@@ -102,17 +100,17 @@ From the [Decisions log](02-decisions.md) and [Design](03-design.md):
    broadcast, polls their inbox and decrypts. The server never learns which inboxes hold a real
    ping versus a decoy.
 
-4. **Circles are purely client-side bundles (DECIDED 2026-06-20, no new server surface).** A circle is a
+4. **Circles are purely client-side bundles (DECIDED, no new server surface).** A circle is a
    local list of pairwise links plus a shared display preference. Group status sharing reuses the
    per-member pairwise channels; the server never learns a group exists. The min-group-5 rule is a
    client-side hide floor: a member's status is shown to the circle only when the circle has >=5
    members, else it hides (never reveals). No group token, no membership on the server.
 
-5. **New private links default to a 7-day expiry (DECIDED 2026-06-20).** A durational grant
+5. **New private links default to a 7-day expiry (DECIDED).** A durational grant
    re-serves a freshly rotated payload until expiry; at expiry the client stops re-publishing and
    the link resolves to gray-nothing. The owner can choose until-revoked explicitly.
 
-6. **scan-to-autolink auto-shares on link (DECIDED 2026-06-20).** A scan still proposes a link both
+6. **scan-to-autolink auto-shares on link (DECIDED).** A scan still proposes a link both
    sides confirm (it never silently binds), but on confirm it shares status both ways by default,
    for a fast in-person flow. The confirm step is where consent is given.
 

@@ -284,7 +284,7 @@ This guide is the propagation plan.
 - **Action:** EDIT the STATUS/statusCopy strings + all headlines.
 
 ### Wallet — `Wallet.Wallet`
-- **STATUS (deferred / hidden, 2026-06-20):** the wallet screen + Apple/Google pass renditions are
+- **STATUS (deferred / hidden):** the wallet screen + Apple/Google pass renditions are
   built (`passport/src/ui/wallet/`) but the entry point is GATED OFF behind
   `passport/src/features.ts` `WALLET_ENABLED = false` (the ShareSheet "Add to wallet" row is hidden
   in the app; the component story still renders it). Reason: real passes need signing credentials we

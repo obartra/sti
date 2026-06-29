@@ -1,7 +1,5 @@
 # sti.care: Per-alias Identity
 
-_New, June 21, 2026._
-
 _The design doc for making the displayed identity (handle + avatar) per-alias, so the locked
 "opaque-id aliases are the default, vanity is an opt-in" choice actually holds. It builds on the
 avatar-in-card work already shipped (PRs #55, #63) and corrects the "avatar correlation is accepted"

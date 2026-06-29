@@ -1,7 +1,5 @@
 # sti.care: Observability & Metrics
 
-_New, June 19, 2026._
-
 *The "how do we run it without seeing it." How we watch the blind backend for health, capacity, and
 errors without ever learning a status, a graph, or an identity. Pairs with
 [Build, Backend & Deployment](10-build-backend-and-deployment.md) (what the server is and how it
