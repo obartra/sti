@@ -147,6 +147,12 @@ func run(args []string) error {
 		return cmdRecipients(cfg, rest)
 	case "diff":
 		return cmdDiff(cfg)
+	case "pull", "adopt":
+		return cmdPull(cfg)
+	case "gen-decoy":
+		return cmdGenDecoy(cfg)
+	case "gen-vapid":
+		return cmdGenVapid(cfg)
 	case "sync", "push":
 		return cmdSync(cfg, rest)
 	case "help", "-h", "--help":
@@ -557,6 +563,13 @@ Commands:
   rm KEY                 remove a key
   edit                   open the whole file in $EDITOR, re-encrypt on save
   diff                   show what 'sync' would change on the box (key by key)
+  pull                   adopt the box's current env: copy in every key the store
+                         does not already define (a staged local edit wins). Run
+                         this first when the store is empty, so 'sync' shows only
+                         your changes instead of proposing to wipe the box.
+  gen-decoy              generate a fresh STI_DECOY_SECRET and set it in the store
+  gen-vapid              generate a fresh Web Push VAPID keypair (STI_VAPID_PUBLIC_KEY
+                         + STI_VAPID_PRIVATE_KEY) and set both in the store
   sync [-y]              push to the box over SSH and restart; shows the diff and
                          asks first unless -y is given
   recipients [add KEY | rm LABEL]
@@ -566,9 +579,11 @@ Commands:
 
 Examples:
   secrets init
+  SECRETS_SSH=root@origin.sti.care secrets pull     # adopt an existing box
   secrets set STI_ADMIN_TOKEN                       # prompts, no echo
+  secrets gen-vapid                                 # rotate the push keypair
   secrets list
-  secrets diff
+  SECRETS_SSH=root@origin.sti.care secrets diff
   SECRETS_SSH=root@origin.sti.care secrets sync
 
 Config (environment variables):

@@ -24,7 +24,8 @@ DEV_DB_PATH ?= /tmp/sti-dev.db
 
 .PHONY: help backend web dev \
 	check-root check-web test-integration test-e2e check-server vulncheck smoke \
-	check ci build-web build-server build-release secrets
+	check ci build-web build-server build-release \
+	secrets secrets-pull secrets-diff secrets-sync secrets-edit gen-vapid gen-decoy
 
 help: ## List the targets
 	@grep -hE '^[a-z][a-zA-Z0-9_-]*:.*## ' $(MAKEFILE_LIST) | sort | awk -F':.*## ' '{printf "  %-18s %s\n", $$1, $$2}'
@@ -92,3 +93,21 @@ build-release: ## Static linux binary, what the deploy workflow ships
 
 secrets: ## Manage server env secrets, e.g. make secrets ARGS="list"
 	cd server && go run ./cmd/secrets $(ARGS)
+
+secrets-pull: ## Adopt the box's current env into the local store (SSH=root@origin.sti.care)
+	cd server && SECRETS_SSH=$(SSH) go run ./cmd/secrets pull
+
+secrets-diff: ## Preview what a sync would change on the box (SSH=root@origin.sti.care)
+	cd server && SECRETS_SSH=$(SSH) go run ./cmd/secrets diff
+
+secrets-sync: ## Push the store to the box and restart the service (SSH=root@origin.sti.care)
+	cd server && SECRETS_SSH=$(SSH) go run ./cmd/secrets sync
+
+secrets-edit: ## Edit the whole encrypted store in $$EDITOR
+	cd server && go run ./cmd/secrets edit
+
+gen-vapid: ## Generate and store a fresh Web Push VAPID keypair (rotate push keys)
+	cd server && go run ./cmd/secrets gen-vapid
+
+gen-decoy: ## Generate and store a fresh STI_DECOY_SECRET (rotate the decoy key)
+	cd server && go run ./cmd/secrets gen-decoy

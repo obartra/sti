@@ -84,6 +84,25 @@ func upsert(text, key, value string) string {
 	return strings.Join(lines, "\n") + "\n"
 }
 
+// addMissing copies into the store every key from remote that the store does not
+// already define, using remote's value, and returns the added keys (sorted). Keys
+// already present keep their local value, so adopting a box never clobbers an edit
+// that is staged locally and a later sync shows only the keys actually changed.
+func addMissing(text string, remote map[string]string) (string, []string) {
+	have := parseEnv(text)
+	var added []string
+	for k := range remote {
+		if _, ok := have[k]; !ok {
+			added = append(added, k)
+		}
+	}
+	sort.Strings(added)
+	for _, k := range added {
+		text = upsert(text, k, remote[k])
+	}
+	return text, added
+}
+
 // removeKey drops the assignment(s) for key, reporting whether anything matched.
 func removeKey(text, key string) (string, bool) {
 	lines := splitLines(text)
