@@ -171,19 +171,27 @@ func splitOwner(s string) (owner, group string) {
 	return s, s
 }
 
-// remoteInstallCmd builds the command run on the box over SSH: write stdin to the
-// env file with the right owner and mode, then restart the service and confirm it
-// came back. Built as one string (and unit-pinned) so a config change can't
-// silently produce a malformed command.
+// remoteInstallCmd builds the command run on the box over SSH: write the piped body
+// to a sibling temp file, set its owner and mode, atomically rename it into place,
+// then restart the service and confirm it came back. Built as one string (and
+// unit-pinned) so a config change can't silently produce a malformed command.
+//
+// It writes with `tee` rather than `install /dev/stdin`: `tee` reads the body on
+// stdin without relying on /dev/stdin (which some hosts do not expose, the cause of
+// an "install: No such file or directory" failure), and it works under sudo where a
+// shell `>` redirect would not be privileged. The temp file is a sibling of the
+// target so the `mv` is an atomic rename, never a partial write of the live file;
+// umask keeps it from being briefly world-readable before chmod sets the mode.
 func remoteInstallCmd(cfg Config) string {
 	owner, group := splitOwner(cfg.RemoteOwner)
 	p := ""
 	if cfg.Sudo != "" {
 		p = cfg.Sudo + " "
 	}
+	tmp := cfg.RemotePath + ".tmp"
 	return fmt.Sprintf(
-		"%sinstall -m '%s' -o '%s' -g '%s' /dev/stdin '%s' && %ssystemctl restart '%s' && %ssystemctl is-active '%s'",
-		p, cfg.RemoteMode, owner, group, cfg.RemotePath, p, cfg.Service, p, cfg.Service,
+		"umask 077 && %stee '%s' >/dev/null && %schown '%s:%s' '%s' && %schmod '%s' '%s' && %smv -f '%s' '%s' && %ssystemctl restart '%s' && %ssystemctl is-active '%s'",
+		p, tmp, p, owner, group, tmp, p, cfg.RemoteMode, tmp, p, tmp, cfg.RemotePath, p, cfg.Service, p, cfg.Service,
 	)
 }
 

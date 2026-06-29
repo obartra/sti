@@ -68,12 +68,12 @@ func TestDiffEnv(t *testing.T) {
 
 func TestRemoteInstallCmd(t *testing.T) {
 	cfg := Config{RemotePath: "/etc/stiapi.env", RemoteOwner: "root:stiapi", RemoteMode: "0640", Service: "stiapi"}
-	want := "install -m '0640' -o 'root' -g 'stiapi' /dev/stdin '/etc/stiapi.env' && systemctl restart 'stiapi' && systemctl is-active 'stiapi'"
+	want := "umask 077 && tee '/etc/stiapi.env.tmp' >/dev/null && chown 'root:stiapi' '/etc/stiapi.env.tmp' && chmod '0640' '/etc/stiapi.env.tmp' && mv -f '/etc/stiapi.env.tmp' '/etc/stiapi.env' && systemctl restart 'stiapi' && systemctl is-active 'stiapi'"
 	if got := remoteInstallCmd(cfg); got != want {
 		t.Fatalf("\n got %q\nwant %q", got, want)
 	}
 	cfg.Sudo = "sudo"
-	want = "sudo install -m '0640' -o 'root' -g 'stiapi' /dev/stdin '/etc/stiapi.env' && sudo systemctl restart 'stiapi' && sudo systemctl is-active 'stiapi'"
+	want = "umask 077 && sudo tee '/etc/stiapi.env.tmp' >/dev/null && sudo chown 'root:stiapi' '/etc/stiapi.env.tmp' && sudo chmod '0640' '/etc/stiapi.env.tmp' && sudo mv -f '/etc/stiapi.env.tmp' '/etc/stiapi.env' && sudo systemctl restart 'stiapi' && sudo systemctl is-active 'stiapi'"
 	if got := remoteInstallCmd(cfg); got != want {
 		t.Fatalf("sudo\n got %q\nwant %q", got, want)
 	}
