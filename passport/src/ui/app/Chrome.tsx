@@ -63,6 +63,7 @@ export interface ChromeProps {
   pendingRequests: ScreenCtx["pendingRequests"];
   onForgetRequest: ScreenCtx["onForgetRequest"];
   isLoggedIn: ScreenCtx["isLoggedIn"];
+  onTryDemo: ScreenCtx["onTryDemo"];
   onAcceptContactInvite: ScreenCtx["onAcceptContactInvite"];
   onIngestContactReturn: ScreenCtx["onIngestContactReturn"];
   circles: ScreenCtx["circles"];
@@ -171,6 +172,7 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     pendingRequests: props.pendingRequests,
     onForgetRequest: props.onForgetRequest,
     isLoggedIn: props.isLoggedIn,
+    onTryDemo: props.onTryDemo,
     onAcceptContactInvite: props.onAcceptContactInvite,
     onIngestContactReturn: props.onIngestContactReturn,
     circles: props.circles,
@@ -252,7 +254,7 @@ function PublicChrome(props: ChromeProps) {
     return (
       <DesktopLanding
         onClaim={() => nav.go("b1-claim")}
-        onSample={() => nav.go("a2-public")}
+        onSample={props.onTryDemo}
         onLogin={() => nav.go("b1-claim", { isLogin: true })}
         onHome={() => nav.jump("a1-landing", "public")}
         onPromises={() => nav.go("promises")}

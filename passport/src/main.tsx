@@ -2,7 +2,7 @@ import "./design/index.css";
 import "./app.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./ui/App.tsx";
+import { Root } from "./ui/Root.tsx";
 import { AdminPage } from "./ui/admin/AdminPage.tsx";
 import { isAdminPath } from "./ui/admin/adminRoute.ts";
 import { API_BASE_URL } from "./config.ts";
@@ -17,7 +17,7 @@ if (!root) throw new Error("missing #root element");
 const admin = isAdminPath();
 createRoot(root).render(
   <StrictMode>
-    {admin ? <AdminPage apiBase={API_BASE_URL} /> : <App />}
+    {admin ? <AdminPage apiBase={API_BASE_URL} /> : <Root />}
   </StrictMode>,
 );
 // The offline shell and the install affordance are for the consumer app only; the

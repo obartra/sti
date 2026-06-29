@@ -30,6 +30,7 @@ import {
 } from "../store/index.ts";
 import { useBackupSync } from "./app/useBackupSync.ts";
 import { NotBackedUp } from "./app/NotBackedUp.tsx";
+import { DemoBanner } from "./app/DemoBanner.tsx";
 import {
   browserDeviceStore,
   createDeviceStore,
@@ -102,6 +103,29 @@ function findableName(session: OwnerSession | null): string | null {
   return session?.blob.findable?.name ?? null;
 }
 
+// The session the network-touching hooks (push, backup sync) see: null in demo
+// mode, so they stay dormant and the demo never reaches the real api/offlineSync.
+// Hoisted so the demo branch lives here, not in the App component's complexity.
+function networkSession(
+  demoMode: boolean,
+  session: OwnerSession | null,
+): OwnerSession | null {
+  return demoMode ? null : session;
+}
+
+// Demo mode (doc 27) as one prop, so the App's parameter list and complexity do
+// not grow per demo concern: the mode flag plus the enter/leave callbacks.
+interface DemoControls {
+  readonly mode: boolean;
+  readonly onTry: () => void;
+  readonly onExit: () => void;
+}
+const NO_DEMO: DemoControls = {
+  mode: false,
+  onTry: () => undefined,
+  onExit: () => undefined,
+};
+
 // The wired app: a route + history model (useAppRouter), responsive chrome, and
 // the owner session. Logged out, it shows the public landing + onboarding;
 // onboarding (or passkey login) mints/loads a real account, and the app screens
@@ -110,7 +134,15 @@ function findableName(session: OwnerSession | null): string | null {
 export function App({
   store = backendStore,
   controller = backendController,
-}: { store?: PassportStore; controller?: SessionController } = {}) {
+  // Demo mode (doc 27): the app runs over an in-memory demo store + controller,
+  // wears a persistent banner, and never touches the network (the two hooks that
+  // hold the real api/offlineSync are gated off via networkSession below).
+  demo = NO_DEMO,
+}: {
+  store?: PassportStore;
+  controller?: SessionController;
+  demo?: DemoControls;
+} = {}) {
   const { route, nav, shareOpen, setShareOpen } = useAppRouter();
   const desktop = useDesktop();
   // Session + the "stay signed in" lifecycle (doc 24): silent resume on load,
@@ -181,19 +213,22 @@ export function App({
     usePendingRequests();
 
   // Device push for the partner-notify wake (slice 7); a Privacy toggle drives it.
-  const push = usePush(api, session);
+  // In demo mode the real api/offlineSync stay untouched: networkSession hands the
+  // hooks a null session, so push and backup-sync stay dormant (demo sends nothing).
+  const push = usePush(api, networkSession(demo.mode, session));
 
   // Offline durability (doc 22 slice 4): track whether local owner edits are backed
   // up, and on reconnect re-apply the current state to push the blob and republish.
   const backupPending = useBackupSync(
     syncStatus,
     offlineSync,
-    session,
+    networkSession(demo.mode, session),
     setOwnerState,
   );
 
   return (
     <>
+      <DemoBanner active={demo.mode} onExit={demo.onExit} />
       <NotBackedUp pending={backupPending} />
       <Chrome
         // A logged-out visitor must never land on an app-group screen (e.g. a #home
@@ -239,6 +274,7 @@ export function App({
         pendingRequests={pendingRequests}
         onForgetRequest={forgetRequest}
         isLoggedIn={session !== null}
+        onTryDemo={demo.onTry}
         circles={session ? (session.blob.circles ?? []) : []}
         vanityName={findableName(session)}
         push={push}
