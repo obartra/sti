@@ -12,6 +12,10 @@ import type {
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
 import { masterForTest } from "../test-support/phrase.ts";
+import {
+  createDemoController,
+  createDemoStore,
+} from "../store/demo/demoRuntime.ts";
 
 // A real non-extractable master, so the app's background derivations (account id,
 // write token) run for real on it instead of rejecting on a placeholder. Built
@@ -477,5 +481,49 @@ describe("App onboarding flow", () => {
     expect(await screen.findByText("Claim your passport")).toBeInTheDocument();
     expect(screen.queryByText("@robin")).toBeNull();
     expect(screen.queryByText("Good to see you,")).toBeNull();
+  });
+});
+
+describe("demo mode", () => {
+  it("the landing's 'Try the demo' action enters the demo", async () => {
+    window.history.pushState({}, "", "/");
+    const user = userEvent.setup();
+    const onTry = vi.fn();
+    render(
+      <App
+        store={stubStore(null)}
+        controller={fakeController()}
+        demo={{ mode: false, onTry, onExit: () => undefined }}
+      />,
+    );
+
+    await user.click(
+      await screen.findByRole("button", { name: "Try the demo" }),
+    );
+    expect(onTry).toHaveBeenCalledOnce();
+  });
+
+  it("boots into the seeded @demo account, shows the banner, and leaves", async () => {
+    window.history.pushState({}, "", "/");
+    const user = userEvent.setup();
+    const onExit = vi.fn();
+    render(
+      <App
+        store={createDemoStore()}
+        controller={createDemoController()}
+        demo={{ mode: true, onTry: () => undefined, onExit }}
+      />,
+    );
+
+    // The seeded demo session drives the app: the @demo handle reaches home.
+    expect((await screen.findAllByText("@demo")).length).toBeGreaterThan(0);
+    // The persistent banner marks every demo screen.
+    expect(
+      screen.getByText("Demo. Nothing here is saved or sent."),
+    ).toBeInTheDocument();
+
+    // Leaving the demo calls back out (the root then remounts the real app).
+    await user.click(screen.getByRole("button", { name: "Leave demo" }));
+    expect(onExit).toHaveBeenCalledOnce();
   });
 });

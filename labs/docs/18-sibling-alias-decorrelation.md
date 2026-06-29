@@ -1,7 +1,5 @@
 # sti.care: Sibling-alias Decorrelation (plan)
 
-_New, June 23, 2026._
-
 _Plan for the deferred "sibling-alias decorrelation" work named in
 [doc 11](11-frontend-backend-integration.md) and depended on by Findable
 ([doc 17](17-vanity-namespace-governance.md), gate item 4). It defines the threat,

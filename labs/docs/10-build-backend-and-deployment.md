@@ -1,7 +1,5 @@
 # sti.care: Build, Backend & Deployment
 
-_New, June 17, 2026._
-
 *The "with what." How the prototype becomes real in-repo source, what the server actually is,
 and how it deploys so that load sheds instead of generating a surprise bill. Pairs with the
 [Design doc](/docs/design) (mechanics), [Data & storage](/docs/data) (what lives where), and the
@@ -17,7 +15,7 @@ and how it deploys so that load sheds instead of generating a surprise bill. Pai
    cheap to run and trivial to scale on one box, because there is nothing expensive to do.
 2. **Degrade, never surprise-bill.** The cost ceiling is fixed by the host, not by traffic. When
    load exceeds capacity the server sheds requests (429 / 503); it never autoscales into a bill.
-   This is safe because [02-decisions.md:155](../docs/02-decisions.md) already locks
+   This is safe because [02-decisions.md](../docs/02-decisions.md) already locks
    **unreachable server, slow server, or stale sync, then gray, never stale-blue.** A shed
    request renders as gray on the client, which is a correct, expected state, not an outage.
    **One carve-out:** the existence-sensitive endpoints (`GET /a/{id}` and `POST /knock/{id}`)
@@ -126,7 +124,7 @@ run asserts every acked write persisted).
 
 `GET /a/{id}` for a missing or undecryptable id returns **decoy, ciphertext-shaped bytes uniform in
 size** with a real hit, so "doesn't exist" and "can't read this" are indistinguishable in shape
-(from [09-data-and-storage.md:42](../docs/09-data-and-storage.md)). This is pinned by a test that
+(from [09-data-and-storage.md](../docs/09-data-and-storage.md)). This is pinned by a test that
 asserts the status, length, and decoy stability match across hit and miss, because it is a privacy
 invariant, not a nicety. The test covers response *shape*, not *timing*: the read-path timing
 difference (a DB hit vs the decoy HMAC) and the write-path timing on `/knock` and `/notify` are

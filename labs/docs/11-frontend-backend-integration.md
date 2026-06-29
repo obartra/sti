@@ -1,7 +1,5 @@
 # sti.care: Frontend to Backend Integration
 
-_New, June 19, 2026._
-
 *The "make it real." How the fixtures-only passport app starts talking to the blind store at
 api.sti.care, one tested slice at a time. Pairs with
 [Build, Backend & Deployment](10-build-backend-and-deployment.md) (what the server is),

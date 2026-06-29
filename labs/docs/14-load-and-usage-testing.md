@@ -1,7 +1,5 @@
 # sti.care: Load & Usage Testing
 
-_New, June 20, 2026._
-
 *The "drive it like real users before there are any." How we model the interactions the app
 actually produces, generate realistic traffic and deliberate overload against a throwaway instance,
 and catch usage bugs (and capacity ceilings) while the data is synthetic and disposable. Pairs with

@@ -1,7 +1,5 @@
 # Data & storage
 
-_New — June 16, 2026. Reflects the feature-complete build._
-
 *The plain answer to "should I trust this with my status?" What lives on your device, what
 reaches our server, what we provably can't see — and the one place that isn't fully blind yet.
 Pairs with the Design doc (mechanics) and Philosophy (why). Not legal advice.*

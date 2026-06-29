@@ -1,7 +1,5 @@
 # sti.care: Avatar Style (Dylan)
 
-_New, June 22, 2026._
-
 _The design doc for replacing the home-grown animal avatars (`passport/src/lib/avatars.ts`) with the
 DiceBear "Dylan" style, rendered locally and recolored to the brand teal palette. It keeps every property
 the current system earned (no photos, offline, deterministic from a per-alias seed, encrypted-blob

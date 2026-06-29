@@ -39,7 +39,7 @@ func TestValidFormat(t *testing.T) {
 }
 
 func TestReserved(t *testing.T) {
-	for _, r := range []string{"admin", "sti", "support", "undefined"} {
+	for _, r := range []string{"admin", "sti", "support", "undefined", "demo"} {
 		if !Reserved(r) {
 			t.Errorf("Reserved(%q) = false, want true", r)
 		}

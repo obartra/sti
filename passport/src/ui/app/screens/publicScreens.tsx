@@ -10,10 +10,10 @@ import { SAMPLE_RESOLVED } from "../fixtures.ts";
 import type { ScreenRenderers } from "./context.ts";
 
 export const publicRenderers: ScreenRenderers = {
-  "a1-landing": ({ nav, pendingRequests }) => (
+  "a1-landing": ({ nav, pendingRequests, onTryDemo }) => (
     <Landing
       onClaim={() => nav.go("b1-claim")}
-      onSample={() => nav.go("a2-public")}
+      onSample={onTryDemo}
       onLogin={() => nav.go("b1-claim", { isLogin: true })}
       onPromises={() => nav.go("promises")}
       onPrivacyPolicy={() => nav.go("privacy-policy")}

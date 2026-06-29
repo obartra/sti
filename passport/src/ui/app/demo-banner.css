@@ -1,0 +1,33 @@
+/* The persistent demo banner (doc 27): a thin accent bar pinned to the top of every
+   demo screen, so the demo is unmistakable at a glance and even in a screenshot.
+   A distinct accent tint (not the warm not-backed-up pill), tokens only. */
+.demo-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: calc(env(safe-area-inset-top, 0px) + var(--space-2)) var(--space-4)
+    var(--space-2);
+  background: var(--accent-soft);
+  color: var(--text-accent);
+  border-bottom: 1px solid var(--border-card);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.demo-banner__leave {
+  appearance: none;
+  cursor: pointer;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  border-radius: var(--radius-pill);
+  padding: 2px var(--space-3);
+  font-size: 0.75rem;
+  font-weight: 700;
+}

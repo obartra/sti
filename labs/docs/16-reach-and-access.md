@@ -1,9 +1,5 @@
 # sti.care: Reach and Access (sharing modes)
 
-_New, June 21, 2026. Revised June 27, 2026: collapsed three modes (Direct / Gated / Findable) to
-two (Private link / Public link); added per-link identity, local display name, and public link cap.
-Doc 17 (Vanity Namespace Governance) is updated for the multi-handle model, not superseded._
-
 _How an alias is reached and what a viewer gets when they reach it. Two modes that keep the server
 unable to read a status in every configuration we offer. Builds on the knock/grant flow
 ([Contact Graph](13-contact-graph-and-notification.md)) and per-alias identity
