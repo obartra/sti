@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -15,6 +16,8 @@ const (
 	keyDecoy        = "STI_DECOY_SECRET"
 	keyVapidPublic  = "STI_VAPID_PUBLIC_KEY"
 	keyVapidPrivate = "STI_VAPID_PRIVATE_KEY"
+	keyAdminToken   = "STI_ADMIN_TOKEN"
+	keyAdminEnabled = "STI_ADMIN_ENABLED"
 )
 
 // cmdPull adopts the box's current env into the store: every key on the box that
@@ -70,6 +73,42 @@ func cmdGenDecoy(cfg Config) error {
 		return err
 	}
 	fmt.Printf("secrets: set %s to 32 fresh random bytes. Review with 'diff', then 'sync'.\n", keyDecoy)
+	return nil
+}
+
+// newAdminToken returns a fresh bearer token for the admin surface: 32 random bytes
+// as base64url (43 chars), comfortably over the server's 32-char floor.
+func newAdminToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+// cmdGenAdmin enables the operator surface (doc 20): it generates a strong admin
+// token and sets BOTH STI_ADMIN_TOKEN and STI_ADMIN_ENABLED=true, because the server
+// refuses to boot with the flag on but no adequate token, and ignores a token with
+// the flag off. The token is not printed (it is a bearer secret); retrieve it with
+// `show STI_ADMIN_TOKEN` when you need it to call the admin API. Re-running rotates
+// the token in place.
+func cmdGenAdmin(cfg Config) error {
+	tok, err := newAdminToken()
+	if err != nil {
+		return err
+	}
+	plain, err := cfg.load()
+	if err != nil {
+		return err
+	}
+	plain = upsert(plain, keyAdminToken, tok)
+	plain = upsert(plain, keyAdminEnabled, "true")
+	if err := cfg.save(plain); err != nil {
+		return err
+	}
+	fmt.Printf("secrets: set %s (32 random bytes) and %s=true.\n", keyAdminToken, keyAdminEnabled)
+	fmt.Printf("secrets: retrieve the token with 'secrets show %s' when you need it.\n", keyAdminToken)
+	fmt.Println("secrets: review with 'diff', then 'sync'.")
 	return nil
 }
 

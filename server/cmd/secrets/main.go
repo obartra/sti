@@ -153,6 +153,8 @@ func run(args []string) error {
 		return cmdGenDecoy(cfg)
 	case "gen-vapid":
 		return cmdGenVapid(cfg)
+	case "gen-admin":
+		return cmdGenAdmin(cfg)
 	case "sync", "push":
 		return cmdSync(cfg, rest)
 	case "help", "-h", "--help":
@@ -570,6 +572,8 @@ Commands:
   gen-decoy              generate a fresh STI_DECOY_SECRET and set it in the store
   gen-vapid              generate a fresh Web Push VAPID keypair (STI_VAPID_PUBLIC_KEY
                          + STI_VAPID_PRIVATE_KEY) and set both in the store
+  gen-admin              enable the operator surface: generate STI_ADMIN_TOKEN and set
+                         STI_ADMIN_ENABLED=true (re-run to rotate the token)
   sync [-y]              push to the box over SSH and restart; shows the diff and
                          asks first unless -y is given
   recipients [add KEY | rm LABEL]

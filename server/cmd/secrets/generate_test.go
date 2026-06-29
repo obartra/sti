@@ -108,3 +108,51 @@ func TestGenDecoyAndVapidWriteValidKeys(t *testing.T) {
 		t.Fatalf("vapid private %q: len %d err %v, want 32 bytes", env[keyVapidPrivate], len(priv), err)
 	}
 }
+
+// newAdminToken returns a distinct token comfortably over the server's 32-char floor.
+func TestNewAdminToken(t *testing.T) {
+	a, err := newAdminToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := newAdminToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a == b {
+		t.Fatal("two admin tokens were identical")
+	}
+	if len(a) < 32 {
+		t.Fatalf("admin token length = %d, want >= 32 (the server's floor)", len(a))
+	}
+}
+
+// gen-admin enables the operator surface in one step: it must set BOTH a long enough
+// token and the flag, since the server refuses to boot with the flag on and no token.
+func TestGenAdminSetsTokenAndFlag(t *testing.T) {
+	dir := t.TempDir()
+	identity, authLine := writeTestKey(t, dir)
+	if err := os.WriteFile(filepath.Join(dir, "recipients.txt"), []byte(authLine), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg := Config{Dir: dir, Identity: identity}
+	if err := cfg.save(storeHeader + "\n"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := cmdGenAdmin(cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	plain, err := cfg.load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	env := parseEnv(plain)
+	if len(env[keyAdminToken]) < 32 {
+		t.Fatalf("%s = %q (len %d), want >= 32", keyAdminToken, env[keyAdminToken], len(env[keyAdminToken]))
+	}
+	if env[keyAdminEnabled] != "true" {
+		t.Fatalf("%s = %q, want true", keyAdminEnabled, env[keyAdminEnabled])
+	}
+}

@@ -37,6 +37,7 @@ make secrets-sync  SSH=root@origin.sti.care
 make secrets-edit
 make gen-vapid                                 # rotate the Web Push keypair
 make gen-decoy                                 # rotate the decoy secret
+make gen-admin                                 # enable/rotate the admin surface
 ```
 
 Or build a small binary once and call it directly (nicer for a session of edits):
@@ -102,6 +103,7 @@ secrets rm KEY                 # remove
 secrets edit                   # whole file in $EDITOR, re-encrypted on save
 secrets gen-vapid              # rotate the Web Push keypair (sets both keys)
 secrets gen-decoy              # rotate the decoy secret
+secrets gen-admin              # enable/rotate the admin surface (token + flag)
 secrets diff                   # what 'sync' would change on the box
 SECRETS_SSH=root@origin.sti.care secrets pull       # adopt the box's current env
 SECRETS_SSH=root@origin.sti.care secrets sync       # diff, confirm, push, restart
@@ -114,6 +116,47 @@ Add or remove an admin who may decrypt (re-encrypts to the new set):
 secrets recipients add 'ssh-ed25519 AAAA... them@laptop'
 secrets recipients rm them@laptop
 ```
+
+## Enabling a feature
+
+Each gated feature is one or two env keys plus a `sync`. Generate, review, push:
+
+| Feature                | Keys                                            | One step                                | Then               |
+| ---------------------- | ----------------------------------------------- | --------------------------------------- | ------------------ |
+| Web Push delivery      | `STI_VAPID_PUBLIC_KEY`, `STI_VAPID_PRIVATE_KEY` | `secrets gen-vapid`                     | `diff` then `sync` |
+| Decoy secret (rotate)  | `STI_DECOY_SECRET`                              | `secrets gen-decoy`                     | `diff` then `sync` |
+| Admin surface (doc 20) | `STI_ADMIN_TOKEN`, `STI_ADMIN_ENABLED`          | `secrets gen-admin`                     | `diff` then `sync` |
+| Public names (doc 17)  | `STI_FINDABLE_ENABLED`                          | `secrets set STI_FINDABLE_ENABLED true` | `diff` then `sync` |
+
+For the admin surface specifically (the server refuses to boot with the flag on but
+no adequate token, so `gen-admin` sets both at once):
+
+```sh
+secrets gen-admin                               # sets STI_ADMIN_TOKEN + STI_ADMIN_ENABLED=true
+SECRETS_SSH=root@origin.sti.care secrets diff    # confirms only those two change
+SECRETS_SSH=root@origin.sti.care secrets sync
+secrets show STI_ADMIN_TOKEN                      # the bearer token, when you need to call the admin API
+```
+
+Re-running `gen-admin` rotates the token in place. The token is never printed by the
+generator; read it back with `show` only when you need it.
+
+## When sync fails
+
+`sync` fails closed and tells you which step broke. Common cases:
+
+- **`missing required key(s): STI_DECOY_SECRET`** -- the store does not yet have a key
+  the box needs (most often because it is freshly initialized). Run `pull` to adopt
+  the box's current env, then `diff` (should show only your change) and `sync`.
+- **`refusing to push an empty store`** -- nothing is set yet. `init`, then `pull` or
+  `set` keys.
+- **a remote shell error then `sync failed (service may not be active)`** -- the write
+  or restart failed on the box. Re-run `diff` to confirm the store is what you expect,
+  then check the service directly:
+  `ssh "$SECRETS_SSH" 'systemctl status stiapi --no-pager; journalctl -u stiapi -n 50 --no-pager'`.
+  A bad value (e.g. a malformed key) shows up as the service failing to boot; fix the
+  value in the store and `sync` again (the previous env file is replaced atomically,
+  so a failed push never leaves a half-written file).
 
 ## Config
 
