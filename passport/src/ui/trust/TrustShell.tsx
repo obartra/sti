@@ -1,6 +1,9 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Back } from "../../design/icons.tsx";
 import { useMinWidth } from "../desktop/Desktop.tsx";
+import { NavLink } from "../app/NavLink.tsx";
+import { pathForScreen } from "../app/useAppRouter.ts";
+import type { Screen } from "../app/routes.ts";
 import { TrustFooter, type TrustFooterProps } from "./TrustFooter.tsx";
 
 // Shared shell for the public trust pages (promises, privacy, terms, share-link).
@@ -26,43 +29,76 @@ const RAIL: {
   id: TrustScreen;
   label: string;
   key: "onPromises" | "onPrivacy" | "onTerms" | "onShareLink";
+  screen: Screen;
 }[] = [
-  { id: "promises", label: "Our promises", key: "onPromises" },
-  { id: "privacy", label: "Privacy", key: "onPrivacy" },
-  { id: "terms", label: "Terms", key: "onTerms" },
-  { id: "share-link", label: "Share your link", key: "onShareLink" },
+  {
+    id: "promises",
+    label: "Our promises",
+    key: "onPromises",
+    screen: "promises",
+  },
+  {
+    id: "privacy",
+    label: "Privacy",
+    key: "onPrivacy",
+    screen: "privacy-policy",
+  },
+  { id: "terms", label: "Terms", key: "onTerms", screen: "terms" },
+  {
+    id: "share-link",
+    label: "Share your link",
+    key: "onShareLink",
+    screen: "share-link",
+  },
 ];
+
+function railLinkStyle(active: boolean): CSSProperties {
+  return {
+    display: "block",
+    textAlign: "left",
+    width: "100%",
+    padding: "9px 12px",
+    borderRadius: "var(--radius-md)",
+    fontSize: 14,
+    fontWeight: active ? 800 : 600,
+    color: active ? "var(--text-strong)" : "var(--text-subtle)",
+    background: active ? "var(--surface-tint)" : "transparent",
+    textDecoration: "none",
+    cursor: "pointer",
+  };
+}
 
 function RailLink({
   label,
+  screen,
   active,
-  onClick,
+  onNavigate,
 }: {
   label: string;
+  screen: Screen;
   active: boolean;
-  onClick?: (() => void) | undefined;
+  onNavigate?: (() => void) | undefined;
 }) {
+  // A real anchor when we can navigate; the current page (or a missing handler)
+  // renders as a plain, non-link label so it is not a dead link to itself.
+  if (onNavigate === undefined || active) {
+    return (
+      <span
+        aria-current={active ? "page" : undefined}
+        style={railLinkStyle(active)}
+      >
+        {label}
+      </span>
+    );
+  }
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-current={active ? "page" : undefined}
-      style={{
-        appearance: "none",
-        border: "none",
-        cursor: "pointer",
-        textAlign: "left",
-        width: "100%",
-        padding: "9px 12px",
-        borderRadius: "var(--radius-md)",
-        fontSize: 14,
-        fontWeight: active ? 800 : 600,
-        color: active ? "var(--text-strong)" : "var(--text-subtle)",
-        background: active ? "var(--surface-tint)" : "transparent",
-      }}
+    <NavLink
+      href={pathForScreen(screen)}
+      onNavigate={onNavigate}
+      style={railLinkStyle(active)}
     >
       {label}
-    </button>
+    </NavLink>
   );
 }
 
@@ -126,8 +162,9 @@ function Rail({
         <RailLink
           key={item.id}
           label={item.label}
+          screen={item.screen}
           active={item.id === current}
-          onClick={footer[item.key]}
+          onNavigate={footer[item.key]}
         />
       ))}
     </nav>

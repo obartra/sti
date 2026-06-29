@@ -67,11 +67,26 @@ describe("TrustFooter", () => {
         onShareLink={onShareLink}
       />,
     );
-    await userEvent.click(screen.getByRole("button", { name: "Our promises" }));
-    await userEvent.click(screen.getByRole("button", { name: "Privacy" }));
-    await userEvent.click(screen.getByRole("button", { name: "Terms" }));
+    // The trust destinations are real anchors (accessible links, not buttons), each
+    // with a clean href; a plain click is intercepted and routed through the handler.
+    const promises = screen.getByRole("link", { name: "Our promises" });
+    expect(promises).toHaveAttribute("href", "/promises");
+    expect(screen.getByRole("link", { name: "Privacy" })).toHaveAttribute(
+      "href",
+      "/privacy",
+    );
+    expect(screen.getByRole("link", { name: "Terms" })).toHaveAttribute(
+      "href",
+      "/terms",
+    );
+    expect(
+      screen.getByRole("link", { name: "Share your link" }),
+    ).toHaveAttribute("href", "/share-link");
+    await userEvent.click(promises);
+    await userEvent.click(screen.getByRole("link", { name: "Privacy" }));
+    await userEvent.click(screen.getByRole("link", { name: "Terms" }));
     await userEvent.click(
-      screen.getByRole("button", { name: "Share your link" }),
+      screen.getByRole("link", { name: "Share your link" }),
     );
     expect(onPromises).toHaveBeenCalledOnce();
     expect(onPrivacy).toHaveBeenCalledOnce();
@@ -79,11 +94,9 @@ describe("TrustFooter", () => {
     expect(onShareLink).toHaveBeenCalledOnce();
   });
 
-  it("omits the share-your-link button when no handler is given", () => {
+  it("omits the share-your-link link when no handler is given", () => {
     render(<TrustFooter onPromises={vi.fn()} />);
-    expect(
-      screen.queryByRole("button", { name: "Share your link" }),
-    ).toBeNull();
+    expect(screen.queryByRole("link", { name: "Share your link" })).toBeNull();
   });
 
   it("offers a mailto feedback link to the published address", () => {
@@ -127,14 +140,14 @@ describe("TrustShell", () => {
   it("shows a back control that calls onBack, and renders the footer", async () => {
     const onBack = vi.fn();
     render(
-      <TrustShell current="privacy" onBack={onBack}>
+      <TrustShell current="privacy" onBack={onBack} onPromises={vi.fn()}>
         <p>page body</p>
       </TrustShell>,
     );
     expect(screen.getByText("page body")).toBeInTheDocument();
     // The footer is present (its links render).
     expect(
-      screen.getByRole("button", { name: "Our promises" }),
+      screen.getByRole("link", { name: "Our promises" }),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(onBack).toHaveBeenCalledOnce();

@@ -58,8 +58,13 @@ function canonicalUrl(screen: Screen): string {
   if (screen === "promises") return "/promises";
   if (screen === "privacy-policy") return "/privacy";
   if (screen === "terms") return "/terms";
+  if (screen === "share-link") return "/share-link";
   return `/#${screen}`;
 }
+
+// The canonical clean path a screen normalizes to, exported so the trust links can
+// render as real anchors (href + the SPA intercept) rather than `/#...` buttons.
+export const pathForScreen = canonicalUrl;
 
 // The public trust pages own clean, real paths (like /promises) so they read as
 // links, not `/#...` fragments, and so the browser back button returns to them.
@@ -67,6 +72,7 @@ const CLEAN_PATHS: Record<string, Screen> = {
   "/promises": "promises",
   "/privacy": "privacy-policy",
   "/terms": "terms",
+  "/share-link": "share-link",
 };
 
 // A screen can be deep-linked via the URL hash (#wallet, #circle-detail). Used
