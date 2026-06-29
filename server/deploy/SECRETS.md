@@ -26,13 +26,20 @@ action over your own root SSH, which is what `sync` uses.
 
 ## Running it
 
-From the repo root:
+From the repo root, the Makefile builds and runs it for you (no PATH setup, no
+manual `go build`):
 
 ```sh
-make secrets ARGS="list"
+make secrets ARGS="list"                       # any subcommand via ARGS
+make secrets-pull  SSH=root@origin.sti.care    # adopt the box (see below)
+make secrets-diff  SSH=root@origin.sti.care
+make secrets-sync  SSH=root@origin.sti.care
+make secrets-edit
+make gen-vapid                                 # rotate the Web Push keypair
+make gen-decoy                                 # rotate the decoy secret
 ```
 
-or build a small binary once and call it directly (nicer for a session of edits):
+Or build a small binary once and call it directly (nicer for a session of edits):
 
 ```sh
 cd server && go build -o /tmp/secrets ./cmd/secrets
@@ -41,6 +48,37 @@ cd server && go build -o /tmp/secrets ./cmd/secrets
 
 The examples below use `secrets` for the binary; run from `server/` (or use
 `make secrets ARGS="..."`) so the store under `deploy/secrets` is found.
+
+## Adopting an existing box (first time, store empty)
+
+The store is the whole source of truth: `sync` pushes the entire env file and
+**refuses** if it is empty or missing a required key, so it cannot silently wipe the
+box. To start from a box that is already configured, pull its env in first:
+
+```sh
+secrets init                                   # once: add your key, create the store
+SECRETS_SSH=root@origin.sti.care secrets pull  # copy in every key the box already has
+SECRETS_SSH=root@origin.sti.care secrets diff   # should now be empty (store == box)
+git add server/deploy/secrets && git commit -m "chore: adopt server secrets store"
+```
+
+`pull` never overwrites a value you have already staged locally, so the usual change
+is: stage your edit (e.g. `gen-vapid`), `pull` to fill in the rest, `diff` (shows
+only your edit), `sync`.
+
+## Rotating a key
+
+```sh
+secrets gen-vapid                              # new Web Push keypair, set in the store
+secrets gen-decoy                              # new decoy secret, set in the store
+SECRETS_SSH=root@origin.sti.care secrets diff   # confirms only those keys change
+SECRETS_SSH=root@origin.sti.care secrets sync
+```
+
+Rotate either immediately if its value has leaked (e.g. pasted into a chat or a log).
+`gen-decoy` does not print the value; `gen-vapid` prints only the public key.
+Rotating the VAPID keypair invalidates existing push subscriptions, which
+re-subscribe on the client's next visit.
 
 ## Setup (once)
 
@@ -62,7 +100,10 @@ secrets show STI_ADMIN_TOKEN  # one value (plaintext)
 secrets set KEY [VALUE]        # add or update (prompts if VALUE omitted)
 secrets rm KEY                 # remove
 secrets edit                   # whole file in $EDITOR, re-encrypted on save
+secrets gen-vapid              # rotate the Web Push keypair (sets both keys)
+secrets gen-decoy              # rotate the decoy secret
 secrets diff                   # what 'sync' would change on the box
+SECRETS_SSH=root@origin.sti.care secrets pull       # adopt the box's current env
 SECRETS_SSH=root@origin.sti.care secrets sync       # diff, confirm, push, restart
 SECRETS_SSH=root@origin.sti.care secrets sync -y    # skip the confirm
 ```
