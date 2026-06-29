@@ -121,10 +121,10 @@ timing-grouping vs cost (cover traffic).
 - **Phase C (only if needed):** option 3 cover traffic, measured against whether
   A+B leave a meaningful residual.
 
-This satisfies Findable gate item 4: a **named** alias is just an alias with a
+This satisfies Public link gate item 4 (doc 17): a **named** alias is just an alias with a
 directory entry, so it rides the same republish/wake path; once A+B cover the
 republish schedule, "decorrelation extends to named aliases" holds with no
-Findable-specific work.
+public-link-specific work.
 
 ## Work items
 

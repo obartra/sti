@@ -10,6 +10,10 @@ import { knock } from "./knock.ts";
 import { redeemGrant } from "./grant.ts";
 import { browserRequesterSecret } from "./requesterStore.ts";
 import { browserGrantKeyStore, type GrantKeyStore } from "./grantKeyStore.ts";
+import {
+  browserPendingKnockStore,
+  type PendingKnockStore,
+} from "./pendingKnockStore.ts";
 import type { AliasLink, PassportStore } from "./passportStore.ts";
 
 /**
@@ -18,11 +22,15 @@ import type { AliasLink, PassportStore } from "./passportStore.ts";
  * secret, which knocks fine but loses cross-session dedupe.
  * @param grantKeys the per-alias grant keypair store. Defaults to a browser-backed
  * one; tests/Storybook can inject an in-memory store.
+ * @param pending the device-local list of requests this viewer has made, so a
+ * logged-out viewer has a way back to a status the owner later shares. Defaults to
+ * a browser-backed one; tests/Storybook can inject an in-memory store.
  */
 export function createBackendStore(
   api: ApiClient,
   requesterSecret: string = browserRequesterSecret(),
   grantKeys: GrantKeyStore = browserGrantKeyStore(),
+  pending: PendingKnockStore = browserPendingKnockStore(),
 ): PassportStore {
   async function resolveAlias({ id, key }: AliasLink) {
     try {
@@ -49,6 +57,19 @@ export function createBackendStore(
       // device, and the server response is existence-uniform.
       const kp = await grantKeys.forAlias(aliasId);
       await knock(api, aliasId, requesterSecret, kp.publicKey);
+      // Remember the request locally so the viewer can find their way back to it
+      // (a logged-out viewer has no inbox). Recorded after the knock settles; the
+      // server reply is existence-uniform, so this stores only the id the viewer
+      // already held. Best-effort, never blocks the knock.
+      pending.add(aliasId);
+    },
+
+    pendingRequests() {
+      return pending.list();
+    },
+
+    forgetRequest(aliasId: string) {
+      pending.remove(aliasId);
     },
 
     async redeemGrant(aliasId: string) {

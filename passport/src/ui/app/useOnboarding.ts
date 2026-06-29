@@ -21,7 +21,7 @@ export interface OnboardingActions {
   /** A user-facing error from the last action, or null. */
   readonly error: string | null;
   /** b1: create the account. Returns true to advance to b2. */
-  claim(handle: string, avatar: AvatarConfig): Promise<boolean>;
+  claim(handle: string | undefined, avatar: AvatarConfig): Promise<boolean>;
   /** b3: persist the profile, bind a passkey (best-effort), and enter. */
   finish(sharingMode: SharingMode): Promise<void>;
   /** Login variant: unlock this device's passkey. Returns true on success. */
@@ -57,7 +57,7 @@ export function useOnboarding(
   const [error, setError] = useState<string | null>(null);
 
   const claim = useCallback(
-    async (handle: string, avatar: AvatarConfig) => {
+    async (handle: string | undefined, avatar: AvatarConfig) => {
       if (inFlight.current) return false;
       inFlight.current = true;
       setBusy(true);
@@ -101,7 +101,7 @@ export function useOnboarding(
         try {
           await controller.enrollPasskey(
             current.recoveryPhrase,
-            updated.blob.handle,
+            updated.blob.handle ?? "",
           );
         } catch {
           // keep going; the account is already created and phrase-recoverable.

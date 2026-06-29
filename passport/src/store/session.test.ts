@@ -34,7 +34,7 @@ function fakeBackend() {
         await deriveMasterKey(recoveryPhrase),
       );
       const blob: AccountBlob = {
-        handle,
+        ...(handle !== undefined ? { handle } : {}),
         aliases: [],
         contacts: [],
         state: INITIAL_OWNER_STATE,

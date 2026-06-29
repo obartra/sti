@@ -16,6 +16,13 @@ export {
   browserForgetGrantKeys,
   type GrantKeyStore,
 } from "./grantKeyStore.ts";
+export {
+  createPendingKnockStore,
+  browserPendingKnockStore,
+  browserForgetPendingKnocks,
+  type PendingKnockStore,
+  type PendingKnock,
+} from "./pendingKnockStore.ts";
 export { serializePublicCard, parsePublicCard } from "./publicCard.ts";
 export { parseAliasLink, parseScannedLink } from "./aliasLink.ts";
 export {

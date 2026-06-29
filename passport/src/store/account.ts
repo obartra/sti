@@ -56,7 +56,7 @@ export interface RecoveredAccount {
 
 export interface AccountManager {
   /** Mint a new account: generate the recovery phrase, save an empty blob. */
-  create(handle: string): Promise<NewAccount>;
+  create(handle?: string): Promise<NewAccount>;
   /** Recover with a phrase. Returns null when no account exists for it. */
   recover(phrase: string): Promise<RecoveredAccount | null>;
   /** Record a published alias into the account and persist it. */
@@ -127,9 +127,9 @@ export interface AccountManager {
 // A brand-new account: empty links, default avatar, private (link) sharing. The
 // notify inbox is no longer account-level; each contact gets its own at link time
 // (doc 13). Onboarding updates the avatar and sharing default via setProfile.
-function freshBlob(handle: string): AccountBlob {
+function freshBlob(handle?: string): AccountBlob {
   return {
-    handle,
+    ...(handle ? { handle } : {}),
     aliases: [],
     contacts: [],
     state: INITIAL_OWNER_STATE,
@@ -297,10 +297,9 @@ function lifecycleMethods(
 ): Pick<AccountManager, "create" | "recover"> {
   return {
     async create(handle) {
-      // Validate up front: an invalid handle would seal fine but throw on
-      // parseAccountBlob during recovery, locking the owner out of an account
-      // that physically exists.
-      if (!isValidHandle(handle)) {
+      // Validate when set: an invalid handle would seal fine but throw on
+      // parseAccountBlob during recovery, locking the owner out.
+      if (handle !== undefined && !isValidHandle(handle)) {
         throw new Error("create: invalid handle");
       }
       const recoveryPhrase = randomRecoveryPhrase();

@@ -162,7 +162,8 @@ export function isSharingMode(x: unknown): x is SharingMode {
 }
 
 export interface AccountBlob {
-  readonly handle: string;
+  /** The owner's local display name — owner-facing only, never sent to the server. Optional. */
+  readonly handle?: string;
   readonly aliases: AliasRecord[];
   /** Private, individually-revocable links, one per contact the owner shared with. */
   readonly contacts: ContactRecord[];
@@ -185,8 +186,9 @@ export interface AccountBlob {
   readonly findable?: FindableRegistration;
 }
 
-interface AccountBlobWire extends AccountBlob {
+interface AccountBlobWire extends Omit<AccountBlob, "handle"> {
   readonly v: typeof SCHEMA_VERSION;
+  readonly handle?: string;
 }
 
 // The optional per-alias display override (doc 15). Handle and expiry still fail
@@ -347,7 +349,7 @@ export function serializeAccountBlob(blob: AccountBlob): Bytes {
   // when absent, so a contact-only account stays compact.
   const wire: AccountBlobWire = {
     v: SCHEMA_VERSION,
-    handle: blob.handle,
+    ...(blob.handle !== undefined ? { handle: blob.handle } : {}),
     aliases: blob.aliases,
     contacts: blob.contacts,
     state: blob.state,
@@ -362,7 +364,7 @@ export function serializeAccountBlob(blob: AccountBlob): Bytes {
 // Validate every field strictly, throwing on the first problem. Kept separate so
 // parseAccountBlob stays a thin decode-validate-return.
 function assertValidBlob(o: Record<string, unknown>): void {
-  if (!isValidHandle(o.handle)) {
+  if (o.handle !== undefined && !isValidHandle(o.handle)) {
     throw new Error("account blob: invalid handle");
   }
   if (!Array.isArray(o.aliases) || !o.aliases.every(isAliasRecord)) {
@@ -399,7 +401,7 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
   const o = decodeVersioned(bytes, SCHEMA_VERSION);
   assertValidBlob(o);
   return {
-    handle: o.handle as string,
+    ...(o.handle !== undefined ? { handle: o.handle as string } : {}),
     aliases: (o.aliases as AliasRecord[]).map(migrateAliasOverride),
     contacts: (o.contacts as ContactRecord[]).map(migrateContactAvatar),
     state: o.state as AccountBlob["state"],

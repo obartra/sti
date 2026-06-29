@@ -36,6 +36,8 @@ function stubStore(to: ResolvedView | null): PassportStore {
     redeemGrant: () => Promise.resolve(null),
     resolveVanityName: () => Promise.resolve(null),
     reportVanityName: () => Promise.resolve(),
+    pendingRequests: () => [],
+    forgetRequest: () => undefined,
   };
 }
 
@@ -56,7 +58,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
   };
   return {
     signUp: (handle) => {
-      blob = { ...blob, handle };
+      blob = { ...blob, ...(handle !== undefined ? { handle } : {}) };
       return Promise.resolve({
         session: { master, blob },
         recoveryPhrase: "Ck9mq2Xb7wYt0Zr8Lv3Np6Aq1Ds4Gh5Jk8Mn2Pr7Tw0",
@@ -357,8 +359,8 @@ describe("App onboarding flow", () => {
     await onboard(user);
     expect((await screen.findAllByText("@robin")).length).toBeGreaterThan(0);
 
-    // Open Privacy, then the danger zone's two-step delete.
-    await user.click(await screen.findByText("Privacy and sharing"));
+    // Open Privacy (the home quick-action tile), then the danger zone's two-step delete.
+    await user.click(await screen.findByRole("button", { name: "Privacy" }));
     await user.click(
       await screen.findByRole("button", { name: "Delete everything" }),
     );

@@ -7,12 +7,16 @@ import { INITIAL_OWNER_STATE } from "../../core/badge.ts";
 import { DEFAULT_AVATAR } from "../../lib/avatars.ts";
 import { browserForgetGrantKeys } from "../../store/grantKeyStore.ts";
 import { browserForgetRequesterSecret } from "../../store/requesterStore.ts";
+import { browserForgetPendingKnocks } from "../../store/pendingKnockStore.ts";
 
 vi.mock("../../store/grantKeyStore.ts", () => ({
   browserForgetGrantKeys: vi.fn(),
 }));
 vi.mock("../../store/requesterStore.ts", () => ({
   browserForgetRequesterSecret: vi.fn(),
+}));
+vi.mock("../../store/pendingKnockStore.ts", () => ({
+  browserForgetPendingKnocks: vi.fn(),
 }));
 
 const aSession = {
@@ -102,5 +106,6 @@ describe("useResumableSession", () => {
     act(() => result.current.onLogOut());
     expect(browserForgetGrantKeys).toHaveBeenCalled();
     expect(browserForgetRequesterSecret).toHaveBeenCalled();
+    expect(browserForgetPendingKnocks).toHaveBeenCalled();
   });
 });

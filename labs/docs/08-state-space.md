@@ -112,28 +112,30 @@ other gray. The owner chooses *whether* to pause.
 
 ## D. Sharing / visibility mode (per ALIAS, not global)
 
-This is the dimension most out of date in the current dev panel. Each alias is one of **two modes**,
-private or public (matching Decisions' "two modes, two states each"); **vanity is a public
-sub-option, not a third mode**:
+Two modes as of June 27, 2026 (revised from three — the intermediate Gated mode is removed; see doc
+16). Each alias is one of **two modes**:
 
-### D1. Private (existence-hidden) — DEFAULT
-- Cold/anonymous/guessed viewer → **uniform gray-nothing = nonexistent** (no name, avatar,
-  "private," or button).
-- Authorized (holds key) → full view.
-- **Link-holder, not authorized → may KNOCK** (see E). The link reveals existence to them; the
-  cold view never shows a knock affordance.
+### D1. Private link (opaque + live) — DEFAULT
+- **Reach:** opaque id in URL (`/a/a7f3k9q2`); **live key in URL fragment** (`#k=…`).
+- **Access:** immediate — anyone who holds the keyed URL sees the card. No knock step.
+- Cold/anonymous/guessed viewer → **uniform gray-nothing = nonexistent** (existence-hidden).
+- **Identity default:** pseudonym derived from the alias id (`pseudonymFor(id)`) — stable per
+  alias, unlinkable across the owner's other links.
+- No server directory entry.
 
-### D2. Public
-- Anyone with the link decrypts → badge + attributes visible. Existence waived. Scrapeable /
-  watchable over time (mitigated, never fully solved).
+### D2. Public link (handle + /u/ + knock)
+- **Reach:** human handle registered in the server's `vanity_name` table; findable at
+  `sti.care/u/{handle}`.
+- **Access:** request — anyone who visits the handle can **knock** (see E); the owner approves
+  each viewer via the blind grant. No viewer sees the card without an explicit grant.
+- Existence is **disclosed**: a `GET /u/{handle}` returning `200` reveals the handle is registered.
+  This is the opted-into cost of being findable, disclosed at registration (doc 17).
+- **Cap: 5 active public links per account.** Handle is set at link creation in the share sheet,
+  not at account creation.
+- Scrapeable/watchable over time (mitigated, never fully solved).
 
-### D3. Vanity / findable — a public sub-option, not a separate mode
-- A Public (D2) alias plus a human-handle resolver; everything in D2 still applies. Opt-in,
-  public-only, never default. Resolve-only namespace (no enumerate/search; no availability oracle
-  at claim).
-
-*(Two modes: private (default) and public; vanity is public + findable. Public and vanity carry the
-"watchable over time" warning at opt-in.)*
+*(Two modes. D1 is the default. D2 requires explicit opt-in with consent disclosure. `vanity + live`
+— the one config that would put a readable status on the server — remains permanently off the menu.)*
 
 ---
 
@@ -223,8 +225,8 @@ it a faithful window into the state space, it should:
 2. **Expose the A3 route explicitly** (prep / undetectable / condoms-always-public / none) and
    show the condom-route → blue coupling, rather than condoms and badge being independent.
 3. **Fix the sharing dimension (D).** Current options are `public` / `link` labelled
-   "Everyone" / "Request only" — stale. Should be **private / public / vanity**, and "Request
-   only" is wrong (private has no request; it has knock-on-link). 
+   "Everyone" / "Request only" — stale. Should be **private link / public link** (two modes, not
+   three; "Request only" is wrong for private links which give immediate access). 
 4. **Distinguish manual pause (C1) from auto-pause (C2)** — both exist in state (`paused`,
    `autoPaused`) but the panel shows one toggle.
 5. **Add the never-tested state** — currently unreachable from the panel, but it's the

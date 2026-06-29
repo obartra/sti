@@ -84,7 +84,7 @@ export interface SignUpResult {
 
 export interface SessionController {
   /** First run: mint a phrase-recoverable account. Persists nothing locally. */
-  signUp(handle: string): Promise<SignUpResult>;
+  signUp(handle?: string): Promise<SignUpResult>;
   /** Login / recovery by phrase. null when no account exists for it. */
   recover(phrase: string): Promise<OwnerSession | null>;
   /**

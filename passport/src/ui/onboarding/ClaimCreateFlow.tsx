@@ -128,11 +128,15 @@ export function CreateFlow({
   onClaim,
 }: {
   busy?: boolean;
-  onClaim?: ((handle: string, avatar: AvatarConfig) => void) | undefined;
+  onClaim?:
+    | ((handle: string | undefined, avatar: AvatarConfig) => void)
+    | undefined;
 }) {
   // Start empty: the owner types their own name (don't prefill a demo handle).
   const [handle, setHandle] = useState("");
-  const ok = handle.trim().length >= 3;
+  const trimmed = handle.trim();
+  // Empty is allowed (name is optional); if something is typed it needs ≥3 chars.
+  const ok = trimmed.length === 0 || trimmed.length >= 3;
   // The avatar is not built here (doc 19): a fresh account gets a random one and
   // the owner customizes it later from the dedicated editor. Seed once per mount so
   // every new account starts with a different face.
@@ -150,7 +154,7 @@ export function CreateFlow({
         label={COPY.identityHandleLabel}
         hint={COPY.identityHandleHint}
         error={
-          handle.length > 0 && !ok ? COPY.identityHandleTooShort : undefined
+          trimmed.length > 0 && !ok ? COPY.identityHandleTooShort : undefined
         }
       >
         <Input
@@ -174,7 +178,7 @@ export function CreateFlow({
         size="lg"
         block
         disabled={!ok || busy}
-        onClick={() => onClaim?.(handle.trim(), avatar)}
+        onClick={() => onClaim?.(trimmed || undefined, avatar)}
       >
         {COPY.cta} <ArrowRight size={18} />
       </Button>

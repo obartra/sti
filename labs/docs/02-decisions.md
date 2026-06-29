@@ -67,20 +67,44 @@
 - **LOCKED — No user-facing "main handle."** The only ids are **aliases**. The local account key (passkey/passphrase) is the anchor — never shown, never in a URL.
 - **LOCKED — No real names, anywhere.** Display identity = handle/alias + avatar, never a first/last/legal name. No name field exists in the system (not stored, not optional, not hidden) — a name is a collection surface the product has no use for.
 - **LOCKED — Public vs private is a key-distribution choice, not server data.** Private = key held by authorized contacts; public = key in the URL fragment. Server stores only `opaque_id → ciphertext` either way and never sees a handle.
-- **LOCKED — Opaque-id aliases are the default; a vanity/custom handle is an explicit public opt-in**, flagged at the choice point as findable and not unlinkable.
-- **REFINED by [Per-alias Identity](15-per-alias-identity.md) and [Reach and Access](16-reach-and-access.md):** the displayed face (handle + avatar) is per-alias and unlinkable by default, recognizable by opt-in (doc 15). Reach (opaque vs vanity) and access (live vs request) split into three modes: Direct (opaque + live, default), Gated (opaque + request), Findable (vanity + request). `vanity + live` is removed: it is the one config that would make a status readable by anyone who looks up the name, and index it by name (a `name -> status` oracle). The server still cannot read the status (the bytes are ciphertext), but anyone holding the public name plus the in-link key could, which is the harm (doc 16).
+- **LOCKED — Opaque-id aliases are the default (Private link); a public handle is an explicit
+  opt-in**, flagged at claim time as findable and not unlinkable.
+- **LOCKED — A local display name** (entered at account creation, owner-facing only, never sent
+  to the server) is the one name-like field in the system. It is NOT a public handle and does not
+  seed link handles. See principle 6.
+- **REFINED by [Per-alias Identity](15-per-alias-identity.md) and [Reach and Access](16-reach-and-access.md):**
+  the displayed face (handle + avatar) is per-alias and unlinkable by default, recognizable by
+  opt-in (doc 15). Reach and access split into **two modes** (revised from three, June 27 2026):
+  **Private link** (opaque id + live key, immediate, default) and **Public link** (human handle +
+  `/u/` directory + knock/grant, findable). The intermediate Gated mode (opaque + request) is
+  removed. `vanity + live` remains off the menu, the one config that would put a readable
+  status on the server. **Multiple public handles per account: up to 5** (one per public context,
+  e.g. one for Grindr, one for Tinder). Handle is set at link creation in the share sheet, not at
+  account creation.
 
 ## Resolution & privacy
 
-- **LOCKED — Two modes, two states each, no leaky third.** Private alias → authorized see full, everyone else sees uniform gray-nothing (= nonexistent). Public alias → everyone sees badge + attributes; existence waived. **REVISED by [Reach and Access](16-reach-and-access.md): the two access modes become three reach/access modes (Direct / Gated / Findable) and instant-public-*status* is removed (the most public is findable-and-ask, served via the blind grant). Today's public maps to Direct, private to Gated. The two-state badge (blue/gray) is unchanged.**
-- **LOCKED — Uniform responses in shape AND timing** (existence-hiding can't leak via size/latency).
-- **LOCKED — Public profiles are scrapeable over time and can't be fully protected;** mitigations: opt-in/default-off/time-boxed, login-gated if possible, coarse temporal granularity, transition hysteresis, rate-limiting, and an honest in-app warning.
-- **LOCKED — Knock (stranger access to a PRIVATE profile, no third mode).** A private alias can be advertised (link on a dating profile) while keeping status gated; a link-holder can **knock** (request access) and the owner decides. NOT a new mode — it's what private does for a link-holder-without-key.
-  - **Existence-safe by uniform response:** the knock endpoint returns the SAME "if this passport exists, your request was sent" for real / fake / guessed ids — presence-invariant, so the affordance leaks no existence (invariant 6 intact). Password-reset pattern.
-  - **Requester sees only that uniform confirmation;** then status silently resolves (granted) or stays gray-nothing (not granted / nonexistent — indistinguishable). NO pending/granted/denied signal ever.
-  - **Always review, never auto-grant.** Owner alerting = a **quiet persistent indicator** on the alias (owner-pull, no per-knock push/buzz).
-  - **Auto-expiry ~4 days + "clear all"** bulk-dismiss; knocks **contentless + rate-limited** per requester/id.
-  - **Forwarded-link caveat (accepted):** a private link is forwardable, so a leaked link can generate knocks — but reviewed + contentless means it only ever yields ignorable knocks, never status.
+- **LOCKED — Two modes (revised June 27 2026 from three).** Private link → anyone with the keyed
+  URL sees immediately; everyone else sees uniform gray-nothing. Public link → anyone who visits
+  `sti.care/u/{handle}` can knock; viewing requires an explicit grant from the owner. Existence is
+  hidden for private links, disclosed for public links (the opted-into cost of findability). The
+  two-state badge (blue/gray) is unchanged. **`vanity + live` remains permanently off the menu.**
+- **LOCKED — Uniform responses in shape AND timing** (existence-hiding can't leak via size/latency
+  for private links; public link existence is intentionally revealed by the /u/ endpoint).
+- **LOCKED — Public profiles are scrapeable over time and can't be fully protected;** mitigations:
+  opt-in/default-off, rate-limiting on `/u/`, and an honest disclosure at handle registration.
+- **LOCKED — Knock (for PUBLIC links only).** Anyone who visits a public link's `/u/{handle}` can
+  knock (request access). The owner approves each viewer via the blind grant.
+  - **Existence-safe uniform response for private link knock paths:** the knock endpoint returns
+    the SAME "if this passport exists, your request was sent" for real / fake / guessed ids —
+    presence-invariant. For public links, existence is already disclosed by the /u/ response.
+  - **Requester sees only that uniform confirmation;** then status silently resolves (granted) or
+    stays gray-nothing (not granted / nonexistent — indistinguishable). NO pending/granted/denied
+    signal ever.
+  - **Always review, never auto-grant.** Owner alerting = a **quiet persistent indicator** on the
+    alias (owner-pull, no per-knock push/buzz).
+  - **Auto-expiry ~4 days + "clear all"** bulk-dismiss; knocks **contentless + rate-limited** per
+    requester/id.
 - **LOCKED — Public-profile shareable = resolving link/QR, not a baked-in status image.** Tap resolves live; no status snapshot to go stale. A status image may be offered but is framed "scan for current," never the default. This lets a PRIVATE user advertise on a public profile without going public.
 
 ## Time-bound & revocable sharing

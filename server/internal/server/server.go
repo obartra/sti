@@ -90,6 +90,13 @@ type Config struct {
 	// real use never trips it. Zero leaves the defaults (50/sec, burst 200).
 	VanityResolveGlobalPerSec float64
 	VanityResolveGlobalBurst  float64
+	// VanityRegisterGlobal* bounds name CLAIMS across ALL callers, so a distributed
+	// land-grab of the namespace (many IPs, or many fresh aliases each claiming a
+	// name) is rate-limited the way the per-IP cap alone cannot. Registration is rare
+	// and a public act, so over-limit is a visible 429. Sized well above real use.
+	// Zero leaves the defaults (10/sec, burst 50).
+	VanityRegisterGlobalPerSec float64
+	VanityRegisterGlobalBurst  float64
 	// ReportGlobal* / KnockGlobal* bound the two public write-intake paths across ALL
 	// callers, so a DISTRIBUTED flood (many IPs, or many fake requester hashes) can't
 	// bloat the vanity_report / knock tables the way the per-IP and per-(id,requester)
@@ -100,6 +107,13 @@ type Config struct {
 	ReportGlobalBurst  float64
 	KnockGlobalPerSec  float64
 	KnockGlobalBurst   float64
+	// PushRegisterGlobal* bounds device push-subscription registrations across ALL
+	// callers, so one actor can't inflate the notify cover-broadcast population by
+	// registering many subscriptions from many IPs (the per-IP cap alone misses a
+	// distributed flood). Over-limit is a visible 429. Zero leaves the defaults
+	// (20/sec, burst 100).
+	PushRegisterGlobalPerSec float64
+	PushRegisterGlobalBurst  float64
 }
 
 func (c *Config) withDefaults() {
@@ -157,6 +171,18 @@ func (c *Config) withDefaults() {
 	if c.VanityResolveGlobalBurst == 0 {
 		c.VanityResolveGlobalBurst = 200
 	}
+	if c.VanityRegisterGlobalPerSec == 0 {
+		c.VanityRegisterGlobalPerSec = 10
+	}
+	if c.VanityRegisterGlobalBurst == 0 {
+		c.VanityRegisterGlobalBurst = 50
+	}
+	if c.PushRegisterGlobalPerSec == 0 {
+		c.PushRegisterGlobalPerSec = 20
+	}
+	if c.PushRegisterGlobalBurst == 0 {
+		c.PushRegisterGlobalBurst = 100
+	}
 }
 
 // Server is the HTTP handler set.
@@ -171,6 +197,8 @@ type Server struct {
 	reportLim    *limiter     // single global bucket capping /u report intake (429)
 	adminLim     *limiter     // tight per-IP cap on /admin/* (visible 429)
 	uResolveLim  *limiter     // single global bucket capping GET /u resolve (doc 17)
+	registerLim  *limiter     // single global bucket capping PUT /u register (doc 17)
+	pushRegLim   *limiter     // single global bucket capping POST /push/register
 	inflight     chan struct{}
 	mux          *http.ServeMux
 	metrics      *metrics.Metrics // blind aggregate self-telemetry (loopback only)
@@ -204,6 +232,8 @@ func New(st *store.Store, cfg Config, log *slog.Logger, now func() int64) *Serve
 		reportLim:    newLimiter(cfg.ReportGlobalPerSec, cfg.ReportGlobalBurst),
 		adminLim:     newLimiter(cfg.AdminRatePerSec, cfg.AdminBurst),
 		uResolveLim:  newLimiter(cfg.VanityResolveGlobalPerSec, cfg.VanityResolveGlobalBurst),
+		registerLim:  newLimiter(cfg.VanityRegisterGlobalPerSec, cfg.VanityRegisterGlobalBurst),
+		pushRegLim:   newLimiter(cfg.PushRegisterGlobalPerSec, cfg.PushRegisterGlobalBurst),
 		inflight:     make(chan struct{}, cfg.MaxInflight),
 		mux:          http.NewServeMux(),
 		metrics:      metrics.New(),
@@ -481,7 +511,10 @@ func (s *Server) handleVanityRegister(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusConflict, contract.ErrVanityTaken, "name is not available")
 		return
 	}
-	if !s.ipLimit.allow(clientIP(r), s.now()) {
+	// Two caps on claims (doc 17): a per-IP bucket slows one squatter, a single
+	// global bucket caps a distributed land-grab across many IPs / fresh aliases.
+	if !s.ipLimit.allow(clientIP(r), s.now()) ||
+		!s.registerLim.allow("u-register", s.now()) {
 		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
 		return
 	}
@@ -518,6 +551,8 @@ func (s *Server) handleVanityRegister(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusConflict, contract.ErrVanityTaken, "name is already taken")
 	case store.VanityLocked:
 		s.writeError(w, http.StatusConflict, contract.ErrVanityTaken, "name is temporarily locked")
+	case store.VanityAliasHasName:
+		s.writeError(w, http.StatusConflict, contract.ErrVanityTaken, "this link already has a name; release it first")
 	}
 }
 
@@ -864,7 +899,10 @@ func (s *Server) handleNotify(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handlePushRegister(w http.ResponseWriter, r *http.Request) {
-	if !s.ipLimit.allow(clientIP(r), s.now()) {
+	// Per-IP slows one device-farm; the global bucket caps a distributed flood of
+	// subscriptions that would otherwise inflate the notify cover-broadcast set.
+	if !s.ipLimit.allow(clientIP(r), s.now()) ||
+		!s.pushRegLim.allow("push-register", s.now()) {
 		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
 		return
 	}

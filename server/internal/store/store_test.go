@@ -617,6 +617,45 @@ func TestVanityNameLifecycle(t *testing.T) {
 	}
 }
 
+// One active name per alias (doc 17): an alias cannot hoard several names (e.g.
+// confusable variants all pointing at one impersonation card). This is the only
+// namespace cap the blind store can enforce; the per-account "5 handles" cap can't
+// be enforced here because the directory never groups an account's aliases.
+func TestVanityOneNamePerAlias(t *testing.T) {
+	s := openTestStore(t)
+	ctx := context.Background()
+	const lock = int64(24 * 60 * 60 * 1000)
+
+	// First name binds to the alias.
+	if st, err := s.ClaimVanityName(ctx, "robin", "alias-one", 1000); err != nil || st != VanityClaimed {
+		t.Fatalf("first claim: st=%v err=%v, want Claimed", st, err)
+	}
+	// A SECOND, different name on the SAME alias is rejected.
+	if st, _ := s.ClaimVanityName(ctx, "rob1n", "alias-one", 1001); st != VanityAliasHasName {
+		t.Fatalf("second name on alias: st=%v, want AliasHasName", st)
+	}
+	// The free name was not taken as a side effect.
+	if _, found, _ := s.ResolveVanityName(ctx, "rob1n"); found {
+		t.Fatal("rejected name must not be registered")
+	}
+	// Re-claiming the SAME name on the same alias stays idempotent.
+	if st, err := s.ClaimVanityName(ctx, "robin", "alias-one", 1002); err != nil || st != VanityClaimed {
+		t.Fatalf("idempotent re-claim: st=%v err=%v", st, err)
+	}
+	// A DIFFERENT alias is unaffected: it can claim its own name.
+	if st, err := s.ClaimVanityName(ctx, "sam", "alias-two", 1003); err != nil || st != VanityClaimed {
+		t.Fatalf("other alias claim: st=%v err=%v, want Claimed", st, err)
+	}
+	// After releasing its name, the alias is free to claim a different one (the
+	// released row carries alias_id='' so it no longer counts against the alias).
+	if err := s.ReleaseVanityName(ctx, "robin", 2000, lock); err != nil {
+		t.Fatal(err)
+	}
+	if st, err := s.ClaimVanityName(ctx, "rob1n", "alias-one", 2000+lock); err != nil || st != VanityClaimed {
+		t.Fatalf("claim after releasing prior name: st=%v err=%v, want Claimed", st, err)
+	}
+}
+
 // The admin audit log is append-only and newest-first: each AppendAudit adds a
 // row, RecentAudits returns them most-recent-first bounded by limit, and the
 // opaque action/target round-trip intact (doc 20).

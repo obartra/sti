@@ -6,6 +6,7 @@ import {
   Lock,
   Bell,
   ArrowRight,
+  Eye,
 } from "../../design/icons.tsx";
 import { TrustFooter } from "../trust/TrustFooter.tsx";
 import { LANDING_PROMISES_LINK } from "../trust/trustCopy.ts";
@@ -238,6 +239,46 @@ function PromisesLink({
   );
 }
 
+// A quiet way back for a viewer who asked to see someone and came back later: it
+// appears only when this device has pending requests, and leads to the list where
+// a now-shared status resolves. Logged-out and account-free by design.
+function RequestsBanner({
+  pendingCount,
+  onRequests,
+}: {
+  pendingCount?: number | undefined;
+  onRequests?: (() => void) | undefined;
+}) {
+  if (!pendingCount || !onRequests) return null;
+  const label =
+    pendingCount === 1
+      ? "1 link you asked to see"
+      : `${pendingCount} links you asked to see`;
+  return (
+    <button
+      type="button"
+      onClick={onRequests}
+      style={{
+        appearance: "none",
+        textAlign: "left",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "12px 14px",
+        borderRadius: "var(--radius-md)",
+        border: "1px solid var(--divider)",
+        background: "var(--accent-soft)",
+        color: "var(--text-accent)",
+      }}
+    >
+      <Eye size={17} style={{ flex: "none" }} />
+      <span style={{ flex: 1, fontSize: 14, fontWeight: 700 }}>{label}</span>
+      <ArrowRight size={17} style={{ flex: "none" }} />
+    </button>
+  );
+}
+
 function PrivacyFootnote() {
   return (
     <div
@@ -263,6 +304,11 @@ export interface LandingProps {
   onPromises?: () => void;
   onPrivacyPolicy?: () => void;
   onTerms?: () => void;
+  /** Count of access requests this device has made; shows the way-back banner when
+   * above zero. */
+  pendingCount?: number;
+  /** Open the list of requests this viewer has made. */
+  onRequests?: () => void;
 }
 
 export function Landing({
@@ -272,6 +318,8 @@ export function Landing({
   onPromises,
   onPrivacyPolicy,
   onTerms,
+  pendingCount,
+  onRequests,
 }: LandingProps) {
   return (
     <div
@@ -285,6 +333,7 @@ export function Landing({
       }}
     >
       <LandingHeader onLogin={onLogin} />
+      <RequestsBanner pendingCount={pendingCount} onRequests={onRequests} />
       <LandingHero />
       <SampleCard />
       <LandingActions onClaim={onClaim} onSample={onSample} />

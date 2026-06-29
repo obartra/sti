@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { TRUST_FOOTER } from "./trustCopy.ts";
+import { TRUST_FOOTER, SUPPORT_EMAIL } from "./trustCopy.ts";
 
 // The quiet trust footer shown on the public surfaces (doc 23): the landing, the
 // trust pages themselves, and the marketing site. Not worn by the logged-in app,
@@ -60,6 +60,15 @@ export function TrustFooter({
       </div>
       <div style={{ fontSize: 12, color: "var(--text-subtle)" }}>
         {TRUST_FOOTER.tagline}
+      </div>
+      <div style={{ fontSize: 12, color: "var(--text-subtle)" }}>
+        {TRUST_FOOTER.feedbackLead}{" "}
+        <a
+          href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Something wrong on sti.care")}`}
+          style={{ color: "var(--text-accent)", fontWeight: 700 }}
+        >
+          {TRUST_FOOTER.feedbackLink}
+        </a>
       </div>
     </footer>
   );

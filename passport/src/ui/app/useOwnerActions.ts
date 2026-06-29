@@ -11,6 +11,7 @@ import { disablePush } from "../../store/push.ts";
 import {
   browserForgetRequesterSecret,
   browserForgetGrantKeys,
+  browserForgetPendingKnocks,
 } from "../../store/index.ts";
 
 export interface OwnerActions {
@@ -78,11 +79,13 @@ export function useOwnerActions(
     // Also forget this device's push context so the deleted account's notify
     // capability does not linger at rest in IndexedDB (best-effort, never throws).
     void disablePush();
-    // And wipe this device's viewer secrets (the requester secret and any grant
-    // keypairs), so leaving the device clears the traces of which aliases it
-    // knocked. Best-effort; both no-op when nothing was persisted.
+    // And wipe this device's viewer secrets (the requester secret, any grant
+    // keypairs, and the pending-requests list), so leaving the device clears the
+    // traces of which aliases it knocked or asked to see. Best-effort; each no-ops
+    // when nothing was persisted.
     browserForgetRequesterSecret();
     browserForgetGrantKeys();
+    browserForgetPendingKnocks();
   }, [controller, sessionRef, setSession]);
 
   const { onSetAvatar } = useProfileActions(controller, sessionRef, setSession);

@@ -130,6 +130,67 @@ func TestVanityRegisterFirstComeAndIdempotent(t *testing.T) {
 	}
 }
 
+// One active name per alias (doc 17): a second, different name on the same alias is
+// refused with a 409, but re-registering the SAME name stays idempotent.
+func TestVanityRegisterOneNamePerAlias(t *testing.T) {
+	h, _, _ := newFindableServer(t, time.Hour)
+	alias := publishAlias(t, h, "owner-token")
+
+	if rec := registerName(h, "robin", alias, "owner-token"); rec.Code != http.StatusNoContent {
+		t.Fatalf("first name: %d, want 204", rec.Code)
+	}
+	if rec := registerName(h, "rob1n", alias, "owner-token"); rec.Code != http.StatusConflict {
+		t.Fatalf("second name on alias: %d, want 409", rec.Code)
+	}
+	if rec := resolveName(h, "rob1n"); rec.Code != http.StatusNotFound {
+		t.Fatalf("rejected name resolves: %d, want 404", rec.Code)
+	}
+	if rec := registerName(h, "robin", alias, "owner-token"); rec.Code != http.StatusNoContent {
+		t.Fatalf("idempotent same name: %d, want 204", rec.Code)
+	}
+}
+
+// The global register cap sheds a distributed namespace land-grab across ALL
+// callers: with a tiny global budget but a generous per-IP one, claims from distinct
+// IPs share the one bucket, so the (burst+1)th is a 429 regardless of who sends it.
+// The allowed ones reach ownership and 403 on an unowned alias; the shed one never
+// gets that far. Frozen clock = no refill.
+func TestVanityRegisterGlobalRateLimit(t *testing.T) {
+	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	srv := New(st, Config{
+		DecoySecret:                make([]byte, 32),
+		FindableEnabled:            true,
+		IPRatePerSec:               1000, // generous, so the per-IP cap never trips first
+		IPBurst:                    1000,
+		VanityRegisterGlobalPerSec: 0.000001,
+		VanityRegisterGlobalBurst:  2,
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)), func() int64 { return 1000 })
+	h := srv.Handler()
+
+	reg := func(ip string) int {
+		body, _ := json.Marshal(contract.VanityRegisterRequest{AliasID: randID(t)})
+		req := httptest.NewRequest("PUT", contract.PathVanityPrefix+"robin", bytes.NewReader(body))
+		req.Header.Set(contract.HeaderWriteToken, "tok")
+		req.Header.Set("X-Real-IP", ip) // a DIFFERENT IP each call
+		return do(h, req).Code
+	}
+	// Two claims drain the global burst (allowed, then 403 on the unowned alias);
+	if c := reg("1.1.1.1"); c != http.StatusForbidden {
+		t.Fatalf("register 1: %d, want 403", c)
+	}
+	if c := reg("2.2.2.2"); c != http.StatusForbidden {
+		t.Fatalf("register 2: %d, want 403", c)
+	}
+	// the third, from yet another IP, is shed by the shared global bucket.
+	if c := reg("3.3.3.3"); c != http.StatusTooManyRequests {
+		t.Fatalf("register 3 (different IP): %d, want 429", c)
+	}
+}
+
 // Release (owner-only) frees the name into the lock: it stops resolving, stays
 // unclaimable by anyone during the lock, then is reclaimable after it lapses.
 // Releasing a name clears its reports (they were about that registration, and the

@@ -1,36 +1,41 @@
 # sti.care: Vanity Namespace Governance (v1 spec)
 
-_New, June 22, 2026._
+_New, June 22, 2026. Revised June 27, 2026: updated for multi-handle model — handles are per public
+link (set at link creation, not account creation), up to 5 per account instead of 1._
 
-_The full governance spec Findable mode is gated on. [Reach and Access](16-reach-and-access.md)
-confirmed the three modes and sketched this spec; this doc makes it implementable: the directory data
-model, the resolve endpoint and its handoff to the knock flow, the reserved + blocklist starter
-contents, the allocation lifecycle, and the metadata + legal posture. **Status: Findable LAUNCHED at
-the F6 flip** (client `FINDABLE_ENABLED` on, server `STI_FINDABLE_ENABLED` set on the box, a curated
-hate-only blocklist in place); the **gate** items below are the bar that was met, kept as a record.
-It does not change any other mode; Direct and Gated ship and behave exactly as today._
+_The full governance spec Public link mode is gated on. [Reach and Access](16-reach-and-access.md)
+describes the two-mode model (Private link / Public link) and the role of this namespace; this doc
+makes the public-link namespace implementable: the directory data model, the resolve endpoint and
+its handoff to the knock flow, the reserved + blocklist starter contents, the allocation lifecycle,
+and the metadata + legal posture. **Status: Findable LAUNCHED at the F6 flip** (client
+`FINDABLE_ENABLED` on, server `STI_FINDABLE_ENABLED` set on the box, a curated hate-only blocklist
+in place); the **gate** items below are the bar that was met, kept as a record. It does not change
+Private links; those use opaque ids and give immediate access._
 
 ---
 
 ## Why this doc
 
-Findable (vanity + request) is the one mode that needs a server-side `name -> aliasId` directory, the
-one amendment to philosophy principle 6 (no central identity index). Because the directory is the only
-place the server holds anything resembling an identity, the bar to turn it on is a written, reviewed
-governance spec, not a code change alone. Doc 16 confirmed the shape; the two build-time OPENs it left
-(the resolve endpoint, and the reserved/blocklist contents) are resolved here so Findable is buildable
-without reopening a product decision.
+Public link mode is the one mode that needs a server-side `name -> aliasId` directory — the one
+exception to philosophy principle 6's "no central identity index" rule, and explicitly an opt-in
+exception with user consent. Because the directory is the only place the server holds anything
+resembling an identity, the bar to turn it on is a written, reviewed governance spec, not a code
+change alone. Doc 16 confirmed the shape; the two build-time OPENs it left (the resolve endpoint,
+and the reserved/blocklist contents) are resolved here so Public link is buildable without reopening
+a product decision.
 
 This doc governs **only** the vanity namespace and its directory. It does not touch status, keys, the
-card payload, or the knock/grant crypto, all of which stay exactly as in Direct and Gated.
+card payload, or the knock/grant crypto, all of which are unchanged from Private links.
 
 ## What the directory is (and is not)
 
 A single mapping, opt-in per user:
 
-- **Stored:** `name -> aliasId`, plus the minimum to enforce allocation (a created-at timestamp for
-  release ordering disputes, the owning account reference needed to release on deletion). The `name`
-  is a chosen vanity handle; the `aliasId` is the same opaque id any link uses.
+- **Stored:** `name -> aliasId`, plus the minimum to enforce allocation (a created-at timestamp and a
+  `locked_until` for the post-release lock). The `name` is a chosen vanity handle; the `aliasId` is the
+  same opaque id any link uses. **There is no owner/account column:** ownership is proven by holding the
+  alias's write token, and `aliasId` is the only owning reference, so the directory cannot (and does not)
+  group the aliases of one account.
 - **Never stored:** the status, the AES key, the card, the owner's other aliases, read history, or any
   link from a name to a status. Resolving a name yields an opaque alias id and nothing more; the viewer
   must still knock and be granted, exactly as in Gated.
@@ -58,8 +63,23 @@ A single mapping, opt-in per user:
   lapses the name is freely reclaimable by anyone.
 - **No transfers, no marketplace.** A name cannot be handed to another account or sold; release +
   reclaim is the only path, and it is racy by design (first-come wins).
-- **One name per alias** in v1. An account with several findable aliases registers a name per alias;
-  the directory never groups them (that would be the cross-alias index doc 15 forbids).
+- **Registration is rate-limited (server-enforced).** Claims (`PUT /u/{name}`) carry a per-IP bucket and
+  a single global bucket, the same two-layer shape resolve and report use: the per-IP cap slows one
+  squatter, the global cap bounds a distributed land-grab across many IPs / fresh aliases. Over-limit is
+  a visible `429` (a public act, nothing to hide). This is the real backstop behind the client-side
+  per-account cap (above).
+- **Handle caps, and where each is enforced.** Each public link has its own handle, claimed when the
+  link is created in the share sheet, not at account creation.
+  - **One active name per alias (server-enforced).** A claim is rejected if the requesting alias already
+    holds a different active name, so an alias cannot hoard several names (e.g. confusable variants
+    `robin` / `rob1n` all aimed at one card). This is the only cap the directory CAN enforce, because it
+    proves alias ownership without learning the account. To change a name, release the old one first.
+  - **Up to 5 handles per account (client-side only).** The blind directory never groups an account's
+    aliases (that would be the cross-alias index doc 15 forbids), so the per-account total is **not**
+    server-enforceable and is enforced in the client. A crafted client can therefore mint extra aliases
+    and claim a name on each; the backstop against that is the registration **rate limit** below
+    (per-IP plus a global bucket), not a hard per-account ceiling. Stated honestly: the namespace
+    resists bulk land-grab by cost, not by an account quota.
 
 ## Reserved names + blocklist (gate; resolves doc 16 OPEN)
 
@@ -202,9 +222,13 @@ and a name can be claimed from Settings.
   it is the opted-into cost, disclosed at registration.
 - **Release is racy after the lock.** A freed name reopens first-come once its 24-hour lock lapses; the
   lock blocks instant automated grabs but does not reserve the name for the prior owner.
+- **The per-account handle cap is client-side.** The blind directory cannot group an account's aliases,
+  so "5 per account" is enforced in the client, not the server. The server enforces one active name per
+  alias and rate-limits registration; bulk land-grab is resisted by cost, not an account quota.
 
 ## What this does not change
 
-Direct and Gated are untouched: opaque ids, existence-uniform `GET /a/{id}`, the knock/grant crypto,
-and `vanity + live` staying removed entirely. This doc adds a gated, opt-in `/u/` lookup path and the
-rules around it; it removes nothing and changes no existing mode.
+Private links are untouched: opaque ids, existence-uniform `GET /a/{id}`, the knock/grant crypto
+(now used for public links only), and `vanity + live` staying off the menu entirely (it would put a
+readable status on the server). This doc governs the opt-in `/u/` lookup path and the rules around
+it; it removes nothing and changes no existing infrastructure.

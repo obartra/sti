@@ -38,7 +38,10 @@ const KIND_TAG: Record<FaceKind, string> = {
   named: "custom",
 };
 
-function faceKind(record: AliasRecord, accountHandle: string): FaceKind {
+function faceKind(
+  record: AliasRecord,
+  accountHandle: string | undefined,
+): FaceKind {
   if (record.handle === undefined) return "anonymous";
   return record.handle === accountHandle ? "you" : "named";
 }
@@ -46,7 +49,7 @@ function faceKind(record: AliasRecord, accountHandle: string): FaceKind {
 function buildOptions(
   aliases: AliasRecord[],
   state: OwnerState,
-  accountHandle: string,
+  accountHandle: string | undefined,
   nowDay: number,
 ): PreviewOption[] {
   if (aliases.length === 0) {
@@ -158,7 +161,8 @@ function AliasPicker({
 export interface SelfPreviewProps {
   aliases: AliasRecord[];
   state: OwnerState;
-  accountHandle: string;
+  /** The owner's display name, or undefined when they set none. */
+  accountHandle: string | undefined;
   onBack: () => void;
   onClaim: () => void;
   onVerify: () => void;

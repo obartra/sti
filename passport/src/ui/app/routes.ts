@@ -9,6 +9,7 @@ export const ALL_SCREENS = [
   "a3-alert",
   "exposed",
   "u-resolve",
+  "requests",
   "b1-claim",
   "b2-recovery",
   "b3-setup",
@@ -70,6 +71,7 @@ const PUBLIC: readonly Screen[] = [
   "a2-public",
   "exposed",
   "u-resolve",
+  "requests",
   // The trust pages are full-page static content, reachable logged out from the
   // landing footer (doc 23), so they live in the public group, not the app shell.
   "promises",

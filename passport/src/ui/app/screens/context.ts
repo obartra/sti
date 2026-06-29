@@ -9,6 +9,7 @@ import type {
   ContactRecord,
   OwnerView,
   PassportStore,
+  PendingKnock,
 } from "../../../store/index.ts";
 import type { VanityRegisterResult } from "../../../api/client.ts";
 import type { OnboardingActions } from "../useOnboarding.ts";
@@ -81,6 +82,11 @@ export interface ScreenCtx {
   faves: ReadonlySet<string>;
   /** Toggle one contact's star. */
   onToggleFave: (id: string) => void;
+  /** The device-local list of access requests this viewer has made, newest first;
+   * the way back for a logged-out viewer. Empty on a device that never knocked. */
+  pendingRequests: PendingKnock[];
+  /** Forget one pending request by alias id (the viewer dismissed it). */
+  onForgetRequest: (aliasId: string) => void;
   /** Whether a session is active (a logged-in owner), for screens shown to both. */
   isLoggedIn: boolean;
   /**

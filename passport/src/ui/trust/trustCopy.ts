@@ -9,7 +9,14 @@ export const TRUST_FOOTER = {
   promises: "Our promises",
   privacy: "Privacy",
   terms: "Terms",
+  // A quiet way to reach a human, on every public surface, without an in-app form
+  // (and the spam intake one would invite). Mailto only, so nothing is collected.
+  feedbackLead: "Something wrong?",
+  feedbackLink: "Email us",
 } as const;
+
+/** The published address a user reaches the team at (already in the legal pages). */
+export const SUPPORT_EMAIL = "privacy@sti.care";
 
 /** The short link near the landing call to action. */
 export const LANDING_PROMISES_LINK = "See what we promise";

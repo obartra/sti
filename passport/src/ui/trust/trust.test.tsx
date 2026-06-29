@@ -47,6 +47,15 @@ describe("TrustFooter", () => {
     expect(onPrivacy).toHaveBeenCalledOnce();
     expect(onTerms).toHaveBeenCalledOnce();
   });
+
+  it("offers a mailto feedback link to the published address", () => {
+    render(<TrustFooter />);
+    const link = screen.getByRole("link", { name: "Email us" });
+    expect(link).toHaveAttribute(
+      "href",
+      expect.stringContaining("mailto:privacy@sti.care"),
+    );
+  });
 });
 
 describe("footerLinks", () => {

@@ -11,7 +11,7 @@ export const COPY = {
   knockCta: "Request access",
   knockFootnote: "Asking shares nothing about you and stays private.",
   knockSentBody:
-    "If they choose to share, their status appears next time you open this link.",
+    "If they choose to share, their status shows up next time you open this link, or under “Links you asked to see” when you come back.",
   knockDone: "Done",
   explainerTap: "What does this mean?",
   explainerTitle: "What this card means",

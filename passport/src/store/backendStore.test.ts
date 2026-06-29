@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { createBackendStore } from "./backendStore.ts";
 import { createGrantKeyStore } from "./grantKeyStore.ts";
+import { createPendingKnockStore } from "./pendingKnockStore.ts";
 import { serializePublicCard } from "./publicCard.ts";
 import { requesterHash } from "./knock.ts";
 import type { StorageLike } from "../auth/deviceStore.ts";
@@ -228,6 +229,37 @@ describe("backend store knock", () => {
     );
     await store.knock(GOOD_ID);
     expect(await store.redeemGrant(GOOD_ID)).toBeNull();
+  });
+});
+
+describe("backend store pending requests", () => {
+  it("records a knock so the viewer has a way back, newest first", async () => {
+    const pending = createPendingKnockStore(memoryStorage());
+    const store = createBackendStore(
+      stubApi(() => Promise.resolve(new Uint8Array(ALIAS_PAYLOAD_SIZE))),
+      "s",
+      createGrantKeyStore(memoryStorage()),
+      pending,
+    );
+    const other = "B".repeat(43);
+    await store.knock(GOOD_ID);
+    await store.knock(other);
+    expect(store.pendingRequests().map((p) => p.id)).toEqual([other, GOOD_ID]);
+  });
+
+  it("forgetRequest drops one without touching the rest", async () => {
+    const pending = createPendingKnockStore(memoryStorage());
+    const store = createBackendStore(
+      stubApi(() => Promise.resolve(new Uint8Array(ALIAS_PAYLOAD_SIZE))),
+      "s",
+      createGrantKeyStore(memoryStorage()),
+      pending,
+    );
+    const other = "B".repeat(43);
+    await store.knock(GOOD_ID);
+    await store.knock(other);
+    store.forgetRequest(GOOD_ID);
+    expect(store.pendingRequests().map((p) => p.id)).toEqual([other]);
   });
 });
 

@@ -24,10 +24,18 @@ const backBtn: CSSProperties = {
 
 export interface TrustPageProps extends TrustFooterProps {
   onBack?: (() => void) | undefined;
+  /** Use the full desktop measure (the promises grid) rather than the narrow
+   * reading column the legal pages want. */
+  wide?: boolean;
   children: ReactNode;
 }
 
-export function TrustPage({ onBack, children, ...footer }: TrustPageProps) {
+export function TrustPage({
+  onBack,
+  wide = false,
+  children,
+  ...footer
+}: TrustPageProps) {
   return (
     <div
       style={{
@@ -36,7 +44,7 @@ export function TrustPage({ onBack, children, ...footer }: TrustPageProps) {
         alignItems: "center",
         gap: 16,
         width: "100%",
-        maxWidth: 460,
+        maxWidth: wide ? 720 : 460,
       }}
     >
       {onBack && (

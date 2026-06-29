@@ -22,11 +22,11 @@ export const COPY = {
   recoverPlaceholder: "Your recovery phrase",
   recoverCta: "Recover account",
   identitySection: "Your identity",
-  identityHandleLabel: "Your name",
+  identityHandleLabel: "Your name (optional)",
   identityHandlePlaceholder: "Pick a display name",
   identityHandleTooShort: "At least 3 characters.",
   identityHandleHint:
-    "A display name you can choose to show on a link. Not your address, and not unique across the app.",
+    "Only you see this. You can add it later, and it's never required.",
   avatarLabel: "Your face",
   avatarHint:
     "No photos on sti.care. Pick hair, skin, and colors, a mood, and a beard. This is your avatar, the look you can choose to show.",

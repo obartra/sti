@@ -426,6 +426,39 @@ func TestPushRegisterMakesNotifyReach(t *testing.T) {
 	}
 }
 
+// The global push-register cap sheds a distributed flood of subscriptions across
+// ALL callers: with a tiny global budget but a generous per-IP one, registrations
+// from distinct IPs share the one bucket, so the (burst+1)th is a 429 regardless of
+// who sends it. This bounds inflation of the notify cover-broadcast population.
+func TestPushRegisterGlobalRateLimit(t *testing.T) {
+	srv, _ := newServer(t, Config{
+		IPRatePerSec:             1000, // generous, so the per-IP cap never trips first
+		IPBurst:                  1000,
+		PushRegisterGlobalPerSec: 0.000001,
+		PushRegisterGlobalBurst:  2,
+	}, func() int64 { return 1000 })
+	h := srv.Handler()
+
+	reg := func(ip string) int {
+		body := `{"routingEndpointId":"H","subscription":` +
+			`{"endpoint":"https://push.example/x","keys":{"p256dh":"p","auth":"a"}}}`
+		req := httptest.NewRequest("POST", contract.PathPushRegister, strings.NewReader(body))
+		req.Header.Set("X-Real-IP", ip) // a DIFFERENT IP each call
+		return do(h, req).Code
+	}
+	// Two registrations drain the global burst (each a real 204);
+	if c := reg("1.1.1.1"); c != http.StatusNoContent {
+		t.Fatalf("register 1: %d, want 204", c)
+	}
+	if c := reg("2.2.2.2"); c != http.StatusNoContent {
+		t.Fatalf("register 2: %d, want 204", c)
+	}
+	// the third, from yet another IP, is shed by the shared global bucket.
+	if c := reg("3.3.3.3"); c != http.StatusTooManyRequests {
+		t.Fatalf("register 3 (different IP): %d, want 429", c)
+	}
+}
+
 func TestNotifyEnqueueIsGated(t *testing.T) {
 	ctx := context.Background()
 

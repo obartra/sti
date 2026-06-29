@@ -10,4 +10,24 @@ const meta: Meta<typeof Promises> = {
 export default meta;
 type Story = StoryObj<typeof Promises>;
 
-export const Default: Story = {};
+// Mobile: a phone-width reading column.
+export const Default: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 380 }}>
+        <Story />
+      </div>
+    ),
+  ],
+};
+
+// Desktop: the wider reading measure the promises page uses above the breakpoint.
+export const Desktop: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 720 }}>
+        <Story />
+      </div>
+    ),
+  ],
+};

@@ -81,7 +81,9 @@ export interface ShareSheetProps {
   state: BadgeState;
   labels?: ProtectionLabel[] | undefined;
   route?: Route | undefined;
-  identity: { handle: string };
+  /** The owner's main face. `handle` is absent when they set no display name;
+   * the preview then falls back to the id-derived pseudonym (see previewFace). */
+  identity: { handle?: string };
   avatarSrc?: string | undefined;
   /** The real shareable link. Null/absent falls back to a placeholder (Storybook). */
   url?: string | null | undefined;
@@ -433,6 +435,7 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
         </div>
         <IdentityChoiceRow
           choice={identityChoice}
+          hasName={identity.handle !== undefined && identity.handle.length > 0}
           onChange={onIdentityChange}
         />
         <DurationRow choice={durationChoice} onChange={onDurationChange} />

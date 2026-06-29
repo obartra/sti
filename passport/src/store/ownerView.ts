@@ -24,7 +24,7 @@ import { deriveOwnerCard } from "./ownerCard.ts";
 
 /** The owner-facing view: badge plus owner-only context, never sent to a viewer. */
 export interface OwnerView {
-  readonly handle: string;
+  readonly handle?: string;
   readonly avatar: AvatarConfig;
   readonly badge: BadgeState;
   readonly viewerBadge: BadgeState;
@@ -55,12 +55,12 @@ function lastTestedLabel(t: TestingInput, nowDay: number): string {
 }
 
 export function deriveOwnerView(blob: AccountBlob, nowDay: number): OwnerView {
-  const card = deriveOwnerCard(blob.state, blob.handle, nowDay);
+  const card = deriveOwnerCard(blob.state, blob.handle ?? "", nowDay);
   const t = blob.state.testing;
   const age = panelAgeDays(t, nowDay);
 
   return {
-    handle: blob.handle,
+    ...(blob.handle !== undefined ? { handle: blob.handle } : {}),
     avatar: blob.avatar,
     badge: card.state,
     // The owner views their own badge; there is no separate viewer here.

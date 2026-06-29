@@ -24,7 +24,7 @@ export function footerLinks(nav: ScreenCtx["nav"]): {
 
 export const trustRenderers: ScreenRenderers = {
   promises: ({ nav }) => (
-    <TrustPage onBack={nav.back} {...footerLinks(nav)}>
+    <TrustPage onBack={nav.back} wide {...footerLinks(nav)}>
       <Promises />
     </TrustPage>
   ),
