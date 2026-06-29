@@ -25,7 +25,7 @@ DEV_DB_PATH ?= /tmp/sti-dev.db
 .PHONY: help backend web dev \
 	check-root check-web test-integration test-e2e check-server vulncheck smoke \
 	check ci build-web build-server build-release \
-	secrets secrets-pull secrets-diff secrets-sync secrets-edit gen-vapid gen-decoy
+	secrets secrets-pull secrets-diff secrets-sync secrets-edit gen-vapid gen-decoy gen-admin
 
 help: ## List the targets
 	@grep -hE '^[a-z][a-zA-Z0-9_-]*:.*## ' $(MAKEFILE_LIST) | sort | awk -F':.*## ' '{printf "  %-18s %s\n", $$1, $$2}'
@@ -111,3 +111,6 @@ gen-vapid: ## Generate and store a fresh Web Push VAPID keypair (rotate push key
 
 gen-decoy: ## Generate and store a fresh STI_DECOY_SECRET (rotate the decoy key)
 	cd server && go run ./cmd/secrets gen-decoy
+
+gen-admin: ## Enable the admin surface: store STI_ADMIN_TOKEN + STI_ADMIN_ENABLED=true
+	cd server && go run ./cmd/secrets gen-admin
