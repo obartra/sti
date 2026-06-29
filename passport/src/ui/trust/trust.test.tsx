@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { LegalPage } from "./LegalPage.tsx";
 import { TrustFooter } from "./TrustFooter.tsx";
-import { TrustPage } from "./TrustPage.tsx";
+import { TrustShell } from "./TrustShell.tsx";
 import { PRIVACY_POLICY, TERMS } from "./trustCopy.ts";
 import { footerLinks } from "../app/screens/trustScreens.tsx";
 import { isScreen, type Screen } from "../app/routes.ts";
@@ -123,13 +123,13 @@ describe("footerLinks", () => {
   });
 });
 
-describe("TrustPage", () => {
+describe("TrustShell", () => {
   it("shows a back control that calls onBack, and renders the footer", async () => {
     const onBack = vi.fn();
     render(
-      <TrustPage onBack={onBack}>
+      <TrustShell current="privacy" onBack={onBack}>
         <p>page body</p>
-      </TrustPage>,
+      </TrustShell>,
     );
     expect(screen.getByText("page body")).toBeInTheDocument();
     // The footer is present (its links render).
@@ -142,9 +142,9 @@ describe("TrustPage", () => {
 
   it("omits the back control when no onBack is given", () => {
     render(
-      <TrustPage>
+      <TrustShell current="privacy">
         <p>body</p>
-      </TrustPage>,
+      </TrustShell>,
     );
     expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
   });

@@ -3,8 +3,10 @@ import { LegalPage } from "./LegalPage.tsx";
 import { PRIVACY_POLICY, TERMS } from "./trustCopy.ts";
 
 // The privacy policy and terms pages (doc 23), rendered as a layered notice from the
-// centralized, voice-checked copy: a plain-language summary on top of each section,
-// with the full binding text kept visible underneath.
+// centralized, voice-checked copy: a plain-language summary AND the full binding text
+// kept visible. On a wide screen the summary sits beside the binding text; on mobile
+// they stack. The `wide` prop is pinned per story so the visual harness (fixed
+// ~1280px viewport) captures both layouts deterministically.
 const meta: Meta<typeof LegalPage> = {
   title: "Passport/Legal",
   component: LegalPage,
@@ -12,12 +14,12 @@ const meta: Meta<typeof LegalPage> = {
 export default meta;
 type Story = StoryObj<typeof LegalPage>;
 
-// Desktop: the wider reading measure the trust pages use above the breakpoint.
+// Desktop: the summary sits in a column beside the binding text.
 export const Privacy: Story = {
-  args: { doc: PRIVACY_POLICY },
+  args: { doc: PRIVACY_POLICY, wide: true },
   decorators: [
     (Story) => (
-      <div style={{ width: 720 }}>
+      <div style={{ width: 980 }}>
         <Story />
       </div>
     ),
@@ -25,19 +27,19 @@ export const Privacy: Story = {
 };
 
 export const Terms: Story = {
-  args: { doc: TERMS },
+  args: { doc: TERMS, wide: true },
   decorators: [
     (Story) => (
-      <div style={{ width: 720 }}>
+      <div style={{ width: 980 }}>
         <Story />
       </div>
     ),
   ],
 };
 
-// Mobile: a phone-width reading column.
+// Mobile: a phone-width reading column, summary stacked on top of the binding text.
 export const PrivacyMobile: Story = {
-  args: { doc: PRIVACY_POLICY },
+  args: { doc: PRIVACY_POLICY, wide: false },
   decorators: [
     (Story) => (
       <div style={{ width: 380 }}>
@@ -48,7 +50,7 @@ export const PrivacyMobile: Story = {
 };
 
 export const TermsMobile: Story = {
-  args: { doc: TERMS },
+  args: { doc: TERMS, wide: false },
   decorators: [
     (Story) => (
       <div style={{ width: 380 }}>

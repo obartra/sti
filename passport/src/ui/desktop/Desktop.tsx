@@ -22,9 +22,10 @@ export type { DesktopTab } from "./DesktopShellParts.tsx";
 
    The badge is two-state only (blue / gray); there is no four-light model. */
 
-// A matchMedia hook for "(min-width: <px>)". Shared shape used by both the
-// desktop-breakpoint check and the wide-screen share-rail check.
-function useMinWidth(px: number): boolean {
+// A matchMedia hook for "(min-width: <px>)". Shared shape used by the
+// desktop-breakpoint check, the wide-screen share-rail check, and the trust
+// pages' large-screen "trust center" layout.
+export function useMinWidth(px: number): boolean {
   const q = `(min-width: ${px}px)`;
   const [match, setMatch] = useState<boolean>(
     typeof window !== "undefined" && typeof window.matchMedia === "function"

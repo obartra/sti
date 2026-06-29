@@ -1,22 +1,16 @@
-import { useState } from "react";
 import type { ReactNode } from "react";
 import { Card } from "../../design/components/index.ts";
-import {
-  Lock,
-  EyeOff,
-  Fingerprint,
-  Key,
-  Check,
-  Chevron,
-} from "../../design/icons.tsx";
+import { useMinWidth } from "../desktop/Desktop.tsx";
+import { Lock, EyeOff, Fingerprint, Key, Check } from "../../design/icons.tsx";
 import { PROMISES, type UserPromise } from "../../promises/promises.ts";
 
 // The /promises page: a progressive summary of the privacy guarantees. Three plain
-// themes a worried reader gets in one pass; open any theme to see its specific
-// promises and the concrete things we actually check, each tagged tested / by
-// design. Read-only and a pure function of the promises data, so it stays storyable
-// and the CI gate (promises.test.ts) keeps it from ever claiming more than the tests
-// back.
+// themes a worried reader gets in one pass; under each, the specific promises and the
+// concrete things we actually check, every one tagged tested / by design. It mirrors
+// the legal pages' layered-notice layout: a plain summary sits beside (wide) or above
+// (mobile) the receipts. Read-only and a pure function of the promises data, so it
+// stays storyable and the CI gate (promises.test.ts) keeps it from ever claiming more
+// than the tests back.
 
 // How many assertions are pinned by a real, build-failing test (not reasoning):
 // the honest, concrete proof number shown up top.
@@ -65,6 +59,12 @@ export const THEMES: readonly Theme[] = [
   },
 ];
 
+function promisesOf(theme: Theme): UserPromise[] {
+  return theme.promiseIds
+    .map((id) => BY_ID.get(id))
+    .filter((p): p is UserPromise => p !== undefined);
+}
+
 function AssertionRow({ claim, tested }: { claim: string; tested: boolean }) {
   return (
     <li
@@ -104,13 +104,13 @@ function AssertionRow({ claim, tested }: { claim: string; tested: boolean }) {
   );
 }
 
-// One promise inside an open theme: the plain guarantee, the honest detail (limits
-// and all), and the concrete things we actually check.
+// One promise's receipts: the plain guarantee, the honest detail (limits and all),
+// and the concrete things we actually check.
 function PromiseDetail({ promise }: { promise: UserPromise }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <strong
-        style={{ fontSize: 15.5, color: "var(--text-strong)", lineHeight: 1.3 }}
+        style={{ fontSize: 15, color: "var(--text-strong)", lineHeight: 1.3 }}
       >
         {promise.plain}
       </strong>
@@ -138,118 +138,163 @@ function PromiseDetail({ promise }: { promise: UserPromise }) {
   );
 }
 
-function ThemeBlock({ theme }: { theme: Theme }) {
-  const [open, setOpen] = useState(false);
-  const promises = theme.promiseIds
-    .map((id) => BY_ID.get(id))
-    .filter((p): p is UserPromise => p !== undefined);
+function ThemeSummary({ theme }: { theme: Theme }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        padding: "14px 16px",
+        borderRadius: "var(--radius-md)",
+        background: "var(--surface-tint)",
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: "var(--radius-md)",
+          background: "var(--status-clear-bg)",
+          color: "var(--status-clear-base)",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {theme.icon}
+      </span>
+      <span
+        style={{ fontSize: 14, lineHeight: 1.5, color: "var(--text-body)" }}
+      >
+        {theme.summary}
+      </span>
+    </div>
+  );
+}
+
+// One theme: a heading, its plain summary, and the receipts (its member promises).
+// Wide screens set the summary beside the receipts; mobile stacks them.
+function ThemeSection({ theme, twoCol }: { theme: Theme; twoCol: boolean }) {
+  const promises = promisesOf(theme);
+  const receipts = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      {promises.map((p) => (
+        <PromiseDetail key={p.id} promise={p} />
+      ))}
+    </div>
+  );
   return (
     <Card
       style={{
         borderRadius: "var(--radius-lg)",
-        padding: 0,
-        overflow: "hidden",
+        padding: 22,
+        display: "flex",
+        flexDirection: "column",
+        gap: 14,
       }}
     >
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
+      <h2
         style={{
-          appearance: "none",
-          border: "none",
-          background: "none",
-          cursor: "pointer",
-          width: "100%",
-          textAlign: "left",
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 14,
-          padding: 20,
+          margin: 0,
+          fontSize: 17,
+          fontWeight: 800,
+          letterSpacing: "-0.01em",
+          color: "var(--text-strong)",
         }}
       >
-        <span
-          aria-hidden
-          style={{
-            flex: "none",
-            width: 40,
-            height: 40,
-            borderRadius: "var(--radius-md)",
-            background: "var(--status-clear-bg)",
-            color: "var(--status-clear-base)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {theme.icon}
-        </span>
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span
-            style={{
-              display: "block",
-              fontSize: 17,
-              fontWeight: 800,
-              letterSpacing: "-0.01em",
-              color: "var(--text-strong)",
-            }}
-          >
-            {theme.headline}
-          </span>
-          <span
-            style={{
-              display: "block",
-              margin: "5px 0 8px",
-              fontSize: 14,
-              lineHeight: 1.5,
-              color: "var(--text-body)",
-            }}
-          >
-            {theme.summary}
-          </span>
-          <span
-            style={{
-              fontSize: 12.5,
-              fontWeight: 700,
-              color: "var(--text-accent)",
-            }}
-          >
-            {open ? "Hide the specifics" : "See the specifics"}
-          </span>
-        </span>
-        <span
-          aria-hidden
-          style={{
-            flex: "none",
-            marginTop: 2,
-            color: "var(--text-subtle)",
-            display: "inline-flex",
-            transform: open ? "rotate(180deg)" : "none",
-            transition: "transform 120ms",
-          }}
-        >
-          <Chevron size={18} />
-        </span>
-      </button>
-      {open && (
+        {theme.headline}
+      </h2>
+      {twoCol ? (
         <div
           style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 18,
-            padding: "4px 20px 20px",
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 0.85fr) minmax(0, 1.15fr)",
+            gap: 28,
+            alignItems: "start",
           }}
         >
-          {promises.map((p) => (
-            <PromiseDetail key={p.id} promise={p} />
-          ))}
+          <div style={{ position: "sticky", top: 24 }}>
+            <ThemeSummary theme={theme} />
+          </div>
+          {receipts}
         </div>
+      ) : (
+        <>
+          <ThemeSummary theme={theme} />
+          {receipts}
+        </>
       )}
     </Card>
   );
 }
 
-export function Promises() {
+function Hero() {
+  return (
+    <Card
+      style={{
+        borderRadius: "var(--radius-lg)",
+        padding: "26px 24px",
+        background: "var(--status-clear-bg)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+      }}
+    >
+      <span aria-hidden style={{ color: "var(--status-clear-base)" }}>
+        <Lock size={22} />
+      </span>
+      <h1
+        style={{
+          margin: 0,
+          fontSize: 26,
+          fontWeight: 800,
+          letterSpacing: "-0.01em",
+          color: "var(--text-strong)",
+        }}
+      >
+        Our promises
+      </h1>
+      <p
+        style={{
+          margin: 0,
+          maxWidth: 560,
+          fontSize: 15,
+          lineHeight: 1.5,
+          color: "var(--text-body)",
+        }}
+      >
+        Each one is backed by a real test that runs on every version, and goes
+        red the moment the promise stops being true.
+      </p>
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          alignSelf: "flex-start",
+          padding: "5px 11px",
+          borderRadius: "var(--radius-pill)",
+          background: "var(--surface-card)",
+          fontSize: 12.5,
+          fontWeight: 700,
+          color: "var(--status-clear-base)",
+        }}
+      >
+        <Check size={14} />
+        {`Backed by ${LIVE_TESTS} live tests`}
+      </span>
+    </Card>
+  );
+}
+
+const FOOTNOTE = `A "tested" line is backed by a real test that runs on every version; remove or skip it and that version won't go out. "by design" is an honest limit, stated not hidden.`;
+
+export function Promises({ wide }: { wide?: boolean }) {
+  // The app drives the layout off the viewport; stories/tests can pin it.
+  const auto = useMinWidth(1080);
+  const twoCol = wide ?? auto;
   return (
     <div
       style={{
@@ -259,63 +304,10 @@ export function Promises() {
         width: "100%",
       }}
     >
-      <Card
-        style={{
-          borderRadius: "var(--radius-lg)",
-          padding: "26px 24px",
-          background: "var(--status-clear-bg)",
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-        }}
-      >
-        <span aria-hidden style={{ color: "var(--status-clear-base)" }}>
-          <Lock size={22} />
-        </span>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 24,
-            fontWeight: 800,
-            letterSpacing: "-0.01em",
-            color: "var(--text-strong)",
-          }}
-        >
-          Our promises
-        </h1>
-        <p
-          style={{
-            margin: 0,
-            maxWidth: 560,
-            fontSize: 14.5,
-            lineHeight: 1.5,
-            color: "var(--text-body)",
-          }}
-        >
-          Each one is backed by a real test that runs on every version, and goes
-          red the moment the promise stops being true.
-        </p>
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            alignSelf: "flex-start",
-            padding: "5px 11px",
-            borderRadius: "var(--radius-pill)",
-            background: "var(--surface-card)",
-            fontSize: 12.5,
-            fontWeight: 700,
-            color: "var(--status-clear-base)",
-          }}
-        >
-          <Check size={14} />
-          {`Backed by ${LIVE_TESTS} live tests`}
-        </span>
-      </Card>
+      <Hero />
 
       {THEMES.map((t) => (
-        <ThemeBlock key={t.id} theme={t} />
+        <ThemeSection key={t.id} theme={t} twoCol={twoCol} />
       ))}
 
       <p
@@ -327,7 +319,7 @@ export function Promises() {
           lineHeight: 1.5,
         }}
       >
-        {`A "tested" line is backed by a real test that runs on every version; remove or skip it and that version won't go out. "by design" is an honest limit, stated not hidden.`}
+        {FOOTNOTE}
       </p>
     </div>
   );

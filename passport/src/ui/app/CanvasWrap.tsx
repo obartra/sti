@@ -8,6 +8,7 @@ import { VersionStamp } from "./VersionStamp.tsx";
 export function CanvasWrap({
   desktop,
   wide = false,
+  full = false,
   onHome,
   children,
 }: {
@@ -15,9 +16,13 @@ export function CanvasWrap({
   /** Let the content use the full desktop measure (e.g. the multi-column
    * promises page) instead of the narrow reading column onboarding wants. */
   wide?: boolean;
+  /** Hand the full canvas width to the child and let it own its own centering
+   * (the trust pages' "trust center" layout). Overrides `wide`. */
+  full?: boolean;
   onHome?: (() => void) | undefined;
   children: ReactNode;
 }) {
+  const mainMax = full ? 1160 : wide && desktop ? 760 : 460;
   return (
     <div
       style={{
@@ -30,7 +35,7 @@ export function CanvasWrap({
       {desktop && (
         <header
           style={{
-            maxWidth: 1080,
+            maxWidth: full ? 1160 : 1080,
             margin: "0 auto",
             padding: "22px 32px",
             display: "flex",
@@ -59,7 +64,7 @@ export function CanvasWrap({
       )}
       <main
         style={{
-          maxWidth: wide && desktop ? 760 : 460,
+          maxWidth: mainMax,
           margin: "0 auto",
           padding: desktop ? "8px 20px 48px" : "24px 20px 40px",
           display: "flex",
