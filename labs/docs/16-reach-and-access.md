@@ -66,8 +66,11 @@ Expose the three safe cells; never offer the poison one.
    path, and the only one that needs a name directory.
 
 `vanity + live` is **removed entirely**, not offered even as a flagged opt-in: it is the sole
-configuration that puts a readable status (and a `name -> status` index) on the server, a
-subpoena-and-scrape magnet for health data. (Confirmed: remove, do not keep as an opt-in.)
+configuration that makes a status readable by anyone who looks up the name, and builds a
+`name -> status` index, a subpoena-and-scrape magnet for health data. (The server itself still
+cannot read the status; the bytes are ciphertext. The harm is that the name resolves to an id
+whose key is effectively public, so anyone who looks up the name can read it.) (Confirmed: remove,
+do not keep as an opt-in.)
 
 **The load-bearing inversion: access friction scales with reach.** A link you deliberately handed to
 one person can be instant, because the hand-off is the trust act. A URL anyone can find must make them
