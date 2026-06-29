@@ -137,19 +137,18 @@ Replace the single permanent public handle entirely.
 
 ---
 
-## 6. Resolution — two states per alias, existence hidden by default
+## 6. Resolution — two modes, two states each
 
-How a profile resolves depends on which **key** the viewer holds (public vs private is a
-key-distribution choice, not a server flag).
+Two modes as of June 27, 2026 (revised from three):
 
-- **Private alias, unauthorized/anonymous viewer →** uniform **gray-nothing, identical to a
-  nonexistent alias.** No name, no avatar, no "this is private," no "request access" button on the
-  cold/anonymous/guessed view. Existence is hidden. (This kills the current "locked card" third
-  state.) A viewer who *holds the shared link* but isn't authorized may **knock** (see §9a) — the
-  link is what reveals existence to them; the cold view stays button-free.
-- **Private alias, authorized viewer →** full view (badge + labels + handle).
-- **Public alias →** anyone with the link sees badge + labels; existence is waived by the
-  owner's choice.
+- **Private link** (opaque id + live key in URL fragment) — DEFAULT. The key is in the URL; anyone
+  who holds the keyed link sees the status immediately. Cold/guessed viewer → uniform
+  **gray-nothing, identical to a nonexistent alias** (existence-hidden). Existence is never
+  revealed to someone who doesn't hold the keyed URL. No knock step.
+- **Public link** (human handle + `/u/{handle}` + knock) — opt-in with consent disclosure. Anyone
+  who visits `sti.care/u/{handle}` can see the handle exists and may **knock** (request access).
+  The owner approves each viewer via the blind grant. Existence is disclosed by the handle. Up to 5
+  per account.
 
 So there are exactly **two observable states per alias, never a third** ("gray-with-labels vs
 gray-without-labels" only happens if you try to serve both intents on one alias — don't; they

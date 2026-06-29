@@ -6,6 +6,7 @@ import { useResumableSession } from "./app/useResumableSession.ts";
 import { useShareLink } from "./app/useShareLink.ts";
 import { useOwnerInbox } from "./app/useOwnerInbox.ts";
 import { useFaves } from "./app/useFaves.ts";
+import { usePendingRequests } from "./app/usePendingRequests.ts";
 import { usePush } from "./app/usePush.ts";
 import { useOwnerActions } from "./app/useOwnerActions.ts";
 import { useExpirySweep } from "./app/useExpirySweep.ts";
@@ -173,6 +174,12 @@ export function App({
   // Starred contacts (device-local; see useFaves). Unrelated to the session.
   const { faves, toggleFave } = useFaves();
 
+  // The viewer's own access requests (device-local; see usePendingRequests). A
+  // logged-out viewer's way back to a status the owner may later share; unrelated
+  // to the session, so it works with no account.
+  const { requests: pendingRequests, forget: forgetRequest } =
+    usePendingRequests();
+
   // Device push for the partner-notify wake (slice 7); a Privacy toggle drives it.
   const push = usePush(api, session);
 
@@ -229,6 +236,8 @@ export function App({
         contacts={session ? session.blob.contacts : []}
         faves={faves}
         onToggleFave={toggleFave}
+        pendingRequests={pendingRequests}
+        onForgetRequest={forgetRequest}
         isLoggedIn={session !== null}
         circles={session ? (session.blob.circles ?? []) : []}
         vanityName={findableName(session)}

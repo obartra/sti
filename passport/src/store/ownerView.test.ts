@@ -61,6 +61,18 @@ describe("deriveOwnerView", () => {
     expect(v.sharingMode).toBe("public");
   });
 
+  it("omits handle when none is set (no display name chosen at signup)", () => {
+    const noHandle: AccountBlob = {
+      aliases: [],
+      contacts: [],
+      state: INITIAL_OWNER_STATE,
+      avatar: DEFAULT_AVATAR,
+      sharingMode: "link",
+    };
+    const v = deriveOwnerView(noHandle, NOW_DAY);
+    expect(v.handle).toBeUndefined();
+  });
+
   it("a tested, on-PrEP owner is blue on the HIV umbrella route", () => {
     const v = deriveOwnerView(blob(tested(30)), NOW_DAY);
     expect(v.badge).toBe("blue");

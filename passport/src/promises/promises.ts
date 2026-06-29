@@ -97,13 +97,13 @@ export const PROMISES: readonly UserPromise[] = [
   },
   {
     id: "no-name",
-    plain: "We never ask for or hold your name.",
+    plain: "We never ask for your real name.",
     detail:
-      "There is no name field anywhere in what we store. A public name you can choose to claim is a label for a link, not your real name, and it exists only if you opt in.",
+      "The name we ask for is optional, yours to choose, and never your real name; you can skip it entirely. There is no real-name field anywhere in what we store, and the optional one you pick is encrypted on your device, never something we can read.",
     assertions: [
       {
         claim:
-          "The account we store for you has no real-name field of any kind: the saved shape is a fixed set of allowed fields, and a name is not one of them.",
+          "The account we store for you has no real-name field of any kind: the saved shape carries at most an optional self-chosen handle, never a name / first / last / legal field.",
         backedBy: {
           kind: "test",
           file: "src/store/accountBlob.test.ts",

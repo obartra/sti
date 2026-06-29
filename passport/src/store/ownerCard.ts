@@ -113,10 +113,14 @@ export type AliasIdentity = "anonymous" | "main";
 export function withIdentity(
   record: AliasRecord,
   identity: AliasIdentity,
-  account: { readonly handle: string; readonly avatar: AvatarConfig },
+  account: { readonly handle?: string; readonly avatar: AvatarConfig },
 ): AliasRecord {
   if (identity === "main") {
-    return { ...record, handle: account.handle, avatar: account.avatar };
+    return {
+      ...record,
+      ...(account.handle !== undefined ? { handle: account.handle } : {}),
+      avatar: account.avatar,
+    };
   }
   return record;
 }

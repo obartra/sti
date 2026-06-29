@@ -424,6 +424,14 @@ const (
 	VanityTaken
 	// VanityLocked: the name is in its post-release 24h lock, unclaimable by anyone.
 	VanityLocked
+	// VanityAliasHasName: the requesting alias already holds a (different) active
+	// name. One public link carries one handle (doc 17's 1:1 link<->handle model),
+	// so an alias cannot hoard several names (e.g. confusable variants of one card).
+	// This is the only namespace cap the blind store CAN enforce: a true per-account
+	// cap would require grouping an account's aliases, which doc 15 forbids, so the
+	// per-account "5 handles" limit stays client-side. To change names, release the
+	// old one first.
+	VanityAliasHasName
 )
 
 // ClaimVanityName attempts to register name -> aliasID first-come (doc 17). The
@@ -436,6 +444,21 @@ func (s *Store) ClaimVanityName(ctx context.Context, name, aliasID string, now i
 		return VanityTaken, err
 	}
 	defer tx.Rollback()
+
+	// One active name per alias (doc 17): if this alias already holds a different
+	// active name, reject. Released rows carry alias_id = '' so they never match a
+	// real id here, and an idempotent re-claim of the SAME name is allowed through.
+	var heldName string
+	switch err := tx.QueryRowContext(ctx,
+		`SELECT name FROM vanity_name WHERE alias_id = ? LIMIT 1`, aliasID).
+		Scan(&heldName); {
+	case errors.Is(err, sql.ErrNoRows):
+		// No active name on this alias yet: fall through to the claim.
+	case err != nil:
+		return VanityTaken, err
+	case heldName != name:
+		return VanityAliasHasName, nil
+	}
 
 	var existingAlias string
 	var lockedUntil int64

@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { Button } from "../../design/components/index.ts";
 import { Globe } from "../../design/icons.tsx";
-import { anonymousFace } from "../../lib/avatars.ts";
+import { anonymousFace, pseudonymFor } from "../../lib/avatars.ts";
 import type { AliasIdentity } from "../../store/index.ts";
 
 /* The share sheet's per-alias identity choice (doc 15): a link shows either the
@@ -22,14 +22,17 @@ const COPY = {
  */
 export function previewFace(opts: {
   choice: AliasIdentity;
-  identity: { handle: string };
+  identity: { handle?: string };
   avatarSrc: string | undefined;
   seed: string;
   hasControl: boolean;
 }): { handle: string; avatarSrc: string | undefined } {
   const { choice, identity, avatarSrc, seed, hasControl } = opts;
   if (choice === "main" || !hasControl) {
-    return { handle: identity.handle, avatarSrc };
+    // An owner with no display name has no name to show, but their "main" link
+    // still resolves (for the viewer) to the id-derived pseudonym handle, keeping
+    // their real avatar. Mirror that here so the preview never shows a blank "@".
+    return { handle: identity.handle ?? pseudonymFor(seed), avatarSrc };
   }
   // The anonymous identity: id-derived handle + id-seeded face (doc 19). Both come
   // from the opaque alias id, never the readable handle.
@@ -38,14 +41,19 @@ export function previewFace(opts: {
 
 export function IdentityChoiceRow({
   choice,
+  hasName = true,
   onChange,
 }: {
   choice: AliasIdentity;
+  // Whether the owner set a display name. With no name there is nothing to show
+  // (the link stays anonymous), so the choice is hidden rather than offering a
+  // misleading "show my name".
+  hasName?: boolean;
   // Absent hides the control (e.g. Storybook), so the parent can render it
   // unconditionally without a wrapping guard.
   onChange?: ((choice: AliasIdentity) => void) | undefined;
 }): ReactElement | null {
-  if (onChange === undefined) return null;
+  if (onChange === undefined || !hasName) return null;
   return (
     <div style={{ margin: "0 0 14px" }}>
       <div style={{ display: "flex", gap: 8 }}>

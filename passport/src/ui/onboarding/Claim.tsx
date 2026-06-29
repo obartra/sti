@@ -20,8 +20,10 @@ export interface ClaimProps {
   /** A user-facing error from the last attempt (sign-up or passkey login). */
   error?: string | null;
   onBack?: (() => void) | undefined;
-  /** Create variant: the chosen handle + avatar, on continue. */
-  onClaim?: ((handle: string, avatar: AvatarConfig) => void) | undefined;
+  /** Create variant: the chosen handle (optional) + avatar, on continue. */
+  onClaim?:
+    | ((handle: string | undefined, avatar: AvatarConfig) => void)
+    | undefined;
   /** Login variant: unlock with the device passkey. */
   onLogin?: (() => void) | undefined;
   /** Login variant: recover the account from its phrase (new device). */

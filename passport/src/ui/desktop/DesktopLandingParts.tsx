@@ -20,6 +20,11 @@ export interface LandingHandlers {
   onSample?: (() => void) | undefined;
   onLogin?: (() => void) | undefined;
   onHome?: (() => void) | undefined;
+  /** Count of access requests this device has made; shows the way-back link when
+   * above zero. */
+  pendingCount?: number | undefined;
+  /** Open the list of requests this viewer has made. */
+  onRequests?: (() => void) | undefined;
 }
 
 // ── Value band card ─────────────────────────────────────────────────────────
@@ -69,7 +74,13 @@ function ValueCard({
 }
 
 // ── Top nav ─────────────────────────────────────────────────────────────────
-export function LandingHeader({ onClaim, onLogin, onHome }: LandingHandlers) {
+export function LandingHeader({
+  onClaim,
+  onLogin,
+  onHome,
+  pendingCount,
+  onRequests,
+}: LandingHandlers) {
   return (
     <header
       style={{
@@ -111,6 +122,11 @@ export function LandingHeader({ onClaim, onLogin, onHome }: LandingHandlers) {
           />
         </button>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {pendingCount && onRequests ? (
+            <Button variant="ghost" size="md" onClick={onRequests}>
+              Links you asked to see
+            </Button>
+          ) : null}
           <Button variant="ghost" size="md" onClick={onLogin}>
             Log in
           </Button>

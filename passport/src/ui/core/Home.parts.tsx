@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import { Button, Card, Row } from "../../design/components/index.ts";
+import { Button, Card } from "../../design/components/index.ts";
 import type { BadgeState } from "../badge-card.tsx";
 import {
   Care as CareIcon,
@@ -11,7 +11,6 @@ import {
   Lock,
   Bell,
   Check,
-  Chevron,
 } from "../../design/icons.tsx";
 import { PRIVACY_SCREEN_NAME } from "../../copy/canonical.ts";
 
@@ -75,15 +74,6 @@ export function fmtDate(d: Date): string {
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-const sectionLbl: CSSProperties = {
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: "0.06em",
-  textTransform: "uppercase",
-  color: "var(--text-subtle)",
-  margin: "4px 0 10px",
-};
-
 export const leadTile: CSSProperties = {
   flex: "none",
   width: 40,
@@ -146,28 +136,6 @@ function meaning(badge: HomeBadge): string {
     : "Your card shows no status to others right now. Add a result to share an up-to-date badge, or leave it as is. Nothing here reveals any detail.";
 }
 
-function QuickRow({
-  icon,
-  title,
-  sub,
-  onClick,
-}: {
-  icon: ReactNode;
-  title: string;
-  sub: string;
-  onClick: (() => void) | undefined;
-}) {
-  return (
-    <Row
-      lead={icon}
-      title={title}
-      sub={sub}
-      trail={<Chevron size={18} />}
-      onClick={onClick}
-    />
-  );
-}
-
 // Owner-only re-test nudge. Never shown to a viewer.
 export function ReminderCard({ daysLeft }: { daysLeft: number }) {
   const h = COPY.home;
@@ -225,88 +193,113 @@ export function ReminderCard({ daysLeft }: { daysLeft: number }) {
   );
 }
 
-export function MeansCard({
-  isPaused,
-  viewerBadge,
-}: {
-  isPaused: boolean;
-  viewerBadge: HomeBadge;
-}) {
-  const h = COPY.home;
+// A quiet one-line explainer under the hero (the calm-fold home demotes the old
+// "what this means" card to a single muted sentence). Owner-facing only.
+export function MeansLine({ viewerBadge }: { viewerBadge: HomeBadge }) {
   return (
-    <Card variant="tint" style={{ display: "flex", gap: 12 }}>
-      <span style={{ color: "var(--text-accent)", flex: "none", marginTop: 1 }}>
-        <Info size={18} />
+    <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+      <span style={{ flex: "none", marginTop: 1, color: "var(--text-subtle)" }}>
+        <Info size={15} />
       </span>
-      <div>
-        <div
-          style={{
-            fontSize: 13.5,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-            marginBottom: 2,
-          }}
-        >
-          {h.meansTitle}
-        </div>
-        <div
-          style={{
-            fontSize: 13.5,
-            lineHeight: 1.55,
-            color: "var(--text-body)",
-          }}
-        >
-          {isPaused
-            ? "While your status is hidden, everyone sees plain gray, the same as any other reason a card isn’t current. Only you can see that it’s paused."
-            : meaning(viewerBadge)}
-        </div>
-      </div>
-    </Card>
+      <p
+        style={{
+          margin: 0,
+          fontSize: 13,
+          lineHeight: 1.5,
+          color: "var(--text-muted)",
+        }}
+      >
+        {meaning(viewerBadge)}
+      </p>
+    </div>
   );
 }
 
-export function QuickActions({
-  sharingMode,
+function QuickTile({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  onClick: (() => void) | undefined;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        appearance: "none",
+        cursor: "pointer",
+        flex: 1,
+        minWidth: 0,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 9,
+        padding: "15px 8px",
+        border: "1px solid var(--border-card)",
+        borderRadius: "var(--radius-md)",
+        background: "var(--surface-card)",
+        boxShadow: "var(--shadow-sm)",
+      }}
+    >
+      <span style={leadTile}>{icon}</span>
+      <span
+        style={{
+          fontSize: 12.5,
+          fontWeight: 700,
+          color: "var(--text-strong)",
+          textAlign: "center",
+        }}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
+// The calm-fold quick actions: three compact tiles instead of a stacked card
+// list, so the fold stays short and the badge keeps the focus.
+export function QuickActionsRow({
   onReport,
   onViewAs,
   onPrivacy,
 }: {
-  sharingMode: "public" | "link";
   onReport: (() => void) | undefined;
   onViewAs: (() => void) | undefined;
   onPrivacy: (() => void) | undefined;
 }) {
-  const h = COPY.home;
   return (
-    <div>
-      <div style={sectionLbl}>{h.quick}</div>
-      <Card
-        variant="flat"
-        style={{ padding: 6, display: "flex", flexDirection: "column" }}
-      >
-        <QuickRow
-          icon={<Plus size={20} />}
-          title={h.report}
-          sub="Log a recent test"
-          onClick={onReport}
-        />
-        <QuickRow
-          icon={<Eye size={20} />}
-          title={h.viewAs}
-          sub={h.viewAsSub}
-          onClick={onViewAs}
-        />
-        <QuickRow
-          icon={<Lock size={20} />}
-          title={h.privacy}
-          sub={
-            sharingMode === "public"
-              ? "Status visible to everyone"
-              : "Status by request only"
-          }
-          onClick={onPrivacy}
-        />
-      </Card>
+    <div style={{ display: "flex", gap: 10 }}>
+      <QuickTile
+        icon={<Plus size={20} />}
+        label="Add result"
+        onClick={onReport}
+      />
+      <QuickTile icon={<Eye size={20} />} label="Preview" onClick={onViewAs} />
+      <QuickTile
+        icon={<Lock size={20} />}
+        label="Privacy"
+        onClick={onPrivacy}
+      />
     </div>
+  );
+}
+
+// The re-test nudge when it is NOT yet due: a faint one-liner rather than the full
+// reminder card, so it is present without competing with the badge.
+export function RetestHint({ daysLeft }: { daysLeft: number }) {
+  return (
+    <p
+      style={{
+        margin: "2px 0 0",
+        textAlign: "center",
+        fontSize: 12.5,
+        color: "var(--text-subtle)",
+      }}
+    >
+      {`Next test in ${Math.max(0, daysLeft)} days. We'll keep your status fresh.`}
+    </p>
   );
 }

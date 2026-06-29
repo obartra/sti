@@ -1,6 +1,7 @@
 import { Landing } from "../../public/Landing.tsx";
 import { PublicResolution } from "../../public/PublicResolution.tsx";
 import { PublicResolutionScreen } from "../../public/PublicResolutionScreen.tsx";
+import { Requests } from "../../public/Requests.tsx";
 import { SelfPreview } from "../../public/SelfPreview.tsx";
 import { Alert } from "../../public/Alert.tsx";
 import { Exposed } from "../../public/Exposed.tsx";
@@ -9,7 +10,7 @@ import { SAMPLE_RESOLVED } from "../fixtures.ts";
 import type { ScreenRenderers } from "./context.ts";
 
 export const publicRenderers: ScreenRenderers = {
-  "a1-landing": ({ nav }) => (
+  "a1-landing": ({ nav, pendingRequests }) => (
     <Landing
       onClaim={() => nav.go("b1-claim")}
       onSample={() => nav.go("a2-public")}
@@ -17,6 +18,17 @@ export const publicRenderers: ScreenRenderers = {
       onPromises={() => nav.go("promises")}
       onPrivacyPolicy={() => nav.go("privacy-policy")}
       onTerms={() => nav.go("terms")}
+      pendingCount={pendingRequests.length}
+      onRequests={() => nav.go("requests")}
+    />
+  ),
+  requests: ({ nav, store, pendingRequests, onForgetRequest }) => (
+    <Requests
+      requests={pendingRequests}
+      resolve={(id) => store.redeemGrant(id)}
+      onOpen={(id) => nav.go("a2-public", { id })}
+      onForget={onForgetRequest}
+      onBack={nav.back}
     />
   ),
   "a2-public": (ctx) => {

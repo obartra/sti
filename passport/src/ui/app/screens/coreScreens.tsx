@@ -125,7 +125,7 @@ export const coreRenderers: ScreenRenderers = {
       viewerBadge={owner.viewerBadge}
       labels={owner.labels}
       route={owner.blueRoute}
-      handle={owner.handle}
+      {...(owner.handle !== undefined ? { handle: owner.handle } : {})}
       avatar={owner.avatar}
       paused={owner.paused}
       autoPaused={owner.autoPaused}

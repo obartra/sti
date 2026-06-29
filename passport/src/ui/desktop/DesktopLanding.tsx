@@ -18,6 +18,8 @@ export interface DesktopLandingProps {
   onPromises?: () => void;
   onPrivacyPolicy?: () => void;
   onTerms?: () => void;
+  pendingCount?: number;
+  onRequests?: () => void;
 }
 
 export function DesktopLanding({
@@ -28,6 +30,8 @@ export function DesktopLanding({
   onPromises,
   onPrivacyPolicy,
   onTerms,
+  pendingCount,
+  onRequests,
 }: DesktopLandingProps) {
   return (
     <div
@@ -39,7 +43,13 @@ export function DesktopLanding({
         color: "var(--text-body)",
       }}
     >
-      <LandingHeader onClaim={onClaim} onLogin={onLogin} onHome={onHome} />
+      <LandingHeader
+        onClaim={onClaim}
+        onLogin={onLogin}
+        onHome={onHome}
+        pendingCount={pendingCount}
+        onRequests={onRequests}
+      />
       <Hero onClaim={onClaim} onSample={onSample} />
       <ValueBand />
       <ClosingCTA onClaim={onClaim} />

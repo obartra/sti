@@ -120,8 +120,9 @@ export function mergeAccountBlobs(
     theirs.circles ?? [],
   );
   const findable = pickScalar(base.findable, mine.findable, theirs.findable);
+  const handle = pickScalar(base.handle, mine.handle, theirs.handle);
   return {
-    handle: pickScalar(base.handle, mine.handle, theirs.handle),
+    ...(handle !== undefined ? { handle } : {}),
     aliases: mergeById<AliasRecord>(base.aliases, mine.aliases, theirs.aliases),
     contacts: mergeById<ContactRecord>(
       base.contacts,

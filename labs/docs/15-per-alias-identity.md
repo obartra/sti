@@ -61,7 +61,9 @@ choice, unlinkable by default and recognizable by opt-in, taught at the moment t
 - **Opaque-id aliases are the default; a vanity/custom handle is an explicit opt-in,** flagged as
   findable and not unlinkable. (02 §Identity)
 - **Display identity = handle/alias + avatar, never a real name.** (02)
-- **No central identity index; the server never sees a handle.** (01 principle 6, 02 §Identity)
+- **One allowed index:** the public handle registry (`name → aliasId`) for Public links, an
+  explicit opt-in with disclosure. The server never sees a local display name or a per-alias
+  display handle. (01 principle 6 revised, 16 §Public link)
 - **Each contact gets its own alias** (`ContactRecord.alias`); the public profile and casual link are
   reused singletons (`shareLinkFor` finds one alias per visibility). (02/13, `session.ts`)
 - **Public vs private is a key-distribution choice the server cannot see;** the address is uniformly
@@ -149,12 +151,14 @@ established assumption in `accountBlob.ts`), so there is nothing to migrate.
 
 ## Owner UX
 
-- **Onboarding:** stop forcing a vanity handle. Build a main identity (handle + avatar) framed as the
-  face you can *choose* to show; the default alias stays opaque.
-- **Mint a link / share:** the override fields, pre-filled with your main identity, with a clear
-  "anonymous (default) vs show my identity" choice and the findable + linkable warning on the opt-in.
-- **Public profile:** defaults to anonymous like any other alias; showing a recognizable identity is
-  the opt-in that makes it findable.
+- **Onboarding:** collect only a **local display name** (account-level, owner-facing, never sent to
+  the server). Stop forcing a vanity handle. The default alias stays opaque (pseudonymFor(id)).
+- **Mint a public link / share:** the per-alias override fields, pre-filled with your local display
+  name + avatar as a convenience, with a clear "anonymous (default) vs recognizable" choice. The
+  findable + linkable teaching fires at public link creation (when the handle is claimed in the
+  `/u/` namespace), not at private link creation.
+- **Private link share:** same override fields. Anonymous by default; recognizable is an opt-in
+  with no namespace claim and no linkable warning required (the link is not findable).
 - **Home:** shows your main identity (unchanged feel).
 - **"What others see" preview:** becomes per-alias, previewing the face that alias resolves to (the
   self-preview screen needs the alias context it does not carry today).

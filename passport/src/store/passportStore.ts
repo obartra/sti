@@ -7,6 +7,7 @@
 
 import type { ResolvedView } from "../ui/public/PublicResolution.tsx";
 import type { VanityReportReason } from "../api/client.ts";
+import type { PendingKnock } from "./pendingKnockStore.ts";
 
 /**
  * A shared passport link, split into the part that reaches the server (the
@@ -54,4 +55,12 @@ export interface PassportStore {
    * real transport failure, which the caller surfaces as "couldn't send".
    */
   reportVanityName(name: string, reason: VanityReportReason): Promise<void>;
+  /**
+   * The device-local list of requests this viewer has made (newest first), so a
+   * logged-out viewer has a way back to a status the owner may later share. Local
+   * only, never the synced blob, and empty on a device that never knocked.
+   */
+  pendingRequests(): PendingKnock[];
+  /** Forget one pending request by alias id (the viewer dismissed it). */
+  forgetRequest(aliasId: string): void;
 }

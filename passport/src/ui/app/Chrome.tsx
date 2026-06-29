@@ -60,6 +60,8 @@ export interface ChromeProps {
   onSetContactDuration: ScreenCtx["onSetContactDuration"];
   faves: ScreenCtx["faves"];
   onToggleFave: ScreenCtx["onToggleFave"];
+  pendingRequests: ScreenCtx["pendingRequests"];
+  onForgetRequest: ScreenCtx["onForgetRequest"];
   isLoggedIn: ScreenCtx["isLoggedIn"];
   onAcceptContactInvite: ScreenCtx["onAcceptContactInvite"];
   onIngestContactReturn: ScreenCtx["onIngestContactReturn"];
@@ -114,7 +116,7 @@ function ShareOverlay({
       state={owner.viewerBadge}
       labels={owner.labels}
       route={owner.blueRoute}
-      identity={{ handle: owner.handle }}
+      identity={owner.handle !== undefined ? { handle: owner.handle } : {}}
       avatarSrc={avatarSrc(owner.avatar)}
       url={shareUrl}
       identityChoice={shareIdentity}
@@ -166,6 +168,8 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     onSetContactDuration: props.onSetContactDuration,
     faves: props.faves,
     onToggleFave: props.onToggleFave,
+    pendingRequests: props.pendingRequests,
+    onForgetRequest: props.onForgetRequest,
     isLoggedIn: props.isLoggedIn,
     onAcceptContactInvite: props.onAcceptContactInvite,
     onIngestContactReturn: props.onIngestContactReturn,
@@ -254,6 +258,8 @@ function PublicChrome(props: ChromeProps) {
         onPromises={() => nav.go("promises")}
         onPrivacyPolicy={() => nav.go("privacy-policy")}
         onTerms={() => nav.go("terms")}
+        pendingCount={props.pendingRequests.length}
+        onRequests={() => nav.go("requests")}
       />
     );
   }
@@ -261,6 +267,9 @@ function PublicChrome(props: ChromeProps) {
   return (
     <CanvasWrap
       desktop={desktop}
+      // The promises page is a multi-column grid on desktop; the rest of the
+      // public canvas stays a narrow reading column.
+      wide={route.screen === "promises"}
       onHome={() => nav.jump("a1-landing", "public")}
     >
       <ScreenView screen={route.screen} ctx={ctx} />

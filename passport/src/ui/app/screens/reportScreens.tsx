@@ -21,7 +21,7 @@ export const reportRenderers: ScreenRenderers = {
       labels={owner.labels}
       blueRoute={owner.blueRoute}
       avatar={owner.avatar}
-      handle={owner.handle}
+      {...(owner.handle !== undefined ? { handle: owner.handle } : {})}
     />
   ),
   wallet: ({ owner }) => (

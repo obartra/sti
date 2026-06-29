@@ -3,26 +3,27 @@ import { BadgeCard } from "../badge-card.tsx";
 import type { ProtectionLabel, Route } from "../badge-card.tsx";
 import { avatarSrc, type AvatarConfigInput } from "../../lib/avatars.ts";
 import {
-  COPY,
   TODAY,
   addDays,
   nextAction,
-  MeansCard,
-  QuickActions,
+  MeansLine,
+  QuickActionsRow,
   ReminderCard,
+  RetestHint,
 } from "./Home.parts.tsx";
 import type { HomeBadge } from "./Home.parts.tsx";
 import { PauseBanner } from "./Home.pause.tsx";
 
-// C1 Home: the badge card is the hero, with the single next-best action, a
-// "what this means" explainer, quick actions, and a re-test reminder. Faithful
-// port of core-app.jsx Home (+ HomeCard, PauseBanner, ReminderCard, QuickRow).
-// The badge is TWO-STATE only (blue / gray): the hero renders the same
-// two-state BadgeCard, there is no four-light status here. Copy verbatim from
-// copy.js (home + pause); the small action labels, the "what this means"
-// sentences, and the quick-action subs are inline literals in the source and
-// reproduced exactly.
+// C1 Home (calm fold): the badge card is the hero, with the single next-best
+// action right under it. The rest is demoted so the status keeps the focus, a
+// quiet one-line "what this means", a compact row of quick actions, and a re-test
+// nudge that only becomes a full card when it is actually due. The badge is
+// TWO-STATE only (blue / gray); there is no four-light status here.
 export type { HomeBadge };
+
+// How close to the freshness lapse the re-test nudge earns a full card (vs the
+// faint hint). Mirrors the inbox's "re-test soon" window.
+const RETEST_SOON_DAYS = 14;
 
 function HomeHero({
   handle,
@@ -36,7 +37,7 @@ function HomeHero({
   onResume,
   onExtend,
 }: {
-  handle: string;
+  handle: string | undefined;
   avatar: AvatarConfigInput | undefined;
   viewerBadge: HomeBadge;
   labels: ProtectionLabel[];
@@ -47,13 +48,9 @@ function HomeHero({
   onResume: (() => void) | undefined;
   onExtend: (() => void) | undefined;
 }) {
-  const h = COPY.home;
   return (
     <>
       <div style={{ marginTop: 2 }}>
-        <div style={{ fontSize: 14, color: "var(--text-muted)" }}>
-          {h.greeting}
-        </div>
         <h1
           style={{
             fontSize: 26,
@@ -62,7 +59,7 @@ function HomeHero({
             color: "var(--text-strong)",
           }}
         >
-          {`@${handle}`}
+          {handle ? `Good to see you, @${handle}` : "Hey there!"}
         </h1>
       </div>
 
@@ -70,7 +67,7 @@ function HomeHero({
         state={viewerBadge}
         labels={labels}
         route={route}
-        identity={{ handle }}
+        identity={handle ? { handle } : null}
         avatarSrc={avatar !== undefined ? avatarSrc(avatar) : undefined}
         width="100%"
       />
@@ -121,11 +118,10 @@ export function Home({
   viewerBadge = "blue",
   labels = ["hiv"],
   route = null,
-  handle = "robin",
+  handle,
   avatar,
   paused = false,
   autoPaused = false,
-  sharingMode = "link",
   daysLeft = 87,
   clearBy = addDays(TODAY, 9),
   onShare,
@@ -146,14 +142,15 @@ export function Home({
     onShare,
     onReport,
   });
+
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 18,
+        gap: 16,
         width: "100%",
-        maxWidth: 390,
+        maxWidth: 420,
       }}
     >
       <HomeHero
@@ -179,16 +176,53 @@ export function Home({
         {act.label}
       </Button>
 
-      <MeansCard isPaused={isPaused} viewerBadge={viewerBadge} />
+      <HomeExtras
+        isPaused={isPaused}
+        viewerBadge={viewerBadge}
+        daysLeft={daysLeft}
+        onReport={onReport}
+        onViewAs={onViewAs}
+        onPrivacy={onPrivacy}
+      />
+    </div>
+  );
+}
 
-      <QuickActions
-        sharingMode={sharingMode}
+// The demoted, below-the-hero content: a quiet meaning line, the compact quick
+// actions, and the re-test nudge (suppressed while paused; a full card only when
+// the freshness window is close to lapsing, else a faint hint).
+function HomeExtras({
+  isPaused,
+  viewerBadge,
+  daysLeft,
+  onReport,
+  onViewAs,
+  onPrivacy,
+}: {
+  isPaused: boolean;
+  viewerBadge: HomeBadge;
+  daysLeft: number;
+  onReport: (() => void) | undefined;
+  onViewAs: (() => void) | undefined;
+  onPrivacy: (() => void) | undefined;
+}) {
+  const retestDue = daysLeft <= RETEST_SOON_DAYS;
+  return (
+    <>
+      {!isPaused && <MeansLine viewerBadge={viewerBadge} />}
+
+      <QuickActionsRow
         onReport={onReport}
         onViewAs={onViewAs}
         onPrivacy={onPrivacy}
       />
 
-      <ReminderCard daysLeft={daysLeft} />
-    </div>
+      {!isPaused &&
+        (retestDue ? (
+          <ReminderCard daysLeft={daysLeft} />
+        ) : (
+          <RetestHint daysLeft={daysLeft} />
+        ))}
+    </>
   );
 }

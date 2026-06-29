@@ -15,18 +15,29 @@ type Story = StoryObj<typeof Home>;
 
 // Blue: up to date, on HIV prevention. The action is "Share my passport".
 export const BlueUpToDate: Story = {
-  args: { badge: "blue", viewerBadge: "blue", labels: ["hiv"] },
+  args: {
+    badge: "blue",
+    viewerBadge: "blue",
+    labels: ["hiv"],
+    handle: "robin",
+  },
 };
 
 // Gray: no status shared yet. The action is "Add a result".
 export const GrayNoStatus: Story = {
-  args: { badge: "gray", viewerBadge: "gray", labels: [] },
+  args: { badge: "gray", viewerBadge: "gray", labels: [], handle: "robin" },
 };
 
 // Manual pause: owner hid their status. Viewers see gray; the owner sees the
 // pause panel and a "Resume sharing" action.
 export const PausedManual: Story = {
-  args: { badge: "blue", viewerBadge: "gray", labels: ["hiv"], paused: true },
+  args: {
+    badge: "blue",
+    viewerBadge: "gray",
+    labels: ["hiv"],
+    paused: true,
+    handle: "robin",
+  },
 };
 
 // Auto-pause: from a logged positive's clearance window. The panel shows an
@@ -37,5 +48,22 @@ export const PausedAuto: Story = {
     viewerBadge: "gray",
     labels: ["hiv"],
     autoPaused: true,
+    handle: "robin",
+  },
+};
+
+// No display name set: greeting falls back to "Hey there!".
+export const NoName: Story = {
+  args: { badge: "blue", viewerBadge: "blue", labels: ["hiv"] },
+};
+
+// Re-test due soon: the faint hint becomes a full reminder card.
+export const RetestDue: Story = {
+  args: {
+    badge: "blue",
+    viewerBadge: "blue",
+    labels: ["hiv"],
+    handle: "robin",
+    daysLeft: 6,
   },
 };

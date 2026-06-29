@@ -98,6 +98,10 @@ CREATE TABLE IF NOT EXISTS vanity_name (
     created_at   INTEGER NOT NULL,
     locked_until INTEGER NOT NULL DEFAULT 0 -- epoch ms; > now => in the post-release lock
 ) WITHOUT ROWID;
+-- Enforce "one active name per alias" (doc 17) without a table scan: a partial
+-- index over only the ACTIVE rows (alias_id != ''), the set ClaimVanityName probes
+-- before a claim. Released rows (alias_id = '') are excluded, so it stays small.
+CREATE INDEX IF NOT EXISTS idx_vanity_alias ON vanity_name (alias_id) WHERE alias_id != '';
 
 CREATE TABLE IF NOT EXISTS knock (
     target_id       TEXT NOT NULL,         -- alias being knocked on

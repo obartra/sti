@@ -7,10 +7,14 @@ import { VersionStamp } from "./VersionStamp.tsx";
 // this.) Faithful to the prototype's CanvasWrap intent.
 export function CanvasWrap({
   desktop,
+  wide = false,
   onHome,
   children,
 }: {
   desktop: boolean;
+  /** Let the content use the full desktop measure (e.g. the multi-column
+   * promises page) instead of the narrow reading column onboarding wants. */
+  wide?: boolean;
   onHome?: (() => void) | undefined;
   children: ReactNode;
 }) {
@@ -55,7 +59,7 @@ export function CanvasWrap({
       )}
       <main
         style={{
-          maxWidth: 460,
+          maxWidth: wide && desktop ? 760 : 460,
           margin: "0 auto",
           padding: desktop ? "8px 20px 48px" : "24px 20px 40px",
           display: "flex",

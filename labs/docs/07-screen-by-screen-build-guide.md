@@ -81,12 +81,15 @@ This guide is the propagation plan.
 ### B1 · Claim account — `Onb.Claim`
 - **Now:** "Pick a handle. Shown publicly, and permanent. Handles can't be changed later." The
   handle is the sole canonical identity, appears in every URL.
-- **Target:** **No canonical public handle.** Default identity = opaque alias (opaque id in URL,
-  display handle/avatar inside the encrypted payload). Aliases are multiple/revocable. Account key
+- **Target:** **No canonical public handle at account creation.** Collect only a **local display
+  name** — used by the app to address the owner ("Here's your status, Sam"), stored only in the
+  encrypted account blob, never sent to the server, never visible to viewers. Handles are set
+  later, per public link, in the share sheet. Aliases are multiple/revocable. Account key
   (passkey/passphrase) is the local anchor, never shown, never in a URL.
-- **Action:** REBUILD the identity step. NEW: alias model + the just-in-time vanity-handle
-  teaching ("findable, not unlinkable, points at your status") as an explicit public opt-in, not
-  the default. This is the deepest change; pair with the architecture note in §G.
+- **Action:** REBUILD the identity step. Replace handle input with local display name input. The
+  vanity handle teaching ("public, findable, not unlinkable") is deferred to the share sheet at
+  public link creation time — not onboarding. This is the deepest change; pair with the
+  architecture note in §G.
 
 ### B3 · First-run setup — `Onb.Setup`
 - **Now:** Writes defaults: **`sharingMode: "public"`** (default-on) and a freshness/streak

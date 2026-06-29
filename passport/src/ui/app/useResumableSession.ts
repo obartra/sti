@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { OwnerSession, SessionController } from "../../store/index.ts";
 import { browserForgetGrantKeys } from "../../store/grantKeyStore.ts";
 import { browserForgetRequesterSecret } from "../../store/requesterStore.ts";
+import { browserForgetPendingKnocks } from "../../store/pendingKnockStore.ts";
 import type { Nav } from "./useAppRouter.ts";
 
 // The owner session plus its "stay signed in" lifecycle (doc 24): a silent resume
@@ -60,12 +61,14 @@ export function useResumableSession(
 
   const onLogOut = useCallback(() => {
     void controller.forgetDevice();
-    // Wipe this device's viewer secrets too (the requester secret and any grant
-    // keypairs), so logging out of a shared device leaves no trace of which
-    // links it knocked on, matching what account delete already does. The master
-    // key alone was cleared before; these viewer secrets persisted (gap fix).
+    // Wipe this device's viewer secrets too (the requester secret, any grant
+    // keypairs, and the pending-requests list), so logging out of a shared device
+    // leaves no trace of which links it knocked on or asked to see, matching what
+    // account delete already does. The master key alone was cleared before; these
+    // viewer secrets persisted (gap fix).
     browserForgetRequesterSecret();
     browserForgetGrantKeys();
+    browserForgetPendingKnocks();
     setSession(null);
     nav.jump("a1-landing", "public");
   }, [controller, nav]);
