@@ -25,7 +25,10 @@ CREATE TABLE IF NOT EXISTS account (
     ciphertext  BLOB NOT NULL,
     version     INTEGER NOT NULL,   -- bumped on every write (reserved for later If-Match)
     updated_at  INTEGER NOT NULL,
-    write_auth  TEXT NOT NULL DEFAULT '' -- hash(account write token); gates overwrite/delete
+    write_auth  TEXT NOT NULL DEFAULT '', -- hash(account write token); gates overwrite/delete
+    last_seen_at INTEGER NOT NULL DEFAULT 0 -- epoch ms of the last read OR write; the janitor
+                                            -- deletes a backup left untouched past the inactivity
+                                            -- window (data minimization; disclosed in Privacy)
 ) WITHOUT ROWID;
 
 CREATE TABLE IF NOT EXISTS notify_route (

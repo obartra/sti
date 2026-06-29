@@ -197,10 +197,12 @@ func main() {
 	}
 	// Retention windows for the age-based sweeps. Defaults are deliberately
 	// generous (storage reclamation, not policy): an expired link lingers a week
-	// before deletion, an un-actionable orphan report a month.
+	// before deletion, an un-actionable orphan report a month, and an abandoned
+	// account backup two years after its last read or write (disclosed in Privacy).
 	ttls := janitorTTLs{
-		aliasGrace:   envDuration("STI_ALIAS_PURGE_GRACE", 7*24*time.Hour),
-		reportMaxAge: envDuration("STI_REPORT_ORPHAN_MAX_AGE", 30*24*time.Hour),
+		aliasGrace:        envDuration("STI_ALIAS_PURGE_GRACE", 7*24*time.Hour),
+		reportMaxAge:      envDuration("STI_REPORT_ORPHAN_MAX_AGE", 30*24*time.Hour),
+		accountInactivity: envDuration("STI_ACCOUNT_INACTIVITY_TTL", 2*365*24*time.Hour),
 	}
 	go background(ctx, st, srv, metricsState, janitorInterval, ttls, log)
 
@@ -272,8 +274,9 @@ func saveMetrics(path string, srv *server.Server, log *slog.Logger) {
 // janitorTTLs holds the retention windows the age-based sweeps use. Zero or
 // negative disables that sweep (the env reader keeps the defaults positive).
 type janitorTTLs struct {
-	aliasGrace   time.Duration // delete an alias this long after its link expired
-	reportMaxAge time.Duration // delete an orphan vanity report once this old
+	aliasGrace        time.Duration // delete an alias this long after its link expired
+	reportMaxAge      time.Duration // delete an orphan vanity report once this old
+	accountInactivity time.Duration // delete an account backup unread/unwritten this long
 }
 
 // background runs the periodic janitors: expire knocks, purge long-dead alias and
@@ -310,6 +313,14 @@ func background(ctx context.Context, st *store.Store, srv *server.Server, metric
 					log.Error("purge orphan reports", "err", err)
 				} else if n > 0 {
 					log.Info("purged orphan vanity reports", "count", n)
+				}
+			}
+			if ttls.accountInactivity > 0 {
+				if n, err := st.PurgeInactiveAccounts(ctx, now, ttls.accountInactivity.Milliseconds()); err != nil {
+					srv.Metrics().Error(metrics.ErrJanitor)
+					log.Error("purge inactive accounts", "err", err)
+				} else if n > 0 {
+					log.Info("purged inactive accounts", "count", n)
 				}
 			}
 			srv.DrainRepublishes(ctx, now)

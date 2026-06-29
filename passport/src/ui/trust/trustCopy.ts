@@ -110,11 +110,11 @@ export const PRIVACY_POLICY: LegalDoc = {
     {
       heading: "How long we keep things",
       summary:
-        "We keep each piece only as long as it's needed, and you can end most of it yourself.",
+        "We keep each piece only as long as it's needed, and you can end most of it yourself. If you stop using the app for about two years, we delete your backup on our own.",
       bullets: [
         "A shared link's card is kept until it expires, or until you turn it off, which overwrites it.",
         "Access requests expire on their own.",
-        "Your account backup stays until you delete it.",
+        "Your account backup stays until you delete it, or until about two years without using the app, whichever comes first. Opening the app keeps it; we have no other way to reach you, so we cannot warn you first.",
         "The admin action log is kept for accountability and holds no content.",
       ],
     },
