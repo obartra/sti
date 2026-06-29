@@ -260,6 +260,7 @@ function PublicChrome(props: ChromeProps) {
         onTerms={() => nav.go("terms")}
         pendingCount={props.pendingRequests.length}
         onRequests={() => nav.go("requests")}
+        onShareLink={() => nav.go("share-link")}
       />
     );
   }

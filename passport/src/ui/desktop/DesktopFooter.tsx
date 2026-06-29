@@ -22,12 +22,14 @@ export interface FooterLinks {
   onPromises?: (() => void) | undefined;
   onPrivacyPolicy?: (() => void) | undefined;
   onTerms?: (() => void) | undefined;
+  onShareLink?: (() => void) | undefined;
 }
 
 export function LandingFooter({
   onPromises,
   onPrivacyPolicy,
   onTerms,
+  onShareLink,
 }: FooterLinks) {
   return (
     <footer style={{ borderTop: "1px solid var(--divider)" }}>
@@ -57,6 +59,11 @@ export function LandingFooter({
           <button type="button" style={footerLink} onClick={onTerms}>
             {TRUST_FOOTER.terms}
           </button>
+          {onShareLink && (
+            <button type="button" style={footerLink} onClick={onShareLink}>
+              {TRUST_FOOTER.shareLink}
+            </button>
+          )}
         </nav>
         <div
           style={{

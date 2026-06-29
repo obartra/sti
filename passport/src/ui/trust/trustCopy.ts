@@ -13,6 +13,7 @@ export const TRUST_FOOTER = {
   // (and the spam intake one would invite). Mailto only, so nothing is collected.
   feedbackLead: "Something wrong?",
   feedbackLink: "Email us",
+  shareLink: "Share your link",
 } as const;
 
 /** The published address a user reaches the team at (already in the legal pages). */
