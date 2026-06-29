@@ -54,23 +54,24 @@ connection sooner, and could support an optional one-scan variant. We auto-detec
 connectivity with the signals we already use (the reconnect/catch-up path), but the
 default is always the QR exchange, so there is no jarring mode switch.
 
-## The connect screen (one screen, role-guided, switch on success)
+## The connect screen (simultaneous show + scan, zero taps)
 
-A single unified component does BOTH: it renders your QR code and runs the camera to
-scan. Overlay guidance choreographs the two phones so neither person has to think
-about who does what:
+A single unified component does BOTH at once: it displays your QR code and runs the
+camera simultaneously. Neither person picks a role, neither taps "switch", neither
+waits for the other to go first.
 
-- One phone is prompted **"Show your code"** (display mode, QR up, camera idle).
-- The other is prompted **"Scan their code"** (scan mode, camera live, with a framing
-  reticle over the viewfinder).
-- On a successful scan the screen **switches**: the scanner has what it needs, so it
-  flips to "Show your code" while the other flips to "Scan their code", completing the
-  reciprocal half.
-- When both halves are done, both phones advance to the completion screen together.
+The instruction is one line: **"Point cameras at each other's screens."**
 
-The same screen handles both roles, so there is no separate "show" and "scan" screen
-to get lost between, just one surface with changing guidance. A small "switch to
-showing / scanning" affordance lets a pair recover if they both land in the same mode.
+- Both phones show their own QR prominently and run the scanner in the background.
+- When B's camera catches A's code (or vice versa), that half completes silently.
+- Each phone advances to its completion screen once its own scan lands, independent of
+  the other. They're standing next to each other, so the pair can see both screens.
+- The two halves complete in whichever order the cameras catch the codes.
+
+This produces zero role permutations (no "show vs scan" state machine), zero taps,
+and zero opportunity to get stuck in a "both showing / both scanning" dead end. The
+only mode recovery needed is a camera-access denial (fallback: share via the existing
+link flow).
 
 Camera + QR are the only cross-platform, offline proximity primitive a web app has
 (see "Native" below), and we already have a scanner (`QrScanner`) and QR generation
@@ -88,9 +89,9 @@ compact payload the owner's device builds from data it already holds:
   you),
 - an ephemeral grant public key (the existing knock/grant primitive),
 - the encounter date (default today, back-datable),
-- optionally a compact, signed "current badge" assertion (blue/gray + labels, signed
-  by the alias key) so the both-blue moment works OFFLINE. This is a snapshot of right
-  now, which is correct because the two people are standing in front of each other.
+- a compact, signed current-badge assertion (blue/gray + labels, signed by the alias
+  key). Always included: status is shown at the moment of connecting. The snapshot is
+  correct because the two people are standing in front of each other right now.
 
 A few hundred bytes, comfortably inside a scannable QR.
 
@@ -102,8 +103,9 @@ This is the most values-sensitive surface in the product. Guardrails, non-negoti
   gray. There is no "you must be blue to connect". The feature must not become the
   gatekeeper the product refuses to build (doc 01, doc 06 §10).
 - **One-gray is a single neutral, non-alarming line**, never "this person is a risk".
-  It reads as "here is free testing nearby", routing to care, never a verdict. If we
-  cannot make it land that way, we do not show status at the moment at all.
+  It reads as "there is free testing nearby", routing to care, never a verdict.
+  (Most people connecting in person have already shared status earlier; this line is
+  a reminder, not a revelation.)
 - **Both-blue is a warm acknowledgement**, not a certificate or a "verified together"
   badge. It is a feeling, not a gate.
 - Per-alias and revocable: you connect via one alias, your other links are untouched,
@@ -157,28 +159,26 @@ iOS NFC, allow a richer offline exchange, and harden key storage. None of it is 
 prerequisite, the PWA path is fully functional and arguably more private (QR offline
 touches nothing), but the seamlessness ceiling is real and worth recording.
 
-## Open questions (need a product call)
+## Decisions (resolved)
 
-1. **Mechanism default: two scans (offline, zero-server, two gestures) vs one scan +
-   server return (one gesture, one party needs internet, briefly touches the
-   server).** Recommendation: two-QR offline as canonical for the privacy win, with
-   one-scan as an online-only convenience if we want it.
-2. **Does connecting reveal status at the moment, or is status a separate opt-in?**
-   The both-blue moment needs status visible; auto-revealing in person can create
-   pressure. The neutral one-gray line is the safeguard. Lean: show the compact badge
-   snapshot, with the one-gray line carefully neutral, behind an explicit "show my
-   status to who I connect with" that defaults thoughtfully.
-3. **Exact one-gray copy and whether status shows at all by default** (voice doc 21,
-   the hardest line in the product).
+1. **Mechanism: two scans, fully offline, zero-server.** Two-QR exchange is canonical.
+   One-scan + server-return is not offered; it buys one gesture at the cost of a
+   server touch and an internet requirement for one party, which breaks the offline
+   guarantee without sufficient gain.
+
+2. **Status is shown at the moment of connecting.** That's the point. The badge
+   assertion is always included in the QR payload (not optional). Connecting and
+   sharing status are the same gesture.
+
+3. **One-gray copy: neutral routing-to-care, no alarm.** The exact line belongs in a
+   doc-21 copy pass before ship, but the direction is settled: "There is free testing
+   nearby" tone, pointing to care resources. Not a verdict, not a risk signal.
 
 ## Phasing
 
-- **v1:** offline two-QR exchange linking the two aliases + logging the encounter, the
-  unified show/scan screen, completion without an offline status snapshot (status
-  shown only if online and shared). Ship the "we don't know who you're connected to"
-  promise with it.
-- **v2:** the compact signed badge snapshot in the QR, so the both-blue moment works
-  fully offline.
+- **v1:** offline two-QR exchange, simultaneous show+scan screen, status shown at
+  completion (badge snapshot always in QR). Ship the "we don't know who you're
+  connected to" promise with it.
 - **Enhancement:** NFC tap on Android as a progressive enhancement over the scan.
 - **Out of scope (recorded above):** the native-only seamless paths.
 
