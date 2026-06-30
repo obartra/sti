@@ -20,7 +20,7 @@ describe("TrustBoundary", () => {
 
   it("labels what crosses each gap in plain words", () => {
     render(<TrustBoundary />);
-    expect(screen.getByText("encrypted, no name attached")).toBeInTheDocument();
+    expect(screen.getByText("encrypted")).toBeInTheDocument();
     expect(screen.getByText("what you shared")).toBeInTheDocument();
   });
 

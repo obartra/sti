@@ -46,10 +46,7 @@ const NODES: readonly SpineNode[] = [
 ];
 
 // What crosses each gap, in the user's words, never the mechanism.
-const CROSSINGS: readonly string[] = [
-  "encrypted, no name attached",
-  "what you shared",
-];
+const CROSSINGS: readonly string[] = ["encrypted", "what you shared"];
 
 function NodeBlock({ node }: { node: SpineNode }) {
   return (
