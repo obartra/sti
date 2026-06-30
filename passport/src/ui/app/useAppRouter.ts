@@ -139,52 +139,65 @@ function aliasRoute(pathname: string, hash: string): Route | null {
   return routeFromHash();
 }
 
+// Whether a screen owns its URL and must not be normalized away at mount: a shared
+// alias link (`/a/{id}` keyed OR keyless — rewriting it would clobber the `#k=` key
+// or drop the id), the public `/exposed` page, and a `/u/{name}` findable link (its
+// name lives in the path, not route state). The id-less a2-public ("see a sample" /
+// self-preview) carries no address, so it is not owned and normalizes to the root.
+function ownsUrl(route: Route): boolean {
+  if (route.screen === "exposed") return true;
+  if (route.screen === "u-resolve") return true;
+  return route.screen === "a2-public" && route.data?.id != null;
+}
+
+// Write the canonical URL for a screen, pushing a new history entry or replacing the
+// current one. Returns whether a push actually happened (it is a no-op when the URL
+// already matches), so the caller can keep its app-pushed depth count honest.
+function syncUrl(screen: Screen, mode: "push" | "replace"): boolean {
+  const target = canonicalUrl(screen);
+  if (window.location.pathname + window.location.hash === target) return false;
+  if (mode === "push") {
+    window.history.pushState(null, "", target);
+    return true;
+  }
+  window.history.replaceState(null, "", target);
+  return false;
+}
+
 export function useAppRouter(initial: Route = START): Router {
   const [route, setRoute] = useState<Route>(
     () => routeFromLocation() ?? initial,
   );
-  const [, setHistory] = useState<Route[]>([]);
   const [shareOpen, setShareOpen] = useState(false);
+  // The browser History is the single source of truth for back: every forward
+  // `go` pushes one entry, `jump` (a tab switch) replaces, and `back` is just
+  // `history.back()`. `depth` counts the entries this app pushed since mount, so
+  // `back` knows when there is somewhere of ours to return to versus when it would
+  // step off the site (a cold deep-link), in which case it falls home instead.
+  const depth = useRef(0);
 
-  // Reflect the current screen in the URL so it is shareable and refresh-stable,
-  // and so the browser back/forward buttons work: a real navigation pushes a history
-  // entry, while the first sync (normalizing the URL the app loaded at) replaces, so
-  // it never strands the user one extra Back press from leaving. While actually
-  // showing a shared link (a2-public carrying an id, keyed OR keyless), leave the URL
-  // alone: rewriting it would clobber the `#k=` key on a keyed link and drop the id
-  // on a keyless one, and the `/a/{id}` URL is already the canonical shareable
-  // address. The id-less a2-public (the "see a sample" demo, or a self-preview)
-  // carries no address, so it normalizes back to the hash-routed root.
+  // Mount-only URL normalization: replace the URL the app loaded at (e.g. a stale
+  // `/#a1-landing`, or a bare `/home`) with its canonical form, never pushing, so the
+  // user is never one extra Back press from leaving. Owned-URL screens are left
+  // exactly as loaded. After mount, `go`/`jump` own every URL write directly, so this
+  // never runs again (guarded on firstUrlSync).
   const firstUrlSync = useRef(true);
   useEffect(() => {
-    const onAliasLink = route.screen === "a2-public" && route.data?.id != null;
-    // Leave the canonical public /exposed URL alone too (it is the shared link).
-    if (onAliasLink || route.screen === "exposed") {
-      firstUrlSync.current = false;
-      return;
-    }
-    const target = canonicalUrl(route.screen);
-    // When the route changed because the user pressed Back/Forward, the location
-    // already equals the target (the popstate listener drove the change), so this is
-    // a no-op and never re-pushes.
-    if (window.location.pathname + window.location.hash !== target) {
-      if (firstUrlSync.current) {
-        window.history.replaceState(null, "", target);
-      } else {
-        window.history.pushState(null, "", target);
-      }
-    }
+    if (!firstUrlSync.current) return;
     firstUrlSync.current = false;
-  }, [route.screen, route.data]);
+    if (ownsUrl(route)) return;
+    syncUrl(route.screen, "replace");
+  }, [route]);
 
   // The browser back/forward buttons (and swipe gestures) change the URL without a
   // page load; re-derive the route from the new location so the app actually moves.
-  // The browser history is now authoritative for back, so reset the in-app stack.
+  // Any backward step decrements our pushed-entry count (floored at 0); forward steps
+  // are not surfaced anywhere in the UI, so they are not separately tracked.
   useEffect(() => {
     const onPop = () => {
+      depth.current = Math.max(0, depth.current - 1);
       // The bare root resolves to the landing (routeFromLocation returns null there),
       // mirroring the mount-time `routeFromLocation() ?? initial`.
-      setHistory([]);
       setRoute(routeFromLocation() ?? initial);
     };
     window.addEventListener("popstate", onPop);
@@ -205,24 +218,33 @@ export function useAppRouter(initial: Route = START): Router {
     applyPendingUpdate();
   }, [route.screen]);
 
-  const go = useCallback(
-    (screen: Screen, data?: RouteData) => {
-      setHistory((h) => [...h, route]);
-      setRoute({ screen, group: groupOf(screen), data: data ?? null });
-    },
-    [route],
-  );
+  const go = useCallback((screen: Screen, data?: RouteData) => {
+    // A real forward navigation: push exactly one history entry (no-op if we are
+    // already at that URL), then show the screen.
+    if (syncUrl(screen, "push")) depth.current += 1;
+    setRoute({ screen, group: groupOf(screen), data: data ?? null });
+  }, []);
 
   const back = useCallback(() => {
-    setHistory((h) => {
-      const prev = h[h.length - 1];
-      setRoute(prev ?? HOME);
-      return h.slice(0, -1);
-    });
+    if (depth.current > 0) {
+      // We pushed at least one entry of our own: let the browser pop it. The
+      // popstate listener decrements depth and re-derives the route, so back can
+      // never disagree with the URL (the old in-app-stack-vs-URL divergence).
+      window.history.back();
+    } else {
+      // Nothing of ours behind us (a cold deep-link): fall home rather than step
+      // off the site. Replace so a later Back still leaves cleanly.
+      syncUrl("home", "replace");
+      setRoute(HOME);
+    }
   }, []);
 
   const jump = useCallback((screen: Screen, group?: Group) => {
-    setHistory([]);
+    // Tabs / sidebar destinations are siblings, not a drill-down, so replace rather
+    // than push: Back never walks sideways through tabs. This becomes the new root
+    // of the session, so the app-pushed depth resets to zero.
+    syncUrl(screen, "replace");
+    depth.current = 0;
     setRoute({ screen, group: group ?? groupOf(screen), data: null });
   }, []);
 
