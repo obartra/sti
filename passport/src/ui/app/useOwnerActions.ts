@@ -1,5 +1,6 @@
 import { useCallback, type RefObject } from "react";
 import type {
+  AliasIdentity,
   ContactInvite,
   ContactLinkResult,
   OwnerProfile,
@@ -26,10 +27,12 @@ export interface OwnerActions {
   /** Persist which face the Home hero opens on (keeps avatar + sharing mode). */
   onSetHomeDefaultView: (view: "criteria" | "shared") => void;
   /** Mint a new per-contact link with a chosen lifetime (days, or null for
-   * until-revoked); resolves with the contact + URL. */
+   * until-revoked) and a face (anonymous, or the owner's name); resolves with the
+   * contact + URL. */
   onCreateContactLink: (
     label: string,
     durationMs: number | null,
+    identity: AliasIdentity,
   ) => Promise<ContactLinkResult>;
   /** Rename one contact link's local label (owner-only nickname; never shared). */
   onRenameContact: (id: string, label: string) => void;
@@ -101,13 +104,17 @@ export function useOwnerActions(
   const profile = useProfileActions(controller, sessionRef, setSession);
 
   const onCreateContactLink = useCallback(
-    async (label: string, durationMs: number | null) => {
+    async (
+      label: string,
+      durationMs: number | null,
+      identity: AliasIdentity,
+    ) => {
       const current = sessionRef.current;
       if (current === null) throw new Error("not signed in");
       const result = await controller.createContactLink(
         current,
         label,
-        "anonymous",
+        identity,
         durationMs,
       );
       sessionRef.current = result.session;

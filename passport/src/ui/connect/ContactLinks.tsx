@@ -7,9 +7,14 @@ import {
 } from "../../design/components/index.ts";
 import { Link, Trash, Dots } from "../../design/icons.tsx";
 import { AvatarCard } from "../onboarding/AvatarCard.tsx";
+import { IdentityChoiceRow } from "../share/ShareSheet.identity.tsx";
 import { DAY_MS } from "../../core/clock.ts";
 import { CreatedLink, IngestReturn } from "./ContactLinks.parts.tsx";
-import type { ContactInvite, ContactRecord } from "../../store/index.ts";
+import type {
+  AliasIdentity,
+  ContactInvite,
+  ContactRecord,
+} from "../../store/index.ts";
 
 /* ContactLinks: the owner's per-contact private links (doc 13). Each link is for
    one person, individually revocable, and expires on its own (default 7 days).
@@ -35,10 +40,12 @@ export interface ContactLinksProps {
   /** Now as epoch ms, for the expiry countdown. */
   now: number;
   /** Mint a new link for `label` with a chosen lifetime (ms from now, or null for
-   * until-revoked); resolves with the shareable URL. */
+   * until-revoked) and a face (anonymous, or the owner's name); resolves with the
+   * shareable URL. */
   onCreate: (
     label: string,
     durationMs: number | null,
+    identity: AliasIdentity,
   ) => Promise<{ url: string }>;
   onRevoke: (id: string) => void;
   /** Rename one link's local label (the owner-only nickname; never shared with the
@@ -49,6 +56,9 @@ export interface ContactLinksProps {
   onSetDuration: (id: string, durationMs: number | null) => void;
   /** Ingest a return link a contact sent back, completing the pending link. */
   onIngestReturn?: ((ret: ContactInvite) => void) | undefined;
+  /** Whether the owner has a display name to show: gates the "show my name" choice
+   * on the create card (with no name there is nothing to share). Defaults to false. */
+  canShowName?: boolean | undefined;
   /** Avatar editor entry: a live preview src and a handler to open the editor.
    * Private links are where a revealed avatar is actually seen (doc 19). */
   avatarSrc?: string | undefined;
@@ -64,11 +74,15 @@ function expiryLabel(expiresAt: number | null, now: number): string {
   return `Expires in ${days} days`;
 }
 
-// The "mint a new link" card: nickname, lifetime, and the create button, with an
-// inline error so the action never silently no-ops.
+// The "mint a new link" card: nickname, the face choice (when the owner has a name
+// to show), lifetime, and the create button, with an inline error so the action
+// never silently no-ops.
 function CreateCard({
   label,
   setLabel,
+  identity,
+  setIdentity,
+  canShowName,
   duration,
   setDuration,
   busy,
@@ -77,6 +91,9 @@ function CreateCard({
 }: {
   label: string;
   setLabel: (v: string) => void;
+  identity: AliasIdentity;
+  setIdentity: (v: AliasIdentity) => void;
+  canShowName: boolean;
   duration: string;
   setDuration: (v: string) => void;
   busy: boolean;
@@ -93,6 +110,13 @@ function CreateCard({
         value={label}
         onChange={(e) => setLabel(e.target.value)}
         maxLength={64}
+      />
+      {/* The face this one link shows (doc 15): anonymous by default, or the owner's
+          name when they choose to. Hidden when there is no name to show. */}
+      <IdentityChoiceRow
+        choice={identity}
+        hasName={canShowName}
+        onChange={setIdentity}
       />
       <div
         style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-subtle)" }}
@@ -131,10 +155,12 @@ export function ContactLinks({
   onRename,
   onSetDuration,
   onIngestReturn,
+  canShowName = false,
   avatarSrc,
   onEditAvatar,
 }: ContactLinksProps): React.ReactElement {
   const [label, setLabel] = useState("");
+  const [identity, setIdentity] = useState<AliasIdentity>("anonymous");
   const [duration, setDuration] = useState(DEFAULT_DURATION);
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<string | null>(null);
@@ -145,7 +171,7 @@ export function ContactLinks({
     setBusy(true);
     setCreated(null);
     setError(null);
-    void onCreate(label.trim(), durationMsFor(duration))
+    void onCreate(label.trim(), durationMsFor(duration), identity)
       .then((r) => {
         setCreated(r.url);
         setLabel("");
@@ -194,6 +220,9 @@ export function ContactLinks({
       <CreateCard
         label={label}
         setLabel={setLabel}
+        identity={identity}
+        setIdentity={setIdentity}
+        canShowName={canShowName}
         duration={duration}
         setDuration={setDuration}
         busy={busy}

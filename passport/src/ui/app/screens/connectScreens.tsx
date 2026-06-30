@@ -45,6 +45,7 @@ export const connectRenderers: ScreenRenderers = {
       onRevoke={onRevokeContact}
       onSetDuration={onSetContactDuration}
       onIngestReturn={onIngestContactReturn}
+      canShowName={owner.handle !== undefined && owner.handle !== ""}
       avatarSrc={avatarSrc(owner.avatar)}
       onEditAvatar={() => nav.go("avatar-edit")}
     />

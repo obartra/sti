@@ -118,6 +118,54 @@ describe("ContactLinks", () => {
     expect(onSetDuration).toHaveBeenCalledWith(ana.id, null);
   });
 
+  it("mints anonymously by default", async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn(() => Promise.resolve({ url: "" }));
+    render(
+      <ContactLinks
+        contacts={[]}
+        now={19_000}
+        onCreate={onCreate}
+        onRevoke={noop}
+        onSetDuration={noop}
+        canShowName
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /Create a link/ }));
+    expect(onCreate).toHaveBeenCalledWith("", 7 * DAY_MS, "anonymous");
+  });
+
+  it("mints with the owner's name when they choose to show it", async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn(() => Promise.resolve({ url: "" }));
+    render(
+      <ContactLinks
+        contacts={[]}
+        now={19_000}
+        onCreate={onCreate}
+        onRevoke={noop}
+        onSetDuration={noop}
+        canShowName
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Show my name" }));
+    await user.click(screen.getByRole("button", { name: /Create a link/ }));
+    expect(onCreate).toHaveBeenCalledWith("", 7 * DAY_MS, "main");
+  });
+
+  it("hides the show-my-name choice when the owner has no name", () => {
+    render(
+      <ContactLinks
+        contacts={[]}
+        now={19_000}
+        onCreate={noCreate}
+        onRevoke={noop}
+        onSetDuration={noop}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Show my name" })).toBeNull();
+  });
+
   it("renames a link's local label from its options menu", async () => {
     const user = userEvent.setup();
     const onRename = vi.fn();

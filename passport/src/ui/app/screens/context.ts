@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Nav } from "../useAppRouter.ts";
 import type { RouteData, Screen } from "../routes.ts";
 import type {
+  AliasIdentity,
   AliasRecord,
   CircleRecord,
   ContactInvite,
@@ -72,10 +73,12 @@ export interface ScreenCtx {
   /** The owner's per-contact links (newest last); empty logged out. */
   contacts: ContactRecord[];
   /** Mint a new per-contact link for `label` with a chosen lifetime (days, or
-   * null for until-revoked); resolves with the contact + URL. */
+   * null for until-revoked) and a face (anonymous, or the owner's name); resolves
+   * with the contact + URL. */
   onCreateContactLink: (
     label: string,
     durationMs: number | null,
+    identity: AliasIdentity,
   ) => Promise<ContactLinkResult>;
   /** Rename one contact link's local label (owner-only nickname; never shared). */
   onRenameContact: (id: string, label: string) => void;
