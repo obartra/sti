@@ -23,7 +23,8 @@ export const PARTNER_NOTIFY_PROMPT = "A recent contact suggests getting tested";
 export const CREATE_ACCOUNT_CTA = "Create your own passport";
 
 /**
- * The privacy screen's name: its own title, the home quick-action label, and the
+ * The settings screen's name: its own title, the home quick-action label, and the
  * references to it from other screens. One source so a rename lands everywhere.
+ * (Formerly "Privacy and sharing"; the rest of the app already calls it Settings.)
  */
-export const PRIVACY_SCREEN_NAME = "Privacy and sharing";
+export const SETTINGS_SCREEN_NAME = "Settings";

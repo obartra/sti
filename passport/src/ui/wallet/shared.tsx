@@ -1,7 +1,7 @@
 import { Matrix } from "../../lib/qr.tsx";
 import { Medallion, blueHeadline, tagsFor } from "../badge-card.tsx";
 import type { BadgeState, ProtectionLabel, Route } from "../badge-card.tsx";
-import { PRIVACY_SCREEN_NAME } from "../../copy/canonical.ts";
+import { SETTINGS_SCREEN_NAME } from "../../copy/canonical.ts";
 
 /* Wallet, Apple Wallet, Google Wallet & a standalone shareable card for the
    passport. Faithful port of comps-reference/app/wallet.jsx, implementing the
@@ -79,12 +79,12 @@ export const COPY = {
   trustLive: [
     "The pass shows a status and a code, no test names, no dates.",
     "Blue only ever means a fresh, current read. If it can’t refresh, it quietly shows gray, never an old status.",
-    `Lose your device? Make the link private from ${PRIVACY_SCREEN_NAME} and the live pass becomes gray.`,
+    `Lose your device? Make the link private from ${SETTINGS_SCREEN_NAME} and the live pass becomes gray.`,
   ],
   trustQr: [
     "The pass shows a code and your handle, no status, no test names, no dates.",
     "What a scanner sees is decided when they open the link, never by the pass itself.",
-    `Lose your device? Rotate the link from ${PRIVACY_SCREEN_NAME} and the code stops working.`,
+    `Lose your device? Rotate the link from ${SETTINGS_SCREEN_NAME} and the code stops working.`,
   ],
 } as const;
 

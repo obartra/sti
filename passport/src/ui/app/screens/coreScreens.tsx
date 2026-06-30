@@ -192,6 +192,7 @@ export const coreRenderers: ScreenRenderers = {
     setOwnerState,
     onDeleteAccount,
     onLogOut,
+    onSetName,
     aliases,
     contacts,
     onRevokeAlias,
@@ -210,6 +211,8 @@ export const coreRenderers: ScreenRenderers = {
       onRevokeAlias={onRevokeAlias}
       onRevokeContact={onRevokeContact}
       push={push}
+      name={owner.handle ?? null}
+      onSetName={isLoggedIn ? onSetName : undefined}
       avatarSrc={avatarSrc(owner.avatar)}
       onEditAvatar={isLoggedIn ? () => nav.go("avatar-edit") : undefined}
       onViewAs={() => nav.go("a2-public", { self: true })}

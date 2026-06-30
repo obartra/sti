@@ -51,6 +51,56 @@ describe("Privacy avatar editor entry (doc 19 slice 5)", () => {
   });
 });
 
+describe("Privacy name editor", () => {
+  it("saves an edited local display name", async () => {
+    const onSetName = vi.fn();
+    render(
+      <Privacy
+        ownerState={INITIAL_OWNER_STATE}
+        setOwnerState={() => undefined}
+        name="robin"
+        onSetName={onSetName}
+      />,
+    );
+    const input = screen.getByPlaceholderText("Pick a display name");
+    // Save is disabled until the value changes.
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save).toBeDisabled();
+    await userEvent.clear(input);
+    await userEvent.type(input, "robin2");
+    await userEvent.click(save);
+    expect(onSetName).toHaveBeenCalledWith("robin2");
+  });
+
+  it("clears the name to null on an empty save", async () => {
+    const onSetName = vi.fn();
+    render(
+      <Privacy
+        ownerState={INITIAL_OWNER_STATE}
+        setOwnerState={() => undefined}
+        name="robin"
+        onSetName={onSetName}
+      />,
+    );
+    await userEvent.clear(screen.getByPlaceholderText("Pick a display name"));
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSetName).toHaveBeenCalledWith(null);
+  });
+
+  it("hides the name editor when no setter is provided", () => {
+    render(
+      <Privacy
+        ownerState={INITIAL_OWNER_STATE}
+        setOwnerState={() => undefined}
+        name="robin"
+      />,
+    );
+    expect(
+      screen.queryByPlaceholderText("Pick a display name"),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe("Privacy findable section (doc 17)", () => {
   const ops = {
     register: () => Promise.resolve("registered" as const),

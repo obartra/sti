@@ -9,6 +9,7 @@ import type { OwnerState } from "../../core/badge.ts";
 import type { AliasRecord, ContactRecord } from "../../store/index.ts";
 import type { PushControls } from "../app/usePush.ts";
 import { LiveLinks } from "./Privacy.aliases.tsx";
+import { NameCard } from "./Privacy.name.tsx";
 import { FindableName, type FindableOps } from "../findable/FindableName.tsx";
 import { ShareLinkGuide } from "../findable/ShareLinkGuide.tsx";
 import { AvatarCard } from "../onboarding/AvatarCard.tsx";
@@ -36,6 +37,11 @@ export interface PrivacyProps {
   onViewPrivacyPolicy?: (() => void) | undefined;
   /** Open the terms page (doc 23). */
   onViewTerms?: (() => void) | undefined;
+  /** The owner's current local display name, or null when none is set. */
+  name?: string | null | undefined;
+  /** Persist a new (or cleared) local display name; absent hides the name editor
+   * (e.g. logged-out preview / Storybook). */
+  onSetName?: ((name: string | null) => void) | undefined;
   /** Live preview src for the current avatar; with onEditAvatar, shows the editor entry. */
   avatarSrc?: string | undefined;
   onEditAvatar?: (() => void) | undefined;
@@ -174,6 +180,8 @@ export function Privacy({
   onLogOut,
   onViewPrivacyPolicy,
   onViewTerms,
+  name = null,
+  onSetName,
   avatarSrc,
   onEditAvatar,
   now,
@@ -208,6 +216,8 @@ export function Privacy({
           onViewPrivacyPolicy={onViewPrivacyPolicy}
           onViewTerms={onViewTerms}
         />
+
+        {onSetName && <NameCard name={name} onSave={onSetName} />}
 
         {onEditAvatar && avatarSrc !== undefined && (
           <AvatarCard src={avatarSrc} onEdit={onEditAvatar} />

@@ -2,6 +2,7 @@ import { useCallback, type RefObject } from "react";
 import type {
   ContactInvite,
   ContactLinkResult,
+  OwnerProfile,
   OwnerSession,
   SessionController,
 } from "../../store/index.ts";
@@ -19,6 +20,9 @@ export interface OwnerActions {
   onDeleteAccount: () => void;
   /** Persist a new account-wide avatar (keeps the current sharing mode). */
   onSetAvatar: (avatar: AvatarConfig) => void;
+  /** Persist the owner's local display name (keeps avatar + sharing mode); pass
+   * null to clear it back to no name. Owner-facing only, never sent to a viewer. */
+  onSetName: (name: string | null) => void;
   /** Mint a new per-contact link with a chosen lifetime (days, or null for
    * until-revoked); resolves with the contact + URL. */
   onCreateContactLink: (
@@ -88,7 +92,7 @@ export function useOwnerActions(
     browserForgetPendingKnocks();
   }, [controller, sessionRef, setSession]);
 
-  const { onSetAvatar } = useProfileActions(controller, sessionRef, setSession);
+  const profile = useProfileActions(controller, sessionRef, setSession);
 
   const onCreateContactLink = useCallback(
     async (label: string, durationMs: number | null) => {
@@ -188,13 +192,13 @@ export function useOwnerActions(
 
   return {
     onDeleteAccount,
-    onSetAvatar,
     onCreateContactLink,
     onRevokeContact,
     onSetContactDuration,
     onRevokeAlias,
     onAcceptContactInvite,
     onIngestContactReturn,
+    ...profile,
     ...circle,
     ...findable,
   };
@@ -240,14 +244,16 @@ function useProfileActions(
   controller: SessionController,
   sessionRef: RefObject<OwnerSession | null>,
   setSession: (s: OwnerSession | null) => void,
-): Pick<OwnerActions, "onSetAvatar"> {
-  const onSetAvatar = useCallback(
-    (avatar: AvatarConfig) => {
+): Pick<OwnerActions, "onSetAvatar" | "onSetName"> {
+  // Persist a profile edit and fold the re-sealed blob back into the session.
+  // setProfile leaves any field the profile omits unchanged (doc 15), so each
+  // editor passes only what it touches.
+  const persist = useCallback(
+    (profile: OwnerProfile) => {
       const current = sessionRef.current;
       if (current === null) return;
-      // Keep the current sharing mode; only the avatar changes.
       void controller
-        .setProfile(current, { avatar, sharingMode: current.blob.sharingMode })
+        .setProfile(current, profile)
         .then((updated) => {
           sessionRef.current = updated;
           setSession(updated);
@@ -256,7 +262,29 @@ function useProfileActions(
     },
     [controller, sessionRef, setSession],
   );
-  return { onSetAvatar };
+  const onSetAvatar = useCallback(
+    (avatar: AvatarConfig) => {
+      const current = sessionRef.current;
+      if (current === null) return;
+      // Keep the current sharing mode; only the avatar changes.
+      persist({ avatar, sharingMode: current.blob.sharingMode });
+    },
+    [persist, sessionRef],
+  );
+  const onSetName = useCallback(
+    (name: string | null) => {
+      const current = sessionRef.current;
+      if (current === null) return;
+      // Keep avatar + sharing mode; only the local display name changes.
+      persist({
+        avatar: current.blob.avatar,
+        sharingMode: current.blob.sharingMode,
+        handle: name,
+      });
+    },
+    [persist, sessionRef],
+  );
+  return { onSetAvatar, onSetName };
 }
 
 // The circle mutations (create / rename+remember-members / delete), split out so

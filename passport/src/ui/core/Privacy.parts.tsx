@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import type { CondomPreference, OwnerState } from "../../core/badge.ts";
-import { PRIVACY_SCREEN_NAME } from "../../copy/canonical.ts";
+import { SETTINGS_SCREEN_NAME } from "../../copy/canonical.ts";
 
 // Privacy and sharing: the card-attribute + controls + danger state. The live link
 // list is the real LiveLinks (Privacy.aliases.tsx); this module holds only what is
@@ -9,7 +9,7 @@ import { PRIVACY_SCREEN_NAME } from "../../copy/canonical.ts";
 // once LiveLinks replaced it; the public-name surface is doc 17, not built yet, so
 // nothing here fakes it.)
 export const COPY = {
-  title: PRIVACY_SCREEN_NAME,
+  title: SETTINGS_SCREEN_NAME,
   avatarTitle: "Your avatar",
   avatarSub: "The look you can choose to show on a link.",
   avatarEdit: "Edit",

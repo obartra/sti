@@ -10,15 +10,19 @@ const sampleAlias = (seed: string, isPublic: boolean) => ({
   isPublic,
 });
 
-// C6 privacy & sharing: the unified live-links list (public/casual aliases +
-// per-contact links, each revocable), card attributes, controls, danger zone.
+// C6 settings: the name editor, the unified live-links list (public/casual
+// aliases + per-contact links, each revocable), card attributes, controls,
+// danger zone.
 const meta: Meta<typeof Privacy> = {
-  title: "Passport/Core/Privacy & sharing",
+  title: "Passport/Core/Settings",
   component: Privacy,
   // A fresh owner; the card-attribute toggles read from and write to this state.
   args: {
     ownerState: INITIAL_OWNER_STATE,
     setOwnerState: () => undefined,
+    // The local display name editor (logged-in only in the app).
+    name: "robin",
+    onSetName: () => undefined,
     // Pin the retention-notice reference instant so the "kept until" date is stable
     // in the visual baseline (mid-June 2025 -> kept until June 2027).
     now: 1_750_000_000_000,
