@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   actOnVanityName,
+  getAdminMetrics,
   listAdminAudit,
   listAdminReports,
   pingAdmin,
@@ -106,6 +107,70 @@ describe("listAdminReports", () => {
       .mockResolvedValue(new Response("not json", { status: 200 }));
     expect(
       (await listAdminReports("https://api.example", "t", badBody)).kind,
+    ).toBe("error");
+  });
+});
+
+describe("getAdminMetrics", () => {
+  it("returns the metrics on 200, defaulting missing fields to 0", async () => {
+    const metrics = {
+      accounts: 12,
+      aliases: 34,
+      knocks: 5,
+      sendQueueDepth: 1,
+      dbSizeBytes: 4096,
+      pendingReports: 2,
+    };
+    const ok = vi.fn<FetchLike>().mockResolvedValue(jsonResp(200, metrics));
+    expect(await getAdminMetrics("https://api.example", "t", ok)).toEqual({
+      kind: "ok",
+      metrics,
+    });
+    expect(ok).toHaveBeenCalledWith(
+      "https://api.example/admin/metrics",
+      expect.objectContaining({
+        method: "GET",
+        headers: { Authorization: "Bearer t" },
+      }),
+    );
+
+    // A partial body fills the absent counts with 0 (never NaN in the UI).
+    const partial = vi
+      .fn<FetchLike>()
+      .mockResolvedValue(jsonResp(200, { accounts: 7 }));
+    expect(await getAdminMetrics("https://api.example", "t", partial)).toEqual({
+      kind: "ok",
+      metrics: {
+        accounts: 7,
+        aliases: 0,
+        knocks: 0,
+        sendQueueDepth: 0,
+        dbSizeBytes: 0,
+        pendingReports: 0,
+      },
+    });
+  });
+
+  it("maps 401 to unauthorized and other failures to error", async () => {
+    const codes: [number, "unauthorized" | "error"][] = [
+      [401, "unauthorized"],
+      [503, "error"],
+    ];
+    for (const [status, kind] of codes) {
+      const f = vi.fn<FetchLike>().mockResolvedValue(jsonResp(status, {}));
+      expect((await getAdminMetrics("https://api.example", "t", f)).kind).toBe(
+        kind,
+      );
+    }
+    const netDown = vi.fn<FetchLike>().mockRejectedValue(new Error("offline"));
+    expect(
+      (await getAdminMetrics("https://api.example", "t", netDown)).kind,
+    ).toBe("error");
+    const badBody = vi
+      .fn<FetchLike>()
+      .mockResolvedValue(new Response("not json", { status: 200 }));
+    expect(
+      (await getAdminMetrics("https://api.example", "t", badBody)).kind,
     ).toBe("error");
   });
 });

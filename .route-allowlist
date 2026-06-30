@@ -19,4 +19,3 @@ GET /{$}                           public landing HTML served to browsers, never
 POST /admin/account/{id}/disable   operator-only admin action via the bearer; no admin-console caller (doc 20 A3)
 POST /admin/alias/{id}/revoke      operator-only admin action via the bearer; no admin-console caller (doc 20 A3)
 GET /admin/lookup/{id}             operator-only admin metadata read via the bearer; no admin-console caller (doc 20 A3)
-GET /admin/metrics                 aggregate service totals via the bearer; the metrics panel that calls it is a later slice (doc 20 A5)
