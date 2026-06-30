@@ -10,6 +10,7 @@ import type { AliasRecord, ContactRecord } from "../../store/index.ts";
 import type { PushControls } from "../app/usePush.ts";
 import { LiveLinks } from "./Privacy.aliases.tsx";
 import { NameCard } from "./Privacy.name.tsx";
+import { HomeViewCard } from "./Privacy.homeview.tsx";
 import { FindableName, type FindableOps } from "../findable/FindableName.tsx";
 import { ShareLinkGuide } from "../findable/ShareLinkGuide.tsx";
 import { AvatarCard } from "../onboarding/AvatarCard.tsx";
@@ -42,6 +43,10 @@ export interface PrivacyProps {
   /** Persist a new (or cleared) local display name; absent hides the name editor
    * (e.g. logged-out preview / Storybook). */
   onSetName?: ((name: string | null) => void) | undefined;
+  /** Which face Home opens on; defaults to "criteria". */
+  homeDefaultView?: "criteria" | "shared" | undefined;
+  /** Persist the Home default-face preference; absent hides the control. */
+  onSetHomeDefaultView?: ((view: "criteria" | "shared") => void) | undefined;
   /** Live preview src for the current avatar; with onEditAvatar, shows the editor entry. */
   avatarSrc?: string | undefined;
   onEditAvatar?: (() => void) | undefined;
@@ -166,6 +171,37 @@ function RetentionNote({ now }: { now: number }) {
   );
 }
 
+// The owner-only identity + preference cards (name, Home default face, avatar),
+// each shown only when its setter is wired. Split out so Privacy stays within its
+// complexity ceiling.
+function OwnerCards({
+  name,
+  onSetName,
+  homeDefaultView,
+  onSetHomeDefaultView,
+  avatarSrc,
+  onEditAvatar,
+}: {
+  name: string | null;
+  onSetName?: ((name: string | null) => void) | undefined;
+  homeDefaultView: "criteria" | "shared";
+  onSetHomeDefaultView?: ((view: "criteria" | "shared") => void) | undefined;
+  avatarSrc?: string | undefined;
+  onEditAvatar?: (() => void) | undefined;
+}) {
+  return (
+    <>
+      {onSetName && <NameCard name={name} onSave={onSetName} />}
+      {onSetHomeDefaultView && (
+        <HomeViewCard value={homeDefaultView} onChange={onSetHomeDefaultView} />
+      )}
+      {onEditAvatar && avatarSrc !== undefined && (
+        <AvatarCard src={avatarSrc} onEdit={onEditAvatar} />
+      )}
+    </>
+  );
+}
+
 export function Privacy({
   ownerState,
   setOwnerState,
@@ -182,6 +218,8 @@ export function Privacy({
   onViewTerms,
   name = null,
   onSetName,
+  homeDefaultView = "criteria",
+  onSetHomeDefaultView,
   avatarSrc,
   onEditAvatar,
   now,
@@ -217,11 +255,14 @@ export function Privacy({
           onViewTerms={onViewTerms}
         />
 
-        {onSetName && <NameCard name={name} onSave={onSetName} />}
-
-        {onEditAvatar && avatarSrc !== undefined && (
-          <AvatarCard src={avatarSrc} onEdit={onEditAvatar} />
-        )}
+        <OwnerCards
+          name={name}
+          onSetName={onSetName}
+          homeDefaultView={homeDefaultView}
+          onSetHomeDefaultView={onSetHomeDefaultView}
+          avatarSrc={avatarSrc}
+          onEditAvatar={onEditAvatar}
+        />
 
         {/* One unified list of every live link (public/casual aliases + contact
             links), each individually revocable. */}

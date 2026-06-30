@@ -23,6 +23,9 @@ const meta: Meta<typeof Privacy> = {
     // The local display name editor (logged-in only in the app).
     name: "robin",
     onSetName: () => undefined,
+    // The Home default-face preference (logged-in only in the app).
+    homeDefaultView: "criteria",
+    onSetHomeDefaultView: () => undefined,
     // Pin the retention-notice reference instant so the "kept until" date is stable
     // in the visual baseline (mid-June 2025 -> kept until June 2027).
     now: 1_750_000_000_000,

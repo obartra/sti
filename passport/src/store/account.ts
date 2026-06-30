@@ -46,6 +46,10 @@ export interface OwnerProfile {
    * pass a string to set it, or null / "" to clear it back to no name.
    */
   readonly handle?: string | null | undefined;
+  /**
+   * The Home hero's default face. Omit to leave it unchanged; a value sets it.
+   */
+  readonly homeDefaultView?: "criteria" | "shared" | undefined;
 }
 
 export interface NewAccount {
@@ -495,6 +499,9 @@ export function createAccountManager(
         ...applyProfileName(blob, profile.handle),
         avatar: profile.avatar,
         sharingMode: profile.sharingMode,
+        ...(profile.homeDefaultView !== undefined
+          ? { homeDefaultView: profile.homeDefaultView }
+          : {}),
       };
       await sync.save(root, next);
       // No republish: the account avatar/handle is the owner's main identity, NOT
