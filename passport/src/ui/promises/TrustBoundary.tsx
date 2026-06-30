@@ -23,9 +23,9 @@ interface SpineNode {
 
 const NODES: readonly SpineNode[] = [
   {
-    id: "phone",
+    id: "device",
     icon: <Phone size={20} />,
-    title: "Your phone",
+    title: "Your device",
     body: "Your results and who you've shared with live here, encrypted. The key that unlocks them stays with you.",
     inside: true,
   },
@@ -47,8 +47,8 @@ const NODES: readonly SpineNode[] = [
 
 // What crosses each gap, in the user's words, never the mechanism.
 const CROSSINGS: readonly string[] = [
-  "encrypted, with no name and no key",
-  "a simple card",
+  "encrypted, no name attached",
+  "what you shared",
 ];
 
 function NodeBlock({ node }: { node: SpineNode }) {
@@ -186,8 +186,8 @@ export function TrustBoundary({ wide }: { wide?: boolean }) {
           color: "var(--text-body)",
         }}
       >
-        Everything that means something happens on your phone. We only ever hold
-        a locked copy.
+        Everything that means something happens on your device. We only ever
+        hold a locked copy.
       </p>
       <div
         style={{

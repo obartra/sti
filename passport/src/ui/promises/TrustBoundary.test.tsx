@@ -10,7 +10,7 @@ describe("TrustBoundary", () => {
   it("renders the three nodes of the spine", () => {
     render(<TrustBoundary />);
     for (const title of [
-      "Your phone",
+      "Your device",
       "Our server",
       "Someone you share with",
     ]) {
@@ -20,10 +20,8 @@ describe("TrustBoundary", () => {
 
   it("labels what crosses each gap in plain words", () => {
     render(<TrustBoundary />);
-    expect(
-      screen.getByText("encrypted, with no name and no key"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("a simple card")).toBeInTheDocument();
+    expect(screen.getByText("encrypted, no name attached")).toBeInTheDocument();
+    expect(screen.getByText("what you shared")).toBeInTheDocument();
   });
 
   it("states the blind-store guarantee, that we hold only a locked copy", () => {
