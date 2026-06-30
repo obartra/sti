@@ -332,3 +332,28 @@ be descriptive.
 - **Sequencing:** the Settings section, the "be scanned" half, and the Home toggle
   are self-contained; the Groups consolidation and the nav change are larger and
   follow once this shape is signed off.
+
+## Copy that reworks with each build
+
+User-facing strings that are accurate to today's code but describe the old model, so
+they change **as part of building each feature** (rewording them earlier would make the
+copy contradict the screen that is still there). Tracked here so none is forgotten:
+
+- **Avatar removal:** `onboarding/claimCopy.ts` ("Your face", "this is your avatar",
+  the `anonNote` about your avatar appearing on a link), `onboarding/AvatarBuilder.tsx`
+  alt text, and `core/Privacy.parts.tsx` ("Your avatar" / "Edit"). Reframe to per-share
+  faces (anonymous by default, or show your name); the owner has no avatar.
+- **Groups (drop the floor, rename from circles):** `circles/CircleCreate.tsx` and
+  `circles/CircleDetail.tsx` ("circle" wording, the `floorNote` / `aggSmall` 5-person
+  floor copy). Reword to one kind of group, membership is the sharing, no floor.
+- **Privacy to Settings:** the `PRIVACY_SCREEN_NAME` constant and the screen title /
+  nav label.
+- **Recovery + optional password:** the recovery copy stays phrase-only until the
+  password envelope ships, then gains an honest "convenience, not the equal of the
+  phrase" line (never overclaiming).
+
+Already corrected (copy that was wrong against shipped behaviour): the contact-prune
+line, the name-availability message, and the share-sheet identity warning. Two surfaces
+to re-verify directly when next touched: the rendered privacy-policy page (the doc 23
+spec had a wrong expiry line) and the privacy promises list (no promise should assert
+link expiry or findability in a way the new model changes).
