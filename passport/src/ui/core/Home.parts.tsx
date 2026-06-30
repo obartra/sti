@@ -12,7 +12,7 @@ import {
   Bell,
   Check,
 } from "../../design/icons.tsx";
-import { PRIVACY_SCREEN_NAME } from "../../copy/canonical.ts";
+import { SETTINGS_SCREEN_NAME } from "../../copy/canonical.ts";
 
 export const COPY = {
   home: {
@@ -23,7 +23,7 @@ export const COPY = {
     report: "Add a result",
     viewAs: "See what others see",
     viewAsSub: "Preview your profile as a visitor",
-    privacy: PRIVACY_SCREEN_NAME,
+    privacy: SETTINGS_SCREEN_NAME,
     nextDue: "Next test",
     remind: "Remind me",
     remindOn: "Reminder on",

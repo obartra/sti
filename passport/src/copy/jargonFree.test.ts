@@ -6,7 +6,7 @@
 // user reads, so this fails if a banned word appears in any imported copy module.
 //
 // SCOPE: this covers copy that is exported as a plain, importable table. Covered here:
-//   - src/copy/canonical.ts            (PARTNER_NOTIFY_PROMPT, CREATE_ACCOUNT_CTA, PRIVACY_SCREEN_NAME)
+//   - src/copy/canonical.ts            (PARTNER_NOTIFY_PROMPT, CREATE_ACCOUNT_CTA, SETTINGS_SCREEN_NAME)
 //   - src/ui/connect/copy.ts           (COPY)
 //   - src/ui/onboarding/claimCopy.ts   (COPY)
 //   - src/ui/onboarding/recovery.copy.ts (COPY)
@@ -22,7 +22,7 @@ import { describe, it, expect } from "vitest";
 import {
   PARTNER_NOTIFY_PROMPT,
   CREATE_ACCOUNT_CTA,
-  PRIVACY_SCREEN_NAME,
+  SETTINGS_SCREEN_NAME,
 } from "./canonical.ts";
 import { COPY as CONNECT_COPY } from "../ui/connect/copy.ts";
 import { COPY as CLAIM_COPY } from "../ui/onboarding/claimCopy.ts";
@@ -58,7 +58,7 @@ function strings(
 const ALL: [string, string][] = [
   ...strings("canonical.PARTNER_NOTIFY_PROMPT", PARTNER_NOTIFY_PROMPT),
   ...strings("canonical.CREATE_ACCOUNT_CTA", CREATE_ACCOUNT_CTA),
-  ...strings("canonical.PRIVACY_SCREEN_NAME", PRIVACY_SCREEN_NAME),
+  ...strings("canonical.SETTINGS_SCREEN_NAME", SETTINGS_SCREEN_NAME),
   ...strings("connect.COPY", CONNECT_COPY),
   ...strings("claim.COPY", CLAIM_COPY),
   ...strings("recovery.COPY", RECOVERY_COPY),

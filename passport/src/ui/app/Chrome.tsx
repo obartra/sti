@@ -47,6 +47,7 @@ export interface ChromeProps {
   onShareDurationChange: (durationMs: number | null) => void;
   onDeleteAccount: () => void;
   onSetAvatar: ScreenCtx["onSetAvatar"];
+  onSetName: ScreenCtx["onSetName"];
   knockCount: number;
   refreshKnocks: () => void;
   canApproveKnocks: boolean;
@@ -165,6 +166,7 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     keepSignedIn: props.keepSignedIn,
     onKeepSignedInChange: props.onKeepSignedInChange,
     onSetAvatar: props.onSetAvatar,
+    onSetName: props.onSetName,
     knockCount: props.knockCount,
     refreshKnocks: props.refreshKnocks,
     canApproveKnocks: props.canApproveKnocks,

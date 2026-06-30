@@ -40,6 +40,12 @@ import { normalizeCircleMembers } from "./circles.ts";
 export interface OwnerProfile {
   readonly avatar: AccountBlob["avatar"];
   readonly sharingMode: SharingMode;
+  /**
+   * The owner's local display name (the account `handle`), edited from Settings.
+   * Omit the key to leave the existing name untouched (the avatar-only edit path);
+   * pass a string to set it, or null / "" to clear it back to no name.
+   */
+  readonly handle?: string | null | undefined;
 }
 
 export interface NewAccount {
@@ -136,6 +142,24 @@ function freshBlob(handle?: string): AccountBlob {
     avatar: DEFAULT_AVATAR,
     sharingMode: "link",
   };
+}
+
+// Apply a profile edit's optional local display name to a blob. `undefined` leaves
+// the existing name untouched (the avatar-only edit path); `null` or "" clears it
+// (omit the key, never store ""); a string sets it, validated like create() so a
+// bad value can't seal fine and then throw on the next parseAccountBlob.
+function applyProfileName(
+  blob: AccountBlob,
+  handle: string | null | undefined,
+): AccountBlob {
+  if (handle === undefined) return blob;
+  if (handle === "" || handle === null) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { handle: _drop, ...rest } = blob;
+    return rest;
+  }
+  if (!isValidHandle(handle)) throw new Error("setProfile: invalid handle");
+  return { ...blob, handle };
 }
 
 // Drop a contact and strip it from every circle, so no circle dangles a member
@@ -468,7 +492,7 @@ export function createAccountManager(
         throw new Error("setProfile: no account exists for this key");
       }
       const next: AccountBlob = {
-        ...blob,
+        ...applyProfileName(blob, profile.handle),
         avatar: profile.avatar,
         sharingMode: profile.sharingMode,
       };

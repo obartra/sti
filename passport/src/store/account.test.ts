@@ -358,6 +358,60 @@ describe("account manager", () => {
     ).rejects.toThrow();
   });
 
+  it("setProfile edits the local display name: set, clear, and leave-unchanged", async () => {
+    const accounts = createAccountManager(fakeAccountApi());
+    const created = await accounts.create("robin");
+    const avatar = created.blob.avatar;
+    const sharingMode = created.blob.sharingMode;
+
+    // No handle key: the name is left untouched (the avatar-only edit path).
+    const kept = await accounts.setProfile(created.root, {
+      avatar,
+      sharingMode,
+    });
+    expect(kept.handle).toBe("robin");
+
+    // A string sets it.
+    const renamed = await accounts.setProfile(created.root, {
+      avatar,
+      sharingMode,
+      handle: "robin2",
+    });
+    expect(renamed.handle).toBe("robin2");
+
+    // null clears it back to no name, omitting the key (never storing "").
+    const cleared = await accounts.setProfile(created.root, {
+      avatar,
+      sharingMode,
+      handle: null,
+    });
+    expect(cleared.handle).toBeUndefined();
+    expect("handle" in cleared).toBe(false);
+
+    // "" clears it too.
+    await accounts.setProfile(created.root, {
+      avatar,
+      sharingMode,
+      handle: "x",
+    });
+    const clearedEmpty = await accounts.setProfile(created.root, {
+      avatar,
+      sharingMode,
+      handle: "",
+    });
+    expect("handle" in clearedEmpty).toBe(false);
+
+    // An invalid name (over the 64-char limit) is rejected at write time, like
+    // create()'s guard, so it can't seal fine and then throw on the next parse.
+    await expect(
+      accounts.setProfile(created.root, {
+        avatar,
+        sharingMode,
+        handle: "x".repeat(65),
+      }),
+    ).rejects.toThrow();
+  });
+
   it("setFindable sets then clears the registration (clear omits the key)", async () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
