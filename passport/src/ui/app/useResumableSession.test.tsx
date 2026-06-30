@@ -1,5 +1,5 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { useResumableSession } from "./useResumableSession.ts";
 import type { OwnerSession, SessionController } from "../../store/index.ts";
 import type { Nav } from "./useAppRouter.ts";
@@ -51,12 +51,27 @@ function setup(resumed: OwnerSession | null = null) {
 }
 
 describe("useResumableSession", () => {
+  // routeFromLocation reads window.location; tests that deep-link must restore it
+  // so the default-root cases below still resolve to the landing.
+  afterEach(() => {
+    window.history.replaceState(null, "", "/");
+  });
+
   it("silently resumes from the persisted root on mount", async () => {
     const { ctl, nav } = setup(aSession);
     const { result } = renderHook(() => useResumableSession(ctl, nav));
 
     await waitFor(() => expect(result.current.session).toBe(aSession));
     expect(nav.jump).toHaveBeenCalledWith("home");
+  });
+
+  it("resuming on a public content page (/privacy) honors it, does not jump home", async () => {
+    window.history.replaceState(null, "", "/privacy");
+    const { ctl, nav } = setup(aSession);
+    const { result } = renderHook(() => useResumableSession(ctl, nav));
+
+    await waitFor(() => expect(result.current.session).toBe(aSession));
+    expect(nav.jump).not.toHaveBeenCalled();
   });
 
   it("stays logged out when no root is stored", async () => {

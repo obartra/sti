@@ -3,7 +3,7 @@ import type { OwnerSession, SessionController } from "../../store/index.ts";
 import { browserForgetGrantKeys } from "../../store/grantKeyStore.ts";
 import { browserForgetRequesterSecret } from "../../store/requesterStore.ts";
 import { browserForgetPendingKnocks } from "../../store/pendingKnockStore.ts";
-import type { Nav } from "./useAppRouter.ts";
+import { routeFromLocation, type Nav } from "./useAppRouter.ts";
 
 // The owner session plus its "stay signed in" lifecycle (doc 24): a silent resume
 // from the persisted root on load, persisting (or not) on each login per the
@@ -20,6 +20,15 @@ export interface ResumableSession {
    * on the owner's own phone); a shared device opts out at sign-up / login. */
   readonly keepSignedIn: boolean;
   readonly setKeepSignedIn: (v: boolean) => void;
+}
+
+// True when the app loaded at the bare root or the public landing, i.e. no explicit
+// destination. routeFromLocation returns null for the bare root (the app maps that
+// to the landing); every public content page and shared link resolves to its own
+// non-landing route, which a silent resume should leave intact.
+function openedAtLanding(): boolean {
+  const here = routeFromLocation();
+  return here === null || here.screen === "a1-landing";
 }
 
 export function useResumableSession(
@@ -40,7 +49,15 @@ export function useResumableSession(
     void controller.resumeFromStore().then((s) => {
       if (active && s !== null) {
         setSession(s);
-        nav.jump("home");
+        // Drop the returning owner at their home only when they opened the app at
+        // the bare root / public landing (the PWA start_url, or a plain sti.care
+        // visit): the landing is a logged-out page, so a signed-in visitor belongs
+        // in the app. If they came straight to a public page they can read while
+        // signed in (/privacy, /promises, /terms) or to a shared link, that
+        // destination is deliberate, so honor it instead of jumping home over it.
+        if (openedAtLanding()) {
+          nav.jump("home");
+        }
       }
     });
     return () => {
