@@ -118,6 +118,48 @@ describe("ContactLinks", () => {
     expect(onSetDuration).toHaveBeenCalledWith(ana.id, null);
   });
 
+  it("renames a link's local label from its options menu", async () => {
+    const user = userEvent.setup();
+    const onRename = vi.fn();
+    const sam = contact("Sam", true);
+    render(
+      <ContactLinks
+        contacts={[sam]}
+        now={19_000}
+        onCreate={noCreate}
+        onRevoke={noop}
+        onRename={onRename}
+        onSetDuration={noop}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /Options for Sam/ }));
+    const input = screen.getByRole("textbox", { name: "Rename this link" });
+    // Save is disabled until the value actually changes.
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save).toBeDisabled();
+    await user.clear(input);
+    await user.type(input, "Sammy");
+    await user.click(save);
+    expect(onRename).toHaveBeenCalledWith(sam.id, "Sammy");
+  });
+
+  it("hides the rename field when no rename handler is provided", async () => {
+    const user = userEvent.setup();
+    render(
+      <ContactLinks
+        contacts={[contact("Sam", true)]}
+        now={19_000}
+        onCreate={noCreate}
+        onRevoke={noop}
+        onSetDuration={noop}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /Options for Sam/ }));
+    expect(
+      screen.queryByRole("textbox", { name: "Rename this link" }),
+    ).toBeNull();
+  });
+
   it("ingests a pasted return link, parsing it to the invite", async () => {
     const user = userEvent.setup();
     const onIngestReturn = vi.fn();

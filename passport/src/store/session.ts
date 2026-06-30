@@ -51,6 +51,7 @@ import {
   mintContactLink,
   acceptContactInvite,
   ingestContactReturn,
+  renameContactLabel,
   revokeContactLink,
   setContactLinkExpiry,
   revokeAliasLink,
@@ -214,6 +215,16 @@ export interface SessionController {
     identity?: AliasIdentity,
     durationMs?: number | null,
   ): Promise<ContactLinkResult>;
+  /**
+   * Rename one contact's local label (the owner-only nickname). Purely local: the
+   * link and its published card are untouched, so the recipient sees no change.
+   * An empty label clears it back to the placeholder. A no-op if the id is unknown.
+   */
+  renameContact(
+    session: OwnerSession,
+    contactId: string,
+    label: string,
+  ): Promise<OwnerSession>;
   /**
    * Revoke one contact's link (its old URL stops resolving) and drop the record.
    * A no-op if the contact id is unknown. Returns the updated session.
@@ -588,6 +599,9 @@ export function createSessionController(deps: SessionDeps): SessionController {
         durationMs,
       });
     },
+
+    renameContact: (session, contactId, label) =>
+      renameContactLabel(accounts, session, { contactId, label }),
 
     revokeContact: (session, contactId) =>
       revokeContactLink(api, accounts, session, contactId),

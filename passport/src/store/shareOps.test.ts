@@ -7,7 +7,7 @@
 // across two links, and that the two emitted invite URLs carry different `n=`
 // payloads, so a regression that hoisted or shared the inbox fails here.
 import { describe, it, expect } from "vitest";
-import { mintContactLink } from "./shareOps.ts";
+import { mintContactLink, renameContactLabel } from "./shareOps.ts";
 import { parseContactInvite } from "./contactInvite.ts";
 import type { ApiClient } from "../api/client.ts";
 import type { AccountManager } from "./account.ts";
@@ -55,6 +55,93 @@ function parts(url: string): { pathname: string; hash: string } {
   const u = new URL(url);
   return { pathname: u.pathname, hash: u.hash };
 }
+
+// A blob carrying one contact, for the rename tests below.
+function blobWithContact(contact: ContactRecord): AccountBlob {
+  return {
+    handle: "robin",
+    aliases: [],
+    contacts: [contact],
+    state: INITIAL_OWNER_STATE,
+    avatar: DEFAULT_AVATAR,
+    sharingMode: "link",
+  };
+}
+
+// An account manager whose addContact replaces the matching contact by id (the real
+// blob's behavior for an existing id), so a rename round-trips through the session.
+function renamingAccounts(): AccountManager {
+  return new Proxy({} as AccountManager, {
+    get(_t, prop) {
+      if (prop === "addContact") {
+        return (_root: unknown, contact: ContactRecord) =>
+          Promise.resolve(blobWithContact(contact));
+      }
+      return () => Promise.reject(new Error("not used in rename test"));
+    },
+  });
+}
+
+describe("renameContactLabel (receiver-owned local label)", () => {
+  const baseContact: ContactRecord = {
+    id: "c-1",
+    label: "Sam",
+    createdDay: 19_000,
+    expiresAt: null,
+    alias: {
+      id: "a".repeat(43),
+      writeToken: "w".repeat(43),
+      key: "k".repeat(43),
+      isPublic: false,
+    },
+  };
+
+  it("updates only the label and leaves the alias untouched", async () => {
+    const session = {
+      root: {} as CryptoKey,
+      blob: blobWithContact(baseContact),
+    } as OwnerSession;
+    const next = await renameContactLabel(renamingAccounts(), session, {
+      contactId: "c-1",
+      label: "Sammy",
+    });
+    const updated = next.blob.contacts.find((c) => c.id === "c-1");
+    expect(updated?.label).toBe("Sammy");
+    // The published link is identical: a rename never re-keys or re-publishes.
+    expect(updated?.alias).toEqual(baseContact.alias);
+  });
+
+  it("trims and caps the new label, and an empty value clears it", async () => {
+    const session = {
+      root: {} as CryptoKey,
+      blob: blobWithContact(baseContact),
+    } as OwnerSession;
+    const long = "x".repeat(200);
+    const capped = await renameContactLabel(renamingAccounts(), session, {
+      contactId: "c-1",
+      label: `  ${long}  `,
+    });
+    expect(capped.blob.contacts[0]?.label).toBe("x".repeat(64));
+
+    const cleared = await renameContactLabel(renamingAccounts(), session, {
+      contactId: "c-1",
+      label: "   ",
+    });
+    expect(cleared.blob.contacts[0]?.label).toBe("");
+  });
+
+  it("is a no-op (same session) for an unknown contact id", async () => {
+    const session = {
+      root: {} as CryptoKey,
+      blob: blobWithContact(baseContact),
+    } as OwnerSession;
+    const next = await renameContactLabel(renamingAccounts(), session, {
+      contactId: "nope",
+      label: "Ghost",
+    });
+    expect(next).toBe(session);
+  });
+});
 
 describe("mintContactLink per-contact decorrelation (doc 13)", () => {
   it("hands each contact a fully distinct notify capability (id, write token, key, routing token)", async () => {

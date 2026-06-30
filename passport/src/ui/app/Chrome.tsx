@@ -61,6 +61,7 @@ export interface ChromeProps {
   onRevokeAlias: ScreenCtx["onRevokeAlias"];
   contacts: ScreenCtx["contacts"];
   onCreateContactLink: ScreenCtx["onCreateContactLink"];
+  onRenameContact: ScreenCtx["onRenameContact"];
   onRevokeContact: ScreenCtx["onRevokeContact"];
   onSetContactDuration: ScreenCtx["onSetContactDuration"];
   faves: ScreenCtx["faves"];
@@ -182,6 +183,7 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     onRevokeAlias: props.onRevokeAlias,
     contacts: props.contacts,
     onCreateContactLink: props.onCreateContactLink,
+    onRenameContact: props.onRenameContact,
     onRevokeContact: props.onRevokeContact,
     onSetContactDuration: props.onSetContactDuration,
     faves: props.faves,

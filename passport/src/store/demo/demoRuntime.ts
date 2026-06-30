@@ -15,7 +15,11 @@
 import type { ResolvedView } from "../../ui/public/PublicResolution.tsx";
 import type { OwnerSession, SessionController } from "../session.ts";
 import type { PassportStore } from "../passportStore.ts";
-import type { AccountBlob, ContactRecord } from "../accountBlob.ts";
+import {
+  MAX_CONTACT_LABEL,
+  type AccountBlob,
+  type ContactRecord,
+} from "../accountBlob.ts";
 import type { OwnerState } from "../../core/badge.ts";
 import {
   importRootKey,
@@ -144,6 +148,17 @@ export function createDemoController(): SessionController {
       const contact = demoContact(label, 0);
       blob = { ...blob, contacts: [...blob.contacts, contact] };
       return { session: await session(), contact, url: demoUrl() };
+    },
+    renameContact: async (_s, contactId, label) => {
+      blob = {
+        ...blob,
+        contacts: blob.contacts.map((c) =>
+          c.id === contactId
+            ? { ...c, label: label.trim().slice(0, MAX_CONTACT_LABEL) }
+            : c,
+        ),
+      };
+      return session();
     },
     revokeContact: async (_s, contactId) => {
       blob = {

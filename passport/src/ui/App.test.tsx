@@ -133,6 +133,15 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
         url: `https://sti.care/a/${"v".repeat(43)}#k=${"x".repeat(43)}`,
       });
     },
+    renameContact: (_session, contactId, label) => {
+      blob = {
+        ...blob,
+        contacts: blob.contacts.map((c) =>
+          c.id === contactId ? { ...c, label } : c,
+        ),
+      };
+      return Promise.resolve({ root, blob });
+    },
     revokeContact: (_session, contactId) => {
       blob = {
         ...blob,

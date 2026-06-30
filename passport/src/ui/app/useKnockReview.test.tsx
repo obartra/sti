@@ -65,6 +65,7 @@ function stubController(
     reviewKnocks: () => Promise.resolve(review()),
     approveKnocks,
     createContactLink: unused,
+    renameContact: unused,
     revokeContact: unused,
     setContactDuration: unused,
     setShareLinkDuration: unused,

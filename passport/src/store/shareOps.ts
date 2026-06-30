@@ -162,6 +162,26 @@ export async function ingestContactReturn(
   return { root: session.root, blob };
 }
 
+// Rename one contact's local label (the owner-only nickname this device shows for
+// the link). Purely local: it never touches the alias or any published card and
+// never leaves the device, so there's no network call here. A no-op for an unknown
+// id; the new label is trimmed and capped like the mint path, and an empty string
+// clears it back to the "Unnamed link" placeholder.
+export async function renameContactLabel(
+  accounts: AccountManager,
+  session: OwnerSession,
+  opts: { contactId: string; label: string },
+): Promise<OwnerSession> {
+  const { contactId, label } = opts;
+  const contact = session.blob.contacts.find((c) => c.id === contactId);
+  if (contact === undefined) return session;
+  const blob = await accounts.addContact(session.root, {
+    ...contact,
+    label: label.trim().slice(0, MAX_CONTACT_LABEL),
+  });
+  return { root: session.root, blob };
+}
+
 // Revoke one contact link: kill the payload first (overwrite to garbage), then
 // drop the record. Fail-safe order: a failed revoke leaves the record for a retry.
 export async function revokeContactLink(

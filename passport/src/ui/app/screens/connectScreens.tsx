@@ -32,6 +32,7 @@ export const connectRenderers: ScreenRenderers = {
     owner,
     contacts,
     onCreateContactLink,
+    onRenameContact,
     onRevokeContact,
     onSetContactDuration,
     onIngestContactReturn,
@@ -40,6 +41,7 @@ export const connectRenderers: ScreenRenderers = {
       contacts={contacts}
       now={nowMs()}
       onCreate={onCreateContactLink}
+      onRename={onRenameContact}
       onRevoke={onRevokeContact}
       onSetDuration={onSetContactDuration}
       onIngestReturn={onIngestContactReturn}
