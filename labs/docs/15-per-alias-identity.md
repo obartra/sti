@@ -134,11 +134,14 @@ contact: { ..., label /* a private nickname only the receiver sees; never sent *
 ```
 
 **Whose name shows, in resolution order.** What a receiver sees for a contact is, in order: their
-own **local rename** (the `ContactRecord.label`, device-only, never sent), else the **face the
-sharer chose** (the alias `handle` override, or the id-derived pseudonym), else the id-derived
-pseudonym. The sharer's optional shared name and the receiver's rename are the two ends of the same
-mechanism (doc 31): readability on top of the always-present handle, neither of which the server
-ever sees.
+own **local label** (the `ContactRecord.label`, device-only, never sent), else the **live face the
+sharer chose** (the alias `handle` override, or the id-derived pseudonym). The sharer's optional
+shared name is not a separate live layer: it is delivered once as the **initial value** of that
+label, which the receiver then owns and edits, and it never re-syncs if the sharer later changes
+their name. The handle underneath stays live (it follows whatever the sharer sets); a shared name is
+a one-time snapshot. So the shared name and the receiver's rename are the same editable label, just
+seeded differently (doc 31) - readability on top of the always-present handle, neither of which the
+server ever sees.
 
 No discriminated union, no reference, no propagation machinery: an override is just the value to show,
 absent is the deterministic default. The override is a plain display label validated like any other

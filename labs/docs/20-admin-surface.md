@@ -60,7 +60,13 @@ secret) and by:
 
 ## The admin page
 
-A dedicated, gated route (`/admin`) in the existing app, isolated from the user flows:
+A dedicated, gated route (`/admin`), isolated from the user flows. It is built as a **separate
+bundle / entry point**, not code-split out of the user app: the operator surface and the
+user-facing passport share no chunk, so admin can pull in heavier dependencies (a charting library,
+a richer table/grid) without adding a byte to the user bundle or sitting near a health surface, and
+the shell budget in [doc 22](22-progressive-web-app.md) is unaffected. It is built for a **desktop
+operator** (a wide, multi-panel dashboard layout), not the mobile-first passport frame, since this
+is where the richer aggregate views live.
 
 - A token gate: enter the bearer secret; on success, the page calls a cheap `GET /admin/ping` to
   validate before showing anything.
@@ -71,12 +77,15 @@ A dedicated, gated route (`/admin`) in the existing app, isolated from the user 
   first. This makes the audit log's "reconstructable" promise usable from the page instead of only via
   SQLite on the box. Read-only, no actions; the same opaque rows the log already stores.
 - **Metrics panel:** a read-only dashboard of **aggregate, identifier-free** operational counts,
-  shown nicely (small number cards plus simple sparklines). Only system-level totals and trends:
-  total accounts / aliases / live links, accounts created and reports filed per day over a recent
-  window, and the report-queue size and review latency. These are the same identifier-free service
-  telemetry the blind-store boundary already permits (see below). The hard rules: never a per-account
-  or per-id figure, never a distribution that fingerprints one account ("accounts with > N links"),
-  never anything that correlates accounts. Counts of opaque rows, not facts about people.
+  shown as **helpful charts** on the desktop layout: number cards for current totals, time-series
+  line/area charts for per-day trends, and a small bar/series for the report queue and its latency.
+  (The separate admin bundle is what lets this use a real charting library freely.) Only system-level
+  totals and trends: total accounts / aliases / live links, accounts created and reports filed per
+  day over a recent window, and the report-queue size and review latency. These are the same
+  identifier-free service telemetry the blind-store boundary already permits (see below). The hard
+  rules: never a per-account or per-id figure, never a distribution that fingerprints one account
+  ("accounts with > N links"), never anything that correlates accounts. Counts of opaque rows, not
+  facts about people.
 - **Built to grow:** the page is a shell with panels, so account disable, alias revoke, and metadata
   lookup by id dropped in as additional panels (now shipped) without re-architecting.
 

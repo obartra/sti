@@ -180,15 +180,16 @@ holds). Three things live here:
   a positive report quietly reach past partners, so we do not throw them away on a
   timer). The old "removed after 90 days" line was never true and is gone.
 
-  You can **rename** any connection to whatever you want - a local override only you
-  ever see, never sent - because an opaque handle like @invisible_otter_35 is useless
-  for remembering who someone is. And the person you connect with can **optionally
-  share a name** for you (default off); if they do, that name is your default instead
-  of the handle, and you can still rename over it. So the name you see for a contact
-  resolves in order: **your own rename, else the name they chose to share, else the
-  handle.** Renaming is local and never sent; the shared name is the sharer's opt-in
-  choice (see the faces model). This replaces the earlier "private label" idea, which
-  was just the first of these three.
+  You can **rename** any connection to whatever you want - a local label only you ever
+  see, never sent - because an opaque handle like @invisible_otter_35 is useless for
+  remembering who someone is. The person you connect with can also **optionally share
+  a name** for you (default off). If they do, you receive it once as the starting value
+  of that label: a copy you own from then on, editable anytime, that never changes on
+  its own. The handle underneath stays live and keeps following whatever they set, but
+  a shared name is a snapshot, not a feed - unlike the handle, it does not auto-update.
+  So the name you see for a contact is **your label if you have set or received one,
+  else the live handle.** This replaces the earlier "private label" idea: the shared
+  name and your rename are the same editable label, just seeded differently.
 
 Connecting is by **shared link or scan only**, member-initiated, two-way. There is no
 handle search and no way to be looked up.
