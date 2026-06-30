@@ -1,7 +1,11 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
 import type { Bytes } from "../crypto/index.ts";
-import type { PasskeyAuth } from "./passkey.ts";
+import {
+  classifyWebAuthnError,
+  PasskeyError,
+  type PasskeyAuth,
+} from "./passkey.ts";
 
 // A fake authenticator: each credential maps to a fixed random PRF secret, so
 // unlock returns exactly the PRF output enroll did, the contract a real PRF
@@ -41,5 +45,35 @@ describe("PasskeyAuth contract", () => {
   it("unlock throws for an unknown credential", async () => {
     const auth = fakePasskeyAuth();
     await expect(auth.unlock("nope")).rejects.toThrow();
+  });
+});
+
+describe("PasskeyError + classifyWebAuthnError", () => {
+  it("carries its code and is an Error", () => {
+    const e = new PasskeyError("no-prf");
+    expect(e).toBeInstanceOf(Error);
+    expect(e.name).toBe("PasskeyError");
+    expect(e.code).toBe("no-prf");
+  });
+
+  it("maps cancel-like DOMException names to 'cancelled'", () => {
+    for (const name of ["NotAllowedError", "AbortError", "TimeoutError"]) {
+      expect(classifyWebAuthnError({ name })).toBe("cancelled");
+    }
+  });
+
+  it("maps everything else (and non-error values) to 'unavailable'", () => {
+    const others: unknown[] = [
+      { name: "SecurityError" },
+      { name: "NotSupportedError" },
+      new Error("boom"),
+      null,
+      undefined,
+      "nope",
+      {},
+    ];
+    for (const e of others) {
+      expect(classifyWebAuthnError(e)).toBe("unavailable");
+    }
   });
 });

@@ -187,7 +187,8 @@ describe("session controller", () => {
         credentialId: cred?.credentialId ?? "",
         wrappedRoot: corrupt,
       });
-      expect(await ctl.resume()).toBeNull();
+      const result = await ctl.resume();
+      expect(result).toEqual({ ok: false, reason: "mismatch" });
       // The corrupt binding is left in place (not silently wiped); the owner
       // recovers via the phrase.
       expect(devices.load()?.wrappedRoot).toBe(corrupt);
@@ -200,19 +201,22 @@ describe("session controller", () => {
     await ctl.enrollPasskey(recoveryPhrase, "robin");
 
     const resumed = await ctl.resume();
-    expect(resumed?.root).toEqual(session.root);
-    expect(resumed?.blob).toEqual(session.blob);
+    expect(resumed.ok).toBe(true);
+    if (resumed.ok) {
+      expect(resumed.session.root).toEqual(session.root);
+      expect(resumed.session.blob).toEqual(session.blob);
+    }
   });
 
-  it("resume returns null when no passkey is enrolled", async () => {
+  it("resume reports no-binding when no passkey is enrolled", async () => {
     const { ctl } = setup();
     await ctl.signUp("robin");
-    expect(await ctl.resume()).toBeNull();
+    expect(await ctl.resume()).toEqual({ ok: false, reason: "no-binding" });
   });
 
-  it("resume returns null when the passkey cannot be read, leaving the binding intact", async () => {
+  it("resume reports unavailable when the passkey cannot be read, leaving the binding intact", async () => {
     // Enroll with one authenticator, then resume against a different one that
-    // does not know the credential: unlock rejects, resume falls back to null.
+    // does not know the credential: unlock rejects, resume reports the failure.
     const { accounts, sync } = fakeBackend();
     const devices = createDeviceStore(memoryStorage());
     const enrolled = fakePasskey();
@@ -235,12 +239,15 @@ describe("session controller", () => {
       keys: createVolatileRootKeyStore(),
       api: stubApi,
     });
-    expect(await ctlB.resume()).toBeNull();
+    // The fake rejects with a plain Error (not a PasskeyError), so it maps to
+    // the catch-all "unavailable".
+    expect(await ctlB.resume()).toEqual({ ok: false, reason: "unavailable" });
     // The binding is untouched: the original passkey still resumes.
-    expect((await ctlA.resume())?.blob).toEqual(session.blob);
+    const again = await ctlA.resume();
+    expect(again.ok && again.session.blob).toEqual(session.blob);
   });
 
-  it("resume returns null when the passkey returns a wrong PRF output (fails closed at unwrap)", async () => {
+  it("resume reports mismatch when the passkey returns a wrong PRF output (fails closed at unwrap)", async () => {
     // unlock succeeds but yields a different PRF than enroll, so GCM rejects.
     const drifting: PasskeyAuth = {
       available: () => true,
@@ -257,17 +264,17 @@ describe("session controller", () => {
     const { ctl } = setup(drifting);
     const { recoveryPhrase } = await ctl.signUp("robin");
     await ctl.enrollPasskey(recoveryPhrase, "robin");
-    expect(await ctl.resume()).toBeNull();
+    expect(await ctl.resume()).toEqual({ ok: false, reason: "mismatch" });
   });
 
   it("forget removes the binding so resume falls back to the phrase", async () => {
     const { ctl } = setup();
     const { recoveryPhrase } = await ctl.signUp("robin");
     await ctl.enrollPasskey(recoveryPhrase, "robin");
-    expect(await ctl.resume()).not.toBeNull();
+    expect((await ctl.resume()).ok).toBe(true);
 
     ctl.forget();
-    expect(await ctl.resume()).toBeNull();
+    expect(await ctl.resume()).toEqual({ ok: false, reason: "no-binding" });
   });
 
   it("deleteAccount removes the account AND forgets the device binding", async () => {
@@ -279,7 +286,7 @@ describe("session controller", () => {
     await ctl.deleteAccount(session);
     // The blob is gone (phrase recovers nothing) and the passkey can't resume.
     expect(await ctl.recover(recoveryPhrase)).toBeNull();
-    expect(await ctl.resume()).toBeNull();
+    expect(await ctl.resume()).toEqual({ ok: false, reason: "no-binding" });
   });
 
   it("deleteAccount releases a claimed findable name first (best-effort)", async () => {

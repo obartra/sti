@@ -81,4 +81,33 @@ describe("device store", () => {
       expect(createDeviceStore(mem).load()).toBeNull();
     }
   });
+
+  it("round-trips transport hints when present", () => {
+    const store = createDeviceStore(memoryStorage());
+    store.save({ ...CRED, transports: ["internal", "hybrid"] });
+    expect(store.load()?.transports).toEqual(["internal", "hybrid"]);
+  });
+
+  it("loads a binding with no transports (back-compat, no key written)", () => {
+    const mem = memoryStorage();
+    createDeviceStore(mem).save(CRED);
+    expect(
+      "transports" in JSON.parse(mem.getItem("sti.device.v1") ?? "{}"),
+    ).toBe(false);
+    expect(createDeviceStore(mem).load()?.transports).toBeUndefined();
+  });
+
+  it("drops a malformed transports hint without failing the binding", () => {
+    const mem = memoryStorage();
+    for (const bad of [
+      { v: 1, credentialId: "x", wrappedRoot: "y", transports: "internal" },
+      { v: 1, credentialId: "x", wrappedRoot: "y", transports: [] },
+      { v: 1, credentialId: "x", wrappedRoot: "y", transports: [1, 2] },
+    ]) {
+      mem.map.set("sti.device.v1", JSON.stringify(bad));
+      const loaded = createDeviceStore(mem).load();
+      expect(loaded?.credentialId).toBe("x");
+      expect(loaded?.transports).toBeUndefined();
+    }
+  });
 });

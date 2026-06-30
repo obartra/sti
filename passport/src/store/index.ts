@@ -120,6 +120,8 @@ export type {
   ContactLinkResult,
   PendingApproval,
   OwnerKnocks,
+  ResumeResult,
+  ResumeFailure,
 } from "./session.ts";
 export { createSessionController } from "./session.ts";
 export {

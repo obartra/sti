@@ -25,24 +25,71 @@ import {
   type Bytes,
 } from "../crypto/index.ts";
 
+/**
+ * Why a passkey call failed, so the UI can say something true instead of a flat
+ * "no passkey found". `cancelled`: the user dismissed the prompt, it timed out,
+ * or the authenticator wasn't offered. `no-prf`: the authenticator authenticated
+ * but returned no PRF result (some password managers, including some 1Password
+ * builds, don't do PRF yet), so it can't unlock this account's key. `unavailable`:
+ * WebAuthn isn't reachable, the origin/rpId didn't match, or another platform error.
+ */
+export type PasskeyFailureCode = "cancelled" | "no-prf" | "unavailable";
+
+export class PasskeyError extends Error {
+  readonly code: PasskeyFailureCode;
+  constructor(code: PasskeyFailureCode, message?: string) {
+    super(message ?? `passkey: ${code}`);
+    this.name = "PasskeyError";
+    this.code = code;
+  }
+}
+
+// Map a thrown WebAuthn error to a failure code by its DOMException name (read
+// defensively, since a DOMException is not always an Error instance). A user
+// cancel, timeout, or "no credential offered" all surface as NotAllowedError;
+// everything else is treated as a platform problem the user can't act on.
+export function classifyWebAuthnError(err: unknown): PasskeyFailureCode {
+  const name =
+    typeof err === "object" &&
+    err !== null &&
+    "name" in err &&
+    typeof err.name === "string"
+      ? err.name
+      : "";
+  return name === "NotAllowedError" ||
+    name === "AbortError" ||
+    name === "TimeoutError"
+    ? "cancelled"
+    : "unavailable";
+}
+
 export interface EnrolledPasskey {
   /** base64url of the credential rawId; non-secret, stored locally. */
   readonly credentialId: string;
   /** The PRF output, used to wrap/unwrap the account root (auth/keyVault). */
   readonly prfOutput: Bytes;
+  /** Transport hints the authenticator reported at create, stored so a later
+   * unlock can route back to the same provider (helps cross-platform managers
+   * like 1Password get offered). Absent when the browser doesn't report them. */
+  readonly transports?: AuthenticatorTransport[];
 }
 
 export interface PasskeyAuth {
   /**
    * Whether WebAuthn is present at all. PRF support is authenticator-dependent
    * and can't be feature-detected synchronously, so it is only confirmed at
-   * enroll time (a missing PRF result throws); callers must handle that.
+   * enroll time (a missing PRF result throws PasskeyError("no-prf")); callers
+   * must handle that.
    */
   available(): boolean;
-  /** Create a passkey and return its PRF output. */
+  /** Create a passkey and return its PRF output. Throws {@link PasskeyError}. */
   enroll(userName: string): Promise<EnrolledPasskey>;
-  /** Re-read the PRF output from an existing passkey. */
-  unlock(credentialId: string): Promise<Bytes>;
+  /** Re-read the PRF output from an existing passkey, routing with the stored
+   * transport hints when present. Throws {@link PasskeyError}. */
+  unlock(
+    credentialId: string,
+    transports?: AuthenticatorTransport[],
+  ): Promise<Bytes>;
 }
 
 // A fixed PRF evaluation input: the same passkey always returns the same PRF
@@ -54,22 +101,54 @@ function challenge(): Bytes {
   return crypto.getRandomValues(new Uint8Array(32));
 }
 
+// The transports an attestation reported, or undefined when the browser doesn't
+// expose them. Stored at enroll so a later get() can hint routing back to the
+// same provider (an empty list is treated as "unknown").
+function reportedTransports(
+  cred: PublicKeyCredential,
+): AuthenticatorTransport[] | undefined {
+  const resp = cred.response;
+  if (
+    resp instanceof AuthenticatorAttestationResponse &&
+    typeof resp.getTransports === "function"
+  ) {
+    const list = resp.getTransports();
+    if (list.length > 0) return list as AuthenticatorTransport[];
+  }
+  return undefined;
+}
+
 export function webAuthnPasskey(rpId?: string): PasskeyAuth {
-  async function unlock(credentialId: string): Promise<Bytes> {
-    const cred = (await navigator.credentials.get({
-      publicKey: {
-        challenge: challenge(),
-        allowCredentials: [
-          { type: "public-key", id: base64urlToBytes(credentialId) },
-        ],
-        userVerification: "required",
-        extensions: { prf: { eval: { first: PRF_SALT } } },
-      },
-    })) as PublicKeyCredential | null;
-    if (!cred) throw new Error("passkey: unlock cancelled");
+  async function unlock(
+    credentialId: string,
+    transports?: AuthenticatorTransport[],
+  ): Promise<Bytes> {
+    let cred: PublicKeyCredential | null;
+    try {
+      cred = (await navigator.credentials.get({
+        publicKey: {
+          challenge: challenge(),
+          allowCredentials: [
+            {
+              type: "public-key",
+              id: base64urlToBytes(credentialId),
+              // Hint routing back to the provider that holds this credential, so
+              // a cross-platform manager (e.g. 1Password) is offered rather than
+              // only the platform authenticator.
+              ...(transports && transports.length > 0 ? { transports } : {}),
+            },
+          ],
+          userVerification: "required",
+          extensions: { prf: { eval: { first: PRF_SALT } } },
+        },
+      })) as PublicKeyCredential | null;
+    } catch (err) {
+      throw new PasskeyError(classifyWebAuthnError(err));
+    }
+    if (!cred) throw new PasskeyError("cancelled");
     const first = cred.getClientExtensionResults().prf?.results?.first;
     if (first === undefined) {
-      throw new Error("passkey: authenticator returned no PRF result");
+      throw new PasskeyError("no-prf");
     }
     return bufferSourceToBytes(first);
   }
@@ -84,31 +163,42 @@ export function webAuthnPasskey(rpId?: string): PasskeyAuth {
     },
 
     async enroll(userName) {
-      const cred = (await navigator.credentials.create({
-        publicKey: {
-          challenge: challenge(),
-          rp: rpId ? { id: rpId, name: RP_NAME } : { name: RP_NAME },
-          user: {
-            id: crypto.getRandomValues(new Uint8Array(16)),
-            name: userName,
-            displayName: userName,
+      let cred: PublicKeyCredential | null;
+      try {
+        cred = (await navigator.credentials.create({
+          publicKey: {
+            challenge: challenge(),
+            rp: rpId ? { id: rpId, name: RP_NAME } : { name: RP_NAME },
+            user: {
+              id: crypto.getRandomValues(new Uint8Array(16)),
+              name: userName,
+              displayName: userName,
+            },
+            pubKeyCredParams: [
+              { type: "public-key", alg: -7 },
+              { type: "public-key", alg: -257 },
+            ],
+            // authenticatorAttachment is left unset on purpose: both platform and
+            // cross-platform authenticators (1Password, a phone over hybrid) may
+            // enroll. residentKey "required" makes the credential discoverable.
+            authenticatorSelection: {
+              residentKey: "required",
+              userVerification: "required",
+            },
+            extensions: { prf: {} },
           },
-          pubKeyCredParams: [
-            { type: "public-key", alg: -7 },
-            { type: "public-key", alg: -257 },
-          ],
-          authenticatorSelection: {
-            residentKey: "required",
-            userVerification: "required",
-          },
-          extensions: { prf: {} },
-        },
-      })) as PublicKeyCredential | null;
-      if (!cred) throw new Error("passkey: enrollment cancelled");
+        })) as PublicKeyCredential | null;
+      } catch (err) {
+        throw new PasskeyError(classifyWebAuthnError(err));
+      }
+      if (!cred) throw new PasskeyError("cancelled");
       const credentialId = bytesToBase64url(new Uint8Array(cred.rawId));
+      const transports = reportedTransports(cred);
       // PRF output is not reliably returned at create across authenticators, so
-      // read it via a follow-up get with the eval salt.
-      return { credentialId, prfOutput: await unlock(credentialId) };
+      // read it via a follow-up get with the eval salt. This is also where a
+      // no-PRF provider surfaces as PasskeyError("no-prf").
+      const prfOutput = await unlock(credentialId, transports);
+      return { credentialId, prfOutput, ...(transports ? { transports } : {}) };
     },
 
     unlock,

@@ -17,14 +17,13 @@
 
 import {
   bytesToBase64url,
-  base64urlToBytes,
-  importRootKey,
   parseRecoveryPhrase,
   deriveRootKey,
   type RootKey,
 } from "../crypto/index.ts";
-import { wrapRoot, unwrapRoot } from "../auth/keyVault.ts";
+import { wrapRoot } from "../auth/keyVault.ts";
 import type { PasskeyAuth } from "../auth/passkey.ts";
+import { unlockRoot, type ResumeFailure } from "./passkeyUnlock.ts";
 import type { DeviceStore } from "../auth/deviceStore.ts";
 import type { RootKeyStore } from "../auth/rootKeyStore.ts";
 import type { ApiClient, PendingKnock } from "../api/client.ts";
@@ -82,17 +81,25 @@ export interface SignUpResult {
   readonly recoveryPhrase: string;
 }
 
+export type { ResumeFailure } from "./passkeyUnlock.ts";
+
+export type ResumeResult =
+  | { readonly ok: true; readonly session: OwnerSession }
+  | { readonly ok: false; readonly reason: ResumeFailure };
+
 export interface SessionController {
   /** First run: mint a phrase-recoverable account. Persists nothing locally. */
   signUp(handle?: string): Promise<SignUpResult>;
   /** Login / recovery by phrase. null when no account exists for it. */
   recover(phrase: string): Promise<OwnerSession | null>;
   /**
-   * Reload: unlock via the enrolled passkey and load the account. null when no
-   * passkey is enrolled on this device, the passkey is cancelled/unavailable, or
-   * the binding does not unwrap (fail-closed; the device binding is left intact).
+   * Reload: unlock via the enrolled passkey and load the account. Returns a
+   * tagged result so login can show a true message: `ok` with the session, or a
+   * {@link ResumeFailure} reason (no binding on this device, the passkey was
+   * cancelled/unavailable/can't-do-PRF, or the binding did not unwrap). Always
+   * fail-closed: the device binding is left intact on any failure.
    */
-  resume(): Promise<OwnerSession | null>;
+  resume(): Promise<ResumeResult>;
   /**
    * Keep this device signed in across reloads (doc 24): persist the session's
    * non-extractable root so {@link resumeFromStore} can rebuild the session with
@@ -401,30 +408,6 @@ async function sweptOnLoad(
   return accounts.sweepExpiredLinks(root).catch(() => fallback);
 }
 
-// Unlock the root from this device's passkey binding (the resume path). null
-// when there is no binding, the passkey is cancelled/unavailable, or the binding
-// does not unwrap (wrong passkey / corrupt binding: GCM rejects). The binding is
-// left intact on failure, so a later correct unlock still works.
-async function unlockRoot(
-  devices: DeviceStore,
-  passkey: PasskeyAuth,
-): Promise<RootKey | null> {
-  const cred = devices.load();
-  if (cred === null) return null;
-  try {
-    const prfOutput = await passkey.unlock(cred.credentialId);
-    // PRF unwrap yields the transient root key bytes; import them once into the
-    // non-extractable key (doc 24) and drop the bytes.
-    const bytes = await unwrapRoot(
-      base64urlToBytes(cred.wrappedRoot),
-      prfOutput,
-    );
-    return await importRootKey(bytes);
-  } catch {
-    return null;
-  }
-}
-
 // The thin blob-folding controller delegators: each calls the matching account
 // mutation and wraps the resulting blob back into the session. Split out so
 // createSessionController stays within its length ceiling.
@@ -462,12 +445,18 @@ function resumeMethods(
 > {
   const { accounts, sync, devices, passkey, keys } = deps;
   return {
-    async resume() {
-      const root = await unlockRoot(devices, passkey);
-      if (root === null) return null;
-      const blob = await sync.load(root);
-      if (blob === null) return null;
-      return { root, blob: await sweptOnLoad(accounts, root, blob) };
+    async resume(): Promise<ResumeResult> {
+      const unlocked = await unlockRoot(devices, passkey);
+      if (!unlocked.ok) return { ok: false, reason: unlocked.reason };
+      const blob = await sync.load(unlocked.root);
+      if (blob === null) return { ok: false, reason: "no-account" };
+      return {
+        ok: true,
+        session: {
+          root: unlocked.root,
+          blob: await sweptOnLoad(accounts, unlocked.root, blob),
+        },
+      };
     },
     rememberDevice(session) {
       return keys.save(session.root);
@@ -515,11 +504,13 @@ export function createSessionController(deps: SessionDeps): SessionController {
         throw new Error("enrollPasskey: malformed recovery phrase");
       }
       const bytes = await deriveRootKey(parsed);
-      const { credentialId, prfOutput } = await passkey.enroll(userName);
+      const { credentialId, prfOutput, transports } =
+        await passkey.enroll(userName);
       const wrapped = await wrapRoot(bytes, prfOutput);
       devices.save({
         credentialId,
         wrappedRoot: bytesToBase64url(wrapped),
+        ...(transports ? { transports } : {}),
       });
     },
 

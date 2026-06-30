@@ -122,8 +122,11 @@ describe("owner session against a live blind store", () => {
     // A reload: the same passkey + the persisted binding reload the account blob
     // through the live server.
     const resumed = await ctl.resume();
-    expect(resumed?.root).toEqual(session.root);
-    expect(resumed?.blob).toEqual(session.blob);
+    expect(resumed.ok).toBe(true);
+    if (resumed.ok) {
+      expect(resumed.session.root).toEqual(session.root);
+      expect(resumed.session.blob).toEqual(session.blob);
+    }
   });
 
   it("a mutual contact-link exchange links two owners both ways", async () => {
@@ -454,7 +457,7 @@ describe("owner session against a live blind store", () => {
 
     // A different authenticator over the same stored binding: unlock rejects.
     const { ctl: foreign } = controller(fakePasskey(), devices);
-    expect(await foreign.resume()).toBeNull();
+    expect((await foreign.resume()).ok).toBe(false);
   });
 
   it("setOwnerState persists a reported result that survives recovery", async () => {

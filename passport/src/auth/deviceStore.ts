@@ -21,6 +21,10 @@ const VERSION = 1;
 export interface DeviceCredential {
   readonly credentialId: string;
   readonly wrappedRoot: string;
+  /** Transport hints from enroll, replayed on unlock to route back to the same
+   * provider. A non-critical routing hint: a missing or malformed value just
+   * drops it (the binding still loads), never fails the whole binding. */
+  readonly transports?: AuthenticatorTransport[];
 }
 
 /** The subset of the Web Storage API this module uses. */
@@ -42,6 +46,15 @@ function isNonEmptyString(x: unknown): x is string {
   return typeof x === "string" && x.length > 0;
 }
 
+// Transports are a non-critical routing hint: read a list of strings, or drop
+// it. Never fail the binding over a malformed hint (the unlock still works
+// without it, just without the routing nudge).
+function readTransports(x: unknown): AuthenticatorTransport[] | undefined {
+  if (!Array.isArray(x)) return undefined;
+  const list = x.filter((s): s is string => typeof s === "string");
+  return list.length > 0 ? (list as AuthenticatorTransport[]) : undefined;
+}
+
 export function createDeviceStore(storage: StorageLike): DeviceStore {
   return {
     load() {
@@ -58,9 +71,11 @@ export function createDeviceStore(storage: StorageLike): DeviceStore {
       if (o.v !== VERSION) return null;
       if (!isNonEmptyString(o.credentialId)) return null;
       if (!isNonEmptyString(o.wrappedRoot)) return null;
+      const transports = readTransports(o.transports);
       return {
         credentialId: o.credentialId,
         wrappedRoot: o.wrappedRoot,
+        ...(transports ? { transports } : {}),
       };
     },
 
@@ -71,6 +86,9 @@ export function createDeviceStore(storage: StorageLike): DeviceStore {
           v: VERSION,
           credentialId: credential.credentialId,
           wrappedRoot: credential.wrappedRoot,
+          ...(credential.transports && credential.transports.length > 0
+            ? { transports: credential.transports }
+            : {}),
         }),
       );
     },

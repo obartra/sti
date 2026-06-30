@@ -113,7 +113,7 @@ export function createDemoController(): SessionController {
       };
     },
     recover: () => session(),
-    resume: () => Promise.resolve(null),
+    resume: () => Promise.resolve({ ok: false as const, reason: "no-binding" }),
     rememberDevice: () => Promise.resolve(),
     forgetDevice: () => Promise.resolve(),
     resumeFromStore: () => session(),
