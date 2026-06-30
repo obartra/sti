@@ -127,10 +127,12 @@ holds). Three things live here:
   top; the long tail sits under them). They stay on your device until you delete
   them; nothing prunes them automatically (each holds the capability that later lets
   a positive report quietly reach past partners, so we do not throw them away on a
-  timer). The old "removed after 90 days" line was never true and is gone. You can
-  give any connection a **private label** - a nickname only you ever see, never sent
-  and never shown to them - to remember who someone is. (The contact record already
-  carries this label field; this just surfaces an editor for it.)
+  timer). The old "removed after 90 days" line was never true and is gone. Not a
+  headline feature, just a quiet convenience: you can jot a **private label** on any
+  connection - a note only you ever see, never sent and never shown to them - because
+  an opaque handle like @invisible_otter_35 is otherwise useless for remembering who
+  someone is. (The contact record already carries this label field; this just surfaces
+  a small editor for it.)
 
 Connecting is by **shared link or scan only**, member-initiated, two-way. There is no
 handle search and no way to be looked up.
@@ -156,11 +158,13 @@ anonymous handle to appear under, so a group never forces your main identity.
 What that means concretely:
 
 - **Membership is the consent.** There are no per-member visibility settings, no
-  "anonymous presence" mode, no per-group dials. If you are in the group, your
-  current status color shows to the group; if you do not want that, you leave. One
-  decision, not a settings page. (Most of this complexity was feared, not built - the
-  current group record is just a name and a member list - so this is mostly *not
-  adding* it, and removing the conceptual surface area from the plan.)
+  "anonymous presence" mode, no per-group dials, and no per-member approval. If you
+  are in the group, your current status color shows to everyone in it; if you do not
+  want that, you leave. Admins can add members after you joined, and they see your
+  color too, so joining is consenting to that (see the roster-identity section for
+  the join-time honesty and the one-tap anonymous-handle default). One decision, not
+  a settings page. (Most of this complexity was feared, not built - the current group
+  record is just a name and a member list - so this is mostly *not adding* it.)
 - **A calm roster, never a verdict.** The group shows each member as a status dot,
   newest or starred first. It does **not** compute a room rollup, print counts
   ("7 ready, 2 not shared"), or render a door/check-in "the room is ready" screen.
@@ -227,21 +231,33 @@ the account actions, the attributes, the links list, and the explainer.
 - **[25-in-person-connect](25-in-person-connect.md):** unchanged design; this doc
   commits to building the missing "be scanned" half so the gesture is symmetric.
 
-## Group roster identity: one anonymous face per group
+## Group roster identity: the handle you joined with
 
-When you join a group under an anonymous handle (rather than your main identity), you
-get **a distinct anonymous face per group**, not one anonymous identity reused across
-all of them. Within a group every member sees the same dot for you, so the roster is
-coherent; across groups your faces are uncorrelated, so a person in two of your groups
-cannot tell the two anonymous dots are the same you, and the server never gets a
-cross-group pseudonym to accrete. This follows the decorrelation principle in
-[18-sibling-alias-decorrelation](18-sibling-alias-decorrelation.md). The alternative,
-one stable anonymous handle everywhere, would quietly rebuild exactly the cross-group
-social graph the product fights. (Per-individual faces within a single group are not
-on the table: they would make the roster incoherent, since members could not all refer
-to the same dot. That shape belongs to 1:1 links, not group rosters.) The cost is that
-someone who expects to be recognized across groups will not be under an anonymous face;
-the answer for them is to join those groups under their main identity, by choice.
+You appear in a group under **the handle you joined with** - your main identity, or an
+anonymous handle you mint for the occasion. One handle per group, so the roster is
+coherent: everyone there sees the same dot for you. Being in the group **is** sharing
+your ring color (blue / gray) with everyone in it. Because blue/gray carries so little
+information, that exposure is acceptable, and it lets the whole model stay simple: no
+per-member approval, no per-member visibility dials, no auto-minted per-group identity
+to manage.
+
+The consent is joining. A group's membership can grow: an admin can add people after
+you joined, and they will see your color too. So the rule is plain: **if you are not
+comfortable with the admins adding members, do not join.** Two guardrails keep that an
+informed choice rather than a surprise:
+
+- **Join-time honesty.** The join screen says plainly that anyone the admins add can
+  see your status here, and **leaving is one tap and always available.**
+- **A fresh anonymous handle is the easy default.** Joining offers "join as a new
+  anonymous handle" up front, so a person who wants this group uncorrelated from their
+  other presence gets that with one tap. Reusing one handle across groups is allowed,
+  but it is a choice the person makes, not an accident the product imposes. Cross-group
+  decorrelation is therefore available (see
+  [18-sibling-alias-decorrelation](18-sibling-alias-decorrelation.md)) without being
+  forced on everyone.
+
+The minimum group size and the "there may be others you cannot see" notice still apply,
+so a tiny group never outs one person.
 
 ## Open questions (do not block; resolve before building)
 

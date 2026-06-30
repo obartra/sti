@@ -98,6 +98,25 @@ safer but easier to get locked out of. This product sits deliberately toward str
 factors: synced passkey plus phrase as the core, password as an opt-in convenience
 behind a strict gate, account id never derived from the password.
 
+## Keeping the recovery factor memorized (rehearsal, not rotation)
+
+The real failure mode is forgetting the thing that gets you back on a new device. Two
+ideas, and where they land:
+
+- **Periodic rehearsal (yes, gently).** Borrowing the spirit of Signal's PIN reminder:
+  if a password is set, occasionally ask the person to type it (skippable for a while,
+  then a firmer prompt) so the muscle memory stays. The same gentle rehearsal suits the
+  phrase ("can you still find it?"). The key difference from Signal: because the phrase
+  is always the backstop, forgetting the password is not terminal, so this is a
+  **recovery rehearsal, not a lockout**. It nudges, it does not strand. Biometrics still
+  handle everyday unlock between rehearsals, so this is rare, not a tax on each open.
+- **Forced calendar rotation (no).** A yearly "you must change your password" is an
+  anti-pattern: scheduled rotation pushes people to weaker, predictable variants and
+  buys little. Current guidance (NIST) is explicit against it. Instead, rotate **on a
+  signal of compromise**, and offer an **optional** "review your security" nudge rather
+  than a mandatory reset. If a password is rotated, it just re-wraps a fresh envelope;
+  the master and the account id never change.
+
 ## Where this is managed
 
 Factors are added, viewed, and removed in **Settings** (see
@@ -124,6 +143,8 @@ not accepted, without lecturing.
 - **Envelope storage and rate-limiting:** the server stores per-factor wrapped-master
   envelopes; fetching one should be gated like any account read, so the envelope is not
   a freely harvestable target.
-- **Local PIN unlock:** the device-only PIN that unwraps the stored master (no server
-  envelope) is a separate convenience from the cross-device password; it can come later
-  and does not affect this model.
+- **Local PIN unlock - probably not needed.** A device-only PIN that unwraps the stored
+  master is a separate convenience from the cross-device password, and biometrics /
+  passkey already cover everyday device unlock, so a PIN mostly adds surface for little
+  gain. The case for it is a device with no biometrics; absent that gap, lean toward
+  dropping it rather than building it. It does not affect the envelope model either way.
