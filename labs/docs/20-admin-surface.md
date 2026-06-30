@@ -109,9 +109,10 @@ chrome and is never linked from the app.
   it, so the id reads back as a decoy. Shipped.
 - `GET /admin/lookup/{id}` — opaque metadata for a record (existence, ciphertext byte size, last
   written), never content. Shipped.
-- `GET /admin/metrics`: aggregate, identifier-free service counts (totals and per-day trends, the
-  report-queue size and latency) for the metrics panel. No per-account or per-id figures; a read, so
-  not itself audited.
+- `GET /admin/metrics`: aggregate, identifier-free service counts for the metrics panel. No
+  per-account or per-id figures; a read, so not itself audited. The current totals (accounts, aliases,
+  live knocks, send-queue depth, database size, and the report-queue size) are shipped; the per-day
+  trends and review-latency series are still to come.
 
 Every mutation writes an audit row and returns a uniform shape; none returns plaintext content.
 

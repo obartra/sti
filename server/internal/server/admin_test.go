@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
@@ -256,6 +257,66 @@ func TestAdminAuditPagination(t *testing.T) {
 	older := page("?limit=2&before=2")
 	if len(older) != 1 || older[0].ID != 1 {
 		t.Fatalf("older page = %+v", older)
+	}
+}
+
+// The metrics endpoint (doc 20 A5): an authed read returns identifier-free totals
+// that reflect the seeded rows; an unauthed read is the uniform 401; and the read
+// is never audited (it is telemetry, not an action).
+func TestAdminMetrics(t *testing.T) {
+	h, st := newTestAdminServer(t, testAdminToken)
+	ctx := context.Background()
+	authed := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest("GET", contract.PathAdminMetrics, nil)
+		req.Header.Set("Authorization", "Bearer "+testAdminToken)
+		return do(h, req)
+	}
+
+	// An unauthed read is rejected like every admin endpoint, never reaching the data.
+	if rec := do(h, httptest.NewRequest("GET", contract.PathAdminMetrics, nil)); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("metrics no auth: %d, want 401", rec.Code)
+	}
+
+	// A fresh store reports zeros (and the body decodes to the response shape).
+	var fresh contract.AdminMetricsResponse
+	rec := authed()
+	if rec.Code != http.StatusOK {
+		t.Fatalf("metrics: %d", rec.Code)
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &fresh); err != nil {
+		t.Fatal(err)
+	}
+	if fresh.Aliases != 0 || fresh.PendingReports != 0 {
+		t.Fatalf("fresh metrics = %+v, want zeros", fresh)
+	}
+
+	// Seed two alias rows and a reported name; the totals reflect them.
+	for _, id := range []string{strings.Repeat("a", 43), strings.Repeat("b", 43)} {
+		if ok, err := st.WriteAlias(ctx, id, []byte("cipher"), "tok", 100, sql.NullInt64{}, false); err != nil || !ok {
+			t.Fatalf("seed alias %s: ok=%v err=%v", id, ok, err)
+		}
+	}
+	if _, err := st.ClaimVanityName(ctx, "robin", strings.Repeat("a", 43), 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.AddVanityReport(ctx, "robin", contract.ReportAbuse, 100); err != nil {
+		t.Fatal(err)
+	}
+
+	var seeded contract.AdminMetricsResponse
+	if err := json.Unmarshal(authed().Body.Bytes(), &seeded); err != nil {
+		t.Fatal(err)
+	}
+	if seeded.Aliases != 2 {
+		t.Fatalf("aliases = %d, want 2", seeded.Aliases)
+	}
+	if seeded.PendingReports != 1 {
+		t.Fatalf("pendingReports = %d, want 1", seeded.PendingReports)
+	}
+
+	// The read is telemetry, not an action: it writes no audit row.
+	if entries, err := st.RecentAudits(ctx, 0, 10); err != nil || len(entries) != 0 {
+		t.Fatalf("metrics read should not audit: entries=%d err=%v", len(entries), err)
 	}
 }
 

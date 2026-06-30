@@ -72,6 +72,7 @@ const (
 	PathAdminPing    = "/admin/ping"    // GET: 204 if the admin bearer token is valid
 	PathAdminReports = "/admin/reports" // GET: the vanity-name review queue (doc 17/20)
 	PathAdminAudit   = "/admin/audit"   // GET: recent admin actions, newest first (doc 20 A4)
+	PathAdminMetrics = "/admin/metrics" // GET: aggregate, identifier-free service totals (doc 20 A5)
 )
 
 // --- JSON bodies (only the non-byte endpoints) ------------------------------
@@ -251,6 +252,20 @@ type AdminAuditEntry struct {
 // AdminAuditResponse is GET /admin/audit's body: recent actions, newest first.
 type AdminAuditResponse struct {
 	Entries []AdminAuditEntry `json:"entries"`
+}
+
+// AdminMetricsResponse is GET /admin/metrics' body (doc 20 A5): aggregate,
+// identifier-free service totals for the operator dashboard. Every field is a count
+// of opaque rows or a system size, never a per-account or per-id figure and never a
+// distribution that could fingerprint one account, so it stays within the
+// blind-store boundary (doc 12). A read, so it is not itself audited.
+type AdminMetricsResponse struct {
+	Accounts       int64 `json:"accounts"`       // distinct account-sync blobs
+	Aliases        int64 `json:"aliases"`        // distinct alias (live-link) ciphertext rows
+	Knocks         int64 `json:"knocks"`         // live knock rows (auto-expiring)
+	SendQueueDepth int64 `json:"sendQueueDepth"` // wake jobs awaiting drain
+	DBSizeBytes    int64 `json:"dbSizeBytes"`    // logical database size
+	PendingReports int   `json:"pendingReports"` // names awaiting review in the queue
 }
 
 // AdminRecordInfo is opaque metadata about one stored record (doc 20 A3): whether
