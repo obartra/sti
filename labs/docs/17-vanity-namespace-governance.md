@@ -49,6 +49,18 @@ A single mapping, opt-in per user:
 - A name that does not match after normalization is rejected at registration with a clear error; the
   resolve endpoint only ever sees already-normalized input (it normalizes again, defensively).
 
+## Availability, checked as you type
+
+The owner learns whether a name is free **as they type, not on submit** (doc 31). Format and the
+client-side reserved list are checked instantly; availability is a debounced lookup against the
+existing resolve endpoint (`GET /u/{name}`: a `200` means taken, a `404` means free), rate-limited
+like any resolve. So a name reads as available before the owner commits.
+
+A name can be unusable for more than one reason (already taken, reserved, or blocked), and surfacing
+which would leak namespace state, so the message is one line regardless: **"That name isn't
+available. Try another."** ("isn't available", not "taken", since "taken" is only one of the
+reasons.) Format errors (too short, bad characters) are their own specific, non-leaky messages.
+
 ## Allocation lifecycle (gate)
 
 - **First-come-first-served.** A name is held by exactly one alias at a time.
