@@ -22,8 +22,8 @@ describe("CircleCreate", () => {
     const onCreate = vi.fn();
     render(<CircleCreate contacts={contacts} onCreate={onCreate} />);
 
-    expect(screen.getByText("Create a circle")).toBeInTheDocument();
-    const cta = screen.getByRole("button", { name: "Create circle" });
+    expect(screen.getByText("Create a group")).toBeInTheDocument();
+    const cta = screen.getByRole("button", { name: "Create group" });
     expect(cta).toBeDisabled();
 
     await user.type(screen.getByPlaceholderText(/Thursday group/), "Crew");
@@ -46,7 +46,7 @@ describe("CircleCreate", () => {
     );
 
     // Edit mode: prefilled name, sam already a member, the CTA says Save.
-    expect(screen.getByText("Edit circle")).toBeInTheDocument();
+    expect(screen.getByText("Edit group")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Thursday crew")).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: /Add sam/ })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: /Add ari/ })).not.toBeChecked();

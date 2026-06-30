@@ -1,5 +1,5 @@
-// Circles list: the owner's private circles, each a named grouping of contacts.
-// A circle shows a roster of per-member status once it has five or more members.
+// Groups list: the owner's private groups, each a named grouping of contacts.
+// A group shows a roster of each member's color, at any size (doc 31).
 import { Button, Card } from "../../design/components/index.ts";
 import {
   Plus,
@@ -10,10 +10,11 @@ import {
 import type { CircleRecord } from "../../store/accountBlob.ts";
 
 const COPY = {
-  title: "Circles",
+  title: "Groups",
   create: "Create",
-  sub: "Private groups. Everyone shares their own status, so the group can look out for each other.",
-  empty: "No circles yet. Create one for a group, a household, or an event.",
+  sub: "Private groups. Everyone in a group sees each other’s color, so you can look out for each other.",
+  empty:
+    "No groups yet. Create one for a household, a friend group, or an event.",
   members: "members",
 } as const;
 
@@ -218,7 +219,7 @@ export function CirclesList({
         <div
           style={{ fontSize: 13, lineHeight: 1.55, color: "var(--text-body)" }}
         >
-          Circles only ever show each person&rsquo;s overall status. Nobody sees
+          Groups only ever show each person&rsquo;s overall color. Nobody sees
           results or conditions.
         </div>
       </Card>

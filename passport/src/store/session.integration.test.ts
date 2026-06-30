@@ -398,7 +398,7 @@ describe("owner session against a live blind store", () => {
       contacts,
       (link) => store.resolveAlias(link),
     );
-    expect(roster?.map((m) => m.tone)).toEqual([
+    expect(roster.map((m) => m.tone)).toEqual([
       "blue",
       "gray",
       "gray",
@@ -406,13 +406,14 @@ describe("owner session against a live blind store", () => {
       "gray",
     ]);
 
-    // Below the floor the whole roster hides (never a partial reveal).
+    // A small group still resolves a full roster (no hide floor, doc 31): being in
+    // the group is itself sharing your color, so size protects nothing.
     const small = await resolveCircleRoster(
-      { id: "c", name: "crew", memberContactIds: ids.slice(0, 4) },
+      { id: "c", name: "crew", memberContactIds: ids.slice(0, 2) },
       contacts,
       (link) => store.resolveAlias(link),
     );
-    expect(small).toBeNull();
+    expect(small.map((m) => m.contactId)).toEqual(["m0", "m1"]);
   });
 
   it("creates then edits a circle in place (rename + member change persists)", async () => {

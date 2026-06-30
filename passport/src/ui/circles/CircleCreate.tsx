@@ -1,7 +1,7 @@
-// Create a circle: name it and pick which of your contacts are in it. A circle is
+// Create a group: name it and pick which of your contacts are in it. A group is
 // just a private grouping of contacts you've already linked with; there is no
-// invite, no join, no roles. A roster of member statuses appears once the circle
-// reaches five members (below that it stays hidden, never a partial reveal).
+// invite, no join, no roles. Everyone in it sees each other's color, at any size,
+// because being in the group is itself sharing that color (doc 31).
 import { useState } from "react";
 import {
   Avatar,
@@ -17,16 +17,16 @@ import { sectionLbl } from "./shared.tsx";
 import type { CircleRecord, ContactRecord } from "../../store/accountBlob.ts";
 
 const COPY = {
-  createTitle: "Create a circle",
-  editTitle: "Edit circle",
+  createTitle: "Create a group",
+  editTitle: "Edit group",
   nameLabel: "Name",
   nameHint: "Keep it neutral. It shows on lock screens and notifications.",
   namePlaceholder: "e.g. Thursday group",
   pickLabel: "Members",
-  floorNote:
-    "A roster of statuses appears once a circle reaches 5 people, never below, so no one is singled out.",
-  noContacts: "Add connections first, then group them into a circle here.",
-  create: "Create circle",
+  sharingNote:
+    "Everyone you add sees each other’s color, and they see yours. Being in the group is the sharing.",
+  noContacts: "Add connections first, then group them here.",
+  create: "Create group",
   save: "Save changes",
 } as const;
 
@@ -163,7 +163,7 @@ export function CircleCreate({
         <div
           style={{ fontSize: 13, lineHeight: 1.55, color: "var(--text-body)" }}
         >
-          {COPY.floorNote}
+          {COPY.sharingNote}
         </div>
       </Card>
 

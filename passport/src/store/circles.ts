@@ -3,11 +3,9 @@
  * display. The server never learns a circle exists; group status sharing reuses
  * each member's existing pairwise channel, so a circle is only a local grouping.
  *
- * The privacy-critical rule is the min-group-5 hide floor: a member's status is
- * shown within a circle only when the circle has at least five members. Below that,
- * the whole circle hides (never reveals a partial set), so a status can never be
- * pinpointed to one person in a tiny group. The floor is on the GROUP SIZE, not on
- * how many members have a resolved status.
+ * Being in a group is itself sharing your color to its members (doc 31), so there
+ * is no minimum-size hide floor: a roster shows every member's blue/gray color at
+ * any size. The old "~5 floor" guarded the wrong thing, since joining is consent.
  */
 
 import type {
@@ -29,46 +27,17 @@ export interface CircleRosterMember {
 }
 
 /**
- * The smallest circle that may display member statuses. Below this a circle hides
- * entirely, so an individual's status is never inferable from a small group.
- */
-export const MIN_CIRCLE_SIZE = 5;
-
-/** Whether a circle is large enough to display member statuses at all. */
-export function circleMeetsFloor(circle: CircleRecord): boolean {
-  return circle.memberContactIds.length >= MIN_CIRCLE_SIZE;
-}
-
-/**
- * The member statuses a circle may display, or null when the circle is below the
- * floor (hidden, never a partial reveal). Above the floor, returns the resolved
- * status for each member that has one, in membership order; members without a
- * resolved status are simply absent (no placeholder leaks who is missing).
- */
-export function visibleCircleStatuses<T>(
-  circle: CircleRecord,
-  statusByContactId: ReadonlyMap<string, T>,
-): T[] | null {
-  if (!circleMeetsFloor(circle)) return null;
-  return circle.memberContactIds
-    .map((id) => statusByContactId.get(id))
-    .filter((s): s is T => s !== undefined);
-}
-
-/**
- * Resolve a circle to its display roster, or null when the circle is below the
- * min-5 floor (hidden entirely, never a partial reveal). Each member is blue only
- * when their shared status currently reads blue; everything else (no exchanged
- * status alias, an unreachable or again-uniform resolve, a non-blue card) is gray.
- * Resolution is fail-closed per member, so one unreachable member never errors the
- * roster, and the count and order always match the circle's membership.
+ * Resolve a circle to its display roster (every member, at any group size). Each
+ * member is blue only when their shared status currently reads blue; everything
+ * else (no exchanged status alias, an unreachable or again-uniform resolve, a
+ * non-blue card) is gray. Resolution is fail-closed per member, so one unreachable
+ * member never errors the roster, and the count and order always match membership.
  */
 export async function resolveCircleRoster(
   circle: CircleRecord,
   contacts: readonly ContactRecord[],
   resolveAlias: PassportStore["resolveAlias"],
-): Promise<CircleRosterMember[] | null> {
-  if (!circleMeetsFloor(circle)) return null;
+): Promise<CircleRosterMember[]> {
   const byId = new Map(contacts.map((c) => [c.id, c]));
   return Promise.all(
     circle.memberContactIds.map(async (id) => {
