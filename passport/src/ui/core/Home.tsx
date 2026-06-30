@@ -1,4 +1,5 @@
-import { Button } from "../../design/components/index.ts";
+import { useState } from "react";
+import { Button, Segmented } from "../../design/components/index.ts";
 import { BadgeCard } from "../badge-card.tsx";
 import type { ProtectionLabel, Route } from "../badge-card.tsx";
 import { avatarSrc, type AvatarConfigInput } from "../../lib/avatars.ts";
@@ -12,20 +13,31 @@ import {
   RetestHint,
 } from "./Home.parts.tsx";
 import type { HomeBadge } from "./Home.parts.tsx";
-import { StandingCard } from "./Home.standing.tsx";
+import { CriteriaView } from "./Home.standing.tsx";
 import { PauseBanner } from "./Home.pause.tsx";
 import type { ReportPreview } from "../../core/report.ts";
 
-// C1 Home (calm fold): the badge card is the hero, with the single next-best
-// action right under it. The rest is demoted so the status keeps the focus, a
-// quiet one-line "what this means", a compact row of quick actions, and a re-test
-// nudge that only becomes a full card when it is actually due. The badge is
-// TWO-STATE only (blue / gray); there is no four-light status here.
+// C1 Home (calm fold): the hero is one card that toggles between "what others
+// see" (the badge a viewer resolves) and "your criteria" (the owner-only
+// breakdown of where you stand), with the single next-best action under it. The
+// rest is demoted so the status keeps the focus: a quiet one-line "what this
+// means", a compact row of quick actions, and a re-test nudge that only becomes a
+// full card when it is actually due. The badge is TWO-STATE only (blue / gray).
 export type { HomeBadge };
+
+// The two faces of the hero card. "shared" is the default so the honest mirror of
+// what a viewer sees is the first thing the owner lands on; "criteria" is the
+// private breakdown, never a viewer surface.
+type HomeView = "shared" | "criteria";
 
 // How close to the freshness lapse the re-test nudge earns a full card (vs the
 // faint hint). Mirrors the inbox's "re-test soon" window.
 const RETEST_SOON_DAYS = 14;
+
+const VIEW_OPTIONS: { value: HomeView; label: string }[] = [
+  { value: "shared", label: "What others see" },
+  { value: "criteria", label: "Your criteria" },
+];
 
 function HomeHero({
   handle,
@@ -38,6 +50,12 @@ function HomeHero({
   clearBy,
   onResume,
   onExtend,
+  view,
+  onView,
+  standing,
+  daysLeft,
+  tested,
+  onFindTesting,
 }: {
   handle: string | undefined;
   avatar: AvatarConfigInput | undefined;
@@ -49,6 +67,12 @@ function HomeHero({
   clearBy: Date;
   onResume: (() => void) | undefined;
   onExtend: (() => void) | undefined;
+  view: HomeView;
+  onView: (v: HomeView) => void;
+  standing: ReportPreview;
+  daysLeft: number;
+  tested: boolean;
+  onFindTesting: (() => void) | undefined;
 }) {
   return (
     <>
@@ -65,14 +89,30 @@ function HomeHero({
         </h1>
       </div>
 
-      <BadgeCard
-        state={viewerBadge}
-        labels={labels}
-        route={route}
-        identity={handle ? { handle } : null}
-        avatarSrc={avatar !== undefined ? avatarSrc(avatar) : undefined}
-        width="100%"
+      <Segmented
+        aria-label="Card view"
+        value={view}
+        onChange={onView}
+        options={VIEW_OPTIONS}
       />
+
+      {view === "shared" ? (
+        <BadgeCard
+          state={viewerBadge}
+          labels={labels}
+          route={route}
+          identity={handle ? { handle } : null}
+          avatarSrc={avatar !== undefined ? avatarSrc(avatar) : undefined}
+          width="100%"
+        />
+      ) : (
+        <CriteriaView
+          standing={standing}
+          daysLeft={daysLeft}
+          tested={tested}
+          onFindTesting={onFindTesting}
+        />
+      )}
 
       {isPaused && (
         <PauseBanner
@@ -112,9 +152,11 @@ export interface HomeProps {
   clearBy?: Date;
   onShare?: (() => void) | undefined;
   onReport?: (() => void) | undefined;
+  // Kept for callers that still pass it; the Home "Preview" tile was folded into
+  // the share surface, so it is no longer used here.
   onViewAs?: (() => void) | undefined;
   onPrivacy?: (() => void) | undefined;
-  // Route to the testing finder (Care) from the "where you stand" card.
+  // Route to the testing finder (Care) from the "your criteria" view.
   onFindTesting?: (() => void) | undefined;
   onContinueCare?: (() => void) | undefined;
   onResume?: (() => void) | undefined;
@@ -137,7 +179,6 @@ export function Home({
   clearBy = addDays(TODAY, 9),
   onShare,
   onReport,
-  onViewAs,
   onPrivacy,
   onFindTesting,
   onContinueCare,
@@ -145,6 +186,7 @@ export function Home({
   onExtend,
 }: HomeProps) {
   const isPaused = paused || autoPaused;
+  const [view, setView] = useState<HomeView>("shared");
   const act = nextAction({
     badge,
     paused: isPaused,
@@ -176,6 +218,12 @@ export function Home({
         clearBy={clearBy}
         onResume={onResume}
         onExtend={onExtend}
+        view={view}
+        onView={setView}
+        standing={standing}
+        daysLeft={daysLeft}
+        tested={tested}
+        onFindTesting={onFindTesting}
       />
 
       <Button
@@ -192,61 +240,37 @@ export function Home({
         isPaused={isPaused}
         viewerBadge={viewerBadge}
         daysLeft={daysLeft}
-        standing={standing}
-        tested={tested}
         onReport={onReport}
-        onViewAs={onViewAs}
         onPrivacy={onPrivacy}
-        onFindTesting={onFindTesting}
       />
     </div>
   );
 }
 
-// The demoted, below-the-hero content: the owner-only "where you stand" card, a
-// quiet meaning line, the compact quick actions, and the re-test nudge (all
-// suppressed while paused; the nudge becomes a full card only when the freshness
-// window is close to lapsing, else a faint hint).
+// The demoted, below-the-hero content: a quiet meaning line, the compact quick
+// actions, and the re-test nudge (all suppressed while paused; the nudge becomes a
+// full card only when the freshness window is close to lapsing, else a faint
+// hint). The "where you stand" breakdown is no longer here; it is the hero card's
+// "your criteria" toggle.
 function HomeExtras({
   isPaused,
   viewerBadge,
   daysLeft,
-  standing,
-  tested,
   onReport,
-  onViewAs,
   onPrivacy,
-  onFindTesting,
 }: {
   isPaused: boolean;
   viewerBadge: HomeBadge;
   daysLeft: number;
-  standing: ReportPreview;
-  tested: boolean;
   onReport: (() => void) | undefined;
-  onViewAs: (() => void) | undefined;
   onPrivacy: (() => void) | undefined;
-  onFindTesting: (() => void) | undefined;
 }) {
   const retestDue = daysLeft <= RETEST_SOON_DAYS;
   return (
     <>
-      {!isPaused && (
-        <StandingCard
-          standing={standing}
-          daysLeft={daysLeft}
-          tested={tested}
-          onFindTesting={onFindTesting}
-        />
-      )}
-
       {!isPaused && <MeansLine viewerBadge={viewerBadge} />}
 
-      <QuickActionsRow
-        onReport={onReport}
-        onViewAs={onViewAs}
-        onPrivacy={onPrivacy}
-      />
+      <QuickActionsRow onReport={onReport} onPrivacy={onPrivacy} />
 
       {!isPaused &&
         (retestDue ? (

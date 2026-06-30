@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import { StandingCard } from "./Home.standing.tsx";
+import { CriteriaView } from "./Home.standing.tsx";
 
 const blue = {
   recentPanel: true,
@@ -9,37 +9,28 @@ const blue = {
   willBeBlue: true,
 } as const;
 
-describe("StandingCard (where you stand)", () => {
-  it("hides the breakdown behind a reveal by default, then shows it on tap", () => {
+describe("CriteriaView (the home 'your criteria' view)", () => {
+  it("shows the requirement detail and the retest timing", () => {
     render(
-      <StandingCard
+      <CriteriaView
         standing={blue}
         daysLeft={40}
         tested
         onFindTesting={() => undefined}
       />,
     );
-    // The title and the way to testing are always visible.
-    expect(screen.getByText("Where you stand")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Find testing" }),
-    ).toBeInTheDocument();
-    // The reveal cover is present until tapped.
-    const reveal = screen.getByRole("button", { name: "Show where you stand" });
-    fireEvent.click(reveal);
-    // Once revealed, the requirement detail and the retest timing are shown.
     expect(
       screen.getByText("You're up to date. Next test in 40 days."),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Show where you stand" }),
-    ).toBeNull();
+      screen.getByRole("button", { name: "Find testing" }),
+    ).toBeInTheDocument();
   });
 
   it("routes to testing when Find testing is tapped", () => {
     const onFindTesting = vi.fn();
     render(
-      <StandingCard
+      <CriteriaView
         standing={blue}
         daysLeft={40}
         tested
@@ -52,7 +43,7 @@ describe("StandingCard (where you stand)", () => {
 
   it("tells a lapsed owner their last test is too old", () => {
     render(
-      <StandingCard
+      <CriteriaView
         standing={{
           recentPanel: false,
           clear: true,
@@ -63,9 +54,6 @@ describe("StandingCard (where you stand)", () => {
         tested
         onFindTesting={() => undefined}
       />,
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Show where you stand" }),
     );
     expect(
       screen.getByText(/Your last test is too old now/),
