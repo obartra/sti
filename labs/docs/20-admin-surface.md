@@ -87,7 +87,8 @@ is where the richer aggregate views live.
   ("accounts with > N links"), never anything that correlates accounts. Counts of opaque rows, not
   facts about people.
 - **Built to grow:** the page is a shell with panels, so account disable, alias revoke, and metadata
-  lookup by id dropped in as additional panels (now shipped) without re-architecting.
+  lookup by id can drop in as additional panels without re-architecting. Their endpoints are live now;
+  the console panels are not built yet, so today an operator drives those three by hand with the bearer.
 
 The page renders nothing and calls nothing until a valid token is present; it carries no user-facing
 chrome and is never linked from the app.
@@ -128,14 +129,15 @@ Every mutation writes an audit row and returns a uniform shape; none returns pla
    `/admin` route with the token gate. Nothing actionable yet.
 2. **A2 — Findable review:** report store + `GET /admin/reports`, the takedown/dismiss endpoints
    (consume doc 17's lifecycle), and the review panel. This is Findable's F4 reviewer step.
-3. **A3 — Account / alias management (shipped):** disable-account + revoke-alias + opaque lookup, each a
-   panel + endpoint, all within the blind-store boundary (admin.go + admin_test.go). Notes from the build: disable-account
-   deletes only the sync blob (the blind store keeps no account→alias link, so aliases are revoked
-   separately, not cascaded); and alias-revoke is two non-atomic steps (delete the alias row, then
-   release any vanity name pointing at it) — if the second fails the name briefly maps to a dead id (a
-   knock just fails) and re-running revoke, idempotent on both halves, completes it. The audit row is
-   written before either step, so the attempt is always recorded. Both the endpoints and the panel are
-   live in the authed shell, like A2.
+3. **A3 — Account / alias management (endpoints shipped):** disable-account + revoke-alias + opaque
+   lookup, all within the blind-store boundary (admin.go + admin_test.go). The endpoints are live and
+   audited; the console panels are not built yet, so an operator invokes these three by hand with the
+   bearer. Notes from the build: disable-account deletes only the sync blob (the blind store keeps no
+   account→alias link, so aliases are revoked separately, not cascaded); and alias-revoke is two
+   non-atomic steps (delete the alias row, then release any vanity name pointing at it), so if the
+   second fails the name briefly maps to a dead id (a knock just fails) and re-running revoke,
+   idempotent on both halves, completes it. The audit row is written before either step, so the attempt
+   is always recorded.
 4. **A4 — Activity (audit read):** `GET /admin/audit` over the existing `RecentAudits` store reader,
    plus a read-only Activity panel in the authed shell. Closes the loop the audit log opened in A1: the
    log was always written but had no read surface. A capped fetch with `before`/`limit` cursor

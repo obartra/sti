@@ -11,6 +11,9 @@ LICENSE
 **/reports/behaviors
 .claude/scratch
 
+# Plain-text route allowlist (METHOD /path reason); prettier has no parser for it.
+.route-allowlist
+
 # Authored design docs: source of truth for the rendered labs pages, left verbatim.
 labs/docs
 

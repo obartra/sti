@@ -26,8 +26,12 @@ DEV_DB_PATH ?= /tmp/sti-dev.db
 # no separate binary to install; the rules and ignores live in `.woke.yml`.
 WOKE_VERSION ?= v0.19.0
 
+# Dead-code analyzer (golang.org/x/tools/cmd/deadcode), pinned. Same `go run`
+# model as woke/govulncheck; reports functions unreachable from any main or test.
+DEADCODE_VERSION ?= v0.47.0
+
 .PHONY: help backend web dev \
-	check-root check-web test-integration test-e2e check-server vulncheck smoke \
+	check-root check-web test-integration test-e2e check-server deadcode vulncheck smoke \
 	inclusive-language \
 	check ci build-web build-server build-release \
 	secrets secrets-pull secrets-diff secrets-sync secrets-edit gen-vapid gen-decoy gen-admin
@@ -57,9 +61,10 @@ check-root: ## Root: inclusive-language + prettier + eslint + node tests
 inclusive-language: ## Fail on exclusionary terms via woke (config in .woke.yml)
 	go run github.com/get-woke/woke@$(WOKE_VERSION) --exit-1-on-failure
 
-check-web: ## Passport: lint + typecheck + unit tests
+check-web: ## Passport: lint + typecheck + unused-code (knip) + unit tests
 	cd passport && npm run lint
 	cd passport && npm run typecheck
+	cd passport && npm run knip
 	cd passport && npm run test:cov
 
 test-integration: ## Passport API client against a real Go store
@@ -68,11 +73,16 @@ test-integration: ## Passport API client against a real Go store
 test-e2e: ## Passport Playwright journeys (needs a browser)
 	cd passport && npm run test:e2e
 
-check-server: ## Server: gofmt + vet + go test + alert-script tests
+check-server: ## Server: gofmt + vet + deadcode + go test + alert-script tests
 	@cd server && { test -z "$$(gofmt -l .)" || { echo "needs gofmt:"; gofmt -l .; exit 1; }; }
 	cd server && go vet ./...
+	$(MAKE) deadcode
 	cd server && go test ./...
 	cd server && bash deploy/alert_test.sh
+
+deadcode: ## Server: fail on any function unreachable from a main or a test
+	@cd server && { out="$$(go run golang.org/x/tools/cmd/deadcode@$(DEADCODE_VERSION) -test ./...)"; \
+		test -z "$$out" || { echo "unreachable code (delete it, or wire it up):"; echo "$$out"; exit 1; }; }
 
 vulncheck: ## Server: govulncheck over the stdlib + deps the code calls
 	cd server && go run golang.org/x/vuln/cmd/govulncheck@v1.4.0 ./...

@@ -1,0 +1,21 @@
+# Backend routes intentionally not called by any frontend.
+#
+# The route-usage gate (test/routes.test.mjs) fails the build when a registered
+# route has no caller in the passport app or the admin console. A route that is
+# server-only or operator-only by design belongs here so the gate stays green.
+#
+# One entry per line:  METHOD /template   reason it is not frontend-called
+# Lines starting with # and blank lines are ignored. A reason is required.
+#
+# Prefer DELETING an unused route (and its handler + tests) over listing it here.
+# An entry is checked both ways: if its route stops being registered, or starts
+# being frontend-called, the gate fails until the entry is removed.
+
+GET /{$}                           public landing HTML served to browsers, never an API call
+
+# Operator surface (doc 20): bearer-gated, invoked by hand with the admin token.
+# These shipped as endpoints but have no admin-console panel calling them yet
+# (doc 20 A3). Wire a panel and the entry must go; drop the route if unneeded.
+POST /admin/account/{id}/disable   operator-only admin action via the bearer; no admin-console caller (doc 20 A3)
+POST /admin/alias/{id}/revoke      operator-only admin action via the bearer; no admin-console caller (doc 20 A3)
+GET /admin/lookup/{id}             operator-only admin metadata read via the bearer; no admin-console caller (doc 20 A3)
