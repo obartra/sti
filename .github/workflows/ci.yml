@@ -17,6 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      # Go is for the inclusive-language linter (woke), run via `go run` in
+      # `make inclusive-language`; the rest of check-root is Node.
+      - uses: ./.github/actions/setup-go
       - uses: ./.github/actions/setup-node
       - run: npm ci
       - run: make check-root

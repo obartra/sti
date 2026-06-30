@@ -22,6 +22,10 @@ WEB_ORIGINS ?= http://localhost:5173,http://127.0.0.1:5173,http://localhost:5183
 DEV_DECOY_SECRET ?= 00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff
 DEV_DB_PATH ?= /tmp/sti-dev.db
 
+# Inclusive-language linter (get-woke/woke), pinned. Run via `go run` so there is
+# no separate binary to install; the rules and ignores live in `.woke.yml`.
+WOKE_VERSION ?= v0.19.0
+
 .PHONY: help backend web dev \
 	check-root check-web test-integration test-e2e check-server vulncheck smoke \
 	inclusive-language \
@@ -45,13 +49,13 @@ dev: ## Run backend + web together (interleaved output; two shells is cleaner)
 ## --- Gates (CI calls these) ---
 
 check-root: ## Root: inclusive-language + prettier + eslint + node tests
-	bash scripts/inclusive-language.sh
+	$(MAKE) inclusive-language
 	npm run format:check
 	npm run lint
 	npm test
 
-inclusive-language: ## Fail on exclusionary terms (see scripts/inclusive-language.sh)
-	bash scripts/inclusive-language.sh
+inclusive-language: ## Fail on exclusionary terms via woke (config in .woke.yml)
+	go run github.com/get-woke/woke@$(WOKE_VERSION) --exit-1-on-failure
 
 check-web: ## Passport: lint + typecheck + unit tests
 	cd passport && npm run lint
