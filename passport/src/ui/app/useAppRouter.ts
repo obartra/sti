@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   groupOf,
-  isScreen,
   type Group,
   type Route,
   type RouteData,
@@ -142,14 +141,6 @@ function pathParamRoute(cleanPath: string): Route | null {
   return null;
 }
 
-// A still-parameterized screen, or a legacy `/#screen` bookmark, deep-linked via the
-// URL hash. Transitional: once every screen owns a clean path this disappears.
-function routeFromHash(): Route | null {
-  if (typeof window === "undefined") return null;
-  const id = window.location.hash.replace(/^#\/?/, "");
-  return isScreen(id) ? { screen: id, group: groupOf(id), data: null } : null;
-}
-
 // A real shared passport link is `/a/{id}#k={key}` (the SPA fallback serves the
 // app at that path). It resolves to a2-public carrying the id + key; the hash
 // here holds the decryption key, not a screen name. Returns null when the path is
@@ -190,18 +181,17 @@ function parameterizedRoute(pathname: string, hash: string): Route | null {
 }
 
 // Derive the current route from the URL, in priority order: an id-carrying link
-// (above), then a transitional `/#screen` hash (the still-parameterized screens +
-// legacy bookmarks, only ever at the root path, checked before the bare-root table
-// entry would read it as the landing), then the clean-path table (every
-// non-parameterized screen). Mount normalization replaces a hash with the clean path.
+// (above), then the clean-path table (every non-parameterized screen). Every screen
+// now owns a clean path, so a legacy `/#screen` hash is no longer read: a stale
+// `/#home` bookmark falls through to the bare-root entry (the landing) and mount
+// normalization strips the hash. The `#k=` fragment on an alias link is handled by
+// parameterizedRoute above, not here, so dropping the hash read never touches it.
 export function routeFromLocation(): Route | null {
   if (typeof window === "undefined") return null;
   const { pathname, hash } = window.location;
   const param = parameterizedRoute(pathname, hash);
   if (param) return param;
   const cleanPath = pathname.replace(/\/$/, "") || "/";
-  const hashed = cleanPath === "/" ? routeFromHash() : null;
-  if (hashed) return hashed;
   const redirect = COLD_REDIRECT[cleanPath];
   if (redirect)
     return { screen: redirect, group: groupOf(redirect), data: null };

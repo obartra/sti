@@ -280,13 +280,16 @@ describe("every screen owns a clean path", () => {
     }
   });
 
-  it("normalizes a legacy /#home bookmark to /home", async () => {
+  it("no longer honors a legacy /#home bookmark (the transitional reader is gone)", async () => {
+    // Every screen owns a clean path now, so the `/#screen` hash is not read: a
+    // stale bookmark falls through to the bare-root entry (the landing) and the
+    // hash is stripped on mount, rather than deep-linking to /home.
     window.history.replaceState(null, "", "/#home");
     try {
       const { result } = renderHook(() => useAppRouter());
-      expect(result.current.route.screen).toBe("home");
+      expect(result.current.route.screen).toBe("a1-landing");
       await waitFor(() => {
-        expect(window.location.pathname).toBe("/home");
+        expect(window.location.pathname).toBe("/");
         expect(window.location.hash).toBe("");
       });
     } finally {

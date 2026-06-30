@@ -260,7 +260,7 @@ async function onboard(
 describe("App onboarding flow", () => {
   it("creates a real account and enters the app as the derived owner", async () => {
     // Start at b1-claim (the landing's claim target).
-    window.history.pushState({}, "", "/#b1-claim");
+    window.history.pushState({}, "", "/claim");
     const user = userEvent.setup();
     render(<App store={stubStore(null)} controller={fakeController()} />);
 
@@ -274,7 +274,7 @@ describe("App onboarding flow", () => {
   });
 
   it("enters even when binding a passkey fails (phrase stays the way back)", async () => {
-    window.history.pushState({}, "", "/#b1-claim");
+    window.history.pushState({}, "", "/claim");
     const user = userEvent.setup();
     const controller = fakeController();
     // The authenticator declines: enrollment must not block entry.
@@ -288,7 +288,7 @@ describe("App onboarding flow", () => {
   });
 
   it("reports a result and the home badge turns blue (report -> setOwnerState -> derive)", async () => {
-    window.history.pushState({}, "", "/#b1-claim");
+    window.history.pushState({}, "", "/claim");
     const user = userEvent.setup();
     // A PrEP user: a clear, complete panel then earns blue (the route exists).
     render(
@@ -362,7 +362,7 @@ describe("App onboarding flow", () => {
   });
 
   it("deleting the account from the danger zone logs out to the landing", async () => {
-    window.history.pushState({}, "", "/#b1-claim");
+    window.history.pushState({}, "", "/claim");
     const user = userEvent.setup();
     const controller = fakeController();
     const deleteAccount = vi.fn(() => Promise.resolve());
@@ -387,7 +387,7 @@ describe("App onboarding flow", () => {
   });
 
   it("shows a contentless knock entry in the inbox only when someone knocked", async () => {
-    window.history.pushState({}, "", "/#b1-claim");
+    window.history.pushState({}, "", "/claim");
     const user = userEvent.setup();
     const controller = fakeController();
     // Two viewers knocked, neither with a grant key (contentless info row).
@@ -410,7 +410,7 @@ describe("App onboarding flow", () => {
   });
 
   it("a partner-notify ping lights the bell and leads the inbox with a contentless row", async () => {
-    window.history.pushState({}, "", "/#b1-claim");
+    window.history.pushState({}, "", "/claim");
     const user = userEvent.setup();
     const controller = fakeController();
     // No knocks: the bell dot here is driven solely by the partner-notify nudge.
@@ -438,7 +438,7 @@ describe("App onboarding flow", () => {
   });
 
   it("creates and revokes a per-contact link from the Connect screen", async () => {
-    window.history.pushState({}, "", "/#b1-claim");
+    window.history.pushState({}, "", "/claim");
     const user = userEvent.setup();
     render(<App store={stubStore(null)} controller={fakeController()} />);
 
@@ -485,7 +485,7 @@ describe("App onboarding flow", () => {
   it("keeps a logged-out visitor out of app screens (no owner data leaks)", async () => {
     // A deep link to an app-group screen must clamp to the public landing when
     // there is no session, never render the OWNER placeholder's data.
-    window.history.pushState({}, "", "/#home");
+    window.history.pushState({}, "", "/home");
     render(<App store={stubStore(null)} controller={fakeController()} />);
 
     expect(await screen.findByText("Claim your passport")).toBeInTheDocument();
