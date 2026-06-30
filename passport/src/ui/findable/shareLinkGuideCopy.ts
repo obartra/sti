@@ -25,8 +25,10 @@ export const SAMPLE_HANDLE = "sam";
 
 export const SHARE_LINK_GUIDE = {
   title: "Share your link",
-  // One calm line for the post-claim moment. Outcome first (doc 21 rule 3).
-  lead: "Your public name is live. Drop this link wherever people meet you.",
+  // One calm line for the post-claim moment. Outcome first (doc 21 rule 3), and it
+  // sets the ask-first expectation that the link itself carries: people find you by
+  // name and ask, they do not see your status just by opening it.
+  lead: "Your public name is live. Share this link where people meet you, and they can find you and ask to see your status.",
   linkLabel: "Your public link",
   // The editable handle field on the standalone page: type your own public name to
   // see the link, QR, and bio examples adapt.
