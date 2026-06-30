@@ -168,6 +168,75 @@ describe("the trust pages own clean, real paths", () => {
   });
 });
 
+describe("parameterized deep-links and cold-hit redirects", () => {
+  const routeAt = (path: string) => {
+    window.history.replaceState(null, "", path);
+    try {
+      return routeFromLocation();
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  };
+
+  it("leaves a /u/{name} findable link untouched (task #13 regression)", () => {
+    // The bug: visiting /u/robin used to be rewritten to /#u-resolve, losing the
+    // name. The name must survive a mount so refresh/share works.
+    window.history.replaceState(null, "", "/u/robin");
+    try {
+      const { result } = renderHook(() => useAppRouter());
+      expect(result.current.route.screen).toBe("u-resolve");
+      expect(result.current.route.data?.name).toBe("robin");
+      expect(window.location.pathname).toBe("/u/robin");
+      expect(window.location.hash).toBe("");
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
+  it("round-trips id-carrying app paths", () => {
+    expect(routeAt("/circles/abc123")).toMatchObject({
+      screen: "circle-detail",
+      data: { id: "abc123" },
+    });
+    expect(routeAt("/circles/abc123/edit")).toMatchObject({
+      screen: "circle-create",
+      data: { id: "abc123" },
+    });
+    expect(routeAt("/care/learn/prep")).toMatchObject({
+      screen: "learn-detail",
+      data: { id: "prep" },
+    });
+  });
+
+  it("does not mistake the fixed /circles/new and /care/learn/uu for ids", () => {
+    expect(routeAt("/circles/new")?.screen).toBe("circle-create");
+    expect(routeAt("/circles/new")?.data).toBeNull();
+    expect(routeAt("/care/learn/uu")?.screen).toBe("learn-uu");
+  });
+
+  it("redirects the cold transient paths to a safe fallback", () => {
+    // These depend on in-memory flow state, so a cold refresh redirects rather
+    // than rendering an empty shell.
+    expect(routeAt("/recovery")?.screen).toBe("b1-claim");
+    expect(routeAt("/setup")?.screen).toBe("b1-claim");
+    expect(routeAt("/report/saved")?.screen).toBe("home");
+  });
+
+  it("normalizes a circle-detail nav to /circles/{id}", async () => {
+    window.history.replaceState(null, "", "/circles");
+    try {
+      const { result } = renderHook(() => useAppRouter());
+      act(() => result.current.nav.go("circle-detail", { id: "xyz" }));
+      await waitFor(() => {
+        expect(window.location.pathname).toBe("/circles/xyz");
+      });
+      expect(result.current.route.data?.id).toBe("xyz");
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+});
+
 describe("every screen owns a clean path", () => {
   const routeAt = (path: string) => {
     window.history.replaceState(null, "", path);
