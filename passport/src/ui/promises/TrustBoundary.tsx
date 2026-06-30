@@ -17,7 +17,7 @@ interface SpineNode {
   readonly title: string;
   readonly body: string;
   // The protected core (your phone, our locked copy) reads in the page's privacy
-  // colour; a viewer sits outside that core, in neutral.
+  // color; a viewer sits outside that core, in neutral.
   readonly inside: boolean;
 }
 
@@ -40,7 +40,7 @@ const NODES: readonly SpineNode[] = [
     id: "viewer",
     icon: <Eye size={20} />,
     title: "Someone you share with",
-    body: "They open your link and see a colour and a few words. Each link is separate, so two of them can't point back to you.",
+    body: "They open your link and see your blue or gray status, plus anything extra you chose to share. Each handle is separate.",
     inside: false,
   },
 ];

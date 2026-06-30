@@ -17,7 +17,7 @@ import type { ContactInvite, ContactRecord } from "../../store/index.ts";
    shown here; this is link management, not a viewer surface. */
 
 // The lifetimes a link can be minted with, as a duration in ms from now (doc 16);
-// null means until-revoked. 7 days is the default, matching the prior behaviour.
+// null means until-revoked. 7 days is the default, matching the prior behavior.
 const DURATIONS: { key: string; label: string; ms: number | null }[] = [
   { key: "1", label: "24h", ms: DAY_MS },
   { key: "7", label: "7 days", ms: 7 * DAY_MS },

@@ -14,7 +14,7 @@
  * - `kind: "reasoning"` is used ONLY where a claim cannot be a headless test
  *   (a structural property, a stated trust boundary), never to dodge writing one.
  * - Test paths are relative to passport/ (the CI check's cwd): app tests as
- *   `src/...`, Go tests as `../server/...`, mirroring the behaviour catalogue.
+ *   `src/...`, Go tests as `../server/...`, mirroring the behavior catalog.
  */
 
 /** A test that pins an assertion: `file` exists and contains `name` (a test title
@@ -60,7 +60,7 @@ export const PROMISES: readonly UserPromise[] = [
     assertions: [
       {
         claim:
-          "The card sent to our server holds only a status colour, a few labels, and routing info, never your actual results.",
+          "The card sent to our server holds only a status color, a few labels, and routing info, never your actual results.",
         backedBy: {
           kind: "test",
           file: "src/store/publicCard.test.ts",

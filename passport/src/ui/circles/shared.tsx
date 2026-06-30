@@ -9,7 +9,7 @@
 //
 // IMPORTANT: this "tone" is the circle-membership color system, distinct from the
 // passport badge. It is intentionally two-state and uses two distinct SHAPES so
-// the state never rides on colour alone.
+// the state never rides on color alone.
 import type { CSSProperties } from "react";
 
 // ── Two-state tone ───────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ function labelFor(tone: Tone): string {
 }
 
 // ── Atoms ────────────────────────────────────────────────────────────────────
-// Two distinct SHAPES so the state never rides on colour alone:
+// Two distinct SHAPES so the state never rides on color alone:
 //   blue = in-window ring + dot (not a tick) · gray = single dash.
 export interface DotGlyphProps {
   tone: Tone;
@@ -78,7 +78,7 @@ export function DotGlyph({ tone, size = 10 }: DotGlyphProps) {
   );
 }
 
-// Per-member status atom: colour + glyph + word, always together.
+// Per-member status atom: color + glyph + word, always together.
 export interface MemberDotProps {
   tone: Tone;
   size?: "md" | "lg";

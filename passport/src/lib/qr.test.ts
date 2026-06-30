@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { encodeMatrix, clearCentre, svgString } from "./qr.tsx";
+import { encodeMatrix, clearCenter, svgString } from "./qr.tsx";
 
 // NOTE: these pin the encoder's structural contract (real QR geometry +
 // determinism). End-to-end scannability (a phone camera actually reading the
@@ -34,17 +34,17 @@ describe("encodeMatrix", () => {
       expect(grid[6]?.[k]).toBe(true); // bottom edge of the ring
     }
     expect(grid[1]?.[1]).toBe(false); // light ring
-    expect(grid[3]?.[3]).toBe(true); // centre of the 3x3 core
+    expect(grid[3]?.[3]).toBe(true); // center of the 3x3 core
     expect(grid[0]?.[7]).toBe(false); // separator past the finder
   });
 });
 
-describe("clearCentre", () => {
-  it("clears a centred square and leaves the corners (finders) intact", () => {
+describe("clearCenter", () => {
+  it("clears a centerd square and leaves the corners (finders) intact", () => {
     const grid = encodeMatrix(LINK);
     const n = grid.length;
     const hole = 7;
-    const cleared = clearCentre(grid, hole);
+    const cleared = clearCenter(grid, hole);
     const start = Math.floor((n - hole) / 2);
     // The whole hole is light...
     for (let i = start; i < start + hole; i++)
@@ -57,20 +57,20 @@ describe("clearCentre", () => {
 
   it("returns the grid unchanged when the hole is not positive", () => {
     const grid = encodeMatrix(LINK);
-    expect(clearCentre(grid, 0)).toBe(grid);
+    expect(clearCenter(grid, 0)).toBe(grid);
   });
 });
 
 describe("svgString", () => {
-  const TEAL_LOGO = "#2F9BB3"; // the brand mark drawn into the decorative centre
+  const TEAL_LOGO = "#2F9BB3"; // the brand mark drawn into the decorative center
 
-  it("with a link, exports a real QR and no occluding centre logo", () => {
+  it("with a link, exports a real QR and no occluding center logo", () => {
     const svg = svgString("logo", "a7f3k9q2", 1024, LINK);
     expect(svg).toContain("<rect"); // modules are present
     expect(svg).not.toContain(TEAL_LOGO); // nothing punched over the data
   });
 
-  it("without a link, keeps the decorative centre brand mark", () => {
+  it("without a link, keeps the decorative center brand mark", () => {
     const svg = svgString("logo", "a7f3k9q2", 1024);
     expect(svg).toContain(TEAL_LOGO);
   });
