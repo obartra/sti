@@ -36,6 +36,25 @@ describe("account blob codec", () => {
     expect(parseAccountBlob(serializeAccountBlob(blob))).toEqual(blob);
   });
 
+  it("round-trips the Home default-view preference and drops a bad one", () => {
+    const withPref: AccountBlob = { ...blob, homeDefaultView: "shared" };
+    expect(parseAccountBlob(serializeAccountBlob(withPref))).toEqual(withPref);
+    // A blob written without the field stays valid and absent (defaults later).
+    expect(parseAccountBlob(serializeAccountBlob(blob)).homeDefaultView).toBe(
+      undefined,
+    );
+    // A bad value fails the strict parse rather than silently defaulting (build it
+    // from a real serialize so the schema version is whatever the codec emits).
+    const wire = JSON.parse(bytesToUtf8(serializeAccountBlob(blob))) as Record<
+      string,
+      unknown
+    >;
+    wire.homeDefaultView = "sideways";
+    expect(() =>
+      parseAccountBlob(new TextEncoder().encode(JSON.stringify(wire))),
+    ).toThrow();
+  });
+
   it("never serializes a real-name field anywhere in the blob (G11)", () => {
     // The blob carries a self-chosen `handle`, never a legal/first/last name. A
     // future blob field called `name` (or firstname/lastname/legal) would be a PII

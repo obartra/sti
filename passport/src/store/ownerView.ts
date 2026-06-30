@@ -31,6 +31,8 @@ export interface OwnerView {
   readonly labels: ProtectionLabel[];
   readonly blueRoute: Route;
   readonly sharingMode: SharingMode;
+  /** Which face the Home hero opens on; absent means "criteria" (the default). */
+  readonly homeDefaultView?: "criteria" | "shared";
   /** Manually paused (forces gray). */
   readonly paused: boolean;
   /**
@@ -68,6 +70,9 @@ export function deriveOwnerView(blob: AccountBlob, nowDay: number): OwnerView {
     labels: card.labels ?? [],
     blueRoute: card.route ?? null,
     sharingMode: blob.sharingMode,
+    ...(blob.homeDefaultView !== undefined
+      ? { homeDefaultView: blob.homeDefaultView }
+      : {}),
     paused: blob.state.paused,
     autoPaused: inClearanceWindow(blob.state, nowDay),
     clearBy: epochDayToDate(blob.state.clearUntilDay ?? nowDay),

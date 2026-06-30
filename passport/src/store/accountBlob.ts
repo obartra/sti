@@ -174,6 +174,12 @@ export interface AccountBlob {
   /** The account-level sharing default chosen at onboarding. */
   readonly sharingMode: SharingMode;
   /**
+   * Which face the Home hero opens on: "criteria" (the owner-only breakdown,
+   * the default) or "shared" (what a viewer resolves). Owner-facing UI preference
+   * only; optional so pre-feature accounts stay valid (absent means "criteria").
+   */
+  readonly homeDefaultView?: "criteria" | "shared";
+  /**
    * Client-side contact bundles (doc 13 slice 6). Optional so pre-v7 construction
    * sites stay valid; absent means no circles. Never sent to the server.
    */
@@ -355,6 +361,9 @@ export function serializeAccountBlob(blob: AccountBlob): Bytes {
     state: blob.state,
     avatar: blob.avatar,
     sharingMode: blob.sharingMode,
+    ...(blob.homeDefaultView !== undefined
+      ? { homeDefaultView: blob.homeDefaultView }
+      : {}),
     ...(blob.circles !== undefined ? { circles: blob.circles } : {}),
     ...(blob.findable !== undefined ? { findable: blob.findable } : {}),
   };
@@ -394,6 +403,13 @@ function assertValidOptionalFields(o: Record<string, unknown>): void {
   if (!isOptionalFindable(o.findable)) {
     throw new Error("account blob: invalid findable");
   }
+  if (!isOptionalHomeDefaultView(o.homeDefaultView)) {
+    throw new Error("account blob: invalid homeDefaultView");
+  }
+}
+
+function isOptionalHomeDefaultView(x: unknown): boolean {
+  return x === undefined || x === "criteria" || x === "shared";
 }
 
 /** Parse decrypted bytes into an AccountBlob, validating strictly (throws). */
@@ -407,6 +423,9 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
     state: o.state as AccountBlob["state"],
     avatar: migrateAvatar(o.avatar),
     sharingMode: o.sharingMode as AccountBlob["sharingMode"],
+    ...(o.homeDefaultView === "criteria" || o.homeDefaultView === "shared"
+      ? { homeDefaultView: o.homeDefaultView }
+      : {}),
     ...(Array.isArray(o.circles)
       ? { circles: o.circles as CircleRecord[] }
       : {}),

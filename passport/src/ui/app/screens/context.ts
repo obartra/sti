@@ -47,6 +47,8 @@ export interface ScreenCtx {
   onSetAvatar: (avatar: AvatarConfig) => void;
   /** Persist the owner's local display name (logged-in only; null clears it). */
   onSetName: (name: string | null) => void;
+  /** Persist which face the Home hero opens on (logged-in only). */
+  onSetHomeDefaultView: (view: "criteria" | "shared") => void;
   /** Count of current knocks across the owner's aliases (contentless; 0 logged out). */
   knockCount: number;
   /** Re-pull the knock count + pending approvals (e.g. when the inbox opens). */
