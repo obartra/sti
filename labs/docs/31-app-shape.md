@@ -77,6 +77,22 @@ step, never a separate "set up a handle first" detour). The share sheet already 
 this way; the proposal is that the public-profile claim and the group-join use the
 exact same control and language, so it is one concept learned once.
 
+**A readable name rides on top of the handle, and both sides have a say.** The handle
+(@invisible_otter_35) is always the technical fallback, but it is opaque, so:
+
+- The **sharer** may **optionally attach a name** to a face (default off). It can be
+  their real name or a one-off nickname, and attaching it does not break unlinkability:
+  the handle underneath can still be a fresh anonymous one, so a name is about
+  *readability*, while the face choice above is about *linkability*. The two compose:
+  "anonymous handle, no name" and "anonymous handle, called Sam for this one person"
+  and "my main identity" are all reachable.
+- The **receiver** may **rename** the contact locally at any time, an override only
+  they see, never sent.
+
+So the name shown for a contact resolves in order: **the receiver's rename, else the
+name the sharer chose to share, else the handle.** This is the same mechanism as the
+connection rename in People, seen from the identity side.
+
 **Where faces are managed.**
 
 - **Creation is in-context.** You choose the face at the moment you make the link or
@@ -162,12 +178,17 @@ holds). Three things live here:
   top; the long tail sits under them). They stay on your device until you delete
   them; nothing prunes them automatically (each holds the capability that later lets
   a positive report quietly reach past partners, so we do not throw them away on a
-  timer). The old "removed after 90 days" line was never true and is gone. Not a
-  headline feature, just a quiet convenience: you can jot a **private label** on any
-  connection - a note only you ever see, never sent and never shown to them - because
-  an opaque handle like @invisible_otter_35 is otherwise useless for remembering who
-  someone is. (The contact record already carries this label field; this just surfaces
-  a small editor for it.)
+  timer). The old "removed after 90 days" line was never true and is gone.
+
+  You can **rename** any connection to whatever you want - a local override only you
+  ever see, never sent - because an opaque handle like @invisible_otter_35 is useless
+  for remembering who someone is. And the person you connect with can **optionally
+  share a name** for you (default off); if they do, that name is your default instead
+  of the handle, and you can still rename over it. So the name you see for a contact
+  resolves in order: **your own rename, else the name they chose to share, else the
+  handle.** Renaming is local and never sent; the shared name is the sharer's opt-in
+  choice (see the faces model). This replaces the earlier "private label" idea, which
+  was just the first of these three.
 
 Connecting is by **shared link or scan only**, member-initiated, two-way. There is no
 handle search and no way to be looked up.
