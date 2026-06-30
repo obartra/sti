@@ -66,6 +66,10 @@ export async function mintContactLink(
   const expiresAt = expiryFor(
     opts.durationMs === undefined ? CONTACT_LINK_MS : opts.durationMs,
   );
+  // The sender's optional shared name (doc 15): present only when they chose to show
+  // their name (identity "main") AND have a name set. It seeds the recipient's local
+  // label as a one-time snapshot; "anonymous" shares nothing.
+  const sharedName = sharedNameFor(identity, session.blob.handle);
   // A fresh receiving inbox for THIS contact only, handed to them in the invite. Not
   // a shared account inbox: per-contact is what keeps two of the owner's links
   // uncorrelatable by a recipient who holds both (doc 13).
@@ -90,8 +94,18 @@ export async function mintContactLink(
   return {
     session: { root: session.root, blob },
     contact,
-    url: contactInviteUrl(record, myInbox),
+    url: contactInviteUrl(record, myInbox, { sharedName }),
   };
+}
+
+// The shared name a link carries (doc 15): the account handle when the sender chose
+// to show their name ("main") and a name is set, else undefined ("anonymous" shares
+// nothing, and a nameless owner has nothing to share even when showing themselves).
+function sharedNameFor(
+  identity: AliasIdentity,
+  handle: string | undefined,
+): string | undefined {
+  return identity === "main" ? handle : undefined;
 }
 
 // Accept an inviter's contact invite (doc 13 path A). The accepter mints its OWN
@@ -123,7 +137,9 @@ export async function acceptContactInvite(
   );
   const contact: ContactRecord = {
     id: randomAliasId(),
-    label: label.slice(0, MAX_CONTACT_LABEL),
+    // Seed the label with the inviter's shared name when the accepter didn't name
+    // the contact themselves (doc 15): a one-time copy the accepter then owns.
+    label: seedLabel(label, invite.sharedName),
     createdDay: nowDay,
     expiresAt,
     alias: stamp(record),
@@ -135,8 +151,19 @@ export async function acceptContactInvite(
   return {
     session: { root: session.root, blob },
     contact,
-    url: contactInviteUrl(record, myInbox, invite.alias.id),
+    url: contactInviteUrl(record, myInbox, {
+      ref: invite.alias.id,
+      sharedName: sharedNameFor(identity, session.blob.handle),
+    }),
   };
+}
+
+// The label a freshly accepted contact starts with: the accepter's own typed name
+// if they gave one, else the inviter's shared name as a seed (doc 15), else empty.
+// Trimmed + capped like every other label write.
+function seedLabel(typed: string, sharedName: string | undefined): string {
+  const chosen = typed.trim() !== "" ? typed : (sharedName ?? "");
+  return chosen.trim().slice(0, MAX_CONTACT_LABEL);
 }
 
 // Ingest a return invite, completing the pending contact the inviter created. The
@@ -155,6 +182,9 @@ export async function ingestContactReturn(
   if (pending === undefined) return session;
   const completed: ContactRecord = {
     ...pending,
+    // Keep the inviter's own label if they named the link at mint; otherwise seed it
+    // with the accepter's shared name now that it has arrived (doc 15).
+    label: seedLabel(pending.label, ret.sharedName),
     theirNotify: ret.notify,
     theirStatusAlias: ret.alias,
   };
