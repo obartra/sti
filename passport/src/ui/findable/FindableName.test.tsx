@@ -7,6 +7,7 @@ import type { VanityRegisterResult } from "../../api/client.ts";
 function ops(over: Partial<FindableOps> = {}): FindableOps {
   return {
     register: () => Promise.resolve("registered" as VanityRegisterResult),
+    check: () => Promise.resolve("free" as const),
     release: () => Promise.resolve(),
     ...over,
   };
@@ -32,6 +33,44 @@ describe("FindableName", () => {
 
     expect(register).toHaveBeenCalledWith("robin"); // normalized
     await waitFor(() => expect(onChange).toHaveBeenCalledWith("robin"));
+  });
+
+  it("checks availability as you type and shows a free name is free", async () => {
+    const user = userEvent.setup();
+    const check = vi.fn(() => Promise.resolve("free" as const));
+    render(<FindableName currentName={null} ops={ops({ check })} />);
+    await user.type(screen.getByLabelText(/choose a name/i), "robin");
+    expect(await screen.findByText(/that name is free/i)).toBeInTheDocument();
+    expect(check).toHaveBeenCalledWith("robin");
+  });
+
+  it("flags a taken name as you type and blocks submit", async () => {
+    const user = userEvent.setup();
+    const register = vi.fn(() => Promise.resolve("registered" as const));
+    render(
+      <FindableName
+        currentName={null}
+        ops={ops({ register, check: () => Promise.resolve("taken") })}
+      />,
+    );
+    await user.type(screen.getByLabelText(/choose a name/i), "robin");
+    expect(await screen.findByText(/isn't available/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /make my name public/i }),
+    ).toBeDisabled();
+    // It never even tried to claim a name it already knows is taken.
+    expect(register).not.toHaveBeenCalled();
+  });
+
+  it("does not call the server for a format-invalid name as you type", async () => {
+    const user = userEvent.setup();
+    const check = vi.fn(() => Promise.resolve("free" as const));
+    render(<FindableName currentName={null} ops={ops({ check })} />);
+    await user.type(screen.getByLabelText(/choose a name/i), "ab"); // too short
+    expect(
+      await screen.findByText(/at least 3 characters/i),
+    ).toBeInTheDocument();
+    expect(check).not.toHaveBeenCalled();
   });
 
   it("rejects an invalid name locally without calling the server", async () => {

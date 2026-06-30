@@ -55,6 +55,8 @@ export interface OwnerActions {
   onRemoveCircle: (id: string) => void;
   /** Claim a public findable name; resolves with the outcome (the form shows it). */
   onRegisterVanityName: (name: string) => Promise<VanityRegisterResult>;
+  /** Check if a findable name is free as the owner types (no claim). */
+  onCheckVanityName: (name: string) => Promise<"free" | "taken" | "error">;
   /** Release the owner's claimed findable name (no-op if none). */
   onReleaseVanityName: () => Promise<void>;
 }
@@ -211,7 +213,14 @@ function useFindableActions(
   controller: SessionController,
   sessionRef: RefObject<OwnerSession | null>,
   setSession: (s: OwnerSession | null) => void,
-): Pick<OwnerActions, "onRegisterVanityName" | "onReleaseVanityName"> {
+): Pick<
+  OwnerActions,
+  "onRegisterVanityName" | "onCheckVanityName" | "onReleaseVanityName"
+> {
+  const onCheckVanityName = useCallback(
+    (name: string) => controller.checkVanityName(name),
+    [controller],
+  );
   const onRegisterVanityName = useCallback(
     async (name: string): Promise<VanityRegisterResult> => {
       const current = sessionRef.current;
@@ -235,7 +244,7 @@ function useFindableActions(
     setSession(updated);
   }, [controller, sessionRef, setSession]);
 
-  return { onRegisterVanityName, onReleaseVanityName };
+  return { onRegisterVanityName, onCheckVanityName, onReleaseVanityName };
 }
 
 // The profile mutation (avatar today), split out so useOwnerActions stays within

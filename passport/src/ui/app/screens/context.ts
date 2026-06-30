@@ -119,6 +119,8 @@ export interface ScreenCtx {
   vanityName: string | null;
   /** Claim a public findable name; resolves with the outcome (doc 17, gated). */
   onRegisterVanityName: (name: string) => Promise<VanityRegisterResult>;
+  /** Check if a findable name is free as the owner types (no claim). */
+  onCheckVanityName: (name: string) => Promise<"free" | "taken" | "error">;
   /** Release the owner's claimed findable name (no-op if none). */
   onReleaseVanityName: () => Promise<void>;
   /** Device push controls (the partner-notify wake), for the Privacy toggle. */

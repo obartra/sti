@@ -199,6 +199,7 @@ export const coreRenderers: ScreenRenderers = {
     onRevokeContact,
     vanityName,
     onRegisterVanityName,
+    onCheckVanityName,
     onReleaseVanityName,
     push,
     isLoggedIn,
@@ -226,7 +227,11 @@ export const coreRenderers: ScreenRenderers = {
       vanityName={vanityName}
       findableOps={
         FINDABLE_ENABLED && isLoggedIn
-          ? { register: onRegisterVanityName, release: onReleaseVanityName }
+          ? {
+              register: onRegisterVanityName,
+              check: onCheckVanityName,
+              release: onReleaseVanityName,
+            }
           : undefined
       }
       onDeleted={() => {
