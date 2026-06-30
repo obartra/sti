@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Card, Field, Input } from "../../design/components/index.ts";
 import { Globe, Lock } from "../../design/icons.tsx";
 import {
@@ -18,6 +18,9 @@ export interface FindableOps {
   /** Claim `name` for the owner's alias. Returns the outcome, never throws on the
    * expected "unavailable" (taken/reserved/blocked) case. */
   register: (name: string) => Promise<VanityRegisterResult>;
+  /** Look up if `name` is free, without claiming it, so the form can answer as the
+   * owner types. `name` is already normalized + format-valid. */
+  check: (name: string) => Promise<"free" | "taken" | "error">;
   /** Release the currently registered name into the 24h lock. */
   release: () => Promise<void>;
 }
@@ -52,6 +55,8 @@ const COPY = {
     "Names aren't verified; someone may pick one close to yours.",
   ],
   label: "Choose a name",
+  checking: "Checking…",
+  available: "That name is free.",
   claim: "Make my name public",
   claiming: "Claiming…",
   // The server answers "unavailable" for any name you can't have: already taken,
@@ -81,6 +86,72 @@ export function FindableName({
   return <RegisterForm ops={ops} onRegistered={(n) => onChange?.(n)} />;
 }
 
+type NameStatus = "idle" | "checking" | "free" | "taken" | "error";
+
+// Live, as-you-type availability: format-check synchronously, then a debounced
+// non-claiming lookup. A request counter drops stale responses so a fast typist
+// never sees an earlier keystroke's answer land over a later one.
+function useNameCheck(
+  normalized: string,
+  check: FindableOps["check"],
+): NameStatus {
+  const [status, setStatus] = useState<NameStatus>("idle");
+  const reqId = useRef(0);
+  useEffect(() => {
+    if (normalized === "" || vanityNameError(normalized) !== null) {
+      setStatus("idle");
+      return;
+    }
+    setStatus("checking");
+    const id = ++reqId.current;
+    const timer = setTimeout(() => {
+      void check(normalized).then((r) => {
+        if (id === reqId.current) setStatus(r === "free" ? "free" : r);
+      });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [normalized, check]);
+  return status;
+}
+
+// The live status line under the field: a format problem (red), then the debounced
+// availability (red for taken, muted for checking/free). The submit-time claim
+// error, when set, wins over all of it.
+function StatusLine({
+  formatError,
+  status,
+  claimError,
+}: {
+  formatError: string | null;
+  status: NameStatus;
+  claimError: string | null;
+}) {
+  const taken = status === "taken";
+  const text =
+    claimError ??
+    formatError ??
+    (taken
+      ? COPY.unavailable
+      : status === "checking"
+        ? COPY.checking
+        : status === "free"
+          ? COPY.available
+          : null);
+  if (text === null) return null;
+  const isError = claimError !== null || formatError !== null || taken;
+  return (
+    <div
+      style={{
+        fontSize: 12.5,
+        marginTop: -4,
+        color: isError ? "var(--status-expired-fg)" : "var(--text-muted)",
+      }}
+    >
+      {text}
+    </div>
+  );
+}
+
 function RegisterForm({
   ops,
   onRegistered,
@@ -90,31 +161,34 @@ function RegisterForm({
 }) {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [claimError, setClaimError] = useState<string | null>(null);
+
+  const normalized = normalizeVanityName(name);
+  const bad = normalized === "" ? null : vanityNameError(normalized);
+  const formatError = bad === null ? null : NAME_ERROR[bad];
+  const status = useNameCheck(normalized, ops.check);
 
   const submit = useCallback(
     (e: React.SyntheticEvent) => {
       e.preventDefault();
-      const normalized = normalizeVanityName(name);
-      const bad = vanityNameError(normalized);
-      if (bad !== null) {
-        setError(NAME_ERROR[bad]);
-        return;
-      }
-      setError(null);
+      if (normalized === "" || bad !== null) return;
+      setClaimError(null);
       setBusy(true);
       void ops
         .register(normalized)
         .then((result) => {
           if (result === "registered") onRegistered(normalized);
-          else if (result === "unavailable") setError(COPY.unavailable);
-          else setError(COPY.failed);
+          else if (result === "unavailable") setClaimError(COPY.unavailable);
+          else setClaimError(COPY.failed);
         })
-        .catch(() => setError(COPY.failed))
+        .catch(() => setClaimError(COPY.failed))
         .finally(() => setBusy(false));
     },
-    [name, ops, onRegistered],
+    [normalized, bad, ops, onRegistered],
   );
+
+  const blockSubmit =
+    busy || normalized === "" || bad !== null || status === "taken";
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -123,29 +197,33 @@ function RegisterForm({
         onSubmit={submit}
         style={{ display: "flex", flexDirection: "column", gap: 12 }}
       >
-        <Field
-          label={COPY.label}
-          htmlFor="vanity-name"
-          error={error ?? undefined}
-        >
+        <Field label={COPY.label} htmlFor="vanity-name">
           <Input
             id="vanity-name"
             value={name}
-            error={error !== null}
+            error={formatError !== null || status === "taken"}
             disabled={busy}
             autoComplete="off"
             autoCapitalize="none"
             spellCheck={false}
             placeholder="e.g. robin"
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              setClaimError(null);
+            }}
           />
         </Field>
+        <StatusLine
+          formatError={formatError}
+          status={status}
+          claimError={claimError}
+        />
         <Button
           type="submit"
           variant="primary"
           size="md"
           block
-          disabled={busy || normalizeVanityName(name) === ""}
+          disabled={blockSubmit}
         >
           {busy ? COPY.claiming : COPY.claim}
         </Button>

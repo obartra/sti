@@ -12,6 +12,7 @@ type Story = StoryObj<typeof FindableName>;
 
 const ops: FindableOps = {
   register: () => Promise.resolve("registered"),
+  check: () => Promise.resolve("free" as const),
   release: () => Promise.resolve(),
 };
 

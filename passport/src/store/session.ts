@@ -303,6 +303,13 @@ export interface SessionController {
     name: string,
   ): Promise<VanityRegisterOutcome>;
   /**
+   * Look up whether a findable name is free, WITHOUT claiming it, so the UI can
+   * tell the owner as they type. `"taken"` when the name already resolves,
+   * `"free"` when it doesn't, `"error"` when the lookup couldn't run. Reserved /
+   * blocked names are caught locally / at register; this only answers "taken".
+   */
+  checkVanityName(name: string): Promise<"free" | "taken" | "error">;
+  /**
    * Release the owner's claimed findable name: drop the server binding (into the
    * 24h lock), revoke the dedicated alias, and clear the registration. A no-op when
    * no name is claimed. Returns the updated session.
@@ -618,6 +625,17 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
     registerVanityName: (session, name) =>
       registerVanityName(api, accounts, session, name),
+
+    async checkVanityName(name) {
+      // A non-claiming public resolve: an id back means the name is taken, null
+      // means it is free. The caller has already normalized + format-checked.
+      try {
+        const id = await api.resolveVanityName(name);
+        return id === null ? "free" : "taken";
+      } catch {
+        return "error";
+      }
+    },
 
     releaseVanityName: (session) => releaseVanityName(api, accounts, session),
 

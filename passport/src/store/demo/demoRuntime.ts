@@ -198,6 +198,7 @@ export function createDemoController(): SessionController {
     },
     registerVanityName: (s) =>
       Promise.resolve({ session: s, result: "unavailable" as const }),
+    checkVanityName: () => Promise.resolve("taken" as const),
     releaseVanityName: (s) => Promise.resolve(s),
     forget: () => undefined,
   };

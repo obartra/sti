@@ -104,6 +104,7 @@ describe("Privacy name editor", () => {
 describe("Privacy findable section (doc 17)", () => {
   const ops = {
     register: () => Promise.resolve("registered" as const),
+    check: () => Promise.resolve("free" as const),
     release: () => Promise.resolve(),
   };
 

@@ -76,6 +76,7 @@ export interface ChromeProps {
   onRemoveCircle: ScreenCtx["onRemoveCircle"];
   vanityName: ScreenCtx["vanityName"];
   onRegisterVanityName: ScreenCtx["onRegisterVanityName"];
+  onCheckVanityName: ScreenCtx["onCheckVanityName"];
   onReleaseVanityName: ScreenCtx["onReleaseVanityName"];
   push: ScreenCtx["push"];
 }
@@ -195,6 +196,7 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     onRemoveCircle: props.onRemoveCircle,
     vanityName: props.vanityName,
     onRegisterVanityName: props.onRegisterVanityName,
+    onCheckVanityName: props.onCheckVanityName,
     onReleaseVanityName: props.onReleaseVanityName,
     push: props.push,
     store: props.store,

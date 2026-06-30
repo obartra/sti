@@ -52,6 +52,7 @@ export const NoLinks: Story = { args: { aliases: [], contacts: [] } };
 // renders without a server.
 const findableOps = {
   register: () => Promise.resolve("registered" as const),
+  check: () => Promise.resolve("free" as const),
   release: () => Promise.resolve(),
 };
 

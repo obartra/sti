@@ -71,6 +71,7 @@ function stubController(over: Partial<SessionController>): SessionController {
     updateCircle: unused,
     removeCircle: unused,
     registerVanityName: unused,
+    checkVanityName: unused,
     releaseVanityName: unused,
     forget: unused,
     ...over,
