@@ -45,20 +45,41 @@ A small, stable bottom bar (sidebar on desktop), each item a job above:
   connect starts here.
 - **Care** - find testing and the trust links.
 
-Notifications stays a quiet bell, not a tab. **Account** is reached from Home (or a
-profile chip), not the bar.
+Notifications stays a quiet bell, not a tab. **Settings** (which absorbs today's
+Privacy screen) is reached from Home or a name chip, not the bar.
 
 This replaces today's `home / connect / circles / care` bar: Connect and Circles
-merge into **People**, and **Links** gets a first-class home instead of living inside
-Privacy.
+merge into **People**, **Links** gets a first-class home instead of living inside
+Privacy, and Privacy becomes **Settings**.
+
+## Identity: a name, and link faces
+
+The owner is just **a name they chose for us to call them by** - the local display
+name from sign-up. There is no owner avatar and no owner profile picture: the person
+does not have a face in the product, only a name. Faces belong to **links**, not to
+people. A public profile or a private link can carry its own avatar (the per-link
+identity in [15-per-alias-identity](15-per-alias-identity.md)), so what a viewer sees
+is the face the owner chose *for that link*, anonymous by default. This keeps the one
+identifiable thing (the name) minimal and puts every visual identity where it is
+actually shared and controlled: on the link.
 
 ## Home
 
-Unchanged in spirit from [03-design](03-design.md): your own card is the hero, so
-"what I think I share" can never drift from "what others resolve." Owner-only, it now
-also answers *where you stand* - the three things blue needs, when to re-test, and a
-way straight to testing - behind a tap-to-reveal so the detail stays covered over a
-shoulder. The badge itself never gains tiers, meters, or streaks.
+The honesty principle from [03-design](03-design.md) holds: the owner must never
+drift between "what I think I share" and "what others resolve." But Home does not
+need to sit a passive copy of the viewer card on the screen as decoration. Instead,
+Home leads with one card that **toggles between two clearly-labeled views of the
+same status**:
+
+- **What others see** - the badge exactly as a viewer resolves it. This is the
+  default, so the honest mirror is the first thing you land on.
+- **Your criteria** - the owner-only breakdown: the three things blue needs, where
+  you stand on each, when to re-test, and a way straight to testing.
+
+The toggle replaces the earlier "blur and reveal" treatment. A labeled switch
+("what others see" vs "your criteria") makes it unambiguous which view is shared and
+which is private to you, where a blur only hid the detail without naming it. The
+badge itself never gains tiers, meters, or streaks.
 
 ## Links
 
@@ -77,6 +98,18 @@ One screen for every link you hand out:
 Expiry is therefore a **private-link-only** affordance. This is the rule the recent
 share-sheet and publish-layer changes already enforce; this doc records it as the
 design, not just the code.
+
+**Preview lives inside sharing, not beside it.** "See what others see" is not a
+separate destination; it is what the share surface already shows (the card preview at
+the top of the share sheet is the viewer's-eye view). So there is no standalone
+"Preview" action competing with "Share my passport"; opening the share surface *is*
+the preview, and sending is one tap from it.
+
+**Naming a public profile is checked as you type.** Claiming a public name validates
+the format immediately and checks availability while you type (debounced), so you
+learn a name is free before you commit, not after you submit. When a name can't be
+had, the reason is not always "taken" (it may be reserved or blocked), so the message
+says it plainly: "That name isn't available. Try another."
 
 ## People
 
@@ -156,22 +189,24 @@ The quiet, contentless inbox, unchanged in principle: a re-test nudge, a request
 see your status, the partner-notify prompt. It never names a person or a condition.
 It stays a bell, not a tab.
 
-## Account
+## Settings
 
-Today sign-out and delete-everything are buried inside the Privacy screen (and
-sign-out is not even wired into the running app). Give the owner one obvious
-**Account** surface, reached from Home:
+"Privacy" as a destination becomes **Settings**: the privacy model is not a screen
+you operate, it is how the product works, so it does not need a control panel named
+after it. The one place the owner manages their account holds:
 
-- **Settings** - the few real toggles: sharing default, push notifications, pause
-  sharing, install the app. The HIV-protection and condom attributes that feed the
-  badge live with the result you report, not here.
-- **Sign out** - plainly available, not hunted for.
+- **The few real toggles** - sharing default, push notifications, pause sharing,
+  install the app. The HIV-protection and condom attributes that feed the badge live
+  with the result you report, not here.
+- **Your name** - the name we call you by, editable here.
+- **Sign out** - plainly available, not hunted for. (It is not even wired into the
+  running app today; it should be.)
 - **Delete everything** - the existing real delete (revoke every link, remove the
   encrypted blob, sign out), with its confirm, in the one place a person looks for it.
 
-This carves the account controls out of the monolithic Privacy screen so "how this
-stays private" can be a short explainer and the account actions are where people
-expect them.
+A short "how this stays private" explainer can live here too, but as a plain read,
+not a wall of toggles. This replaces the monolithic Privacy screen that today mixes
+the account actions, the attributes, the links list, and the explainer.
 
 ## What this supersedes or folds in
 

@@ -64,10 +64,10 @@ describe("FindableName", () => {
     );
 
     expect(register).toHaveBeenCalledWith("scam");
-    expect(await screen.findByText(/that name is taken/i)).toBeInTheDocument();
+    expect(await screen.findByText(/isn't available/i)).toBeInTheDocument();
   });
 
-  it("shows 'taken' when the name is unavailable", async () => {
+  it("shows an 'unavailable' message when the name can't be claimed", async () => {
     const user = userEvent.setup();
     render(
       <FindableName
@@ -79,7 +79,7 @@ describe("FindableName", () => {
     await user.click(
       screen.getByRole("button", { name: /make my name public/i }),
     );
-    expect(await screen.findByText(/that name is taken/i)).toBeInTheDocument();
+    expect(await screen.findByText(/isn't available/i)).toBeInTheDocument();
   });
 
   it("surfaces a transport error", async () => {

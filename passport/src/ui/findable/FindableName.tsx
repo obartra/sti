@@ -54,7 +54,10 @@ const COPY = {
   label: "Choose a name",
   claim: "Make my name public",
   claiming: "Claiming…",
-  taken: "That name is taken. Try another.",
+  // The server answers "unavailable" for any name you can't have: already taken,
+  // reserved, or blocked. "Taken" was only true for one of those, so say the thing
+  // that covers them all. "Available" reads at a normal level and stays honest.
+  unavailable: "That name isn't available. Try another.",
   failed: "Couldn't reach the service. Try again.",
   registeredAt: "People can find you at this name:",
   release: "Release name",
@@ -104,7 +107,7 @@ function RegisterForm({
         .register(normalized)
         .then((result) => {
           if (result === "registered") onRegistered(normalized);
-          else if (result === "unavailable") setError(COPY.taken);
+          else if (result === "unavailable") setError(COPY.unavailable);
           else setError(COPY.failed);
         })
         .catch(() => setError(COPY.failed))
