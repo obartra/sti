@@ -176,7 +176,7 @@ describe("ContactLinks", () => {
     // A real return invite: an alias + notify + ref (the inviter's alias id).
     const notify = mintNotify();
     const ref = randomAliasId();
-    const url = contactInviteUrl(aliasRecord(), notify, ref);
+    const url = contactInviteUrl(aliasRecord(), notify, { ref });
 
     await user.type(screen.getByPlaceholderText(/Paste the link/i), url);
     await user.click(screen.getByRole("button", { name: "Link both ways" }));

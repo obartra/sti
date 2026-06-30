@@ -18,6 +18,7 @@ import {
   bytesToUtf8,
 } from "../crypto/index.ts";
 import { validId } from "../api/contract.ts";
+import { isValidHandle } from "./codec.ts";
 import type { AliasRecord, StatusAlias } from "./accountBlob.ts";
 import type { NotifyCapability } from "./notifyInbox.ts";
 import { parseAliasLink } from "./aliasLink.ts";
@@ -27,11 +28,24 @@ import { keyedAliasLinkUrl } from "./publish.ts";
  * A parsed contact invite: the inviter's alias to read their status, their notify
  * capability, and (on a return invite) `ref` = the inviter's alias id being
  * answered, which lets the original inviter match the return to the pending contact.
+ *
+ * `sharedName` is the sender's optional shared name (doc 15): present only when the
+ * sender chose to show their name. It is a ONE-TIME snapshot that seeds the
+ * recipient's local label, not a live binding; the recipient then owns and edits it.
  */
 export interface ContactInvite {
   readonly alias: StatusAlias;
   readonly notify: NotifyCapability;
   readonly ref?: string;
+  readonly sharedName?: string;
+}
+
+/** Options carried in an invite URL beyond the alias + notify capability. */
+export interface InviteExtras {
+  /** Set only on a return invite: the inviter's alias id being answered. */
+  readonly ref?: string | undefined;
+  /** The sender's optional shared name, seeding the recipient's label (doc 15). */
+  readonly sharedName?: string | undefined;
 }
 
 function encodeNotify(notify: NotifyCapability): string {
@@ -56,17 +70,36 @@ function decodeNotify(encoded: string): NotifyCapability | null {
   }
 }
 
+// Encode a shared name to a URL-safe token (base64url of its UTF-8 bytes), so any
+// valid handle rides the fragment without escaping concerns.
+function encodeName(name: string): string {
+  return bytesToBase64url(utf8ToBytes(name));
+}
+
+function decodeName(encoded: string): string | null {
+  try {
+    const name = bytesToUtf8(base64urlToBytes(encoded));
+    return isValidHandle(name) ? name : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Build an invite URL: the keyed alias link plus the notify capability, and
- * optionally `ref` (set only on a return invite, to the inviter's alias id).
+ * optionally `ref` (set only on a return invite, to the inviter's alias id) and
+ * `sharedName` (the sender's shared name, seeding the recipient's label).
  */
 export function contactInviteUrl(
   record: AliasRecord,
   notify: NotifyCapability,
-  ref?: string,
+  extras: InviteExtras = {},
 ): string {
   let url = `${keyedAliasLinkUrl(record)}&n=${encodeNotify(notify)}`;
-  if (ref !== undefined) url += `&ref=${ref}`;
+  if (extras.ref !== undefined) url += `&ref=${extras.ref}`;
+  if (extras.sharedName !== undefined) {
+    url += `&sn=${encodeName(extras.sharedName)}`;
+  }
   return url;
 }
 
@@ -88,9 +121,14 @@ export function parseContactInvite(
   if (notify === null) return null;
   const ref = params.get("ref");
   if (ref !== null && !validId(ref)) return null;
+  // A malformed shared name fails closed to "no shared name" rather than rejecting
+  // the whole invite: the link still resolves and links, just without a label seed.
+  const sn = params.get("sn");
+  const sharedName = sn !== null ? decodeName(sn) : null;
   return {
     alias: { id: link.id, key: link.key },
     notify,
     ...(ref !== null ? { ref } : {}),
+    ...(sharedName !== null ? { sharedName } : {}),
   };
 }

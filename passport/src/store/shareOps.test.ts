@@ -7,8 +7,14 @@
 // across two links, and that the two emitted invite URLs carry different `n=`
 // payloads, so a regression that hoisted or shared the inbox fails here.
 import { describe, it, expect } from "vitest";
-import { mintContactLink, renameContactLabel } from "./shareOps.ts";
-import { parseContactInvite } from "./contactInvite.ts";
+import {
+  mintContactLink,
+  acceptContactInvite,
+  renameContactLabel,
+} from "./shareOps.ts";
+import { parseContactInvite, type ContactInvite } from "./contactInvite.ts";
+import { mintNotify } from "./notifyInbox.ts";
+import { randomAliasId } from "../crypto/index.ts";
 import type { ApiClient } from "../api/client.ts";
 import type { AccountManager } from "./account.ts";
 import type { AccountBlob, ContactRecord } from "./accountBlob.ts";
@@ -81,6 +87,92 @@ function renamingAccounts(): AccountManager {
     },
   });
 }
+
+// A fresh owner blob + session + recording accounts for the shared-name tests.
+function freshOwner(handle: string | undefined): {
+  api: ApiClient;
+  accounts: AccountManager;
+  session: OwnerSession;
+} {
+  const blob: AccountBlob = {
+    ...(handle !== undefined ? { handle } : {}),
+    aliases: [],
+    contacts: [],
+    state: INITIAL_OWNER_STATE,
+    avatar: DEFAULT_AVATAR,
+    sharingMode: "link",
+  };
+  const { accounts } = fakeAccounts(blob);
+  return {
+    api: fakeApi(),
+    accounts,
+    session: { root: {}, blob } as unknown as OwnerSession,
+  };
+}
+
+function sharedNameOf(url: string): string | undefined {
+  const invite = parseContactInvite(parts(url).pathname, parts(url).hash);
+  return invite?.sharedName;
+}
+
+describe("shared name on a contact link (doc 15)", () => {
+  it("carries the owner's handle when they show their name (identity main)", async () => {
+    const { api, accounts, session } = freshOwner("robin");
+    const { url } = await mintContactLink(api, accounts, session, {
+      label: "sam",
+      identity: "main",
+    });
+    expect(sharedNameOf(url)).toBe("robin");
+  });
+
+  it("shares no name when staying anonymous", async () => {
+    const { api, accounts, session } = freshOwner("robin");
+    const { url } = await mintContactLink(api, accounts, session, {
+      label: "sam",
+      identity: "anonymous",
+    });
+    expect(sharedNameOf(url)).toBeUndefined();
+  });
+
+  it("shares no name when showing a nameless account", async () => {
+    const { api, accounts, session } = freshOwner(undefined);
+    const { url } = await mintContactLink(api, accounts, session, {
+      label: "sam",
+      identity: "main",
+    });
+    expect(sharedNameOf(url)).toBeUndefined();
+  });
+
+  it("seeds the accepter's label from the inviter's shared name when unnamed", async () => {
+    const { api, accounts, session } = freshOwner("alex");
+    const invite: ContactInvite = {
+      alias: { id: randomAliasId(), key: randomAliasId() },
+      notify: mintNotify(),
+      sharedName: "robin",
+    };
+    const { contact } = await acceptContactInvite(api, accounts, session, {
+      invite,
+      label: "",
+      identity: "anonymous",
+    });
+    expect(contact.label).toBe("robin");
+  });
+
+  it("keeps the accepter's own label over the inviter's shared name", async () => {
+    const { api, accounts, session } = freshOwner("alex");
+    const invite: ContactInvite = {
+      alias: { id: randomAliasId(), key: randomAliasId() },
+      notify: mintNotify(),
+      sharedName: "robin",
+    };
+    const { contact } = await acceptContactInvite(api, accounts, session, {
+      invite,
+      label: "my doctor",
+      identity: "anonymous",
+    });
+    expect(contact.label).toBe("my doctor");
+  });
+});
 
 describe("renameContactLabel (receiver-owned local label)", () => {
   const baseContact: ContactRecord = {

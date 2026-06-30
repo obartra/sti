@@ -40,11 +40,36 @@ describe("contact invite codec", () => {
     const record = aliasRecord();
     const notify = mintNotify();
     const ref = randomAliasId();
-    const { pathname, hash } = parts(contactInviteUrl(record, notify, ref));
+    const { pathname, hash } = parts(contactInviteUrl(record, notify, { ref }));
     expect(parseContactInvite(pathname, hash)).toEqual({
       alias: { id: record.id, key: record.key },
       notify,
       ref,
+    });
+  });
+
+  it("carries a shared name and round-trips it as a label seed", () => {
+    const record = aliasRecord();
+    const notify = mintNotify();
+    const { pathname, hash } = parts(
+      contactInviteUrl(record, notify, { sharedName: "robin" }),
+    );
+    expect(parseContactInvite(pathname, hash)).toEqual({
+      alias: { id: record.id, key: record.key },
+      notify,
+      sharedName: "robin",
+    });
+  });
+
+  it("drops a malformed shared name but still parses the invite", () => {
+    const record = aliasRecord();
+    const notify = mintNotify();
+    // A non-base64url `sn` value: the invite still resolves, just without a seed.
+    const url = `${contactInviteUrl(record, notify)}&sn=@@@`;
+    const { pathname, hash } = parts(url);
+    expect(parseContactInvite(pathname, hash)).toEqual({
+      alias: { id: record.id, key: record.key },
+      notify,
     });
   });
 
