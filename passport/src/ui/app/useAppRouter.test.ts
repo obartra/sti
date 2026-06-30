@@ -168,18 +168,76 @@ describe("the trust pages own clean, real paths", () => {
   });
 });
 
-describe("back is driven by the browser history, not an in-app stack", () => {
-  it("go pushes an entry; a back (popstate) returns to the prior screen", () => {
+describe("every screen owns a clean path", () => {
+  const routeAt = (path: string) => {
+    window.history.replaceState(null, "", path);
+    try {
+      return routeFromLocation();
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  };
+
+  it("routes app screens from their clean paths", () => {
+    expect(routeAt("/home")?.screen).toBe("home");
+    expect(routeAt("/circles")?.screen).toBe("circles");
+    expect(routeAt("/circles/new")?.screen).toBe("circle-create");
+    expect(routeAt("/care/learn")?.screen).toBe("learn");
+    expect(routeAt("/care/learn/uu")?.screen).toBe("learn-uu");
+    expect(routeAt("/connect/share")?.screen).toBe("alias-share");
+    expect(routeAt("/wallet")?.screen).toBe("wallet");
+  });
+
+  it("keeps the Settings screen (/settings) distinct from the privacy POLICY (/privacy)", () => {
+    // The old id clash: route id `privacy` is the Settings screen; the policy page
+    // is `privacy-policy`. The paths are unambiguous.
+    expect(routeAt("/settings")?.screen).toBe("privacy");
+    expect(routeAt("/settings")?.group).toBe("app");
+    expect(routeAt("/privacy")?.screen).toBe("privacy-policy");
+    expect(routeAt("/privacy")?.group).toBe("public");
+  });
+
+  it("normalizes the Settings screen to /settings, never /#privacy", async () => {
+    window.history.replaceState(null, "", "/home");
+    try {
+      const { result } = renderHook(() => useAppRouter());
+      act(() => result.current.nav.go("privacy"));
+      await waitFor(() => {
+        expect(window.location.pathname).toBe("/settings");
+        expect(window.location.hash).toBe("");
+      });
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
+  it("normalizes a legacy /#home bookmark to /home", async () => {
     window.history.replaceState(null, "", "/#home");
     try {
       const { result } = renderHook(() => useAppRouter());
       expect(result.current.route.screen).toBe("home");
+      await waitFor(() => {
+        expect(window.location.pathname).toBe("/home");
+        expect(window.location.hash).toBe("");
+      });
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+});
+
+describe("back is driven by the browser history, not an in-app stack", () => {
+  it("go pushes an entry; a back (popstate) returns to the prior screen", () => {
+    window.history.replaceState(null, "", "/home");
+    try {
+      const { result } = renderHook(() => useAppRouter());
+      expect(result.current.route.screen).toBe("home");
       act(() => result.current.nav.go("wallet"));
-      expect(window.location.hash).toBe("#wallet");
+      expect(window.location.pathname).toBe("/wallet");
       expect(result.current.route.screen).toBe("wallet");
       act(() => {
         // The browser back button: the URL returns, then popstate fires.
-        window.history.replaceState(null, "", "/#home");
+        window.history.replaceState(null, "", "/home");
         window.dispatchEvent(new PopStateEvent("popstate"));
       });
       expect(result.current.route.screen).toBe("home");
@@ -189,11 +247,11 @@ describe("back is driven by the browser history, not an in-app stack", () => {
   });
 
   it("jump replaces (a tab switch is not a back target) and back falls home", () => {
-    window.history.replaceState(null, "", "/#home");
+    window.history.replaceState(null, "", "/home");
     try {
       const { result } = renderHook(() => useAppRouter());
       act(() => result.current.nav.jump("care"));
-      expect(window.location.hash).toBe("#care");
+      expect(window.location.pathname).toBe("/care");
       expect(result.current.route.screen).toBe("care");
       // jump reset the app-pushed depth, so back has nothing of ours to pop and
       // falls to home rather than stepping off the site.
