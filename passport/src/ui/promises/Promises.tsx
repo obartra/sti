@@ -3,6 +3,7 @@ import { Card } from "../../design/components/index.ts";
 import { useMinWidth } from "../desktop/Desktop.tsx";
 import { Lock, EyeOff, Fingerprint, Key, Check } from "../../design/icons.tsx";
 import { PROMISES, type UserPromise } from "../../promises/promises.ts";
+import { TrustBoundary } from "./TrustBoundary.tsx";
 
 // The /promises page: a progressive summary of the privacy guarantees. Three plain
 // themes a worried reader gets in one pass; under each, the specific promises and the
@@ -305,6 +306,8 @@ export function Promises({ wide }: { wide?: boolean }) {
       }}
     >
       <Hero />
+
+      <TrustBoundary wide={twoCol} />
 
       {THEMES.map((t) => (
         <ThemeSection key={t.id} theme={t} twoCol={twoCol} />

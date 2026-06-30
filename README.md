@@ -12,6 +12,40 @@ secret unlocks no user content.
 The guarantees this makes to a user, each tied to a test that runs on every
 build, are on the in-app **/promises** page (source: `passport/src/promises/`).
 
+## How it works
+
+Everything sensitive (results, dates, the contact graph, badge math, the
+display name) and all cryptography live on the device. Only opaque ciphertext
+and opaque routing tokens cross the wire; the key never does. The server is a
+blind store: it can decrypt nothing, and the admin path holds no key material,
+so even an admin sign-in reads no user content. A `/promises`-page version of
+this diagram, written for a non-technical reader, lives in
+`passport/src/ui/promises/`.
+
+```mermaid
+flowchart LR
+  subgraph device["Your device: passport/ (all cryptography)"]
+    direction TB
+    plain["Results, dates, contacts,<br/>display name, badge math"]
+    key{{"Encryption key<br/>(never leaves the device)"}}
+  end
+
+  subgraph server["Our server: server/ (blind store)"]
+    direction TB
+    blob["Opaque ciphertext:<br/>fixed-size cards"]
+    route["Opaque routing tokens:<br/>no readable names or graph"]
+    admin["Admin path holds no key,<br/>so it decrypts nothing"]
+  end
+
+  viewer(["Someone you share a link with"])
+  card["A simple card:<br/>a colour and a few labels"]
+
+  plain -- "encrypted on device,<br/>no key, no name on the wire" --> blob
+  blob -- "returns opaque bytes" --> viewer
+  key -. "key rides only inside the link" .-> viewer
+  viewer -- "the app decrypts locally" --> card
+```
+
 ## Layout
 
 This is a monorepo with two deployables and the docs that govern them.
