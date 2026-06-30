@@ -28,32 +28,49 @@ but cannot close that gap, because meters measure heuristics, not real entropy, 
 "strong" human password is still far below a random token. So a password can only be
 safe if **nothing the server can see is derived from it**.
 
-## The model: wrap a key, do not be the key
+## The model: the phrase-derived master, wrapped by each factor
 
-Stop deriving the key from a secret, and instead wrap a key with each secret:
+This is mostly the model that already ships (see
+[24-stay-signed-in](24-stay-signed-in.md)): today the phrase derives the master, the
+account id / blob key / write token derive from that master, and the **passkey already
+wraps the master** so a device can unlock without re-typing the phrase. That is already
+an envelope around a high-entropy root. The change here is small: add a **password
+envelope** alongside the passkey one, and name the pattern.
 
-- Generate a **random master key** for the account. The account id, blob key, and
-  write token derive from this random master, exactly as today, so the server-visible
-  id is independent of any human-chosen secret.
-- Each enabled **factor encrypts its own copy of the master** (an "envelope"). To
-  unlock, a device opens any one envelope and recovers the master.
+So, deliberately NOT a redesign:
+
+- The **master stays derived from the recovery phrase** (the existing PBKDF2 path), and
+  the **account id keeps deriving from that master, exactly as today**. This matters for
+  two reasons: it keeps the server-visible account id a function of the high-entropy
+  phrase and **never of the password** (so the always-present account id is not a
+  password-cracking oracle), and it means **existing accounts need no migration** (their
+  id derivation is unchanged).
+- Each enabled **factor encrypts its own copy of the master** (an "envelope"); a device
+  opens any one envelope and recovers the master.
+
+(A fully random master, with the phrase demoted to just-another-envelope, is a cleaner
+separation that would let the phrase rotate without changing the account id, but it
+forces a migration of every existing account, so it is a possible future step, not the
+default.)
 
 Factors:
 
-- **Recovery phrase** - wraps the master. High-entropy, the unbreakable backstop.
-  Always present.
+- **Recovery phrase** - derives the master and is the high-entropy, unbreakable
+  backstop. Always present.
 - **Passkey / biometric** - wraps the master per device (biometrics are not a separate
-  factor; they gate the passkey). Synced passkeys (platform keychains) already give
-  cross-device continuity within one ecosystem for free.
+  factor; they gate the passkey). Already shipped. Synced passkeys (platform keychains)
+  already give cross-device continuity within one ecosystem for free.
 - **Password (opt-in)** - a memory-hard KDF of the password (Argon2id, per-account
   random salt, a deliberately high cost) wraps the master. Its wrapped-master envelope
   is stored server-side as ciphertext, so it works on any device: fetch the envelope,
-  unwrap with the password, recover the master. This is the memorable, cross-device
-  path the product wants.
+  unwrap with the password, recover the master. This is the memorable, cross-device path
+  the product wants, and it is the same wrap pattern the passkey already uses, just
+  stored server-side and keyed by a password instead of a passkey.
 
-The account id derives from the random master, **never from the password**, so adding a
-password introduces no server-side oracle: a stolen account id still cannot be attacked,
-because it is not a function of the password.
+Because the account id derives from the phrase-derived master and **never from the
+password**, adding a password introduces no oracle on the always-present account id. The
+one thing an attacker can attack is a **stolen password envelope** itself, which is the
+weakest-link cost named next, not a new derivation oracle.
 
 ## The tradeoff to accept on purpose
 
@@ -108,8 +125,9 @@ ideas, and where they land:
   then a firmer prompt) so the muscle memory stays. The same gentle rehearsal suits the
   phrase ("can you still find it?"). The key difference from Signal: because the phrase
   is always the backstop, forgetting the password is not terminal, so this is a
-  **recovery rehearsal, not a lockout**. It nudges, it does not strand. Biometrics still
-  handle everyday unlock between rehearsals, so this is rare, not a tax on each open.
+  **recovery rehearsal, not a lockout**. It nudges, it does not strand: it never blocks
+  use, skipping never locks the account, and a wrong answer just dismisses. Biometrics
+  still handle everyday unlock between rehearsals, so this is rare, not a tax on each open.
 - **A once-a-year reminder (fine, with one line drawn).** A single, simple
   notification shown only if a password is set and unchanged for 365 days, suggesting a
   refresh, is harmless and worth having. The one line to hold: it is a **reminder, not
