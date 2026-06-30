@@ -62,26 +62,30 @@ function LinkCard({ handle }: { handle: string }) {
           </div>
           <div
             style={{
-              fontFamily: "var(--font-mono, ui-monospace, monospace)",
-              fontSize: 15,
-              fontWeight: 700,
-              color: "var(--text-strong)",
-              margin: "6px 0",
-              wordBreak: "break-all",
-            }}
-          >
-            {link}
-          </div>
-          <div
-            style={{
               fontSize: 11.5,
               color: "var(--text-subtle)",
               lineHeight: 1.45,
+              marginTop: 6,
             }}
           >
             {C.qrNote}
           </div>
         </div>
+      </div>
+      {/* The link sits on its own full-width row, not squeezed into the column
+          beside the QR: a short name there wrapped mid-word (sti.care/u/sa -> m).
+          break-word keeps it from splitting inside the name unless it truly must. */}
+      <div
+        style={{
+          fontFamily: "var(--font-mono, ui-monospace, monospace)",
+          fontSize: 15,
+          fontWeight: 700,
+          color: "var(--text-strong)",
+          wordBreak: "break-word",
+          overflowWrap: "anywhere",
+        }}
+      >
+        {link}
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <Button
