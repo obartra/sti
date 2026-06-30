@@ -1,6 +1,6 @@
 # 32 - Account recovery and unlock
 
-## Status: PROPOSED (design)
+## Status: PROPOSED (design); open questions resolved below, pending sign-off before build
 
 How a person keeps access to their account across devices and over time, and how an
 optional, memorable password can fit without weakening the blind store. This doc owns
@@ -153,18 +153,92 @@ strong as the phrase; it should read as a convenient way back in, with the phras
 as the real backstop. The strength gate's message says plainly that a weak password is
 not accepted, without lecturing.
 
-## Open questions (resolve before building)
+## The cross-device locator (the real crux to resolve)
 
-- **Password-only accounts:** should a person be allowed to skip the phrase entirely
-  and rely on a password envelope? Leaning no: the phrase is the backstop that keeps a
-  forgotten password from being terminal, so it should always exist even if de-emphasized.
-- **KDF parameters:** the exact Argon2id memory/time/parallelism and the strength-gate
-  threshold are security constants to set deliberately, sized to current hardware.
-- **Envelope storage and rate-limiting:** the server stores per-factor wrapped-key
-  envelopes; fetching one should be gated like any account read, so the envelope is not
-  a freely harvestable target.
-- **Local PIN unlock - probably not needed.** A device-only PIN that unwraps the stored
-  root key is a separate convenience from the cross-device password, and biometrics /
-  passkey already cover everyday device unlock, so a PIN mostly adds surface for little
-  gain. The case for it is a device with no biometrics; absent that gap, lean toward
-  dropping it rather than building it. It does not affect the envelope model either way.
+The envelope model glosses one hard problem: on a **new device with only the password**,
+how does the client find which envelope to fetch? The account id derives from the
+phrase, which the person does not have on the new device, and it must **never** derive
+from the password (that is the oracle this whole doc avoids). A password alone therefore
+cannot name its own envelope.
+
+The resolution is a **non-secret recovery locator**, chosen by the owner when they turn
+the password on, distinct from the password:
+
+- The locator **names** the envelope; the password **opens** it. Cross-device unlock is
+  "locator + password", two memorable things, not one. The honest framing in copy is
+  "your recovery name and password", with the phrase still the real backstop.
+- The locator is **not a secret and not the account id.** It is a server-side lookup key
+  mapping `locator -> { envelope ciphertext, kdf params, salt }`. Knowing it lets someone
+  *fetch an envelope ciphertext* (rate-limited, below), never *open* it: the password +
+  Argon2id cost is the only thing protecting the wrapped root. This is the same
+  weakest-link cost already named ("an attacker who steals that one envelope can attack
+  it offline"), with the locator deciding *which* envelope, not weakening it.
+- The locator must not be a password-derived value (that would re-introduce a
+  password->server-visible-value oracle). It is owner-chosen, like a username. A person
+  who already holds a public findable name (doc 17) may reuse it as the locator; everyone
+  else picks a recovery name when enabling the password. It is validated for shape only
+  (charset/length), never required to be unique to a human, and reveals nothing.
+- **No locator collision oracle:** a fetch returns a uniform "here is an envelope-shaped
+  blob" whether or not one exists (a decoy when absent), so the lookup is existence-
+  uniform like alias reads, and does not confirm "an account uses recovery name X".
+
+This keeps the invariant intact: nothing the server can see is derived from the password,
+and the always-present account id stays a function of the high-entropy phrase only.
+
+## Resolved decisions (pending sign-off)
+
+- **No password-only accounts.** The phrase always exists as the backstop, so a forgotten
+  password is never terminal. A password is strictly an *additional* envelope, opt-in, and
+  the account id keeps deriving from the phrase-derived root only. (Resolves the
+  password-only question: no.)
+- **Drop the local PIN.** Biometrics / passkey already cover everyday device unlock, and a
+  device-only PIN adds attack surface for little gain. Not built. It does not affect the
+  envelope model, so it can be revisited later for a no-biometrics device if a real need
+  appears. (Resolves the local-PIN question: drop.)
+- **KDF: Argon2id, versioned, measured.** A WASM Argon2id with a per-account random 16-byte
+  salt and a 32-byte output. Starting parameters, to be confirmed by measuring on a
+  low-end target phone before launch: **memory 64 MiB, iterations (time cost) 3,
+  parallelism 1** (a deliberately high, ~sub-second-on-a-phone cost). The exact params are
+  **stored with the envelope** (a small versioned record), so an old envelope still opens
+  with its original cost and a re-wrap can raise the cost later without stranding anyone.
+  These are security constants: raise them deliberately, never silently.
+- **Strength gate: reject, do not score.** A weak password is refused, not graded. The
+  gate is a hard floor: a minimum length **and** an estimator threshold (a bundled
+  zxcvbn-style estimate at its strongest bucket, run fully client-side so no candidate
+  ever leaves the device) **and** a bundled common-password/breach wordlist check (local,
+  never an online lookup that would leak the candidate). The copy says plainly that a weak
+  password is not accepted, without lecturing and without describing the attack
+  (doc 21). This gate is load-bearing, not polish: it holds the floor for everyone who
+  turns the password on.
+- **Envelope storage + rate-limiting.** The server stores per-account, per-factor
+  wrapped-key envelopes as opaque records keyed by the locator: `{ locator, factor,
+  version, kdfParams, salt, wrappedRoot }`. Everything is opaque ciphertext except
+  `kdfParams` + `salt` (needed to derive the unwrap key; a salt is not a secret).
+  Fetching an envelope is **rate-limited per IP** like a sensitive read and returns a
+  uniform envelope-shaped response (real or decoy), so the store is not a freely
+  harvestable target and not an existence oracle. Writing/replacing an envelope (enable,
+  change, disable) is authorized by the account's write token (derived from the
+  phrase-root the owner already holds when they manage factors in Settings).
+
+## Implementation plan (slices; do not start until signed off)
+
+1. **Crypto: the password envelope.** A `wrapPasswordEnvelope(root, password, params) ->
+   { salt, wrappedRoot }` and its inverse, mirroring `auth/keyVault.ts`'s `wrapRoot` /
+   `unwrapRoot` (Argon2id in place of the PRF: `argon2id(password, salt, params) -> AES
+   key -> seal/open(root)`). Pure crypto, fully unit-tested with known vectors. Bundle a
+   small WASM Argon2id; confirm the params on a target phone.
+2. **Strength gate.** A pure `gradePassword(pw) -> { ok, reason }` (length + estimator +
+   wordlist), client-only, with honest reject copy. Unit-tested against weak/strong cases.
+3. **Server: envelope storage.** A new table + the read (rate-limited, decoy-uniform) and
+   the write/delete (write-token authorized) endpoints, within the blind-store boundary
+   (the server only ever sees ciphertext + salt + params + locator). Go tests mirror the
+   admin/alias endpoint patterns.
+4. **Settings: manage factors (doc 31).** Turn the password on (pick a recovery name, set
+   + confirm a password past the gate, mint the envelope), change it (re-wrap a fresh
+   envelope; root + account id untouched), turn it off (drop the envelope), and see which
+   unlock methods are active. Plus re-view the phrase.
+5. **New-device unlock by recovery name + password.** The login path that fetches the
+   envelope by locator and opens it with the password, recovering the root key and loading
+   the account, alongside the existing phrase and passkey paths.
+6. **Continuity nudges (later, optional).** The gentle rehearsal and the once-a-year
+   reminder from the sections above: reminders, never forced resets, never blocking use.
