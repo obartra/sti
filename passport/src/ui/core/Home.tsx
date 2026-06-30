@@ -25,10 +25,18 @@ import type { ReportPreview } from "../../core/report.ts";
 // full card when it is actually due. The badge is TWO-STATE only (blue / gray).
 export type { HomeBadge };
 
-// The two faces of the hero card. "shared" is the default so the honest mirror of
-// what a viewer sees is the first thing the owner lands on; "criteria" is the
-// private breakdown, never a viewer surface.
+// The two faces of the hero card. "criteria" is the owner-only breakdown of where
+// you stand and is the default the owner lands on (changeable in Settings, threaded
+// via defaultView); "shared" is the honest mirror of what a viewer resolves. The
+// toggle switches between them at any time, so the shared view is always one tap off.
 type HomeView = "shared" | "criteria";
+
+// The owner's saved default, falling back to the breakdown when none is threaded
+// (Storybook / before Settings wires the preference). Kept out of the Home param
+// list so it does not add to that function's branch budget.
+function initialView(v: HomeView | undefined): HomeView {
+  return v ?? "criteria";
+}
 
 // How close to the freshness lapse the re-test nudge earns a full card (vs the
 // faint hint). Mirrors the inbox's "re-test soon" window.
@@ -156,6 +164,10 @@ export interface HomeProps {
   // the share surface, so it is no longer used here.
   onViewAs?: (() => void) | undefined;
   onPrivacy?: (() => void) | undefined;
+  // Which face the hero card opens on. Defaults to "criteria" (your own
+  // standing); the app threads the owner's saved preference here so the default
+  // is changeable in Settings. The toggle still switches freely after open.
+  defaultView?: HomeView;
   // Route to the testing finder (Care) from the "your criteria" view.
   onFindTesting?: (() => void) | undefined;
   onContinueCare?: (() => void) | undefined;
@@ -177,6 +189,7 @@ export function Home({
   standing = { recentPanel: true, clear: true, route: true, willBeBlue: true },
   tested = true,
   clearBy = addDays(TODAY, 9),
+  defaultView,
   onShare,
   onReport,
   onPrivacy,
@@ -186,7 +199,7 @@ export function Home({
   onExtend,
 }: HomeProps) {
   const isPaused = paused || autoPaused;
-  const [view, setView] = useState<HomeView>("shared");
+  const [view, setView] = useState<HomeView>(initialView(defaultView));
   const act = nextAction({
     badge,
     paused: isPaused,

@@ -259,7 +259,7 @@ describe("App onboarding flow", () => {
     await onboard(user, "kai");
 
     // Home renders the derived owner: the chosen handle, not the fixture's.
-    expect((await screen.findAllByText("@kai")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/@kai/)).length).toBeGreaterThan(0);
     expect(screen.queryByText("@robin")).toBeNull();
   });
 
@@ -274,7 +274,7 @@ describe("App onboarding flow", () => {
     await onboard(user);
 
     // The account was created (default handle "robin"), so the app still enters.
-    expect((await screen.findAllByText("@robin")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/@robin/)).length).toBeGreaterThan(0);
   });
 
   it("reports a result and the home badge turns blue (report -> setOwnerState -> derive)", async () => {
@@ -361,7 +361,7 @@ describe("App onboarding flow", () => {
 
     // Onboard into the app.
     await onboard(user);
-    expect((await screen.findAllByText("@robin")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/@robin/)).length).toBeGreaterThan(0);
 
     // Open Privacy (the home quick-action tile), then the danger zone's two-step delete.
     await user.click(await screen.findByRole("button", { name: "Privacy" }));
@@ -468,7 +468,7 @@ describe("App onboarding flow", () => {
     );
 
     // The recovered account drives the app (its handle, not the fixture's).
-    expect((await screen.findAllByText("@rosa")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/@rosa/)).length).toBeGreaterThan(0);
     expect(screen.queryByText("@robin")).toBeNull();
   });
 
@@ -516,7 +516,7 @@ describe("demo mode", () => {
     );
 
     // The seeded demo session drives the app: the @demo handle reaches home.
-    expect((await screen.findAllByText("@demo")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/@demo/)).length).toBeGreaterThan(0);
     // The persistent banner marks every demo screen.
     expect(
       screen.getByText("Demo. Nothing here is saved or sent."),

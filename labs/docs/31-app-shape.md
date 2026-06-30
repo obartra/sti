@@ -71,15 +71,17 @@ need to sit a passive copy of the viewer card on the screen as decoration. Inste
 Home leads with one card that **toggles between two clearly-labeled views of the
 same status**:
 
-- **What others see** - the badge exactly as a viewer resolves it. This is the
-  default, so the honest mirror is the first thing you land on.
 - **Your criteria** - the owner-only breakdown: the three things blue needs, where
-  you stand on each, when to re-test, and a way straight to testing.
+  you stand on each, when to re-test, and a way straight to testing. This is the
+  default the owner lands on, so opening Home answers "where am I" first.
+- **What others see** - the badge exactly as a viewer resolves it, one tap away so
+  the honest mirror is never more than a tap off.
 
-The toggle replaces the earlier "blur and reveal" treatment. A labeled switch
-("what others see" vs "your criteria") makes it unambiguous which view is shared and
-which is private to you, where a blur only hid the detail without naming it. The
-badge itself never gains tiers, meters, or streaks.
+Which view opens by default is a **Settings** preference (defaulting to "your
+criteria"); the toggle still switches freely after open. The toggle replaces the
+earlier "blur and reveal" treatment. A labeled switch makes it unambiguous which
+view is shared and which is private to you, where a blur only hid the detail without
+naming it. The badge itself never gains tiers, meters, or streaks.
 
 ## Links
 
@@ -119,12 +121,16 @@ holds). Three things live here:
 
 - **Starred** at the top - the few you pin. No new mechanism; today's faves, given
   the prime spot.
-- **Recent connections** - everyone you have linked with, newest first. They stay on
-  your device until you delete them; nothing prunes them automatically (each holds
-  the capability that later lets a positive report quietly reach past partners, so we
-  do not throw them away on a timer). The old "removed after 90 days" line was never
-  true and is gone.
-- **Groups** - see below.
+- **Groups** in the middle - see below.
+- **Recent connections** at the bottom - everyone you have linked with, newest
+  first, below the starred and the groups (the people you actively reach for sit up
+  top; the long tail sits under them). They stay on your device until you delete
+  them; nothing prunes them automatically (each holds the capability that later lets
+  a positive report quietly reach past partners, so we do not throw them away on a
+  timer). The old "removed after 90 days" line was never true and is gone. You can
+  give any connection a **private label** - a nickname only you ever see, never sent
+  and never shown to them - to remember who someone is. (The contact record already
+  carries this label field; this just surfaces an editor for it.)
 
 Connecting is by **shared link or scan only**, member-initiated, two-way. There is no
 handle search and no way to be looked up.
@@ -221,14 +227,29 @@ the account actions, the attributes, the links list, and the explainer.
 - **[25-in-person-connect](25-in-person-connect.md):** unchanged design; this doc
   commits to building the missing "be scanned" half so the gesture is symmetric.
 
+## Group roster identity: one anonymous face per group
+
+When you join a group under an anonymous handle (rather than your main identity), you
+get **a distinct anonymous face per group**, not one anonymous identity reused across
+all of them. Within a group every member sees the same dot for you, so the roster is
+coherent; across groups your faces are uncorrelated, so a person in two of your groups
+cannot tell the two anonymous dots are the same you, and the server never gets a
+cross-group pseudonym to accrete. This follows the decorrelation principle in
+[18-sibling-alias-decorrelation](18-sibling-alias-decorrelation.md). The alternative,
+one stable anonymous handle everywhere, would quietly rebuild exactly the cross-group
+social graph the product fights. (Per-individual faces within a single group are not
+on the table: they would make the roster incoherent, since members could not all refer
+to the same dot. That shape belongs to 1:1 links, not group rosters.) The cost is that
+someone who expects to be recognized across groups will not be under an anonymous face;
+the answer for them is to join those groups under their main identity, by choice.
+
 ## Open questions (do not block; resolve before building)
 
-- **Group roster identity:** when you appear in a group under an anonymous handle, is
-  it one stable anonymous handle per group, or per-person-per-group? Per-group keeps
-  groups from being cross-linkable; confirm against
-  [18-sibling-alias-decorrelation](18-sibling-alias-decorrelation.md).
-- **Links tab vs. Account settings overlap:** the "sharing default" toggle could live
-  in either; proposed home is Account, with Links showing the result.
-- **Sequencing:** Account section and the "be scanned" half are self-contained and
-  can ship first; the Groups consolidation and the nav change are larger and should
+- **Owner avatar removal scope:** remove the avatar concept entirely (drop the
+  onboarding step and the edit screen), or just stop showing an owner avatar while
+  the per-link avatar picker stays? The latter is far less invasive.
+- **Links tab vs. Settings overlap:** the "sharing default" toggle could live in
+  either; proposed home is Settings, with Links showing the result.
+- **Sequencing:** the Settings section, the "be scanned" half, and the Home toggle
+  are self-contained; the Groups consolidation and the nav change are larger and
   follow once this shape is signed off.
