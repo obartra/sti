@@ -74,6 +74,8 @@ func (s *Server) registerAdminRoutes() {
 	s.mux.HandleFunc("GET "+contract.PathAdminReports, s.requireAdmin(s.handleAdminReports))
 	// Recent admin activity (doc 20 A4): a read-only tail of the audit log.
 	s.mux.HandleFunc("GET "+contract.PathAdminAudit, s.requireAdmin(s.handleAdminAudit))
+	// Aggregate service metrics (doc 20 A5): identifier-free totals for the dashboard.
+	s.mux.HandleFunc("GET "+contract.PathAdminMetrics, s.requireAdmin(s.handleAdminMetrics))
 	s.mux.HandleFunc("POST /admin/vanity/{name}/takedown", s.requireAdmin(s.handleVanityTakedown))
 	s.mux.HandleFunc("POST /admin/vanity/{name}/dismiss", s.requireAdmin(s.handleVanityDismiss))
 	// Account / alias management (doc 20 A3): all within the blind-store boundary.
@@ -192,6 +194,33 @@ func (s *Server) handleAdminAudit(w http.ResponseWriter, r *http.Request) {
 		out[i] = contract.AdminAuditEntry{ID: e.ID, Action: e.Action, Target: e.Target, CreatedAt: e.CreatedAt}
 	}
 	s.writeJSON(w, http.StatusOK, contract.AdminAuditResponse{Entries: out})
+}
+
+// handleAdminMetrics answers GET /admin/metrics: aggregate, identifier-free service
+// totals for the operator dashboard (doc 20 A5). A read, so it is not audited. Every
+// figure is a count of opaque rows or a system size (the same blind telemetry the
+// store already samples for /metrics), never a per-account or per-id value, so it
+// stays within the blind-store boundary (doc 12). The pending-review count reuses the
+// review-queue read and is capped at adminReportsLimit like that queue.
+func (s *Server) handleAdminMetrics(w http.ResponseWriter, r *http.Request) {
+	st, err := s.st.Stats(r.Context())
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	reports, err := s.st.PendingVanityReports(r.Context(), adminReportsLimit)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	s.writeJSON(w, http.StatusOK, contract.AdminMetricsResponse{
+		Accounts:       st.AccountRows,
+		Aliases:        st.AliasRows,
+		Knocks:         st.KnockRows,
+		SendQueueDepth: st.SendQueueDepth,
+		DBSizeBytes:    st.DBSizeBytes,
+		PendingReports: len(reports),
+	})
 }
 
 // handleVanityTakedown answers POST /admin/vanity/{name}/takedown: the reviewer
