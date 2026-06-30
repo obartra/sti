@@ -1,6 +1,6 @@
 # 32 - Account recovery and unlock
 
-## Status: PROPOSED (design); open questions resolved below, pending sign-off before build
+## Status: APPROVED; building slice by slice (the plan at the end tracks what is built)
 
 How a person keeps access to their account across devices and over time, and how an
 optional, memorable password can fit without weakening the blind store. This doc owns
@@ -220,13 +220,17 @@ and the always-present account id stays a function of the high-entropy phrase on
   change, disable) is authorized by the account's write token (derived from the
   phrase-root the owner already holds when they manage factors in Settings).
 
-## Implementation plan (slices; do not start until signed off)
+## Implementation plan (slices)
 
-1. **Crypto: the password envelope.** A `wrapPasswordEnvelope(root, password, params) ->
-   { salt, wrappedRoot }` and its inverse, mirroring `auth/keyVault.ts`'s `wrapRoot` /
-   `unwrapRoot` (Argon2id in place of the PRF: `argon2id(password, salt, params) -> AES
-   key -> seal/open(root)`). Pure crypto, fully unit-tested with known vectors. Bundle a
-   small WASM Argon2id; confirm the params on a target phone.
+1. **Crypto: the password envelope.** _Built._ `wrapPasswordEnvelope(root, password,
+   params) -> { params, salt, wrappedRoot }` and its inverse in `auth/passwordEnvelope.ts`,
+   mirroring `auth/keyVault.ts`'s `wrapRoot` / `unwrapRoot` (Argon2id in place of the PRF:
+   `argon2id(password, salt, params) -> AES key -> seal/open(root)`). Pure crypto,
+   unit-tested (round-trip, fail-closed on wrong password/params, fresh salt per wrap, NFC
+   normalization, pinned launch cost). Argon2id is a bundled WASM (hash-wasm), imported
+   only by the recovery/settings chunk so it stays out of the precached shell. The params
+   are stored with the envelope and versioned; confirm the cost on a target phone before
+   launch.
 2. **Strength gate.** A pure `gradePassword(pw) -> { ok, reason }` (length + estimator +
    wordlist), client-only, with honest reject copy. Unit-tested against weak/strong cases.
 3. **Server: envelope storage.** A new table + the read (rate-limited, decoy-uniform) and
