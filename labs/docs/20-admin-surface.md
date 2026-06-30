@@ -99,7 +99,7 @@ chrome and is never linked from the app.
   it, so the id reads back as a decoy. Shipped.
 - `GET /admin/lookup/{id}` — opaque metadata for a record (existence, ciphertext byte size, last
   written), never content. Shipped.
-- `GET /admin/metrics` — aggregate, identifier-free service counts (totals and per-day trends, the
+- `GET /admin/metrics`: aggregate, identifier-free service counts (totals and per-day trends, the
   report-queue size and latency) for the metrics panel. No per-account or per-id figures; a read, so
   not itself audited.
 
