@@ -122,10 +122,13 @@ Replace the single permanent public handle entirely.
 
 - **No user-facing "main handle."** The only ids are **aliases**: an opaque id in the URL +
   a display **handle**/avatar held *inside* the encrypted payload.
-- **No real names, anywhere.** Display identity is a **handle/alias + avatar — never a first/
-  last/legal name.** There is no name field in the system (not stored, not optional, not hidden).
-  Any current screen showing a person name (e.g. "Sam Rivera," "Robin Vale") must become a handle
-  (e.g. "@sam_r") + avatar, and any name input removed.
+- **No real names on a viewer surface.** A card's display identity is a **handle/alias + avatar,
+  never a first/last/legal name.** Any current screen showing a person name (e.g. "Sam Rivera,"
+  "Robin Vale") must become a handle (e.g. "@sam_r") + avatar. The only names in the system are
+  two opt-in, never-server-seen conveniences (docs 15/16/31): a **local display name** the owner
+  gives at onboarding (used only to greet them on their own device and pre-fill a handle), and a
+  **shared label** a sharer may optionally attach to a face, which the receiver gets as their own
+  editable nickname. Neither is a viewer-facing card field, and a face is anonymous by default.
 - Aliases are **multiple, creatable, revocable.** Nothing is permanent or canonical.
 - A **vanity/custom handle** is an explicit, **public-only opt-in**, taught at the choice
   point in one honest line: *"This makes you findable and isn't unlinkable from anywhere else
@@ -173,8 +176,12 @@ never on the anonymous view (it would confirm existence).
 
 ## 7. Sharing — time-bound, revocable, per-token
 
-- Grants can be **point-in-time, durational, or until-revoked.** **Default new links to a
-  routine expiry (e.g. 30 days)** rather than until-revoked.
+- Grants can be **point-in-time, durational, or until-revoked.** **Default new private links to a
+  routine expiry (e.g. 30 days)** rather than until-revoked. **Public links never carry an expiry**
+  (doc 16): a public profile is the durable "anyone who scans sees my status" surface, so it stays
+  live until revoked, and taking it down is releasing the name, never a silent lapse. Expiry is a
+  private-link affordance only, enforced below the UI (the publish layer drops any expiry on a
+  public alias).
 - "Revoke" = **no future reads** (not "unsee"); say so honestly.
 - **Visibility and revocation are per-token / per-capability — there is no global "can this
   person see me" state.** Leaving one group or revoking one link never affects what you share
@@ -223,8 +230,8 @@ user's concern — it's about the recipients' health.
 It's quick and often free."*
 - **Never** who, **never** what (no "tested positive for an STI"), **never** when, **never** a
   count (no "2 partners").
-- Never labeled 1:1-vs-circle. **Merge circle exposure into the same contentless pipeline** —
-  no separate "transparency" surface, and **no per-circle "N people notified" counts** on the
+- Never labeled 1:1-vs-group. **Merge group exposure into the same contentless pipeline**, with
+  no separate "transparency" surface, and **no per-group "N people notified" counts** on the
   owner side.
 - **Server-timed batching** for anonymity rather than a hard per-user K threshold that blocks
   low-partner users. (Keep a gentle "one recipient can't be anonymous" note, but don't
@@ -258,7 +265,9 @@ is **not** a new sharing mode — it's what *private* does for a link-holder-wit
 
 ---
 
-## 10. Circles — mutual care, never a club
+## 10. Groups — mutual care, never a club
+
+(Renamed from "circles"; doc 31 is the current owner of the group model, doc 13 of its mechanics.)
 
 - A convenience layer over pairwise links. Permanent or event-based. **Not** a live feed,
   **not** a "clean club."
@@ -270,11 +279,18 @@ is **not** a new sharing mode — it's what *private* does for a link-holder-wit
   tallies — a single "1 in treatment" outs someone by elimination. No leaderboards.
 - **No "worst-of" room rollup.** After the blue/gray collapse, prefer a flat "everyone here
   shares a status" presence model that doesn't aggregate health state.
-- **Minimum group size ~5** for any group-level status surface (keep the existing guard).
-- **Per-group handle visibility, private by default**, plus a **universal "there may be
-  additional private members" notice on every roster/aggregate** (always, even when there are
-  none — so privacy doesn't leak by completeness).
-- **Discovery is member-initiated, link/QR-scoped** (keep). No open circle search.
+- **Membership is the sharing; no minimum group size** (supersedes the earlier ~5 floor, see
+  doc 31). Joining a group is itself consenting to show your blue/gray color to its members, so a
+  headcount protects nothing. Because the roster is fully visible to members, there is no hidden
+  membership and **no "additional private members" notice** (it would only describe a thing that
+  no longer exists).
+- **You appear under the handle you joined with**: your main identity, or a fresh anonymous
+  handle minted for that group, so a group never forces your main identity. Group names carry no
+  constraints (a color in a group named for a place or event says more than a bare color, so we
+  don't force descriptive names, but we don't restrict them either).
+- **Admins can add members**, and joining is the consent; if you are not comfortable with a
+  group's admins adding people, the answer is not to join. Leaving is easy and looks ordinary.
+- **Discovery is member-initiated, link/QR-scoped** (keep). No open group search.
 - **Anti-spam:** pull + **sticky declines** + rate-limiting. **No max-group cap.**
 - Joining, leaving, and skipping a share all look ordinary.
 

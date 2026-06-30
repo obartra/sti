@@ -55,7 +55,9 @@
 - **DECIDED (supersedes the earlier ~5 floor, see doc 31). Membership is the sharing:** joining a group is consenting to show your blue/gray color to its members, so there is no minimum group size and no door. No counts, no leaderboards; joining/leaving/skipping looks ordinary.
 - **DECIDED (see doc 31). You appear under the handle you joined with** (your identity, or a fresh anonymous handle); the roster is fully visible to members, so there is no hidden-membership and no "additional private members" notice.
 - **LOCKED — Membership disclosure is per-person; revealing a group's existence never reveals its members.**
-- **LOCKED — The individual controls their own status disclosure in a group; the group never overrides it.** No group-level switch makes members' statuses visible (it would expose a member beyond their own choice). Each member's in-group visibility is the member's own setting; any group display preference operates only within what each member already shares (hides, never reveals). The min-group-5 rule is a separate hide-only floor. (Build: remove the group "what members see" status toggle, it's drift.)
+- **LOCKED. The individual controls their own status disclosure in a group; the group never overrides it.** No group-level switch makes members' statuses visible (it would expose a member beyond their own choice). Each member's in-group visibility is the member's own setting; any group display preference operates only within what each member already shares (hides, never reveals). (There is no min-group floor; membership is the sharing, see above. Build: remove the group "what members see" status toggle, it's drift.)
+- **DECIDED. Group names carry no constraints.** Anyone can name a group anything; we don't force descriptive names (a color in a group named for a place or event says more than a bare color) and we don't restrict them either.
+- **DECIDED. Admins can add members.** Joining is the consent; if you are not comfortable with a group's admins adding people, don't join. Leaving is easy and looks ordinary.
 - **LOCKED — Discovery = member-initiated, link-scoped** (only someone you've already paired with can reveal a group). No open search, no stranger discovery, no contact intersection.
 - **LOCKED — Anti-spam via consensual pull + sticky declines + outbound rate-limiting.**
 - **REJECTED — Max-group caps** (punish legitimate organizers more than abusers).
@@ -65,7 +67,7 @@
 ## Identity & sharing (aliases)
 
 - **LOCKED — No user-facing "main handle."** The only ids are **aliases**. The local account key (passkey/passphrase) is the anchor — never shown, never in a URL.
-- **LOCKED — No real names, anywhere.** Display identity = handle/alias + avatar, never a first/last/legal name. No name field exists in the system (not stored, not optional, not hidden) — a name is a collection surface the product has no use for.
+- **LOCKED. No real names on a viewer surface.** A card's display identity = handle/alias + avatar, never a first/last/legal name. The system holds two opt-in, never-server-seen names, neither of them a card field: the **local display name** (next item) and an optional **shared label** on a face (below). A face is anonymous by default.
 - **LOCKED — Public vs private is a key-distribution choice, not server data.** Private = key held by authorized contacts; public = key in the URL fragment. Server stores only `opaque_id → ciphertext` either way and never sees a handle.
 - **LOCKED — Opaque-id aliases are the default (Private link); a public handle is an explicit
   opt-in**, flagged at claim time as findable and not unlinkable.
@@ -81,6 +83,16 @@
   status on the server. **Multiple public handles per account: up to 5** (one per public context,
   e.g. one for Grindr, one for Tinder). Handle is set at link creation in the share sheet, not at
   account creation.
+- **DECIDED. Shared name is a one-time copy, not a live field (docs 15/31).** A sharer may
+  optionally attach a name to a face (default off). The receiver gets it once as the starting value
+  of their own editable label and owns it from then on; it never re-syncs if the sharer later changes
+  their name. The handle underneath stays live and auto-updates; a shared name is a snapshot. So the
+  shared name and the receiver's rename are the same editable label, just seeded differently.
+- **DECIDED. Easy reclaim of your own released name during the 24h lock (doc 17).** The post-release
+  lock blocks third-party watch-and-grab, not the account that just held the name: if you release or
+  rename off a public handle and change your mind, you can re-claim it straight away while the window
+  runs. Keyed to the same account, so it never helps an impersonator, and it never overrides a
+  moderation takedown.
 
 ## Resolution & privacy
 

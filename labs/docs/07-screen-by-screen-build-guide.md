@@ -187,10 +187,12 @@ This guide is the propagation plan.
 ### Privacy & sharing — `CoreFlows.Privacy`
 - **Now:** Create/revoke named private links (good); links are effectively **until-revoked
   only**; copy implies a server-side handle directory ("stored against handles").
-- **Target:** Keep create/revoke (revoke = no future reads). **Add expiry options; default new
-  links to routine expiry (e.g. 30 days).** Make per-token/per-capability explicit (leaving one
-  path never touches another). Strip copy implying a central directory.
-- **Action:** EDIT (add expiry default) + copy fixes.
+- **Target:** Keep create/revoke (revoke = no future reads). **Add expiry options for private
+  links; default new private links to routine expiry (e.g. 30 days).** **Public links never carry
+  an expiry** (doc 16): they stay live until the name is released, and the publish layer drops any
+  expiry on a public alias, so the control is hidden in public mode. Make per-token/per-capability
+  explicit (leaving one path never touches another). Strip copy implying a central directory.
+- **Action:** EDIT (private-only expiry default; hide the control in public mode) + copy fixes.
 
 ---
 
@@ -202,21 +204,27 @@ This guide is the propagation plan.
 - **Target:** **No open handle search, no findable directory.** Linking is by shared alias
   link/scan only, member-initiated. Linkup logging: **encounter date defaults today, editable/
   back-datable, on-device, never shown to contact.** Add person-to-person **scan-to-autolink**
-  (proposes a link both confirm; exchanges an alias, not a handle).
+  (proposes a link both confirm; exchanges an alias, not a handle). People list (doc 31): starred up
+  top, recent connections at the bottom newest-first. **Rename any connection** (a local override
+  only you see, never sent); if the other person opted to **share a name**, you receive it once as
+  the starting value of that editable label and own it from then on. So the name you see resolves:
+  your rename (seeded by any shared name), else the live handle.
 - **Action:** REMOVE handle search/directory + EDIT linkup (editable date, silent) + NEW
-  scan-to-autolink flow.
+  scan-to-autolink flow + NEW rename/shared-label (doc 31; the deep model is the faces work).
 
 ---
 
 ## F. Circles & Events (`Circles1` / `Circles2`)
 
-### CirclesList / CircleCreate / CircleJoin / CircleApprovals (`Circles1`)
+### CirclesList / CircleCreate / CircleJoin / CircleApprovals (`Circles1`) → Groups (doc 31)
 - **Now:** Create sets **"Tested within the last N days" (the bar)**; join is link/code/QR +
   approval (good); no max cap (good); sticky-decline/rate-limit not evident.
-- **Target:** **Remove "the bar"** as an entry threshold. Keep link/QR/approval discovery
-  (member-initiated, link-scoped). Add **sticky declines + rate-limiting**; document **no
-  max-group cap**.
-- **Action:** REMOVE the bar + EDIT anti-spam.
+- **Target:** One kind of **group** (rename from circles). **Remove "the bar"** as an entry
+  threshold. Keep link/QR/approval discovery (member-initiated, link-scoped); **admins can add
+  members**, and joining is the consent. Add **sticky declines + rate-limiting**; document **no
+  max-group cap** and **no group-name constraints**. You appear under **the handle you joined
+  with** (main identity or a fresh anonymous handle).
+- **Action:** REMOVE the bar + EDIT anti-spam + rename circles→groups (doc 31).
 
 ### CircleDetail / CircleManage / CircleCheckin / CircleTransparency / CircleLeave (`Circles2`)
 - **Now (status atoms):** Circle status math maps to the **four-light** set (`clear`=green,
@@ -228,10 +236,11 @@ This guide is the propagation plan.
   - **REMOVE Door mode / check-in entirely** (the most exclusion-coded surface).
   - **REMOVE all counts and the worst-of rollup.** After the blue/gray collapse, prefer a flat
     "everyone here shares a status" presence model, no health-state aggregation.
-  - **Add the universal "there may be additional private members" notice** to every roster/
-    aggregate, always.
+  - **No "additional private members" notice** and **no minimum group size** (supersedes the
+    earlier ~5 floor + hidden-members notice, see doc 31): membership is the sharing and the roster
+    is fully visible to members, so there is nothing hidden to disclose.
   - Per-member dots only among the viewer's authorized peers; never a contrast that reveals who
-    hasn't shared. Min group size ~5 (keep).
+    hasn't shared.
   - **CircleTransparency:** drop per-circle counts; **merge circle exposure into the same
     contentless partner-notification pipeline** rather than a separate channel.
   - Leave/kick: the affected person can tell their own access ended, but **"left" and "was
@@ -243,13 +252,17 @@ This guide is the propagation plan.
 
 ## G. Cross-cutting (touch many screens)
 
-### Handles, not names — every card, circle, wallet, share, profile
+### Handles, not names — every card, group, wallet, share, profile
 - **Now:** Cards show person names ("Sam Rivera," "Robin Vale").
-- **Target:** Display identity is a **handle/alias + avatar — never a real name.** No name field
-  exists anywhere (not stored, not optional, not hidden). Replace every name display with a handle
-  (e.g. "@sam_r") + avatar; remove any name input.
-- **Action:** Global EDIT (display-only this pass; the deep alias model is P2-identity). A name is
-  a collection surface the system has no use for — the field shouldn't exist.
+- **Target:** A **viewer-facing** card's display identity is a **handle/alias + avatar, never a
+  real name.** Replace every name *display* with a handle (e.g. "@sam_r") + avatar. The system does
+  hold two opt-in, never-server-seen names (docs 15/16/31), neither of them a card field: a **local
+  display name** the owner sets at onboarding (greets them on their own device, pre-fills a handle),
+  and a **shared label** a sharer may optionally attach to a face, delivered to the receiver as their
+  own editable nickname. A face is anonymous by default.
+- **Action:** Global EDIT (display-only this pass; the deep alias model is P2-identity). Remove any
+  name input that feeds a viewer surface; keep the local-display-name and shared-label fields, which
+  never reach the server or a viewer card.
 
 ### Status logic & tokens — `Circles2` store, `card.jsx` (`PassportCard`), copy.js STATUS
 - **Now:** A four-value status enum (clear/treat/expired/none) drives every surface.

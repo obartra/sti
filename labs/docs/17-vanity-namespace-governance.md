@@ -68,8 +68,14 @@ reasons.) Format errors (too short, bad characters) are their own specific, non-
   name enters a 24-hour locked window during which it is unclaimable by anyone, then returns to the
   pool (first-come). The lock defeats automated watch-and-grab (seizing a freed name the instant it
   frees, to impersonate the prior holder) and leaves a window for a report to intervene before reuse.
-  It does **not** reserve the name for the prior owner (a deleted account is gone); after the lock
-  lapses the name is freely reclaimable by anyone.
+  It does **not** reserve the name for the prior owner against the pool (a deleted account is gone);
+  after the lock lapses the name is freely reclaimable by anyone.
+- **The prior owner can reclaim their own name during the lock (easy reclaim).** The lock blocks
+  *others*, not the account that just held the name: if you release or rename off a public handle
+  yourself and change your mind, you can re-claim it straight away while the window runs, no waiting.
+  This is keyed to the same account, so it never helps an impersonator (only the original holder can
+  do it) and it never overrides a **moderation takedown** (a name revoked for abuse runs the full
+  lock and returns to the pool first-come, with no privileged reclaim for the prior holder).
 - **No transfers, no marketplace.** A name cannot be handed to another account or sold; release +
   reclaim is the only path, and it is racy by design (first-come wins).
 - **Registration is rate-limited (server-enforced).** Claims (`PUT /u/{name}`) carry a per-IP bucket and
