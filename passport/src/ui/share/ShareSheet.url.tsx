@@ -250,7 +250,7 @@ function UrlReadyBody({
 
 // Whether a ready display URL is the findable public-name link (`/u/{name}`), as
 // opposed to an opaque `/a/{id}` alias link. The scheme is already stripped.
-export function isNamedLink(url: string): boolean {
+function isNamedLink(url: string): boolean {
   return /(^|\/)u\//.test(url);
 }
 

@@ -9,7 +9,7 @@
 import { parseScannedLink } from "../store/aliasLink.ts";
 
 /** The action path the manifest's `share_target` posts to, resolved against scope. */
-export const SHARE_TARGET_PATH = "share-target";
+const SHARE_TARGET_PATH = "share-target";
 
 /**
  * Whether a request is the share_target POST. The action is `{scope}share-target`

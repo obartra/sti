@@ -16,7 +16,7 @@ import type {
 import type { PassportStore } from "./passportStore.ts";
 
 /** A circle member's two-state display tone (the membership color, not the badge). */
-export type CircleTone = "blue" | "gray";
+type CircleTone = "blue" | "gray";
 
 /** One roster row: a member, the owner's private label for them, and their tone. */
 export interface CircleRosterMember {

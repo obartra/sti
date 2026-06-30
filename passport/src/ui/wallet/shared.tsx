@@ -101,7 +101,7 @@ export const HANDLE = "robin";
 // Canonical alias URL. Public (incl. every Live pass) carries the fragment
 // key; a private QR-carrier carries the opaque id ONLY. Never /u/{handle},
 // never an account id, never a re-linkable handle.
-export function aliasUrl(isPublic: boolean): string {
+function aliasUrl(isPublic: boolean): string {
   return isPublic
     ? `sti.care/a/${ALIAS_ID}#k=${KEY_FRAG}`
     : `sti.care/a/${ALIAS_ID}`;

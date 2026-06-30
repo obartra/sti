@@ -18,18 +18,6 @@ import {
 
 // Public re-exports kept on Wallet.tsx so existing importers (stories, etc.)
 // keep resolving the same names from the same module.
-export {
-  WALLET_FRESH_HOURS,
-  aliasUrl,
-  livePassState,
-  wordFor,
-} from "./shared.tsx";
-export type {
-  LivePassStateInput,
-  PassProps,
-  SharingMode,
-  WalletFormat,
-} from "./shared.tsx";
 export { ApplePass, GooglePass } from "./passes.tsx";
 export { ShareCard } from "./share-card.tsx";
 

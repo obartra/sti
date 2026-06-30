@@ -1,6 +1,13 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["src/sw/sw.ts", "scripts/**/*.mjs"],
+  "entry": [
+    "src/sw/sw.ts",
+    "scripts/**/*.mjs",
+    "src/store/index.ts",
+    "src/crypto/index.ts",
+    "src/design/components/index.ts",
+    "src/api/contract.ts"
+  ],
   "ignore": ["src/design/icons.tsx", "lostpixel.config.cjs"],
   "ignoreBinaries": ["go"],
   "rules": {
@@ -10,11 +17,11 @@
     "binaries": "error",
     "unlisted": "error",
     "unresolved": "error",
-    "exports": "warn",
-    "types": "warn",
-    "nsExports": "warn",
-    "nsTypes": "warn",
-    "enumMembers": "warn",
-    "duplicates": "warn"
+    "exports": "error",
+    "types": "error",
+    "nsExports": "error",
+    "nsTypes": "error",
+    "enumMembers": "error",
+    "duplicates": "error"
   }
 }

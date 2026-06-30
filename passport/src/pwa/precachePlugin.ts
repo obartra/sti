@@ -22,7 +22,7 @@ export const PRECACHE_BUDGET_BYTES = 700 * 1024;
 
 // The minimal shape we read from a Rollup output entry: a chunk's code, or an asset's
 // source. The real OutputChunk / OutputAsset satisfy this structurally.
-export type BundleItem =
+type BundleItem =
   | { type: "chunk"; code: string; isDynamicEntry: boolean }
   | { type: "asset"; source: string | Uint8Array };
 export type Bundle = Record<string, BundleItem>;

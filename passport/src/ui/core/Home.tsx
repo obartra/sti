@@ -23,7 +23,6 @@ import type { ReportPreview } from "../../core/report.ts";
 // rest is demoted so the status keeps the focus: a quiet one-line "what this
 // means", a compact row of quick actions, and a re-test nudge that only becomes a
 // full card when it is actually due. The badge is TWO-STATE only (blue / gray).
-export type { HomeBadge };
 
 // The two faces of the hero card. "criteria" is the owner-only breakdown of where
 // you stand and is the default the owner lands on (changeable in Settings, threaded

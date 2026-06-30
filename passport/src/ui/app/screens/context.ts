@@ -136,5 +136,5 @@ export interface ScreenCtx {
   data: RouteData | null;
 }
 
-export type ScreenRenderer = (ctx: ScreenCtx) => ReactNode;
+type ScreenRenderer = (ctx: ScreenCtx) => ReactNode;
 export type ScreenRenderers = Partial<Record<Screen, ScreenRenderer>>;

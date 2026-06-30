@@ -40,7 +40,7 @@ import type {
 } from "./session.ts";
 
 /** A per-contact link's default lifetime before it lapses to gray-nothing (doc 13). */
-export const CONTACT_LINK_MS = 7 * DAY_MS;
+const CONTACT_LINK_MS = 7 * DAY_MS;
 
 // An absolute expiry instant for a duration in ms from now, or null for none.
 function expiryFor(durationMs: number | null): number | null {

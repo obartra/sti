@@ -63,7 +63,7 @@ export function classifyWebAuthnError(err: unknown): PasskeyFailureCode {
     : "unavailable";
 }
 
-export interface EnrolledPasskey {
+interface EnrolledPasskey {
   /** base64url of the credential rawId; non-secret, stored locally. */
   readonly credentialId: string;
   /** The PRF output, used to wrap/unwrap the account root (auth/keyVault). */

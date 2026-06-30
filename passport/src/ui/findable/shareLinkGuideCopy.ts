@@ -7,7 +7,7 @@
 
 // The host a public name resolves at. Display only (no scheme); the QR encodes
 // the full https form built from it.
-export const PUBLIC_HOST = "sti.care";
+const PUBLIC_HOST = "sti.care";
 
 /** Build the display link for a public name, e.g. "sti.care/u/robin". */
 export function publicLinkFor(handle: string): string {

@@ -59,7 +59,7 @@ async function burst(
   return { latencies, statuses };
 }
 
-export interface RampLevel {
+interface RampLevel {
   concurrency: number;
   achievedRps: number;
   latency: LatencyStats;

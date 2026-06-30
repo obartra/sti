@@ -44,10 +44,9 @@ export interface Behavior {
   readonly pin: string;
 }
 
-/** The load-lab and Playwright gate files, used by the meta-tests to know which
- * behaviors each suite owns and must cover. */
+/** The load-lab gate file, used by the meta-tests to know which behaviors each
+ * suite owns and must cover. */
 export const LOADLAB_PIN = "src/loadlab/loadlab.integration.test.ts";
-export const E2E_PIN = "e2e/resolution.pw.spec.ts";
 
 export const BEHAVIORS = data as unknown as readonly Behavior[];
 

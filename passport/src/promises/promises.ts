@@ -19,7 +19,7 @@
 
 /** A test that pins an assertion: `file` exists and contains `name` (a test title
  * substring or a Go func name), checked by promises.test.ts. */
-export interface TestBacking {
+interface TestBacking {
   readonly kind: "test";
   readonly file: string;
   readonly name: string;
@@ -27,12 +27,12 @@ export interface TestBacking {
 
 /** A claim that is genuinely review/reasoning-only (a structural property or a
  * stated trust boundary), with the reason it cannot be a headless test. */
-export interface ReasoningBacking {
+interface ReasoningBacking {
   readonly kind: "reasoning";
   readonly why: string;
 }
 
-export interface PromiseAssertion {
+interface PromiseAssertion {
   /** The specific, technical thing we actually guarantee. */
   readonly claim: string;
   readonly backedBy: TestBacking | ReasoningBacking;

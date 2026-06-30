@@ -7,7 +7,7 @@
 
 import { bytesToUtf8, type Bytes } from "../crypto/index.ts";
 
-export const MAX_HANDLE_LEN = 64;
+const MAX_HANDLE_LEN = 64;
 
 export function isValidHandle(x: unknown): x is string {
   return typeof x === "string" && x.length > 0 && x.length <= MAX_HANDLE_LEN;
