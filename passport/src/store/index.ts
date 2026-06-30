@@ -60,12 +60,7 @@ export {
   parseContactInvite,
   type ContactInvite,
 } from "./contactInvite.ts";
-export {
-  MIN_CIRCLE_SIZE,
-  circleMeetsFloor,
-  visibleCircleStatuses,
-  normalizeCircleMembers,
-} from "./circles.ts";
+export { normalizeCircleMembers } from "./circles.ts";
 export {
   serializeAccountBlob,
   parseAccountBlob,

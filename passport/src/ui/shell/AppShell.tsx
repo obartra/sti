@@ -23,7 +23,7 @@ const TABS: { id: TabId; label: string; Icon: (p: IconProps) => ReactNode }[] =
   [
     { id: "home", label: "Passport", Icon: Passport },
     { id: "connect", label: "Connect", Icon: Users },
-    { id: "circles", label: "Circles", Icon: Circles },
+    { id: "circles", label: "Groups", Icon: Circles },
     { id: "care", label: "Care", Icon: Care },
   ];
 

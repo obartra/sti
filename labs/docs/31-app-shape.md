@@ -349,9 +349,6 @@ copy contradict the screen that is still there). Tracked here so none is forgott
   the `anonNote` about your avatar appearing on a link), `onboarding/AvatarBuilder.tsx`
   alt text, and `core/Privacy.parts.tsx` ("Your avatar" / "Edit"). Reframe to per-share
   faces (anonymous by default, or show your name); the owner has no avatar.
-- **Groups (drop the floor, rename from circles):** `circles/CircleCreate.tsx` and
-  `circles/CircleDetail.tsx` ("circle" wording, the `floorNote` / `aggSmall` 5-person
-  floor copy). Reword to one kind of group, membership is the sharing, no floor.
 - **Privacy to Settings:** the `PRIVACY_SCREEN_NAME` constant and the screen title /
   nav label.
 - **Recovery + optional password:** the recovery copy stays phrase-only until the
@@ -359,7 +356,10 @@ copy contradict the screen that is still there). Tracked here so none is forgott
   phrase" line (never overclaiming).
 
 Already corrected (copy that was wrong against shipped behaviour): the contact-prune
-line, the name-availability message, and the share-sheet identity warning. Two surfaces
+line, the name-availability message, the share-sheet identity warning, and the groups
+copy (the circle screens now read as one kind of group, membership is the sharing, and
+the 5-person hide floor is gone; the screen files keep their `circle` names until the
+mechanical rename). Two surfaces
 to re-verify directly when next touched: the rendered privacy-policy page (the doc 23
 spec had a wrong expiry line) and the privacy promises list (no promise should assert
 link expiry or findability in a way the new model changes).

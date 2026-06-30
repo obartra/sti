@@ -1,8 +1,8 @@
-// Circle detail: a header, the member roster (shown once the min-5 floor is met,
-// otherwise the small-circle notice), and a delete control. A circle is a private,
-// read-only view over contacts you've already linked with, so there is nothing to
-// "leave" and no roles, approvals, or per-circle sharing: each member's status is
-// their own pairwise share, surfaced here and gated by the group-size floor.
+// Group detail: a header, the member roster (every member, any size), and a delete
+// control. A group is a private, read-only view over contacts you've already linked
+// with, so there is nothing to "leave" and no roles, approvals, or per-group
+// sharing: each member's color is their own pairwise share, and being in the group
+// is itself sharing that color to it (doc 31), so the roster shows at any size.
 import { useEffect, useState } from "react";
 import { Avatar, Button, Card } from "../../design/components/index.ts";
 import { EyeOff, Heart, Trash, UserPlus } from "../../design/icons.tsx";
@@ -17,23 +17,20 @@ import { MemberDot, sectionLbl } from "./shared.tsx";
 
 const COPY = {
   members: "members",
-  aggSmall:
-    "This circle has under 5 people, so individual statuses stay hidden, a guard against guessing who’s who in a tiny group.",
+  sharing:
+    "Everyone here sees each other’s color. Being in the group is sharing it.",
   additionalPrivate:
-    "A roster only shows each person’s overall status, never results or conditions, and never the full picture.",
+    "A roster only shows each person’s overall color, never results or conditions, and never the full picture.",
   noShame:
     "If someone’s status changes, only they are told. No one else sees it, and there’s no count.",
   edit: "Edit name and members",
-  delete: "Delete circle",
+  delete: "Delete group",
   deleteNote: "Removes this grouping for you. Your contacts are not affected.",
 } as const;
 
-// The roster resolves asynchronously (each member's status alias), so a circle is
-// loading, hidden (below the floor), or a resolved member list.
-type RosterState =
-  | "loading"
-  | { hidden: true }
-  | { members: CircleRosterMember[] };
+// The roster resolves asynchronously (each member's status alias), so a group is
+// either loading or a resolved member list (shown at any size, doc 31).
+type RosterState = "loading" | { members: CircleRosterMember[] };
 
 function MemberRow({ member }: { member: CircleRosterMember }) {
   const name = member.label.trim() === "" ? "Contact" : member.label;
@@ -106,21 +103,6 @@ function Roster({ members }: { members: CircleRosterMember[] }) {
   );
 }
 
-function SmallCircleNotice() {
-  return (
-    <Card variant="flat" style={{ display: "flex", gap: 12 }}>
-      <span style={{ color: "var(--text-accent)", flex: "none", marginTop: 1 }}>
-        <EyeOff size={18} />
-      </span>
-      <div
-        style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--text-body)" }}
-      >
-        {COPY.aggSmall}
-      </div>
-    </Card>
-  );
-}
-
 export interface CircleDetailProps {
   circle: CircleRecord;
   contacts: ContactRecord[];
@@ -143,7 +125,7 @@ export function CircleDetail({
     setRoster("loading");
     void resolveCircleRoster(circle, contacts, resolveAlias).then((members) => {
       if (!live) return;
-      setRoster(members === null ? { hidden: true } : { members });
+      setRoster({ members });
     });
     return () => {
       live = false;
@@ -180,11 +162,17 @@ export function CircleDetail({
         </div>
       </div>
 
-      {roster === "loading" ? null : "hidden" in roster ? (
-        <SmallCircleNotice />
-      ) : (
-        <Roster members={roster.members} />
-      )}
+      <div
+        style={{
+          fontSize: 12.5,
+          color: "var(--text-subtle)",
+          lineHeight: 1.5,
+        }}
+      >
+        {COPY.sharing}
+      </div>
+
+      {roster === "loading" ? null : <Roster members={roster.members} />}
 
       <div
         style={{

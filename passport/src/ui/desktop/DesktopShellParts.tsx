@@ -32,7 +32,7 @@ const COPY = {
   nav: {
     passport: "Passport",
     connect: "Connect",
-    circles: "Circles",
+    circles: "Groups",
     care: "Care",
   },
   home: {

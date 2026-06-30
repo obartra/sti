@@ -4,9 +4,9 @@ import type { CircleRecord, ContactRecord } from "../../store/accountBlob.ts";
 import type { PassportStore } from "../../store/index.ts";
 import type { ResolvedView } from "../public/PublicResolution.tsx";
 
-// Circle detail: a header, the member roster (shown at or above the min-5 floor),
-// and a delete control. Meaningful states: a resolved roster (mixed blue/gray)
-// and a small circle (under the floor) where the roster gives way to the notice.
+// Group detail: a header, the member roster (shown at any size, no hide floor),
+// and a delete control. Meaningful states: a larger resolved roster (mixed
+// blue/gray) and a small group, which now shows its roster just the same.
 const meta: Meta<typeof CircleDetail> = {
   title: "Passport/Circles/Detail",
   component: CircleDetail,
@@ -47,13 +47,14 @@ const big: CircleRecord = {
   memberContactIds: ["a", "b", "c", "d", "e", "f", "g"],
 };
 
-// At/above the floor: the roster shows each member's blue/gray status.
+// A larger group: the roster shows each member's blue/gray color.
 export const WithRoster: Story = {
   args: { circle: big, contacts, resolveAlias },
 };
 
-// Under 5 people: the roster gives way to the small-circle privacy notice.
-export const SmallCircle: Story = {
+// A small group shows its roster too: being in the group is itself sharing your
+// color (doc 31), so there is no minimum size that hides it.
+export const SmallGroup: Story = {
   args: {
     circle: { id: "c2", name: "Fern house", memberContactIds: ["a", "b", "c"] },
     contacts,
