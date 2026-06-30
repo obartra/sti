@@ -70,6 +70,13 @@ A dedicated, gated route (`/admin`) in the existing app, isolated from the user 
 - **Activity panel (A4):** a read-only tail of recent admin actions (action, target, time), newest
   first. This makes the audit log's "reconstructable" promise usable from the page instead of only via
   SQLite on the box. Read-only, no actions; the same opaque rows the log already stores.
+- **Metrics panel:** a read-only dashboard of **aggregate, identifier-free** operational counts,
+  shown nicely (small number cards plus simple sparklines). Only system-level totals and trends:
+  total accounts / aliases / live links, accounts created and reports filed per day over a recent
+  window, and the report-queue size and review latency. These are the same identifier-free service
+  telemetry the blind-store boundary already permits (see below). The hard rules: never a per-account
+  or per-id figure, never a distribution that fingerprints one account ("accounts with > N links"),
+  never anything that correlates accounts. Counts of opaque rows, not facts about people.
 - **Built to grow:** the page is a shell with panels, so account disable, alias revoke, and metadata
   lookup by id dropped in as additional panels (now shipped) without re-architecting.
 
@@ -92,6 +99,9 @@ chrome and is never linked from the app.
   it, so the id reads back as a decoy. Shipped.
 - `GET /admin/lookup/{id}` — opaque metadata for a record (existence, ciphertext byte size, last
   written), never content. Shipped.
+- `GET /admin/metrics` — aggregate, identifier-free service counts (totals and per-day trends, the
+  report-queue size and latency) for the metrics panel. No per-account or per-id figures; a read, so
+  not itself audited.
 
 Every mutation writes an audit row and returns a uniform shape; none returns plaintext content.
 
