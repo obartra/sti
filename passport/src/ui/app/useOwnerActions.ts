@@ -31,6 +31,8 @@ export interface OwnerActions {
     label: string,
     durationMs: number | null,
   ) => Promise<ContactLinkResult>;
+  /** Rename one contact link's local label (owner-only nickname; never shared). */
+  onRenameContact: (id: string, label: string) => void;
   /** Revoke one contact link by id. */
   onRevokeContact: (id: string) => void;
   /** Change one contact link's lifetime in place (days from today, or null for
@@ -115,35 +117,7 @@ export function useOwnerActions(
     [controller, sessionRef, setSession],
   );
 
-  const onRevokeContact = useCallback(
-    (id: string) => {
-      const current = sessionRef.current;
-      if (current === null) return;
-      void controller
-        .revokeContact(current, id)
-        .then((updated) => {
-          sessionRef.current = updated;
-          setSession(updated);
-        })
-        .catch(() => undefined);
-    },
-    [controller, sessionRef, setSession],
-  );
-
-  const onSetContactDuration = useCallback(
-    (id: string, durationMs: number | null) => {
-      const current = sessionRef.current;
-      if (current === null) return;
-      void controller
-        .setContactDuration(current, id, durationMs)
-        .then((updated) => {
-          sessionRef.current = updated;
-          setSession(updated);
-        })
-        .catch(() => undefined);
-    },
-    [controller, sessionRef, setSession],
-  );
+  const contact = useContactActions(controller, sessionRef, setSession);
 
   const onRevokeAlias = useCallback(
     (id: string) => {
@@ -197,15 +171,74 @@ export function useOwnerActions(
   return {
     onDeleteAccount,
     onCreateContactLink,
-    onRevokeContact,
-    onSetContactDuration,
     onRevokeAlias,
     onAcceptContactInvite,
     onIngestContactReturn,
+    ...contact,
     ...profile,
     ...circle,
     ...findable,
   };
+}
+
+// The fire-and-fold per-contact link mutations (rename / revoke / set lifetime),
+// split out so useOwnerActions stays within its length ceiling. Each reads the
+// latest session, runs the controller op, and folds the result back; a no-op while
+// logged out, and a failure leaves the session as-is.
+function useContactActions(
+  controller: SessionController,
+  sessionRef: RefObject<OwnerSession | null>,
+  setSession: (s: OwnerSession | null) => void,
+): Pick<
+  OwnerActions,
+  "onRenameContact" | "onRevokeContact" | "onSetContactDuration"
+> {
+  const onRenameContact = useCallback(
+    (id: string, label: string) => {
+      const current = sessionRef.current;
+      if (current === null) return;
+      void controller
+        .renameContact(current, id, label)
+        .then((updated) => {
+          sessionRef.current = updated;
+          setSession(updated);
+        })
+        .catch(() => undefined);
+    },
+    [controller, sessionRef, setSession],
+  );
+
+  const onRevokeContact = useCallback(
+    (id: string) => {
+      const current = sessionRef.current;
+      if (current === null) return;
+      void controller
+        .revokeContact(current, id)
+        .then((updated) => {
+          sessionRef.current = updated;
+          setSession(updated);
+        })
+        .catch(() => undefined);
+    },
+    [controller, sessionRef, setSession],
+  );
+
+  const onSetContactDuration = useCallback(
+    (id: string, durationMs: number | null) => {
+      const current = sessionRef.current;
+      if (current === null) return;
+      void controller
+        .setContactDuration(current, id, durationMs)
+        .then((updated) => {
+          sessionRef.current = updated;
+          setSession(updated);
+        })
+        .catch(() => undefined);
+    },
+    [controller, sessionRef, setSession],
+  );
+
+  return { onRenameContact, onRevokeContact, onSetContactDuration };
 }
 
 // The findable (vanity-name) mutations (claim / release), split out so

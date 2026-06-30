@@ -77,6 +77,8 @@ export interface ScreenCtx {
     label: string,
     durationMs: number | null,
   ) => Promise<ContactLinkResult>;
+  /** Rename one contact link's local label (owner-only nickname; never shared). */
+  onRenameContact: (id: string, label: string) => void;
   /** Revoke one contact link by id. */
   onRevokeContact: (id: string) => void;
   /** Change one contact link's lifetime in place (days from today, or null for

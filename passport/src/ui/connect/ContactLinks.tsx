@@ -41,6 +41,9 @@ export interface ContactLinksProps {
     durationMs: number | null,
   ) => Promise<{ url: string }>;
   onRevoke: (id: string) => void;
+  /** Rename one link's local label (the owner-only nickname; never shared with the
+   * recipient). Empty clears it back to the placeholder. Absent hides the control. */
+  onRename?: ((id: string, label: string) => void) | undefined;
   /** Change one link's lifetime in place (ms from now, or null for
    * until-revoked); the same link keeps working. */
   onSetDuration: (id: string, durationMs: number | null) => void;
@@ -125,6 +128,7 @@ export function ContactLinks({
   now,
   onCreate,
   onRevoke,
+  onRename,
   onSetDuration,
   onIngestReturn,
   avatarSrc,
@@ -219,6 +223,7 @@ export function ContactLinks({
                 if (created?.includes(c.alias.id)) setCreated(null);
                 onRevoke(c.id);
               }}
+              onRename={onRename ? (label) => onRename(c.id, label) : undefined}
               onSetDuration={(ms) => onSetDuration(c.id, ms)}
             />
           ))}
@@ -228,12 +233,58 @@ export function ContactLinks({
   );
 }
 
-// The lifetime + revoke menu revealed under a row (the "⋯" panel). Setting a
-// lifetime changes the link's expiry in place; the link keeps working.
+// The rename field inside the "⋯" panel: edit the owner-only nickname for a link.
+// Local only, never shared with the recipient; an empty save clears it back to the
+// placeholder. Save stays disabled until the (trimmed) value actually changes.
+function RenameField({
+  label,
+  onRename,
+}: {
+  label: string;
+  onRename: (label: string) => void;
+}): React.ReactElement {
+  const [value, setValue] = useState(label);
+  const trimmed = value.trim();
+  const changed = trimmed !== label.trim();
+  return (
+    <>
+      <div
+        style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-subtle)" }}
+      >
+        Name
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <Input
+          aria-label="Rename this link"
+          placeholder="Who is this for?"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          maxLength={64}
+        />
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={!changed}
+          onClick={() => onRename(trimmed)}
+        >
+          Save
+        </Button>
+      </div>
+    </>
+  );
+}
+
+// The rename + lifetime + revoke menu revealed under a row (the "⋯" panel).
+// Renaming changes only the local nickname; setting a lifetime changes the link's
+// expiry in place; the link keeps working through both.
 function RowMenu({
+  label,
+  onRename,
   onSetDuration,
   onRevoke,
 }: {
+  label: string;
+  onRename: ((label: string) => void) | undefined;
   onSetDuration: (durationMs: number | null) => void;
   onRevoke: () => void;
 }): React.ReactElement {
@@ -247,6 +298,7 @@ function RowMenu({
         borderTop: "1px solid var(--border-card)",
       }}
     >
+      {onRename && <RenameField label={label} onRename={onRename} />}
       <div
         style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-subtle)" }}
       >
@@ -276,11 +328,13 @@ function ContactRow({
   contact,
   now,
   onRevoke,
+  onRename,
   onSetDuration,
 }: {
   contact: ContactRecord;
   now: number;
   onRevoke: () => void;
+  onRename: ((label: string) => void) | undefined;
   onSetDuration: (durationMs: number | null) => void;
 }): React.ReactElement {
   const [open, setOpen] = useState(false);
@@ -337,6 +391,15 @@ function ContactRow({
       </div>
       {open && (
         <RowMenu
+          label={contact.label}
+          onRename={
+            onRename
+              ? (label) => {
+                  onRename(label);
+                  setOpen(false);
+                }
+              : undefined
+          }
           onSetDuration={(ms) => {
             onSetDuration(ms);
             setOpen(false);
