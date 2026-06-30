@@ -217,7 +217,12 @@ export async function setShareLinkExpiry(
   session: OwnerSession,
   durationMs: number | null,
 ): Promise<OwnerSession> {
+  // Expiry is a private-link affordance only (doc 16): a public profile is durable
+  // and never lapses, so setting a lifetime in public mode is a no-op. The publish
+  // layer also drops expiry on any public alias, so this is the matching guard at
+  // the entry point (it keeps the blob from recording an expiry the link won't carry).
   const wantPublic = session.blob.sharingMode === "public";
+  if (wantPublic) return session;
   const alias = primaryShareAlias(session.blob, wantPublic);
   if (alias === undefined) return session;
   const expiresAt = expiryFor(durationMs);

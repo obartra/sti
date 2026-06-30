@@ -106,12 +106,18 @@ export async function publishCard(
   opts: { isPublic?: boolean; expiresAt?: number | null } = {},
 ): Promise<PublishedAlias> {
   const raw = crypto.getRandomValues(new Uint8Array(32));
-  const expiresAt = opts.expiresAt ?? null;
+  const isPublic = opts.isPublic ?? true;
+  // A public link is the durable "anyone who scans sees my status" surface, so it
+  // never carries a server expiry (doc 16): expiry is a private one-off-link
+  // affordance only. Taking a public profile down is done by revoking it (or
+  // releasing its public name), not by lapsing. So any expiresAt passed for a
+  // public alias is dropped here, guaranteeing public links never expire.
+  const expiresAt = isPublic ? null : (opts.expiresAt ?? null);
   const record: AliasRecord = {
     id: randomAliasId(),
     writeToken: randomWriteToken(),
     key: bytesToBase64url(raw),
-    isPublic: opts.isPublic ?? true,
+    isPublic,
     expiresAt,
   };
   await sealAndPut(api, await importAesKey(raw), record, buildView(record));
@@ -121,7 +127,10 @@ export async function publishCard(
 /**
  * Overwrite an existing alias with an updated card (same link, same key). By
  * default a badge republish keeps the record's current expiry; pass `expiresAt`
- * (number or null) to change the link's lifetime in the same write (doc 16).
+ * (number or null) to change the link's lifetime in the same write (doc 16). A
+ * public alias is always written with no expiry, mirroring publishCard, so a
+ * public link can never carry one (and any stale public expiry self-heals on the
+ * next republish).
  */
 export async function republishCard(
   api: ApiClient,
@@ -130,7 +139,11 @@ export async function republishCard(
   expiresAt?: number | null,
 ): Promise<void> {
   const key = await importAesKey(base64urlToBytes(record.key));
-  const rec = expiresAt === undefined ? record : { ...record, expiresAt };
+  const rec = record.isPublic
+    ? { ...record, expiresAt: null }
+    : expiresAt === undefined
+      ? record
+      : { ...record, expiresAt };
   await sealAndPut(api, key, rec, view);
 }
 

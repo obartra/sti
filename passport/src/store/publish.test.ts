@@ -1,6 +1,11 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { publishCard, revokeAlias, aliasLinkUrl } from "./publish.ts";
+import {
+  publishCard,
+  republishCard,
+  revokeAlias,
+  aliasLinkUrl,
+} from "./publish.ts";
 import { ALIAS_PAYLOAD_SIZE } from "../api/contract.ts";
 import type { ApiClient } from "../api/client.ts";
 import type { AliasRecord } from "./accountBlob.ts";
@@ -19,6 +24,7 @@ interface PutCall {
   id: string;
   payload: Uint8Array;
   writeToken: string;
+  expiresAt?: number | null | undefined;
 }
 
 function recordingApi(): { api: ApiClient; puts: PutCall[] } {
@@ -47,8 +53,8 @@ function recordingApi(): { api: ApiClient; puts: PutCall[] } {
       resolveVanityName: unused,
       reportVanityName: unused,
       health: unused,
-      putAlias: (id, payload, writeToken) => {
-        puts.push({ id, payload, writeToken });
+      putAlias: (id, payload, writeToken, expiresAt) => {
+        puts.push({ id, payload, writeToken, expiresAt });
         return Promise.resolve();
       },
     },
@@ -97,6 +103,46 @@ describe("publishCard", () => {
     };
     expect(aliasLinkUrl(rec)).toContain(`#k=${rec.key}`);
     expect(aliasLinkUrl({ ...rec, isPublic: false })).not.toContain("#k=");
+  });
+});
+
+describe("public links never carry a server expiry (doc 16)", () => {
+  const SOON = 1_900_000_000_000;
+
+  it("publishCard drops an expiry passed for a public alias", async () => {
+    const { api, puts } = recordingApi();
+    const { record } = await publishCard(api, () => view, {
+      isPublic: true,
+      expiresAt: SOON,
+    });
+    expect(record.expiresAt).toBeNull();
+    expect(puts[0]?.expiresAt).toBeNull();
+  });
+
+  it("publishCard still honours an expiry for a private link", async () => {
+    const { api, puts } = recordingApi();
+    const { record } = await publishCard(api, () => view, {
+      isPublic: false,
+      expiresAt: SOON,
+    });
+    expect(record.expiresAt).toBe(SOON);
+    expect(puts[0]?.expiresAt).toBe(SOON);
+  });
+
+  it("republishCard clears a public alias's expiry even if one is asked for", async () => {
+    const { api, puts } = recordingApi();
+    const { record } = await publishCard(api, () => view); // public
+    await republishCard(api, { ...record, expiresAt: SOON }, view, SOON);
+    expect(puts[1]?.expiresAt).toBeNull();
+  });
+
+  it("republishCard still moves a private link's expiry", async () => {
+    const { api, puts } = recordingApi();
+    const { record } = await publishCard(api, () => view, {
+      isPublic: false,
+    });
+    await republishCard(api, record, view, SOON);
+    expect(puts[1]?.expiresAt).toBe(SOON);
   });
 });
 
