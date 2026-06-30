@@ -5,6 +5,7 @@ import type {
   SharingMode,
 } from "../../store/index.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
+import { passkeyUnlockMessage } from "./passkeyUnlockMessage.ts";
 
 /**
  * The onboarding/login actions the b1-b3 screens drive, plus the cross-step
@@ -124,12 +125,14 @@ export function useOnboarding(
     setBusy(true);
     setError(null);
     try {
-      const session = await controller.resume();
-      if (session !== null) {
-        onSession(session);
+      const result = await controller.resume();
+      if (result.ok) {
+        onSession(result.session);
         return true;
       }
-      setError("No passkey found on this device. Recover with your phrase.");
+      // Say what actually went wrong (locked, cancelled, can't-do-PRF, or truly
+      // no passkey here) instead of always "no passkey found".
+      setError(passkeyUnlockMessage(result.reason));
       return false;
     } finally {
       setBusy(false);

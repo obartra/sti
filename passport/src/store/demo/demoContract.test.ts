@@ -53,12 +53,16 @@ async function walkController(controller: SessionController): Promise<void> {
   expect(computeBadge(booted.blob.state, todayEpochDay())).toBe("blue");
 
   // The phrase paths a real account also exposes: signUp mints a phrase + session;
-  // recover returns a session; resume has no enrolled passkey in the demo (null).
+  // recover returns a session; resume has no enrolled passkey in the demo, so it
+  // reports the no-binding reason rather than a session.
   const signed = await controller.signUp();
   expect(signed.recoveryPhrase.length).toBeGreaterThan(0);
   expect(signed.session.blob.handle).toBe(DEMO_HANDLE);
   expect(await controller.recover("anything")).not.toBeNull();
-  expect(await controller.resume()).toBeNull();
+  expect(await controller.resume()).toEqual({
+    ok: false,
+    reason: "no-binding",
+  });
 
   // Device + passkey lifecycle: all resolve, persisting nothing.
   await controller.rememberDevice(booted);

@@ -74,7 +74,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       phrase === "RECOVER-ME-PHRASE"
         ? Promise.resolve({ root, blob: { ...blob, handle: "rosa" } })
         : Promise.resolve(null),
-    resume: () => Promise.resolve(null),
+    resume: () => Promise.resolve({ ok: false as const, reason: "no-binding" }),
     rememberDevice: () => Promise.resolve(),
     forgetDevice: () => Promise.resolve(),
     resumeFromStore: () => Promise.resolve(null),
