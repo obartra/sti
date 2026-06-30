@@ -98,19 +98,28 @@ export interface ReportPreview {
   readonly willBeBlue: boolean;
 }
 
+/**
+ * The "what blue needs" checklist for a given owner state: the three owner-facing
+ * requirements plus whether the state actually shows blue. Built straight from
+ * {@link badgeGates} so the report preview and the Home "where you stand" card
+ * read the exact same gates and can never disagree with the badge.
+ */
+export function blueChecklist(s: OwnerState, nowDay: number): ReportPreview {
+  const g = badgeGates(s, nowDay);
+  return {
+    recentPanel: g.testedInWindow,
+    clear: g.clear && g.hivNotDetectable && g.notInClearance,
+    route: g.hasRoute,
+    willBeBlue: computeBadge(s, nowDay) === "blue",
+  };
+}
+
 export function previewReport(
   prev: OwnerState,
   o: ReportOutcome,
   nowDay: number,
 ): ReportPreview {
-  const projected = applyReport(prev, o, nowDay);
-  const g = badgeGates(projected, nowDay);
-  return {
-    recentPanel: g.testedInWindow,
-    clear: g.clear && g.hivNotDetectable && g.notInClearance,
-    route: g.hasRoute,
-    willBeBlue: computeBadge(projected, nowDay) === "blue",
-  };
+  return blueChecklist(applyReport(prev, o, nowDay), nowDay);
 }
 
 /**

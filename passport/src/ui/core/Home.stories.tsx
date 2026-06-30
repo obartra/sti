@@ -23,9 +23,23 @@ export const BlueUpToDate: Story = {
   },
 };
 
-// Gray: no status shared yet. The action is "Add a result".
+// Gray: no status shared yet. The action is "Add a result". The "where you
+// stand" card reflects an untested owner (no requirement met yet).
 export const GrayNoStatus: Story = {
-  args: { badge: "gray", viewerBadge: "gray", labels: [], handle: "robin" },
+  args: {
+    badge: "gray",
+    viewerBadge: "gray",
+    labels: [],
+    handle: "robin",
+    standing: {
+      recentPanel: false,
+      clear: false,
+      route: false,
+      willBeBlue: false,
+    },
+    tested: false,
+    daysLeft: 0,
+  },
 };
 
 // Manual pause: owner hid their status. Viewers see gray; the owner sees the

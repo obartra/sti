@@ -1,23 +1,18 @@
-import { useState, type CSSProperties, type ReactElement } from "react";
+import { type CSSProperties, type ReactElement } from "react";
 import { Button } from "../../design/components/index.ts";
-import {
-  X,
-  Eye,
-  Share,
-  Link,
-  Globe,
-  Copy,
-  Check,
-  Download,
-  Refresh,
-} from "../../design/icons.tsx";
+import { X, Eye, Share, Refresh } from "../../design/icons.tsx";
 import { BadgeCard } from "../badge-card.tsx";
 import type { BadgeState, ProtectionLabel, Route } from "../badge-card.tsx";
-import { Matrix, downloadPNG } from "../../lib/qr.tsx";
 import type { AliasIdentity } from "../../store/index.ts";
 import { IdentityChoiceRow, previewFace } from "./ShareSheet.identity.tsx";
 import { DurationRow } from "./ShareSheet.duration.tsx";
 import { Grabber, WalletRow } from "./ShareSheet.parts.tsx";
+import {
+  UrlCard,
+  urlStateOf,
+  urlReady,
+  displayLink,
+} from "./ShareSheet.url.tsx";
 
 /* ShareSheet, the share modal opened by "Share my passport" and the share-rail
    buttons. Faithful port of the design prototype's ShareSheet (app/shell.jsx).
@@ -28,18 +23,12 @@ import { Grabber, WalletRow } from "./ShareSheet.parts.tsx";
 type SharingMode = "public" | "link";
 
 // Copy strings live inline in the prototype (not in copy.js), so they are kept
-// here verbatim rather than threaded through the shared copy module.
+// here verbatim rather than threaded through the shared copy module. The URL
+// card's own strings live with it in ShareSheet.url.tsx.
 const COPY = {
   titlePublic: "Share your passport",
   titleLink: "Share private link",
   reassurance: "Just your status, nothing else.",
-  labelPublic: "Public profile",
-  labelLink: "Private link",
-  notePublic: "Anyone who scans sees just this status.",
-  noteLink: "Only people you send this private link to can open it.",
-  copyLink: "Copy link",
-  copied: "Copied",
-  saveQr: "Save QR image",
   revoke: "Revoke and renew",
   share: "Share",
   done: "Done",
@@ -56,24 +45,6 @@ function canNativeShare(): boolean {
   );
 }
 
-// Canonical opaque alias. Public carries the #fragment key; the private (link)
-// form is the bare /a/{id}, its key is handed at share time.
-const URL_PUBLIC = "sti.care/a/a7f3k9q2#k=Zr8";
-const URL_LINK = "sti.care/a/a7f3k9q2";
-
-// Resolve what the URL card renders: the real link when present (scheme stripped
-// for display), else the placeholder so Storybook renders without a session. The
-// QR seed tracks the alias id so it varies per link (the matrix is stylized).
-function displayLink(
-  realUrl: string | null | undefined,
-  link: boolean,
-): { url: string; seed: string } {
-  const display = realUrl ?? `https://${link ? URL_LINK : URL_PUBLIC}`;
-  const url = display.replace(/^https?:\/\//, "");
-  const seed = url.split("/a/")[1]?.split(/[#?]/)[0] ?? "a7f3k9q2";
-  return { url, seed };
-}
-
 export interface ShareSheetProps {
   open: boolean;
   onClose?: (() => void) | undefined;
@@ -85,8 +56,14 @@ export interface ShareSheetProps {
    * the preview then falls back to the id-derived pseudonym (see previewFace). */
   identity: { handle?: string };
   avatarSrc?: string | undefined;
-  /** The real shareable link. Null/absent falls back to a placeholder (Storybook). */
+  /** The real shareable link. A string is the live link; null means the app is
+   * still preparing it (or the attempt failed, see `error`); undefined means no
+   * session is wired and a demo placeholder is shown (Storybook). */
   url?: string | null | undefined;
+  /** The last prepare attempt failed. With a null `url` this shows a retry. */
+  error?: boolean | undefined;
+  /** Re-run the prepare after a failure. */
+  onRetry?: (() => void) | undefined;
   /** Copy the real link to the clipboard; return false if no copy path was taken. */
   onCopy?: (() => boolean) | undefined;
   onRevoke?: (() => void) | undefined;
@@ -152,100 +129,6 @@ function SheetHeader({
       >
         <X size={16} />
       </button>
-    </div>
-  );
-}
-
-function UrlCard({
-  link,
-  url,
-  seed,
-  onCopy,
-}: {
-  link: boolean;
-  url: string;
-  seed: string;
-  onCopy: (() => boolean) | undefined;
-}): ReactElement {
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    // Only confirm when a copy path actually ran, so "Copied" never lies on a
-    // device where the clipboard is unavailable.
-    if (onCopy?.() === false) return;
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1600);
-  };
-  return (
-    <div
-      style={{
-        display: "flex",
-        gap: 12,
-        alignItems: "center",
-        background: "var(--surface-card)",
-        borderRadius: "var(--radius-md)",
-        padding: 14,
-        boxShadow: "var(--shadow-sm)",
-      }}
-    >
-      <Matrix value={`https://${url}`} size={64} color="var(--ink-900)" />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 12,
-            fontWeight: 700,
-            letterSpacing: "0.05em",
-            textTransform: "uppercase",
-            color: "var(--text-subtle)",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          {link ? <Link size={13} /> : <Globe size={13} />}{" "}
-          {link ? COPY.labelLink : COPY.labelPublic}
-        </div>
-        <div
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: 13.5,
-            color: "var(--text-strong)",
-            margin: "6px 0 6px",
-            wordBreak: "break-all",
-          }}
-        >
-          {url}
-        </div>
-        <div
-          style={{
-            fontSize: 11.5,
-            color: "var(--text-subtle)",
-            lineHeight: 1.45,
-            marginBottom: 10,
-          }}
-        >
-          {link ? COPY.noteLink : COPY.notePublic}
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={copied ? <Check size={15} /> : <Copy size={15} />}
-            onClick={copy}
-          >
-            {copied ? COPY.copied : COPY.copyLink}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<Download size={15} />}
-            onClick={() => {
-              downloadPNG({ status: "logo", value: `https://${url}`, seed });
-            }}
-          >
-            {COPY.saveQr}
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -365,8 +248,11 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
     onIdentityChange,
     durationChoice = null,
     onDurationChange,
+    error,
+    onRetry,
   } = props;
   const link = sharingMode === "link";
+  const urlState = urlStateOf(realUrl, error);
   const { url, seed } = displayLink(realUrl, link);
   // The preview shows the viewer's actual face for this link (see previewFace).
   const face = previewFace({
@@ -377,7 +263,9 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
     hasControl: onIdentityChange !== undefined,
   });
 
-  const nativeShare = canNativeShare();
+  // Only a ready link can be shared/handed off; while preparing or after a
+  // failure there is nothing to share to, so the primary button just closes.
+  const nativeShare = canNativeShare() && urlReady(urlState);
   const onShare = () =>
     nativeShareOrClose(nativeShare, realUrl ?? `https://${url}`, onClose);
 
@@ -438,8 +326,20 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
           hasName={identity.handle !== undefined && identity.handle.length > 0}
           onChange={onIdentityChange}
         />
+        {/* Expiry is a private-link affordance (doc 16): a one-off link you hand
+            out can sensibly lapse. The Public profile is the durable "anyone who
+            scans sees my status" surface, so it stays live until revoked. The
+            wiring passes onDurationChange only for private links, and DurationRow
+            hides itself when it has no handler, so nothing renders for public. */}
         <DurationRow choice={durationChoice} onChange={onDurationChange} />
-        <UrlCard link={link} url={url} seed={seed} onCopy={onCopy} />
+        <UrlCard
+          link={link}
+          state={urlState}
+          url={url}
+          seed={seed}
+          onCopy={onCopy}
+          onRetry={onRetry}
+        />
         <WalletRow show={showWallet} onWallet={onWallet} />
         <SheetActions
           link={link}

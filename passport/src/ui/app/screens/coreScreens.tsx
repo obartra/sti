@@ -4,7 +4,7 @@ import { Notifications } from "../../core/Notifications.tsx";
 import type { NotificationItem } from "../../core/Notifications.tsx";
 import { Privacy } from "../../core/Privacy.tsx";
 import { FINDABLE_ENABLED } from "../../../features.ts";
-import { extendClearance } from "../../../core/report.ts";
+import { blueChecklist, extendClearance } from "../../../core/report.ts";
 import { todayEpochDay } from "../../../core/clock.ts";
 import { RESOURCES, openResource } from "../../../lib/resources.ts";
 import { avatarSrc } from "../../../lib/avatars.ts";
@@ -119,7 +119,7 @@ export function notificationItems(
 }
 
 export const coreRenderers: ScreenRenderers = {
-  home: ({ nav, owner, openShare, setOwnerState }) => (
+  home: ({ nav, owner, ownerState, openShare, setOwnerState }) => (
     <Home
       badge={owner.badge}
       viewerBadge={owner.viewerBadge}
@@ -132,10 +132,13 @@ export const coreRenderers: ScreenRenderers = {
       clearBy={owner.clearBy}
       sharingMode={owner.sharingMode}
       daysLeft={owner.daysLeft}
+      standing={blueChecklist(ownerState, todayEpochDay())}
+      tested={ownerState.testing.lastPanelDay !== null}
       onShare={openShare}
       onReport={() => nav.go("report")}
       onViewAs={() => nav.go("a2-public", { self: true })}
       onPrivacy={() => nav.go("privacy")}
+      onFindTesting={() => nav.go("care")}
       onContinueCare={() => nav.go("care")}
       onExtend={() => setOwnerState((s) => extendClearance(s, todayEpochDay()))}
     />

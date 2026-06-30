@@ -12,7 +12,9 @@ import {
   RetestHint,
 } from "./Home.parts.tsx";
 import type { HomeBadge } from "./Home.parts.tsx";
+import { StandingCard } from "./Home.standing.tsx";
 import { PauseBanner } from "./Home.pause.tsx";
+import type { ReportPreview } from "../../core/report.ts";
 
 // C1 Home (calm fold): the badge card is the hero, with the single next-best
 // action right under it. The rest is demoted so the status keeps the focus, a
@@ -101,12 +103,19 @@ export interface HomeProps {
   sharingMode?: "public" | "link";
   // Days left in the freshness window, for the re-test reminder.
   daysLeft?: number;
+  // The owner-only "where you stand" breakdown (the three blue requirements and
+  // whether the card is blue). Owner surface only; never shown to a viewer.
+  standing?: ReportPreview;
+  // Whether the owner has ever recorded a test (shapes the standing footer copy).
+  tested?: boolean;
   // The auto-pause clearance date, for the auto-pause panel.
   clearBy?: Date;
   onShare?: (() => void) | undefined;
   onReport?: (() => void) | undefined;
   onViewAs?: (() => void) | undefined;
   onPrivacy?: (() => void) | undefined;
+  // Route to the testing finder (Care) from the "where you stand" card.
+  onFindTesting?: (() => void) | undefined;
   onContinueCare?: (() => void) | undefined;
   onResume?: (() => void) | undefined;
   // Extend the clearance auto-pause by one window (persists; never shortens).
@@ -123,11 +132,14 @@ export function Home({
   paused = false,
   autoPaused = false,
   daysLeft = 87,
+  standing = { recentPanel: true, clear: true, route: true, willBeBlue: true },
+  tested = true,
   clearBy = addDays(TODAY, 9),
   onShare,
   onReport,
   onViewAs,
   onPrivacy,
+  onFindTesting,
   onContinueCare,
   onResume,
   onExtend,
@@ -180,35 +192,54 @@ export function Home({
         isPaused={isPaused}
         viewerBadge={viewerBadge}
         daysLeft={daysLeft}
+        standing={standing}
+        tested={tested}
         onReport={onReport}
         onViewAs={onViewAs}
         onPrivacy={onPrivacy}
+        onFindTesting={onFindTesting}
       />
     </div>
   );
 }
 
-// The demoted, below-the-hero content: a quiet meaning line, the compact quick
-// actions, and the re-test nudge (suppressed while paused; a full card only when
-// the freshness window is close to lapsing, else a faint hint).
+// The demoted, below-the-hero content: the owner-only "where you stand" card, a
+// quiet meaning line, the compact quick actions, and the re-test nudge (all
+// suppressed while paused; the nudge becomes a full card only when the freshness
+// window is close to lapsing, else a faint hint).
 function HomeExtras({
   isPaused,
   viewerBadge,
   daysLeft,
+  standing,
+  tested,
   onReport,
   onViewAs,
   onPrivacy,
+  onFindTesting,
 }: {
   isPaused: boolean;
   viewerBadge: HomeBadge;
   daysLeft: number;
+  standing: ReportPreview;
+  tested: boolean;
   onReport: (() => void) | undefined;
   onViewAs: (() => void) | undefined;
   onPrivacy: (() => void) | undefined;
+  onFindTesting: (() => void) | undefined;
 }) {
   const retestDue = daysLeft <= RETEST_SOON_DAYS;
   return (
     <>
+      {!isPaused && (
+        <StandingCard
+          standing={standing}
+          daysLeft={daysLeft}
+          tested={tested}
+          onFindTesting={onFindTesting}
+        />
+      )}
+
       {!isPaused && <MeansLine viewerBadge={viewerBadge} />}
 
       <QuickActionsRow

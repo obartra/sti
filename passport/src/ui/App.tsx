@@ -178,6 +178,8 @@ export function App({
   // The share sheet: opening it mints/refreshes the owner's primary alias.
   const {
     shareUrl,
+    shareError,
+    retryShareLink,
     setShareOpen: handleSetShareOpen,
     copyShareLink,
     revokeLink,
@@ -253,6 +255,8 @@ export function App({
         shareOpen={shareOpen}
         setShareOpen={handleSetShareOpen}
         shareUrl={shareUrl}
+        shareError={shareError}
+        onRetryShareLink={retryShareLink}
         onCopyShareLink={copyShareLink}
         onRevokeShareLink={revokeLink}
         shareIdentity={shareIdentity}
