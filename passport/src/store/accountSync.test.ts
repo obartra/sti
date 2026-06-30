@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { masterForTest } from "../test-support/phrase.ts";
+import { rootForTest } from "../test-support/phrase.ts";
 import { createAccountSync } from "./accountSync.ts";
 import type { ApiClient } from "../api/client.ts";
 import type { AccountBlob } from "./accountBlob.ts";
@@ -66,33 +66,33 @@ function fakeAccountApi(): ApiClient {
 }
 
 describe("account sync", () => {
-  it("saves and loads the blob for the same master key", async () => {
+  it("saves and loads the blob for the same root key", async () => {
     const sync = createAccountSync(fakeAccountApi());
-    const master = await masterForTest("phrase-a");
-    await sync.save(master, blob);
-    expect(await sync.load(master)).toEqual(blob);
+    const root = await rootForTest("phrase-a");
+    await sync.save(root, blob);
+    expect(await sync.load(root)).toEqual(blob);
   });
 
-  it("returns null for a master with no saved account", async () => {
+  it("returns null for a root with no saved account", async () => {
     const sync = createAccountSync(fakeAccountApi());
-    const master = await masterForTest("never-saved");
-    expect(await sync.load(master)).toBeNull();
+    const root = await rootForTest("never-saved");
+    expect(await sync.load(root)).toBeNull();
   });
 
-  it("a different master derives a different id, so it sees no account (null)", async () => {
+  it("a different root derives a different id, so it sees no account (null)", async () => {
     const sync = createAccountSync(fakeAccountApi());
-    await sync.save(await masterForTest("phrase-a"), blob);
-    const other = await masterForTest("phrase-b");
+    await sync.save(await rootForTest("phrase-a"), blob);
+    const other = await rootForTest("phrase-b");
     expect(await sync.load(other)).toBeNull();
   });
 
   it("remove deletes the blob so a later load is null (idempotent)", async () => {
     const sync = createAccountSync(fakeAccountApi());
-    const master = await masterForTest("phrase-a");
-    await sync.save(master, blob);
-    await sync.remove(master);
-    expect(await sync.load(master)).toBeNull();
+    const root = await rootForTest("phrase-a");
+    await sync.save(root, blob);
+    await sync.remove(root);
+    expect(await sync.load(root)).toBeNull();
     // Removing again is a no-op, not an error.
-    await expect(sync.remove(master)).resolves.toBeUndefined();
+    await expect(sync.remove(root)).resolves.toBeUndefined();
   });
 });

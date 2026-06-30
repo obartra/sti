@@ -23,7 +23,7 @@ import {
   bytesToBase64url,
   randomAliasId,
   randomWriteToken,
-  importMasterKey,
+  importRootKey,
   deriveAccountId,
   deriveAccountKey,
   deriveAccountWriteToken,
@@ -456,12 +456,12 @@ describe("load & usage lab: behavior gates against a real blind store", () => {
   });
 
   behaviorIt("account-deletion-removes-blob", async () => {
-    const master = await importMasterKey(
+    const root = await importRootKey(
       crypto.getRandomValues(new Uint8Array(32)),
     );
-    const accountId = await deriveAccountId(master);
-    const key = await importAesKey(await deriveAccountKey(master));
-    const writeToken = await deriveAccountWriteToken(master);
+    const accountId = await deriveAccountId(root);
+    const key = await importAesKey(await deriveAccountKey(root));
+    const writeToken = await deriveAccountWriteToken(root);
     await api.putAccount(
       accountId,
       await seal(key, utf8ToBytes("blob")),

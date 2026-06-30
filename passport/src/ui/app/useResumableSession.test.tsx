@@ -20,7 +20,7 @@ vi.mock("../../store/pendingKnockStore.ts", () => ({
 }));
 
 const aSession = {
-  master: {} as CryptoKey,
+  root: {} as CryptoKey,
   blob: {
     handle: "robin",
     aliases: [],
@@ -51,7 +51,7 @@ function setup(resumed: OwnerSession | null = null) {
 }
 
 describe("useResumableSession", () => {
-  it("silently resumes from the persisted master on mount", async () => {
+  it("silently resumes from the persisted root on mount", async () => {
     const { ctl, nav } = setup(aSession);
     const { result } = renderHook(() => useResumableSession(ctl, nav));
 
@@ -59,7 +59,7 @@ describe("useResumableSession", () => {
     expect(nav.jump).toHaveBeenCalledWith("home");
   });
 
-  it("stays logged out when no master is stored", async () => {
+  it("stays logged out when no root is stored", async () => {
     const { ctl, nav } = setup(null);
     const { result } = renderHook(() => useResumableSession(ctl, nav));
     // Give the resolved-null resume a tick.

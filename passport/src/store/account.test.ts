@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { masterForTest } from "../test-support/phrase.ts";
+import { rootForTest } from "../test-support/phrase.ts";
 import { createAccountManager } from "./account.ts";
 import type { ApiClient } from "../api/client.ts";
 import type { AliasRecord } from "./accountBlob.ts";
@@ -86,7 +86,7 @@ describe("account manager", () => {
   it("appends an alias and reflects it on recovery", async () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
-    const next = await accounts.addAlias(created.master, record);
+    const next = await accounts.addAlias(created.root, record);
     expect(next.aliases).toEqual([record]);
     const recovered = await accounts.recover(created.recoveryPhrase);
     expect(recovered?.blob.aliases).toEqual([record]);
@@ -94,8 +94,8 @@ describe("account manager", () => {
 
   it("throws when adding an alias for a key with no account", async () => {
     const accounts = createAccountManager(fakeAccountApi());
-    const master = await masterForTest("never-created");
-    await expect(accounts.addAlias(master, record)).rejects.toThrow();
+    const root = await rootForTest("never-created");
+    await expect(accounts.addAlias(root, record)).rejects.toThrow();
   });
 
   it("rejects an invalid handle rather than create an unrecoverable account", async () => {
@@ -107,8 +107,8 @@ describe("account manager", () => {
   it("addAlias is idempotent on a repeated record (no duplicate)", async () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
-    await accounts.addAlias(created.master, record);
-    const next = await accounts.addAlias(created.master, record);
+    await accounts.addAlias(created.root, record);
+    const next = await accounts.addAlias(created.root, record);
     expect(next.aliases).toEqual([record]); // not two copies
   });
 
@@ -129,19 +129,19 @@ describe("account manager", () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
 
-    const withContact = await accounts.addContact(created.master, contact);
+    const withContact = await accounts.addContact(created.root, contact);
     expect(withContact.contacts).toEqual([contact]);
     // Upsert: re-adding the same id does not duplicate.
-    const again = await accounts.addContact(created.master, contact);
+    const again = await accounts.addContact(created.root, contact);
     expect(again.contacts).toEqual([contact]);
     expect(
       (await accounts.recover(created.recoveryPhrase))?.blob.contacts,
     ).toEqual([contact]);
 
-    const removed = await accounts.removeContact(created.master, contact.id);
+    const removed = await accounts.removeContact(created.root, contact.id);
     expect(removed.contacts).toEqual([]);
     // Removing an already-gone id is a no-op.
-    const noop = await accounts.removeContact(created.master, contact.id);
+    const noop = await accounts.removeContact(created.root, contact.id);
     expect(noop.contacts).toEqual([]);
   });
 
@@ -150,10 +150,10 @@ describe("account manager", () => {
   it("upsertCircle normalizes members and upserts by id; removeCircle drops it", async () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
-    await accounts.addContact(created.master, contact);
+    await accounts.addContact(created.root, contact);
 
     // A ghost id (no such contact) is dropped and the duplicate deduped.
-    const saved = await accounts.upsertCircle(created.master, {
+    const saved = await accounts.upsertCircle(created.root, {
       id: CIRCLE,
       name: "close",
       memberContactIds: [contact.id, "ghost", contact.id],
@@ -163,7 +163,7 @@ describe("account manager", () => {
     ]);
 
     // Upsert by id updates in place, never duplicates.
-    const renamed = await accounts.upsertCircle(created.master, {
+    const renamed = await accounts.upsertCircle(created.root, {
       id: CIRCLE,
       name: "besties",
       memberContactIds: [contact.id],
@@ -177,21 +177,21 @@ describe("account manager", () => {
       { id: CIRCLE, name: "besties", memberContactIds: [contact.id] },
     ]);
 
-    const dropped = await accounts.removeCircle(created.master, CIRCLE);
+    const dropped = await accounts.removeCircle(created.root, CIRCLE);
     expect(dropped.circles).toEqual([]);
   });
 
   it("removeContact strips the contact from every circle", async () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
-    await accounts.addContact(created.master, contact);
-    await accounts.upsertCircle(created.master, {
+    await accounts.addContact(created.root, contact);
+    await accounts.upsertCircle(created.root, {
       id: CIRCLE,
       name: "close",
       memberContactIds: [contact.id],
     });
 
-    const after = await accounts.removeContact(created.master, contact.id);
+    const after = await accounts.removeContact(created.root, contact.id);
     expect(after.contacts).toEqual([]);
     expect(after.circles).toEqual([
       { id: CIRCLE, name: "close", memberContactIds: [] },
@@ -225,10 +225,10 @@ describe("account manager", () => {
         isPublic: false,
       },
     };
-    await accounts.addContact(created.master, live);
-    await accounts.addContact(created.master, expired);
+    await accounts.addContact(created.root, live);
+    await accounts.addContact(created.root, expired);
 
-    const next = await accounts.setOwnerState(created.master, {
+    const next = await accounts.setOwnerState(created.root, {
       ...INITIAL_OWNER_STATE,
       onPrep: true,
     });
@@ -239,15 +239,13 @@ describe("account manager", () => {
   it("deleteAccount removes the blob so recovery finds nothing", async () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
-    await accounts.addAlias(created.master, record);
+    await accounts.addAlias(created.root, record);
 
-    await accounts.deleteAccount(created.master);
+    await accounts.deleteAccount(created.root);
     // The account is gone: the phrase no longer recovers anything.
     expect(await accounts.recover(created.recoveryPhrase)).toBeNull();
     // Idempotent: deleting again is a no-op, not an error.
-    await expect(
-      accounts.deleteAccount(created.master),
-    ).resolves.toBeUndefined();
+    await expect(accounts.deleteAccount(created.root)).resolves.toBeUndefined();
   });
 
   it("deleteAccount leaves the blob intact if an alias revoke fails (retryable)", async () => {
@@ -295,9 +293,9 @@ describe("account manager", () => {
     };
     const accounts = createAccountManager(api);
     const created = await accounts.create("robin");
-    await accounts.addAlias(created.master, record);
+    await accounts.addAlias(created.root, record);
 
-    await expect(accounts.deleteAccount(created.master)).rejects.toThrow();
+    await expect(accounts.deleteAccount(created.root)).rejects.toThrow();
     expect(deleted).toBe(false); // the blob delete never ran
     expect(await accounts.recover(created.recoveryPhrase)).not.toBeNull();
   });
@@ -305,15 +303,15 @@ describe("account manager", () => {
   it("removeAlias drops the record and is idempotent on a missing id", async () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
-    await accounts.addAlias(created.master, record);
+    await accounts.addAlias(created.root, record);
 
-    const removed = await accounts.removeAlias(created.master, record.id);
+    const removed = await accounts.removeAlias(created.root, record.id);
     expect(removed.aliases).toEqual([]);
     const recovered = await accounts.recover(created.recoveryPhrase);
     expect(recovered?.blob.aliases).toEqual([]);
 
     // Removing an already-gone id is a no-op, not an error (retry-safe).
-    const again = await accounts.removeAlias(created.master, record.id);
+    const again = await accounts.removeAlias(created.root, record.id);
     expect(again.aliases).toEqual([]);
   });
 
@@ -321,7 +319,7 @@ describe("account manager", () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
     const paused = { ...INITIAL_OWNER_STATE, paused: true };
-    const next = await accounts.setOwnerState(created.master, paused);
+    const next = await accounts.setOwnerState(created.root, paused);
     expect(next.state).toEqual(paused);
     const recovered = await accounts.recover(created.recoveryPhrase);
     expect(recovered?.blob.state).toEqual(paused);
@@ -331,14 +329,14 @@ describe("account manager", () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
     const bad = { ...INITIAL_OWNER_STATE, hiv: "maybe" } as never;
-    await expect(accounts.setOwnerState(created.master, bad)).rejects.toThrow();
+    await expect(accounts.setOwnerState(created.root, bad)).rejects.toThrow();
   });
 
   it("setProfile persists avatar + sharing and guards invalid input", async () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
     const avatar = { hair: 1, mood: 2, skin: 2, hairColor: 4, beard: 0 };
-    const next = await accounts.setProfile(created.master, {
+    const next = await accounts.setProfile(created.root, {
       avatar,
       sharingMode: "public",
     });
@@ -347,13 +345,13 @@ describe("account manager", () => {
 
     // A bad avatar or sharing mode is rejected at write time, not persisted.
     await expect(
-      accounts.setProfile(created.master, {
+      accounts.setProfile(created.root, {
         avatar: { ...avatar, hair: 999 },
         sharingMode: "public",
       }),
     ).rejects.toThrow();
     await expect(
-      accounts.setProfile(created.master, {
+      accounts.setProfile(created.root, {
         avatar,
         sharingMode: "secret" as never,
       }),
@@ -365,10 +363,10 @@ describe("account manager", () => {
     const created = await accounts.create("robin");
     const reg = { name: "robin", aliasId: "A".repeat(43) };
 
-    const set = await accounts.setFindable(created.master, reg);
+    const set = await accounts.setFindable(created.root, reg);
     expect(set.findable).toEqual(reg);
 
-    const cleared = await accounts.setFindable(created.master, null);
+    const cleared = await accounts.setFindable(created.root, null);
     expect(cleared.findable).toBeUndefined();
     // Cleared by omission, not an explicit `findable: undefined` key, so the blob
     // round-trips clean and never re-persists a dangling field.
@@ -424,20 +422,20 @@ describe("account manager", () => {
     };
     const accounts = createAccountManager(api);
     const created = await accounts.create("robin");
-    await accounts.addAlias(created.master, record);
+    await accounts.addAlias(created.root, record);
     const paused = { ...INITIAL_OWNER_STATE, paused: true };
 
     // Republish (putAlias) is down. setOwnerState must NOT throw: the owner-facing
     // "couldn't refresh" error is forbidden (decision 156), so the state is saved
     // locally and left for a retry/drain to republish (doc 22 slice 4).
-    await accounts.setOwnerState(created.master, paused);
+    await accounts.setOwnerState(created.root, paused);
     expect(
       (await accounts.recover(created.recoveryPhrase))?.blob.state,
     ).toEqual(paused);
 
     // A retry with a working alias write converges (republishes the link).
     aliasPutsAllowed = true;
-    await accounts.setOwnerState(created.master, paused);
+    await accounts.setOwnerState(created.root, paused);
     expect(aliasStore.has(record.id)).toBe(true);
   });
 
@@ -496,10 +494,10 @@ describe("account manager", () => {
         isPublic: false,
       },
     };
-    await accounts.addContact(created.master, live);
-    await accounts.addContact(created.master, expired);
+    await accounts.addContact(created.root, live);
+    await accounts.addContact(created.root, expired);
 
-    const next = await accounts.setOwnerState(created.master, {
+    const next = await accounts.setOwnerState(created.root, {
       ...INITIAL_OWNER_STATE,
       paused: true,
     });

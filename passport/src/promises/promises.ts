@@ -64,7 +64,7 @@ export const PROMISES: readonly UserPromise[] = [
         backedBy: {
           kind: "test",
           file: "src/store/publicCard.test.ts",
-          name: "the wire shape is a closed whitelist",
+          name: "the wire shape is a closed allowlist",
         },
       },
       {
@@ -116,7 +116,7 @@ export const PROMISES: readonly UserPromise[] = [
         backedBy: {
           kind: "test",
           file: "src/store/publicCard.test.ts",
-          name: "the wire shape is a closed whitelist",
+          name: "the wire shape is a closed allowlist",
         },
       },
     ],

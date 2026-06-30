@@ -65,11 +65,11 @@ We add two layers under that boundary:
   release/report`, `health`), opaque-id validation (43-char base64url), the `X-Write-Token` and
   `X-Version` headers, and the gray-on-failure mapping. It knows nothing about plaintext.
 - **`passport/src/crypto/` (the blind boundary).** Key derivation (passkey- or passphrase-derived
-  master key), authenticated encryption (WebCrypto AES-GCM) of the device blob and alias payloads,
+  root key), authenticated encryption (WebCrypto AES-GCM) of the device blob and alias payloads,
   fixed-size padding to `AliasPayloadSize`, and the id/token derivation, which is **not one
   mechanism**: an **alias id and its write token are random** (generated once at alias creation and
   stored in the device blob, since the server only validates an id and stores `hash(write-token)` on
-  first PUT); the **account id is key-derived** from the owner's master key; and **routing tokens**
+  first PUT); the **account id is key-derived** from the owner's root key; and **routing tokens**
   (notify, knock) are **hashes** of pairwise or per-requester secrets. Plaintext goes in here and
   never comes back out through the api layer.
 
@@ -77,8 +77,8 @@ Screens consume a `PassportStore` interface (resolve alias, publish card, report
 derive badge, knock, notify), which composes api + crypto and reuses the existing `core/badge.ts`
 derivation rather than reimplementing it; the fixtures wire the same interface to in-memory data.
 Device-state sync is a sibling surface, `AccountSync` (load/save the owner's encrypted account
-blob, keyed off the master key), kept separate because it is used at onboarding/login/recovery
-rather than per-screen and takes a master key the screen-facing store never needs. Nothing above
+blob, keyed off the root key), kept separate because it is used at onboarding/login/recovery
+rather than per-screen and takes a root key the screen-facing store never needs. Nothing above
 the boundary changes.
 
 ## Integration order
@@ -157,7 +157,7 @@ real browser.
 
 ## Decisions
 
-- **No per-user KDF salt.** The account id is derived from the master key, so a per-user salt could
+- **No per-user KDF salt.** The account id is derived from the root key, so a per-user salt could
   never be fetched before deriving that id (it is circular). Instead the passphrase path uses a
   fixed domain-separation salt, and the blind-store guarantee rests on the recovery passphrase being
   **app-generated with high entropy** (>= 128 bits, shown once at signup), so it is globally unique
@@ -167,11 +167,11 @@ real browser.
 
 ## Open questions
 
-- **Key storage and the passkey flow.** The recovery model is now realized in code: the master is
+- **Key storage and the passkey flow.** The recovery model is now realized in code: the root is
   phrase-derived (the recovery root), `PasskeyAuth` yields only the PRF output, and `auth/keyVault`
-  (`wrapMaster`/`unwrapMaster`) wraps the master under it, so a passkey is a second credential over
+  (`wrapMaster`/`unwrapMaster`) wraps the root under it, so a passkey is a second credential over
   the same phrase-recoverable account, never standalone. What remains for the wiring slice: WHERE the
-  `{credentialId, wrappedMaster}` lives (local storage) and the enroll/unlock UX. A passkey-only
+  `{credentialId, wrappedRoot}` lives (local storage) and the enroll/unlock UX. A passkey-only
   account must still never be createable.
 - **Sibling-alias decorrelation (BUILT).** Republishing all of an owner's aliases on a state change
   used to fire one same-instant burst from the device, letting an observer correlate the opaque ids

@@ -8,12 +8,12 @@
  *   The server only validates an id's shape and stores `hash(write-token)` on the
  *   first PUT, so there is nothing to derive: the id is a capability the owner
  *   hands out via a link, the write token is the capability they keep.
- * - **The account id is key-derived** from the owner's master key, so any device
+ * - **The account id is key-derived** from the owner's root key, so any device
  *   that recovers the key can find the sync blob with no server-side registry.
  * - Routing tokens (notify, knock) are hashes of pairwise secrets; their exact
  *   wire form is pinned against the server in the knock/notify slice, not here.
  *
- * The master key itself comes from a passkey (WebAuthn PRF) or a recovery
+ * The root key itself comes from a passkey (WebAuthn PRF) or a recovery
  * passphrase. This module implements the passphrase path (PBKDF2); the passkey
  * path is wired in the onboarding slice and produces the same 32-byte key.
  */
@@ -25,10 +25,10 @@ const PBKDF2_ITERATIONS = 600_000; // OWASP 2023 floor for PBKDF2-HMAC-SHA256
 const HKDF_ACCOUNT_ID_INFO = "sti.care/account-id/v1";
 const HKDF_ACCOUNT_KEY_INFO = "sti.care/account-blob-key/v1";
 const HKDF_ACCOUNT_WRITE_INFO = "sti.care/account-write/v1";
-const HKDF_PRF_MASTER_INFO = "sti.care/master-key/prf/v1";
+const HKDF_PRF_ROOT_INFO = "sti.care/master-key/prf/v1";
 
 // A fixed domain-separation salt, deliberately NOT a per-user anti-rainbow salt.
-// The account id is itself derived from the master key, so a per-user salt could
+// The account id is itself derived from the root key, so a per-user salt could
 // never be fetched before deriving that id (it would be circular). The
 // blind-store guarantee for the passphrase path therefore rests on the recovery
 // passphrase being APP-GENERATED with high entropy (>= 128 bits, shown once at
@@ -36,7 +36,7 @@ const HKDF_PRF_MASTER_INFO = "sti.care/master-key/prf/v1";
 // per-user salt unnecessary. User-CHOSEN passphrases are out of scope here: they
 // would need a memory-hard KDF (Argon2id) and a different account-addressing
 // scheme.
-const MASTER_KEY_SALT = "sti.care/master-key/v1";
+const ROOT_KEY_SALT = "sti.care/master-key/v1";
 
 function randomOpaqueId(): string {
   return bytesToBase64url(crypto.getRandomValues(new Uint8Array(ID_BYTES)));
@@ -56,8 +56,8 @@ export function randomWriteToken(): string {
  * A recovery phrase the app generated (256-bit, app-format). Branded so the only
  * way to obtain one is {@link randomRecoveryPhrase} (signup) or
  * {@link parseRecoveryPhrase} (recovery, which validates the format). This is the
- * enforcement of the {@link MASTER_KEY_SALT} entropy contract: a future
- * user-CHOSEN passphrase cannot reach {@link deriveMasterKey} without going
+ * enforcement of the {@link ROOT_KEY_SALT} entropy contract: a future
+ * user-CHOSEN passphrase cannot reach {@link deriveRootKey} without going
  * through the format check (which it would fail) or an explicit, review-visible
  * cast. The fixed-salt KDF is safe ONLY for these, so the type makes that a
  * compile-time invariant rather than a comment.
@@ -71,7 +71,7 @@ const RECOVERY_PHRASE_RE = /^[A-Za-z0-9_-]{43}$/;
 
 /**
  * A high-entropy recovery phrase (256-bit): the single secret that unlocks an
- * account. It MUST be app-generated, not user-chosen (see {@link MASTER_KEY_SALT}).
+ * account. It MUST be app-generated, not user-chosen (see {@link ROOT_KEY_SALT}).
  * A human-friendly word encoding is a UX follow-up; the crypto only needs the
  * entropy.
  */
@@ -92,11 +92,11 @@ export function parseRecoveryPhrase(input: string): AppGeneratedPhrase | null {
 }
 
 /**
- * Derive a 32-byte master key from an app-generated recovery phrase. The phrase
- * MUST be app-generated and high-entropy (see {@link MASTER_KEY_SALT}); there is no
+ * Derive a 32-byte root key from an app-generated recovery phrase. The phrase
+ * MUST be app-generated and high-entropy (see {@link ROOT_KEY_SALT}); there is no
  * per-user salt by design, so the {@link AppGeneratedPhrase} brand gates the input.
  */
-export async function deriveMasterKey(
+export async function deriveRootKey(
   passphrase: AppGeneratedPhrase,
 ): Promise<Bytes> {
   const base = await crypto.subtle.importKey(
@@ -110,7 +110,7 @@ export async function deriveMasterKey(
     {
       name: "PBKDF2",
       hash: "SHA-256",
-      salt: new TextEncoder().encode(MASTER_KEY_SALT),
+      salt: new TextEncoder().encode(ROOT_KEY_SALT),
       iterations: PBKDF2_ITERATIONS,
     },
     base,
@@ -120,25 +120,25 @@ export async function deriveMasterKey(
 }
 
 /**
- * The owner's master key as a non-extractable WebCrypto key (doc 24). It derives
+ * The owner's root key as a non-extractable WebCrypto key (doc 24). It derives
  * the account id, blob key, and write token but can never be exported as raw
  * bytes, so it is safe to persist for resume (a script that reaches the page can
  * use it while open but cannot copy it out). Import it once from the transient
  * bytes a sign-in produces (account create, recover, or passkey unlock), then
  * drop the bytes.
  */
-export type MasterKey = CryptoKey;
+export type RootKey = CryptoKey;
 
 /**
- * Import raw master bytes into a non-extractable HKDF {@link MasterKey}. The
+ * Import raw root key bytes into a non-extractable HKDF {@link RootKey}. The
  * caller drops the bytes afterwards; the key derives byte-identically to the old
  * raw path, so existing accounts keep resolving.
  */
-export function importMasterKey(master: Bytes): Promise<MasterKey> {
-  return crypto.subtle.importKey("raw", master, "HKDF", false, ["deriveBits"]);
+export function importRootKey(root: Bytes): Promise<RootKey> {
+  return crypto.subtle.importKey("raw", root, "HKDF", false, ["deriveBits"]);
 }
 
-// HKDF from an already-imported key (the master): salt empty, info domain-separates.
+// HKDF from an already-imported key (the root): salt empty, info domain-separates.
 async function hkdfFromKey(
   key: CryptoKey,
   info: string,
@@ -158,52 +158,50 @@ async function hkdfFromKey(
 }
 
 // HKDF from raw bytes: imports them as an HKDF key first. Used where the input is
-// a transient secret that is NOT the persisted master (the passkey PRF output).
+// a transient secret that is NOT the persisted root (the passkey PRF output).
 async function hkdfFromBytes(
   raw: Bytes,
   info: string,
   bytes: number,
 ): Promise<Bytes> {
-  return hkdfFromKey(await importMasterKey(raw), info, bytes);
+  return hkdfFromKey(await importRootKey(raw), info, bytes);
 }
 
 /** Deterministic opaque account id (43-char base64url) for `GET/PUT /acct/{id}`. */
-export async function deriveAccountId(master: MasterKey): Promise<string> {
+export async function deriveAccountId(root: RootKey): Promise<string> {
   return bytesToBase64url(
-    await hkdfFromKey(master, HKDF_ACCOUNT_ID_INFO, ID_BYTES),
+    await hkdfFromKey(root, HKDF_ACCOUNT_ID_INFO, ID_BYTES),
   );
 }
 
 /** Raw 32-byte AES key for the account-sync blob, separate from the id. */
-export function deriveAccountKey(master: MasterKey): Promise<Bytes> {
-  return hkdfFromKey(master, HKDF_ACCOUNT_KEY_INFO, 32);
+export function deriveAccountKey(root: RootKey): Promise<Bytes> {
+  return hkdfFromKey(root, HKDF_ACCOUNT_KEY_INFO, 32);
 }
 
 /**
  * The account write token (43-char base64url): the capability that gates overwrite
  * and delete of the account blob, making account writes symmetric with aliases. A
- * third independent derivation from the master, so it never equals the id (which
+ * third independent derivation from the root, so it never equals the id (which
  * travels on the wire) or the blob key (which never leaves the device). The server
  * stores only its hash and constant-time compares, so observing the id alone does
  * not let someone clobber the account.
  */
-export async function deriveAccountWriteToken(
-  master: MasterKey,
-): Promise<string> {
+export async function deriveAccountWriteToken(root: RootKey): Promise<string> {
   return bytesToBase64url(
-    await hkdfFromKey(master, HKDF_ACCOUNT_WRITE_INFO, ID_BYTES),
+    await hkdfFromKey(root, HKDF_ACCOUNT_WRITE_INFO, ID_BYTES),
   );
 }
 
 /**
  * A 32-byte wrapping key from a passkey's PRF output. The PRF result is a
  * high-entropy authenticator secret; HKDF domain-separates it. This wraps
- * (encrypts) the account master for convenient local re-unlock, so the passkey
+ * (encrypts) the account root for convenient local re-unlock, so the passkey
  * is a SECOND credential over the same phrase-recoverable account, never a
- * standalone master that would lock out on passkey loss (see auth/keyVault).
+ * standalone root that would lock out on passkey loss (see auth/keyVault).
  */
 export function wrapKeyFromPrf(prfOutput: Bytes): Promise<Bytes> {
-  return hkdfFromBytes(prfOutput, HKDF_PRF_MASTER_INFO, ID_BYTES);
+  return hkdfFromBytes(prfOutput, HKDF_PRF_ROOT_INFO, ID_BYTES);
 }
 
 /** SHA-256 of `data`, base64url-encoded. Used for opaque routing/requester

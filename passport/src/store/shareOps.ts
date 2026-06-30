@@ -86,9 +86,9 @@ export async function mintContactLink(
     alias: stamp(record),
     myInbox,
   };
-  const blob = await accounts.addContact(session.master, contact);
+  const blob = await accounts.addContact(session.root, contact);
   return {
-    session: { master: session.master, blob },
+    session: { root: session.root, blob },
     contact,
     url: contactInviteUrl(record, myInbox),
   };
@@ -131,9 +131,9 @@ export async function acceptContactInvite(
     theirNotify: invite.notify,
     theirStatusAlias: invite.alias,
   };
-  const blob = await accounts.addContact(session.master, contact);
+  const blob = await accounts.addContact(session.root, contact);
   return {
-    session: { master: session.master, blob },
+    session: { root: session.root, blob },
     contact,
     url: contactInviteUrl(record, myInbox, invite.alias.id),
   };
@@ -158,8 +158,8 @@ export async function ingestContactReturn(
     theirNotify: ret.notify,
     theirStatusAlias: ret.alias,
   };
-  const blob = await accounts.addContact(session.master, completed);
-  return { master: session.master, blob };
+  const blob = await accounts.addContact(session.root, completed);
+  return { root: session.root, blob };
 }
 
 // Revoke one contact link: kill the payload first (overwrite to garbage), then
@@ -173,8 +173,8 @@ export async function revokeContactLink(
   const contact = session.blob.contacts.find((c) => c.id === contactId);
   if (contact === undefined) return session;
   await revokeAlias(api, contact.alias);
-  const blob = await accounts.removeContact(session.master, contactId);
-  return { master: session.master, blob };
+  const blob = await accounts.removeContact(session.root, contactId);
+  return { root: session.root, blob };
 }
 
 // Change one contact link's lifetime in place (extend or shorten): the same link
@@ -199,12 +199,12 @@ export async function setContactLinkExpiry(
     deriveAliasCard(session.blob.state, contact.alias, nowDay),
     expiresAt,
   );
-  const blob = await accounts.addContact(session.master, {
+  const blob = await accounts.addContact(session.root, {
     ...contact,
     expiresAt,
     alias: { ...contact.alias, expiresAt },
   });
-  return { master: session.master, blob };
+  return { root: session.root, blob };
 }
 
 // Change the share-sheet link's lifetime in place (doc 16): the primary alias for
@@ -233,8 +233,8 @@ export async function setShareLinkExpiry(
     deriveAliasCard(session.blob.state, alias, nowDay),
     expiresAt,
   );
-  const blob = await accounts.addAlias(session.master, { ...alias, expiresAt });
-  return { master: session.master, blob };
+  const blob = await accounts.addAlias(session.root, { ...alias, expiresAt });
+  return { root: session.root, blob };
 }
 
 // Revoke one published alias (a public/casual link) by id: kill the payload first,
@@ -249,8 +249,8 @@ export async function revokeAliasLink(
   const alias = session.blob.aliases.find((a) => a.id === aliasId);
   if (alias === undefined) return session;
   await revokeAlias(api, alias);
-  const blob = await accounts.removeAlias(session.master, aliasId);
-  return { master: session.master, blob };
+  const blob = await accounts.removeAlias(session.root, aliasId);
+  return { root: session.root, blob };
 }
 
 // Produce a link for the owner's current sharing mode. Shared by shareLink and
@@ -287,6 +287,6 @@ export async function shareLinkFor(
     (rec) => deriveAliasCard(session.blob.state, stamp(rec), nowDay),
     { isPublic: wantPublic },
   );
-  const blob = await accounts.addAlias(session.master, stamp(record));
-  return { session: { master: session.master, blob }, url: link };
+  const blob = await accounts.addAlias(session.root, stamp(record));
+  return { session: { root: session.root, blob }, url: link };
 }

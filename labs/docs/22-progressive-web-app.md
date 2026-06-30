@@ -320,18 +320,18 @@ encrypted blob, so nothing about how a result is stored changes. What we add is 
 - a **"backed up as of" marker** so the app can tell, locally and honestly, that there are changes
   the server has not yet received.
 
-**The queue is encrypted under the master key, and that constrains how it drains (S1).** The earlier
+**The queue is encrypted under the root key, and that constrains how it drains (S1).** The earlier
 instinct, to treat it like the push context, is wrong: the push-context exception (doc 09) is
 deliberately scoped to *low*-sensitivity inbox-read capabilities (read or clear the contentless
 pending-nudge bit, never who, what, or when). The outbound ops are higher: a republish or revoke
 carries the alias **write token**, a contact registration the **routing token**, and those exist
-today only inside the master-encrypted blob. Putting them in a plaintext queue is a new
+today only inside the root-encrypted blob. Putting them in a plaintext queue is a new
 at-rest exposure for a thief-with-device (write tokens overwrite or revoke the owner's published
-aliases), not an equivalent trade. So the queue is sealed under the master key like the blob it
+aliases), not an equivalent trade. So the queue is sealed under the root key like the blob it
 mirrors.
 
 That has a real mechanism cost worth stating plainly: a `sync`-event handler runs in the worker,
-which **never holds the master key** (the key is never persisted). So a sealed queue cannot be
+which **never holds the root key** (the key is never persisted). So a sealed queue cannot be
 drained headless by the worker. The resolution: **the queue drains on the next unlocked, online
 foreground**, not in a true-background `sync` event. Background Sync and the foreground flush both
 just signal "there is work and the network is back"; the actual sealed-op replay happens with the
@@ -394,13 +394,13 @@ Each slice is independently shippable and leaves the app correct.
 3. **Update UX (BUILT).** Versioned shell cache, a user-initiated `SKIP_WAITING` activation, and the
    voice-reviewed "reload to update" affordance (no automatic skipWaiting/claim; section E).
 4. **Offline-created state (section H), BUILT.** This was the foundational change anticipated below:
-   the encrypted blob is now cached in a master-key-sealed local store (`localBlobStore.ts`), and the
+   the encrypted blob is now cached in a root-key-sealed local store (`localBlobStore.ts`), and the
    sync (`offlineSync.ts`) reads **local-first** (so a reload restores the session offline) and writes
    **local-first then server** (`save` never throws offline; the edit is durable and the account is
    marked pending). `setOwnerState` keeps its online path but, on any server-step failure, persists
    the state change locally without throwing (aligning with decision 156's no-"couldn't refresh"
    rule). A reconnect drain (`useBackupSync`) re-applies the current state to push the blob and
-   republish, in the foreground where the master lives (S1). A passive `NotBackedUp` marker shows
+   republish, in the foreground where the root lives (S1). A passive `NotBackedUp` marker shows
    while pending and clears itself on backup. Tested at the sync layer and against the real server
    (integration suite stays green). **Residuals (named):** minting a NEW share link and registering
    push still need the network (a viewer fetches the alias from the server), so those stay online;
@@ -461,7 +461,7 @@ no in-place fix yet.
 - **No `api.sti.care` response is ever cached** (section D), so no visit or existence trail at rest,
   and the existence-blind endpoints stay network-uniform.
 - **Caches hold only the data-free shell** (S6), never an HTML response hydrated with user content.
-- **The outbound queue is master-key sealed** (S1); write and routing tokens never sit in plaintext
+- **The outbound queue is root-key sealed** (S1); write and routing tokens never sit in plaintext
   at rest, so a thief-with-device gains no capability the encrypted blob did not already gate.
 - **Outbound ops drain through the existing jitter and cover path** (S3), never a synchronized
   reconnect burst, preserving sibling-alias decorrelation (doc 18).
@@ -481,7 +481,7 @@ handler fails open to the network so a worker bug degrades to a plain online bro
 - **Device-at-rest.** CacheStorage and IndexedDB are unencrypted at rest, the same caveat doc 09
   already discloses. The PWA does not widen it: the shell cache is public, and the sensitive queue is
   sealed.
-- **Closed-app flush of write-bearing ops (S1).** Because the worker has no master key, sealed
+- **Closed-app flush of write-bearing ops (S1).** Because the worker has no root key, sealed
   outbound ops flush only on the next unlocked foreground, not headless. Accepted in exchange for not
   exposing write tokens at rest.
 - **Multi-device concurrent offline edits (S8): resolved by optimistic concurrency + a client merge.**

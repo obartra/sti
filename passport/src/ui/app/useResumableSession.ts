@@ -6,7 +6,7 @@ import { browserForgetPendingKnocks } from "../../store/pendingKnockStore.ts";
 import type { Nav } from "./useAppRouter.ts";
 
 // The owner session plus its "stay signed in" lifecycle (doc 24): a silent resume
-// from the persisted master on load, persisting (or not) on each login per the
+// from the persisted root on load, persisting (or not) on each login per the
 // keep-signed-in choice, and a logout that forgets the stored key. Lifted out of
 // App so App stays under its size ceiling.
 export interface ResumableSession {
@@ -29,7 +29,7 @@ export function useResumableSession(
   const [session, setSession] = useState<OwnerSession | null>(null);
   const [keepSignedIn, setKeepSignedIn] = useState(true);
 
-  // Reload resume: if this device persisted its master, rebuild the session with
+  // Reload resume: if this device persisted its root, rebuild the session with
   // no passkey and no phrase. Once per app load (a stored key exists only if the
   // owner chose to stay signed in on a prior visit).
   const resumed = useRef(false);
@@ -64,7 +64,7 @@ export function useResumableSession(
     // Wipe this device's viewer secrets too (the requester secret, any grant
     // keypairs, and the pending-requests list), so logging out of a shared device
     // leaves no trace of which links it knocked on or asked to see, matching what
-    // account delete already does. The master key alone was cleared before; these
+    // account delete already does. The root key alone was cleared before; these
     // viewer secrets persisted (gap fix).
     browserForgetRequesterSecret();
     browserForgetGrantKeys();

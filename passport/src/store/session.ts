@@ -6,11 +6,11 @@
  *
  * Recovery model (locked, doc 11): an account is always created from a generated
  * phrase, so it is always phrase-recoverable. enrollPasskey wraps the existing
- * master under the passkey's PRF output and stores `{ credentialId, wrappedMaster }`
+ * root under the passkey's PRF output and stores `{ credentialId, wrappedRoot }`
  * locally; resume() unwraps it on reload. There is no path that creates an account
  * from a passkey alone, so a passkey loss can never lock the owner out.
  *
- * The session carries the master in memory (needed to mutate owner state); it is
+ * The session carries the root in memory (needed to mutate owner state); it is
  * never persisted. Reload without an enrolled passkey returns null here, and the
  * owner re-enters the phrase.
  */
@@ -18,15 +18,15 @@
 import {
   bytesToBase64url,
   base64urlToBytes,
-  importMasterKey,
+  importRootKey,
   parseRecoveryPhrase,
-  deriveMasterKey,
-  type MasterKey,
+  deriveRootKey,
+  type RootKey,
 } from "../crypto/index.ts";
-import { wrapMaster, unwrapMaster } from "../auth/keyVault.ts";
+import { wrapRoot, unwrapRoot } from "../auth/keyVault.ts";
 import type { PasskeyAuth } from "../auth/passkey.ts";
 import type { DeviceStore } from "../auth/deviceStore.ts";
-import type { MasterKeyStore } from "../auth/masterKeyStore.ts";
+import type { RootKeyStore } from "../auth/rootKeyStore.ts";
 import type { ApiClient, PendingKnock } from "../api/client.ts";
 import type { AccountManager, OwnerProfile } from "./account.ts";
 import type { AccountSync } from "./accountSync.ts";
@@ -66,13 +66,13 @@ import {
 } from "./findableOps.ts";
 
 /**
- * An unlocked session: the master and the loaded account. The master is a
- * non-extractable {@link MasterKey} (doc 24): it derives the account id, blob key,
+ * An unlocked session: the root and the loaded account. The root is a
+ * non-extractable {@link RootKey} (doc 24): it derives the account id, blob key,
  * and write token but can never be exported as raw bytes, so it is safe to persist
- * for resume (see masterKeyStore).
+ * for resume (see rootKeyStore).
  */
 export interface OwnerSession {
-  readonly master: MasterKey;
+  readonly root: RootKey;
   readonly blob: AccountBlob;
 }
 
@@ -95,25 +95,25 @@ export interface SessionController {
   resume(): Promise<OwnerSession | null>;
   /**
    * Keep this device signed in across reloads (doc 24): persist the session's
-   * non-extractable master so {@link resumeFromStore} can rebuild the session with
-   * no passkey and no phrase. The master cannot be exported as bytes, so a stored
+   * non-extractable root so {@link resumeFromStore} can rebuild the session with
+   * no passkey and no phrase. The root cannot be exported as bytes, so a stored
    * key can be used on this device but never copied out.
    */
   rememberDevice(session: OwnerSession): Promise<void>;
-  /** Forget the persisted master (logout / the "keep me signed in" toggle off). */
+  /** Forget the persisted root (logout / the "keep me signed in" toggle off). */
   forgetDevice(): Promise<void>;
   /**
-   * Silent resume from the persisted master (doc 24): if this device has a stored
+   * Silent resume from the persisted root (doc 24): if this device has a stored
    * key and an account blob still loads for it, return the session. null when no
    * key is stored or no blob loads (a deleted account). No passkey, no phrase.
    */
   resumeFromStore(): Promise<OwnerSession | null>;
   /**
    * Bind a passkey to this account so reload can resume without the phrase. The
-   * passkey wrap needs raw master bytes, which the non-extractable session master
+   * passkey wrap needs raw root key bytes, which the non-extractable session root
    * cannot give back (doc 24), so enroll re-derives them from the recovery phrase
    * (held during onboarding to show at step 2), wraps them, stores only
-   * `{ credentialId, wrappedMaster }`, and drops the bytes. Throws (fail-closed)
+   * `{ credentialId, wrappedRoot }`, and drops the bytes. Throws (fail-closed)
    * if the phrase is not a well-formed app phrase, so it never wraps a bad key.
    */
   enrollPasskey(phrase: string, userName: string): Promise<void>;
@@ -335,8 +335,8 @@ export interface SessionDeps {
   readonly sync: AccountSync;
   readonly devices: DeviceStore;
   readonly passkey: PasskeyAuth;
-  /** Persists the master for silent resume across reloads (doc 24). */
-  readonly keys: MasterKeyStore;
+  /** Persists the root for silent resume across reloads (doc 24). */
+  readonly keys: RootKeyStore;
   /** Transport for publishing/republishing the owner's shareable alias. */
   readonly api: ApiClient;
 }
@@ -395,31 +395,31 @@ async function grantPending(
 // blocks login; expiry is re-attempted on the next load.
 async function sweptOnLoad(
   accounts: AccountManager,
-  master: MasterKey,
+  root: RootKey,
   fallback: AccountBlob,
 ): Promise<AccountBlob> {
-  return accounts.sweepExpiredLinks(master).catch(() => fallback);
+  return accounts.sweepExpiredLinks(root).catch(() => fallback);
 }
 
-// Unlock the master from this device's passkey binding (the resume path). null
+// Unlock the root from this device's passkey binding (the resume path). null
 // when there is no binding, the passkey is cancelled/unavailable, or the binding
 // does not unwrap (wrong passkey / corrupt binding: GCM rejects). The binding is
 // left intact on failure, so a later correct unlock still works.
-async function unlockMaster(
+async function unlockRoot(
   devices: DeviceStore,
   passkey: PasskeyAuth,
-): Promise<MasterKey | null> {
+): Promise<RootKey | null> {
   const cred = devices.load();
   if (cred === null) return null;
   try {
     const prfOutput = await passkey.unlock(cred.credentialId);
-    // PRF unwrap yields the transient master bytes; import them once into the
+    // PRF unwrap yields the transient root key bytes; import them once into the
     // non-extractable key (doc 24) and drop the bytes.
-    const bytes = await unwrapMaster(
-      base64urlToBytes(cred.wrappedMaster),
+    const bytes = await unwrapRoot(
+      base64urlToBytes(cred.wrappedRoot),
       prfOutput,
     );
-    return await importMasterKey(bytes);
+    return await importRootKey(bytes);
   } catch {
     return null;
   }
@@ -436,23 +436,23 @@ function blobMethods(
 > {
   return {
     setProfile: async (session, profile) => ({
-      master: session.master,
-      blob: await accounts.setProfile(session.master, profile),
+      root: session.root,
+      blob: await accounts.setProfile(session.root, profile),
     }),
     setOwnerState: async (session, state) => ({
-      master: session.master,
-      blob: await accounts.setOwnerState(session.master, state),
+      root: session.root,
+      blob: await accounts.setOwnerState(session.root, state),
     }),
     sweepExpiredLinks: async (session) => ({
-      master: session.master,
-      blob: await accounts.sweepExpiredLinks(session.master),
+      root: session.root,
+      blob: await accounts.sweepExpiredLinks(session.root),
     }),
   };
 }
 
 // The reload paths, split out so createSessionController stays under its length
 // ceiling. resume() unlocks via the enrolled passkey; resumeFromStore() uses the
-// persisted non-extractable master (doc 24); rememberDevice/forgetDevice manage
+// persisted non-extractable root (doc 24); rememberDevice/forgetDevice manage
 // that store (the "keep me signed in" toggle + logout).
 function resumeMethods(
   deps: SessionDeps,
@@ -463,24 +463,24 @@ function resumeMethods(
   const { accounts, sync, devices, passkey, keys } = deps;
   return {
     async resume() {
-      const master = await unlockMaster(devices, passkey);
-      if (master === null) return null;
-      const blob = await sync.load(master);
+      const root = await unlockRoot(devices, passkey);
+      if (root === null) return null;
+      const blob = await sync.load(root);
       if (blob === null) return null;
-      return { master, blob: await sweptOnLoad(accounts, master, blob) };
+      return { root, blob: await sweptOnLoad(accounts, root, blob) };
     },
     rememberDevice(session) {
-      return keys.save(session.master);
+      return keys.save(session.root);
     },
     forgetDevice() {
       return keys.clear();
     },
     async resumeFromStore() {
-      const master = await keys.load();
-      if (master === null) return null;
-      const blob = await sync.load(master);
+      const root = await keys.load();
+      if (root === null) return null;
+      const blob = await sync.load(root);
       if (blob === null) return null;
-      return { master, blob: await sweptOnLoad(accounts, master, blob) };
+      return { root, blob: await sweptOnLoad(accounts, root, blob) };
     },
   };
 }
@@ -492,7 +492,7 @@ export function createSessionController(deps: SessionDeps): SessionController {
     async signUp(handle) {
       const created = await accounts.create(handle);
       return {
-        session: { master: created.master, blob: created.blob },
+        session: { root: created.root, blob: created.blob },
         recoveryPhrase: created.recoveryPhrase,
       };
     },
@@ -500,30 +500,26 @@ export function createSessionController(deps: SessionDeps): SessionController {
     async recover(phrase) {
       const recovered = await accounts.recover(phrase);
       if (recovered === null) return null;
-      const blob = await sweptOnLoad(
-        accounts,
-        recovered.master,
-        recovered.blob,
-      );
-      return { master: recovered.master, blob };
+      const blob = await sweptOnLoad(accounts, recovered.root, recovered.blob);
+      return { root: recovered.root, blob };
     },
 
     ...resumeMethods(deps),
 
     async enrollPasskey(phrase, userName) {
-      // Re-derive the transient master bytes from the recovery phrase: the
-      // session master is non-extractable and cannot be wrapped (doc 24). A
+      // Re-derive the transient root key bytes from the recovery phrase: the
+      // session root is non-extractable and cannot be wrapped (doc 24). A
       // malformed phrase fails closed (no enroll), so a bad key is never wrapped.
       const parsed = parseRecoveryPhrase(phrase);
       if (parsed === null) {
         throw new Error("enrollPasskey: malformed recovery phrase");
       }
-      const bytes = await deriveMasterKey(parsed);
+      const bytes = await deriveRootKey(parsed);
       const { credentialId, prfOutput } = await passkey.enroll(userName);
-      const wrapped = await wrapMaster(bytes, prfOutput);
+      const wrapped = await wrapRoot(bytes, prfOutput);
       devices.save({
         credentialId,
-        wrappedMaster: bytesToBase64url(wrapped),
+        wrappedRoot: bytesToBase64url(wrapped),
       });
     },
 
@@ -542,8 +538,8 @@ export function createSessionController(deps: SessionDeps): SessionController {
         // record were dropped first and the revoke then failed, the old link would
         // keep resolving with no capability left to revoke it.
         await revokeAlias(api, existing);
-        const blob = await accounts.removeAlias(session.master, existing.id);
-        working = { master: session.master, blob };
+        const blob = await accounts.removeAlias(session.root, existing.id);
+        working = { root: session.root, blob };
       }
       // Mint a fresh link for the current card (this is now the only alias for
       // the mode, since the old record is gone).
@@ -574,7 +570,7 @@ export function createSessionController(deps: SessionDeps): SessionController {
       // is the part that protects this device, so it can't be gated on the network.
       devices.clear();
       await keys.clear();
-      await accounts.deleteAccount(session.master);
+      await accounts.deleteAccount(session.root);
     },
 
     reviewKnocks(session) {

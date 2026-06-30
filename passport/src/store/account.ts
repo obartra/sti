@@ -2,17 +2,17 @@
  * Account lifecycle on top of AccountSync: create a new account, recover one
  * from a recovery phrase, and record a published alias into it. This is the
  * owner-side logic onboarding/login/recovery drive; both the passphrase path
- * (here) and the WebAuthn-PRF path produce the same master key, so this layer is
+ * (here) and the WebAuthn-PRF path produce the same root key, so this layer is
  * agnostic to how the key was minted.
  */
 
 import type { ApiClient } from "../api/client.ts";
 import {
-  deriveMasterKey,
-  importMasterKey,
+  deriveRootKey,
+  importRootKey,
   parseRecoveryPhrase,
   randomRecoveryPhrase,
-  type MasterKey,
+  type RootKey,
 } from "../crypto/index.ts";
 import {
   INITIAL_OWNER_STATE,
@@ -45,12 +45,12 @@ export interface OwnerProfile {
 export interface NewAccount {
   /** Shown once to the owner; the only way back into the account. */
   readonly recoveryPhrase: string;
-  readonly master: MasterKey;
+  readonly root: RootKey;
   readonly blob: AccountBlob;
 }
 
 export interface RecoveredAccount {
-  readonly master: MasterKey;
+  readonly root: RootKey;
   readonly blob: AccountBlob;
 }
 
@@ -60,40 +60,40 @@ export interface AccountManager {
   /** Recover with a phrase. Returns null when no account exists for it. */
   recover(phrase: string): Promise<RecoveredAccount | null>;
   /** Record a published alias into the account and persist it. */
-  addAlias(master: MasterKey, record: AliasRecord): Promise<AccountBlob>;
+  addAlias(root: RootKey, record: AliasRecord): Promise<AccountBlob>;
   /** Drop an alias record from the account (after its payload is revoked). */
-  removeAlias(master: MasterKey, id: string): Promise<AccountBlob>;
+  removeAlias(root: RootKey, id: string): Promise<AccountBlob>;
   /** Record a per-contact link into the account and persist it. */
-  addContact(master: MasterKey, contact: ContactRecord): Promise<AccountBlob>;
+  addContact(root: RootKey, contact: ContactRecord): Promise<AccountBlob>;
   /**
    * Drop a contact record (after its alias payload is revoked). Also strips the
    * contact from every circle, so a circle never references a contact that is gone.
    */
-  removeContact(master: MasterKey, contactId: string): Promise<AccountBlob>;
+  removeContact(root: RootKey, contactId: string): Promise<AccountBlob>;
   /**
    * Create or update a circle (doc 13 slice 6), upserting by id. Members are
    * normalized against current contacts (unknown/removed ids dropped, deduped), so
    * a circle never references a contact that does not exist.
    */
-  upsertCircle(master: MasterKey, circle: CircleRecord): Promise<AccountBlob>;
+  upsertCircle(root: RootKey, circle: CircleRecord): Promise<AccountBlob>;
   /** Drop a circle by id. Purely local; the server never knew it existed. */
-  removeCircle(master: MasterKey, circleId: string): Promise<AccountBlob>;
+  removeCircle(root: RootKey, circleId: string): Promise<AccountBlob>;
   /**
    * Delete the account: revoke every published alias (so no shared link can ever
    * resolve to a status again) and remove the account blob. "Working delete"
    * (doc 01 data minimization). Idempotent and best-effort on the aliases.
    */
-  deleteAccount(master: MasterKey): Promise<void>;
+  deleteAccount(root: RootKey): Promise<void>;
   /**
    * Update the owner's state (a reported result, a pause), persist it, and
    * republish every alias so the new badge propagates to all shared links.
    */
-  setOwnerState(master: MasterKey, state: OwnerState): Promise<AccountBlob>;
+  setOwnerState(root: RootKey, state: OwnerState): Promise<AccountBlob>;
   /**
    * Update the owner's presentation profile (avatar + sharing default) and
    * persist it. Does not touch the badge, so no republish is needed.
    */
-  setProfile(master: MasterKey, profile: OwnerProfile): Promise<AccountBlob>;
+  setProfile(root: RootKey, profile: OwnerProfile): Promise<AccountBlob>;
   /**
    * Record (or clear, when null) the owner's findable registration (doc 17): the
    * claimed name and the alias it resolves to. Pure persistence; the server-side
@@ -101,7 +101,7 @@ export interface AccountManager {
    * (findableOps), so this just writes the blob field after that has succeeded.
    */
   setFindable(
-    master: MasterKey,
+    root: RootKey,
     findable: FindableRegistration | null,
   ): Promise<AccountBlob>;
   /**
@@ -111,7 +111,7 @@ export interface AccountManager {
    * public link). Called by findableOps after the server bind succeeds.
    */
   recordFindable(
-    master: MasterKey,
+    root: RootKey,
     alias: AliasRecord,
     findable: FindableRegistration,
   ): Promise<AccountBlob>;
@@ -121,7 +121,7 @@ export interface AccountManager {
    * expired. No republish, the badge is unchanged. This closes the passive-owner
    * gap so expiry no longer waits for the next setOwnerState.
    */
-  sweepExpiredLinks(master: MasterKey): Promise<AccountBlob>;
+  sweepExpiredLinks(root: RootKey): Promise<AccountBlob>;
 }
 
 // A brand-new account: empty links, default avatar, private (link) sharing. The
@@ -269,7 +269,7 @@ async function republishLiveLinks(
 
 // A load-modify-save over the synced blob (the closure createAccountManager builds).
 type BlobModify = (
-  master: MasterKey,
+  root: RootKey,
   fn: (blob: AccountBlob) => AccountBlob,
 ) => Promise<AccountBlob>;
 
@@ -280,15 +280,15 @@ function findableMethods(
   modify: BlobModify,
 ): Pick<AccountManager, "setFindable" | "recordFindable"> {
   return {
-    setFindable: (master, findable) =>
-      modify(master, (blob) => withFindable(blob, findable)),
-    recordFindable: (master, alias, findable) =>
-      modify(master, (blob) => withFindableAlias(blob, alias, findable)),
+    setFindable: (root, findable) =>
+      modify(root, (blob) => withFindable(blob, findable)),
+    recordFindable: (root, alias, findable) =>
+      modify(root, (blob) => withFindableAlias(blob, alias, findable)),
   };
 }
 
 // Account lifecycle (mint + recover), split out so createAccountManager stays
-// within its length ceiling. Both derive the master from an app-generated phrase:
+// within its length ceiling. Both derive the root from an app-generated phrase:
 // create mints one; recover validates the entered phrase against the app format
 // (parseRecoveryPhrase) so a malformed one fails closed instead of deriving a key
 // from arbitrary text.
@@ -303,21 +303,19 @@ function lifecycleMethods(
         throw new Error("create: invalid handle");
       }
       const recoveryPhrase = randomRecoveryPhrase();
-      // Derive the transient bytes, import them into the non-extractable master
-      // key (doc 24), then drop the bytes: no layer below holds raw master bytes.
-      const master = await importMasterKey(
-        await deriveMasterKey(recoveryPhrase),
-      );
+      // Derive the transient bytes, import them into the non-extractable root
+      // key (doc 24), then drop the bytes: no layer below holds raw root key bytes.
+      const root = await importRootKey(await deriveRootKey(recoveryPhrase));
       const blob = freshBlob(handle);
-      await sync.save(master, blob);
-      return { recoveryPhrase, master, blob };
+      await sync.save(root, blob);
+      return { recoveryPhrase, root, blob };
     },
     async recover(phrase) {
       const parsed = parseRecoveryPhrase(phrase);
       if (parsed === null) return null;
-      const master = await importMasterKey(await deriveMasterKey(parsed));
-      const blob = await sync.load(master);
-      return blob === null ? null : { master, blob };
+      const root = await importRootKey(await deriveRootKey(parsed));
+      const blob = await sync.load(root);
+      return blob === null ? null : { root, blob };
     },
   };
 }
@@ -336,39 +334,39 @@ export function createAccountManager(
   // are upsert/filter by id, so a retry is idempotent (a partial save that landed
   // but lost its response replays to the same result).
   const modify = async (
-    master: MasterKey,
+    root: RootKey,
     fn: (blob: AccountBlob) => AccountBlob,
   ): Promise<AccountBlob> => {
-    const blob = await sync.load(master);
+    const blob = await sync.load(root);
     if (blob === null) {
       throw new Error("account does not exist for this key");
     }
     const next = fn(blob);
-    await sync.save(master, next);
+    await sync.save(root, next);
     return next;
   };
 
   return {
     ...lifecycleMethods(sync),
 
-    addAlias(master, record) {
+    addAlias(root, record) {
       // Upsert by id so a lost-response retry does not record the alias twice
       // (which would orphan a write token and leave a link live after a revoke).
-      return modify(master, (blob) => ({
+      return modify(root, (blob) => ({
         ...blob,
         aliases: [...blob.aliases.filter((a) => a.id !== record.id), record],
       }));
     },
 
-    removeAlias(master, id) {
-      return modify(master, (blob) => ({
+    removeAlias(root, id) {
+      return modify(root, (blob) => ({
         ...blob,
         aliases: blob.aliases.filter((a) => a.id !== id),
       }));
     },
 
-    addContact(master, contact) {
-      return modify(master, (blob) => ({
+    addContact(root, contact) {
+      return modify(root, (blob) => ({
         ...blob,
         contacts: [
           ...blob.contacts.filter((c) => c.id !== contact.id),
@@ -377,20 +375,20 @@ export function createAccountManager(
       }));
     },
 
-    removeContact(master, contactId) {
-      return modify(master, (blob) => withContactRemoved(blob, contactId));
+    removeContact(root, contactId) {
+      return modify(root, (blob) => withContactRemoved(blob, contactId));
     },
 
-    upsertCircle(master, circle) {
-      return modify(master, (blob) => withCircleUpserted(blob, circle));
+    upsertCircle(root, circle) {
+      return modify(root, (blob) => withCircleUpserted(blob, circle));
     },
 
-    removeCircle(master, circleId) {
-      return modify(master, (blob) => withCircleRemoved(blob, circleId));
+    removeCircle(root, circleId) {
+      return modify(root, (blob) => withCircleRemoved(blob, circleId));
     },
 
-    async deleteAccount(master) {
-      const blob = await sync.load(master);
+    async deleteAccount(root) {
+      const blob = await sync.load(root);
       // Revoke every alias AND every per-contact link FIRST (overwrite each to
       // undecryptable bytes) so nothing can resolve after the account is gone;
       // only then drop the blob. A failed revoke leaves the blob for a retry.
@@ -398,16 +396,16 @@ export function createAccountManager(
         const all = [...blob.aliases, ...blob.contacts.map((c) => c.alias)];
         await Promise.all(all.map((a) => revokeAlias(api, a)));
       }
-      await sync.remove(master);
+      await sync.remove(root);
     },
 
-    async setOwnerState(master, state) {
+    async setOwnerState(root, state) {
       // Guard at write time, symmetric to the strict read: persisting an invalid
       // state would brick the account on the next load (parse fails closed).
       if (!isOwnerState(state)) {
         throw new Error("setOwnerState: invalid state");
       }
-      const blob = await sync.load(master);
+      const blob = await sync.load(root);
       if (blob === null) {
         throw new Error("setOwnerState: no account exists for this key");
       }
@@ -421,7 +419,7 @@ export function createAccountManager(
         // Online path: sweep expired links (revoke + drop), save, then republish
         // the new badge to the survivors. Expiry is ms; the clock is day-granular.
         swept = await sweepExpired(api, blob, state, nowMs());
-        await sync.save(master, swept);
+        await sync.save(root, swept);
         await republishLiveLinks(api, swept, nowDay);
         return swept;
       } catch {
@@ -431,13 +429,13 @@ export function createAccountManager(
         // links linger (doc 16, the genuinely-offline case). Either way the state
         // change is durable and the reconnect drain re-runs sweep + republish.
         const next: AccountBlob = swept ?? { ...blob, state };
-        await sync.save(master, next);
+        await sync.save(root, next);
         return next;
       }
     },
 
-    async sweepExpiredLinks(master) {
-      const blob = await sync.load(master);
+    async sweepExpiredLinks(root) {
+      const blob = await sync.load(root);
       if (blob === null) {
         throw new Error("sweepExpiredLinks: no account exists for this key");
       }
@@ -452,11 +450,11 @@ export function createAccountManager(
       // unchanged (a load does not move the badge), and no republish (the
       // surviving links' cards are unchanged).
       const next = await sweepExpired(api, blob, blob.state, now);
-      await sync.save(master, next);
+      await sync.save(root, next);
       return next;
     },
 
-    async setProfile(master, profile) {
+    async setProfile(root, profile) {
       // Guard at write time, symmetric to the strict read, so a bad profile
       // cannot brick the account on the next load.
       if (!isAvatarConfig(profile.avatar)) {
@@ -465,7 +463,7 @@ export function createAccountManager(
       if (!isSharingMode(profile.sharingMode)) {
         throw new Error("setProfile: invalid sharingMode");
       }
-      const blob = await sync.load(master);
+      const blob = await sync.load(root);
       if (blob === null) {
         throw new Error("setProfile: no account exists for this key");
       }
@@ -474,7 +472,7 @@ export function createAccountManager(
         avatar: profile.avatar,
         sharingMode: profile.sharingMode,
       };
-      await sync.save(master, next);
+      await sync.save(root, next);
       // No republish: the account avatar/handle is the owner's main identity, NOT
       // an alias's face. Each alias carries its own per-alias identity (doc 15), so
       // editing the main identity changes Home and the mint pre-fill but not any

@@ -12,11 +12,11 @@ import { volatileSyncStorage } from "../../store/syncStatus.ts";
 vi.mock("../../lib/jitter.ts", () => ({ reconnectJitterMs: () => 0 }));
 
 const ID = "acct-1";
-// The hook only reads offlineSync.accountId and session.master.
+// The hook only reads offlineSync.accountId and session.root.
 const offlineSync = {
   accountId: () => Promise.resolve(ID),
 } as unknown as OfflineAccountSync;
-const session = { master: new Uint8Array(32) } as unknown as OwnerSession;
+const session = { root: new Uint8Array(32) } as unknown as OwnerSession;
 
 describe("useBackupSync (slice 4 reconnect drain)", () => {
   it("reports pending and drains on reconnect when work is owed", async () => {

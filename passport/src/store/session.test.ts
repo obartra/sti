@@ -14,15 +14,15 @@ import {
   base64urlToBytes,
   randomRecoveryPhrase,
   parseRecoveryPhrase,
-  deriveMasterKey,
-  importMasterKey,
+  deriveRootKey,
+  importRootKey,
   deriveAccountId,
   type Bytes,
 } from "../crypto/index.ts";
-import { createVolatileMasterKeyStore } from "../auth/masterKeyStore.ts";
+import { createVolatileRootKeyStore } from "../auth/rootKeyStore.ts";
 
-// An in-memory account backend addressed by deriveAccountId(master), like the
-// real accountSync. The master is the phrase-derived non-extractable key (doc 24),
+// An in-memory account backend addressed by deriveAccountId(root), like the
+// real accountSync. The root is the phrase-derived non-extractable key (doc 24),
 // so a re-imported key (after a passkey unwrap or a store resume) addresses the
 // same account, and the enroll/resume round-trip is faithful.
 function fakeBackend() {
@@ -30,9 +30,7 @@ function fakeBackend() {
   const accounts: AccountManager = {
     async create(handle) {
       const recoveryPhrase = randomRecoveryPhrase();
-      const master = await importMasterKey(
-        await deriveMasterKey(recoveryPhrase),
-      );
+      const root = await importRootKey(await deriveRootKey(recoveryPhrase));
       const blob: AccountBlob = {
         ...(handle !== undefined ? { handle } : {}),
         aliases: [],
@@ -41,15 +39,15 @@ function fakeBackend() {
         avatar: DEFAULT_AVATAR,
         sharingMode: "link",
       };
-      byId.set(await deriveAccountId(master), blob);
-      return { recoveryPhrase, master, blob };
+      byId.set(await deriveAccountId(root), blob);
+      return { recoveryPhrase, root, blob };
     },
     async recover(phrase) {
       const parsed = parseRecoveryPhrase(phrase);
       if (parsed === null) return null;
-      const master = await importMasterKey(await deriveMasterKey(parsed));
-      const blob = byId.get(await deriveAccountId(master));
-      return blob ? { master, blob } : null;
+      const root = await importRootKey(await deriveRootKey(parsed));
+      const blob = byId.get(await deriveAccountId(root));
+      return blob ? { root, blob } : null;
     },
     addAlias: () => Promise.reject(new Error("unused")),
     removeAlias: () => Promise.reject(new Error("unused")),
@@ -57,27 +55,27 @@ function fakeBackend() {
     removeContact: () => Promise.reject(new Error("unused")),
     upsertCircle: () => Promise.reject(new Error("unused")),
     removeCircle: () => Promise.reject(new Error("unused")),
-    deleteAccount: async (master) => {
-      byId.delete(await deriveAccountId(master));
+    deleteAccount: async (root) => {
+      byId.delete(await deriveAccountId(root));
     },
     setOwnerState: () => Promise.reject(new Error("unused")),
     setProfile: () => Promise.reject(new Error("unused")),
     setFindable: () => Promise.reject(new Error("unused")),
     recordFindable: () => Promise.reject(new Error("unused")),
-    sweepExpiredLinks: async (master) => {
+    sweepExpiredLinks: async (root) => {
       // No links expire in these tests, so a sweep is a pure read of the blob.
-      const blob = byId.get(await deriveAccountId(master));
+      const blob = byId.get(await deriveAccountId(root));
       if (!blob) throw new Error("no account");
       return blob;
     },
   };
   const sync: AccountSync = {
-    load: async (master) => byId.get(await deriveAccountId(master)) ?? null,
-    save: async (master, blob) => {
-      byId.set(await deriveAccountId(master), blob);
+    load: async (root) => byId.get(await deriveAccountId(root)) ?? null,
+    save: async (root, blob) => {
+      byId.set(await deriveAccountId(root), blob);
     },
-    remove: async (master) => {
-      byId.delete(await deriveAccountId(master));
+    remove: async (root) => {
+      byId.delete(await deriveAccountId(root));
     },
   };
   return { accounts, sync };
@@ -131,7 +129,7 @@ function setup(passkey: PasskeyAuth = fakePasskey()) {
     sync,
     devices,
     passkey,
-    keys: createVolatileMasterKeyStore(),
+    keys: createVolatileRootKeyStore(),
     api: stubApi,
   };
   return { ctl: createSessionController(deps), devices, passkey };
@@ -152,7 +150,7 @@ describe("session controller", () => {
     const { session, recoveryPhrase } = await ctl.signUp("robin");
     const recovered = await ctl.recover(recoveryPhrase);
     expect(recovered?.blob).toEqual(session.blob);
-    expect(recovered?.master).toEqual(session.master);
+    expect(recovered?.root).toEqual(session.root);
   });
 
   it("recover returns null for an unknown phrase", async () => {
@@ -160,22 +158,22 @@ describe("session controller", () => {
     expect(await ctl.recover(randomRecoveryPhrase())).toBeNull();
   });
 
-  it("enrollPasskey stores only the wrapped master, not the master or phrase", async () => {
+  it("enrollPasskey stores only the wrapped root, not the root or phrase", async () => {
     const { ctl, devices } = setup();
     const { recoveryPhrase } = await ctl.signUp("robin");
     await ctl.enrollPasskey(recoveryPhrase, "robin");
 
     const cred = devices.load();
     expect(cred).not.toBeNull();
-    expect(cred?.wrappedMaster).not.toBe(recoveryPhrase);
-    // The wrapped master is GCM ciphertext over the 32-byte master, never the
-    // plaintext: longer than the master by the IV + tag overhead.
-    const wrappedBytes = base64urlToBytes(cred?.wrappedMaster ?? "");
+    expect(cred?.wrappedRoot).not.toBe(recoveryPhrase);
+    // The wrapped root is GCM ciphertext over the 32-byte root, never the
+    // plaintext: longer than the root by the IV + tag overhead.
+    const wrappedBytes = base64urlToBytes(cred?.wrappedRoot ?? "");
     expect(wrappedBytes.length).toBeGreaterThan(32);
   });
 
-  it("resume fails closed when the stored wrapped master is corrupt, leaving the binding intact", async () => {
-    // unlock succeeds (the credential id is real) but the wrapped master is
+  it("resume fails closed when the stored wrapped root is corrupt, leaving the binding intact", async () => {
+    // unlock succeeds (the credential id is real) but the wrapped root is
     // unusable, so the unwrap rejects. Two shapes: not base64url, and valid
     // base64url that is too short to be a GCM payload.
     for (const corrupt of ["!!!", bytesToBase64url(new Uint8Array(4))]) {
@@ -187,12 +185,12 @@ describe("session controller", () => {
 
       devices.save({
         credentialId: cred?.credentialId ?? "",
-        wrappedMaster: corrupt,
+        wrappedRoot: corrupt,
       });
       expect(await ctl.resume()).toBeNull();
       // The corrupt binding is left in place (not silently wiped); the owner
       // recovers via the phrase.
-      expect(devices.load()?.wrappedMaster).toBe(corrupt);
+      expect(devices.load()?.wrappedRoot).toBe(corrupt);
     }
   });
 
@@ -202,7 +200,7 @@ describe("session controller", () => {
     await ctl.enrollPasskey(recoveryPhrase, "robin");
 
     const resumed = await ctl.resume();
-    expect(resumed?.master).toEqual(session.master);
+    expect(resumed?.root).toEqual(session.root);
     expect(resumed?.blob).toEqual(session.blob);
   });
 
@@ -223,7 +221,7 @@ describe("session controller", () => {
       sync,
       devices,
       passkey: enrolled,
-      keys: createVolatileMasterKeyStore(),
+      keys: createVolatileRootKeyStore(),
       api: stubApi,
     });
     const { session, recoveryPhrase } = await ctlA.signUp("robin");
@@ -234,7 +232,7 @@ describe("session controller", () => {
       sync,
       devices,
       passkey: fakePasskey(),
-      keys: createVolatileMasterKeyStore(),
+      keys: createVolatileRootKeyStore(),
       api: stubApi,
     });
     expect(await ctlB.resume()).toBeNull();
@@ -307,7 +305,7 @@ describe("session controller", () => {
       sync,
       devices,
       passkey: fakePasskey(),
-      keys: createVolatileMasterKeyStore(),
+      keys: createVolatileRootKeyStore(),
       api,
     });
     const { session } = await ctl.signUp("robin");
@@ -318,7 +316,7 @@ describe("session controller", () => {
       isPublic: true,
     };
     const claimed = {
-      master: session.master,
+      root: session.root,
       blob: {
         ...session.blob,
         aliases: [alias],
@@ -337,10 +335,10 @@ describe("session controller", () => {
   it("deleteAccount leaves no resumable key: clears the key store AND the device binding (doc 24, G15)", async () => {
     // A deleted account must not stay resumable. The recover/resume coverage above
     // proves the effect end-to-end; this pins the mechanism so a refactor that drops
-    // either clear (the persisted master key, or the on-device binding) fails here.
+    // either clear (the persisted root key, or the on-device binding) fails here.
     const { accounts, sync } = fakeBackend();
     const devices = createDeviceStore(memoryStorage());
-    const keys = createVolatileMasterKeyStore();
+    const keys = createVolatileRootKeyStore();
     const keysClear = vi.spyOn(keys, "clear");
     const devicesClear = vi.spyOn(devices, "clear");
     const ctl = createSessionController({
@@ -361,14 +359,14 @@ describe("session controller", () => {
 
   it("deleteAccount wipes the resumable key even when the server delete fails (doc 24, G15)", async () => {
     // A transient backend error mid-delete (e.g. a network blip during revoke-all)
-    // must not leave a usable master persisted on this device, or a reload would
+    // must not leave a usable root persisted on this device, or a reload would
     // silently resume into an account the owner believes they deleted. The local
     // wipe is independent of the network outcome.
     const { accounts, sync } = fakeBackend();
     accounts.deleteAccount = () =>
       Promise.reject(new Error("network blip mid-delete"));
     const devices = createDeviceStore(memoryStorage());
-    const keys = createVolatileMasterKeyStore();
+    const keys = createVolatileRootKeyStore();
     const keysClear = vi.spyOn(keys, "clear");
     const devicesClear = vi.spyOn(devices, "clear");
     const ctl = createSessionController({

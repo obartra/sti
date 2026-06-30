@@ -1,11 +1,11 @@
 /**
  * Local persistence of a device's passkey binding: exactly
- * `{ credentialId, wrappedMaster }` and nothing else. The wrapped master is the
- * account master sealed under the passkey's PRF output (auth/keyVault), so a
+ * `{ credentialId, wrappedRoot }` and nothing else. The wrapped root is the
+ * account root sealed under the passkey's PRF output (auth/keyVault), so a
  * passkey re-unlocks the account on reload without re-typing the recovery phrase.
  *
- * SECURITY: this NEVER stores the master in the clear, the PRF output, or the
- * recovery phrase. The only at-rest secret is `wrappedMaster`, useless without
+ * SECURITY: this NEVER stores the root in the clear, the PRF output, or the
+ * recovery phrase. The only at-rest secret is `wrappedRoot`, useless without
  * the passkey (GCM rejects a wrong/absent PRF output). Reads are fail-closed:
  * any structural surprise returns null, so the owner falls back to the phrase
  * rather than acting on a corrupt credential.
@@ -17,10 +17,10 @@
 const KEY = "sti.device.v1";
 const VERSION = 1;
 
-/** The local passkey binding. base64url-encoded `wrappedMaster`. */
+/** The local passkey binding. base64url-encoded `wrappedRoot`. */
 export interface DeviceCredential {
   readonly credentialId: string;
-  readonly wrappedMaster: string;
+  readonly wrappedRoot: string;
 }
 
 /** The subset of the Web Storage API this module uses. */
@@ -57,10 +57,10 @@ export function createDeviceStore(storage: StorageLike): DeviceStore {
       const o = parsed as Record<string, unknown>;
       if (o.v !== VERSION) return null;
       if (!isNonEmptyString(o.credentialId)) return null;
-      if (!isNonEmptyString(o.wrappedMaster)) return null;
+      if (!isNonEmptyString(o.wrappedRoot)) return null;
       return {
         credentialId: o.credentialId,
-        wrappedMaster: o.wrappedMaster,
+        wrappedRoot: o.wrappedRoot,
       };
     },
 
@@ -70,7 +70,7 @@ export function createDeviceStore(storage: StorageLike): DeviceStore {
         JSON.stringify({
           v: VERSION,
           credentialId: credential.credentialId,
-          wrappedMaster: credential.wrappedMaster,
+          wrappedRoot: credential.wrappedRoot,
         }),
       );
     },

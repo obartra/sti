@@ -38,7 +38,7 @@ export interface ScreenCtx {
   openShare: () => void;
   /** Permanently delete the account and return to the logged-out landing. */
   onDeleteAccount: () => void;
-  /** Log out: forget the persisted master and return to the landing (doc 24). */
+  /** Log out: forget the persisted root and return to the landing (doc 24). */
   onLogOut: () => void;
   /** "Keep me signed in on this device" choice + setter (doc 24). */
   keepSignedIn: boolean;

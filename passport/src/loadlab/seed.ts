@@ -3,7 +3,7 @@
  * hit real aliases (not only decoys) and the store rows are real. Each owner gets
  * a published alias (sealed to the fixed size and PUT under a random write token)
  * and a published account blob (addressed by an HKDF account id). The account
- * master is a random 32 bytes rather than a passphrase, which skips the expensive
+ * root is a random 32 bytes rather than a passphrase, which skips the expensive
  * PBKDF2 the wire does not need while keeping the real HKDF account-addressing.
  */
 import type { ApiClient } from "../api/client.ts";
@@ -15,7 +15,7 @@ import {
   utf8ToBytes,
   randomAliasId,
   randomWriteToken,
-  importMasterKey,
+  importRootKey,
   deriveAccountId,
   deriveAccountKey,
   deriveAccountWriteToken,
@@ -49,13 +49,11 @@ async function seedOne(api: ApiClient, i: number): Promise<SeededOwner> {
   const writeToken = randomWriteToken();
   await api.putAlias(aliasId, payload, writeToken);
 
-  const master = await importMasterKey(
-    crypto.getRandomValues(new Uint8Array(32)),
-  );
-  const accountId = await deriveAccountId(master);
-  const accountKeyRaw = await deriveAccountKey(master);
+  const root = await importRootKey(crypto.getRandomValues(new Uint8Array(32)));
+  const accountId = await deriveAccountId(root);
+  const accountKeyRaw = await deriveAccountKey(root);
   const accountKey = await importAesKey(accountKeyRaw);
-  const accountWriteToken = await deriveAccountWriteToken(master);
+  const accountWriteToken = await deriveAccountWriteToken(root);
   const blob = await seal(
     accountKey,
     utf8ToBytes(JSON.stringify({ aliases: [aliasId] })),

@@ -40,7 +40,7 @@ function fakeAccounts(blob: AccountBlob): {
   const accounts = new Proxy({} as AccountManager, {
     get(_t, prop) {
       if (prop === "addContact") {
-        return (_master: unknown, contact: ContactRecord) => {
+        return (_root: unknown, contact: ContactRecord) => {
           contacts.push(contact);
           return Promise.resolve({ ...blob, contacts: [...contacts] });
         };
@@ -68,7 +68,7 @@ describe("mintContactLink per-contact decorrelation (doc 13)", () => {
       sharingMode: "link",
     };
     const { accounts } = fakeAccounts(blob);
-    const session = { master: {} as CryptoKey, blob } as OwnerSession;
+    const session = { root: {} as CryptoKey, blob } as OwnerSession;
 
     // Two links from the SAME owner/session.
     const first = await mintContactLink(api, accounts, session, {

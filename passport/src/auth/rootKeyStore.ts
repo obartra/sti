@@ -1,9 +1,9 @@
 /**
- * Local persistence of the unlocked master so a reload stays signed in (doc 24).
- * The master is a non-extractable WebCrypto {@link MasterKey}: it can be USED on
+ * Local persistence of the unlocked root so a reload stays signed in (doc 24).
+ * The root is a non-extractable WebCrypto {@link RootKey}: it can be USED on
  * this device (it derives the account id, blob key, and write token) but can
  * never be exported as raw bytes, so a script that reaches the page can act as
- * the owner while it is open but cannot copy the master out to reuse elsewhere.
+ * the owner while it is open but cannot copy the root out to reuse elsewhere.
  *
  * IndexedDB stores the CryptoKey object directly: structured clone preserves the
  * key (including `extractable: false`), so nothing is ever serialized to bytes.
@@ -17,17 +17,17 @@
  * fallback.
  */
 
-import type { MasterKey } from "../crypto/index.ts";
+import type { RootKey } from "../crypto/index.ts";
 
 const DB_NAME = "sti";
-const STORE_NAME = "masterKey";
+const STORE_NAME = "rootKey";
 const KEY = "v1";
 
-export interface MasterKeyStore {
-  /** The stored master key, or null when absent or unreadable (fail-closed). */
-  load(): Promise<MasterKey | null>;
-  /** Persist the master key for silent resume on the next load. */
-  save(key: MasterKey): Promise<void>;
+export interface RootKeyStore {
+  /** The stored root key, or null when absent or unreadable (fail-closed). */
+  load(): Promise<RootKey | null>;
+  /** Persist the root key for silent resume on the next load. */
+  save(key: RootKey): Promise<void>;
   /** Forget the stored key (logout / account-delete). The phrase still recovers. */
   clear(): Promise<void>;
 }
@@ -46,7 +46,7 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
-// Run one transaction against the masterKey store and resolve with its result.
+// Run one transaction against the rootKey store and resolve with its result.
 // Any error (open, transaction, request) rejects, so callers can fail closed.
 function withStore<T>(
   mode: IDBTransactionMode,
@@ -68,21 +68,21 @@ function withStore<T>(
 }
 
 /**
- * A master-key store backed by IndexedDB, or null when IndexedDB is unavailable
+ * A root-key store backed by IndexedDB, or null when IndexedDB is unavailable
  * (server render, or a browser that throws on access in private mode). A null
- * return means this device cannot persist the master; the recovery phrase (or an
+ * return means this device cannot persist the root; the recovery phrase (or an
  * enrolled passkey) remains the way back in.
  */
-export function browserMasterKeyStore(): MasterKeyStore | null {
+export function browserRootKeyStore(): RootKeyStore | null {
   try {
     if (typeof indexedDB === "undefined") return null;
     return {
       load: () =>
-        withStore<MasterKey | undefined>(
+        withStore<RootKey | undefined>(
           "readonly",
           // IDBObjectStore.get is typed IDBRequest<any>; the store only ever holds
-          // a MasterKey at KEY, so narrow it here.
-          (s) => s.get(KEY) as IDBRequest<MasterKey | undefined>,
+          // a RootKey at KEY, so narrow it here.
+          (s) => s.get(KEY) as IDBRequest<RootKey | undefined>,
         )
           .then((v) => v ?? null)
           .catch(() => null),
@@ -97,13 +97,13 @@ export function browserMasterKeyStore(): MasterKeyStore | null {
 }
 
 /**
- * An in-memory master-key store: a single-process stand-in for tests and the
+ * An in-memory root-key store: a single-process stand-in for tests and the
  * fallback when IndexedDB is unavailable. It does not persist across reloads, so
  * a resume from it is scoped to the running tab, matching the IndexedDB store's
  * contract minus durability.
  */
-export function createVolatileMasterKeyStore(): MasterKeyStore {
-  let held: MasterKey | null = null;
+export function createVolatileRootKeyStore(): RootKeyStore {
+  let held: RootKey | null = null;
   return {
     load: () => Promise.resolve(held),
     save: (key) => {

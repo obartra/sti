@@ -24,6 +24,7 @@ DEV_DB_PATH ?= /tmp/sti-dev.db
 
 .PHONY: help backend web dev \
 	check-root check-web test-integration test-e2e check-server vulncheck smoke \
+	inclusive-language \
 	check ci build-web build-server build-release \
 	secrets secrets-pull secrets-diff secrets-sync secrets-edit gen-vapid gen-decoy gen-admin
 
@@ -43,10 +44,14 @@ dev: ## Run backend + web together (interleaved output; two shells is cleaner)
 
 ## --- Gates (CI calls these) ---
 
-check-root: ## Root: prettier + eslint + node tests
+check-root: ## Root: inclusive-language + prettier + eslint + node tests
+	bash scripts/inclusive-language.sh
 	npm run format:check
 	npm run lint
 	npm test
+
+inclusive-language: ## Fail on exclusionary terms (see scripts/inclusive-language.sh)
+	bash scripts/inclusive-language.sh
 
 check-web: ## Passport: lint + typecheck + unit tests
 	cd passport && npm run lint

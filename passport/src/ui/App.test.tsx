@@ -11,18 +11,18 @@ import type {
 } from "../store/index.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
-import { masterForTest } from "../test-support/phrase.ts";
+import { rootForTest } from "../test-support/phrase.ts";
 import {
   createDemoController,
   createDemoStore,
 } from "../store/demo/demoRuntime.ts";
 
-// A real non-extractable master, so the app's background derivations (account id,
+// A real non-extractable root, so the app's background derivations (account id,
 // write token) run for real on it instead of rejecting on a placeholder. Built
 // once; the fake controller hands the same key to every session it returns.
-let testMaster: Awaited<ReturnType<typeof masterForTest>>;
+let testRoot: Awaited<ReturnType<typeof rootForTest>>;
 beforeAll(async () => {
-  testMaster = await masterForTest("app-test-account");
+  testRoot = await rootForTest("app-test-account");
 });
 
 // End-to-end of the UI wiring: a real shared link in the URL routes through
@@ -49,7 +49,7 @@ function stubStore(to: ResolvedView | null): PassportStore {
 // adapter cannot run in jsdom). It records the created handle + profile so the
 // derived owner view can be asserted after onboarding.
 function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
-  const master = testMaster;
+  const root = testRoot;
   let blob: AccountBlob = {
     handle: "",
     aliases: [],
@@ -64,7 +64,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
     signUp: (handle) => {
       blob = { ...blob, ...(handle !== undefined ? { handle } : {}) };
       return Promise.resolve({
-        session: { master, blob },
+        session: { root, blob },
         recoveryPhrase: "Ck9mq2Xb7wYt0Zr8Lv3Np6Aq1Ds4Gh5Jk8Mn2Pr7Tw0",
       });
     },
@@ -72,7 +72,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
     // session (not the placeholder) drives the app.
     recover: (phrase) =>
       phrase === "RECOVER-ME-PHRASE"
-        ? Promise.resolve({ master, blob: { ...blob, handle: "rosa" } })
+        ? Promise.resolve({ root, blob: { ...blob, handle: "rosa" } })
         : Promise.resolve(null),
     resume: () => Promise.resolve(null),
     rememberDevice: () => Promise.resolve(),
@@ -85,15 +85,15 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
         avatar: profile.avatar,
         sharingMode: profile.sharingMode,
       };
-      return Promise.resolve({ master, blob } as OwnerSession);
+      return Promise.resolve({ root, blob } as OwnerSession);
     },
     setOwnerState: (_session, state) => {
       blob = { ...blob, state };
-      return Promise.resolve({ master, blob } as OwnerSession);
+      return Promise.resolve({ root, blob } as OwnerSession);
     },
     // No link in these tests has an expiry, so the in-memory pre-check never fires
     // this; return the current blob unchanged for completeness.
-    sweepExpiredLinks: () => Promise.resolve({ master, blob } as OwnerSession),
+    sweepExpiredLinks: () => Promise.resolve({ root, blob } as OwnerSession),
     // Faithful to the controller contract: a public account's link carries the
     // key in the fragment, a private ("link") account's does not.
     shareLink: (session) => {
@@ -128,7 +128,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       };
       blob = { ...blob, contacts: [...blob.contacts, contact] };
       return Promise.resolve({
-        session: { master, blob },
+        session: { root, blob },
         contact,
         url: `https://sti.care/a/${"v".repeat(43)}#k=${"x".repeat(43)}`,
       });
@@ -138,7 +138,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
         ...blob,
         contacts: blob.contacts.filter((c) => c.id !== contactId),
       };
-      return Promise.resolve({ master, blob });
+      return Promise.resolve({ root, blob });
     },
     setContactDuration: (_session, contactId, durationMs) => {
       blob = {
@@ -147,7 +147,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
           c.id === contactId ? { ...c, expiresAt: durationMs } : c,
         ),
       };
-      return Promise.resolve({ master, blob });
+      return Promise.resolve({ root, blob });
     },
     setShareLinkDuration: (_session, durationMs) => {
       const wantPublic = blob.sharingMode === "public";
@@ -157,11 +157,11 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
           a.isPublic === wantPublic ? { ...a, expiresAt: durationMs } : a,
         ),
       };
-      return Promise.resolve({ master, blob });
+      return Promise.resolve({ root, blob });
     },
     revokeAlias: (_session, aliasId) => {
       blob = { ...blob, aliases: blob.aliases.filter((a) => a.id !== aliasId) };
-      return Promise.resolve({ master, blob });
+      return Promise.resolve({ root, blob });
     },
     acceptContactInvite: () =>
       Promise.reject(new Error("not used in this test")),
@@ -173,7 +173,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       const circleId = `circle-${name}`;
       const circle = { id: circleId, name, memberContactIds };
       blob = { ...blob, circles: [...(blob.circles ?? []), circle] };
-      return Promise.resolve({ session: { master, blob }, circleId });
+      return Promise.resolve({ session: { root, blob }, circleId });
     },
     updateCircle: (_session, id, name, memberContactIds) => {
       blob = {
@@ -182,14 +182,14 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
           c.id === id ? { id, name, memberContactIds } : c,
         ),
       };
-      return Promise.resolve({ master, blob });
+      return Promise.resolve({ root, blob });
     },
     removeCircle: (_session, id) => {
       blob = {
         ...blob,
         circles: (blob.circles ?? []).filter((c) => c.id !== id),
       };
-      return Promise.resolve({ master, blob });
+      return Promise.resolve({ root, blob });
     },
     registerVanityName: () =>
       Promise.reject(new Error("not used in this test")),

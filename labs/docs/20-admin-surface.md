@@ -14,7 +14,7 @@ stated precisely so it is neither over-built nor over-trusted.
 
 ## The blind-store boundary (the load-bearing constraint)
 
-The server holds only opaque, client-encrypted ciphertext keyed to each owner's master key (docs 02/09).
+The server holds only opaque, client-encrypted ciphertext keyed to each owner's root key (docs 02/09).
 The admin secret does **not** unlock any of it. So:
 
 - **Admin CAN** act on server-side records: delete an account's blob + aliases (a working delete),

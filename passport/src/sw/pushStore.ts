@@ -5,7 +5,7 @@
  *
  * Stored in IndexedDB because a service worker cannot read localStorage. This is the
  * deliberate, user-approved trade (doc 13 slice 7): the inbox capabilities live at
- * rest outside the master-encrypted blob so a closed-app push can work. They are
+ * rest outside the root-encrypted blob so a closed-app push can work. They are
  * lower-sensitivity capabilities (they can read/clear the contentless "pending
  * nudge" bit, never who/what/when); the app writes the set on push-enable and clears
  * it on disable.

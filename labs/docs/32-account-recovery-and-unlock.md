@@ -11,8 +11,8 @@ still holds only ciphertext.
 
 ## The problem
 
-Today the **recovery phrase is the single root secret**: phrase derives the account key,
-and the account key derives the account id, the blob-encryption key, and the write token.
+Today the **recovery phrase is the single root secret**: phrase derives the root key,
+and the root key derives the account id, the blob-encryption key, and the write token.
 That is cryptographically excellent (the phrase is high-entropy, so the derived,
 server-visible account id leaks nothing and cannot be reversed), but it has one real
 cost: the phrase is the *only* durable way onto a new device, and a high-entropy token
@@ -28,53 +28,53 @@ but cannot close that gap, because meters measure heuristics, not real entropy, 
 "strong" human password is still far below a random token. So a password can only be
 safe if **nothing the server can see is derived from it**.
 
-## The model: the phrase-derived account key, wrapped by each factor
+## The model: the phrase-derived root key, wrapped by each factor
 
 This is mostly the model that already ships (see
-[24-stay-signed-in](24-stay-signed-in.md)): today the phrase derives the account key, the
-account id / blob key / write token derive from that account key, and the **passkey already
-wraps the account key** so a device can unlock without re-typing the phrase. That is already
+[24-stay-signed-in](24-stay-signed-in.md)): today the phrase derives the root key, the
+account id / blob key / write token derive from that root key, and the **passkey already
+wraps the root key** so a device can unlock without re-typing the phrase. That is already
 an envelope around a high-entropy root. The change here is small: add a **password
 envelope** alongside the passkey one, and name the pattern.
 
 So, deliberately NOT a redesign:
 
-- The **account key stays derived from the recovery phrase** (the existing PBKDF2 path), and
-  the **account id keeps deriving from that account key, exactly as today**. This matters for
+- The **root key stays derived from the recovery phrase** (the existing PBKDF2 path), and
+  the **account id keeps deriving from that root key, exactly as today**. This matters for
   two reasons: it keeps the server-visible account id a function of the high-entropy
   phrase and **never of the password** (so the always-present account id is not a
   password-cracking oracle), and it means **existing accounts need no migration** (their
   id derivation is unchanged).
-- Each enabled **factor encrypts its own copy of the account key** (an "envelope"); a device
-  opens any one envelope and recovers the account key.
+- Each enabled **factor encrypts its own copy of the root key** (an "envelope"); a device
+  opens any one envelope and recovers the root key.
 
-(A fully random account key, with the phrase demoted to just-another-envelope, is a cleaner
+(A fully random root key, with the phrase demoted to just-another-envelope, is a cleaner
 separation that would let the phrase rotate without changing the account id, but it
 forces a migration of every existing account, so it is a possible future step, not the
 default.)
 
 Factors:
 
-- **Recovery phrase** - derives the account key and is the high-entropy, unbreakable
+- **Recovery phrase** - derives the root key and is the high-entropy, unbreakable
   backstop. Always present.
-- **Passkey / biometric** - wraps the account key per device (biometrics are not a separate
+- **Passkey / biometric** - wraps the root key per device (biometrics are not a separate
   factor; they gate the passkey). Already shipped. Synced passkeys (platform keychains)
   already give cross-device continuity within one ecosystem for free.
 - **Password (opt-in)** - a memory-hard KDF of the password (Argon2id, per-account
-  random salt, a deliberately high cost) wraps the account key. Its wrapped-key envelope
+  random salt, a deliberately high cost) wraps the root key. Its wrapped-key envelope
   is stored server-side as ciphertext, so it works on any device: fetch the envelope,
-  unwrap with the password, recover the account key. This is the memorable, cross-device path
+  unwrap with the password, recover the root key. This is the memorable, cross-device path
   the product wants, and it is the same wrap pattern the passkey already uses, just
   stored server-side and keyed by a password instead of a passkey.
 
-Because the account id derives from the phrase-derived account key and **never from the
+Because the account id derives from the phrase-derived root key and **never from the
 password**, adding a password introduces no oracle on the always-present account id. The
 one thing an attacker can attack is a **stolen password envelope** itself, which is the
 weakest-link cost named next, not a new derivation oracle.
 
 ## The tradeoff to accept on purpose
 
-Multi-factor *unlock* is an OR: opening any envelope yields the account key, so the account
+Multi-factor *unlock* is an OR: opening any envelope yields the root key, so the account
 is only as strong as its **weakest enabled factor**. That is inherent to convenient
 recovery, not a flaw. It means:
 
@@ -96,7 +96,7 @@ the copy honest: the password is a convenience, **not the equal of the phrase**.
 - The phrase remains the high-entropy backstop and is always present, so a forgotten
   password never strands the account.
 - On-device resume ([24-stay-signed-in](24-stay-signed-in.md)) is unchanged: the
-  resumable account key still lives as a non-extractable key in IndexedDB.
+  resumable root key still lives as a non-extractable key in IndexedDB.
 
 ## Continuity, the actual goal
 
@@ -134,7 +134,7 @@ ideas, and where they land:
   a forced reset**. Mandatory scheduled rotation is the actual anti-pattern (it pushes
   people to weaker, predictable increments; NIST guidance is against it), so the
   yearly nudge must stay dismissible and never block use. Also rotate **on a signal of
-  compromise**. Rotating just re-wraps a fresh envelope; the account key and account id
+  compromise**. Rotating just re-wraps a fresh envelope; the root key and account id
   never change.
 
 ## Where this is managed
@@ -142,7 +142,7 @@ ideas, and where they land:
 Factors are added, viewed, and removed in **Settings** (see
 [31-app-shape](31-app-shape.md)): re-view the phrase, turn an optional password on or
 off (which mints or drops its envelope), and see which unlock methods are active.
-Changing the password re-wraps a fresh envelope; it never re-keys the account key, so links
+Changing the password re-wraps a fresh envelope; it never re-keys the root key, so links
 and the account id are untouched.
 
 ## Honesty (user-facing copy)
@@ -164,7 +164,7 @@ not accepted, without lecturing.
   envelopes; fetching one should be gated like any account read, so the envelope is not
   a freely harvestable target.
 - **Local PIN unlock - probably not needed.** A device-only PIN that unwraps the stored
-  account key is a separate convenience from the cross-device password, and biometrics /
+  root key is a separate convenience from the cross-device password, and biometrics /
   passkey already cover everyday device unlock, so a PIN mostly adds surface for little
   gain. The case for it is a device with no biometrics; absent that gap, lean toward
   dropping it rather than building it. It does not affect the envelope model either way.

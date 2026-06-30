@@ -52,11 +52,11 @@ change. The cost lives in five edges.
 
 | Edge | Web today | Native work | Risk |
 | --- | --- | --- | --- |
-| **Passkeys (WebAuthn + PRF)** | `navigator.credentials` with the PRF extension wrapping the account master ([passport/src/auth/passkey.ts](../../passport/src/auth/passkey.ts)) | iOS WKWebView WebAuthn is unreliable and PRF is bleeding-edge, so this needs a custom native plugin: ASAuthorization (iOS) and Credential Manager (Android), plus a native way to derive a PRF-equivalent secret to wrap the master key. May need a distinct native key-wrapping scheme. | **High. Spike this first.** |
+| **Passkeys (WebAuthn + PRF)** | `navigator.credentials` with the PRF extension wrapping the account root ([passport/src/auth/passkey.ts](../../passport/src/auth/passkey.ts)) | iOS WKWebView WebAuthn is unreliable and PRF is bleeding-edge, so this needs a custom native plugin: ASAuthorization (iOS) and Credential Manager (Android), plus a native way to derive a PRF-equivalent secret to wrap the root key. May need a distinct native key-wrapping scheme. | **High. Spike this first.** |
 | **Push** | Web Push / VAPID, with the service worker doing the contentless inbox-poll wake (doc 13) | Replace with APNs (iOS) and FCM (Android) via a push plugin. The contentless cover-broadcast design survives; the wake-then-poll logic moves from the worker into native push handlers. New key infra and Apple/Google config. | **Medium-high.** |
 | **Service worker / offline** | Precache + offline shell (doc 22 slices 1 to 3) | Mostly deleted. The native shell bundles assets, so the offline-shell role goes away. The worker's **push** role migrates to native (above). The encrypted-blob and outbound-queue (doc 22 slice 4) logic is plain JS and stays. | **Low-medium.** |
 | **QR camera scan** | `getUserMedia` + jsQR ([passport/src/ui/connect/QrScanner.tsx](../../passport/src/ui/connect/QrScanner.tsx)) | Works in the WebView with a camera permission string, or swap to a native scanner plugin for a better viewfinder. Add `NSCameraUsageDescription` and the Android camera permission. | **Low.** |
-| **Secure storage** | `localStorage` (credential id, wrapped master) plus IndexedDB | Move the wrapped master and any write tokens into iOS Keychain and Android Keystore instead of WebView storage, which is unencrypted at rest (the one caveat doc 09 already names). Higher bar matters more for a store app. | **Low-medium.** |
+| **Secure storage** | `localStorage` (credential id, wrapped root) plus IndexedDB | Move the wrapped root and any write tokens into iOS Keychain and Android Keystore instead of WebView storage, which is unencrypted at rest (the one caveat doc 09 already names). Higher bar matters more for a store app. | **Low-medium.** |
 
 Everything else (clipboard, QR generation, the recovery-phrase flow, all the screens) is free.
 
@@ -65,25 +65,25 @@ Everything else (clipboard, QR generation, the recovery-phrase flow, all the scr
 This is the auth seam, and it is where a multi-device product usually gets ugly. It does not have to
 here, because of one fact the code already enforces.
 
-**The account is the master key, not the passkey.** The account master is derived from the recovery
+**The account is the root key, not the passkey.** The account root is derived from the recovery
 phrase ([keyVault.ts](../../passport/src/auth/keyVault.ts), [the decisions log](02-decisions.md):
 the passphrase is the required, no-PII root, the only way back in). Everything else (account id, the
 blob key, write tokens) is HKDF'd from it. A passkey is explicitly **a second credential over the
-same account**: its WebAuthn PRF output only **wraps** a local copy of the master so a reload skips
+same account**: its WebAuthn PRF output only **wraps** a local copy of the root so a reload skips
 the phrase ([passkey.ts](../../passport/src/auth/passkey.ts), [deviceStore.ts](../../passport/src/auth/deviceStore.ts)
-store only `{credentialId, wrappedMaster}`). So "the same passkey on every device" is the wrong goal.
-Each device keeps **its own** local passkey wrapping the **same** master. Cross-device sign-in is
-therefore one small problem: get the master onto the new phone, then let that phone mint its own
+store only `{credentialId, wrappedRoot}`). So "the same passkey on every device" is the wrong goal.
+Each device keeps **its own** local passkey wrapping the **same** root. Cross-device sign-in is
+therefore one small problem: get the root onto the new phone, then let that phone mint its own
 passkey. A passkey is bound to a relying-party id and never crosses platforms, but that no longer
 matters, because it was never the thing we move.
 
 ### The design: "add a device" with one scan
 
 **Full design and threat model in [Cross-device sign-in](27-cross-device-sign-in.md); the summary
-here.** It is one scan: the old phone (already unlocked, so the master is in memory) shows a QR that
+here.** It is one scan: the old phone (already unlocked, so the root is in memory) shows a QR that
 carries the account, and the new phone scans it once and mints its own local passkey.
 
-1. **Old phone:** tap **"Add a device."** It shows a plain warning, then a QR carrying the master.
+1. **Old phone:** tap **"Add a device."** It shows a plain warning, then a QR carrying the root.
    Copy: **"Show this only to your own new phone. Anyone who scans it can get into your account."**
 2. **New phone:** choose **"Set up from another phone"** and scan, with the existing scanner
    ([QrScanner.tsx](../../passport/src/ui/connect/QrScanner.tsx)).
@@ -273,7 +273,7 @@ server**, so they fit the blind store unchanged.
 
 For your own second device, within one ecosystem **iCloud-Keychain passkey sync plus Handoff** can make
 pairing nearly automatic, often removing the QR entirely; the local transports above can also carry the
-**sealed** master behind the non-extractable re-unlock gate (doc 27).
+**sealed** root behind the non-extractable re-unlock gate (doc 27).
 
 ### Native surfaces beyond connect (each retires more of the 4.2 risk)
 
@@ -318,11 +318,11 @@ spike and the skeleton; 4 to 6 are the substance; 7 is store submission.
 2. **Passkey/PRF native spike (do this before committing a timeline).** Prove a WebAuthn-PRF-equivalent
    key-wrap works natively on iOS (ASAuthorization) and Android (Credential Manager). If clean, the
    rest is mechanical. If not, fall back to passphrase-unlock plus platform biometric-gated Keychain
-   storage of the wrapped master. This is the single highest-risk line item.
-3. **Secure storage migration.** Move the wrapped master and any write tokens into Keychain / Keystore
+   storage of the wrapped root. This is the single highest-risk line item.
+3. **Secure storage migration.** Move the wrapped root and any write tokens into Keychain / Keystore
    (edge 5). Closes the at-rest gap that matters more for a store app.
 4. **Cross-device sign-in (section C, doc 27).** The one-scan "add a device" flow: the old phone shows
-   a QR carrying the master behind a warning, the new phone scans it, verifies it opens a real account,
+   a QR carrying the root behind a warning, the new phone scans it, verifies it opens a real account,
    and enrolls its own passkey. No backend. Platform-agnostic, so it can land on web first and the
    native apps inherit it. Reuses the existing QR scan and generate primitives.
 5. **Native push.** APNs and FCM via a push plugin, with the contentless wake-then-poll logic moved
@@ -378,7 +378,7 @@ shipping on web ahead of the native work.
   apps. Decide whether they coexist or the store apps supersede the PWA on mobile, and keep them from
   implying different freshness or privacy rules to the user.
 - **PRF parity across platforms.** If the native PRF-equivalent secret differs in shape from the web
-  PRF output, the key-wrap scheme may diverge per platform. Keep the passphrase-derived master as the
+  PRF output, the key-wrap scheme may diverge per platform. Keep the passphrase-derived root as the
   single cross-platform root so a passkey is always only a local convenience, never a second root of
   trust.
 - **Push key infrastructure.** APNs and FCM are separate from VAPID and from each other. Decide
@@ -391,7 +391,7 @@ shipping on web ahead of the native work.
   rejection-and-resubmit round. Plan the launch calendar with that slack rather than assuming a
   first-pass approval.
 - **Cross-device belongs in the decisions log.** Section C (doc 27) sharpens the locked recovery-phrase
-  decision (the passphrase is the root) with a concrete second way onto a device that never weakens it: the master moves phone
+  decision (the passphrase is the root) with a concrete second way onto a device that never weakens it: the root moves phone
   to phone over the camera, never through a third party or an escrow. Worth a one-line decision entry,
   including the accepted trade that the one-scan code is a bearer secret in the recovery-phrase class,
   so a future reader does not reach for OAuth or a server-side reset to "fix" multi-device.

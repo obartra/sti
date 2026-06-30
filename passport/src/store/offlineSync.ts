@@ -9,10 +9,10 @@
  *    server. A push failure (offline, or a transient error) is NOT fatal: the edit
  *    is kept locally and the account is marked pending for a later drain. When
  *    online, the push is awaited, so the server stays current exactly as before.
- *  - drainBlob() re-pushes a pending blob on reconnect, with the master in hand
+ *  - drainBlob() re-pushes a pending blob on reconnect, with the root in hand
  *    (the worker has no key, so the drain runs in the foreground, doc 22 S1).
  *
- * The queue is the master-key-sealed local blob itself, coalesced to its latest
+ * The queue is the root-key-sealed local blob itself, coalesced to its latest
  * value: however many offline edits happen, one push backs them all up.
  *
  * Every push carries the optimistic-concurrency precondition (doc 22 S8): the server
@@ -30,7 +30,7 @@ import {
   deriveAccountKey,
   deriveAccountWriteToken,
   type Bytes,
-  type MasterKey,
+  type RootKey,
 } from "../crypto/index.ts";
 import {
   serializeAccountBlob,
@@ -45,9 +45,9 @@ import { nowMs } from "../core/clock.ts";
 
 export interface OfflineAccountSync extends AccountSync {
   /** The opaque, key-derived account id, to read its sync snapshot. */
-  accountId(master: MasterKey): Promise<string>;
+  accountId(root: RootKey): Promise<string>;
   /** Re-push the locally cached blob if it is pending; clears pending on success. */
-  drainBlob(master: MasterKey): Promise<void>;
+  drainBlob(root: RootKey): Promise<void>;
 }
 
 // The per-account derivations a push needs, bundled so the helpers stay small.
@@ -146,18 +146,18 @@ export function createOfflineAccountSync(
   local: LocalBlobStore,
   status: SyncStatus,
 ): OfflineAccountSync {
-  const derive = (master: MasterKey) =>
+  const derive = (root: RootKey) =>
     Promise.all([
-      deriveAccountId(master),
-      deriveAccountKey(master).then(importAesKey),
-      deriveAccountWriteToken(master),
+      deriveAccountId(root),
+      deriveAccountKey(root).then(importAesKey),
+      deriveAccountWriteToken(root),
     ]);
 
   const pushOrQueue = createPush(api, local, status);
 
   return {
-    async load(master) {
-      const [id, key] = await derive(master);
+    async load(root) {
+      const [id, key] = await derive(root);
       const readLocal = async (): Promise<AccountBlob | null> => {
         const ct = await local.get(id);
         return ct === null ? null : parseAccountBlob(await open(key, ct));
@@ -185,26 +185,26 @@ export function createOfflineAccountSync(
       }
     },
 
-    async save(master, blob) {
-      const [id, key, writeToken] = await derive(master);
+    async save(root, blob) {
+      const [id, key, writeToken] = await derive(root);
       const ct = await seal(key, serializeAccountBlob(blob));
       await local.put(id, ct); // durable local source of truth, first
       await pushOrQueue({ id, key, writeToken }, blob, ct);
     },
 
-    async remove(master) {
-      const [id, , writeToken] = await derive(master);
+    async remove(root) {
+      const [id, , writeToken] = await derive(root);
       await local.remove(id);
       await local.remove(baseKey(id));
       await api.deleteAccount(id, writeToken);
     },
 
-    accountId(master) {
-      return deriveAccountId(master);
+    accountId(root) {
+      return deriveAccountId(root);
     },
 
-    async drainBlob(master) {
-      const [id, key, writeToken] = await derive(master);
+    async drainBlob(root) {
+      const [id, key, writeToken] = await derive(root);
       if (!status.snapshot(id).pending) return;
       const ct = await local.get(id);
       if (ct === null) return;

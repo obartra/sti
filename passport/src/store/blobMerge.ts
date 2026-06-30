@@ -4,7 +4,7 @@
  * server refuses the stale push with a 409 (optimistic concurrency). The reconnecting
  * device then reloads the server's copy and merges its own edits onto it HERE, rather
  * than clobbering the other device's change. The blind server cannot merge (it only
- * holds ciphertext), so this runs client-side with the master key in hand.
+ * holds ciphertext), so this runs client-side with the root key in hand.
  *
  * It is a real 3-way merge: `base` is the last server state this device synced with
  * (the common ancestor), `mine` is this device's working copy, `theirs` is the
