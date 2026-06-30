@@ -48,35 +48,61 @@ export function findableNameFromPath(pathname: string): string | null {
   return normalizeVanityName(decoded);
 }
 
-// The canonical URL a screen normalizes to. Most screens are hash-routed off the
-// root (`/#home`), but a few public surfaces own a clean path: the landing IS the
-// root `/` (so visiting sti.care does not bounce to `/#a1-landing`), and `/promises`
-// is its own anonymous-reachable page. `/exposed` and a real `/a/{id}` link are left
-// untouched by the caller, so they are not handled here.
+// The clean path each screen owns. Every screen normalizes to a real path (no more
+// `/#screen` fragments) except the four that carry an id and are migrated to path
+// params in the next step: `a2-public` (`/a/{id}#k=`), `u-resolve` (`/u/{name}`),
+// `circle-detail`, and `learn-detail`, which still hash-route until then. The two
+// "privacy" surfaces resolve their old naming clash here: the Settings screen (id
+// `privacy`) is `/settings`, the privacy POLICY page (id `privacy-policy`) is
+// `/privacy`.
+const SCREEN_PATH: Partial<Record<Screen, string>> = {
+  "a1-landing": "/",
+  "a3-alert": "/alert",
+  exposed: "/exposed",
+  requests: "/requests",
+  "b1-claim": "/claim",
+  "b2-recovery": "/recovery",
+  "b3-setup": "/setup",
+  home: "/home",
+  connect: "/connect",
+  "alias-share": "/connect/share",
+  scan: "/connect/scan",
+  wallet: "/wallet",
+  care: "/care",
+  notifications: "/notifications",
+  "avatar-edit": "/avatar",
+  learn: "/care/learn",
+  "learn-uu": "/care/learn/uu",
+  circles: "/circles",
+  "circle-create": "/circles/new",
+  report: "/report",
+  "report-saved": "/report/saved",
+  privacy: "/settings",
+  promises: "/promises",
+  "privacy-policy": "/privacy",
+  terms: "/terms",
+  "share-link": "/share-link",
+};
+
+// The reverse lookup (path -> screen), built once from the single SCREEN_PATH source.
+const PATH_SCREEN: Record<string, Screen> = {};
+for (const screen of Object.keys(SCREEN_PATH) as Screen[]) {
+  const path = SCREEN_PATH[screen];
+  if (path !== undefined) PATH_SCREEN[path] = screen;
+}
+
+// The canonical URL a screen normalizes to: its clean path, or a transitional
+// `/#screen` fragment for the four still-parameterized screens (migrated next step).
 function canonicalUrl(screen: Screen): string {
-  if (screen === "a1-landing") return "/";
-  if (screen === "promises") return "/promises";
-  if (screen === "privacy-policy") return "/privacy";
-  if (screen === "terms") return "/terms";
-  if (screen === "share-link") return "/share-link";
-  return `/#${screen}`;
+  return SCREEN_PATH[screen] ?? `/#${screen}`;
 }
 
 // The canonical clean path a screen normalizes to, exported so the trust links can
 // render as real anchors (href + the SPA intercept) rather than `/#...` buttons.
 export const pathForScreen = canonicalUrl;
 
-// The public trust pages own clean, real paths (like /promises) so they read as
-// links, not `/#...` fragments, and so the browser back button returns to them.
-const CLEAN_PATHS: Record<string, Screen> = {
-  "/promises": "promises",
-  "/privacy": "privacy-policy",
-  "/terms": "terms",
-  "/share-link": "share-link",
-};
-
-// A screen can be deep-linked via the URL hash (#wallet, #circle-detail). Used
-// for internal shareable links and for the per-screen capture sweep.
+// A still-parameterized screen, or a legacy `/#screen` bookmark, deep-linked via the
+// URL hash. Transitional: once every screen owns a clean path this disappears.
 function routeFromHash(): Route | null {
   if (typeof window === "undefined") return null;
   const id = window.location.hash.replace(/^#\/?/, "");
@@ -85,38 +111,8 @@ function routeFromHash(): Route | null {
 
 // A real shared passport link is `/a/{id}#k={key}` (the SPA fallback serves the
 // app at that path). It resolves to a2-public carrying the id + key; the hash
-// here holds the decryption key, not a screen name.
-export function routeFromLocation(): Route | null {
-  if (typeof window === "undefined") return null;
-  // The public heads-up page (linked from the off-app text). Anonymous, no key.
-  if (/^\/exposed\/?$/.test(window.location.pathname)) {
-    return { screen: "exposed", group: "public", data: null };
-  }
-  // The public trust pages own clean paths (/promises, /privacy, /terms), each
-  // anonymous-reachable like /exposed. A trailing slash is tolerated.
-  const cleanPath = window.location.pathname.replace(/\/$/, "") || "/";
-  const cleanScreen = CLEAN_PATHS[cleanPath];
-  if (cleanScreen !== undefined) {
-    return { screen: cleanScreen, group: "public", data: null };
-  }
-  // A Findable name link `/u/{name}` (doc 17). Gated until launch; when on, route
-  // to the resolve step, which looks the name up and hands into the knock flow (a
-  // findable name carries no key, so it's the keyless gated path).
-  if (FINDABLE_ENABLED) {
-    const name = findableNameFromPath(window.location.pathname);
-    if (name !== null) {
-      return { screen: "u-resolve", group: "public", data: { name } };
-    }
-  }
-  return aliasRoute(window.location.pathname, window.location.hash);
-}
-
-// Resolve a shared alias link to its a2-public route, or fall through to hash
-// routing. A keyed `/a/{id}#k=` carries the decryption key (and maybe a contact
-// invite); a keyless `/a/{id}` is a gated "ask first" share (doc 16) that still
-// routes to a2-public so the viewer gets the ask-to-view flow rather than the
-// landing. A non-existent id resolves to the same gray-nothing, so neither leaks
-// whether the link exists.
+// here holds the decryption key, not a screen name. Returns null when the path is
+// not an alias link.
 function aliasRoute(pathname: string, hash: string): Route | null {
   const link = parseAliasLink(pathname, hash);
   if (link) {
@@ -136,7 +132,39 @@ function aliasRoute(pathname: string, hash: string): Route | null {
   if (keylessId !== null) {
     return { screen: "a2-public", group: "public", data: { id: keylessId } };
   }
-  return routeFromHash();
+  return null;
+}
+
+// The id-carrying links whose data lives in the URL: a `/u/{name}` findable link
+// (doc 17, gated) and a `/a/{id}#k=` shared alias link (id in path, key in the
+// fragment). Returns null when the location is neither.
+function parameterizedRoute(pathname: string, hash: string): Route | null {
+  if (FINDABLE_ENABLED) {
+    const name = findableNameFromPath(pathname);
+    if (name !== null) {
+      return { screen: "u-resolve", group: "public", data: { name } };
+    }
+  }
+  return aliasRoute(pathname, hash);
+}
+
+// Derive the current route from the URL, in priority order: an id-carrying link
+// (above), then a transitional `/#screen` hash (the still-parameterized screens +
+// legacy bookmarks, only ever at the root path, checked before the bare-root table
+// entry would read it as the landing), then the clean-path table (every
+// non-parameterized screen). Mount normalization replaces a hash with the clean path.
+export function routeFromLocation(): Route | null {
+  if (typeof window === "undefined") return null;
+  const { pathname, hash } = window.location;
+  const param = parameterizedRoute(pathname, hash);
+  if (param) return param;
+  const cleanPath = pathname.replace(/\/$/, "") || "/";
+  const hashed = cleanPath === "/" ? routeFromHash() : null;
+  if (hashed) return hashed;
+  const screen = PATH_SCREEN[cleanPath];
+  return screen !== undefined
+    ? { screen, group: groupOf(screen), data: null }
+    : null;
 }
 
 // Whether a screen owns its URL and must not be normalized away at mount: a shared

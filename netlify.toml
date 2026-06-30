@@ -6,10 +6,11 @@
   publish = "dist"
   command = "bash deploy/build-site.sh"
 
-# Single-Page-App fallback. The passport app is one page that routes by URL hash
-# (plus a few real paths like /promises and /exposed it reads itself), so any path
-# that isn't a real file serves the app's index.html. Real files (Storybook,
-# /assets/*) are served normally, because non-forced redirects never shadow them.
+# Single-Page-App fallback. The passport app is one page that routes by URL path
+# (every screen owns a clean path like /home, /settings, /circles, /u/{name}; it
+# reads them itself), so any path that isn't a real file serves the app's
+# index.html. Real files (Storybook, /assets/*) are served normally, because
+# non-forced redirects never shadow them.
 [[redirects]]
   from = "/*"
   to = "/index.html"
