@@ -1,8 +1,13 @@
 import type { Decorator, Meta, StoryObj } from "@storybook/react-vite";
 import { AdminPage } from "./AdminPage.tsx";
-import type { AdminAuditEntry, AdminPingResult } from "./adminApi.ts";
+import type {
+  AdminAuditEntry,
+  AdminMetrics,
+  AdminPingResult,
+} from "./adminApi.ts";
 import type { ReviewOps } from "./ReviewPanel.tsx";
 import type { AuditOps } from "./ActivityPanel.tsx";
+import type { MetricsOps } from "./MetricsPanel.tsx";
 
 // The operator surface (doc 20): a dedicated, gated /admin page isolated from the
 // user flows. The stories stub the token validator and the review transport so the
@@ -34,6 +39,19 @@ const reviewOps = (
 const auditOps = (entries: AdminAuditEntry[]): AuditOps => ({
   list: () => Promise.resolve({ kind: "ok", entries }),
 });
+
+const metricsOps = (metrics: AdminMetrics): MetricsOps => ({
+  get: () => Promise.resolve({ kind: "ok", metrics }),
+});
+
+const SAMPLE_METRICS: AdminMetrics = {
+  accounts: 1840,
+  aliases: 5210,
+  knocks: 37,
+  sendQueueDepth: 4,
+  dbSizeBytes: 18 * 1024 * 1024,
+  pendingReports: 2,
+};
 
 // Fixed UTC instants so the Activity panel's timestamps are deterministic.
 const SAMPLE_AUDIT: AdminAuditEntry[] = [
@@ -79,6 +97,7 @@ export const AuthedWithReports: Story = {
       { name: "free_money", reason: "spam", count: 1, createdAt: 2 },
     ]),
     auditOps: auditOps(SAMPLE_AUDIT),
+    metricsOps: metricsOps(SAMPLE_METRICS),
   },
   decorators: [seedToken],
 };
@@ -89,6 +108,14 @@ export const AuthedEmpty: Story = {
     ping: always("ok"),
     reviewOps: reviewOps([]),
     auditOps: auditOps([]),
+    metricsOps: metricsOps({
+      accounts: 0,
+      aliases: 0,
+      knocks: 0,
+      sendQueueDepth: 0,
+      dbSizeBytes: 0,
+      pendingReports: 0,
+    }),
   },
   decorators: [seedToken],
 };

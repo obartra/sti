@@ -4,6 +4,7 @@ import { Lock, ShieldCheck } from "../../design/icons.tsx";
 import { useMinWidth } from "../desktop/Desktop.tsx";
 import {
   actOnVanityName,
+  getAdminMetrics,
   listAdminAudit,
   listAdminReports,
   pingAdmin,
@@ -16,6 +17,7 @@ import {
 } from "./adminToken.ts";
 import { ReviewPanel, type ReviewOps } from "./ReviewPanel.tsx";
 import { ActivityPanel, type AuditOps } from "./ActivityPanel.tsx";
+import { MetricsPanel, type MetricsOps } from "./MetricsPanel.tsx";
 
 // The operator surface (doc 20): a dedicated, gated /admin page, isolated from the
 // user flows and never linked from the app. It renders nothing actionable until a
@@ -58,6 +60,11 @@ export interface AdminPageProps {
    * apiBase; injectable so tests and Storybook drive the panel without a server.
    */
   auditOps?: AuditOps;
+  /**
+   * Service-metrics transport (A5). Defaults to the real metrics endpoint bound to
+   * apiBase; injectable so tests and Storybook drive the panel without a server.
+   */
+  metricsOps?: MetricsOps;
 }
 
 // Build the panel transports: each defaults to the real admin endpoints bound to
@@ -67,7 +74,8 @@ function useAdminTransports(
   apiBase: string,
   reviewOps: ReviewOps | undefined,
   auditOps: AuditOps | undefined,
-): { ops: ReviewOps; audit: AuditOps } {
+  metricsOps: MetricsOps | undefined,
+): { ops: ReviewOps; audit: AuditOps; metrics: MetricsOps } {
   const ops = useMemo<ReviewOps>(
     () =>
       reviewOps ?? {
@@ -82,31 +90,27 @@ function useAdminTransports(
       auditOps ?? { list: (t, before) => listAdminAudit(apiBase, t, before) },
     [auditOps, apiBase],
   );
-  return { ops, audit };
+  const metrics = useMemo<MetricsOps>(
+    () => metricsOps ?? { get: (t) => getAdminMetrics(apiBase, t) },
+    [metricsOps, apiBase],
+  );
+  return { ops, audit, metrics };
 }
 
-export function AdminPage({
-  apiBase,
-  ping,
-  reviewOps,
-  auditOps,
-}: AdminPageProps) {
-  const validate = useCallback(
-    (token: string) => (ping ? ping(token) : pingAdmin(apiBase, token)),
-    [ping, apiBase],
-  );
-  const { ops, audit } = useAdminTransports(apiBase, reviewOps, auditOps);
-
+// The token-gate state machine, split out so AdminPage stays within its length
+// ceiling: the phase + token + error, the mount-time validate of a stored token,
+// the submit/lock/expire transitions, and the single applyResult that turns a ping
+// outcome into UI state so the mount and submit paths can never diverge.
+function useAdminGate(validate: (token: string) => Promise<AdminPingResult>) {
   const [phase, setPhase] = useState<Phase>("locked");
   const [token, setToken] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // The single place a ping result becomes UI state, so the mount and submit paths
-  // can't diverge: a valid token persists + shows the panel; a rejected token is
-  // cleared with a "wrong token" notice; a TRANSPORT failure keeps the token (a
-  // reload can still validate it once the service is reachable) and only shows the
-  // unreachable notice. A rejected promise is mapped to that same transport branch
-  // by the callers, so the gate can never get stuck mid-check.
+  // A valid token persists + shows the panel; a rejected token is cleared with a
+  // "wrong token" notice; a TRANSPORT failure keeps the token (a reload can still
+  // validate it once the service is reachable) and only shows the unreachable
+  // notice. Callers map a rejected promise to the transport branch, so the gate
+  // can never get stuck mid-check.
   const applyResult = useCallback(
     (candidate: string, result: AdminPingResult) => {
       if (result === "ok") {
@@ -126,10 +130,9 @@ export function AdminPage({
     [],
   );
 
-  // On mount, if a bearer is already stored for this tab, confirm it before showing
-  // anything. Guarded so a result after unmount is ignored (and so React
-  // StrictMode's double-mount can't race), and `.catch` maps an unexpectedly
-  // rejecting validator to the transport branch rather than a stuck spinner.
+  // On mount, confirm any token already stored for this tab before showing anything.
+  // Guarded against a post-unmount result (and StrictMode's double-mount), and
+  // `.catch` maps a rejecting validator to the transport branch, not a stuck spinner.
   useEffect(() => {
     const stored = readAdminToken();
     if (stored === null) return;
@@ -177,6 +180,29 @@ export function AdminPage({
     setPhase("locked");
   }, []);
 
+  return { phase, token, setToken, error, onSubmit, lock, expire };
+}
+
+export function AdminPage({
+  apiBase,
+  ping,
+  reviewOps,
+  auditOps,
+  metricsOps,
+}: AdminPageProps) {
+  const validate = useCallback(
+    (token: string) => (ping ? ping(token) : pingAdmin(apiBase, token)),
+    [ping, apiBase],
+  );
+  const { ops, audit, metrics } = useAdminTransports(
+    apiBase,
+    reviewOps,
+    auditOps,
+    metricsOps,
+  );
+  const { phase, token, setToken, error, onSubmit, lock, expire } =
+    useAdminGate(validate);
+
   // Admin bypasses the app's Chrome (it is an isolated takeover), so it owns its
   // own centered page frame rather than inheriting the consumer shell's.
   return (
@@ -206,6 +232,7 @@ export function AdminPage({
             token={token}
             ops={ops}
             auditOps={audit}
+            metricsOps={metrics}
             onLock={lock}
             onExpire={expire}
           />
@@ -295,12 +322,14 @@ function AuthedShell({
   token,
   ops,
   auditOps,
+  metricsOps,
   onLock,
   onExpire,
 }: {
   token: string;
   ops: ReviewOps;
   auditOps: AuditOps;
+  metricsOps: MetricsOps;
   onLock: () => void;
   onExpire: () => void;
 }) {
@@ -329,6 +358,9 @@ function AuthedShell({
           {COPY.lockAgain}
         </Button>
       </div>
+      {/* The metrics dashboard spans the full width above the review/activity row:
+          it is the at-a-glance health read, the panels below are the work queues. */}
+      <MetricsPanel token={token} ops={metricsOps} onUnauthorized={onExpire} />
       <div
         style={{
           display: "grid",

@@ -148,6 +148,66 @@ export async function listAdminAudit(
   }
 }
 
+// --- Service metrics (A5, doc 20) -------------------------------------------
+
+const ADMIN_METRICS_PATH = "/admin/metrics";
+
+/** Aggregate, identifier-free service totals (mirrors the server's
+ * AdminMetricsResponse). Every field is a count of opaque rows or a system size,
+ * never a per-account or per-id figure (doc 12 / doc 20 A5). */
+export interface AdminMetrics {
+  accounts: number;
+  aliases: number;
+  knocks: number;
+  sendQueueDepth: number;
+  dbSizeBytes: number;
+  pendingReports: number;
+}
+
+export type AdminMetricsResult =
+  | { kind: "ok"; metrics: AdminMetrics }
+  | { kind: "unauthorized" }
+  | { kind: "error" };
+
+const ZERO_METRICS: AdminMetrics = {
+  accounts: 0,
+  aliases: 0,
+  knocks: 0,
+  sendQueueDepth: 0,
+  dbSizeBytes: 0,
+  pendingReports: 0,
+};
+
+/**
+ * Fetch the aggregate service totals for the metrics panel. Same error shape as the
+ * other reads: 401 surfaces distinctly so the page can re-lock; any other non-200, a
+ * network failure, or a malformed body is a generic error the panel shows with a
+ * retry. A missing field defaults to 0 so a partial body never renders NaN.
+ */
+export async function getAdminMetrics(
+  apiBase: string,
+  token: string,
+  fetchImpl: FetchLike = (input, init) => globalThis.fetch(input, init),
+): Promise<AdminMetricsResult> {
+  let res: Response;
+  try {
+    res = await fetchImpl(apiBase + ADMIN_METRICS_PATH, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    return { kind: "error" };
+  }
+  if (res.status === 401) return { kind: "unauthorized" };
+  if (res.status !== 200) return { kind: "error" };
+  try {
+    const body = (await res.json()) as Partial<AdminMetrics>;
+    return { kind: "ok", metrics: { ...ZERO_METRICS, ...body } };
+  } catch {
+    return { kind: "error" };
+  }
+}
+
 export type AdminAction = "takedown" | "dismiss";
 export type AdminActionResult = "ok" | "unauthorized" | "error";
 

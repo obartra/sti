@@ -1,13 +1,20 @@
 import "./design/index.css";
 import "./app.css";
-import { StrictMode } from "react";
+import { StrictMode, Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
 import { Root } from "./ui/Root.tsx";
-import { AdminPage } from "./ui/admin/AdminPage.tsx";
 import { isAdminPath } from "./ui/admin/adminRoute.ts";
 import { API_BASE_URL } from "./config.ts";
 import { registerServiceWorker } from "./pwa/registerSw.ts";
 import { initInstallPrompt } from "./pwa/installPrompt.ts";
+
+// The operator surface loads as a separate async chunk (dynamic import), so its
+// weight (including the charting library the metrics panel uses) never lands in the
+// consumer app's precached offline shell (doc 22 budget; doc 20's "separate bundle"
+// intent). It is only fetched when someone actually visits /admin.
+const AdminPage = lazy(() =>
+  import("./ui/admin/AdminPage.tsx").then((m) => ({ default: m.AdminPage })),
+);
 
 const root = document.getElementById("root");
 if (!root) throw new Error("missing #root element");
@@ -17,7 +24,13 @@ if (!root) throw new Error("missing #root element");
 const admin = isAdminPath();
 createRoot(root).render(
   <StrictMode>
-    {admin ? <AdminPage apiBase={API_BASE_URL} /> : <Root />}
+    {admin ? (
+      <Suspense fallback={null}>
+        <AdminPage apiBase={API_BASE_URL} />
+      </Suspense>
+    ) : (
+      <Root />
+    )}
   </StrictMode>,
 );
 // The offline shell and the install affordance are for the consumer app only; the

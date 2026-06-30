@@ -5,6 +5,7 @@ import { AdminPage } from "./AdminPage.tsx";
 import type { AdminPingResult } from "./adminApi.ts";
 import type { ReviewOps } from "./ReviewPanel.tsx";
 import type { AuditOps } from "./ActivityPanel.tsx";
+import type { MetricsOps } from "./MetricsPanel.tsx";
 
 afterEach(() => {
   sessionStorage.clear();
@@ -26,6 +27,23 @@ const emptyAudit: AuditOps = {
   list: () => Promise.resolve({ kind: "ok", entries: [] }),
 };
 
+// The metrics panel loads on mount too; stub it for the same reason. Its own tests
+// cover the rendering.
+const emptyMetrics: MetricsOps = {
+  get: () =>
+    Promise.resolve({
+      kind: "ok",
+      metrics: {
+        accounts: 0,
+        aliases: 0,
+        knocks: 0,
+        sendQueueDepth: 0,
+        dbSizeBytes: 0,
+        pendingReports: 0,
+      },
+    }),
+};
+
 function renderPage(
   ping: (token: string) => Promise<AdminPingResult>,
   reviewOps: ReviewOps = emptyOps,
@@ -36,6 +54,7 @@ function renderPage(
       ping={ping}
       reviewOps={reviewOps}
       auditOps={emptyAudit}
+      metricsOps={emptyMetrics}
     />,
   );
 }
