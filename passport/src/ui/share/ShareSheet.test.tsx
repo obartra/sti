@@ -30,6 +30,24 @@ describe("ShareSheet link wiring", () => {
     expect(screen.queryByText(/a7f3k9q2/)).toBeNull();
   });
 
+  it("frames a public name link (/u/) as findable + ask-first, not direct view", () => {
+    render(
+      <ShareSheet
+        {...base}
+        sharingMode="public"
+        url="https://sti.care/u/meow"
+      />,
+    );
+    expect(screen.getByText("sti.care/u/meow")).toBeInTheDocument();
+    // The card calls it a public name and is honest that it is knock-gated, never
+    // the "anyone who scans sees this status" line used for the direct /a/ link.
+    expect(screen.getByText("Public name")).toBeInTheDocument();
+    expect(
+      screen.getByText(/find you by name and ask before they see your status/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Anyone who scans/)).toBeNull();
+  });
+
   it("Copy link invokes the real-link copy handler", () => {
     const onCopy = vi.fn();
     render(

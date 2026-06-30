@@ -141,7 +141,12 @@ One screen for every link you hand out:
 - **Your public profile** - the durable "anyone who scans sees my status" link and
   its QR. It stays live until you revoke it; it never carries an expiry (a public
   link that silently lapses is a trap). Taking it down is a revoke, or releasing its
-  public name, never a timer.
+  public name, never a timer. Sharing it **as yourself**, once you hold a public name,
+  hands out the recognizable `/u/{name}` link rather than an opaque `/a/{id}`; sharing
+  it **anonymously** hands out the opaque link. The named link is the findable one
+  (doc 17): it resolves by name and the viewer still asks before they see your status,
+  so the share surface labels it plainly instead of borrowing the "anyone who scans
+  sees this status" line.
 - **Private links** - one-off links you send to one person. These *can* expire (an
   hour to a month, or until revoked), because a one-off link sensibly lapses.
 - Each link shows its real URL and a scannable QR that reflect the actual link, with

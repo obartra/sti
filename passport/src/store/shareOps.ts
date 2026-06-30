@@ -31,6 +31,7 @@ import {
   republishCard,
   revokeAlias,
   aliasLinkUrl,
+  publicProfileUrl,
 } from "./publish.ts";
 import type {
   OwnerSession,
@@ -319,6 +320,16 @@ export async function shareLinkFor(
 ): Promise<ShareLinkResult> {
   const nowDay = todayEpochDay();
   const wantPublic = session.blob.sharingMode === "public";
+  // Sharing publicly AS yourself, with a claimed public name, hands out the
+  // findable /u/{name} link (doc 17): the recognizable, name-bearing link rather
+  // than an opaque /a/{id}. It resolves by name to the keyless findable alias the
+  // claim already published, so there is nothing to mint here, and a stranger still
+  // has to ask before seeing status. Anonymous public sharing keeps the direct
+  // /a/{id}#k link below (no name, opens straight to the status).
+  const findable = session.blob.findable;
+  if (wantPublic && identity === "main" && findable !== undefined) {
+    return { session, url: publicProfileUrl(findable.name) };
+  }
   const existing = primaryShareAlias(session.blob, wantPublic);
   if (existing !== undefined) {
     // Reuse keeps the existing alias's own identity (changing it = renewLink with a

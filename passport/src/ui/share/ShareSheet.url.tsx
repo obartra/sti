@@ -17,8 +17,10 @@ import { Matrix, downloadPNG } from "../../lib/qr.tsx";
 const COPY = {
   labelPublic: "Public profile",
   labelLink: "Private link",
+  labelName: "Public name",
   notePublic: "Anyone who scans sees just this status.",
   noteLink: "Only people you send this private link to can open it.",
+  noteName: "People find you by name and ask before they see your status.",
   copyLink: "Copy link",
   copied: "Copied",
   saveQr: "Save QR image",
@@ -100,7 +102,25 @@ function UrlThumb({
   );
 }
 
-function CardLabel({ link }: { link: boolean }): ReactElement {
+// The three link kinds the card can show: a private one-off link, the durable
+// anonymous public link, or the findable public-name (/u/) link.
+function cardLabel(link: boolean, named: boolean): string {
+  if (named) return COPY.labelName;
+  return link ? COPY.labelLink : COPY.labelPublic;
+}
+
+function cardNote(link: boolean, named: boolean): string {
+  if (named) return COPY.noteName;
+  return link ? COPY.noteLink : COPY.notePublic;
+}
+
+function CardLabel({
+  link,
+  named,
+}: {
+  link: boolean;
+  named: boolean;
+}): ReactElement {
   return (
     <div
       style={{
@@ -114,8 +134,7 @@ function CardLabel({ link }: { link: boolean }): ReactElement {
         gap: 6,
       }}
     >
-      {link ? <Link size={13} /> : <Globe size={13} />}{" "}
-      {link ? COPY.labelLink : COPY.labelPublic}
+      {link ? <Link size={13} /> : <Globe size={13} />} {cardLabel(link, named)}
     </div>
   );
 }
@@ -124,16 +143,18 @@ function CardLabel({ link }: { link: boolean }): ReactElement {
 // failure) a retry. Keeps the same row footprint so the sheet doesn't jump.
 function UrlStatusBody({
   link,
+  named,
   state,
   onRetry,
 }: {
   link: boolean;
+  named: boolean;
   state: "pending" | "error";
   onRetry: (() => void) | undefined;
 }): ReactElement {
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
-      <CardLabel link={link} />
+      <CardLabel link={link} named={named} />
       <div
         style={{
           fontSize: 13,
@@ -160,11 +181,13 @@ function UrlStatusBody({
 
 function UrlReadyBody({
   link,
+  named,
   url,
   seed,
   onCopy,
 }: {
   link: boolean;
+  named: boolean;
   url: string;
   seed: string;
   onCopy: (() => boolean) | undefined;
@@ -179,7 +202,7 @@ function UrlReadyBody({
   };
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
-      <CardLabel link={link} />
+      <CardLabel link={link} named={named} />
       <div
         style={{
           fontFamily: "var(--font-mono)",
@@ -199,7 +222,7 @@ function UrlReadyBody({
           marginBottom: 10,
         }}
       >
-        {link ? COPY.noteLink : COPY.notePublic}
+        {cardNote(link, named)}
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <Button
@@ -225,6 +248,12 @@ function UrlReadyBody({
   );
 }
 
+// Whether a ready display URL is the findable public-name link (`/u/{name}`), as
+// opposed to an opaque `/a/{id}` alias link. The scheme is already stripped.
+export function isNamedLink(url: string): boolean {
+  return /(^|\/)u\//.test(url);
+}
+
 export function UrlCard({
   link,
   state,
@@ -240,6 +269,7 @@ export function UrlCard({
   onCopy: (() => boolean) | undefined;
   onRetry: (() => void) | undefined;
 }): ReactElement {
+  const named = urlReady(state) && isNamedLink(url);
   return (
     <div
       style={{
@@ -254,9 +284,20 @@ export function UrlCard({
     >
       <UrlThumb state={state} url={url} seed={seed} />
       {urlReady(state) ? (
-        <UrlReadyBody link={link} url={url} seed={seed} onCopy={onCopy} />
+        <UrlReadyBody
+          link={link}
+          named={named}
+          url={url}
+          seed={seed}
+          onCopy={onCopy}
+        />
       ) : (
-        <UrlStatusBody link={link} state={state} onRetry={onRetry} />
+        <UrlStatusBody
+          link={link}
+          named={named}
+          state={state}
+          onRetry={onRetry}
+        />
       )}
     </div>
   );
