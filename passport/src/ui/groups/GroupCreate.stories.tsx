@@ -1,15 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { CircleCreate } from "./CircleCreate.tsx";
+import { GroupCreate } from "./GroupCreate.tsx";
 import type { ContactRecord } from "../../store/accountBlob.ts";
 
 // Create a circle: name it and pick from your existing contacts. The primary CTA
 // is disabled until a name is entered. With no contacts, a prompt to link first.
-const meta: Meta<typeof CircleCreate> = {
-  title: "Passport/Circles/Create",
-  component: CircleCreate,
+const meta: Meta<typeof GroupCreate> = {
+  title: "Passport/Groups/Create",
+  component: GroupCreate,
 };
 export default meta;
-type Story = StoryObj<typeof CircleCreate>;
+type Story = StoryObj<typeof GroupCreate>;
 
 function contact(id: string, label: string): ContactRecord {
   return {

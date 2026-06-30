@@ -67,18 +67,18 @@ function PickRow({ contact, checked, onToggle }: PickRowProps) {
   );
 }
 
-export interface CircleCreateProps {
+export interface GroupCreateProps {
   contacts: ContactRecord[];
-  /** When present, the screen edits this circle (prefilled) instead of creating. */
+  /** When present, the screen edits this group (prefilled) instead of creating. */
   existing?: CircleRecord | undefined;
   onCreate?: ((name: string, memberContactIds: string[]) => void) | undefined;
 }
 
-export function CircleCreate({
+export function GroupCreate({
   contacts,
   existing,
   onCreate,
-}: CircleCreateProps) {
+}: GroupCreateProps) {
   const editing = existing !== undefined;
   const [name, setName] = useState(existing?.name ?? "");
   const [selected, setSelected] = useState<ReadonlySet<string>>(

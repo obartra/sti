@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
-import { CircleCreate } from "./CircleCreate.tsx";
+import { GroupCreate } from "./GroupCreate.tsx";
 import type { ContactRecord } from "../../store/accountBlob.ts";
 
 function contact(id: string, label: string): ContactRecord {
@@ -16,11 +16,11 @@ function contact(id: string, label: string): ContactRecord {
 
 const contacts = [contact("a", "sam"), contact("b", "ari")];
 
-describe("CircleCreate", () => {
+describe("GroupCreate", () => {
   it("creates: name + ticked contacts, CTA disabled until a name", async () => {
     const user = userEvent.setup();
     const onCreate = vi.fn();
-    render(<CircleCreate contacts={contacts} onCreate={onCreate} />);
+    render(<GroupCreate contacts={contacts} onCreate={onCreate} />);
 
     expect(screen.getByText("Create a group")).toBeInTheDocument();
     const cta = screen.getByRole("button", { name: "Create group" });
@@ -38,7 +38,7 @@ describe("CircleCreate", () => {
     const user = userEvent.setup();
     const onCreate = vi.fn();
     render(
-      <CircleCreate
+      <GroupCreate
         contacts={contacts}
         existing={{ id: "c1", name: "Thursday crew", memberContactIds: ["a"] }}
         onCreate={onCreate}

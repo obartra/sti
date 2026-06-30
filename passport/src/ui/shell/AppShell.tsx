@@ -16,14 +16,14 @@ import "./app-shell.css";
 const cx = (...parts: (string | false | undefined)[]) =>
   parts.filter(Boolean).join(" ");
 
-export type TabId = "home" | "connect" | "circles" | "care";
+export type TabId = "home" | "connect" | "groups" | "care";
 
 // Order, labels, and icons reproduced from shell.jsx TabBar + copy.js nav.
 const TABS: { id: TabId; label: string; Icon: (p: IconProps) => ReactNode }[] =
   [
     { id: "home", label: "Passport", Icon: Passport },
     { id: "connect", label: "Connect", Icon: Users },
-    { id: "circles", label: "Groups", Icon: Circles },
+    { id: "groups", label: "Groups", Icon: Circles },
     { id: "care", label: "Care", Icon: Care },
   ];
 

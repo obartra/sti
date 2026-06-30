@@ -103,7 +103,7 @@ function Roster({ members }: { members: CircleRosterMember[] }) {
   );
 }
 
-export interface CircleDetailProps {
+export interface GroupDetailProps {
   circle: CircleRecord;
   contacts: ContactRecord[];
   resolveAlias: PassportStore["resolveAlias"];
@@ -111,13 +111,13 @@ export interface CircleDetailProps {
   onDelete?: (() => void) | undefined;
 }
 
-export function CircleDetail({
+export function GroupDetail({
   circle,
   contacts,
   resolveAlias,
   onEdit,
   onDelete,
-}: CircleDetailProps) {
+}: GroupDetailProps) {
   const [roster, setRoster] = useState<RosterState>("loading");
 
   useEffect(() => {

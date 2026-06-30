@@ -8,7 +8,7 @@ import { trustRenderers } from "./trustScreens.tsx";
 import { reportRenderers } from "./reportScreens.tsx";
 import { connectRenderers } from "./connectScreens.tsx";
 import { learnRenderers } from "./learnScreens.tsx";
-import { circleRenderers } from "./circleScreens.tsx";
+import { groupRenderers } from "./groupScreens.tsx";
 
 const RENDERERS: ScreenRenderers = {
   ...publicRenderers,
@@ -18,7 +18,7 @@ const RENDERERS: ScreenRenderers = {
   ...reportRenderers,
   ...connectRenderers,
   ...learnRenderers,
-  ...circleRenderers,
+  ...groupRenderers,
 };
 
 // Render the component for the current screen with its wired props. Home is the

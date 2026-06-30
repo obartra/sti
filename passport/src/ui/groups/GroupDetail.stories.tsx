@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { CircleDetail } from "./CircleDetail.tsx";
+import { GroupDetail } from "./GroupDetail.tsx";
 import type { CircleRecord, ContactRecord } from "../../store/accountBlob.ts";
 import type { PassportStore } from "../../store/index.ts";
 import type { ResolvedView } from "../public/PublicResolution.tsx";
@@ -7,12 +7,12 @@ import type { ResolvedView } from "../public/PublicResolution.tsx";
 // Group detail: a header, the member roster (shown at any size, no hide floor),
 // and a delete control. Meaningful states: a larger resolved roster (mixed
 // blue/gray) and a small group, which now shows its roster just the same.
-const meta: Meta<typeof CircleDetail> = {
-  title: "Passport/Circles/Detail",
-  component: CircleDetail,
+const meta: Meta<typeof GroupDetail> = {
+  title: "Passport/Groups/Detail",
+  component: GroupDetail,
 };
 export default meta;
-type Story = StoryObj<typeof CircleDetail>;
+type Story = StoryObj<typeof GroupDetail>;
 
 function contact(id: string, label: string, blue: boolean): ContactRecord {
   return {

@@ -1,17 +1,17 @@
-import { CirclesList } from "../../circles/CirclesList.tsx";
-import { CircleCreate } from "../../circles/CircleCreate.tsx";
-import { CircleDetail } from "../../circles/CircleDetail.tsx";
+import { GroupsList } from "../../groups/GroupsList.tsx";
+import { GroupCreate } from "../../groups/GroupCreate.tsx";
+import { GroupDetail } from "../../groups/GroupDetail.tsx";
 import type { ScreenRenderers } from "./context.ts";
 
-export const circleRenderers: ScreenRenderers = {
-  circles: ({ nav, circles }) => (
-    <CirclesList
+export const groupRenderers: ScreenRenderers = {
+  groups: ({ nav, circles }) => (
+    <GroupsList
       circles={circles}
-      onCreate={() => nav.go("circle-create")}
-      onOpenCircle={(id) => nav.go("circle-detail", { id })}
+      onCreate={() => nav.go("group-create")}
+      onOpenGroup={(id) => nav.go("group-detail", { id })}
     />
   ),
-  "circle-create": ({
+  "group-create": ({
     nav,
     data,
     circles,
@@ -24,50 +24,43 @@ export const circleRenderers: ScreenRenderers = {
       ? circles.find((c) => c.id === data.id)
       : undefined;
     return (
-      <CircleCreate
+      <GroupCreate
         contacts={contacts}
         existing={existing}
         onCreate={(name, memberContactIds) => {
           if (existing) {
             onUpdateCircle(existing.id, name, memberContactIds);
-            nav.go("circle-detail", { id: existing.id });
+            nav.go("group-detail", { id: existing.id });
           } else {
             void onCreateCircle(name, memberContactIds).then((id) => {
-              nav.go("circle-detail", { id });
+              nav.go("group-detail", { id });
             });
           }
         }}
       />
     );
   },
-  "circle-detail": ({
-    nav,
-    data,
-    circles,
-    contacts,
-    store,
-    onRemoveCircle,
-  }) => {
+  "group-detail": ({ nav, data, circles, contacts, store, onRemoveCircle }) => {
     const circle = circles.find((c) => c.id === data?.id);
     if (circle === undefined) {
       // The circle was deleted (or a stale deep link): fall back to the list.
       return (
-        <CirclesList
+        <GroupsList
           circles={circles}
-          onCreate={() => nav.go("circle-create")}
-          onOpenCircle={(id) => nav.go("circle-detail", { id })}
+          onCreate={() => nav.go("group-create")}
+          onOpenGroup={(id) => nav.go("group-detail", { id })}
         />
       );
     }
     return (
-      <CircleDetail
+      <GroupDetail
         circle={circle}
         contacts={contacts}
         resolveAlias={(link) => store.resolveAlias(link)}
-        onEdit={() => nav.go("circle-create", { id: circle.id })}
+        onEdit={() => nav.go("group-create", { id: circle.id })}
         onDelete={() => {
           onRemoveCircle(circle.id);
-          nav.go("circles");
+          nav.go("groups");
         }}
       />
     );

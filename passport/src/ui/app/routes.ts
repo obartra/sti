@@ -24,9 +24,9 @@ export const ALL_SCREENS = [
   "learn",
   "learn-detail",
   "learn-uu",
-  "circles",
-  "circle-create",
-  "circle-detail",
+  "groups",
+  "group-create",
+  "group-detail",
   "report",
   "report-saved",
   "privacy",
@@ -44,7 +44,7 @@ export function isScreen(s: string): s is Screen {
 
 export type Group = "public" | "onboard" | "app";
 
-// Extra payload a navigation can carry (an article id, a circle id, the
+// Extra payload a navigation can carry (an article id, a group id, the
 // login/self/preview flags). Kept loose; each screen reads only what it needs.
 export interface RouteData {
   id?: string;
@@ -83,7 +83,7 @@ const PUBLIC: readonly Screen[] = [
 const ONBOARD: readonly Screen[] = ["b1-claim", "b2-recovery", "b3-setup"];
 
 // The bottom tab bar (mobile) / sidebar (desktop) destinations.
-export const TABS = ["home", "connect", "circles", "care"] as const;
+export const TABS = ["home", "connect", "groups", "care"] as const;
 export type Tab = (typeof TABS)[number];
 
 export function groupOf(screen: Screen): Group {
@@ -107,8 +107,8 @@ const SECTION: Partial<Record<Screen, Tab>> = {
   "avatar-edit": "home",
   "a3-alert": "home",
   "alias-share": "connect",
-  "circle-create": "circles",
-  "circle-detail": "circles",
+  "group-create": "groups",
+  "group-detail": "groups",
   learn: "care",
   "learn-detail": "care",
   "learn-uu": "care",
