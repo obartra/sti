@@ -110,12 +110,14 @@ ideas, and where they land:
   is always the backstop, forgetting the password is not terminal, so this is a
   **recovery rehearsal, not a lockout**. It nudges, it does not strand. Biometrics still
   handle everyday unlock between rehearsals, so this is rare, not a tax on each open.
-- **Forced calendar rotation (no).** A yearly "you must change your password" is an
-  anti-pattern: scheduled rotation pushes people to weaker, predictable variants and
-  buys little. Current guidance (NIST) is explicit against it. Instead, rotate **on a
-  signal of compromise**, and offer an **optional** "review your security" nudge rather
-  than a mandatory reset. If a password is rotated, it just re-wraps a fresh envelope;
-  the master and the account id never change.
+- **A once-a-year reminder (fine, with one line drawn).** A single, simple
+  notification shown only if a password is set and unchanged for 365 days, suggesting a
+  refresh, is harmless and worth having. The one line to hold: it is a **reminder, not
+  a forced reset**. Mandatory scheduled rotation is the actual anti-pattern (it pushes
+  people to weaker, predictable increments; NIST guidance is against it), so the
+  yearly nudge must stay dismissible and never block use. Also rotate **on a signal of
+  compromise**. Rotating just re-wraps a fresh envelope; the master and account id
+  never change.
 
 ## Where this is managed
 

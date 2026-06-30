@@ -52,16 +52,51 @@ This replaces today's `home / connect / circles / care` bar: Connect and Circles
 merge into **People**, **Links** gets a first-class home instead of living inside
 Privacy, and Privacy becomes **Settings**.
 
-## Identity: a name, and link faces
+## Identity: faces are the privacy engine
 
-The owner is just **a name they chose for us to call them by** - the local display
-name from sign-up. There is no owner avatar and no owner profile picture: the person
-does not have a face in the product, only a name. Faces belong to **links**, not to
-people. A public profile or a private link can carry its own avatar (the per-link
-identity in [15-per-alias-identity](15-per-alias-identity.md)), so what a viewer sees
-is the face the owner chose *for that link*, anonymous by default. This keeps the one
-identifiable thing (the name) minimal and puts every visual identity where it is
-actually shared and controlled: on the link.
+Handles are no longer a side feature; they are the core of how privacy works now, so
+they need one coherent model used the same way on every surface. The mechanism lives
+in [15-per-alias-identity](15-per-alias-identity.md); this is the product shape over it.
+
+**One private name, never shared.** The owner has a single **name they chose for us to
+call them by** (the sign-up display name). It is local: it powers the greeting and is
+the fallback for a connection's private label, and it is never sent to anyone. The
+owner has **no avatar**; the person has a name, not a face.
+
+**Every time you share, you pick a face.** A "face" is how you appear on one shared
+thing (a public profile, a private link, a group). It is one of two kinds:
+
+- **You** - your main identity (a name you choose to show plus an avatar), recognizable
+  on purpose.
+- **A fresh anonymous face** - a minted handle (@invisible_otter_35) and an id-derived
+  avatar, unlinkable from you and from your other anonymous faces.
+
+The control is **identical everywhere you share** - same words ("show as: a new
+anonymous handle, or you"), same default (anonymous), same place (in the share or join
+step, never a separate "set up a handle first" detour). The share sheet already works
+this way; the proposal is that the public-profile claim and the group-join use the
+exact same control and language, so it is one concept learned once.
+
+**Where faces are managed.**
+
+- **Creation is in-context.** You choose the face at the moment you make the link or
+  join the group. There is no global "create a handle" screen, because a handle only
+  means something attached to a thing you are sharing.
+- **A "your handles" list in Settings is for review and cleanup, not creation.** It
+  shows each active face and the one thing it is attached to, and lets you retire one.
+  It must not nudge reuse, because reusing a face across two contexts is exactly what
+  links them.
+- **The public name is the single exception** - the one openly-listed, opt-in,
+  inherently-linkable identifier (that is its job). It is claimed and released in
+  Settings. Everything else defaults to unlinkable.
+
+**Consistency rules that keep it intuitive:** same control and default on every share
+surface; avatars are always per-face, never per-person (matching "no owner avatar");
+the private name is never a face and never leaves the device. The open question worth
+resolving before building is whether an anonymous face is **fresh per connection**
+(maximally unlinkable, but a person who reconnects to you cannot recognize you) or
+**stable per person** (recognizable to that one person, linkable only if they collude),
+which is the doc 18 decorrelation tradeoff applied to 1:1 links.
 
 ## Home
 
@@ -171,10 +206,14 @@ What that means concretely:
   Those exclusion-coded surfaces are out (this agrees with the Circles target already
   in [07-screen-by-screen-build-guide](07-screen-by-screen-build-guide.md) §F). The
   event view is a quiet glance at colors, not a bouncer.
-- **A privacy floor stays.** A group still hides every status until it has at least a
-  few members (the existing minimum, ~5), so a tiny group never turns one gray dot
-  into a guess about one person. Every roster also carries the standing "there may be
-  others here you cannot see" note, so absence is never readable as exclusion.
+- **No minimum group size.** Earlier circles hid statuses until a group had ~5
+  members, to stop a tiny roster from outing one person. That floor made sense only
+  in the old model where being listed was not itself an explicit act of sharing. Here
+  it is: joining a group *is* consenting to show your color to its members, so there
+  is nothing to protect with a headcount, and "why do I care how many people are in
+  the group" is the right instinct. A two-person group is fine; both chose to share.
+  The full roster is visible to its members (there are no hidden members), so there is
+  also no "others you cannot see" notice to carry.
 - **Leaving and being removed look identical** to everyone else, with no mark and no
   reason shown. The person affected can tell their own access ended; no one else can.
 
@@ -256,8 +295,11 @@ informed choice rather than a surprise:
   [18-sibling-alias-decorrelation](18-sibling-alias-decorrelation.md)) without being
   forced on everyone.
 
-The minimum group size and the "there may be others you cannot see" notice still apply,
-so a tiny group never outs one person.
+There is no minimum group size and no hidden-members notice: joining is itself the act
+of sharing your color to the group, so a headcount protects nothing (see Groups). The
+context caveat is the real one to respect: a color in a group named for a specific
+place or event carries more than a color alone, so group names should not be forced to
+be descriptive.
 
 ## Open questions (do not block; resolve before building)
 
