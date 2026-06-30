@@ -1,0 +1,21 @@
+# Inclusive-language gate, powered by woke (https://github.com/get-woke/woke).
+#
+# We use woke's built-in default ruleset rather than a hand-maintained word list,
+# so the set of terms tracks the wider community instead of whatever we happened
+# to think of. Run locally with `make inclusive-language`; it is part of
+# `make check-root`, so it gates every CI run. The version is pinned in the
+# Makefile (WOKE_VERSION) and invoked with `go run`, so there is no binary to
+# install.
+#
+# Notes:
+# - "blind" is intentionally NOT flagged: it is a core, meaningful product term
+#   (the blind-store boundary), and woke's defaults do not list it.
+# - The frozen crypto domain-separation constants in passport/src/crypto/keys.ts
+#   carry "master-key" in their VALUE. woke's defaults do not flag a standalone
+#   "master", so they need no exemption; we only ignore generated lock files,
+#   whose base64 integrity hashes trip random substring matches (e.g. "...GuYS...").
+ignore_files:
+  - "**/package-lock.json"
+  - "**/*.snap"
+  - storybook-static/**
+  - passport/dist/**
