@@ -50,8 +50,8 @@ export function findableNameFromPath(pathname: string): string | null {
 
 // The fixed clean path each non-parameterized screen owns. The id-carrying screens
 // are not here; they build a path param from route data (`paramPath`): `a2-public`
-// (`/a/{id}#k=`), `u-resolve` (`/u/{name}`), `circle-detail` (`/circles/{id}`),
-// `circle-create` edit (`/circles/{id}/edit`), `learn-detail` (`/care/learn/{id}`).
+// (`/a/{id}#k=`), `u-resolve` (`/u/{name}`), `group-detail` (`/groups/{id}`),
+// `group-create` edit (`/groups/{id}/edit`), `learn-detail` (`/care/learn/{id}`).
 // The two "privacy" surfaces resolve their old naming clash here: the Settings
 // screen (id `privacy`) is `/settings`, the privacy POLICY page (id
 // `privacy-policy`) is `/privacy`.
@@ -73,8 +73,8 @@ const SCREEN_PATH: Partial<Record<Screen, string>> = {
   "avatar-edit": "/avatar",
   learn: "/care/learn",
   "learn-uu": "/care/learn/uu",
-  circles: "/circles",
-  "circle-create": "/circles/new",
+  groups: "/groups",
+  "group-create": "/groups/new",
   report: "/report",
   "report-saved": "/report/saved",
   privacy: "/settings",
@@ -92,15 +92,15 @@ for (const screen of Object.keys(SCREEN_PATH) as Screen[]) {
 }
 
 // The path an id-carrying screen builds from its route data, or null when the screen
-// has no param (or the datum is missing): `/u/{name}`, `/circles/{id}`,
-// `/circles/{id}/edit`, `/care/learn/{id}`.
+// has no param (or the datum is missing): `/u/{name}`, `/groups/{id}`,
+// `/groups/{id}/edit`, `/care/learn/{id}`.
 function paramPath(screen: Screen, data: RouteData | null): string | null {
   if (data === null) return null;
   if (screen === "u-resolve" && data.name) {
     return `/u/${encodeURIComponent(data.name)}`;
   }
-  if (screen === "circle-create" && data.id) return `/circles/${data.id}/edit`;
-  if (screen === "circle-detail" && data.id) return `/circles/${data.id}`;
+  if (screen === "group-create" && data.id) return `/groups/${data.id}/edit`;
+  if (screen === "group-detail" && data.id) return `/groups/${data.id}`;
   if (screen === "learn-detail" && data.id) return `/care/learn/${data.id}`;
   return null;
 }
@@ -127,16 +127,15 @@ const COLD_REDIRECT: Record<string, Screen> = {
   "/report/saved": "home",
 };
 
-// The id-carrying app paths: `/circles/{id}`, `/circles/{id}/edit`,
-// `/care/learn/{id}`. Checked after the exact table so `/circles/new` and
+// The id-carrying app paths: `/groups/{id}`, `/groups/{id}/edit`,
+// `/care/learn/{id}`. Checked after the exact table so `/groups/new` and
 // `/care/learn/uu` (real screens) are not mistaken for ids.
 function pathParamRoute(cleanPath: string): Route | null {
-  const edit = /^\/circles\/([^/]+)\/edit$/.exec(cleanPath)?.[1];
-  if (edit)
-    return { screen: "circle-create", group: "app", data: { id: edit } };
-  const circle = /^\/circles\/([^/]+)$/.exec(cleanPath)?.[1];
+  const edit = /^\/groups\/([^/]+)\/edit$/.exec(cleanPath)?.[1];
+  if (edit) return { screen: "group-create", group: "app", data: { id: edit } };
+  const circle = /^\/groups\/([^/]+)$/.exec(cleanPath)?.[1];
   if (circle)
-    return { screen: "circle-detail", group: "app", data: { id: circle } };
+    return { screen: "group-detail", group: "app", data: { id: circle } };
   const article = /^\/care\/learn\/([^/]+)$/.exec(cleanPath)?.[1];
   if (article)
     return { screen: "learn-detail", group: "app", data: { id: article } };

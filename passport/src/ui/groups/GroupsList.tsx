@@ -71,17 +71,17 @@ function EmptyState({ onCreate }: EmptyStateProps) {
   );
 }
 
-interface CircleRowProps {
+interface GroupRowProps {
   circle: CircleRecord;
-  onOpenCircle?: ((id: string) => void) | undefined;
+  onOpenGroup?: ((id: string) => void) | undefined;
 }
 
-function CircleRow({ circle, onOpenCircle }: CircleRowProps) {
+function GroupRow({ circle, onOpenGroup }: GroupRowProps) {
   return (
     <Card
       pad="sm"
       variant="interactive"
-      onClick={() => onOpenCircle?.(circle.id)}
+      onClick={() => onOpenGroup?.(circle.id)}
       style={{
         display: "flex",
         alignItems: "center",
@@ -136,17 +136,17 @@ function CircleRow({ circle, onOpenCircle }: CircleRowProps) {
   );
 }
 
-export interface CirclesListProps {
+export interface GroupsListProps {
   circles: CircleRecord[];
   onCreate?: (() => void) | undefined;
-  onOpenCircle?: ((id: string) => void) | undefined;
+  onOpenGroup?: ((id: string) => void) | undefined;
 }
 
-export function CirclesList({
+export function GroupsList({
   circles,
   onCreate,
-  onOpenCircle,
-}: CirclesListProps) {
+  onOpenGroup,
+}: GroupsListProps) {
   return (
     <div
       style={{
@@ -205,7 +205,7 @@ export function CirclesList({
           }}
         >
           {circles.map((c) => (
-            <CircleRow key={c.id} circle={c} onOpenCircle={onOpenCircle} />
+            <GroupRow key={c.id} circle={c} onOpenGroup={onOpenGroup} />
           ))}
         </div>
       )}

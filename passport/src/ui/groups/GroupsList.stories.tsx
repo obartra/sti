@@ -1,15 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { CirclesList } from "./CirclesList.tsx";
+import { GroupsList } from "./GroupsList.tsx";
 import type { CircleRecord } from "../../store/accountBlob.ts";
 
 // The circles list: one row per private grouping (name + member count).
 // Meaningful states: a populated list and the empty state.
-const meta: Meta<typeof CirclesList> = {
-  title: "Passport/Circles/List",
-  component: CirclesList,
+const meta: Meta<typeof GroupsList> = {
+  title: "Passport/Groups/List",
+  component: GroupsList,
 };
 export default meta;
-type Story = StoryObj<typeof CirclesList>;
+type Story = StoryObj<typeof GroupsList>;
 
 const circles: CircleRecord[] = [
   {

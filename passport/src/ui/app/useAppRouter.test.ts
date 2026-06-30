@@ -194,12 +194,12 @@ describe("parameterized deep-links and cold-hit redirects", () => {
   });
 
   it("round-trips id-carrying app paths", () => {
-    expect(routeAt("/circles/abc123")).toMatchObject({
-      screen: "circle-detail",
+    expect(routeAt("/groups/abc123")).toMatchObject({
+      screen: "group-detail",
       data: { id: "abc123" },
     });
-    expect(routeAt("/circles/abc123/edit")).toMatchObject({
-      screen: "circle-create",
+    expect(routeAt("/groups/abc123/edit")).toMatchObject({
+      screen: "group-create",
       data: { id: "abc123" },
     });
     expect(routeAt("/care/learn/prep")).toMatchObject({
@@ -208,9 +208,9 @@ describe("parameterized deep-links and cold-hit redirects", () => {
     });
   });
 
-  it("does not mistake the fixed /circles/new and /care/learn/uu for ids", () => {
-    expect(routeAt("/circles/new")?.screen).toBe("circle-create");
-    expect(routeAt("/circles/new")?.data).toBeNull();
+  it("does not mistake the fixed /groups/new and /care/learn/uu for ids", () => {
+    expect(routeAt("/groups/new")?.screen).toBe("group-create");
+    expect(routeAt("/groups/new")?.data).toBeNull();
     expect(routeAt("/care/learn/uu")?.screen).toBe("learn-uu");
   });
 
@@ -222,13 +222,13 @@ describe("parameterized deep-links and cold-hit redirects", () => {
     expect(routeAt("/report/saved")?.screen).toBe("home");
   });
 
-  it("normalizes a circle-detail nav to /circles/{id}", async () => {
-    window.history.replaceState(null, "", "/circles");
+  it("normalizes a group-detail nav to /groups/{id}", async () => {
+    window.history.replaceState(null, "", "/groups");
     try {
       const { result } = renderHook(() => useAppRouter());
-      act(() => result.current.nav.go("circle-detail", { id: "xyz" }));
+      act(() => result.current.nav.go("group-detail", { id: "xyz" }));
       await waitFor(() => {
-        expect(window.location.pathname).toBe("/circles/xyz");
+        expect(window.location.pathname).toBe("/groups/xyz");
       });
       expect(result.current.route.data?.id).toBe("xyz");
     } finally {
@@ -249,8 +249,8 @@ describe("every screen owns a clean path", () => {
 
   it("routes app screens from their clean paths", () => {
     expect(routeAt("/home")?.screen).toBe("home");
-    expect(routeAt("/circles")?.screen).toBe("circles");
-    expect(routeAt("/circles/new")?.screen).toBe("circle-create");
+    expect(routeAt("/groups")?.screen).toBe("groups");
+    expect(routeAt("/groups/new")?.screen).toBe("group-create");
     expect(routeAt("/care/learn")?.screen).toBe("learn");
     expect(routeAt("/care/learn/uu")?.screen).toBe("learn-uu");
     expect(routeAt("/connect/share")?.screen).toBe("alias-share");
