@@ -4,9 +4,9 @@
  * on demand from the authenticator. The credential id is non-secret and kept
  * locally.
  *
- * RECOVERY MODEL: the account master stays recoverable by the recovery PHRASE
+ * RECOVERY MODEL: the account root stays recoverable by the recovery PHRASE
  * (the one substitute for a lost passkey, per the data doc). This adapter only
- * yields the PRF output; auth/keyVault uses it to WRAP a phrase-derived master,
+ * yields the PRF output; auth/keyVault uses it to WRAP a phrase-derived root,
  * so the passkey is a second credential over the same account, never a standalone
  * one. Onboarding must never create a passkey-only account (an unrecoverable
  * lockout on passkey loss).
@@ -28,7 +28,7 @@ import {
 export interface EnrolledPasskey {
   /** base64url of the credential rawId; non-secret, stored locally. */
   readonly credentialId: string;
-  /** The PRF output, used to wrap/unwrap the account master (auth/keyVault). */
+  /** The PRF output, used to wrap/unwrap the account root (auth/keyVault). */
   readonly prfOutput: Bytes;
 }
 

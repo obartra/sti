@@ -9,11 +9,11 @@ import type {
 } from "../../store/index.ts";
 import { INITIAL_OWNER_STATE } from "../../core/badge.ts";
 import { DEFAULT_AVATAR } from "../../lib/avatars.ts";
-import { fakeMasterKey } from "../../test-support/phrase.ts";
+import { fakeRootKey } from "../../test-support/phrase.ts";
 
 function sessionWithAlias(aliasId: string): OwnerSession {
   return {
-    master: fakeMasterKey(),
+    root: fakeRootKey(),
     blob: {
       handle: "robin",
       aliases: [

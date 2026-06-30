@@ -55,7 +55,7 @@ describe("Promises page", () => {
     );
     expect(screen.queryAllByText(/^tested$/)).toHaveLength(tested);
 
-    // Sanity-check the grouping helper stays wired to the same data.
+    // Double-check the grouping helper stays wired to the same data.
     expect(promisesOf(0).length).toBeGreaterThan(0);
   });
 });

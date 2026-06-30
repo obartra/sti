@@ -73,7 +73,7 @@ How "not ready" is handled without a warning state.
 ## 4. Circles (groups)
 
 - A **convenience layer over pairwise links** — not a live mutual-status feed, not a "clean club." Permanent or event-based.
-- **Minimum group size (~5)** for group-level status communication, so nothing narrows to one or two people. No counts ("3 of 5" outs by elimination), no leaderboards; joining/leaving/skipping looks ordinary.
+- **Membership is the sharing; no minimum group size** (supersedes the earlier ~5 floor, see doc 31). Joining a group is itself consenting to show your blue/gray color to its members, so a headcount protects nothing. No counts ("3 of 5" outs by elimination), no leaderboards, no door; joining/leaving/skipping looks ordinary. The one residual to respect: a color in a group named for a specific place or event carries more than a bare color, so group names are not forced to be descriptive.
 - **Per-group handle visibility** (private by default). Every group carries a universal "there may be additional private members" notice, so private membership is uninformative.
 - **Membership disclosure is per-person:** revealing a group exists never reveals its members; each member discloses only their own.
 - **The individual controls their own status disclosure in a group; the GROUP never overrides it.** There is no group-level switch that makes members' statuses visible (that would expose a member beyond their own choice and invert the consent model). Each member's status visibility inside a circle is that member's own setting. Any group-display preference can only ever operate *within* what each member already chose to share (it can hide, never reveal beyond the individual's setting). The min-group-5 rule is a separate anti-deanonymization floor that only ever *hides*. (Build note: a group-level "what members see: each person's status / hide statuses" toggle is drift and must be removed.)
@@ -365,4 +365,4 @@ add the wallet/widget entry as a fast-follow. The widget recipe is a documented 
 - "Current active infection" definition (clinical; HSV/HPV never permanently gray; syphilis serofast vs reinfection).
 - Label-display residual (condoms-without-umbrella implies HIV-negative); confirm acceptable.
 - Notification: push recipient-set mitigation (broadcast wake + uniform poll); draft-window length + send-cycle cadence.
-- Shared-view date granularity; minimum group size (~5); scan auto-share default.
+- Shared-view date granularity; scan auto-share default. (Minimum group size is closed: no floor, see doc 31.)

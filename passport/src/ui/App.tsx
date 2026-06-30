@@ -37,9 +37,9 @@ import {
   type StorageLike,
 } from "../auth/deviceStore.ts";
 import {
-  browserMasterKeyStore,
-  createVolatileMasterKeyStore,
-} from "../auth/masterKeyStore.ts";
+  browserRootKeyStore,
+  createVolatileRootKeyStore,
+} from "../auth/rootKeyStore.ts";
 import type { AliasRecord } from "../store/index.ts";
 import { webAuthnPasskey } from "../auth/passkey.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
@@ -65,7 +65,7 @@ function volatileStorage(): StorageLike {
 }
 
 // The offline-tolerant account sync (doc 22 slice 4): the owner's blob is cached
-// in a master-key-sealed local store, so the app works offline and an offline edit
+// in a root-key-sealed local store, so the app works offline and an offline edit
 // is durable, backing up to the server when connectivity returns. syncStatus drives
 // the not-backed-up marker; both are module-level so the App component and the
 // controller share one instance.
@@ -84,7 +84,7 @@ const backendController = createSessionController({
   sync: offlineSync,
   devices: browserDeviceStore() ?? createDeviceStore(volatileStorage()),
   passkey: webAuthnPasskey(),
-  keys: browserMasterKeyStore() ?? createVolatileMasterKeyStore(),
+  keys: browserRootKeyStore() ?? createVolatileRootKeyStore(),
   api,
 });
 
@@ -178,6 +178,8 @@ export function App({
   // The share sheet: opening it mints/refreshes the owner's primary alias.
   const {
     shareUrl,
+    shareError,
+    retryShareLink,
     setShareOpen: handleSetShareOpen,
     copyShareLink,
     revokeLink,
@@ -253,6 +255,8 @@ export function App({
         shareOpen={shareOpen}
         setShareOpen={handleSetShareOpen}
         shareUrl={shareUrl}
+        shareError={shareError}
+        onRetryShareLink={retryShareLink}
         onCopyShareLink={copyShareLink}
         onRevokeShareLink={revokeLink}
         shareIdentity={shareIdentity}

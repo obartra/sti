@@ -8,7 +8,7 @@ import type {
   ContactLinkResult,
   PassportStore,
 } from "../../store/index.ts";
-import { fakeMasterKey } from "../../test-support/phrase.ts";
+import { fakeRootKey } from "../../test-support/phrase.ts";
 import { avatarFor } from "../../lib/avatars.ts";
 
 const LINK = { id: "A".repeat(43), key: "B".repeat(43) };
@@ -161,7 +161,7 @@ describe("PublicResolutionScreen", () => {
     const onAcceptInvite = vi.fn(
       (): Promise<ContactLinkResult> =>
         Promise.resolve({
-          session: { master: fakeMasterKey(), blob: {} as never },
+          session: { root: fakeRootKey(), blob: {} as never },
           contact: {} as never,
           url: returnUrl,
         }),

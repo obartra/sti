@@ -117,13 +117,18 @@ In both modes, the server never sees the status, the AES key, the handle, or the
   (volume, the salted per-device `requesterHash`) and that a knock was answered (the grant-slot
   linkability limit, doc 13). No status, no key, no card content.
 
-## Durations and revocation (confirmed, unchanged from June 21)
+## Durations and revocation
 
 Duration is a property of the link/capability, not a per-viewer timer.
 
+- **Expiry is a private-link affordance only.** A public profile is the durable "anyone who scans
+  sees my status" surface, so it never carries a server expiry: it is taken down by revoking it or
+  releasing its public name, never a timer. Everything else in this section is about **private
+  links**. (Enforced in the publish layer: a public alias is always written with no expiry. See
+  doc 31.)
 - **v1 supports updatable per-link duration + immediate revoke.** The owner can extend or shorten
-  a link's lifetime at any time and can revoke immediately (overwrite the payload to garbage, drop
-  the record). Nothing is immutable.
+  a private link's lifetime at any time and can revoke immediately (overwrite the payload to
+  garbage, drop the record). Nothing is immutable.
 - **Expiry is an absolute timestamp (epoch ms), so it can be sub-day.** Durations are presets the
   owner picks (e.g. 1 hour, 24 hours, 7 days, 30 days, or no expiry); the link's `expiresAt` is
   `now + preset` at the moment it is set.

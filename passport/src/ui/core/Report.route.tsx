@@ -6,8 +6,9 @@ import type { ReportPreview } from "../../core/report.ts";
 
 // A single "what blue needs" requirement row: a met/unmet marker, a title, and a
 // one-line why. Met is an accent check; unmet is a neutral hollow ring, never a
-// red cross (this is guidance toward blue, not an error).
-function CheckRow({
+// red cross (this is guidance toward blue, not an error). Shared with the Home
+// "where you stand" card.
+export function CheckRow({
   met,
   title,
   sub,

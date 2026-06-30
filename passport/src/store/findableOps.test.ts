@@ -74,7 +74,7 @@ async function freshSession(api: ApiClient): Promise<{
 }> {
   const accounts = createAccountManager(api);
   const created = await accounts.create("robin");
-  return { accounts, session: { master: created.master, blob: created.blob } };
+  return { accounts, session: { root: created.root, blob: created.blob } };
 }
 
 describe("registerVanityName", () => {
@@ -186,7 +186,7 @@ describe("releaseVanityName", () => {
     const accounts = createAccountManager(api);
     const created = await accounts.create("robin");
     const session: OwnerSession = {
-      master: created.master,
+      root: created.root,
       blob: created.blob,
     };
     const claimed = (await registerVanityName(api, accounts, session, "robin"))

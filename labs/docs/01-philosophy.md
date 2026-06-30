@@ -21,7 +21,7 @@ We design as if all of these are adversaries:
 - **A viewer** trying to infer someone's diagnosis from what they see.
 - **Us / the server** — we hold infrastructure, so we make ourselves *unable* to read the sensitive data rather than promising not to look.
 - **A breach or subpoena** — anything we store can be stolen or compelled; the goal is that what we hold is useless if taken.
-- **Other group members** — being in a group must not let anyone out the others.
+- **Other group members.** A group shows only the color each member chose to share by joining it; being in a group is itself that choice, and a group never reveals a member who did not join.
 - **An identity provider / carrier** — we minimize what any third party learns.
 - **A patient scraper** — someone polling a public badge over time to build a history.
 

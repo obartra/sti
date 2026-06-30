@@ -10,7 +10,7 @@ import { reconnectJitterMs } from "../../lib/jitter.ts";
 /**
  * Surfaces whether this device holds owner edits the server has not received yet,
  * and drains them when connectivity returns (doc 22 slice 4). The drain runs in the
- * foreground with the master in hand (the worker has no key, doc 22 S1): it
+ * foreground with the root in hand (the worker has no key, doc 22 S1): it
  * re-applies the current state (a no-op change) through `setOwnerState`, which
  * re-pushes the blob and republishes the badge. Returns `pending` for the
  * not-backed-up affordance.
@@ -33,7 +33,7 @@ export function useBackupSync(
       return;
     }
     let alive = true;
-    void offlineSync.accountId(session.master).then((id) => {
+    void offlineSync.accountId(session.root).then((id) => {
       if (alive) setAccountId(id);
     });
     return () => {

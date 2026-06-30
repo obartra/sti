@@ -89,11 +89,11 @@ export async function registerVanityName(
   }
   // One atomic write: the alias and its registration land together, so the alias is
   // never recorded without the registration that hides it from the live-links list.
-  const blob = await accounts.recordFindable(session.master, alias, {
+  const blob = await accounts.recordFindable(session.root, alias, {
     name,
     aliasId: alias.id,
   });
-  return { session: { master: session.master, blob }, result };
+  return { session: { root: session.root, blob }, result };
 }
 
 /**
@@ -122,8 +122,8 @@ export async function releaseVanityName(
     // holding the bare alias id). Throwing keeps the alias + registration in place;
     // a retry re-releases (idempotent on the server's 404) and re-revokes.
     await revokeAlias(api, alias);
-    await accounts.removeAlias(session.master, alias.id);
+    await accounts.removeAlias(session.root, alias.id);
   }
-  const blob = await accounts.setFindable(session.master, null);
-  return { master: session.master, blob };
+  const blob = await accounts.setFindable(session.root, null);
+  return { root: session.root, blob };
 }

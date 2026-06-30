@@ -94,7 +94,8 @@ surveilled? Is this a tool you'd want to exist?
 
 Groups let people share status within a trusted set and get anonymous "go test" nudges if
 someone tests positive. I've kept them mutual-care, not exclusionary (no rankings, no counts,
-joining/leaving looks ordinary, private membership by default).
+joining/leaving looks ordinary; being in a group is itself the sharing, and you join under a
+handle you choose).
 
 **Question:** does a group construct inevitably drift toward "you have to be blue to belong" —
 a serosorting club — no matter how it's framed? Where's the line between "we look out for each

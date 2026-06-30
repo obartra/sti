@@ -12,7 +12,7 @@ import type { AliasIdentity } from "../../store/index.ts";
 const COPY = {
   anonymous: "Anonymous",
   main: "Show my name",
-  warn: "Anyone you share this with can recognize you, and can connect it to your other links.",
+  warn: "If you show your name on this link, anyone who receives it can recognize you and connect it to your other shares.",
 } as const;
 
 /**

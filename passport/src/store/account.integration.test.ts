@@ -61,7 +61,7 @@ describe("account lifecycle against a live blind store", () => {
   it("persists a profile change (avatar + sharing) across recovery", async () => {
     const created = await accounts.create("robin");
     const avatar = { hair: 2, mood: 1, skin: 1, hairColor: 5, beard: 1 };
-    await accounts.setProfile(created.master, {
+    await accounts.setProfile(created.root, {
       avatar,
       sharingMode: "public",
     });
@@ -98,8 +98,8 @@ describe("account lifecycle against a live blind store", () => {
       (rec) => deriveAliasCard(created.blob.state, rec, NOW_DAY),
       { isPublic: false },
     );
-    await accounts.addAlias(created.master, alias.record);
-    await accounts.addContact(created.master, {
+    await accounts.addAlias(created.root, alias.record);
+    await accounts.addContact(created.root, {
       id: "L".repeat(43),
       label: "",
       createdDay: 0,
@@ -121,7 +121,7 @@ describe("account lifecycle against a live blind store", () => {
     expect(aliasFace.avatar).toBeUndefined();
 
     // Edit the main identity's avatar (and sharing default). The badge is untouched.
-    await accounts.setProfile(created.master, {
+    await accounts.setProfile(created.root, {
       avatar: newAvatar,
       sharingMode: "public",
     });
@@ -142,7 +142,7 @@ describe("account lifecycle against a live blind store", () => {
 
   it("records an alias that survives a fresh recovery", async () => {
     const created = await accounts.create("sam");
-    await accounts.addAlias(created.master, record);
+    await accounts.addAlias(created.root, record);
 
     const recovered = await accounts.recover(created.recoveryPhrase);
     expect(recovered?.blob.aliases).toEqual([record]);
@@ -163,7 +163,7 @@ describe("account lifecycle against a live blind store", () => {
       (rec) => deriveAliasCard(created.blob.state, rec, NOW_DAY),
       { isPublic: true },
     );
-    await accounts.addAlias(created.master, {
+    await accounts.addAlias(created.root, {
       ...live.record,
       expiresAt: 1,
     });
@@ -173,7 +173,7 @@ describe("account lifecycle against a live blind store", () => {
     // The next state change sweeps the expired alias: it is dropped from the
     // blob and its link no longer resolves.
     const after = await accounts.setOwnerState(
-      created.master,
+      created.root,
       INITIAL_OWNER_STATE,
     );
     expect(after.aliases).toHaveLength(0);
@@ -188,13 +188,13 @@ describe("account lifecycle against a live blind store", () => {
       (rec) => deriveAliasCard(created.blob.state, rec, NOW_DAY),
       { isPublic: true },
     );
-    await accounts.addAlias(created.master, { ...live.record, expiresAt: 1 });
+    await accounts.addAlias(created.root, { ...live.record, expiresAt: 1 });
     const caps = { id: live.record.id, key: live.record.key };
     expect(await store.resolveAlias(caps)).not.toBeNull();
 
     // A bare load-time sweep (no setOwnerState) revokes + drops the expired link,
     // closing the passive-owner gap.
-    const swept = await accounts.sweepExpiredLinks(created.master);
+    const swept = await accounts.sweepExpiredLinks(created.root);
     expect(swept.aliases).toHaveLength(0);
     expect(await store.resolveAlias(caps)).toBeNull();
   });
@@ -202,8 +202,8 @@ describe("account lifecycle against a live blind store", () => {
   it("sweepExpiredLinks is a no-op when nothing is expired (live link untouched)", async () => {
     const future = nowMs() + 30 * DAY_MS; // safely live vs the real now the sweep uses
     const created = await accounts.create("wren");
-    await accounts.addAlias(created.master, { ...record, expiresAt: future });
-    const swept = await accounts.sweepExpiredLinks(created.master);
+    await accounts.addAlias(created.root, { ...record, expiresAt: future });
+    const swept = await accounts.sweepExpiredLinks(created.root);
     expect(swept.aliases).toHaveLength(1);
     expect(swept.aliases[0]?.expiresAt).toBe(future);
   });

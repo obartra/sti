@@ -97,7 +97,7 @@ export function useOnboarding(
         // Bind a passkey so reload can resume without the phrase. Best-effort:
         // a declined or unavailable passkey still enters (the phrase recovers).
         // enrollPasskey re-derives the wrap key from the phrase (doc 24), so pass
-        // the in-memory phrase rather than the session's non-extractable master.
+        // the in-memory phrase rather than the session's non-extractable root.
         try {
           await controller.enrollPasskey(
             current.recoveryPhrase,

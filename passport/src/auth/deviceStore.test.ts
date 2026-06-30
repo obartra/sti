@@ -20,7 +20,7 @@ function memoryStorage(): StorageLike & { map: Map<string, string> } {
 
 const CRED: DeviceCredential = {
   credentialId: "cred-abc",
-  wrappedMaster: "d3JhcHBlZA",
+  wrappedRoot: "d3JhcHBlZA",
 };
 
 describe("device store", () => {
@@ -49,7 +49,7 @@ describe("device store", () => {
     expect(raw === null ? null : JSON.parse(raw)).toEqual({
       v: 1,
       credentialId: CRED.credentialId,
-      wrappedMaster: CRED.wrappedMaster,
+      wrappedRoot: CRED.wrappedRoot,
     });
   });
 
@@ -63,7 +63,7 @@ describe("device store", () => {
     const mem = memoryStorage();
     mem.map.set(
       "sti.device.v1",
-      JSON.stringify({ v: 2, credentialId: "x", wrappedMaster: "y" }),
+      JSON.stringify({ v: 2, credentialId: "x", wrappedRoot: "y" }),
     );
     expect(createDeviceStore(mem).load()).toBeNull();
   });
@@ -72,10 +72,10 @@ describe("device store", () => {
     const mem = memoryStorage();
     for (const bad of [
       { v: 1, credentialId: "x" },
-      { v: 1, wrappedMaster: "y" },
-      { v: 1, credentialId: "", wrappedMaster: "y" },
-      { v: 1, credentialId: "x", wrappedMaster: "" },
-      { v: 1, credentialId: 7, wrappedMaster: "y" },
+      { v: 1, wrappedRoot: "y" },
+      { v: 1, credentialId: "", wrappedRoot: "y" },
+      { v: 1, credentialId: "x", wrappedRoot: "" },
+      { v: 1, credentialId: 7, wrappedRoot: "y" },
     ]) {
       mem.map.set("sti.device.v1", JSON.stringify(bad));
       expect(createDeviceStore(mem).load()).toBeNull();

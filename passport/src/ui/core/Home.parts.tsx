@@ -258,15 +258,15 @@ function QuickTile({
   );
 }
 
-// The calm-fold quick actions: three compact tiles instead of a stacked card
-// list, so the fold stays short and the badge keeps the focus.
+// The calm-fold quick actions: compact tiles so the fold stays short and the badge
+// keeps the focus. There is no "Preview" tile: previewing what others see is folded
+// into the share surface (its top is the viewer's-eye card), so it never competes
+// with sharing as a separate action.
 export function QuickActionsRow({
   onReport,
-  onViewAs,
   onPrivacy,
 }: {
   onReport: (() => void) | undefined;
-  onViewAs: (() => void) | undefined;
   onPrivacy: (() => void) | undefined;
 }) {
   return (
@@ -276,7 +276,6 @@ export function QuickActionsRow({
         label="Add result"
         onClick={onReport}
       />
-      <QuickTile icon={<Eye size={20} />} label="Preview" onClick={onViewAs} />
       <QuickTile
         icon={<Lock size={20} />}
         label="Privacy"

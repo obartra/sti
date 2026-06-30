@@ -38,8 +38,8 @@ import { createDeviceStore, type StorageLike } from "../auth/deviceStore.ts";
 import type { PasskeyAuth } from "../auth/passkey.ts";
 import type { AliasRecord } from "./accountBlob.ts";
 import type { AliasLink } from "./passportStore.ts";
-import { type Bytes, type MasterKey } from "../crypto/index.ts";
-import { createVolatileMasterKeyStore } from "../auth/masterKeyStore.ts";
+import { type Bytes, type RootKey } from "../crypto/index.ts";
+import { createVolatileRootKeyStore } from "../auth/rootKeyStore.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { startApi, type Harness } from "../test-support/serverHarness.ts";
 
@@ -101,7 +101,7 @@ describe("owner session against a live blind store", () => {
         sync: createAccountSync(api),
         devices,
         passkey,
-        keys: createVolatileMasterKeyStore(),
+        keys: createVolatileRootKeyStore(),
         api,
       }),
       devices,
@@ -122,7 +122,7 @@ describe("owner session against a live blind store", () => {
     // A reload: the same passkey + the persisted binding reload the account blob
     // through the live server.
     const resumed = await ctl.resume();
-    expect(resumed?.master).toEqual(session.master);
+    expect(resumed?.root).toEqual(session.root);
     expect(resumed?.blob).toEqual(session.blob);
   });
 
@@ -276,8 +276,8 @@ describe("owner session against a live blind store", () => {
       },
       theirNotify,
     };
-    const blob = await accounts.addContact(session.master, contact);
-    const linked = { master: session.master, blob };
+    const blob = await accounts.addContact(session.root, contact);
+    const linked = { root: session.root, blob };
 
     // Before the report, the contact's inbox is an existence-uniform decoy.
     expect(await pollInbox(api, theirNotify)).toBeNull();
@@ -313,11 +313,8 @@ describe("owner session against a live blind store", () => {
       },
       myInbox: adaInboxForBen,
     };
-    const recipientBlob = await accounts.addContact(
-      ada.master,
-      recipientContact,
-    );
-    const recipient = { master: ada.master, blob: recipientBlob };
+    const recipientBlob = await accounts.addContact(ada.root, recipientContact);
+    const recipient = { root: ada.root, blob: recipientBlob };
 
     // Before any ping the poll over her inboxes is an existence-uniform decoy.
     expect(await ctl.hasPartnerNudge(recipient)).toBe(false);
@@ -338,9 +335,9 @@ describe("owner session against a live blind store", () => {
       },
       theirNotify: adaInboxForBen,
     };
-    const senderBlob = await accounts.addContact(sender.master, contact);
+    const senderBlob = await accounts.addContact(sender.root, contact);
     await ctl.notifyContactsOfPositive({
-      master: sender.master,
+      root: sender.root,
       blob: senderBlob,
     });
 
@@ -445,7 +442,7 @@ describe("owner session against a live blind store", () => {
     const { ctl } = controller(fakePasskey());
     const { session, recoveryPhrase } = await ctl.signUp("sam");
     const recovered = await ctl.recover(recoveryPhrase);
-    expect(recovered?.master).toEqual(session.master);
+    expect(recovered?.root).toEqual(session.root);
     expect(recovered?.blob).toEqual(session.blob);
   });
 
@@ -827,7 +824,7 @@ describe("owner session against a live blind store", () => {
       sync: createAccountSync(gatedApi),
       devices: createDeviceStore(memoryStorage()),
       passkey: fakePasskey(),
-      keys: createVolatileMasterKeyStore(),
+      keys: createVolatileRootKeyStore(),
       api: gatedApi,
     });
 
@@ -864,17 +861,17 @@ describe("owner session against a live blind store", () => {
     let failRemove = true;
     const accounts = {
       ...realAccounts,
-      removeAlias: (master: MasterKey, id: string) =>
+      removeAlias: (root: RootKey, id: string) =>
         failRemove
           ? Promise.reject(new Error("remove failed"))
-          : realAccounts.removeAlias(master, id),
+          : realAccounts.removeAlias(root, id),
     };
     const ctl = createSessionController({
       accounts,
       sync: createAccountSync(api),
       devices: createDeviceStore(memoryStorage()),
       passkey: fakePasskey(),
-      keys: createVolatileMasterKeyStore(),
+      keys: createVolatileRootKeyStore(),
       api,
     });
 

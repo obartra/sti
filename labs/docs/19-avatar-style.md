@@ -22,7 +22,14 @@ target is "half corporate cartoon, half punk": clean shapes, spiky hair, a face 
 This doc changes the avatar's *rendering and config*. It does not touch the card payload, keys, the
 knock/grant crypto, or where avatars are displayed.
 
-## The boundary: swap the generator, keep the seam
+## Avatars are per-face only, not an owner photo (doc 31)
+
+The owner has **no avatar of their own** (doc 31): an avatar is part of a **face** the owner chooses
+when they share, never an account-level profile photo. So this doc's generator/builder is correct,
+but its home is the **recognizable-face choice at share time** (and the "your handles" management in
+Settings), not an account "edit your avatar" surface. Where the slices below say the editor lives in
+Privacy / is set at signup, read that as the per-alias face editor: a fresh account has no owner
+avatar to set, and the builder appears when the owner opts a specific share into a recognizable face.
 
 Everything outside `avatars.ts` consumes avatars through two functions and one shape:
 

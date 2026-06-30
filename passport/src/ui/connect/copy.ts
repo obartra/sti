@@ -8,8 +8,7 @@ export const COPY = {
   scanTileSub: "Open someone’s passport by scanning their code",
   favesTitle: "Starred",
   favesSub: "Star anyone to keep them at the top",
-  pruneNote:
-    "Connections older than your 90-day window are removed automatically.",
+  pruneNote: "These live on your device until you delete them.",
   menuDelete: "Delete connection",
   showMore: "Show more",
   recentTitle: "Recent connections",

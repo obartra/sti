@@ -52,14 +52,14 @@ describe("owner loop against a live blind store", () => {
 
   it("create -> publish -> change state -> every link reflects the new badge", async () => {
     const created = await accounts.create("robin");
-    await accounts.setOwnerState(created.master, blue);
+    await accounts.setOwnerState(created.root, blue);
 
     // Publish the owner's (blue) card to an alias and record it. The card's display
     // identity is derived per alias (doc 15), so resolution uses the record.
     const { record } = await publishCard(api, (rec) =>
       deriveAliasCard(blue, rec, TODAY),
     );
-    await accounts.addAlias(created.master, record);
+    await accounts.addAlias(created.root, record);
     expect(
       await store.resolveAlias({ id: record.id, key: record.key }),
     ).toEqual(deriveAliasCard(blue, record, TODAY));
@@ -67,7 +67,7 @@ describe("owner loop against a live blind store", () => {
     // The owner pauses: setOwnerState republishes every alias, re-sealing each with
     // its own per-alias identity and the new (gray) badge.
     const paused: OwnerState = { ...blue, paused: true };
-    await accounts.setOwnerState(created.master, paused);
+    await accounts.setOwnerState(created.root, paused);
 
     const grayCard = deriveAliasCard(paused, record, TODAY);
     expect(grayCard.state).toBe("gray");

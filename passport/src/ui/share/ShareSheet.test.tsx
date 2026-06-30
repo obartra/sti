@@ -44,9 +44,59 @@ describe("ShareSheet link wiring", () => {
     expect(onCopy).toHaveBeenCalledOnce();
   });
 
-  it("falls back to a placeholder link when no real link is supplied (Storybook)", () => {
+  it("falls back to a placeholder link only when no link is wired (undefined, Storybook)", () => {
     render(<ShareSheet {...base} sharingMode="link" />);
     expect(screen.getByText("sti.care/a/a7f3k9q2")).toBeInTheDocument();
+  });
+
+  it("while the link is preparing (null url) it shows no fake link, just a status", () => {
+    render(<ShareSheet {...base} sharingMode="public" url={null} />);
+    // The hardcoded placeholder must never stand in for a real, not-yet-minted link.
+    expect(screen.queryByText(/a7f3k9q2/)).toBeNull();
+    expect(screen.getByText("Getting your link ready")).toBeInTheDocument();
+    // No copy/save while there's nothing to copy.
+    expect(screen.queryByText("Copy link")).toBeNull();
+  });
+
+  it("when the prepare fails it shows a failure message and a working retry", () => {
+    const onRetry = vi.fn();
+    render(
+      <ShareSheet
+        {...base}
+        sharingMode="public"
+        url={null}
+        error
+        onRetry={onRetry}
+      />,
+    );
+    expect(screen.queryByText(/a7f3k9q2/)).toBeNull();
+    expect(screen.getByText(/We couldn't make your link/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+
+  it("shows the lifetime control only when a duration handler is wired", () => {
+    // The public-vs-private gating lives at the Chrome wiring (it passes a
+    // handler only for private links); the sheet just shows the control when it
+    // has one to drive, and DurationRow hides itself otherwise.
+    const onDurationChange = vi.fn();
+    const { rerender } = render(
+      <ShareSheet
+        {...base}
+        sharingMode="link"
+        url="https://sti.care/a/abc"
+        onDurationChange={onDurationChange}
+      />,
+    );
+    expect(screen.getByText("Link lasts")).toBeInTheDocument();
+    rerender(
+      <ShareSheet
+        {...base}
+        sharingMode="public"
+        url="https://sti.care/a/abc"
+      />,
+    );
+    expect(screen.queryByText("Link lasts")).toBeNull();
   });
 
   it("closed: a viewport-fixed, non-interactive layer (won't park mid-page or block taps)", () => {

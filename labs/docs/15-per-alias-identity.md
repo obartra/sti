@@ -96,12 +96,16 @@ per-recipient unlinkability is a property of the per-contact aliases.
 2. **Recognizable is an opt-in per-alias override, stored as a plain display label.** Each alias gets
    optional `handle` and `avatar` fields. Set them and the card shows them; leave them and the card
    derives from the id. These are display values, not addresses: not unique, not in the URL, no
-   registry. At mint the fields are pre-filled with the owner's account `handle`/`avatar` so "show the
-   real me" is one tap (it copies those values in), with the findable + linkable warning inline.
+   registry. **Anonymous is the default** (the id-derived face); choosing "show me" pre-fills the
+   handle from the owner's local name (editable to anything) and lets the owner pick an avatar for
+   that face, with the findable + linkable warning inline. The avatar is per-face, chosen here, never
+   copied from an owner avatar (there is none, see decision 3). This is the "faces" model in doc 31:
+   recognizability rides on the handle, and the local name only seeds it, defaulting to not-shared.
 
-3. **The account `handle` + `avatar` stay as-is, as the owner's main identity.** No rename, no schema
-   move. They are what Home shows and the pre-fill for overrides; they are simply no longer stamped
-   onto every card automatically.
+3. **The owner is a local NAME only, with no owner avatar** (doc 31). The account holds one local
+   display name (owner-facing, never sent) that powers Home's greeting and seeds the recognizable
+   handle pre-fill. There is no account-level avatar: faces (handle + avatar) belong to aliases, set
+   per share, never to the owner. (This drops the former account `avatar` field.)
 
 4. **No card-wire change.** The v2 card already carries `handle` + optional `avatar`. This changes only
    the *source* `deriveOwnerCard` resolves them from. Anonymous resolution seals `pseudonymFor(id)` in
@@ -114,8 +118,9 @@ per-recipient unlinkability is a property of the per-contact aliases.
 Additive only. The account keeps `handle` + `avatar`; each alias gains two optional override fields:
 
 ```
-// accountBlob.ts, unchanged: handle + avatar ARE the main identity (Home + mint pre-fill)
-account: { handle, avatar, aliases, contacts, ... }
+// accountBlob.ts: a local NAME only (Home greeting + recognizable-handle pre-fill).
+// No owner avatar (doc 31): faces live on aliases, never on the account.
+account: { name, aliases, contacts, ... }
 
 // AliasRecord (the public/casual aliases AND each ContactRecord.alias) gains:
 alias: {
@@ -123,7 +128,17 @@ alias: {
   handle?: string,        // optional per-alias display override; absent => pseudonymFor(id)
   avatar?: AvatarConfig,  // optional per-alias display override; absent => avatarFor(id) via fallback
 }
+
+// ContactRecord (receiver side) already carries the local rename:
+contact: { ..., label /* a private nickname only the receiver sees; never sent */ }
 ```
+
+**Whose name shows, in resolution order.** What a receiver sees for a contact is, in order: their
+own **local rename** (the `ContactRecord.label`, device-only, never sent), else the **face the
+sharer chose** (the alias `handle` override, or the id-derived pseudonym), else the id-derived
+pseudonym. The sharer's optional shared name and the receiver's rename are the two ends of the same
+mechanism (doc 31): readability on top of the always-present handle, neither of which the server
+ever sees.
 
 No discriminated union, no reference, no propagation machinery: an override is just the value to show,
 absent is the deterministic default. The override is a plain display label validated like any other
@@ -157,9 +172,9 @@ established assumption in `accountBlob.ts`), so there is nothing to migrate.
   `/u/` namespace), not at private link creation.
 - **Private link share:** same override fields. Anonymous by default; recognizable is an opt-in
   with no namespace claim and no linkable warning required (the link is not findable).
-- **Home:** shows your main identity (unchanged feel).
-- **"What others see" preview:** becomes per-alias, previewing the face that alias resolves to (the
-  self-preview screen needs the alias context it does not carry today).
+- **Home:** greets you by your local name. No owner avatar (doc 31).
+- **"What others see" preview:** folds into the share surface (doc 31): the share sheet already shows
+  the viewer's-eye card for that alias, so previewing is per-alias there, not a separate screen.
 
 ## Non-goals
 

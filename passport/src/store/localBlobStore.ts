@@ -2,7 +2,7 @@
  * A device-local cache of the owner's account blob, so the app works offline and
  * the device is a real source of truth (doc 22 slice 4). It holds the SAME sealed
  * ciphertext the server stores, keyed by the same opaque account id, so it is no
- * more readable at rest than the encrypted blob already is (the master key never
+ * more readable at rest than the encrypted blob already is (the root key never
  * touches this layer). The offline-sync layer reads local-first and writes here
  * before the server, so an offline reload restores the session and an offline edit
  * is durable.

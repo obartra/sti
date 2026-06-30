@@ -1,7 +1,7 @@
 // @vitest-environment node
 import "fake-indexeddb/auto";
 import { describe, it, expect, beforeEach } from "vitest";
-import { masterForTest } from "../test-support/phrase.ts";
+import { rootForTest } from "../test-support/phrase.ts";
 import {
   deriveAccountKey,
   importAesKey,
@@ -9,7 +9,7 @@ import {
   open,
   randomAliasId,
   type Bytes,
-  type MasterKey,
+  type RootKey,
 } from "../crypto/index.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
@@ -60,8 +60,8 @@ function deleteLocalDb(): Promise<void> {
   });
 }
 
-async function master(): Promise<MasterKey> {
-  return masterForTest("slice4-offline");
+async function root(): Promise<RootKey> {
+  return rootForTest("slice4-offline");
 }
 
 describe("offline account sync (slice 4)", () => {
@@ -71,7 +71,7 @@ describe("offline account sync (slice 4)", () => {
     const { api, server } = fakeApi();
     const status = createSyncStatus(volatileSyncStorage());
     const sync = createOfflineAccountSync(api, createLocalBlobStore(), status);
-    const m = await master();
+    const m = await root();
 
     await sync.save(m, BLOB);
     const id = await sync.accountId(m);
@@ -85,7 +85,7 @@ describe("offline account sync (slice 4)", () => {
     const { api, net, server } = fakeApi();
     const status = createSyncStatus(volatileSyncStorage());
     const sync = createOfflineAccountSync(api, createLocalBlobStore(), status);
-    const m = await master();
+    const m = await root();
     const id = await sync.accountId(m);
 
     net.online = false;
@@ -101,7 +101,7 @@ describe("offline account sync (slice 4)", () => {
     const { api, net, server } = fakeApi();
     const status = createSyncStatus(volatileSyncStorage());
     const sync = createOfflineAccountSync(api, createLocalBlobStore(), status);
-    const m = await master();
+    const m = await root();
     const id = await sync.accountId(m);
 
     net.online = false;
@@ -118,7 +118,7 @@ describe("offline account sync (slice 4)", () => {
   it("falls back to the server when this device has no local copy", async () => {
     const { api } = fakeApi();
     const status = createSyncStatus(volatileSyncStorage());
-    const m = await master();
+    const m = await root();
 
     // Seed the server (and a local copy) from one device.
     await createOfflineAccountSync(api, createLocalBlobStore(), status).save(
@@ -163,7 +163,7 @@ describe("offline account sync (slice 4)", () => {
 
     const status = createSyncStatus(volatileSyncStorage());
     const sync = createOfflineAccountSync(api, createLocalBlobStore(), status);
-    const m = await master();
+    const m = await root();
     const id = await sync.accountId(m);
     const key = await importAesKey(await deriveAccountKey(m));
 
@@ -212,7 +212,7 @@ describe("offline account sync (slice 4)", () => {
     const { api, server } = fakeApi();
     const status = createSyncStatus(volatileSyncStorage());
     const sync = createOfflineAccountSync(api, createLocalBlobStore(), status);
-    const m = await master();
+    const m = await root();
 
     await sync.save(m, BLOB); // clean + synced: local and server both hold BLOB
     const id = await sync.accountId(m);

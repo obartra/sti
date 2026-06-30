@@ -20,8 +20,8 @@ has or which.
 
 ## The hard truth, said first
 
-The account is the master key, and the master is recoverable from the recovery phrase.
-A phone that has held the master has already seen and cached whatever was synced to it, and **no design
+The account is the root key, and the root is recoverable from the recovery phrase.
+A phone that has held the root has already seen and cached whatever was synced to it, and **no design
 can make it un-know that** (the same honest boundary as "we can't unsee what someone already saw" in
 the promises). So device revocation is scoped precisely: it stops a removed device from making **future
 changes**, receiving **future alerts**, reading **future updates**, and **adding more devices**. It
@@ -38,7 +38,7 @@ device and the server never sees it.
   PII; labels are chosen by the user.
 - **Written at enrollment.** Joining via doc 27 appends an entry; the original phrase-origin device
   seeds the first one. The device key is generated locally at enrollment and is independent of how
-  pairing transferred the master (doc 27 moves the master over the QR; this key exists only for
+  pairing transferred the root (doc 27 moves the root over the QR; this key exists only for
   revocation), so the simple one-scan handoff and clean revocation do not depend on each other.
 - **The server stays blind to it.** The registry is plaintext only inside the E2EE blob. The server
   already sees some coarse device signal (a count of push registrations, write-token usage), and the
@@ -53,7 +53,7 @@ device and the server never sees it.
 
 ## B. What a lost device can do (the threat being addressed)
 
-A phone that holds the master can, until it is cut off: read state synced to it, overwrite or revoke
+A phone that holds the root can, until it is cut off: read state synced to it, overwrite or revoke
 the owner's aliases and account (it holds write tokens), receive contentless alerts, and pair further
 devices. Revocation has to take those away in the right order, strongest harm first.
 
@@ -82,7 +82,7 @@ under, so the removed device is locked out going forward. The shape:
 
 - **Split the key model.** Keep the **account id stable**, derived from a stable **root** the recovery
   phrase produces (so the account never moves and the phrase always recovers it). Make the **blob key
-  and write tokens** derive from a rotatable **epoch key**. Today's single master becomes root (stable)
+  and write tokens** derive from a rotatable **epoch key**. Today's single root becomes root (stable)
   plus epoch key (rotatable). This is the one real change to [doc 09](09-data-and-storage.md) and wants
   its own crypto spec. Both keys follow the shipped lifecycle (raw bytes exist only at generation or
   derivation, then are imported as a non-extractable key and dropped, see

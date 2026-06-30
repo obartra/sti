@@ -1,10 +1,10 @@
 /**
  * Device-state sync: load and save the owner's encrypted account blob, addressed
- * by an id derived from their master key. A sibling of PassportStore (which is
+ * by an id derived from their root key. A sibling of PassportStore (which is
  * screen-facing public resolution); this surface is used at onboarding, login,
- * and recovery, where the master key is in hand.
+ * and recovery, where the root key is in hand.
  *
- * The master key comes from a passkey (WebAuthn PRF) or a recovery passphrase;
+ * The root key comes from a passkey (WebAuthn PRF) or a recovery passphrase;
  * either path produces the same 32-byte key (see crypto/keys.ts). This layer is
  * agnostic to how it was minted.
  */
@@ -17,7 +17,7 @@ import {
   deriveAccountId,
   deriveAccountKey,
   deriveAccountWriteToken,
-  type MasterKey,
+  type RootKey,
 } from "../crypto/index.ts";
 import {
   serializeAccountBlob,
@@ -27,50 +27,50 @@ import {
 
 export interface AccountSync {
   /**
-   * Load and decrypt the account blob for this master key. Returns null when no
+   * Load and decrypt the account blob for this root key. Returns null when no
    * blob exists yet (a new account). Throws if a blob exists but does not
    * decrypt or parse, which signals the wrong key (a wrong recovery passphrase),
    * distinct from "no account".
    */
-  load(master: MasterKey): Promise<AccountBlob | null>;
-  /** Encrypt and store the account blob for this master key. */
-  save(master: MasterKey, blob: AccountBlob): Promise<void>;
-  /** Delete the account blob for this master key (idempotent). */
-  remove(master: MasterKey): Promise<void>;
+  load(root: RootKey): Promise<AccountBlob | null>;
+  /** Encrypt and store the account blob for this root key. */
+  save(root: RootKey, blob: AccountBlob): Promise<void>;
+  /** Delete the account blob for this root key (idempotent). */
+  remove(root: RootKey): Promise<void>;
 }
 
 export function createAccountSync(api: ApiClient): AccountSync {
-  // The account id and the blob key are independent derivations from the master,
+  // The account id and the blob key are independent derivations from the root,
   // so derive them together rather than serially.
-  const derive = (master: MasterKey) =>
+  const derive = (root: RootKey) =>
     Promise.all([
-      deriveAccountId(master),
-      deriveAccountKey(master).then(importAesKey),
+      deriveAccountId(root),
+      deriveAccountKey(root).then(importAesKey),
     ]);
 
   return {
-    async load(master) {
-      const [id, key] = await derive(master);
+    async load(root) {
+      const [id, key] = await derive(root);
       const got = await api.getAccount(id);
       if (got === null) return null; // 404: no account yet
       return parseAccountBlob(await open(key, got.blob));
     },
 
-    async save(master, blob) {
-      const [id, key] = await derive(master);
+    async save(root, blob) {
+      const [id, key] = await derive(root);
       const [ct, writeToken] = await Promise.all([
         seal(key, serializeAccountBlob(blob)),
-        deriveAccountWriteToken(master),
+        deriveAccountWriteToken(root),
       ]);
       await api.putAccount(id, ct, writeToken);
     },
 
-    async remove(master) {
+    async remove(root) {
       // The blob key is irrelevant to delete, but the write token still gates it:
       // the id alone (which travels on the wire) must not authorize removal.
       const [id, writeToken] = await Promise.all([
-        deriveAccountId(master),
-        deriveAccountWriteToken(master),
+        deriveAccountId(root),
+        deriveAccountWriteToken(root),
       ]);
       await api.deleteAccount(id, writeToken);
     },

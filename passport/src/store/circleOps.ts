@@ -32,8 +32,8 @@ export async function addCircle(
     name: name.slice(0, MAX_CIRCLE_NAME),
     memberContactIds,
   };
-  const blob = await accounts.upsertCircle(session.master, circle);
-  return { session: { master: session.master, blob }, circleId };
+  const blob = await accounts.upsertCircle(session.root, circle);
+  return { session: { root: session.root, blob }, circleId };
 }
 
 // Update an existing circle in place (same id): rename it and/or change its member
@@ -48,8 +48,8 @@ export async function editCircle(
     name: edit.name.slice(0, MAX_CIRCLE_NAME),
     memberContactIds: edit.memberContactIds,
   };
-  const blob = await accounts.upsertCircle(session.master, circle);
-  return { master: session.master, blob };
+  const blob = await accounts.upsertCircle(session.root, circle);
+  return { root: session.root, blob };
 }
 
 // Drop one circle by id (a local grouping; the contacts themselves are untouched).
@@ -58,6 +58,6 @@ export async function dropCircle(
   session: OwnerSession,
   circleId: string,
 ): Promise<OwnerSession> {
-  const blob = await accounts.removeCircle(session.master, circleId);
-  return { master: session.master, blob };
+  const blob = await accounts.removeCircle(session.root, circleId);
+  return { root: session.root, blob };
 }

@@ -36,6 +36,9 @@ export interface ChromeProps {
   setShareOpen: (open: boolean) => void;
   /** The owner's real shareable link (null while preparing / logged out). */
   shareUrl: string | null;
+  /** The last link prepare failed; the share sheet offers a retry. */
+  shareError: boolean;
+  onRetryShareLink: () => void;
   onCopyShareLink: () => boolean;
   onRevokeShareLink: () => void;
   shareIdentity: AliasIdentity;
@@ -102,6 +105,8 @@ function ShareOverlay({
   shareOpen,
   setShareOpen,
   shareUrl,
+  shareError,
+  onRetryShareLink,
   onCopyShareLink,
   onRevokeShareLink,
   shareIdentity,
@@ -120,10 +125,17 @@ function ShareOverlay({
       identity={owner.handle !== undefined ? { handle: owner.handle } : {}}
       avatarSrc={avatarSrc(owner.avatar)}
       url={shareUrl}
+      error={shareError}
+      onRetry={onRetryShareLink}
       identityChoice={shareIdentity}
       onIdentityChange={onShareIdentityChange}
       durationChoice={shareDuration}
-      onDurationChange={onShareDurationChange}
+      // Expiry is a private-link affordance only (doc 16): the durable public
+      // profile stays live until revoked, so it gets no lifetime control. Gating
+      // here keeps the share sheet itself mode-agnostic.
+      onDurationChange={
+        owner.sharingMode === "link" ? onShareDurationChange : undefined
+      }
       onCopy={onCopyShareLink}
       onRevoke={onRevokeShareLink}
       onWallet={() => {

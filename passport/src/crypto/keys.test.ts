@@ -1,12 +1,12 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { phraseForTest, masterForTest } from "../test-support/phrase.ts";
+import { phraseForTest, rootForTest } from "../test-support/phrase.ts";
 import {
   randomAliasId,
   randomWriteToken,
   randomRecoveryPhrase,
   parseRecoveryPhrase,
-  deriveMasterKey,
+  deriveRootKey,
   deriveAccountId,
   deriveAccountKey,
   deriveAccountWriteToken,
@@ -60,36 +60,36 @@ describe("random ids", () => {
   });
 });
 
-describe("master key + account derivation", () => {
-  it("derives the same master key for the same passphrase", async () => {
-    const a = await deriveMasterKey(
+describe("root key + account derivation", () => {
+  it("derives the same root key for the same passphrase", async () => {
+    const a = await deriveRootKey(
       phraseForTest("correct horse battery staple"),
     );
-    const b = await deriveMasterKey(
+    const b = await deriveRootKey(
       phraseForTest("correct horse battery staple"),
     );
     expect(a).toEqual(b);
     expect(a).toHaveLength(32);
   });
 
-  it("a different passphrase yields a different master key", async () => {
-    const a = await deriveMasterKey(phraseForTest("passphrase one"));
-    const b = await deriveMasterKey(phraseForTest("passphrase two"));
+  it("a different passphrase yields a different root key", async () => {
+    const a = await deriveRootKey(phraseForTest("passphrase one"));
+    const b = await deriveRootKey(phraseForTest("passphrase two"));
     expect(a).not.toEqual(b);
   });
 
   it("account id is deterministic, 43-char, and recoverable from the key alone", async () => {
-    const master = await masterForTest("recovery");
-    const id1 = await deriveAccountId(master);
-    const id2 = await deriveAccountId(master);
+    const root = await rootForTest("recovery");
+    const id1 = await deriveAccountId(root);
+    const id2 = await deriveAccountId(root);
     expect(id1).toBe(id2);
     expect(id1).toMatch(/^[A-Za-z0-9_-]{43}$/);
   });
 
-  it("account id and account key are distinct derivations from the same master", async () => {
-    const master = await masterForTest("recovery");
-    const id = await deriveAccountId(master);
-    const key = await deriveAccountKey(master);
+  it("account id and account key are distinct derivations from the same root", async () => {
+    const root = await rootForTest("recovery");
+    const id = await deriveAccountId(root);
+    const key = await deriveAccountKey(root);
     expect(key).toHaveLength(32);
     // The id must not equal the raw key material, even encoded.
     expect(id).not.toBe(Buffer.from(key).toString("base64url"));
@@ -101,25 +101,25 @@ describe("master key + account derivation", () => {
   // independent derivation, never equal to the id (or the blob key). An accidental
   // info-label collapse would silently defeat it, so pin it here.
   it("account write token is deterministic, 43-char, and independent of the id and key", async () => {
-    const master = await masterForTest("recovery");
-    const t1 = await deriveAccountWriteToken(master);
-    const t2 = await deriveAccountWriteToken(master);
-    expect(t1).toBe(t2); // deterministic, recoverable from the master alone
+    const root = await rootForTest("recovery");
+    const t1 = await deriveAccountWriteToken(root);
+    const t2 = await deriveAccountWriteToken(root);
+    expect(t1).toBe(t2); // deterministic, recoverable from the root alone
     expect(t1).toMatch(/^[A-Za-z0-9_-]{43}$/);
 
-    const id = await deriveAccountId(master);
-    const key = await deriveAccountKey(master);
+    const id = await deriveAccountId(root);
+    const key = await deriveAccountKey(root);
     expect(t1).not.toBe(id); // never equal to the on-wire id (the second factor)
     expect(t1).not.toBe(Buffer.from(key).toString("base64url"));
 
-    // A different account (different master) yields a different token.
-    const other = await masterForTest("different");
+    // A different account (different root) yields a different token.
+    const other = await rootForTest("different");
     expect(await deriveAccountWriteToken(other)).not.toBe(t1);
   });
 
   it("the derived account key actually decrypts a blob sealed under it", async () => {
-    const master = await masterForTest("recovery");
-    const aesKey = await importAesKey(await deriveAccountKey(master));
+    const root = await rootForTest("recovery");
+    const aesKey = await importAesKey(await deriveAccountKey(root));
     const blob = utf8ToBytes(JSON.stringify({ aliases: [], circles: [] }));
     const ct = await seal(aesKey, blob);
     expect(bytesToUtf8(await open(aesKey, ct))).toBe(bytesToUtf8(blob));
@@ -137,12 +137,12 @@ describe("master key + account derivation", () => {
     expect(a).not.toEqual(other);
   });
 
-  it("a master from a wrong passphrase cannot open the blob (recovery is key-bound)", async () => {
+  it("a root from a wrong passphrase cannot open the blob (recovery is key-bound)", async () => {
     const right = await importAesKey(
-      await deriveAccountKey(await masterForTest("right")),
+      await deriveAccountKey(await rootForTest("right")),
     );
     const wrong = await importAesKey(
-      await deriveAccountKey(await masterForTest("wrong")),
+      await deriveAccountKey(await rootForTest("wrong")),
     );
     const ct = await seal(right, utf8ToBytes("device blob"));
     await expect(open(wrong, ct)).rejects.toThrow();

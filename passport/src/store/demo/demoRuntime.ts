@@ -6,7 +6,7 @@
  * difference a person can feel is that it forgets everything on reload.
  *
  * SECURITY/PRIVACY: this module imports no api client and opens no connection.
- * The master is a throwaway non-extractable key minted for the session and never
+ * The root is a throwaway non-extractable key minted for the session and never
  * persisted, the `@demo` account is synthetic, and nothing here reaches
  * `api.sti.care`. That is the "demo makes no account and sends us nothing"
  * promise, kept structurally true (there is no network surface to call).
@@ -18,7 +18,7 @@ import type { PassportStore } from "../passportStore.ts";
 import type { AccountBlob, ContactRecord } from "../accountBlob.ts";
 import type { OwnerState } from "../../core/badge.ts";
 import {
-  importMasterKey,
+  importRootKey,
   randomAliasId,
   randomWriteToken,
 } from "../../crypto/keys.ts";
@@ -96,13 +96,11 @@ function demoUrl(): string {
  */
 export function createDemoController(): SessionController {
   let blob = demoBlob();
-  // A throwaway non-extractable master, so the app's real derivations (account id,
+  // A throwaway non-extractable root, so the app's real derivations (account id,
   // write token) run on a real key; it is never persisted or exported.
-  const masterPromise = importMasterKey(
-    crypto.getRandomValues(new Uint8Array(32)),
-  );
+  const rootPromise = importRootKey(crypto.getRandomValues(new Uint8Array(32)));
   const session = async (): Promise<OwnerSession> => ({
-    master: await masterPromise,
+    root: await rootPromise,
     blob,
   });
 

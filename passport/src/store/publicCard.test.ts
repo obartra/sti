@@ -16,7 +16,7 @@ describe("public card codec", () => {
     expect(parsePublicCard(serializePublicCard(view))).toEqual(view);
   });
 
-  it("the wire shape is a closed whitelist (never leaks per-site reasoning or any extra field)", () => {
+  it("the wire shape is a closed allowlist (never leaks per-site reasoning or any extra field)", () => {
     // doc 02: per-site reasoning is NEVER transmitted; the viewer card carries
     // only the badge facts. Pin the exact wire key set so a future field that
     // smuggles internal state (exposed sites, panel detail, account ids) onto the

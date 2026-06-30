@@ -10,6 +10,11 @@ import { copyText } from "../../lib/clipboard.ts";
 export interface ShareLinkControls {
   /** The owner's real shareable link, or null until the share sheet is opened. */
   readonly shareUrl: string | null;
+  /** The last link-prepare attempt failed (e.g. offline). With a null shareUrl
+   * the share sheet shows a retry instead of a fake placeholder link. */
+  readonly shareError: boolean;
+  /** Re-run the link prepare after a failure (the share-sheet "Try again"). */
+  readonly retryShareLink: () => void;
   /** Open/close the share sheet; opening mints/refreshes the alias for the mode. */
   readonly setShareOpen: (open: boolean) => void;
   /** Copy the current real link to the clipboard; true if a copy path was taken. */
@@ -47,6 +52,11 @@ export function useShareLink(
   setShareOpen: (open: boolean) => void,
 ): ShareLinkControls {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  // Whether the last prepare attempt failed. Cleared at the start of every
+  // attempt and on success, set on a rejected/throwing produce. Lets the share
+  // sheet distinguish "still minting" from "minting failed" so it can offer a
+  // retry instead of leaving an honest-but-stuck pending state.
+  const [shareError, setShareError] = useState(false);
   // The chosen face for the link, mirrored in a ref so callbacks read the latest
   // without re-subscribing. Defaults to anonymous (the unlinkable id-derived face).
   const [identity, setIdentityState] = useState<AliasIdentity>("anonymous");
@@ -80,6 +90,7 @@ export function useShareLink(
       const current = sessionRef.current;
       if (current === null || preparing.current) return;
       if (clearFirst) setShareUrl(null);
+      setShareError(false);
       preparing.current = true;
       void produce(current)
         .then(({ session: updated, url }) => {
@@ -87,7 +98,7 @@ export function useShareLink(
           setSession(updated);
           setShareUrl(url);
         })
-        .catch(() => undefined)
+        .catch(() => setShareError(true))
         .finally(() => {
           preparing.current = false;
         });
@@ -95,6 +106,9 @@ export function useShareLink(
     [sessionRef, setSession],
   );
 
+  // Opening (and the share sheet's "Try again", which re-opens in place) mints
+  // the alias for the current mode and face. Reused as the retry so a failed
+  // prepare can be re-run without a second code path.
   const open = useCallback(
     (next: boolean) => {
       setShareOpen(next);
@@ -158,6 +172,8 @@ export function useShareLink(
 
   return {
     shareUrl,
+    shareError,
+    retryShareLink: () => open(true),
     setShareOpen: open,
     copyShareLink,
     revokeLink,

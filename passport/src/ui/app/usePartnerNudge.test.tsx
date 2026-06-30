@@ -4,7 +4,7 @@ import { usePartnerNudge } from "./usePartnerNudge.ts";
 import type { OwnerSession, SessionController } from "../../store/index.ts";
 import { INITIAL_OWNER_STATE } from "../../core/badge.ts";
 import { DEFAULT_AVATAR } from "../../lib/avatars.ts";
-import { fakeMasterKey } from "../../test-support/phrase.ts";
+import { fakeRootKey } from "../../test-support/phrase.ts";
 import { mintNotify } from "../../store/index.ts";
 
 // A session with one contact whose per-contact receiving inbox carries inboxId, so
@@ -12,7 +12,7 @@ import { mintNotify } from "../../store/index.ts";
 // changes.
 function sessionWithInbox(inboxId: string): OwnerSession {
   return {
-    master: fakeMasterKey(),
+    root: fakeRootKey(),
     blob: {
       handle: "robin",
       aliases: [],

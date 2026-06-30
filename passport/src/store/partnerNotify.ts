@@ -27,8 +27,13 @@ import type { AccountBlob, ContactRecord } from "./accountBlob.ts";
 import { writePing, type NotifyCapability } from "./notifyInbox.ts";
 
 // A starting default for "linked within the relevant window": the owner edits the
-// draft freely, so this only seeds the initial selection, never constrains it.
-export const NOTIFY_DEFAULT_LOOKBACK_DAYS = 90;
+// draft freely, so this only seeds the initial selection, never constrains it. Set
+// to ~6 months (not the 90-day badge window) so a returning owner reporting a
+// positive still reaches partners from a little further back by default, and a
+// mistyped test date a week or two off does not silently drop relevant contacts
+// from the suggestion. It is a seed, not a retention rule: contacts are never
+// auto-deleted, only the default selection is bounded.
+export const NOTIFY_DEFAULT_LOOKBACK_DAYS = 183;
 
 const PING_VERSION = 1;
 const PING_KIND = "partner-notify";
