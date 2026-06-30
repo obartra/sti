@@ -168,6 +168,43 @@ describe("the trust pages own clean, real paths", () => {
   });
 });
 
+describe("back is driven by the browser history, not an in-app stack", () => {
+  it("go pushes an entry; a back (popstate) returns to the prior screen", () => {
+    window.history.replaceState(null, "", "/#home");
+    try {
+      const { result } = renderHook(() => useAppRouter());
+      expect(result.current.route.screen).toBe("home");
+      act(() => result.current.nav.go("wallet"));
+      expect(window.location.hash).toBe("#wallet");
+      expect(result.current.route.screen).toBe("wallet");
+      act(() => {
+        // The browser back button: the URL returns, then popstate fires.
+        window.history.replaceState(null, "", "/#home");
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+      expect(result.current.route.screen).toBe("home");
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
+  it("jump replaces (a tab switch is not a back target) and back falls home", () => {
+    window.history.replaceState(null, "", "/#home");
+    try {
+      const { result } = renderHook(() => useAppRouter());
+      act(() => result.current.nav.jump("care"));
+      expect(window.location.hash).toBe("#care");
+      expect(result.current.route.screen).toBe("care");
+      // jump reset the app-pushed depth, so back has nothing of ours to pop and
+      // falls to home rather than stepping off the site.
+      act(() => result.current.nav.back());
+      expect(result.current.route.screen).toBe("home");
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+});
+
 describe("the landing keeps the clean root URL", () => {
   it("visiting / stays at / and does not bounce to /#a1-landing", async () => {
     window.history.replaceState(null, "", "/");
