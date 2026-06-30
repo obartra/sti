@@ -220,7 +220,7 @@ export function UrlText({
 }
 
 // A faux-QR with either the neutral logo mark (QR-carrier, asserts nothing)
-// or the two-state badge (Live) knocked into its centre. The matrix is seeded
+// or the two-state badge (Live) knocked into its center. The matrix is seeded
 // by the opaque ALIAS id, so the code encodes the alias, not the handle.
 export function PassQR({
   size = 142,

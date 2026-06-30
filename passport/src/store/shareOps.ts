@@ -62,7 +62,7 @@ export async function mintContactLink(
 ): Promise<ContactLinkResult> {
   const { label, identity } = opts;
   // The link's lifetime in ms from now, or null for until-revoked. Defaults to
-  // CONTACT_LINK_MS so an omitted choice keeps the prior behaviour.
+  // CONTACT_LINK_MS so an omitted choice keeps the prior behavior.
   const expiresAt = expiryFor(
     opts.durationMs === undefined ? CONTACT_LINK_MS : opts.durationMs,
   );

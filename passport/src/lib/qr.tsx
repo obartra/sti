@@ -1,7 +1,7 @@
 /* StiQR. encodeMatrix produces a REAL, scannable QR module grid for a URL (doc
    16): a phone camera scanning it opens the link. buildMatrix below is the older
    decorative faux matrix (real finder patterns, timing rows, separators, a
-   reserved centre hole), kept for the no-link Storybook/preview case where there
+   reserved center hole), kept for the no-link Storybook/preview case where there
    is no URL to encode. Decorative and real share the same <rect> rendering. */
 import { useMemo } from "react";
 import type { CSSProperties, ReactElement } from "react";
@@ -13,7 +13,7 @@ export type Ecc = "L" | "M" | "Q" | "H";
 // Encode `value` (a full https link) into a real QR module grid. The grid side
 // (and thus QR version) is chosen automatically from the data length. Error
 // correction defaults to H (~30% recoverable), which keeps it scannable even
-// with a centre badge/logo punched out.
+// with a center badge/logo punched out.
 export function encodeMatrix(value: string, ecc: Ecc = "H"): boolean[][] {
   const qr = qrcode(0, ecc);
   qr.addData(value);
@@ -24,10 +24,10 @@ export function encodeMatrix(value: string, ecc: Ecc = "H"): boolean[][] {
   );
 }
 
-// Clear a centred square of `hole` modules (set them light) so a logo/badge can
+// Clear a centerd square of `hole` modules (set them light) so a logo/badge can
 // sit there. Returns a copy; the original is untouched. At ECC H a modest hole
 // stays within the recoverable budget. A hole <= 0 returns the grid unchanged.
-export function clearCentre(grid: boolean[][], hole: number): boolean[][] {
+export function clearCenter(grid: boolean[][], hole: number): boolean[][] {
   if (hole <= 0) return grid;
   const n = grid.length;
   const start = Math.floor((n - hole) / 2);
@@ -127,7 +127,7 @@ function placeAlignment(m: boolean[][], res: boolean[][], n: number): void {
     }
 }
 
-// Reserve the centre hole (+1 module of quiet around it) and clear it.
+// Reserve the center hole (+1 module of quiet around it) and clear it.
 function reserveHole(
   m: boolean[][],
   res: boolean[][],
@@ -170,7 +170,7 @@ function fillData(
 }
 
 // Build an n×n boolean module grid. hole = side (in modules) of the cleared
-// centre square reserved for a badge.
+// center square reserved for a badge.
 export function buildMatrix(
   n: number,
   seed: number,
@@ -210,7 +210,7 @@ export interface MatrixProps {
   radius?: CSSProperties["borderRadius"] | undefined;
   /** When set, render a REAL scannable QR of this value (a full https link)
    * instead of the decorative faux matrix. The module count comes from the data,
-   * so `n` is ignored; `hole` still clears a centre square for a badge/logo. */
+   * so `n` is ignored; `hole` still clears a center square for a badge/logo. */
   value?: string | undefined;
 }
 
@@ -269,7 +269,7 @@ export function Matrix(props: MatrixProps): ReactElement {
   const m = useMemo(
     () =>
       value !== undefined && value !== ""
-        ? clearCentre(encodeMatrix(value), hole)
+        ? clearCenter(encodeMatrix(value), hole)
         : buildMatrix(nProp ?? 29, resolveSeed(seedProp), hole),
     [value, nProp, seedProp, hole],
   );
@@ -301,9 +301,9 @@ export function Matrix(props: MatrixProps): ReactElement {
 
 // ── Export a scannable-looking status QR as a downloadable PNG ──────────────
 // Builds a self-contained SVG (matrix + centered badge), rasterizes it to a
-// crisp white-background PNG, and triggers a download. The centre badge uses
+// crisp white-background PNG, and triggers a download. The center badge uses
 // the two-state vocabulary only (blue in-window ring / gray dash), never a
-// checkmark and never a four-light colour.
+// checkmark and never a four-light color.
 const BADGE_HEX: Record<string, { base: string; bg: string }> = {
   blue: { base: "#2F9BB3", bg: "#DDF0F4" },
   gray: { base: "#8A8A99", bg: "#EAEAEE" },
@@ -314,10 +314,10 @@ function glyphFor(status: string, base: string): string {
   return `<circle cx="24" cy="24" r="11"/><circle cx="24" cy="24" r="4.6" fill="${base}" stroke="none"/>`;
 }
 
-// The brand mark, drawn into the QR centre for a LINK-CARRIER export. It is
+// The brand mark, drawn into the QR center for a LINK-CARRIER export. It is
 // pure branding (teal squircle + white verification check) and asserts NO
 // status, used so a QR-carrier card image stays status-free.
-function logoCentreSvg(size: number): string {
+function logoCenterSvg(size: number): string {
   const cx = size / 2,
     cy = size / 2;
   const knock = size * 0.205; // white knockout behind the mark
@@ -352,9 +352,9 @@ function matrixRectsSvg(
   return rects;
 }
 
-// The two-state status badge drawn into the QR centre (white knockout, colored
+// The two-state status badge drawn into the QR center (white knockout, colored
 // ring, status glyph). Used for any status inside the two-state set.
-function badgeCentreSvg(status: string, size: number): string {
+function badgeCenterSvg(status: string, size: number): string {
   const cx = size / 2,
     cy = size / 2;
   const c = BADGE_HEX[status] ??
@@ -371,9 +371,9 @@ function badgeCentreSvg(status: string, size: number): string {
 }
 
 // svgString(status, seed, size, value?). With `value` it renders a REAL,
-// scannable QR of that link, deliberately with NO centre overlay so nothing
+// scannable QR of that link, deliberately with NO center overlay so nothing
 // occludes the modules (this is the image people actually scan). Without it,
-// the decorative faux matrix carries a centre badge/logo: "logo" (or anything
+// the decorative faux matrix carries a center badge/logo: "logo" (or anything
 // outside the two-state set) draws the brand mark (link-carrier, asserts
 // nothing), else the two-state status badge.
 export function svgString(
@@ -392,16 +392,16 @@ export function svgString(
   const rx = cell * 0.18;
   const rects = matrixRectsSvg(m, n, { quiet, cell, g }, rx);
   const isLogo = status === "logo" || !BADGE_HEX[status];
-  const centre = real
+  const center = real
     ? ""
     : isLogo
-      ? logoCentreSvg(size)
-      : badgeCentreSvg(status, size);
+      ? logoCenterSvg(size)
+      : badgeCenterSvg(status, size);
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
     `<rect width="${size}" height="${size}" rx="${(size * 0.06).toFixed(1)}" fill="#ffffff"/>` +
     `<g fill="#1B1B2F">${rects}</g>` +
-    centre +
+    center +
     `</svg>`
   );
 }
@@ -412,7 +412,7 @@ export interface DownloadPNGOpts {
   alias?: string | undefined;
   size?: number | undefined;
   /** The full link to encode as a REAL scannable QR. When set, the exported
-   * image is a working QR of this URL (no centre logo); without it the image is
+   * image is a working QR of this URL (no center logo); without it the image is
    * the decorative faux matrix. The URL carries only the opaque id (+ key), never
    * a handle, so invariant 8 holds. */
   value?: string | undefined;

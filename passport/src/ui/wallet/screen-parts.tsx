@@ -187,7 +187,7 @@ export function ShareSection({
               <Info size={12.5} />
             </span>
             <span>
-              Want a card with the status shown? That’s a labelled{" "}
+              Want a card with the status shown? That’s a labeled{" "}
               <strong style={{ color: "var(--text-body)" }}>snapshot</strong>, a
               still image, not live. The link card above is the safer default.
             </span>

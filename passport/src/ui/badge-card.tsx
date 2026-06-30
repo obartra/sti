@@ -23,7 +23,7 @@ const BLUE = { fill: "var(--teal-500)" };
 const GRAY = { fill: "var(--neutral-100)", mark: "var(--neutral-500)" };
 
 // Two distinct SHAPES (filled in-window ring vs. dash) so the state never
-// depends on colour alone (WCAG). Neither is a checkmark.
+// depends on color alone (WCAG). Neither is a checkmark.
 export function Medallion({
   state,
   size = 104,
