@@ -11,13 +11,15 @@ import {
   mintContactLink,
   acceptContactInvite,
   renameContactLabel,
+  shareLinkFor,
 } from "./shareOps.ts";
+import { publicProfileUrl } from "./publish.ts";
 import { parseContactInvite, type ContactInvite } from "./contactInvite.ts";
 import { mintNotify } from "./notifyInbox.ts";
 import { randomAliasId } from "../crypto/index.ts";
 import type { ApiClient } from "../api/client.ts";
 import type { AccountManager } from "./account.ts";
-import type { AccountBlob, ContactRecord } from "./accountBlob.ts";
+import type { AccountBlob, AliasRecord, ContactRecord } from "./accountBlob.ts";
 import type { OwnerSession } from "./session.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
@@ -171,6 +173,72 @@ describe("shared name on a contact link (doc 15)", () => {
       identity: "anonymous",
     });
     expect(contact.label).toBe("my doctor");
+  });
+});
+
+// An accounts stub that records a minted share alias (addAlias), for the
+// non-findable shareLinkFor paths that mint an /a/ link.
+function shareAccounts(blob: AccountBlob): AccountManager {
+  return new Proxy({} as AccountManager, {
+    get(_t, prop) {
+      if (prop === "addAlias") {
+        return (_root: unknown, alias: AliasRecord) =>
+          Promise.resolve({ ...blob, aliases: [...blob.aliases, alias] });
+      }
+      return () => Promise.reject(new Error("not used in shareLinkFor test"));
+    },
+  });
+}
+
+function shareSession(
+  sharingMode: "public" | "link",
+  findableName: string | null,
+): { api: ApiClient; accounts: AccountManager; session: OwnerSession } {
+  const blob: AccountBlob = {
+    handle: "robin",
+    aliases: [],
+    contacts: [],
+    state: INITIAL_OWNER_STATE,
+    avatar: DEFAULT_AVATAR,
+    sharingMode,
+    ...(findableName !== null
+      ? { findable: { name: findableName, aliasId: "f".repeat(43) } }
+      : {}),
+  };
+  return {
+    api: fakeApi(),
+    accounts: shareAccounts(blob),
+    session: { root: {}, blob } as unknown as OwnerSession,
+  };
+}
+
+describe("shareLinkFor public name vs opaque link (doc 17)", () => {
+  it("hands out the /u/{name} link when sharing publicly as yourself", async () => {
+    const { api, accounts, session } = shareSession("public", "meow");
+    const { url } = await shareLinkFor(api, accounts, session, "main");
+    expect(url).toBe(publicProfileUrl("meow"));
+    expect(url).toBe("https://sti.care/u/meow");
+  });
+
+  it("uses the opaque /a/ link when sharing publicly but anonymously", async () => {
+    const { api, accounts, session } = shareSession("public", "meow");
+    const { url } = await shareLinkFor(api, accounts, session, "anonymous");
+    expect(url).toContain("/a/");
+    expect(url).not.toContain("/u/");
+  });
+
+  it("never uses /u/ for a private (link-mode) share, even as yourself", async () => {
+    const { api, accounts, session } = shareSession("link", "meow");
+    const { url } = await shareLinkFor(api, accounts, session, "main");
+    expect(url).toContain("/a/");
+    expect(url).not.toContain("/u/");
+  });
+
+  it("falls back to the opaque link when no public name is claimed", async () => {
+    const { api, accounts, session } = shareSession("public", null);
+    const { url } = await shareLinkFor(api, accounts, session, "main");
+    expect(url).toContain("/a/");
+    expect(url).not.toContain("/u/");
   });
 });
 
