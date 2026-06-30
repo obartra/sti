@@ -48,13 +48,13 @@ export function findableNameFromPath(pathname: string): string | null {
   return normalizeVanityName(decoded);
 }
 
-// The clean path each screen owns. Every screen normalizes to a real path (no more
-// `/#screen` fragments) except the four that carry an id and are migrated to path
-// params in the next step: `a2-public` (`/a/{id}#k=`), `u-resolve` (`/u/{name}`),
-// `circle-detail`, and `learn-detail`, which still hash-route until then. The two
-// "privacy" surfaces resolve their old naming clash here: the Settings screen (id
-// `privacy`) is `/settings`, the privacy POLICY page (id `privacy-policy`) is
-// `/privacy`.
+// The fixed clean path each non-parameterized screen owns. The id-carrying screens
+// are not here; they build a path param from route data (`paramPath`): `a2-public`
+// (`/a/{id}#k=`), `u-resolve` (`/u/{name}`), `circle-detail` (`/circles/{id}`),
+// `circle-create` edit (`/circles/{id}/edit`), `learn-detail` (`/care/learn/{id}`).
+// The two "privacy" surfaces resolve their old naming clash here: the Settings
+// screen (id `privacy`) is `/settings`, the privacy POLICY page (id
+// `privacy-policy`) is `/privacy`.
 const SCREEN_PATH: Partial<Record<Screen, string>> = {
   "a1-landing": "/",
   "a3-alert": "/alert",
@@ -91,15 +91,57 @@ for (const screen of Object.keys(SCREEN_PATH) as Screen[]) {
   if (path !== undefined) PATH_SCREEN[path] = screen;
 }
 
-// The canonical URL a screen normalizes to: its clean path, or a transitional
-// `/#screen` fragment for the four still-parameterized screens (migrated next step).
-function canonicalUrl(screen: Screen): string {
-  return SCREEN_PATH[screen] ?? `/#${screen}`;
+// The path an id-carrying screen builds from its route data, or null when the screen
+// has no param (or the datum is missing): `/u/{name}`, `/circles/{id}`,
+// `/circles/{id}/edit`, `/care/learn/{id}`.
+function paramPath(screen: Screen, data: RouteData | null): string | null {
+  if (data === null) return null;
+  if (screen === "u-resolve" && data.name) {
+    return `/u/${encodeURIComponent(data.name)}`;
+  }
+  if (screen === "circle-create" && data.id) return `/circles/${data.id}/edit`;
+  if (screen === "circle-detail" && data.id) return `/circles/${data.id}`;
+  if (screen === "learn-detail" && data.id) return `/care/learn/${data.id}`;
+  return null;
+}
+
+// The canonical URL a screen normalizes to: its id-carrying path param when it has
+// one, else the fixed clean path from the table.
+function canonicalUrl(screen: Screen, data?: RouteData | null): string {
+  return (
+    paramPath(screen, data ?? null) ?? SCREEN_PATH[screen] ?? `/#${screen}`
+  );
 }
 
 // The canonical clean path a screen normalizes to, exported so the trust links can
 // render as real anchors (href + the SPA intercept) rather than `/#...` buttons.
 export const pathForScreen = canonicalUrl;
+
+// The transient screens that depend on in-memory state and so cannot be deep-linked
+// cold: hitting their path on a refresh redirects to a safe fallback instead of
+// rendering an empty shell. (The in-flow navigation still pushes their path; only a
+// cold re-derive is redirected, after which mount normalizes the URL.)
+const COLD_REDIRECT: Record<string, Screen> = {
+  "/recovery": "b1-claim",
+  "/setup": "b1-claim",
+  "/report/saved": "home",
+};
+
+// The id-carrying app paths: `/circles/{id}`, `/circles/{id}/edit`,
+// `/care/learn/{id}`. Checked after the exact table so `/circles/new` and
+// `/care/learn/uu` (real screens) are not mistaken for ids.
+function pathParamRoute(cleanPath: string): Route | null {
+  const edit = /^\/circles\/([^/]+)\/edit$/.exec(cleanPath)?.[1];
+  if (edit)
+    return { screen: "circle-create", group: "app", data: { id: edit } };
+  const circle = /^\/circles\/([^/]+)$/.exec(cleanPath)?.[1];
+  if (circle)
+    return { screen: "circle-detail", group: "app", data: { id: circle } };
+  const article = /^\/care\/learn\/([^/]+)$/.exec(cleanPath)?.[1];
+  if (article)
+    return { screen: "learn-detail", group: "app", data: { id: article } };
+  return null;
+}
 
 // A still-parameterized screen, or a legacy `/#screen` bookmark, deep-linked via the
 // URL hash. Transitional: once every screen owns a clean path this disappears.
@@ -161,10 +203,13 @@ export function routeFromLocation(): Route | null {
   const cleanPath = pathname.replace(/\/$/, "") || "/";
   const hashed = cleanPath === "/" ? routeFromHash() : null;
   if (hashed) return hashed;
+  const redirect = COLD_REDIRECT[cleanPath];
+  if (redirect)
+    return { screen: redirect, group: groupOf(redirect), data: null };
   const screen = PATH_SCREEN[cleanPath];
-  return screen !== undefined
-    ? { screen, group: groupOf(screen), data: null }
-    : null;
+  if (screen !== undefined)
+    return { screen, group: groupOf(screen), data: null };
+  return pathParamRoute(cleanPath);
 }
 
 // Whether a screen owns its URL and must not be normalized away at mount: a shared
@@ -181,8 +226,12 @@ function ownsUrl(route: Route): boolean {
 // Write the canonical URL for a screen, pushing a new history entry or replacing the
 // current one. Returns whether a push actually happened (it is a no-op when the URL
 // already matches), so the caller can keep its app-pushed depth count honest.
-function syncUrl(screen: Screen, mode: "push" | "replace"): boolean {
-  const target = canonicalUrl(screen);
+function syncUrl(
+  screen: Screen,
+  data: RouteData | null | undefined,
+  mode: "push" | "replace",
+): boolean {
+  const target = canonicalUrl(screen, data);
   if (window.location.pathname + window.location.hash === target) return false;
   if (mode === "push") {
     window.history.pushState(null, "", target);
@@ -214,7 +263,7 @@ export function useAppRouter(initial: Route = START): Router {
     if (!firstUrlSync.current) return;
     firstUrlSync.current = false;
     if (ownsUrl(route)) return;
-    syncUrl(route.screen, "replace");
+    syncUrl(route.screen, route.data, "replace");
   }, [route]);
 
   // The browser back/forward buttons (and swipe gestures) change the URL without a
@@ -249,7 +298,7 @@ export function useAppRouter(initial: Route = START): Router {
   const go = useCallback((screen: Screen, data?: RouteData) => {
     // A real forward navigation: push exactly one history entry (no-op if we are
     // already at that URL), then show the screen.
-    if (syncUrl(screen, "push")) depth.current += 1;
+    if (syncUrl(screen, data, "push")) depth.current += 1;
     setRoute({ screen, group: groupOf(screen), data: data ?? null });
   }, []);
 
@@ -262,7 +311,7 @@ export function useAppRouter(initial: Route = START): Router {
     } else {
       // Nothing of ours behind us (a cold deep-link): fall home rather than step
       // off the site. Replace so a later Back still leaves cleanly.
-      syncUrl("home", "replace");
+      syncUrl("home", null, "replace");
       setRoute(HOME);
     }
   }, []);
@@ -271,7 +320,7 @@ export function useAppRouter(initial: Route = START): Router {
     // Tabs / sidebar destinations are siblings, not a drill-down, so replace rather
     // than push: Back never walks sideways through tabs. This becomes the new root
     // of the session, so the app-pushed depth resets to zero.
-    syncUrl(screen, "replace");
+    syncUrl(screen, null, "replace");
     depth.current = 0;
     setRoute({ screen, group: group ?? groupOf(screen), data: null });
   }, []);
