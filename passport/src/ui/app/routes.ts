@@ -3,7 +3,7 @@
 
 import type { NotifyCapability } from "../../store/index.ts";
 
-export const ALL_SCREENS = [
+const ALL_SCREENS = [
   "a1-landing",
   "a2-public",
   "a3-alert",
@@ -83,7 +83,7 @@ const PUBLIC: readonly Screen[] = [
 const ONBOARD: readonly Screen[] = ["b1-claim", "b2-recovery", "b3-setup"];
 
 // The bottom tab bar (mobile) / sidebar (desktop) destinations.
-export const TABS = ["home", "connect", "groups", "care"] as const;
+const TABS = ["home", "connect", "groups", "care"] as const;
 export type Tab = (typeof TABS)[number];
 
 export function groupOf(screen: Screen): Group {

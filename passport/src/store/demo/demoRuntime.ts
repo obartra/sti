@@ -69,7 +69,7 @@ function demoContact(label: string, agoDays: number): ContactRecord {
 
 /** A freshly seeded demo account: handle, a blue badge, and a couple of contacts
  * so every tab has something real to look at. Rebuilt on each demo entry. */
-export function demoBlob(): AccountBlob {
+function demoBlob(): AccountBlob {
   return {
     handle: DEMO_HANDLE,
     aliases: [],

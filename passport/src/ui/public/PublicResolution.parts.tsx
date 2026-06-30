@@ -225,7 +225,7 @@ function KnockFootnote() {
   );
 }
 
-export function KnockSection({
+function KnockSection({
   linkHolder,
   knockSent,
   onKnock,
@@ -246,7 +246,7 @@ export function KnockSection({
   );
 }
 
-export function ColdActions({
+function ColdActions({
   onClaim,
   onVerify,
 }: {

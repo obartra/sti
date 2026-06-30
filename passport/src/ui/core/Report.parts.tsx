@@ -156,8 +156,8 @@ export function Chip({ active, onClick, children }: ChipProps) {
   );
 }
 
-export const POS = "Positive";
-export const NEG = "Negative";
+const POS = "Positive";
+const NEG = "Negative";
 
 export type SiteStatus = "positive" | "untouched" | "covered" | "partial";
 

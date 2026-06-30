@@ -10,7 +10,7 @@
  */
 import type { StorageLike } from "../auth/deviceStore.ts";
 
-export interface SyncSnapshot {
+interface SyncSnapshot {
   /** True when local edits have not been pushed to the server yet. */
   readonly pending: boolean;
   /** Epoch ms of the last successful backup, or null if never. */

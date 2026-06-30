@@ -1,8 +1,8 @@
 // Repo-scoped version + build date, injected at build time (see vite.config.ts).
 // One stamp for the whole repo (backend and frontend), shown discreetly in the
 // app and on the deployed promises report.
-export const APP_VERSION = __APP_VERSION__;
-export const BUILD_DATE = __BUILD_DATE__;
+const APP_VERSION = __APP_VERSION__;
+const BUILD_DATE = __BUILD_DATE__;
 
 const MONTHS = [
   "Jan",
@@ -20,7 +20,7 @@ const MONTHS = [
 ];
 
 // "2026-06-18" -> "18 Jun 2026"; returns the input unchanged if it can't parse.
-export function formatBuildDate(iso: string = BUILD_DATE): string {
+function formatBuildDate(iso: string = BUILD_DATE): string {
   const parts = iso.split("-");
   const year = Number(parts[0]);
   const month = Number(parts[1]);

@@ -84,13 +84,7 @@ export function BackBar({
   );
 }
 
-export function TabBar({
-  tab,
-  onTab,
-}: {
-  tab: TabId;
-  onTab: (tab: TabId) => void;
-}) {
+function TabBar({ tab, onTab }: { tab: TabId; onTab: (tab: TabId) => void }) {
   return (
     <nav className="app-tabbar">
       {TABS.map(({ id, label, Icon }) => {

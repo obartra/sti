@@ -213,5 +213,3 @@ export function createOfflineAccountSync(
     },
   };
 }
-
-export type { AccountBlob };

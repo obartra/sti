@@ -133,7 +133,7 @@ export function DetailEntry({
   );
 }
 
-export function InfectionCard({ inf, state, onLearn }: InfectionCardProps) {
+function InfectionCard({ inf, state, onLearn }: InfectionCardProps) {
   const c = COPY;
   const ps = "perSite" in inf;
   const ss = ps ? state.siteStatus(inf.id) : null;

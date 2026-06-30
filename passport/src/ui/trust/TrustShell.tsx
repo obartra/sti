@@ -14,7 +14,7 @@ import { TrustFooter, type TrustFooterProps } from "./TrustFooter.tsx";
 // strip in a sea of margin. Below the rail breakpoint it collapses to the original
 // single reading column with the footer carrying cross-navigation. Pure/static.
 
-export type TrustScreen = "promises" | "privacy" | "terms" | "share-link";
+type TrustScreen = "promises" | "privacy" | "terms" | "share-link";
 
 export interface TrustShellProps extends TrustFooterProps {
   current: TrustScreen;

@@ -58,14 +58,14 @@ export interface PendingKnock {
 }
 
 /** The owner's review of an alias: the live knock count and the pending list. */
-export interface KnockReview {
+interface KnockReview {
   readonly count: number;
   readonly pending: PendingKnock[];
 }
 
 /** One alias overwrite in a decorrelation batch: the alias id, its base64url
  * fixed-size sealed card, and the write token that gates the deferred write. */
-export interface RepublishOp {
+interface RepublishOp {
   readonly id: string;
   readonly ciphertext: string;
   readonly writeToken: string;

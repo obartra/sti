@@ -58,7 +58,7 @@ export const COPY = {
 // The inactivity window after which the server deletes an untouched account backup
 // (server STI_ACCOUNT_INACTIVITY_TTL, default 2 years). Kept here so the in-app
 // retention notice states the same number the backend enforces.
-export const RETENTION_YEARS = 2;
+const RETENTION_YEARS = 2;
 
 const MONTHS = [
   "January",

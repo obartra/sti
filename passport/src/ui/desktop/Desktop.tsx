@@ -9,7 +9,6 @@ import {
 } from "./DesktopShellParts.tsx";
 
 export { DesktopLanding } from "./DesktopLanding.tsx";
-export type { DesktopLandingProps } from "./DesktopLanding.tsx";
 export type { DesktopTab } from "./DesktopShellParts.tsx";
 
 /* Desktop / large-screen layer for the sti.care passport. Faithful port of the
@@ -50,31 +49,6 @@ export function useMinWidth(px: number): boolean {
 export function useDesktop(): boolean {
   return useMinWidth(900);
 }
-
-// Which sidebar tab "owns" a given screen, so sub-screens keep the right nav
-// item lit. Ported verbatim from desktop.jsx SECTION.
-export const SECTION: Record<string, string> = {
-  home: "home",
-  report: "home",
-  "report-saved": "home",
-  privacy: "home",
-  notifications: "home",
-  wallet: "home",
-  "avatar-edit": "home",
-  connect: "connect",
-  "alias-share": "connect",
-  groups: "groups",
-  "group-create": "groups",
-  "group-detail": "groups",
-  care: "care",
-  learn: "care",
-  "learn-detail": "care",
-  "learn-uu": "care",
-};
-
-const TABS: readonly DesktopTab[] = ["home", "connect", "groups", "care"];
-export const isTab = (s: string): boolean =>
-  (TABS as readonly string[]).includes(s);
 
 export interface DesktopShellProps {
   /** The active sidebar tab. */

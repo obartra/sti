@@ -21,7 +21,7 @@ export interface ToneStyle {
   fg: string;
 }
 
-export const TONE: Record<Tone, ToneStyle> = {
+const TONE: Record<Tone, ToneStyle> = {
   blue: {
     base: "var(--teal-500)",
     bg: "var(--teal-100)",
@@ -47,12 +47,12 @@ function labelFor(tone: Tone): string {
 // ── Atoms ────────────────────────────────────────────────────────────────────
 // Two distinct SHAPES so the state never rides on color alone:
 //   blue = in-window ring + dot (not a tick) · gray = single dash.
-export interface DotGlyphProps {
+interface DotGlyphProps {
   tone: Tone;
   size?: number;
 }
 
-export function DotGlyph({ tone, size = 10 }: DotGlyphProps) {
+function DotGlyph({ tone, size = 10 }: DotGlyphProps) {
   const common = {
     viewBox: "0 0 16 16",
     width: size,
@@ -114,34 +114,6 @@ export function MemberDot({ tone, size = "md" }: MemberDotProps) {
       >
         {labelFor(tone)}
       </span>
-    </span>
-  );
-}
-
-// Compact dot only (for tight rows), still carries a title.
-export interface MiniDotProps {
-  tone: Tone;
-  size?: number;
-}
-
-export function MiniDot({ tone, size = 16 }: MiniDotProps) {
-  const t = toneStyle(tone);
-  return (
-    <span
-      title={labelFor(tone)}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        flex: "none",
-        background: t.base,
-        color: "#fff",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <DotGlyph tone={tone} size={size * 0.58} />
     </span>
   );
 }

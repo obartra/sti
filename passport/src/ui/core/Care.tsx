@@ -80,7 +80,7 @@ const leadTile: CSSProperties = {
 // Two-state badge: "blue" (has a status) or "gray" (no status yet). The at-home
 // screening prompt only shows for "gray". This is the approved two-state model,
 // never a four-light status.
-export type CareBadge = "blue" | "gray";
+type CareBadge = "blue" | "gray";
 
 export interface CareProps {
   badge?: CareBadge;

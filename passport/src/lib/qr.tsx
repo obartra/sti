@@ -171,11 +171,7 @@ function fillData(
 
 // Build an n×n boolean module grid. hole = side (in modules) of the cleared
 // center square reserved for a badge.
-export function buildMatrix(
-  n: number,
-  seed: number,
-  hole: number,
-): boolean[][] {
+function buildMatrix(n: number, seed: number, hole: number): boolean[][] {
   const m: boolean[][] = Array.from({ length: n }, () =>
     Array<boolean>(n).fill(false),
   );
@@ -191,7 +187,7 @@ export function buildMatrix(
 }
 
 // Hash a string → stable seed so each handle paints a distinct code.
-export function seedOf(str: string): number {
+function seedOf(str: string): number {
   let h = 2166136261;
   for (let i = 0; i < str.length; i++) {
     h ^= str.charCodeAt(i);
