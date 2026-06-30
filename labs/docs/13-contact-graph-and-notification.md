@@ -25,11 +25,14 @@ fires contentless wakes. Every readable fact lives in a key-derived encrypted bl
 
 From the [Decisions log](02-decisions.md) and [Design](03-design.md):
 
-- **Circles are a convenience layer over pairwise links**, not a live status feed and not a
-  "clean club." Permanent or event-based. (02 §Circles)
-- **Minimum group size ~5** for any group-level status communication; no counts, no leaderboards;
-  joining, leaving, and skipping all look ordinary. The individual always controls their own
-  disclosure; the group never overrides it. (02 §Circles, 03 §Circles)
+- **Groups (formerly circles) are a convenience layer over pairwise links**, not a live status
+  feed and not a "clean club." There is one kind of group (the old permanent / event split is
+  gone). (02 §Circles, superseded by doc 31)
+- **Membership is the sharing, and there is no minimum group size.** Being in a group is itself
+  consenting to show your blue/gray color to its members, so a headcount protects nothing and the
+  old "~5 floor" is dropped (see doc 31 for the reasoning and the join-time consent). No counts, no
+  leaderboards, no door. The individual still controls their own disclosure by joining or leaving;
+  the group never overrides it. (Supersedes the locked min-group-5 in 02/03 §Circles.)
 - **Three link paths:** link-in-chat/paste (remote default), scan-to-autolink (in-person QR/NFC,
   mutual consent, shares an alias not the handle), capability handoff (remote persistent mutual).
   A scan **proposes** a link both sides confirm; it never silently binds. (02, 03 §Linking)
@@ -102,9 +105,10 @@ From the [Decisions log](02-decisions.md) and [Design](03-design.md):
 
 4. **Circles are purely client-side bundles (DECIDED, no new server surface).** A circle is a
    local list of pairwise links plus a shared display preference. Group status sharing reuses the
-   per-member pairwise channels; the server never learns a group exists. The min-group-5 rule is a
-   client-side hide floor: a member's status is shown to the circle only when the circle has >=5
-   members, else it hides (never reveals). No group token, no membership on the server.
+   per-member pairwise channels; the server never learns a group exists. There is no min-group hide
+   floor (dropped, see doc 31): joining a group is itself the act of sharing your color with its
+   members, so a member's color shows to the group with no headcount gate. No group token, no
+   membership on the server.
 
 5. **New private links default to a 7-day expiry (DECIDED).** A durational grant
    re-serves a freshly rotated payload until expiry; at expiry the client stops re-publishing and
@@ -182,8 +186,8 @@ mutual link; deferred until A is solid.
 ## Partner notification loop
 
 1. **Report a positive** (already wired to owner state). The client composes a **draft batch**: the
-   set of contacts to notify (default: contacts linked within the relevant window; the user adds,
-   corrects, removes, or deletes the whole batch freely).
+   set of contacts to notify (default: contacts linked within the lookback window, ~183 days, a
+   seed only; the user adds, corrects, removes, or deletes the whole batch freely).
 2. **Draft window (~30 min, one config constant).** Last-write-wins; the user is in full control.
 3. **Lock.** The last draft becomes immutable. For each contact in the batch, the client writes an
    encrypted ping to that contact's `theirNotify` inbox, and POSTs `hash(routingToken)` to the
@@ -245,7 +249,7 @@ limits below: the server can tell that a knock was answered, just not by or for 
    The capability EXCHANGE that fills in `theirNotify` (mutual link / scan) and the wake actually
    landing (push routing + the gate) are the later linking and slice-7 work; until then a contact
    has no `theirNotify` so the batch is empty in the running app, exactly as tests simulate it.
-6. **Circles** (client-side bundles + min-group-5 hide floor + the Circles UI). No server surface.
+6. **Groups** (client-side bundles, no hide floor, membership is the sharing + the Groups UI). No server surface.
    Built as account model v7 (`circles`, optional) + circle CRUD on the account manager (upsert
    normalizes members against current contacts; removing a contact strips it from every circle) +
    the floor logic: `circleMeetsFloor` and `visibleCircleStatuses`, which hide a circle entirely

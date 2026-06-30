@@ -137,8 +137,11 @@ We do not sell or share your data, because we do not have readable data to sell.
 
 ### How long we keep things
 
-- A shared link's encrypted card is kept until it expires (plus a short grace),
-  or until you turn it off, which overwrites it.
+- A private link's encrypted card stays until you turn it off (which overwrites
+  it), or until an expiry you set passes. A public profile does not expire on a
+  timer: it stays until you take it down or release its public name.
+- Connections stay on your device until you remove them. We do not auto-remove
+  them.
 - Access requests are short-lived and auto-expire.
 - Your account backup stays until you delete it.
 - The admin action log is append-only and retained for accountability; it holds

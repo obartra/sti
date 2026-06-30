@@ -51,9 +51,9 @@
 
 ## Circles (groups)
 
-- **LOCKED — A convenience layer over pairwise links; not a live status feed, not a "clean club."** Permanent or event-based.
-- **LOCKED — Minimum group size (~5) for group-level status comms; no counts; no leaderboards; joining/leaving/skipping looks ordinary.**
-- **LOCKED — Per-group handle visibility (private by default); universal "there may be additional private members" notice** (so private membership is uninformative).
+- **LOCKED. A convenience layer over pairwise links; not a live status feed, not a "clean club."** One kind of group (the permanent/event split is gone; see doc 31).
+- **DECIDED (supersedes the earlier ~5 floor, see doc 31). Membership is the sharing:** joining a group is consenting to show your blue/gray color to its members, so there is no minimum group size and no door. No counts, no leaderboards; joining/leaving/skipping looks ordinary.
+- **DECIDED (see doc 31). You appear under the handle you joined with** (your identity, or a fresh anonymous handle); the roster is fully visible to members, so there is no hidden-membership and no "additional private members" notice.
 - **LOCKED — Membership disclosure is per-person; revealing a group's existence never reveals its members.**
 - **LOCKED — The individual controls their own status disclosure in a group; the group never overrides it.** No group-level switch makes members' statuses visible (it would expose a member beyond their own choice). Each member's in-group visibility is the member's own setting; any group display preference operates only within what each member already shares (hides, never reveals). The min-group-5 rule is a separate hide-only floor. (Build: remove the group "what members see" status toggle, it's drift.)
 - **LOCKED — Discovery = member-initiated, link-scoped** (only someone you've already paired with can reveal a group). No open search, no stranger discovery, no contact intersection.
@@ -197,7 +197,7 @@
 1. Badge equity — **for outside review** (see [Open questions](/docs/open-questions)): detectable-poz can't reach blue until suppressed (and a near-universal positive state may make non-qualifiers *more* conspicuous); and PrEP-choice-normativity (declining PrEP forces the condom route or gray).
 2. Label-display residual — "condoms always" without the umbrella weakly implies HIV-negative-not-on-PrEP; accepted as lesser harm (3-state softens it vs. a binary); confirm.
 3. Notification: push-recipient-set mitigation (broadcast wake + uniform poll); draft-window length (~30 min) and send-cycle cadence.
-4. Shared-view date granularity; the **exact** minimum group-size value (the floor itself is LOCKED, see Circles; only the number ~5 is open); scan-to-autolink auto-share default.
+4. Shared-view date granularity; scan-to-autolink auto-share default. (The minimum group-size question is closed: there is no floor, see Circles and doc 31.)
 5. Knock endpoint timing — the production knock/notify endpoint must do constant-time work across the whole write/dedupe path (not just return a uniform string); the in-memory prototype mock doesn't model this.
 6. Account deletion and data export — a self-serve way to delete your account and everything tied to it, and to download what's held about you. Worth pinning down what (if anything) is personal enough to export, since the server holds only ciphertext and opaque tokens.
 7. Testing-window honesty — a complete, recently-tested panel earns blue even though syphilis (and the HIV early window) may not have had time to seroconvert; today that residual is explainer-only, not in the badge. Whether to factor per-result dates / a "not back yet" input into blue — on-device, never displayed — is **for outside review** (see [Open questions](/docs/open-questions)).
