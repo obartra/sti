@@ -9,7 +9,7 @@ import type {
   PassportStore,
 } from "../../store/index.ts";
 import { fakeRootKey } from "../../test-support/phrase.ts";
-import { avatarFor } from "../../lib/avatars.ts";
+import { avatarFor, DEFAULT_AVATAR } from "../../lib/avatars.ts";
 
 const LINK = { id: "A".repeat(43), key: "B".repeat(43) };
 
@@ -185,11 +185,98 @@ describe("PublicResolutionScreen", () => {
     );
     await user.click(add);
 
-    expect(onAcceptInvite).toHaveBeenCalledWith(INVITE, "from the party");
+    // Anonymous is the default, so with no reveal chosen the accept stays anonymous
+    // and carries no per-link face.
+    expect(onAcceptInvite).toHaveBeenCalledWith(
+      INVITE,
+      "from the party",
+      "anonymous",
+      undefined,
+    );
     // The return link to send back is surfaced.
     expect(
       await screen.findByRole("button", { name: /Copy link to send back/i }),
     ).toBeInTheDocument();
+  });
+
+  it("offers the reveal choice on accept when the accepter has a name", async () => {
+    const view: ResolvedView = {
+      state: "blue",
+      identity: { handle: "alex" },
+    };
+    render(
+      <PublicResolutionScreen
+        store={storeResolving(view)}
+        link={LINK}
+        invite={INVITE}
+        onAcceptInvite={() => Promise.reject(new Error("not called"))}
+        accepterName="robin"
+        accepterAvatar={DEFAULT_AVATAR}
+      />,
+    );
+    await screen.findByRole("button", { name: "Add to contacts" });
+    // The Anonymous / Show my name choice is present (the accepter has a name).
+    expect(
+      screen.getByRole("button", { name: "Show my name" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Anonymous" }),
+    ).toBeInTheDocument();
+    // The per-link face picker only appears once "main" is chosen.
+    expect(screen.queryByRole("button", { name: "Pick a face" })).toBeNull();
+  });
+
+  it("hides the reveal choice on accept when the accepter has no name", async () => {
+    const view: ResolvedView = {
+      state: "blue",
+      identity: { handle: "alex" },
+    };
+    render(
+      <PublicResolutionScreen
+        store={storeResolving(view)}
+        link={LINK}
+        invite={INVITE}
+        onAcceptInvite={() => Promise.reject(new Error("not called"))}
+        accepterAvatar={DEFAULT_AVATAR}
+      />,
+    );
+    await screen.findByRole("button", { name: "Add to contacts" });
+    // No name to show, so the choice is hidden and the accept stays anonymous.
+    expect(screen.queryByRole("button", { name: "Show my name" })).toBeNull();
+  });
+
+  it("carries the accepter's reveal choice through accept", async () => {
+    const user = userEvent.setup();
+    const view: ResolvedView = {
+      state: "blue",
+      identity: { handle: "alex" },
+    };
+    const returnUrl = `https://sti.care/a/${"R".repeat(43)}#k=${"S".repeat(43)}&n=abc`;
+    const onAcceptInvite = vi.fn(
+      (): Promise<ContactLinkResult> =>
+        Promise.resolve({
+          session: { root: fakeRootKey(), blob: {} as never },
+          contact: {} as never,
+          url: returnUrl,
+        }),
+    );
+    render(
+      <PublicResolutionScreen
+        store={storeResolving(view)}
+        link={LINK}
+        invite={INVITE}
+        onAcceptInvite={onAcceptInvite}
+        accepterName="robin"
+        accepterAvatar={DEFAULT_AVATAR}
+      />,
+    );
+    await screen.findByRole("button", { name: "Add to contacts" });
+    // The accepter opts to show their name, then accepts.
+    await user.click(screen.getByRole("button", { name: "Show my name" }));
+    await user.click(screen.getByRole("button", { name: "Add to contacts" }));
+
+    // The reveal choice threads through: identity "main", no override chosen.
+    expect(onAcceptInvite).toHaveBeenCalledWith(INVITE, "", "main", undefined);
   });
 
   it("does not offer accept for a return invite (it is the inviter's to ingest)", async () => {

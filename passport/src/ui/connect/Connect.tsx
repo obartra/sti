@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { QrCode } from "../../design/icons.tsx";
-import { COPY, DiscoverTile, FavesSection, PrivacySection } from "./parts.tsx";
+import { COPY, DiscoverTile, FavesSection } from "./parts.tsx";
 import { RecentSection } from "./recent.tsx";
 import type { ContactRecord } from "../../store/accountBlob.ts";
+
+// The full contact list starts collapsed; it's the secondary "browse if you need
+// it" surface, below starred and groups. (A dedicated "all contacts" page is a
+// possible future step; for now it stays inline, collapsed and lightly styled.)
+const RECENT_PAGE = 4;
 
 // People: your connections (the contacts you've connected with), via SCAN / SHARE-LINK
 // only. A connection IS a contact link: there is one underlying record, shown here as a
@@ -22,6 +27,9 @@ export interface ConnectProps {
   onRemoveContact: (contactId: string) => void;
   /** Open the in-app QR scanner to read someone's code. */
   onScan?: (() => void) | undefined;
+  /** Rendered between starred and the full contact list (the People page threads
+   * groups in here, so starred + groups read as the prominent surfaces). */
+  groupsSlot?: ReactNode;
 }
 
 export function Connect({
@@ -31,8 +39,9 @@ export function Connect({
   onToggleFave,
   onRemoveContact,
   onScan,
+  groupsSlot,
 }: ConnectProps) {
-  const [visible, setVisible] = useState(6);
+  const [visible, setVisible] = useState(RECENT_PAGE);
   const [menuFor, setMenuFor] = useState<string | null>(null);
 
   const recent = [...contacts].sort((a, b) => b.createdDay - a.createdDay);
@@ -74,10 +83,13 @@ export function Connect({
           />
         </div>
 
-        {/* faves, starred contacts */}
+        {/* faves, starred contacts: a prominent surface */}
         <FavesSection faves={faveContacts} onToggleFave={onToggleFave} />
 
-        {/* recent linkups (your contacts, newest first) */}
+        {/* groups sit right after starred; both are the high-priority surfaces */}
+        {groupsSlot}
+
+        {/* the full contact list, de-emphasized and collapsed by default */}
         <RecentSection
           recent={recent}
           visible={visible}
@@ -90,11 +102,8 @@ export function Connect({
             onRemoveContact(id);
             setMenuFor(null);
           }}
-          onShowMore={() => setVisible((v) => v + 6)}
+          onShowMore={() => setVisible((v) => v + RECENT_PAGE)}
         />
-
-        {/* privacy promise, no directory, member-initiated only */}
-        <PrivacySection />
       </div>
     </div>
   );

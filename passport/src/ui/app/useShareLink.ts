@@ -1,12 +1,20 @@
-import { useCallback, useRef, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import type {
   AliasIdentity,
   OwnerSession,
   SessionController,
   ShareLinkResult,
 } from "../../store/index.ts";
+import { primaryShareAlias } from "../../store/index.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
 import { copyText } from "../../lib/clipboard.ts";
+import { lifetimeFromExpiry } from "../share/ShareSheet.lifetime.tsx";
 
 export interface ShareLinkControls {
   /** The owner's real shareable link, or null until the share sheet is opened. */
@@ -41,6 +49,18 @@ export interface ShareLinkControls {
    * face). Like setIdentity, it rotates to a fresh alias carrying the new face.
    */
   readonly setAvatarOverride: (avatar: AvatarConfig | undefined) => void;
+  /**
+   * How long the private link keeps working, as a duration in ms, or null for
+   * until the owner turns it off. Read off the current private-link alias's
+   * expiry. Only meaningful in private-link mode; a public profile never lapses.
+   */
+  readonly lifetime: number | null;
+  /**
+   * Set the private link's lifetime (doc 16): re-publish the alias with a new
+   * expiry so the server stops answering for it once it lapses. `durationMs` is
+   * counted from now; null keeps it working until turned off.
+   */
+  readonly setLifetime: (durationMs: number | null) => void;
 }
 
 /**
@@ -78,6 +98,14 @@ export function useShareLink(
   // second call while one is in flight is dropped, so two opens cannot race into
   // duplicate mints and a revoke cannot interleave with an open. Reset on settle.
   const preparing = useRef(false);
+  // The private link's lifetime control (doc 16), split out to keep this hook
+  // under its length cap; it shares the in-flight guard so it can't race a mint.
+  const { lifetime, setLifetime } = useShareLifetime(
+    controller,
+    sessionRef,
+    setSession,
+    preparing,
+  );
 
   // Run a controller call that produces a link and fold the result back into the
   // session + displayed URL. `clearFirst` blanks the URL during the gap: used on
@@ -182,5 +210,72 @@ export function useShareLink(
     setIdentity,
     avatarOverride,
     setAvatarOverride,
+    lifetime,
+    setLifetime,
   };
+}
+
+// The private-link lifetime control (doc 16): the current selection (read off the
+// private-link alias's expiry) plus a setter that re-publishes the alias with a
+// new expiry. Split out of useShareLink to keep that hook under its length cap;
+// it takes the shared in-flight guard so a lifetime change can't race a mint.
+function useShareLifetime(
+  controller: SessionController,
+  sessionRef: RefObject<OwnerSession | null>,
+  setSession: (s: OwnerSession) => void,
+  preparing: RefObject<boolean>,
+): {
+  lifetime: number | null;
+  setLifetime: (durationMs: number | null) => void;
+} {
+  // Kept in state so the sheet's control reflects the saved choice on open and the
+  // fresh choice after setLifetime folds the session.
+  const [lifetime, setLifetimeState] = useState<number | null>(() =>
+    currentLifetime(sessionRef.current),
+  );
+  // Re-sync whenever the private-link alias's expiry moves (a mint / renew / sweep),
+  // keyed on that value so it only fires when what the control shows changed.
+  const aliasExpiry = privateAliasExpiry(sessionRef.current);
+  useEffect(() => {
+    setLifetimeState(currentLifetime(sessionRef.current));
+  }, [aliasExpiry, sessionRef]);
+
+  // Re-publish the alias with the new expiry so the server enforces it. Reflect the
+  // choice at once (the URL is unchanged), then fold the returned session. Shares
+  // the in-flight guard, so it can't interleave with a mint or renew.
+  const setLifetime = useCallback(
+    (durationMs: number | null) => {
+      const current = sessionRef.current;
+      if (current === null || preparing.current) return;
+      setLifetimeState(durationMs);
+      preparing.current = true;
+      void controller
+        .setShareLinkExpiry(current, durationMs)
+        .then((updated) => {
+          sessionRef.current = updated;
+          setSession(updated);
+        })
+        .finally(() => {
+          preparing.current = false;
+        });
+    },
+    [controller, sessionRef, setSession, preparing],
+  );
+
+  return { lifetime, setLifetime };
+}
+
+// The private-link primary alias's expiry (absolute ms), or null when there is no
+// private link yet or it carries no expiry. The one input the lifetime control
+// reads; isolated so the sync effect can key on it.
+function privateAliasExpiry(session: OwnerSession | null): number | null {
+  if (session === null) return null;
+  return primaryShareAlias(session.blob, false)?.expiresAt ?? null;
+}
+
+// The lifetime selection for the current session: the private-link alias's expiry
+// snapped back to the nearest offered length, or null (until turned off) with no
+// private link or no expiry.
+function currentLifetime(session: OwnerSession | null): number | null {
+  return lifetimeFromExpiry(privateAliasExpiry(session));
 }

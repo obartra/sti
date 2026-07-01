@@ -105,6 +105,8 @@ export interface ScreenCtx {
   onAcceptContactInvite: (
     invite: ContactInvite,
     label: string,
+    identity?: AliasIdentity,
+    avatarOverride?: AvatarConfig,
   ) => Promise<ContactLinkResult>;
   /** Ingest a return invite a contact sent back, completing the pending link. */
   onIngestContactReturn: (ret: ContactInvite) => void;

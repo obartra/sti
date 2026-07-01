@@ -207,6 +207,8 @@ export function App({
     setIdentity: setShareIdentity,
     avatarOverride: shareAvatarOverride,
     setAvatarOverride: setShareAvatarOverride,
+    lifetime: shareLifetime,
+    setLifetime: setShareLifetime,
   } = useShareLink(controller, sessionRef, setSession, setShareOpen);
 
   // The owner's quiet inbox: knock review + the partner-notify nudge (owner-pull).
@@ -276,6 +278,8 @@ export function App({
         onShareIdentityChange={setShareIdentity}
         shareAvatarOverride={shareAvatarOverride}
         onShareAvatarOverrideChange={setShareAvatarOverride}
+        shareLifetime={shareLifetime}
+        onShareLifetimeChange={setShareLifetime}
         knockCount={knockCount}
         refreshKnocks={refreshInbox}
         canApproveKnocks={canApproveKnocks}

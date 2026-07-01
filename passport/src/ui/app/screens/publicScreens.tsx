@@ -75,6 +75,10 @@ export const publicRenderers: ScreenRenderers = {
           link={{ id, key: key ?? "" }}
           invite={invite}
           onAcceptInvite={ctx.onAcceptContactInvite}
+          // The accepter's OWN name + face drive their reveal choice (doc 15), the
+          // same source ShareSheet reads via Chrome. Never the inviter's.
+          accepterName={ctx.owner.handle}
+          accepterAvatar={ctx.owner.avatar}
           onIngestReturn={ctx.onIngestContactReturn}
           onBack={ctx.nav.back}
           onClaim={onClaim}

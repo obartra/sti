@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { PublicResolution } from "./PublicResolution.tsx";
-import { avatarSrc, randomAvatar } from "../../lib/avatars.ts";
+import { avatarSrc, randomAvatar, DEFAULT_AVATAR } from "../../lib/avatars.ts";
 
 // A2: the logged-out public resolution surface and its states.
 const meta: Meta<typeof PublicResolution> = {
@@ -36,7 +36,8 @@ export const ResolvedWithAvatar: Story = {
 };
 
 // A logged-in viewer opened a contact invite: "Add to contacts" replaces the knock
-// prompt and the claim/verify CTAs (doc 13 path A).
+// prompt and the claim/verify CTAs (doc 13 path A). The accepter has a name of their
+// own, so the Anonymous / Show my name reveal choice appears above the button (doc 15).
 export const ContactInviteAccept: Story = {
   args: {
     resolved: {
@@ -45,6 +46,24 @@ export const ContactInviteAccept: Story = {
       identity: { handle: "alex" },
     },
     canAccept: true,
+    accepterName: "robin",
+    accepterAvatar: DEFAULT_AVATAR,
+    onAccept: () => Promise.resolve("https://sti.care/a/abc#k=def&n=ghi"),
+  },
+};
+
+// The same accept surface for an accepter with no name of their own: the reveal
+// choice is hidden, so the accept stays anonymous (matches every other share
+// surface, doc 15).
+export const ContactInviteAcceptNoName: Story = {
+  args: {
+    resolved: {
+      state: "blue",
+      labels: ["hiv"],
+      identity: { handle: "alex" },
+    },
+    canAccept: true,
+    accepterAvatar: DEFAULT_AVATAR,
     onAccept: () => Promise.resolve("https://sti.care/a/abc#k=def&n=ghi"),
   },
 };

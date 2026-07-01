@@ -295,6 +295,42 @@ describe("per-link avatar override (doc 15)", () => {
     });
     expect(contact.alias.avatar).toEqual(face);
   });
+
+  it("stamps a chosen face when the accepter reveals their name", async () => {
+    const { api, accounts, session } = freshOwner("robin");
+    const invite: ContactInvite = {
+      alias: { id: randomAliasId(), key: randomAliasId() },
+      notify: mintNotify(),
+    };
+    const { contact } = await acceptContactInvite(api, accounts, session, {
+      invite,
+      label: "sam",
+      identity: "main",
+      avatarOverride: face,
+    });
+    expect(contact.alias.avatar).toEqual(face);
+    expect(contact.alias.avatar).not.toEqual(DEFAULT_AVATAR);
+    // Revealed, so the accepter's own handle rides along with the chosen face.
+    expect(contact.alias.handle).toBe("robin");
+  });
+
+  it("never stamps a face on an anonymous accept (id-derived face stays)", async () => {
+    const { api, accounts, session } = freshOwner("robin");
+    const invite: ContactInvite = {
+      alias: { id: randomAliasId(), key: randomAliasId() },
+      notify: mintNotify(),
+    };
+    const { contact } = await acceptContactInvite(api, accounts, session, {
+      invite,
+      label: "sam",
+      identity: "anonymous",
+      avatarOverride: face,
+    });
+    // Anonymous is the default: the override is ignored and no account face leaks,
+    // so the viewer resolves the id-derived face.
+    expect(contact.alias.avatar).toBeUndefined();
+    expect(contact.alias.handle).toBeUndefined();
+  });
 });
 
 describe("renameContactLabel (receiver-owned local label)", () => {

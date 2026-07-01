@@ -55,7 +55,9 @@ import {
   renameContactLabel,
   revokeContactLink,
   revokeAliasLink,
+  setShareLinkExpiry,
   shareLinkFor,
+  type RevealChoice,
 } from "./shareOps.ts";
 import {
   primaryShareAlias,
@@ -184,6 +186,17 @@ export interface SessionController {
     avatarOverride?: AvatarConfig,
   ): Promise<ShareLinkResult>;
   /**
+   * Set how long the private link keeps working (doc 16): re-publish the current
+   * private-link alias with a new expiry so the server stops answering for it once
+   * it lapses. `durationMs` is counted from now; null keeps it working until the
+   * owner turns it off. A no-op in public mode (a public profile never lapses) or
+   * when no private link exists yet. Returns the (possibly updated) session.
+   */
+  setShareLinkExpiry(
+    session: OwnerSession,
+    durationMs: number | null,
+  ): Promise<OwnerSession>;
+  /**
    * Permanently delete the account: revoke every shared link and remove the
    * account blob, then forget this device's passkey binding. After this the
    * recovery phrase no longer recovers anything (the blob is gone).
@@ -252,7 +265,7 @@ export interface SessionController {
     session: OwnerSession,
     invite: ContactInvite,
     label: string,
-    identity?: AliasIdentity,
+    reveal?: RevealChoice,
   ): Promise<ContactLinkResult>;
   /**
    * Ingest a return invite, completing the pending contact it answers. A no-op
@@ -520,6 +533,9 @@ export function createSessionController(deps: SessionDeps): SessionController {
       return shareLinkFor(api, accounts, working, { identity, avatarOverride });
     },
 
+    setShareLinkExpiry: (session, durationMs) =>
+      setShareLinkExpiry(api, accounts, session, durationMs),
+
     async deleteAccount(session) {
       // Best-effort: drop any public findable binding first (doc 17), so the name
       // does not linger claimed after the account is gone. The alias itself is
@@ -571,11 +587,12 @@ export function createSessionController(deps: SessionDeps): SessionController {
     revokeAlias: (session, aliasId) =>
       revokeAliasLink(api, accounts, session, aliasId),
 
-    acceptContactInvite(session, invite, label, identity = "anonymous") {
+    acceptContactInvite(session, invite, label, reveal) {
       return acceptContactInvite(api, accounts, session, {
         invite,
         label,
-        identity,
+        identity: reveal?.identity ?? "anonymous",
+        avatarOverride: reveal?.avatarOverride,
       });
     },
 

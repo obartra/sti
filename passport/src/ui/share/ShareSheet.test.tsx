@@ -93,21 +93,44 @@ describe("ShareSheet link wiring", () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
-  it("never shows a lifetime control (the standing link is durable, doc 16)", () => {
-    // The standing share link (either mode) never carries an expiry: only
-    // per-contact one-off links lapse. The sheet has no lifetime affordance.
+  it("offers a lifetime control on the private link, not the public profile (doc 16)", () => {
+    // The private link can be given a lifetime (a link you hand to one person can
+    // sensibly lapse); the public profile is durable, so it has no such control.
     const { rerender } = render(
-      <ShareSheet {...base} sharingMode="link" url="https://sti.care/a/abc" />,
+      <ShareSheet
+        {...base}
+        sharingMode="link"
+        url="https://sti.care/a/abc"
+        onLifetimeChange={() => undefined}
+      />,
     );
-    expect(screen.queryByText("Link lasts")).toBeNull();
+    expect(screen.getByText("Link lasts")).toBeInTheDocument();
     rerender(
       <ShareSheet
         {...base}
         sharingMode="public"
         url="https://sti.care/a/abc"
+        onLifetimeChange={() => undefined}
       />,
     );
+    // Even with a handler wired, public mode never surfaces the control.
     expect(screen.queryByText("Link lasts")).toBeNull();
+  });
+
+  it("picking a lifetime reports the chosen duration in ms (doc 16)", () => {
+    const onLifetimeChange = vi.fn();
+    render(
+      <ShareSheet
+        {...base}
+        sharingMode="link"
+        url="https://sti.care/a/abc"
+        onLifetimeChange={onLifetimeChange}
+      />,
+    );
+    fireEvent.click(screen.getByText("7 days"));
+    expect(onLifetimeChange).toHaveBeenCalledWith(7 * 24 * 60 * 60 * 1000);
+    fireEvent.click(screen.getByText("Until I turn it off"));
+    expect(onLifetimeChange).toHaveBeenLastCalledWith(null);
   });
 
   it("closed: a viewport-fixed, non-interactive layer (won't park mid-page or block taps)", () => {

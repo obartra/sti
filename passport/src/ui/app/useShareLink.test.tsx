@@ -56,6 +56,7 @@ function stubController(over: Partial<SessionController>): SessionController {
     setOwnerState: unused,
     shareLink: unused,
     renewLink: unused,
+    setShareLinkExpiry: unused,
     deleteAccount: unused,
     reviewKnocks: unused,
     approveKnocks: unused,
@@ -203,5 +204,61 @@ describe("useShareLink identity choice", () => {
       d.resolve(RESULT);
       await d.promise;
     });
+  });
+});
+
+describe("useShareLink lifetime", () => {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  it("defaults to until-turned-off with no private link yet", () => {
+    const { result } = setup(stubController({}));
+    expect(result.current.lifetime).toBeNull();
+  });
+
+  it("reads the current lifetime off the private-link alias's expiry", () => {
+    const expiring: OwnerSession = {
+      ...session,
+      blob: {
+        ...session.blob,
+        aliases: [
+          {
+            id: "abc",
+            key: "k",
+            writeToken: "w",
+            isPublic: false,
+            expiresAt: Date.now() + 7 * DAY_MS,
+          },
+        ],
+      },
+    };
+    const ref = { current: expiring as OwnerSession | null };
+    const { result } = renderHook(() =>
+      useShareLink(stubController({}), ref, vi.fn(), vi.fn()),
+    );
+    // Seven days out snaps to the 7-day preset.
+    expect(result.current.lifetime).toBe(7 * DAY_MS);
+  });
+
+  it("setLifetime calls the controller with the chosen duration and folds the session", async () => {
+    const d = deferred<OwnerSession>();
+    const setShareLinkExpiry = vi.fn(() => d.promise);
+    const { result } = setup(stubController({ setShareLinkExpiry }));
+
+    act(() => result.current.setLifetime(7 * DAY_MS));
+    expect(setShareLinkExpiry).toHaveBeenCalledWith(session, 7 * DAY_MS);
+    // Reflected at once (the URL is unchanged, only the expiry moves).
+    expect(result.current.lifetime).toBe(7 * DAY_MS);
+    await act(async () => {
+      d.resolve(session);
+      await d.promise;
+    });
+  });
+
+  it("setLifetime(null) sets until-turned-off", () => {
+    const setShareLinkExpiry = vi.fn(() => Promise.resolve(session));
+    const { result } = setup(stubController({ setShareLinkExpiry }));
+    act(() => result.current.setLifetime(null));
+    expect(setShareLinkExpiry).toHaveBeenCalledWith(session, null);
+    expect(result.current.lifetime).toBeNull();
   });
 });

@@ -13,7 +13,9 @@ import { COPY, KNOCK_UNIFORM, backBtn } from "./PublicResolution.copy.ts";
 import {
   AcceptInviteSection,
   ConnectSection,
+  type AcceptReveal,
 } from "./PublicResolution.accept.tsx";
+import type { AvatarConfig } from "../../lib/avatars.ts";
 
 export function BackBar({ onBack }: { onBack?: (() => void) | undefined }) {
   return (
@@ -285,6 +287,8 @@ export function ResolutionActions({
   knockSent,
   canAccept,
   onAccept,
+  accepterName,
+  accepterAvatar,
   canConnect,
   onConnect,
   onKnock,
@@ -297,7 +301,13 @@ export function ResolutionActions({
   linkHolder: boolean;
   knockSent: boolean;
   canAccept: boolean;
-  onAccept?: ((label: string) => Promise<string>) | undefined;
+  onAccept?:
+    | ((label: string, reveal: AcceptReveal) => Promise<string>)
+    | undefined;
+  // The accepter's own name + face (doc 15): whether they have a name to reveal and
+  // the fallback face for the per-link picker. Never the inviter's.
+  accepterName?: string | undefined;
+  accepterAvatar?: AvatarConfig | undefined;
   canConnect: boolean;
   onConnect?: (() => void) | undefined;
   onKnock: () => void;
@@ -314,6 +324,8 @@ export function ResolutionActions({
     return (
       <AcceptInviteSection
         handle={resolved.identity.handle}
+        accepterName={accepterName}
+        accepterAvatar={accepterAvatar}
         onAccept={onAccept}
       />
     );

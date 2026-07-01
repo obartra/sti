@@ -62,6 +62,7 @@ function stubController(
     setOwnerState: unused,
     shareLink: unused,
     renewLink: unused,
+    setShareLinkExpiry: unused,
     deleteAccount: unused,
     reviewKnocks: () => Promise.resolve(review()),
     approveKnocks,

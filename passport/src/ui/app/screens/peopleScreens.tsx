@@ -1,13 +1,16 @@
 import { Connect } from "../../connect/Connect.tsx";
 import { GroupsList } from "../../groups/GroupsList.tsx";
+import { PrivacySection } from "../../connect/parts.tsx";
 import { QrScanner } from "../../connect/QrScanner.tsx";
 import { todayEpochDay } from "../../../core/clock.ts";
 import type { ScreenRenderers } from "./context.ts";
 
 export const peopleRenderers: ScreenRenderers = {
-  // People: your connections (starred, then recent) with the scan tile to meet
-  // someone in person, and your groups folded in below (doc 31). Managing the links
-  // you hand out lives in the Links tab.
+  // People, top to bottom: scan tile, starred people, groups, then the full contact
+  // list (secondary, collapsed), and the "how this stays private" card last. Starred
+  // and groups are the prominent surfaces; groups thread into Connect between starred
+  // and the contact list (doc 31). Managing the links you hand out lives in the Links
+  // tab.
   people: ({
     nav,
     contacts,
@@ -24,12 +27,16 @@ export const peopleRenderers: ScreenRenderers = {
         onToggleFave={onToggleFave}
         onRemoveContact={onRevokeContact}
         onScan={() => nav.go("scan")}
+        groupsSlot={
+          <GroupsList
+            circles={circles}
+            onCreate={() => nav.go("group-create")}
+            onOpenGroup={(id) => nav.go("group-detail", { id })}
+          />
+        }
       />
-      <GroupsList
-        circles={circles}
-        onCreate={() => nav.go("group-create")}
-        onOpenGroup={(id) => nav.go("group-detail", { id })}
-      />
+      {/* info content last, out of the way */}
+      <PrivacySection />
     </div>
   ),
   // Scan someone's QR to open their passport: a decoded alias link routes to the

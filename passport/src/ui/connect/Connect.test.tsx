@@ -62,4 +62,18 @@ describe("Connect", () => {
     await user.click(screen.getByText("Delete connection"));
     expect(onRemoveContact).toHaveBeenCalledWith("b");
   });
+
+  it("renders the groups slot between starred and the full contact list", () => {
+    setup({ groupsSlot: <div>GROUPS SLOT</div> });
+    const starred = screen.getByText("Starred");
+    const groups = screen.getByText("GROUPS SLOT");
+    const recent = screen.getByText("Recent connections");
+    // Order top to bottom: starred, then groups, then the contact list.
+    expect(starred.compareDocumentPosition(groups)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(groups.compareDocumentPosition(recent)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
 });

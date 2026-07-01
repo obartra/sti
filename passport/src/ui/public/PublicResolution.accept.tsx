@@ -1,6 +1,20 @@
 import { useState } from "react";
 import { Card, Button, Input } from "../../design/components/index.ts";
 import { Copy, Link as LinkIcon } from "../../design/icons.tsx";
+import {
+  IdentityChoiceRow,
+  FaceOverrideRow,
+} from "../share/ShareSheet.identity.tsx";
+import type { AvatarConfig } from "../../lib/avatars.ts";
+import type { AliasIdentity } from "../../store/index.ts";
+
+// The accepter's per-link reveal choice (doc 15): stay anonymous (the default) or
+// show their own name, with an optional per-link face when showing the name. The
+// accepter picks this the same way an owner does on every other share surface.
+export interface AcceptReveal {
+  identity: AliasIdentity;
+  avatarOverride: AvatarConfig | undefined;
+}
 
 // The return link the inviter must open to finish the two-way link (doc 13 path A).
 // Same shape as the Connect "link ready" card: a mono URL + a copy button.
@@ -119,22 +133,34 @@ export function ConnectSection({
 }
 
 // A logged-in viewer opening a contact invite: add the inviter as a two-way
-// contact (doc 13 path A), then surface the return link to send back.
+// contact (doc 13 path A), then surface the return link to send back. The accepter
+// can reveal their own name and pick a per-link face (doc 15); anonymous is the
+// default, matching every other share surface. `accepterName` and `accepterAvatar`
+// are the accepter's own account name + face (the fallback face, and whether there
+// is a name to show), not the inviter's.
 export function AcceptInviteSection({
   handle,
+  accepterName,
+  accepterAvatar,
   onAccept,
 }: {
   handle: string;
-  onAccept: (label: string) => Promise<string>;
+  accepterName: string | undefined;
+  accepterAvatar: AvatarConfig | undefined;
+  onAccept: (label: string, reveal: AcceptReveal) => Promise<string>;
 }) {
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [returnUrl, setReturnUrl] = useState<string | null>(null);
+  const [identity, setIdentity] = useState<AliasIdentity>("anonymous");
+  const [avatarOverride, setAvatarOverride] = useState<
+    AvatarConfig | undefined
+  >(undefined);
 
   const add = () => {
     if (busy) return;
     setBusy(true);
-    void onAccept(label.trim())
+    void onAccept(label.trim(), { identity, avatarOverride })
       .then((url) => setReturnUrl(url))
       .catch(() => undefined)
       .finally(() => setBusy(false));
@@ -186,6 +212,17 @@ export function AcceptInviteSection({
         value={label}
         onChange={(e) => setLabel(e.target.value)}
         maxLength={64}
+      />
+      <IdentityChoiceRow
+        choice={identity}
+        hasName={accepterName !== undefined}
+        onChange={setIdentity}
+      />
+      <FaceOverrideRow
+        choice={identity}
+        override={avatarOverride}
+        fallback={accepterAvatar}
+        onChange={setAvatarOverride}
       />
       <Button variant="primary" size="lg" block onClick={add}>
         {busy ? "Adding..." : "Add to contacts"}

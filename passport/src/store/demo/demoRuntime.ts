@@ -163,6 +163,8 @@ export function createDemoController(): SessionController {
     },
     shareLink: (s) => Promise.resolve({ session: s, url: demoUrl() }),
     renewLink: (s) => Promise.resolve({ session: s, url: demoUrl() }),
+    // The demo has no server enforcing expiry, so the lifetime choice is a no-op.
+    setShareLinkExpiry: (s) => Promise.resolve(s),
     deleteAccount: () => Promise.resolve(),
     // One contentless ask, so the demo inbox shows "someone asked to see your
     // status" (faithful to real behavior: a count with no grantable pending is an

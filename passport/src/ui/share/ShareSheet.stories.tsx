@@ -78,3 +78,16 @@ export const IdentityMainWithFace: Story = {
     onAvatarOverrideChange: () => undefined,
   },
 };
+
+// The private link's lifetime choice (doc 16). Wiring onLifetimeChange surfaces
+// the "Link lasts" control; here it shows a 7-day lifetime selected. Only the
+// private link has this; the public profile stays live until turned off.
+export const WithLifetime: Story = {
+  args: {
+    ...base,
+    sharingMode: "link",
+    desktop: false,
+    lifetime: 7 * 24 * 60 * 60 * 1000,
+    onLifetimeChange: () => undefined,
+  },
+};
