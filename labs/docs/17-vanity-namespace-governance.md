@@ -13,7 +13,7 @@ immediate access._
 
 ## Why this doc
 
-Public link mode is the one mode that needs a server-side `name -> aliasId` directory — the one
+Public link mode is the one mode that needs a server-side `name -> aliasId` directory, the one
 exception to philosophy principle 6's "no central identity index" rule, and explicitly an opt-in
 exception with user consent. Because the directory is the only place the server holds anything
 resembling an identity, the bar to turn it on is a written, reviewed governance spec, not a code
@@ -78,6 +78,9 @@ reasons.) Format errors (too short, bad characters) are their own specific, non-
   lock and returns to the pool first-come, with no privileged reclaim for the prior holder).
 - **No transfers, no marketplace.** A name cannot be handed to another account or sold; release +
   reclaim is the only path, and it is racy by design (first-come wins).
+- **A handle carrying a password login is pinned (not releasable).** If a password login is set on
+  a handle (doc 32), it cannot be released or deleted until the password is turned off. See
+  [Pinned handles](#pinned-handles-a-handle-that-carries-a-password-login).
 - **Registration is rate-limited (server-enforced).** Claims (`PUT /u/{name}`) carry a per-IP bucket and
   a single global bucket, the same two-layer shape resolve and report use: the per-IP cap slows one
   squatter, the global cap bounds a distributed land-grab across many IPs / fresh aliases. Over-limit is
@@ -95,6 +98,38 @@ reasons.) Format errors (too short, bad characters) are their own specific, non-
     and claim a name on each; the backstop against that is the registration **rate limit** below
     (per-IP plus a global bucket), not a hard per-account ceiling. Stated honestly: the namespace
     resists bulk land-grab by cost, not by an account quota.
+
+## Pinned handles (a handle that carries a password login)
+
+A handle is normally releasable and deletable under the lifecycle above. There is one
+exception: **while a password login is set on a handle, that handle is pinned.**
+[32-account-recovery-and-unlock](32-account-recovery-and-unlock.md) lets a person log in
+with "@name plus password," keyed to a public handle; releasing that handle would either
+orphan the login or hand the login name to a stranger who could then set their own
+password on it. So:
+
+- **A pinned handle cannot be released or deleted.** While a password is set on it, the
+  release, rename-off, and delete paths refuse, with a plain reason (the handle is in use
+  for sign-in; turn the password off first).
+- **Removing the password unpins it.** Turn the password off in Settings and the handle
+  returns to the normal lifecycle above: releasable, and freed into the 24-hour lock like
+  any other.
+- **Reusing an existing handle pins it the same way.** If a person turns a password on
+  using a handle they already hold, that handle becomes pinned for as long as the password
+  is set, exactly as a freshly claimed one would.
+- **No password, nothing pinned.** A person who never sets a password keeps every handle
+  fully releasable, the behavior described above. Pinning only ever narrows the handle
+  that a password depends on.
+
+This is a client-and-server rule. The client will not offer to release a pinned handle,
+and the server enforces the pin directly: a release/rename-off/delete of name X first
+checks whether X has a recovery envelope, and refuses if it does. That is a **per-name
+lookup the server already can do** (it holds both the directory and the envelope store,
+each keyed by the same public name), so it needs no cross-alias grouping and adds no new
+oracle the directory did not already have: the release path is authorized by the handle's
+alias write token, so only the owner can trigger the check, and they already know they set
+a password. The pin therefore cannot be worked around by releasing the name out from under
+a live login.
 
 ## Reserved names + blocklist (gate; resolves doc 16 OPEN)
 

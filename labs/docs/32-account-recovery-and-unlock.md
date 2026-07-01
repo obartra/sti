@@ -1,13 +1,21 @@
 # 32 - Account recovery and unlock
 
-## Status: LAUNCHED (the plan at the end tracks what is built; continuity nudges remain optional/later)
+## Status: LAUNCHED (the plan at the end tracks what is built; the public-handle login name and password-at-sign-up are the remaining build, and continuity nudges stay optional/later)
 
 How a person keeps access to their account across devices and over time, and how an
 optional, memorable password can fit without weakening the blind store. This doc owns
 the recovery/unlock factor model. It builds on [24-stay-signed-in](24-stay-signed-in.md)
-(the on-device resumable session) and does not change the server boundary in
+(the on-device resumable session), uses the public handle from
+[17-vanity-namespace-governance](17-vanity-namespace-governance.md) as the password's
+login name, and does not change the server boundary in
 [10-build-backend-and-deployment](10-build-backend-and-deployment.md): the server
 still holds only ciphertext.
+
+The passkey is the recommended way back in: nothing to type, and it cannot be phished.
+A password is a supported, weaker alternative, offered for people who want a familiar
+"name and password" they can use on any device. When a password is set, its login name
+is a **public handle** (the same findable name governed by doc 17), so the pattern is
+the ordinary "@name plus password," not a second secret to remember.
 
 ## The problem
 
@@ -37,6 +45,12 @@ wraps the root key** so a device can unlock without re-typing the phrase. That i
 an envelope around a high-entropy root. The change here is small: add a **password
 envelope** alongside the passkey one, and name the pattern.
 
+The account's real anchor is the **root key**. Passkey, recovery phrase, and password are
+all just wrappers around it, none of them more "the account" than the others. That framing
+matters below: because they are peers, a password can be chosen at sign-up as easily as a
+passkey, and either can be added or dropped later without touching the account id or any
+link.
+
 So, deliberately NOT a redesign:
 
 - The **root key stays derived from the recovery phrase** (the existing PBKDF2 path), and
@@ -60,12 +74,16 @@ Factors:
 - **Passkey / biometric** - wraps the root key per device (biometrics are not a separate
   factor; they gate the passkey). Already shipped. Synced passkeys (platform keychains)
   already give cross-device continuity within one ecosystem for free.
-- **Password (opt-in)** - a memory-hard KDF of the password (Argon2id, per-account
-  random salt, a deliberately high cost) wraps the root key. Its wrapped-key envelope
-  is stored server-side as ciphertext, so it works on any device: fetch the envelope,
-  unwrap with the password, recover the root key. This is the memorable, cross-device path
-  the product wants, and it is the same wrap pattern the passkey already uses, just
-  stored server-side and keyed by a password instead of a passkey.
+- **Password (opt-in, not the default)** - a memory-hard KDF of the password (Argon2id,
+  per-account random salt, a deliberately high cost) wraps the root key. Its wrapped-key
+  envelope is stored server-side as ciphertext, so it works on any device: name the
+  envelope by a **public handle** (doc 17), fetch it, unwrap with the password, recover
+  the root key. This is the memorable, cross-device path some people want, and it is the
+  same wrap pattern the passkey already uses, just stored server-side and keyed by a
+  password instead of a passkey. It is deliberately not the recommended path: a password
+  is weaker than a passkey (a person can be tricked into typing it, and it can be guessed),
+  so it is kept behind a strict strength gate and paired with a public handle as its login
+  name. See [The login name is a public handle](#the-login-name-is-a-public-handle).
 
 Because the account id derives from the phrase-derived root key and **never from the
 password**, adding a password introduces no oracle on the always-present account id. The
@@ -139,51 +157,101 @@ ideas, and where they land:
 
 ## Where this is managed
 
-Factors are added, viewed, and removed in **Settings** (see
-[31-app-shape](31-app-shape.md)): re-view the phrase, turn an optional password on or
-off (which mints or drops its envelope), and see which unlock methods are active.
-Changing the password re-wraps a fresh envelope; it never re-keys the root key, so links
-and the account id are untouched.
+A password can be set two ways: chosen **at sign-up** (root still in memory, no phrase
+re-entry) or turned on later in **Settings** (see [31-app-shape](31-app-shape.md)), which
+takes the phrase to re-derive the root before wrapping. In Settings the owner can also
+re-view the phrase, turn an optional password off (which drops its envelope and unpins the
+handle), and see which unlock methods are active. Changing the password re-wraps a fresh
+envelope; it never re-keys the root key, so links and the account id are untouched.
 
 ## Honesty (user-facing copy)
 
 Per [21-voice-and-tone](21-voice-and-tone.md), state what is protected, never how it
 could be attacked, and never overclaim. A password's copy must not imply it is as
-strong as the phrase; it should read as a convenient way back in, with the phrase named
-as the real backstop. The strength gate's message says plainly that a weak password is
-not accepted, without lecturing.
+strong as the phrase or a passkey; it should read as a convenient, weaker way back in,
+with the passkey recommended and the phrase named as the real backstop. The strength
+gate's message says plainly that a weak password is not accepted, without lecturing.
+Because a password's login name is a public handle, the copy also keeps the honest note
+that setting one means claiming a public name people can find you by (doc 17's disclosure
+applies).
 
-## The cross-device locator
+## The login name is a public handle
 
 The envelope model glosses one hard problem: on a **new device with only the password**,
 how does the client find which envelope to fetch? The account id derives from the
 phrase, which the person does not have on the new device, and it must **never** derive
 from the password (that is the oracle this whole doc avoids). A password alone therefore
-cannot name its own envelope.
+cannot name its own envelope. It needs a **non-secret login name** that names the
+envelope, distinct from the password.
 
-The resolution is a **non-secret recovery locator**, chosen by the owner when they turn
-the password on, distinct from the password:
+That login name is a **public handle**, the same findable name governed by
+[17-vanity-namespace-governance](17-vanity-namespace-governance.md). There is no separate
+"recovery name" concept. To turn a password on, you either **claim a new public handle**
+or **reuse a public handle you already hold**; the familiar pattern is "@name plus
+password." The normalized handle is the locator that names the envelope.
 
-- The locator **names** the envelope; the password **opens** it. Cross-device unlock is
-  "locator + password", two memorable things, not one. The honest framing in copy is
-  "your recovery name and password", with the phrase still the real backstop.
-- The locator is **not a secret and not the account id.** It is a server-side lookup key
-  mapping `locator -> { envelope ciphertext, kdf params, salt }`. Knowing it lets someone
-  *fetch an envelope ciphertext* (rate-limited, below), never *open* it: the password +
-  Argon2id cost is the only thing protecting the wrapped root. This is the same
+- The handle **names** the envelope; the password **opens** it. Cross-device sign-in is
+  "@name plus password," two things a person already understands, not one obscure secret.
+  The phrase stays the real backstop.
+- The handle is **not a secret and not the account id.** It maps, server-side, to
+  `handle -> { envelope ciphertext, kdf params, salt }`. Knowing a handle lets someone
+  *fetch an envelope ciphertext* (rate-limited, below), never *open* it: the password
+  plus the Argon2id cost is the only thing protecting the wrapped root. This is the same
   weakest-link cost already named ("an attacker who steals that one envelope can attack
-  it offline"), with the locator deciding *which* envelope, not weakening it.
-- The locator must not be a password-derived value (that would re-introduce a
-  password->server-visible-value oracle). It is owner-chosen, like a username. A person
-  who already holds a public findable name (doc 17) may reuse it as the locator; everyone
-  else picks a recovery name when enabling the password. It is validated for shape only
-  (charset/length), never required to be unique to a human, and reveals nothing.
-- **No locator collision oracle:** a fetch returns a uniform "here is an envelope-shaped
-  blob" whether or not one exists (a decoy when absent), so the lookup is existence-
-  uniform like alias reads, and does not confirm "an account uses recovery name X".
+  it offline"); the handle only decides *which* envelope, it does not weaken it.
+- The handle must not be a password-derived value (that would re-introduce a
+  password-to-server-visible-value oracle). It is owner-chosen, like a username, and lives
+  in the doc 17 directory, validated by doc 17's charset and length rules.
+- **Setting a password proves ownership of the handle.** Writing the envelope is
+  authorized by the handle's alias write token (doc 17), so the directory entry and the
+  recovery envelope always belong to the same owner. You cannot key a password to a name
+  someone else holds.
+- **Setting a password pins the handle.** While a password is set, its handle cannot be
+  released or deleted (that would orphan the login, or hand the login name to a stranger).
+  Removing the password unpins it. This is the doc 17 rule
+  ([Pinned handles](17-vanity-namespace-governance.md#pinned-handles-a-handle-that-carries-a-password-login)),
+  referenced here.
+
+The directory reveals that a **name exists** (that is the whole point of a findable name,
+doc 17). It does **not** reveal that the name has a password login. Whether a handle has a
+recovery envelope stays hidden: the envelope read is existence-uniform (a fixed-size decoy
+on a miss), and writes and deletes are silent no-ops on a token mismatch, exactly as the
+resolved decisions below specify. So "this name exists" is public; "this name can be
+logged into with a password" is not.
+
+**Requiring a public handle adds no new exposure.** A handle's existence is discoverable
+only through the directory resolve (the as-you-type availability check and `GET /u/{name}`),
+which is the inherent, opt-in cost of choosing a findable name at all, the same whether or
+not a password rides on it. A raw link visit still reveals nothing on its own: an opaque
+private link, and a valid private link opened without its key, both present the same "ask
+to connect" surface without confirming that an account exists (the knock flow in
+[13-contact-graph-and-notification](13-contact-graph-and-notification.md)). The only place
+existence surfaces is the directory, never a link fetch. So the privacy-conscious path is
+untouched: share only private links, never claim a public handle, and password sign-in
+simply never applies, with existence never revealed. The public handle is opt-in
+convenience for people who have already chosen to be findable.
 
 This keeps the invariant intact: nothing the server can see is derived from the password,
 and the always-present account id stays a function of the high-entropy phrase only.
+
+## Password as a sign-up choice, not only a Settings add-on
+
+Because the account's anchor is the root key and every factor is just a wrapper around it,
+a password can be chosen **at sign-up**, right beside a passkey, not only added later in
+Settings.
+
+The reason this is clean at sign-up is timing. At sign-up the freshly generated root is
+**in memory**, so it can be wrapped with @handle plus password on the spot, with **no
+recovery-phrase re-entry**. (That re-entry friction only exists when adding a password
+*later*, on a device that has dropped the raw root: the session root is non-extractable
+by then, per [24-stay-signed-in](24-stay-signed-in.md), so turning a password on later
+takes the phrase to re-derive the root before wrapping.)
+
+So sign-up offers a **choice of how to get back in**: a passkey, and/or a public handle
+plus password. A person can pick either, or both. Whatever they pick, sign-up **always
+still generates and shows the recovery phrase** as the ultimate backup, so no path leaves
+the account without its high-entropy backstop. Claiming a handle at sign-up pins it the
+same way it would from Settings.
 
 ## Resolved decisions
 
@@ -211,25 +279,26 @@ and the always-present account id stays a function of the high-entropy phrase on
   (doc 21). This gate is load-bearing, not polish: it holds the floor for everyone who
   turns the password on.
 - **Envelope storage + rate-limiting.** The server stores per-account, per-factor
-  wrapped-key envelopes as opaque records keyed by the locator: `{ locator, factor,
-  version, kdfParams, salt, wrappedRoot }`. Everything is opaque ciphertext except
+  wrapped-key envelopes as opaque records keyed by the **public handle**: `{ handle,
+  factor, version, kdfParams, salt, wrappedRoot }`. Everything is opaque ciphertext except
   `kdfParams` + `salt` (needed to derive the unwrap key; a salt is not a secret).
   Fetching an envelope is **rate-limited per IP** (and by a global bucket) like a
   sensitive read and returns a uniform, fixed-size envelope-shaped response (real or a
   deterministic decoy on a miss), so the store is not a freely harvestable target and
-  not an existence oracle. Writing/replacing an envelope (enable, change, disable) is
-  authorized by the account's write token (derived from the phrase-root the owner
-  already holds when they manage factors in Settings).
+  not an existence oracle. So even though the directory reveals the handle exists, the
+  envelope store never reveals the handle has a password login. Writing/replacing an
+  envelope (enable, change, disable) is authorized by the **handle's alias write token**
+  (doc 17), which ties the envelope to the same owner as the directory entry.
 
-  **The write and delete paths are existence-uniform too.** A write against a locator
-  already held under a different token is a silent no-op (never an overwrite, never a
-  distinguishing error), and a delete with a non-matching token or a missing locator is
-  likewise a uniform success. So neither the write nor the delete path confirms whether
-  a locator is taken, the complement of the decoy-uniform read. The cost is that a
-  genuine locator collision is not reported at set-time by the server; instead the owner
-  detects it **client-side** by fetching the just-written envelope and confirming their
-  own password opens it (only they can), and picks another recovery name if it does not.
-  The phrase remains the backstop, so a mis-set recovery name is never account-ending.
+  **The write and delete paths are existence-uniform too.** A write against a handle whose
+  envelope is already held under a different token is a silent no-op (never an overwrite,
+  never a distinguishing error), and a delete with a non-matching token or a missing
+  envelope is likewise a uniform success. So neither the write nor the delete path
+  confirms whether a handle has an envelope, the complement of the decoy-uniform read. The
+  cost is that a genuine collision is not reported at set-time by the server; instead the
+  owner detects it **client-side** by fetching the just-written envelope and confirming
+  their own password opens it (only they can). The phrase remains the backstop, so a
+  mis-set login is never account-ending.
 
 ## Implementation plan (slices)
 
@@ -253,26 +322,36 @@ and the always-present account id stays a function of the high-entropy phrase on
 3. **Server: envelope storage.** _Built._ A `recovery_envelope` table (locator -> one
    fixed-size opaque blob + `hash(account write token)`), the fixed-size decoy-uniform
    read, and the write/delete (write-token authorized, and existence-uniform per the note
-   above). The locator shares the vanity-name charset but is shape-validated
-   only (a private lookup key, not a public directory entry). Go tests cover the round
-   trip, the fixed-size decoy on a miss, wrong-size/malformed/missing-token rejects, the
-   uniform-and-safe collision, and delete; the ciphertext-projection guard allowlists the
-   new getter.
+   above). The locator shares the vanity-name charset and is shape-validated. Go tests
+   cover the round trip, the fixed-size decoy on a miss, wrong-size/malformed/missing-token
+   rejects, the uniform-and-safe collision, and delete; the ciphertext-projection guard
+   allowlists the new getter. _Change to build: the locator is unified with the doc 17
+   public handle rather than a standalone name, and the write is authorized by the handle's
+   alias write token so the envelope and the directory entry share an owner._
 4. **Settings: manage factors (doc 31).** _Built._ The `/recovery` API client,
    `store/recoveryOps.ts` (`setRecoveryPassword` / `disableRecoveryPassword`) wired
-   through the SessionController, and a `recoveryName` field on the account blob (schema
-   v13) so the chosen locator is remembered for re-view and turn-off. Because the session
-   root is non-extractable (doc 24), turning the password on takes the recovery **phrase**,
-   re-derives the root, and verifies the phrase names this account before wrapping; a
-   locator collision is caught client-side (read back and confirm our own password opens
-   it). The Settings card (`ui/settings/RecoveryPassword.tsx`) has an off state (recovery
-   name + password with live strength feedback + confirm + phrase) and an on state (name,
-   change, turn off), rendered from the Privacy screen for a logged-in owner. The envelope
-   crypto and the strength gate load via dynamic import, so their WASM/estimator stay out of
-   the precached shell. Follow-up: re-viewing the phrase itself from Settings.
-5. **New-device unlock by recovery name + password.** _Built._ The sign-in screen offers
-   this as a third way in, beside the passkey and the recovery phrase: enter the recovery
-   name + password, which fetches the envelope by locator and opens it, recovering the root
-   key and loading the account. A wrong name or password is one uniform failure.
-6. **Continuity nudges (later, optional).** The gentle rehearsal and the once-a-year
+   through the SessionController. Because the session root is non-extractable (doc 24),
+   turning the password on later takes the recovery **phrase**, re-derives the root, and
+   verifies the phrase names this account before wrapping; a collision is caught
+   client-side (read back and confirm our own password opens it). The Settings card
+   (`ui/settings/RecoveryPassword.tsx`) has an off state (your public handle + password
+   with live strength feedback + confirm + phrase) and an on state (handle, change, turn
+   off), rendered from the Privacy screen for a logged-in owner. The envelope crypto and
+   the strength gate load via dynamic import, so their WASM/estimator stay out of the
+   precached shell. _Change to build: the login name is a public handle (claim a new one
+   or reuse one you hold) rather than a standalone recovery name; setting a password pins
+   the handle and turning it off unpins it (doc 17); turning it off drops the envelope._
+   Follow-up: re-viewing the phrase itself from Settings.
+5. **New-device unlock by @handle + password.** _Built._ The sign-in screen offers this
+   beside the passkey and the recovery phrase: enter @handle + password, which fetches the
+   envelope by handle and opens it, recovering the root key and loading the account. A
+   wrong name or password is one uniform failure. _Change to build: the field is a public
+   handle, and the sign-in shape leads with passkey and folds @handle + password and the
+   recovery phrase under an "other ways to log in" disclosure (doc 31)._
+6. **Password at sign-up (new capability to build).** Offer @handle + password as a
+   sign-up choice beside the passkey, wrapping the in-memory root on the spot with **no
+   phrase re-entry**, and always still generating and showing the recovery phrase. Claiming
+   the handle at sign-up pins it (doc 17). This is the one genuinely new build here; the
+   Settings add-later path above is unchanged apart from the public-handle rename.
+7. **Continuity nudges (later, optional).** The gentle rehearsal and the once-a-year
    reminder from the sections above: reminders, never forced resets, never blocking use.
