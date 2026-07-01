@@ -76,11 +76,6 @@ type Config struct {
 	// affecting real use. Zero leaves the defaults (1/sec, burst 5).
 	AdminRatePerSec float64
 	AdminBurst      float64
-	// FindableEnabled gates the vanity-name WRITE endpoints (PUT/DELETE /u/{name},
-	// doc 17). Off by default: GET /u resolve stays live (and 404s an empty
-	// directory), but no name can be registered until Findable's launch gate flips
-	// this on, so the directory stays empty in production pre-launch.
-	FindableEnabled bool
 	// VanityLockWindow is the post-release lock during which a freed name is
 	// unclaimable (doc 17). Default 24h; lowered by tests to exercise expiry.
 	VanityLockWindow time.Duration
@@ -114,11 +109,6 @@ type Config struct {
 	// (20/sec, burst 100).
 	PushRegisterGlobalPerSec float64
 	PushRegisterGlobalBurst  float64
-	// RecoveryEnabled gates the password-recovery envelope endpoints (GET/PUT/DELETE
-	// /recovery/{locator}, doc 32). Off by default: like the Findable write half, the
-	// surface stays invisible (a bare 404) until the recovery feature ships and this
-	// flag flips, so no envelope can be stored or fetched pre-launch.
-	RecoveryEnabled bool
 	// RecoveryGlobal* bounds the recovery-envelope endpoints across ALL callers, on
 	// top of the per-IP cap: the locator is a short, human-chosen (guessable) name, so
 	// this caps a distributed attempt to harvest or enumerate the store. Reads stay
@@ -294,25 +284,19 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /inbox/{id}", s.handleInboxGet)
 	s.mux.HandleFunc("PUT /inbox/{id}", s.handleInboxPut)
 	s.mux.HandleFunc("GET /u/{name}", s.handleVanityResolve)
-	if s.cfg.FindableEnabled {
-		// The write half of the directory is gated behind the launch flag (doc 17),
-		// so the namespace stays empty in production until Findable ships. Resolve
-		// (above) stays live and harmlessly 404s an empty directory.
-		s.mux.HandleFunc("PUT /u/{name}", s.handleVanityRegister)
-		s.mux.HandleFunc("DELETE /u/{name}", s.handleVanityRelease)
-		s.mux.HandleFunc("POST /u/{name}/report", s.handleVanityReport)
-	}
+	// The write half of the public-name directory (doc 17). Registration is a
+	// public act; the namespace fills as owners claim names.
+	s.mux.HandleFunc("PUT /u/{name}", s.handleVanityRegister)
+	s.mux.HandleFunc("DELETE /u/{name}", s.handleVanityRelease)
+	s.mux.HandleFunc("POST /u/{name}/report", s.handleVanityReport)
 	s.mux.HandleFunc("GET /acct/{id}", s.handleAccountGet)
 	s.mux.HandleFunc("PUT /acct/{id}", s.handleAccountPut)
 	s.mux.HandleFunc("DELETE /acct/{id}", s.handleAccountDelete)
-	if s.cfg.RecoveryEnabled {
-		// The password-recovery envelope store (doc 32), gated behind the launch flag
-		// so the surface stays a bare 404 until recovery ships. Reads are
-		// existence-uniform (decoy on a miss); writes/deletes are write-token gated.
-		s.mux.HandleFunc("GET /recovery/{locator}", s.handleRecoveryGet)
-		s.mux.HandleFunc("PUT /recovery/{locator}", s.handleRecoveryPut)
-		s.mux.HandleFunc("DELETE /recovery/{locator}", s.handleRecoveryDelete)
-	}
+	// The password-recovery envelope store (doc 32). Reads are existence-uniform
+	// (a decoy on a miss); writes/deletes are write-token gated.
+	s.mux.HandleFunc("GET /recovery/{locator}", s.handleRecoveryGet)
+	s.mux.HandleFunc("PUT /recovery/{locator}", s.handleRecoveryPut)
+	s.mux.HandleFunc("DELETE /recovery/{locator}", s.handleRecoveryDelete)
 	s.mux.HandleFunc("POST /notify", s.handleNotify)
 	s.mux.HandleFunc("POST /republish", s.handleRepublish)
 	s.mux.HandleFunc("POST /push/register", s.handlePushRegister)

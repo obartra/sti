@@ -447,9 +447,9 @@ func (s *Store) TouchAccount(ctx context.Context, id string, now int64) error {
 }
 
 // --- Vanity name directory (doc 17, Findable) -------------------------------
-// name -> alias_id only. No status, key, or identity. The endpoints are gated
-// behind STI_FINDABLE_ENABLED; ownership of a name is proven by holding the write
-// token of the alias it points at (no separate owner record).
+// name -> alias_id only. No status, key, or identity. Ownership of a name is
+// proven by holding the write token of the alias it points at (no separate owner
+// record).
 
 // VanityStatus is the outcome of a claim attempt.
 type VanityStatus int

@@ -12,7 +12,6 @@ import type { VanityRegisterResult } from "../../api/client.ts";
 // name for their alias, behind an explicit consent disclosure. The transport is
 // injected (FindableOps) so this is driven in tests/Storybook without a server,
 // and so the parent can bind it to the right alias + persist the chosen name.
-// Gated by FINDABLE_ENABLED at the call site; this component assumes it's allowed.
 
 export interface FindableOps {
   /** Claim `name` for the owner's alias. Returns the outcome, never throws on the

@@ -3,7 +3,6 @@ import { Care } from "../../core/Care.tsx";
 import { Notifications } from "../../core/Notifications.tsx";
 import type { NotificationItem } from "../../core/Notifications.tsx";
 import { Privacy } from "../../core/Privacy.tsx";
-import { FINDABLE_ENABLED, RECOVERY_ENABLED } from "../../../features.ts";
 import { blueChecklist, extendClearance } from "../../../core/report.ts";
 import { todayEpochDay } from "../../../core/clock.ts";
 import { RESOURCES, openResource } from "../../../lib/resources.ts";
@@ -230,12 +229,12 @@ export const coreRenderers: ScreenRenderers = {
       onLogOut={isLoggedIn ? onLogOut : undefined}
       onViewPrivacyPolicy={() => nav.go("privacy-policy")}
       onViewTerms={() => nav.go("terms")}
-      // The Findable section is gated here, at the wiring boundary, so the Privacy
-      // screen + FindableName stay flag-agnostic (and storyable): present the ops
-      // only when the flag is on and the owner is logged in.
+      // The Findable ops are wired only for a logged-in owner, so the Privacy
+      // screen + FindableName stay identity-agnostic (and storyable): a signed-out
+      // preview shows the section without live actions.
       vanityName={vanityName}
       findableOps={
-        FINDABLE_ENABLED && isLoggedIn
+        isLoggedIn
           ? {
               register: onRegisterVanityName,
               check: onCheckVanityName,
@@ -243,11 +242,11 @@ export const coreRenderers: ScreenRenderers = {
             }
           : undefined
       }
-      // The password card is gated here too (doc 32), so Privacy + RecoveryPassword
-      // stay flag-agnostic: present the ops only when recovery is on and logged in.
+      // The password card (doc 32) is wired the same way: ops only for a logged-in
+      // owner, so Privacy + RecoveryPassword stay identity-agnostic.
       recoveryName={recoveryName}
       recoveryOps={
-        RECOVERY_ENABLED && isLoggedIn
+        isLoggedIn
           ? {
               set: onSetRecoveryPassword,
               disable: onDisableRecoveryPassword,

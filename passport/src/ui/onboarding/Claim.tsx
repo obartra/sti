@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button, Card, Field, Input } from "../../design/components/index.ts";
 import { Fingerprint, Key } from "../../design/icons.tsx";
 import { TopBack } from "./TopBack.tsx";
@@ -45,6 +45,7 @@ function RecoverFlow({
   onRecover?: ((phrase: string) => void) | undefined;
 }) {
   const [phrase, setPhrase] = useState("");
+  const phraseId = useId();
   const ok = phrase.trim().length > 0;
   return (
     <Card
@@ -70,8 +71,9 @@ function RecoverFlow({
       >
         {COPY.recoverHint}
       </div>
-      <Field label={COPY.recoverPlaceholder}>
+      <Field label={COPY.recoverPlaceholder} htmlFor={phraseId}>
         <Input
+          id={phraseId}
           value={phrase}
           onChange={(e) => setPhrase(e.target.value)}
           autoComplete="off"
@@ -103,6 +105,8 @@ function RecoverPasswordFlow({
 }) {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const nameId = useId();
+  const passwordId = useId();
   const ok = name.trim().length > 0 && password.length > 0;
   return (
     <Card
@@ -128,16 +132,18 @@ function RecoverPasswordFlow({
       >
         {COPY.recoverPwHint}
       </div>
-      <Field label={COPY.recoverPwNameLabel}>
+      <Field label={COPY.recoverPwNameLabel} htmlFor={nameId}>
         <Input
+          id={nameId}
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoComplete="off"
           spellCheck={false}
         />
       </Field>
-      <Field label={COPY.recoverPwPasswordLabel}>
+      <Field label={COPY.recoverPwPasswordLabel} htmlFor={passwordId}>
         <Input
+          id={passwordId}
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -220,7 +226,7 @@ function ClaimHeader({
   onBack,
 }: {
   isLogin: boolean;
-  onBack?: () => void;
+  onBack?: (() => void) | undefined;
 }) {
   return (
     <>

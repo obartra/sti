@@ -1,11 +1,10 @@
 // @vitest-environment node
-// Findable (doc 17) proven against a live blind store with the feature enabled:
-// the full client<->server flow that ships at F6 — claim a name for an owned
-// alias, resolve it back, have the rules (reserved + the curated blocklist)
-// reject, file a public report that reaches the admin queue, and release the name
-// back into the lock. This is the end-to-end validation the gated unit tests
-// (which use fakes) can't give: it builds + boots the real Go server with
-// STI_FINDABLE_ENABLED and drives the real api client over HTTP.
+// Findable (doc 17) proven against a live blind store: the full client<->server
+// flow — claim a name for an owned alias, resolve it back, have the rules
+// (reserved + the curated blocklist) reject, file a public report that reaches the
+// admin queue, and release the name back into the lock. This is the end-to-end
+// validation the unit tests (which use fakes) can't give: it builds + boots the
+// real Go server and drives the real api client over HTTP.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createApiClient } from "../api/client.ts";
@@ -20,7 +19,7 @@ import {
 
 const ADMIN_TOKEN = randomHex(24); // 48 hex chars, over the 32-char boot floor
 
-describe("Findable against a live blind store (feature enabled)", () => {
+describe("Findable against a live blind store", () => {
   let harness: Harness | undefined;
   let api!: ReturnType<typeof createApiClient>;
   let baseUrl = "";
@@ -30,7 +29,6 @@ describe("Findable against a live blind store (feature enabled)", () => {
   beforeAll(async () => {
     harness = await startApi({
       env: {
-        STI_FINDABLE_ENABLED: "true",
         STI_ADMIN_ENABLED: "true",
         STI_ADMIN_TOKEN: ADMIN_TOKEN,
       },

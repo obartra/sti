@@ -6,7 +6,6 @@ import { AvatarEdit } from "../../onboarding/AvatarEdit.tsx";
 import type { AvatarConfig } from "../../../lib/avatars.ts";
 import type { Nav } from "../useAppRouter.ts";
 import type { ScreenRenderers } from "./context.ts";
-import { RECOVERY_ENABLED } from "../../../features.ts";
 
 // Avatar edit owns local config state, so it is a component, not an inline arrow.
 // It opens on the owner's current avatar and persists the pick on Done.
@@ -56,10 +55,8 @@ export const onboardRenderers: ScreenRenderers = {
       }}
       onLogin={() => void onboarding.loginPasskey()}
       onRecover={(phrase) => void onboarding.recoverPhrase(phrase)}
-      onRecoverPassword={
-        RECOVERY_ENABLED
-          ? (name, password) => void onboarding.recoverPassword(name, password)
-          : undefined
+      onRecoverPassword={(name, password) =>
+        void onboarding.recoverPassword(name, password)
       }
     />
   ),

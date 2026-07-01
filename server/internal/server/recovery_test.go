@@ -13,7 +13,7 @@ import (
 // newRecoveryServer builds a server with the recovery envelope endpoints enabled.
 func newRecoveryServer(t *testing.T) (http.Handler, *store.Store) {
 	t.Helper()
-	srv, st := newServer(t, Config{RecoveryEnabled: true}, nil)
+	srv, st := newServer(t, Config{}, nil)
 	return srv.Handler(), st
 }
 
@@ -143,18 +143,5 @@ func TestRecoveryDelete(t *testing.T) {
 	}
 	if rec := getEnvelope(h, "meow"); bytes.Equal(rec.Body.Bytes(), body) {
 		t.Fatal("owner delete did not remove the envelope")
-	}
-}
-
-// The endpoints are gated: with recovery disabled they are a bare 404 (the surface
-// is invisible), so nothing can be stored or fetched pre-launch.
-func TestRecoveryDisabledIsNotFound(t *testing.T) {
-	srv, _ := newServer(t, Config{}, nil)
-	h := srv.Handler()
-	if rec := getEnvelope(h, "meow"); rec.Code != http.StatusNotFound {
-		t.Fatalf("disabled GET: %d, want 404", rec.Code)
-	}
-	if rec := putEnvelope(h, "meow", "t", envelopeBody()); rec.Code != http.StatusNotFound {
-		t.Fatalf("disabled PUT: %d, want 404", rec.Code)
 	}
 }
