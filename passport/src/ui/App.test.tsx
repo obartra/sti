@@ -509,14 +509,14 @@ describe("App onboarding flow", () => {
     const user = userEvent.setup();
     render(<App store={stubStore(null)} controller={fakeController()} />);
 
-    // Take the login route, open "other ways to log in," then use the handle +
+    // Take the login route, open "other ways to log in," then use the username +
     // password path.
     await user.click(await screen.findByRole("button", { name: "Log in" }));
     await user.click(
       await screen.findByRole("button", { name: /Other ways to log in/ }),
     );
     await user.type(
-      await screen.findByRole("textbox", { name: "Handle" }),
+      await screen.findByRole("textbox", { name: "Username" }),
       "meow",
     );
     await user.type(

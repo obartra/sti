@@ -7,7 +7,7 @@ export const COPY = {
   otherWaysLabel: "Other ways to log in",
   recoverLabel: "Recovery phrase",
   recoverCta: "Log in",
-  recoverPwNameLabel: "Handle",
+  recoverPwNameLabel: "Username",
   recoverPwPasswordLabel: "Password",
   recoverPwCta: "Log in",
   switchToCreate: "New here? Create an account",
