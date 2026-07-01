@@ -595,6 +595,13 @@ describe("demo mode", () => {
     expect(
       screen.getByText("Demo. Nothing here is saved or sent."),
     ).toBeInTheDocument();
+    // The not-backed-up marker never shows in demo: there is no server to drain
+    // to, so the pending marker would otherwise stick on forever (bug A).
+    expect(
+      screen.queryByText(
+        "Saved on this device. It backs up when you're online.",
+      ),
+    ).toBeNull();
 
     // Leaving the demo calls back out (the root then remounts the real app).
     await user.click(screen.getByRole("button", { name: "Leave demo" }));

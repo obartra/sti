@@ -154,11 +154,11 @@
     "pin": "src/store/account.integration.test.ts"
   },
   {
-    "id": "scanned-qr-same-host-only",
+    "id": "scanned-qr-alias-shape-only",
     "category": "Trust integrity & sharing",
-    "title": "A scanned QR only follows an alias link to our own host",
-    "intent": "A scanned code is untrusted input (doc 16); it must never redirect the viewer off-site or feed garbage to the crypto layer, so only a well-formed alias link to the canonical host resolves.",
-    "check": "parseScannedLink returns the alias for an sti.care link, and null for any other host (including look-alikes like sti.care.evil.com), non-URL junk, or a keyless link.",
+    "title": "A scanned QR only ever yields an alias id and key, never a host to navigate to",
+    "intent": "A scanned code is untrusted input (doc 16); it must never redirect the viewer off-site or feed garbage to the crypto layer. The safety property is the alias-link SHAPE plus never navigating to the scanned URL (the id and key resolve against our own api), which lets legitimate preview and same-origin links scan without a brittle host allowlist.",
+    "check": "parseScannedLink returns the id and key for a well-formed alias link on any host (including a preview host), and null for non-URL junk, a non-alias URL, or a keyless link.",
     "status": "validated",
     "layer": "wire",
     "docRef": "16",

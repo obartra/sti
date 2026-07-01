@@ -236,7 +236,7 @@ export function App({
   return (
     <>
       <DemoBanner active={demo.mode} onExit={demo.onExit} />
-      <NotBackedUp pending={backupPending} />
+      <NotBackedUp pending={backupPending} demo={demo.mode} />
       <Chrome
         // A logged-out visitor must never land on an app-group screen (e.g. a #home
         // deep link): clamp those to the public landing until they sign in. Public

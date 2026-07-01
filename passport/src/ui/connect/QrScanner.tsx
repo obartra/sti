@@ -5,25 +5,47 @@ import type { AliasLink } from "../../store/index.ts";
 import { Button } from "../../design/components/index.ts";
 import { X } from "../../design/icons.tsx";
 
-/* The in-app QR scanner (doc 16). Opens the rear camera, samples frames, and
-   decodes with jsQR. A scanned code is untrusted: only a well-formed alias link
-   to our own site resolves (parseScannedLink), so a malicious QR can't redirect
-   the viewer off-site; any other code is ignored and scanning continues. The
-   camera plumbing is browser-only and can't run in jsdom; the security-critical
-   decode-and-route decision lives in parseScannedLink, which is unit-tested. */
+/* The in-app QR scanner (doc 16). Opens the camera, samples frames, and decodes
+   with jsQR. A scanned code is untrusted: only a well-formed alias link resolves
+   (parseScannedLink), and we open the parsed id/key inside our own resolution
+   flow, never navigate to the scanned URL, so a malicious QR can't redirect the
+   viewer off-site; any other code is ignored and scanning continues. The camera
+   plumbing is browser-only and can't run in jsdom; the security-critical
+   decode-and-route decision lives in parseScannedLink, which is unit-tested, and
+   the camera-error mapping lives in cameraStatus, also unit-tested. */
 
 const COPY = {
   title: "Scan a code",
   hint: "Point your camera at their code.",
   denied:
     "Camera access is off. Allow it in your browser settings, or ask them to send you the link instead.",
+  noCamera:
+    "We couldn't find a camera on this device. Ask them to send you the link instead.",
   unsupported:
-    "This device can’t open the camera here. Ask them to send you the link instead.",
+    "This device can't open the camera here. Ask them to send you the link instead.",
   close: "Close",
 } as const;
 
-type Status = "scanning" | "denied" | "unsupported";
+type Status = "scanning" | "denied" | "no-camera" | "unsupported";
 type Decoder = (typeof import("jsqr"))["default"];
+
+// Map a getUserMedia rejection to the status the viewer should see. A permission
+// denial (NotAllowedError/SecurityError) is the only case that means "access is
+// off"; a missing/unusable camera (NotFoundError and friends) is its own honest
+// message, and anything else falls back to the generic unsupported note. Pure, so
+// it is unit-tested without a real camera.
+export function cameraStatus(err: unknown): Exclude<Status, "scanning"> {
+  const name = err instanceof Error ? err.name : "";
+  if (name === "NotAllowedError" || name === "SecurityError") return "denied";
+  if (
+    name === "NotFoundError" ||
+    name === "DevicesNotFoundError" ||
+    name === "OverconstrainedError"
+  ) {
+    return "no-camera";
+  }
+  return "unsupported";
+}
 
 // Sample one video frame and decode it: returns a valid passport link, or null
 // (frame not ready, no QR, or a QR that is not an alias link to our own site).
@@ -39,9 +61,23 @@ function scanFrame(
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
   const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const found = decode(frame.data, frame.width, frame.height);
-  return found === null
-    ? null
-    : parseScannedLink(found.data, window.location.host);
+  return found === null ? null : parseScannedLink(found.data);
+}
+
+// Open the camera, preferring the rear one but not requiring it. facingMode is a
+// soft preference, so most devices ignore it and hand back their only camera; a
+// desktop with just a front camera still opens. On the rare browser that treats
+// the preference as a hard constraint and has no rear camera (OverconstrainedError),
+// retry once with no facingMode so the front camera is accepted rather than failing.
+async function openCamera(media: MediaDevices): Promise<MediaStream> {
+  try {
+    return await media.getUserMedia({ video: { facingMode: "environment" } });
+  } catch (err) {
+    if (err instanceof Error && err.name === "OverconstrainedError") {
+      return media.getUserMedia({ video: true });
+    }
+    throw err;
+  }
 }
 
 // Open the camera and decode frames until a valid passport link is found. The
@@ -87,28 +123,33 @@ function useQrScan(
       raf = requestAnimationFrame(tick);
     };
 
-    Promise.all([
-      import("jsqr"),
-      media.getUserMedia({ video: { facingMode: "environment" } }),
-    ])
-      .then(async ([mod, s]) => {
-        // getUserMedia resolves asynchronously; if the effect was already torn
-        // down (unmount, or StrictMode's double-invoke) the cleanup ran before
-        // `stream` was set, so stop this freshly-acquired stream here or the
-        // camera leaks (track stays live, light stays on).
-        if (done) {
-          s.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        decode = mod.default;
-        stream = s;
-        const video = videoRef.current;
-        if (video === null) return;
-        video.srcObject = s;
-        await video.play();
-        raf = requestAnimationFrame(tick);
-      })
-      .catch(() => setStatus("denied"));
+    const start = async (): Promise<void> => {
+      // Ask for the camera on its own FIRST, so the permission prompt fires and a
+      // rejection is a genuine camera error (mapped by cameraStatus). Only then
+      // load jsQR: bundling the two would let a jsQR chunk-load failure surface as
+      // a false "camera denied", which is the bug this splits apart.
+      const s = await openCamera(media);
+      const mod = await import("jsqr");
+      // Both awaits resolve asynchronously; if the effect was already torn down
+      // (unmount, or StrictMode's double-invoke) the cleanup ran before `stream`
+      // was set, so stop this freshly-acquired stream here or the camera leaks
+      // (track stays live, light stays on).
+      if (done) {
+        s.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      decode = mod.default;
+      stream = s;
+      const video = videoRef.current;
+      if (video === null) return;
+      video.srcObject = s;
+      await video.play();
+      raf = requestAnimationFrame(tick);
+    };
+
+    void start().catch((err: unknown) => {
+      if (!done) setStatus(cameraStatus(err));
+    });
 
     return () => {
       done = true;
@@ -159,11 +200,17 @@ function Viewfinder({
   );
 }
 
+function messageFor(status: Exclude<Status, "scanning">): string {
+  if (status === "denied") return COPY.denied;
+  if (status === "no-camera") return COPY.noCamera;
+  return COPY.unsupported;
+}
+
 function ScanMessage({
   status,
   onBack,
 }: {
-  status: "denied" | "unsupported";
+  status: Exclude<Status, "scanning">;
   onBack: () => void;
 }) {
   return (
@@ -177,7 +224,7 @@ function ScanMessage({
           lineHeight: 1.5,
         }}
       >
-        {status === "denied" ? COPY.denied : COPY.unsupported}
+        {messageFor(status)}
       </div>
       <Button variant="secondary" size="lg" onClick={onBack}>
         {COPY.close}

@@ -11,10 +11,14 @@ const COPY = "Saved on this device. It backs up when you're online.";
 
 export function NotBackedUp({
   pending,
+  demo = false,
 }: {
   pending: boolean;
+  // In demo mode there is no server to back up to, so this marker is meaningless
+  // and must never show (doc 28). The demo edits are local by design, forever.
+  demo?: boolean;
 }): ReactElement | null {
-  if (!pending) return null;
+  if (demo || !pending) return null;
   return (
     <div className="not-backed-up" role="status" aria-live="polite">
       {COPY}

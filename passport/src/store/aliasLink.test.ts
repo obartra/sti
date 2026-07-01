@@ -71,26 +71,35 @@ describe("parseScannedLink", () => {
     });
   });
 
-  it("rejects a link to any other host (untrusted QR cannot redirect off-site)", () => {
-    expect(
-      parseScannedLink(`https://evil.example/a/${ID}#k=${KEY}`),
-    ).toBeNull();
-    // Even a look-alike subdomain is rejected: only the exact host is followed.
-    expect(
-      parseScannedLink(`https://sti.care.evil.com/a/${ID}#k=${KEY}`),
-    ).toBeNull();
+  it("accepts a well-formed alias link on ANY host (preview/staging/self)", () => {
+    // The host is not gated: resolution runs against our own api and the viewer
+    // is never navigated to the link's host, so a preview or same-origin host
+    // still scans. The id + key is what matters, and that is what is returned.
+    for (const host of [
+      "deploy-preview-42--sticare.netlify.app",
+      "localhost:5173",
+      "sticare.netlify.app",
+    ]) {
+      expect(parseScannedLink(`https://${host}/a/${ID}#k=${KEY}`)).toEqual({
+        id: ID,
+        key: KEY,
+      });
+    }
   });
 
-  it("accepts an explicit same-origin host (local/preview testing)", () => {
-    expect(
-      parseScannedLink(
-        `http://localhost:5173/a/${ID}#k=${KEY}`,
-        "localhost:5173",
-      ),
-    ).toEqual({ id: ID, key: KEY });
+  it("still only ever yields an id + key, never a host to navigate to", () => {
+    // Even an off-site host only produces the alias id + key (resolved against
+    // our api); the shape gate, not a host allowlist, is the safety property, and
+    // the caller never navigates to the scanned URL. A hostile host with a valid
+    // alias shape still resolves to OUR flow, and a non-link host is null.
+    expect(parseScannedLink(`https://evil.example/a/${ID}#k=${KEY}`)).toEqual({
+      id: ID,
+      key: KEY,
+    });
+    expect(parseScannedLink("https://evil.example/phish")).toBeNull();
   });
 
-  it("returns null for non-URL junk or a non-alias sti.care URL", () => {
+  it("returns null for non-URL junk or a non-alias URL", () => {
     expect(parseScannedLink("not a url")).toBeNull();
     expect(parseScannedLink("https://sti.care/about")).toBeNull();
     expect(parseScannedLink(`https://sti.care/a/${ID}`)).toBeNull(); // no key

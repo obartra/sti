@@ -4,7 +4,6 @@ import { randomAliasId } from "../crypto/index.ts";
 import { isShareTargetRequest, shareTargetRedirect } from "./swShare.ts";
 
 const SCOPE = "https://app.example/";
-const SELF = "app.example";
 
 describe("isShareTargetRequest (doc 22 C)", () => {
   it("matches only the share-target POST", () => {
@@ -28,35 +27,38 @@ describe("shareTargetRedirect (doc 22 C)", () => {
   const link = `https://sti.care/a/${id}#k=${key}`;
 
   it("redirects a shared keyed link to its in-app card route, keeping the key", () => {
-    expect(shareTargetRedirect({ url: link }, SCOPE, SELF)).toBe(
+    expect(shareTargetRedirect({ url: link }, SCOPE)).toBe(
       `${SCOPE}a/${id}#k=${key}`,
     );
   });
 
   it("uses the text field when url is absent", () => {
-    expect(shareTargetRedirect({ text: link }, SCOPE, SELF)).toBe(
+    expect(shareTargetRedirect({ text: link }, SCOPE)).toBe(
       `${SCOPE}a/${id}#k=${key}`,
     );
   });
 
-  it("falls back to the app root on a keyless link (no leak, no junk)", () => {
-    expect(
-      shareTargetRedirect({ url: `https://sti.care/a/${id}` }, SCOPE, SELF),
-    ).toBe(SCOPE);
-  });
-
-  it("falls back to the app root on a foreign host", () => {
+  it("rebuilds the redirect in-scope regardless of the link's host", () => {
+    // A preview/other host still redirects to OUR scope with the id + key; the
+    // host is never followed, so this is safe and lets preview links resolve.
     expect(
       shareTargetRedirect(
-        { url: `https://evil.example/a/${id}#k=${key}` },
+        {
+          url: `https://deploy-preview-9--sticare.netlify.app/a/${id}#k=${key}`,
+        },
         SCOPE,
-        SELF,
       ),
+    ).toBe(`${SCOPE}a/${id}#k=${key}`);
+  });
+
+  it("falls back to the app root on a keyless link (no leak, no junk)", () => {
+    expect(
+      shareTargetRedirect({ url: `https://sti.care/a/${id}` }, SCOPE),
     ).toBe(SCOPE);
   });
 
   it("falls back to the app root on junk or empty input", () => {
-    expect(shareTargetRedirect({ text: "hello" }, SCOPE, SELF)).toBe(SCOPE);
-    expect(shareTargetRedirect({}, SCOPE, SELF)).toBe(SCOPE);
+    expect(shareTargetRedirect({ text: "hello" }, SCOPE)).toBe(SCOPE);
+    expect(shareTargetRedirect({}, SCOPE)).toBe(SCOPE);
   });
 });

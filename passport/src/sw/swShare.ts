@@ -31,19 +31,19 @@ export function isShareTargetRequest(
 
 /**
  * The in-app URL to redirect a share to: the resolved card route when the shared
- * text holds a well-formed public link to our own site, else the app root. Strict by
- * construction (parseScannedLink rejects a foreign host, a non-link, or a keyless
- * link), so a hostile share can only ever land on the app root, never off-site and
- * never with junk fed to the crypto layer. The `#k={key}` fragment is rebuilt here
- * and carried in the redirect, so it stays on the device.
+ * text holds a well-formed public alias link, else the app root. Strict by
+ * construction (parseScannedLink rejects a non-link or a keyless link), so a
+ * hostile share can only ever land on the app root, never with junk fed to the
+ * crypto layer. The redirect is always rebuilt in-scope (`${scope}a/{id}#k=...`),
+ * so it is on our own origin regardless of the shared link's host, and the
+ * `#k={key}` fragment stays on the device.
  */
 export function shareTargetRedirect(
   shared: { url?: string | null; text?: string | null },
   scope: string,
-  selfHost: string,
 ): string {
   const candidate = (shared.url ?? shared.text ?? "").trim();
-  const link = parseScannedLink(candidate, selfHost);
+  const link = parseScannedLink(candidate);
   if (link === null) return scope;
   return `${scope}a/${link.id}#k=${link.key}`;
 }
