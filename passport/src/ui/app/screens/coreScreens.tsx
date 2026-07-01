@@ -1,10 +1,8 @@
-import { Home } from "../../core/Home.tsx";
+import { HomeScreen } from "./HomeScreen.tsx";
 import { Care } from "../../core/Care.tsx";
 import { Notifications } from "../../core/Notifications.tsx";
 import type { NotificationItem } from "../../core/Notifications.tsx";
 import { Privacy } from "../../core/Privacy.tsx";
-import { blueChecklist, extendClearance } from "../../../core/report.ts";
-import { todayEpochDay } from "../../../core/clock.ts";
 import { RESOURCES, openResource } from "../../../lib/resources.ts";
 import { avatarSrc } from "../../../lib/avatars.ts";
 import type { ScreenRenderers } from "./context.ts";
@@ -118,30 +116,7 @@ export function notificationItems(
 }
 
 export const coreRenderers: ScreenRenderers = {
-  home: ({ nav, owner, ownerState, openShare, setOwnerState }) => (
-    <Home
-      badge={owner.badge}
-      viewerBadge={owner.viewerBadge}
-      labels={owner.labels}
-      route={owner.blueRoute}
-      {...(owner.handle !== undefined ? { handle: owner.handle } : {})}
-      avatar={owner.avatar}
-      paused={owner.paused}
-      autoPaused={owner.autoPaused}
-      clearBy={owner.clearBy}
-      sharingMode={owner.sharingMode}
-      daysLeft={owner.daysLeft}
-      standing={blueChecklist(ownerState, todayEpochDay())}
-      tested={ownerState.testing.lastPanelDay !== null}
-      onShare={openShare}
-      onReport={() => nav.go("report")}
-      onViewAs={() => nav.go("a2-public", { self: true })}
-      onPrivacy={() => nav.go("privacy")}
-      onFindTesting={() => nav.go("care")}
-      onContinueCare={() => nav.go("care")}
-      onExtend={() => setOwnerState((s) => extendClearance(s, todayEpochDay()))}
-    />
-  ),
+  home: (ctx) => <HomeScreen {...ctx} />,
   care: ({ nav, owner }) => (
     <Care
       badge={owner.badge}
@@ -197,6 +172,7 @@ export const coreRenderers: ScreenRenderers = {
     onCheckVanityName,
     onReleaseVanityName,
     recoveryName,
+    recoveryPhrase,
     onSetRecoveryPassword,
     onDisableRecoveryPassword,
     push,
@@ -238,6 +214,10 @@ export const coreRenderers: ScreenRenderers = {
             }
           : undefined
       }
+      // The re-view phrase card (doc 32) is shown only for a logged-in owner. A null
+      // phrase (a passkey-only resume that never stored one) renders the honest
+      // fallback, so it is passed only when logged in and otherwise undefined.
+      recoveryPhrase={isLoggedIn ? recoveryPhrase : undefined}
       onDeleted={() => {
         // Really delete (revoke links + remove the blob, logs out), then reset
         // the URL to the public landing.

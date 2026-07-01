@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { rootForTest } from "../test-support/phrase.ts";
 import { createAccountManager } from "./account.ts";
+import { createAccountSync } from "./accountSync.ts";
 import type { ApiClient } from "../api/client.ts";
 import type { AliasRecord } from "./accountBlob.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
@@ -67,7 +68,8 @@ describe("account manager", () => {
     const recovered = await accounts.recover(created.recoveryPhrase);
     // A fresh account is fully deterministic now (no account-level notify inbox:
     // those are minted per contact at link time), so recovery sees exactly what was
-    // created.
+    // created. The phrase is stored in the (encrypted) blob so Settings can re-view
+    // it (doc 32); it is the same phrase shown once at sign-up.
     expect(recovered?.blob).toEqual({
       handle: "robin",
       aliases: [],
@@ -75,8 +77,36 @@ describe("account manager", () => {
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
       sharingMode: "link",
+      recoveryPhrase: created.recoveryPhrase,
     });
     expect(recovered?.blob).toEqual(created.blob);
+  });
+
+  it("sign-up stores the recovery phrase inside the blob (doc 32)", async () => {
+    const accounts = createAccountManager(fakeAccountApi());
+    const created = await accounts.create("robin");
+    expect(created.blob.recoveryPhrase).toBe(created.recoveryPhrase);
+  });
+
+  it("backfills the stored phrase on a phrase login when it is absent (doc 32)", async () => {
+    // Simulate a pre-feature account: encrypt-and-save a blob with no stored phrase
+    // through the same sync the manager uses, then log in by phrase and confirm the
+    // phrase is written into the (encrypted) blob. The manager and the seeding sync
+    // share one api, so they see the same store.
+    const api = fakeAccountApi();
+    const sync = createAccountSync(api);
+    const accounts = createAccountManager(api, sync);
+    const created = await accounts.create("robin");
+    const phrase = created.recoveryPhrase;
+    const olderBlob = { ...created.blob };
+    delete (olderBlob as { recoveryPhrase?: string }).recoveryPhrase;
+    await sync.save(created.root, olderBlob);
+    // The first phrase login after the strip backfills it.
+    const firstLogin = await accounts.recover(phrase);
+    expect(firstLogin?.blob.recoveryPhrase).toBe(phrase);
+    // And a second login sees it already stored (a no-op, still present).
+    const again = await accounts.recover(phrase);
+    expect(again?.blob.recoveryPhrase).toBe(phrase);
   });
 
   it("recover fails closed (null) on a malformed phrase, never deriving a key", async () => {

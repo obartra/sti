@@ -83,6 +83,7 @@ export interface ChromeProps {
   onCheckVanityName: ScreenCtx["onCheckVanityName"];
   onReleaseVanityName: ScreenCtx["onReleaseVanityName"];
   recoveryName: ScreenCtx["recoveryName"];
+  recoveryPhrase: ScreenCtx["recoveryPhrase"];
   onSetRecoveryPassword: ScreenCtx["onSetRecoveryPassword"];
   onDisableRecoveryPassword: ScreenCtx["onDisableRecoveryPassword"];
   push: ScreenCtx["push"];
@@ -211,6 +212,7 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     onCheckVanityName: props.onCheckVanityName,
     onReleaseVanityName: props.onReleaseVanityName,
     recoveryName: props.recoveryName,
+    recoveryPhrase: props.recoveryPhrase,
     onSetRecoveryPassword: props.onSetRecoveryPassword,
     onDisableRecoveryPassword: props.onDisableRecoveryPassword,
     push: props.push,
