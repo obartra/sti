@@ -80,6 +80,8 @@ export type {
   NewAccount,
   RecoveredAccount,
   OwnerProfile,
+  SignUpRecovery,
+  SignUpRecoveryOutcome,
 } from "./account.ts";
 export { createAccountManager } from "./account.ts";
 export {

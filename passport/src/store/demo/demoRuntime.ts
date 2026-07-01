@@ -133,11 +133,20 @@ export function createDemoController(): SessionController {
   });
 
   return {
-    signUp: async (handle) => {
+    signUp: async (handle, recovery) => {
       if (handle !== undefined) blob = { ...blob, handle };
+      // The demo has no server, so an at-sign-up password just records the chosen
+      // Username locally and reports "set", faithful to the real flow's happy path.
+      if (recovery !== undefined) {
+        blob = {
+          ...blob,
+          recoveryName: normalizeVanityName(recovery.recoveryName),
+        };
+      }
       return {
         session: await session(),
         recoveryPhrase: "demo demo demo demo",
+        ...(recovery !== undefined ? { recoveryOutcome: "set" as const } : {}),
       };
     },
     recover: () => session(),

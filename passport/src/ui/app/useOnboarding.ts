@@ -3,9 +3,24 @@ import type {
   OwnerSession,
   SessionController,
   SharingMode,
+  SignUpRecovery,
+  SignUpRecoveryOutcome,
 } from "../../store/index.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
 import { passkeyUnlockMessage } from "./passkeyUnlockMessage.ts";
+
+/**
+ * The result of the b1 claim step. The account is created on the first successful
+ * call (`created`), and `recoveryOutcome` reports the optional at-sign-up password
+ * step: undefined when none was chosen, "set" when the password landed, or a failure
+ * (`nameUnavailable` / `weakPassword` / `error`) the create screen shows inline so the
+ * owner can pick another Username or skip. Either way the account exists, so the flow
+ * still proceeds to the recovery-phrase step.
+ */
+export interface ClaimResult {
+  readonly created: boolean;
+  readonly recoveryOutcome?: SignUpRecoveryOutcome;
+}
 
 /**
  * The onboarding/login actions the b1-b3 screens drive, plus the cross-step
@@ -21,8 +36,18 @@ export interface OnboardingActions {
   readonly busy: boolean;
   /** A user-facing error from the last action, or null. */
   readonly error: string | null;
-  /** b1: create the account. Returns true to advance to b2. */
-  claim(handle: string | undefined, avatar: AvatarConfig): Promise<boolean>;
+  /**
+   * b1: create the account, optionally setting a Username + password at sign-up
+   * (doc 32). The account is created once; calling again after a failed optional
+   * password step (e.g. a taken Username) retries just the password on the existing
+   * account, so it never mints a second account. Returns the created flag plus the
+   * optional password outcome for the create screen to react to.
+   */
+  claim(
+    handle: string | undefined,
+    avatar: AvatarConfig,
+    recovery?: SignUpRecovery,
+  ): Promise<ClaimResult>;
   /** b3: persist the profile, bind a passkey (best-effort), and enter. */
   finish(sharingMode: SharingMode): Promise<void>;
   /** Login variant: unlock this device's passkey. Returns true on success. */
@@ -142,6 +167,57 @@ function useLoginActions(
   return { loginPasskey, recoverPhrase, recoverPassword };
 }
 
+// Retry the optional password on the ALREADY-created account (a prior submit made it,
+// but its at-sign-up password step failed, e.g. a taken Username). Never mints a
+// second account: it re-sets the password on the existing session via the phrase we
+// still hold (the Settings path re-derives the root and reuses the shared wrap
+// helper). wrongPhrase cannot happen (we hold the correct phrase), so it folds into
+// the generic error, keeping the outcome one of the sign-up shapes.
+async function retrySignUpPassword(
+  controller: SessionController,
+  existing: OnboardingDraft,
+  recovery: SignUpRecovery,
+): Promise<{ draft: OnboardingDraft; result: ClaimResult }> {
+  const { session, outcome } = await controller.setRecoveryPassword(
+    existing.session,
+    {
+      name: recovery.recoveryName,
+      password: recovery.password,
+      phrase: existing.recoveryPhrase,
+    },
+  );
+  const recoveryOutcome: SignUpRecoveryOutcome =
+    outcome === "wrongPhrase" ? "error" : outcome;
+  return {
+    draft: { ...existing, session },
+    result: { created: true, recoveryOutcome },
+  };
+}
+
+// First submit: create the account, wrapping the optional password on the spot (no
+// phrase re-entry) when a Username + password was chosen (doc 32).
+async function createAccountDraft(
+  controller: SessionController,
+  handle: string | undefined,
+  avatar: AvatarConfig,
+  recovery: SignUpRecovery | undefined,
+): Promise<{ draft: OnboardingDraft; result: ClaimResult }> {
+  const created = await controller.signUp(handle, recovery);
+  return {
+    draft: {
+      session: created.session,
+      avatar,
+      recoveryPhrase: created.recoveryPhrase,
+    },
+    result: {
+      created: true,
+      ...(created.recoveryOutcome !== undefined
+        ? { recoveryOutcome: created.recoveryOutcome }
+        : {}),
+    },
+  };
+}
+
 export function useOnboarding(
   controller: SessionController,
   onSession: (session: OwnerSession) => void,
@@ -156,30 +232,61 @@ export function useOnboarding(
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // The claim core (no latch): create the account on the first call, or retry just the
+  // password on the already-created one, updating the shared draft. Split out so the
+  // latch-wrapped `claim` stays small.
+  const runClaim = useCallback(
+    async (
+      handle: string | undefined,
+      avatar: AvatarConfig,
+      recovery: SignUpRecovery | undefined,
+    ): Promise<ClaimResult> => {
+      const existing = draft.current;
+      if (existing !== null) {
+        // A bare re-submit just advances; a Username re-submit retries the password.
+        if (recovery === undefined) return { created: true };
+        const retried = await retrySignUpPassword(
+          controller,
+          existing,
+          recovery,
+        );
+        draft.current = retried.draft;
+        return retried.result;
+      }
+      const made = await createAccountDraft(
+        controller,
+        handle,
+        avatar,
+        recovery,
+      );
+      draft.current = made.draft;
+      setRecoveryPhrase(made.draft.recoveryPhrase);
+      return made.result;
+    },
+    [controller],
+  );
+
   const claim = useCallback(
-    async (handle: string | undefined, avatar: AvatarConfig) => {
-      if (inFlight.current) return false;
+    async (
+      handle: string | undefined,
+      avatar: AvatarConfig,
+      recovery?: SignUpRecovery,
+    ): Promise<ClaimResult> => {
+      if (inFlight.current) return { created: false };
       inFlight.current = true;
       setBusy(true);
       setError(null);
       try {
-        const result = await controller.signUp(handle);
-        draft.current = {
-          session: result.session,
-          avatar,
-          recoveryPhrase: result.recoveryPhrase,
-        };
-        setRecoveryPhrase(result.recoveryPhrase);
-        return true;
+        return await runClaim(handle, avatar, recovery);
       } catch {
         setError("Could not create your account. Please try again.");
-        return false;
+        return { created: false };
       } finally {
         setBusy(false);
         inFlight.current = false;
       }
     },
-    [controller],
+    [runClaim],
   );
 
   const finish = useCallback(

@@ -27,7 +27,12 @@ import { unlockRoot, type ResumeFailure } from "./passkeyUnlock.ts";
 import type { DeviceStore } from "../auth/deviceStore.ts";
 import type { RootKeyStore } from "../auth/rootKeyStore.ts";
 import type { ApiClient, PendingKnock } from "../api/client.ts";
-import type { AccountManager, OwnerProfile } from "./account.ts";
+import type {
+  AccountManager,
+  OwnerProfile,
+  SignUpRecovery,
+  SignUpRecoveryOutcome,
+} from "./account.ts";
 import type { AccountSync } from "./accountSync.ts";
 import {
   type AccountBlob,
@@ -86,6 +91,14 @@ export interface SignUpResult {
   readonly session: OwnerSession;
   /** Shown once at signup; the only way back in. Never persisted. */
   readonly recoveryPhrase: string;
+  /**
+   * The outcome of the optional at-sign-up password step (doc 32), or undefined
+   * when none was requested. The account is always created and phrase/passkey-
+   * recoverable regardless; a non-"set" value means only the password step did not
+   * land (e.g. the chosen Username is taken), so the UI can retry or skip without
+   * losing the account.
+   */
+  readonly recoveryOutcome?: SignUpRecoveryOutcome;
 }
 
 export type { ResumeFailure } from "./passkeyUnlock.ts";
@@ -95,8 +108,14 @@ export type ResumeResult =
   | { readonly ok: false; readonly reason: ResumeFailure };
 
 export interface SessionController {
-  /** First run: mint a phrase-recoverable account. Persists nothing locally. */
-  signUp(handle?: string): Promise<SignUpResult>;
+  /**
+   * First run: mint a phrase-recoverable account. Persists nothing locally. When
+   * `recovery` (a Username + password) is given, also wraps the fresh in-memory root
+   * under the password and stores the envelope at the Username on the spot (doc 32,
+   * no phrase re-entry). The account is always created regardless; a taken Username
+   * surfaces as `SignUpResult.recoveryOutcome`, never an account-creation failure.
+   */
+  signUp(handle?: string, recovery?: SignUpRecovery): Promise<SignUpResult>;
   /** Login / recovery by phrase. null when no account exists for it. */
   recover(phrase: string): Promise<OwnerSession | null>;
   /**
@@ -472,11 +491,13 @@ export function createSessionController(deps: SessionDeps): SessionController {
   const { accounts, devices, passkey, keys, api } = deps;
 
   return {
-    async signUp(handle) {
-      const created = await accounts.create(handle);
+    async signUp(handle, recovery) {
+      const { root, blob, recoveryPhrase, recoveryOutcome } =
+        await accounts.create(handle, recovery);
       return {
-        session: { root: created.root, blob: created.blob },
-        recoveryPhrase: created.recoveryPhrase,
+        session: { root, blob },
+        recoveryPhrase,
+        ...(recoveryOutcome !== undefined ? { recoveryOutcome } : {}),
       };
     },
 
