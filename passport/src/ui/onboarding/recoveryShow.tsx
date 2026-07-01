@@ -1,13 +1,5 @@
-import { Card, Button } from "../../design/components/index.ts";
-import {
-  Key,
-  Eye,
-  Copy,
-  EyeOff,
-  Info,
-  Lock,
-  ArrowRight,
-} from "../../design/icons.tsx";
+import { Button } from "../../design/components/index.ts";
+import { Eye, Copy, EyeOff, ArrowRight } from "../../design/icons.tsx";
 import { TopBack } from "./TopBack.tsx";
 import { COPY } from "./recovery.copy.ts";
 
@@ -75,38 +67,6 @@ function PhraseToken({
   );
 }
 
-// Why-you-need-this explainer card.
-function WhyCard() {
-  return (
-    <Card variant="tint" style={{ display: "flex", gap: 12 }}>
-      <span style={{ color: "var(--text-accent)", flex: "none", marginTop: 1 }}>
-        <Key size={20} />
-      </span>
-      <div>
-        <div
-          style={{
-            fontSize: 15,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-          }}
-        >
-          {COPY.whyTitle}
-        </div>
-        <div
-          style={{
-            fontSize: 13.5,
-            color: "var(--text-body)",
-            lineHeight: 1.55,
-            marginTop: 2,
-          }}
-        >
-          {COPY.whyBody}
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 // The labeled recovery token plus the copy/hide controls shown once revealed.
 function PhraseSection({
   phrase,
@@ -162,48 +122,8 @@ function PhraseSection({
   );
 }
 
-// Save tip plus the no-reset/no-backdoor note.
-function SaveNotes() {
-  return (
-    <>
-      <div
-        style={{
-          fontSize: 13,
-          color: "var(--text-muted)",
-          lineHeight: 1.5,
-          display: "flex",
-          gap: 7,
-        }}
-      >
-        <span
-          style={{ flex: "none", marginTop: 1, color: "var(--text-subtle)" }}
-        >
-          <Info size={15} />
-        </span>{" "}
-        {COPY.saveTip}
-      </div>
-
-      <Card
-        variant="flat"
-        style={{ display: "flex", gap: 11, alignItems: "flex-start" }}
-      >
-        <span
-          style={{ flex: "none", marginTop: 1, color: "var(--text-subtle)" }}
-        >
-          <Lock size={16} />
-        </span>
-        <div
-          style={{ fontSize: 12.5, color: "var(--text-body)", lineHeight: 1.5 }}
-        >
-          {COPY.noResetNote}
-        </div>
-      </Card>
-    </>
-  );
-}
-
-// The phrase view: why-you-need-this, the reveal grid, copy/hide controls, and
-// the no-reset note.
+// The phrase view: the title, one short line, the reveal block with copy/hide
+// controls, and the "I've saved it" confirm.
 export function ShowPhase({
   phrase,
   revealed,
@@ -253,8 +173,6 @@ export function ShowPhase({
         </p>
       </div>
 
-      <WhyCard />
-
       <PhraseSection
         phrase={phrase}
         revealed={revealed}
@@ -263,8 +181,6 @@ export function ShowPhase({
         onHide={onHide}
         onCopy={onCopy}
       />
-
-      <SaveNotes />
 
       <Button
         variant="primary"

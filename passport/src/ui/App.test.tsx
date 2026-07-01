@@ -254,7 +254,7 @@ async function onboard(
   handle = "robin",
 ) {
   await user.type(
-    await screen.findByPlaceholderText("Pick a display name"),
+    await screen.findByLabelText("What should we call you?"),
     handle,
   );
   await user.click(screen.getByRole("button", { name: "Continue" }));
@@ -310,7 +310,7 @@ describe("App onboarding flow", () => {
 
     // Onboard through to home (still gray: never tested yet).
     await user.type(
-      await screen.findByPlaceholderText("Pick a display name"),
+      await screen.findByLabelText("What should we call you?"),
       "robin",
     );
     await user.click(screen.getByRole("button", { name: "Continue" }));
@@ -488,12 +488,16 @@ describe("App onboarding flow", () => {
     // The disclosure offers both no-passkey paths; target the phrase field by its
     // label (the handle + password card is the other one).
     await user.type(
-      await screen.findByRole("textbox", { name: "Your recovery phrase" }),
+      await screen.findByRole("textbox", { name: "Recovery phrase" }),
       "RECOVER-ME-PHRASE",
     );
-    await user.click(
-      await screen.findByRole("button", { name: /Recover account/ }),
-    );
+    // Both forms use a "Log in" button; only the phrase one is enabled now
+    // (the password fields are empty), so the enabled one is the phrase form's.
+    const logIns = await screen.findAllByRole("button", { name: "Log in" });
+    const phraseLogIn = logIns.find((b) => !(b as HTMLButtonElement).disabled);
+    if (!phraseLogIn)
+      throw new Error("no enabled 'Log in' for the phrase form");
+    await user.click(phraseLogIn);
 
     // The recovered account drives the app (its handle, not the fixture's).
     expect((await screen.findAllByText(/@rosa/)).length).toBeGreaterThan(0);
@@ -512,14 +516,19 @@ describe("App onboarding flow", () => {
       await screen.findByRole("button", { name: /Other ways to log in/ }),
     );
     await user.type(
-      await screen.findByRole("textbox", { name: "Your handle" }),
+      await screen.findByRole("textbox", { name: "Handle" }),
       "meow",
     );
     await user.type(
       await screen.findByLabelText("Password"),
       "correct-horse-battery-staple",
     );
-    await user.click(await screen.findByRole("button", { name: "Sign in" }));
+    // Both forms use a "Log in" button; only the password one is enabled now
+    // (the phrase field is empty), so the enabled one is the password form's.
+    const logIns = await screen.findAllByRole("button", { name: "Log in" });
+    const pwLogIn = logIns.find((b) => !(b as HTMLButtonElement).disabled);
+    if (!pwLogIn) throw new Error("no enabled 'Log in' for the password form");
+    await user.click(pwLogIn);
 
     // The recovered account drives the app (its handle, not the fixture's).
     expect((await screen.findAllByText(/@rosa/)).length).toBeGreaterThan(0);

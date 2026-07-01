@@ -5,16 +5,16 @@ import { CreateFlow } from "./ClaimCreateFlow.tsx";
 import { isAvatarConfig } from "../../lib/avatars.ts";
 
 describe("create-account flow (doc 19)", () => {
-  it("does not build the avatar inline (assigned randomly, customized later)", () => {
+  it("collects only the name, no avatar builder", () => {
     render(<CreateFlow />);
     // The avatar builder is gone from signup; no Surprise me or color rows here.
     expect(
       screen.queryByRole("button", { name: "Surprise me" }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText("Skin")).not.toBeInTheDocument();
-    // The flow still collects the display name.
+    // The flow collects the name via a single labeled field.
     expect(
-      screen.getByPlaceholderText("Pick a display name"),
+      screen.getByLabelText("What should we call you?"),
     ).toBeInTheDocument();
   });
 
@@ -23,7 +23,7 @@ describe("create-account flow (doc 19)", () => {
       vi.fn<(handle: string | undefined, avatar: unknown) => void>();
     render(<CreateFlow onClaim={onClaim} />);
     await userEvent.type(
-      screen.getByPlaceholderText("Pick a display name"),
+      screen.getByLabelText("What should we call you?"),
       "robin",
     );
     await userEvent.click(
@@ -39,7 +39,7 @@ describe("create-account flow (doc 19)", () => {
     const onClaim =
       vi.fn<(handle: string | undefined, avatar: unknown) => void>();
     render(<CreateFlow onClaim={onClaim} />);
-    // Don't type anything — name is optional.
+    // Don't type anything; the name is optional.
     await userEvent.click(
       screen.getByRole("button", { name: /create|continue|claim/i }),
     );
@@ -48,10 +48,24 @@ describe("create-account flow (doc 19)", () => {
     expect(handle).toBeUndefined();
   });
 
+  it("the shuffle button fills a name into the field", async () => {
+    render(<CreateFlow />);
+    const field = screen.getByLabelText<HTMLInputElement>(
+      "What should we call you?",
+    );
+    expect(field.value).toBe("");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Shuffle a name" }),
+    );
+    // A non-empty, handle-shaped name is filled in.
+    expect(field.value.length).toBeGreaterThan(0);
+    expect(field.value).toMatch(/^[a-z0-9_]+$/);
+  });
+
   it("shows an error if a name is started but too short (under 3 chars)", async () => {
     render(<CreateFlow />);
     await userEvent.type(
-      screen.getByPlaceholderText("Pick a display name"),
+      screen.getByLabelText("What should we call you?"),
       "ab",
     );
     expect(screen.getByText("At least 3 characters.")).toBeInTheDocument();

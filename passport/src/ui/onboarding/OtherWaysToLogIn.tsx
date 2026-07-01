@@ -1,51 +1,10 @@
-import { useId, useState, type ReactNode } from "react";
+import { useId, useState } from "react";
 import { Button, Card, Field, Input } from "../../design/components/index.ts";
-import { Chevron, Key } from "../../design/icons.tsx";
+import { Chevron } from "../../design/icons.tsx";
 import { COPY } from "./claimCopy.ts";
 
-// A card holding one no-passkey way back in: a titled header, a hint, and the
-// entry fields below. The icon and title come from the caller so the two cards
-// (recovery phrase, handle + password) read the same.
-function RecoveryCard({
-  title,
-  hint,
-  children,
-}: {
-  title: string;
-  hint: string;
-  children: ReactNode;
-}) {
-  return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 12 }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ color: "var(--text-accent)", flex: "none" }}>
-          <Key size={18} />
-        </span>
-        <div
-          style={{
-            fontSize: 14.5,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-          }}
-        >
-          {title}
-        </div>
-      </div>
-      <div
-        style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}
-      >
-        {hint}
-      </div>
-      {children}
-    </Card>
-  );
-}
-
 // Recovery-phrase entry: the high-entropy backstop for anyone with neither a
-// passkey nor a password on this device.
+// passkey nor a password on this device. Just the field and a log-in button.
 function RecoverFlow({
   busy,
   onRecover,
@@ -57,8 +16,11 @@ function RecoverFlow({
   const phraseId = useId();
   const ok = phrase.trim().length > 0;
   return (
-    <RecoveryCard title={COPY.recoverLabel} hint={COPY.recoverHint}>
-      <Field label={COPY.recoverPlaceholder} htmlFor={phraseId}>
+    <Card
+      variant="flat"
+      style={{ display: "flex", flexDirection: "column", gap: 12 }}
+    >
+      <Field label={COPY.recoverLabel} htmlFor={phraseId}>
         <Input
           id={phraseId}
           value={phrase}
@@ -76,7 +38,7 @@ function RecoverFlow({
       >
         {COPY.recoverCta}
       </Button>
-    </RecoveryCard>
+    </Card>
   );
 }
 
@@ -96,12 +58,11 @@ function RecoverPasswordFlow({
   const passwordId = useId();
   const ok = name.trim().length > 0 && password.length > 0;
   return (
-    <RecoveryCard title={COPY.recoverPwLabel} hint={COPY.recoverPwHint}>
-      <Field
-        label={COPY.recoverPwNameLabel}
-        hint={COPY.recoverPwNameHint}
-        htmlFor={nameId}
-      >
+    <Card
+      variant="flat"
+      style={{ display: "flex", flexDirection: "column", gap: 12 }}
+    >
+      <Field label={COPY.recoverPwNameLabel} htmlFor={nameId}>
         <Input
           id={nameId}
           value={name}
@@ -128,7 +89,7 @@ function RecoverPasswordFlow({
       >
         {COPY.recoverPwCta}
       </Button>
-    </RecoveryCard>
+    </Card>
   );
 }
 

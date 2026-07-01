@@ -1,17 +1,16 @@
-import { Button, Card } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
 import { Fingerprint } from "../../design/icons.tsx";
 import { TopBack } from "./TopBack.tsx";
 import { KeepSignedInToggle } from "./KeepSignedInToggle.tsx";
 import { OtherWaysToLogIn } from "./OtherWaysToLogIn.tsx";
 import { SwitchAuthMode } from "./SwitchAuthMode.tsx";
 import { CreateFlow } from "./ClaimCreateFlow.tsx";
-import { COPY, sectionLabel } from "./claimCopy.ts";
+import { COPY } from "./claimCopy.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
 
 // B1 claim account. Passkey is the one MVP unlock path: no email, no phone, no
-// SSO. The handle + avatar are the owner's main identity (doc 15), the face they
-// can choose to show; every link is anonymous by default. How a link is reached
-// (Direct / Gated / Findable) is chosen later, at first-run setup (doc 16).
+// SSO. Each screen is a title plus its controls; the reach mode (Direct / Gated /
+// Findable) is chosen later, at first-run setup (doc 16).
 
 export interface ClaimProps {
   /** When true, render the login (unlock) variant instead of the create flow. */
@@ -21,7 +20,7 @@ export interface ClaimProps {
   /** A user-facing error from the last attempt (sign-up or passkey login). */
   error?: string | null;
   onBack?: (() => void) | undefined;
-  /** Create variant: the chosen handle (optional) + avatar, on continue. */
+  /** Create variant: the chosen name (optional) + avatar, on continue. */
   onClaim?:
     | ((handle: string | undefined, avatar: AvatarConfig) => void)
     | undefined;
@@ -39,64 +38,24 @@ export interface ClaimProps {
   onSwitchMode?: (() => void) | undefined;
 }
 
-// The passkey unlock, the one obvious action on the login variant. On create it
-// just explains the account key (the passkey is enrolled at the end of setup).
-// Passkey / passphrase is the one MVP path: no email-or-phone field.
-function PasskeyCard({
-  isLogin,
-  busy,
-  onLogin,
-}: {
-  isLogin: boolean;
-  busy: boolean;
-  onLogin?: (() => void) | undefined;
-}) {
+// The shared error line above whichever body is showing.
+function ErrorLine({ error }: { error: string | null }) {
+  if (error === null) return null;
   return (
-    <Card
-      variant="flat"
+    <div
+      role="alert"
       style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 12,
-        textAlign: "center",
-        padding: "22px 20px",
+        fontSize: 13,
+        lineHeight: 1.5,
+        color: "var(--status-expired-fg)",
       }}
     >
-      <span
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: "50%",
-          background: "var(--accent-soft)",
-          color: "var(--text-accent)",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Fingerprint size={28} />
-      </span>
-      <div style={{ fontSize: 14, color: "var(--text-body)", lineHeight: 1.5 }}>
-        {COPY.passkeyHint}
-      </div>
-      {isLogin && (
-        <Button
-          variant="primary"
-          size="lg"
-          block
-          icon={<Fingerprint size={18} />}
-          disabled={busy}
-          onClick={onLogin}
-        >
-          {COPY.usePasskeyLogin}
-        </Button>
-      )}
-    </Card>
+      {error}
+    </div>
   );
 }
 
-// The step label + title + subtitle, worded for whichever variant is showing.
+// The step title, worded for whichever variant is showing.
 function ClaimHeader({
   isLogin,
   onBack,
@@ -106,28 +65,23 @@ function ClaimHeader({
 }) {
   return (
     <>
-      <TopBack title={isLogin ? COPY.loginStep : COPY.step} onBack={onBack} />
-      <div>
-        <h1
-          style={{
-            fontSize: 27,
-            fontWeight: 800,
-            letterSpacing: "-0.02em",
-            color: "var(--text-strong)",
-          }}
-        >
-          {isLogin ? COPY.loginTitle : COPY.title}
-        </h1>
-        <p style={{ fontSize: 15, color: "var(--text-body)", marginTop: 6 }}>
-          {isLogin ? COPY.loginSub : COPY.sub}
-        </p>
-      </div>
+      <TopBack title="" onBack={onBack} />
+      <h1
+        style={{
+          fontSize: 27,
+          fontWeight: 800,
+          letterSpacing: "-0.02em",
+          color: "var(--text-strong)",
+        }}
+      >
+        {isLogin ? COPY.loginTitle : COPY.title}
+      </h1>
     </>
   );
 }
 
-// The login variant's body: the passkey leads, the keep-signed-in choice stays
-// always visible, then the shared error line, then the collapsed "other ways in"
+// The login variant's body: the passkey button leads, the keep-signed-in choice
+// stays visible, then the shared error line, then the collapsed "other ways in"
 // disclosure holding the phrase and handle + password paths.
 function LoginBody({
   busy,
@@ -148,23 +102,21 @@ function LoginBody({
 }) {
   return (
     <>
-      <PasskeyCard isLogin busy={busy} onLogin={onLogin} />
+      <Button
+        variant="primary"
+        size="lg"
+        block
+        icon={<Fingerprint size={18} />}
+        disabled={busy}
+        onClick={onLogin}
+      >
+        {COPY.usePasskeyLogin}
+      </Button>
       <KeepSignedInToggle
         checked={keepSignedIn}
         onChange={onKeepSignedInChange}
       />
-      {error !== null && (
-        <div
-          role="alert"
-          style={{
-            fontSize: 13,
-            lineHeight: 1.5,
-            color: "var(--status-expired-fg)",
-          }}
-        >
-          {error}
-        </div>
-      )}
+      <ErrorLine error={error} />
       <OtherWaysToLogIn
         busy={busy}
         onRecover={onRecover}
@@ -198,7 +150,6 @@ export function Claim({
       }}
     >
       <ClaimHeader isLogin={isLogin} onBack={onBack} />
-      <div style={sectionLabel}>{COPY.keyLabel}</div>
       {isLogin ? (
         <LoginBody
           busy={busy}
@@ -211,19 +162,7 @@ export function Claim({
         />
       ) : (
         <>
-          <PasskeyCard isLogin={false} busy={busy} onLogin={onLogin} />
-          {error !== null && (
-            <div
-              role="alert"
-              style={{
-                fontSize: 13,
-                lineHeight: 1.5,
-                color: "var(--status-expired-fg)",
-              }}
-            >
-              {error}
-            </div>
-          )}
+          <ErrorLine error={error} />
           <CreateFlow busy={busy} onClaim={onClaim} />
         </>
       )}
