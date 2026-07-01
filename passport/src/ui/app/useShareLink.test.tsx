@@ -62,8 +62,6 @@ function stubController(over: Partial<SessionController>): SessionController {
     createContactLink: unused,
     renameContact: unused,
     revokeContact: unused,
-    setContactDuration: unused,
-    setShareLinkDuration: unused,
     revokeAlias: unused,
     acceptContactInvite: unused,
     ingestContactReturn: unused,
@@ -143,7 +141,7 @@ describe("useShareLink identity choice", () => {
 
     expect(result.current.identity).toBe("anonymous");
     act(() => result.current.setShareOpen(true));
-    expect(shareLink).toHaveBeenCalledWith(session, "anonymous");
+    expect(shareLink).toHaveBeenCalledWith(session, "anonymous", undefined);
     await act(async () => {
       d.resolve(RESULT);
       await d.promise;
@@ -157,7 +155,7 @@ describe("useShareLink identity choice", () => {
 
     act(() => result.current.setIdentity("main"));
     expect(result.current.identity).toBe("main");
-    expect(renewLink).toHaveBeenCalledWith(session, "main");
+    expect(renewLink).toHaveBeenCalledWith(session, "main", undefined);
     await act(async () => {
       d.resolve(RESULT);
       await d.promise;
@@ -170,50 +168,40 @@ describe("useShareLink identity choice", () => {
     act(() => result.current.setIdentity("anonymous")); // already anonymous
     expect(renewLink).not.toHaveBeenCalled();
   });
-});
 
-describe("useShareLink lifetime", () => {
-  it("defaults to no expiry and sets a lifetime in place (no renew)", () => {
-    const setShareLinkDuration = vi.fn(() => Promise.resolve(session));
-    const renewLink = vi.fn();
-    const { result } = setup(
-      stubController({ setShareLinkDuration, renewLink }),
-    );
+  it("picking a per-link face rotates carrying that override (doc 15)", async () => {
+    const d = deferred<ShareLinkResult>();
+    const renewLink = vi.fn(() => d.promise);
+    const { result } = setup(stubController({ renewLink }));
 
-    expect(result.current.duration).toBeNull();
-    act(() => result.current.setDuration(7));
-    expect(result.current.duration).toBe(7);
-    // The link's expiry moves in place; it is NOT a renew (the URL is unchanged).
-    expect(setShareLinkDuration).toHaveBeenCalledWith(session, 7);
-    expect(renewLink).not.toHaveBeenCalled();
-  });
-
-  it("re-selecting the current lifetime is a no-op", () => {
-    const setShareLinkDuration = vi.fn(() => Promise.resolve(session));
-    const { result } = setup(stubController({ setShareLinkDuration }));
-    act(() => result.current.setDuration(null)); // already null
-    expect(setShareLinkDuration).not.toHaveBeenCalled();
-  });
-
-  it("resets the lifetime when the face changes (renew mints a no-expiry alias)", () => {
-    const renewLink = vi.fn(() => Promise.resolve(RESULT));
-    const setShareLinkDuration = vi.fn(() => Promise.resolve(session));
-    const { result } = setup(
-      stubController({ renewLink, setShareLinkDuration }),
-    );
-
-    act(() => result.current.setDuration(7));
-    expect(result.current.duration).toBe(7);
-
-    // Changing the face renews the alias, which drops its expiry: the control
-    // must fall back to "no expiry" so it does not claim a lifetime the new link
-    // lacks.
+    const face = { hair: 2, mood: 1, skin: 4, hairColor: 3, beard: 1 };
     act(() => result.current.setIdentity("main"));
-    expect(result.current.duration).toBeNull();
+    await act(async () => {
+      d.resolve(RESULT);
+      await d.promise;
+    });
+    const d2 = deferred<ShareLinkResult>();
+    renewLink.mockReturnValueOnce(d2.promise);
+    act(() => result.current.setAvatarOverride(face));
+    expect(result.current.avatarOverride).toEqual(face);
+    expect(renewLink).toHaveBeenLastCalledWith(session, "main", face);
+    await act(async () => {
+      d2.resolve(RESULT);
+      await d2.promise;
+    });
+  });
 
-    // And re-applying that same lifetime now works (not deduped against a stale
-    // value).
-    act(() => result.current.setDuration(7));
-    expect(setShareLinkDuration).toHaveBeenCalledTimes(2);
+  it("clearing the per-link face falls back to the default (undefined override)", async () => {
+    const d = deferred<ShareLinkResult>();
+    const renewLink = vi.fn(() => d.promise);
+    const { result } = setup(stubController({ renewLink }));
+
+    act(() => result.current.setAvatarOverride(undefined));
+    expect(result.current.avatarOverride).toBeUndefined();
+    expect(renewLink).toHaveBeenLastCalledWith(session, "anonymous", undefined);
+    await act(async () => {
+      d.resolve(RESULT);
+      await d.promise;
+    });
   });
 });

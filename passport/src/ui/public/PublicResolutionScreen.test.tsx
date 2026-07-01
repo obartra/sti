@@ -211,6 +211,37 @@ describe("PublicResolutionScreen", () => {
     ).toBeNull();
   });
 
+  it("opening a return link connects both ways in one tap (no paste)", async () => {
+    const user = userEvent.setup();
+    const view: ResolvedView = {
+      state: "blue",
+      labels: ["hiv"],
+      route: "hiv",
+      identity: { handle: "alex" },
+    };
+    const returnInvite = { ...INVITE, ref: "Q".repeat(43) };
+    const onIngestReturn = vi.fn();
+    render(
+      <PublicResolutionScreen
+        store={storeResolving(view)}
+        link={LINK}
+        invite={returnInvite}
+        onIngestReturn={onIngestReturn}
+      />,
+    );
+
+    // A return link offers "Connect", not "Add to contacts" and not a knock.
+    const connect = await screen.findByRole("button", { name: "Connect" });
+    expect(
+      screen.queryByRole("button", { name: "Add to contacts" }),
+    ).toBeNull();
+    await user.click(connect);
+
+    expect(onIngestReturn).toHaveBeenCalledWith(returnInvite);
+    // The confirmation replaces the prompt; nothing to send onward.
+    expect(await screen.findByText(/Linked\./i)).toBeInTheDocument();
+  });
+
   it("polls for the grant after the viewer requests access", async () => {
     vi.useFakeTimers();
     try {

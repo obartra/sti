@@ -69,7 +69,12 @@ export {
 export type { OwnerView } from "./ownerView.ts";
 export { deriveOwnerView } from "./ownerView.ts";
 export type { PublishedAlias } from "./publish.ts";
-export { publishCard, republishCard, aliasLinkUrl } from "./publish.ts";
+export {
+  publishCard,
+  republishCard,
+  aliasLinkUrl,
+  keyedAliasLinkUrl,
+} from "./publish.ts";
 export type {
   AccountManager,
   NewAccount,

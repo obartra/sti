@@ -16,6 +16,18 @@ import {
   type AliasRecord,
   type ContactRecord,
 } from "./accountBlob.ts";
+import type { AvatarConfig } from "../lib/avatars.ts";
+
+/**
+ * The owner's per-link face choice at mint time (doc 15): whether to reveal their
+ * main identity or stay anonymous, plus an optional avatar override so a revealed
+ * link can wear a different face than the account default. Bundled so the choice
+ * threads as one value through the share/contact mint paths.
+ */
+export interface RevealChoice {
+  readonly identity: AliasIdentity;
+  readonly avatarOverride?: AvatarConfig | undefined;
+}
 import { contactInviteUrl, type ContactInvite } from "./contactInvite.ts";
 import { mintNotify } from "./notifyInbox.ts";
 import { primaryShareAlias } from "./findableOps.ts";
@@ -24,7 +36,7 @@ import {
   withIdentity,
   type AliasIdentity,
 } from "./ownerCard.ts";
-import { todayEpochDay, nowMs, DAY_MS } from "../core/clock.ts";
+import { todayEpochDay, nowMs } from "../core/clock.ts";
 import { randomAliasId } from "../crypto/index.ts";
 import {
   publishCard,
@@ -39,34 +51,39 @@ import type {
   ShareLinkResult,
 } from "./session.ts";
 
-/** A per-contact link's default lifetime before it lapses to gray-nothing (doc 13). */
-const CONTACT_LINK_MS = 7 * DAY_MS;
+// A per-contact link is durable: it lives until the owner revokes it (doc 13), so
+// it is minted with no expiry. Revocation is the single cut-off.
+const NO_EXPIRY = null;
 
-// An absolute expiry instant for a duration in ms from now, or null for none.
-function expiryFor(durationMs: number | null): number | null {
-  return durationMs === null ? null : nowMs() + durationMs;
+// The face a revealed ("main") link stamps: the owner's account identity, but with
+// its avatar swapped for a per-link override when the owner chose a different face
+// for this link (doc 15). Absent, the account avatar is the default, so the common
+// case still "just works" and only the deliberate override differs. `anonymous`
+// never reads this (withIdentity leaves the id-derived face), so it is harmless there.
+function faceFor(
+  blob: { readonly handle?: string; readonly avatar: AvatarConfig },
+  avatarOverride: AvatarConfig | undefined,
+): { readonly handle?: string; readonly avatar: AvatarConfig } {
+  return avatarOverride === undefined
+    ? blob
+    : { ...blob, avatar: avatarOverride };
 }
 
 // Mint a fresh private alias for one contact, publish the current card to it, and
-// record it with a default expiry. The alias is private (unadvertised); the link is
-// a contact INVITE (doc 13 path A) carrying the alias key plus the owner's notify
-// capability, so the one recipient can read the card AND, on accept, notify back.
+// record it. The alias is private (unadvertised); the link is a contact INVITE
+// (doc 13 path A) carrying the alias key plus the owner's notify capability, so the
+// one recipient can read the card AND, on accept, notify back. The link never
+// expires on its own; revoking it is the only way to cut it off.
 export async function mintContactLink(
   api: ApiClient,
   accounts: AccountManager,
   session: OwnerSession,
   opts: {
     label: string;
-    identity: AliasIdentity;
-    durationMs?: number | null | undefined;
-  },
+  } & RevealChoice,
 ): Promise<ContactLinkResult> {
-  const { label, identity } = opts;
-  // The link's lifetime in ms from now, or null for until-revoked. Defaults to
-  // CONTACT_LINK_MS so an omitted choice keeps the prior behavior.
-  const expiresAt = expiryFor(
-    opts.durationMs === undefined ? CONTACT_LINK_MS : opts.durationMs,
-  );
+  const { label, identity, avatarOverride } = opts;
+  const expiresAt = NO_EXPIRY;
   // The sender's optional shared name (doc 15): present only when they chose to show
   // their name (identity "main") AND have a name set. It seeds the recipient's local
   // label as a one-time snapshot; "anonymous" shares nothing.
@@ -76,8 +93,9 @@ export async function mintContactLink(
   // uncorrelatable by a recipient who holds both (doc 13).
   const myInbox = mintNotify();
   const nowDay = todayEpochDay();
+  const face = faceFor(session.blob, avatarOverride);
   const stamp = (rec: AliasRecord): AliasRecord =>
-    withIdentity(rec, identity, session.blob);
+    withIdentity(rec, identity, face);
   const { record } = await publishCard(
     api,
     (rec) => deriveAliasCard(session.blob.state, stamp(rec), nowDay),
@@ -118,9 +136,12 @@ export async function acceptContactInvite(
   api: ApiClient,
   accounts: AccountManager,
   session: OwnerSession,
-  opts: { invite: ContactInvite; label: string; identity: AliasIdentity },
+  opts: {
+    invite: ContactInvite;
+    label: string;
+  } & RevealChoice,
 ): Promise<ContactLinkResult> {
-  const { invite, label, identity } = opts;
+  const { invite, label, identity, avatarOverride } = opts;
   // A return invite (it carries `ref`) is the inviter's to ingest, not to accept;
   // accepting it would mint a dangling third side that nobody can match back.
   if (invite.ref !== undefined) {
@@ -129,8 +150,8 @@ export async function acceptContactInvite(
   const myInbox = mintNotify();
   const nowDay = todayEpochDay();
   const stamp = (rec: AliasRecord): AliasRecord =>
-    withIdentity(rec, identity, session.blob);
-  const expiresAt = expiryFor(CONTACT_LINK_MS);
+    withIdentity(rec, identity, faceFor(session.blob, avatarOverride));
+  const expiresAt = NO_EXPIRY;
   const { record } = await publishCard(
     api,
     (rec) => deriveAliasCard(session.blob.state, stamp(rec), nowDay),
@@ -228,34 +249,9 @@ export async function revokeContactLink(
   return { root: session.root, blob };
 }
 
-// Change one contact link's lifetime in place (extend or shorten): the same link
-// keeps working, only its expiry moves. `durationMs` is counted from now; null
-// means until-revoked. A no-op for an unknown id. Re-PUTs the card carrying the
-// new expiry so the SERVER stops resolving it on time (doc 16), not just the
-// device's local sweep, then records the new expiry in the blob.
-export async function setContactLinkExpiry(
-  api: ApiClient,
-  accounts: AccountManager,
-  session: OwnerSession,
-  opts: { contactId: string; durationMs: number | null },
-): Promise<OwnerSession> {
-  const { contactId, durationMs } = opts;
-  const contact = session.blob.contacts.find((c) => c.id === contactId);
-  if (contact === undefined) return session;
-  const expiresAt = expiryFor(durationMs);
-  const nowDay = todayEpochDay();
-  await republishCard(
-    api,
-    contact.alias,
-    deriveAliasCard(session.blob.state, contact.alias, nowDay),
-    expiresAt,
-  );
-  const blob = await accounts.addContact(session.root, {
-    ...contact,
-    expiresAt,
-    alias: { ...contact.alias, expiresAt },
-  });
-  return { root: session.root, blob };
+// An absolute expiry instant for a duration in ms from now, or null for none.
+function expiryFor(durationMs: number | null): number | null {
+  return durationMs === null ? null : nowMs() + durationMs;
 }
 
 // Change the share-sheet link's lifetime in place (doc 16): the primary alias for
@@ -316,8 +312,9 @@ export async function shareLinkFor(
   api: ApiClient,
   accounts: AccountManager,
   session: OwnerSession,
-  identity: AliasIdentity,
+  reveal: RevealChoice,
 ): Promise<ShareLinkResult> {
+  const { identity, avatarOverride } = reveal;
   const nowDay = todayEpochDay();
   const wantPublic = session.blob.sharingMode === "public";
   // Sharing publicly AS yourself, with a claimed public name, hands out the
@@ -342,7 +339,7 @@ export async function shareLinkFor(
     return { session, url: aliasLinkUrl(existing) };
   }
   const stamp = (rec: AliasRecord): AliasRecord =>
-    withIdentity(rec, identity, session.blob);
+    withIdentity(rec, identity, faceFor(session.blob, avatarOverride));
   const { link, record } = await publishCard(
     api,
     (rec) => deriveAliasCard(session.blob.state, stamp(rec), nowDay),

@@ -163,7 +163,6 @@ export function createDemoController(): SessionController {
     },
     shareLink: (s) => Promise.resolve({ session: s, url: demoUrl() }),
     renewLink: (s) => Promise.resolve({ session: s, url: demoUrl() }),
-    setShareLinkDuration: () => session(),
     deleteAccount: () => Promise.resolve(),
     // One contentless ask, so the demo inbox shows "someone asked to see your
     // status" (faithful to real behavior: a count with no grantable pending is an
@@ -190,15 +189,6 @@ export function createDemoController(): SessionController {
       blob = {
         ...blob,
         contacts: blob.contacts.filter((c) => c.id !== contactId),
-      };
-      return session();
-    },
-    setContactDuration: async (_s, contactId, durationMs) => {
-      blob = {
-        ...blob,
-        contacts: blob.contacts.map((c) =>
-          c.id === contactId ? { ...c, expiresAt: durationMs } : c,
-        ),
       };
       return session();
     },

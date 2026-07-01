@@ -10,7 +10,10 @@ import {
 import { BadgeCard } from "../badge-card.tsx";
 import type { ResolvedView } from "./PublicResolution.tsx";
 import { COPY, KNOCK_UNIFORM, backBtn } from "./PublicResolution.copy.ts";
-import { AcceptInviteSection } from "./PublicResolution.accept.tsx";
+import {
+  AcceptInviteSection,
+  ConnectSection,
+} from "./PublicResolution.accept.tsx";
 
 export function BackBar({ onBack }: { onBack?: (() => void) | undefined }) {
   return (
@@ -271,9 +274,10 @@ function ColdActions({
   );
 }
 
-// The action region below the card: a logged-in viewer with an invite adds the
-// inviter (path A); otherwise the link-holder knock prompt plus, for a resolved
-// stranger card, the claim/verify CTAs. Gray-nothing stays button-free.
+// The action region below the card: a logged-in viewer opening a return link
+// completes the two-way link (connect); one opening a fresh invite adds the
+// inviter (accept, path A); otherwise the link-holder knock prompt plus, for a
+// resolved stranger card, the claim/verify CTAs. Gray-nothing stays button-free.
 export function ResolutionActions({
   self,
   resolved,
@@ -281,6 +285,8 @@ export function ResolutionActions({
   knockSent,
   canAccept,
   onAccept,
+  canConnect,
+  onConnect,
   onKnock,
   onBack,
   onClaim,
@@ -292,11 +298,18 @@ export function ResolutionActions({
   knockSent: boolean;
   canAccept: boolean;
   onAccept?: ((label: string) => Promise<string>) | undefined;
+  canConnect: boolean;
+  onConnect?: (() => void) | undefined;
   onKnock: () => void;
   onBack?: (() => void) | undefined;
   onClaim?: (() => void) | undefined;
   onVerify?: (() => void) | undefined;
 }) {
+  if (resolved && canConnect && onConnect) {
+    return (
+      <ConnectSection handle={resolved.identity.handle} onConnect={onConnect} />
+    );
+  }
   if (resolved && canAccept && onAccept) {
     return (
       <AcceptInviteSection

@@ -49,6 +49,20 @@ export const ContactInviteAccept: Story = {
   },
 };
 
+// A logged-in viewer opened a RETURN link the person they invited sent back: one
+// "Connect" tap completes the two-way link, no paste (doc 13 path A).
+export const ReturnLinkConnect: Story = {
+  args: {
+    resolved: {
+      state: "blue",
+      labels: ["hiv"],
+      identity: { handle: "alex" },
+    },
+    canConnect: true,
+    onConnect: () => undefined,
+  },
+};
+
 // The owner previewing their own card ("this is what others see"): banner, no CTAs.
 export const SelfPreview: Story = {
   args: {

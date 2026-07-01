@@ -44,6 +44,80 @@ function ReturnLink({ handle, url }: { handle: string; url: string }) {
   );
 }
 
+// A logged-in viewer opening a RETURN link the person they invited sent back
+// (doc 13 path A): opening it completes the two-way link, no paste. One tap
+// finishes their side; there is nothing to send onward.
+export function ConnectSection({
+  handle,
+  onConnect,
+}: {
+  handle: string;
+  onConnect: () => void;
+}) {
+  const [done, setDone] = useState(false);
+  const connect = () => {
+    onConnect();
+    setDone(true);
+  };
+  if (done) {
+    return (
+      <Card
+        variant="tint"
+        style={{ display: "flex", flexDirection: "column", gap: 8 }}
+      >
+        <div
+          style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong)" }}
+        >
+          Linked. You and @{handle} can see each other now.
+        </div>
+      </Card>
+    );
+  }
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          style={{
+            flex: "none",
+            width: 34,
+            height: 34,
+            borderRadius: "var(--radius-sm)",
+            background: "var(--accent-soft)",
+            color: "var(--text-accent)",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <LinkIcon size={18} />
+        </span>
+        <span
+          style={{
+            fontSize: 15.5,
+            fontWeight: 700,
+            color: "var(--text-strong)",
+          }}
+        >
+          Link both ways with @{handle}
+        </span>
+      </div>
+      <p
+        style={{
+          margin: 0,
+          fontSize: 13.5,
+          lineHeight: 1.55,
+          color: "var(--text-muted)",
+        }}
+      >
+        They sent this link back so you can see each other&apos;s status.
+      </p>
+      <Button variant="primary" size="lg" block onClick={connect}>
+        Connect
+      </Button>
+    </Card>
+  );
+}
+
 // A logged-in viewer opening a contact invite: add the inviter as a two-way
 // contact (doc 13 path A), then surface the return link to send back.
 export function AcceptInviteSection({

@@ -1,10 +1,44 @@
-import { Card, Button, Switch, Badge } from "../../design/components/index.ts";
-import { EyeOff, Trash, Users, Bell } from "../../design/icons.tsx";
-import { COPY, Chip, fieldLbl } from "./Privacy.parts.tsx";
+import {
+  Card,
+  Button,
+  Switch,
+  Badge,
+  Avatar,
+  Row,
+} from "../../design/components/index.ts";
+import { EyeOff, Users, Bell } from "../../design/icons.tsx";
+import { COPY, Chip } from "./Privacy.parts.tsx";
 import type { Condoms, PrivacyState } from "./Privacy.parts.tsx";
 import type { PushControls } from "../app/usePush.ts";
 import { InstallRow } from "./Privacy.install.tsx";
 import { isIOS, isStandalone } from "../../pwa/installPrompt.ts";
+
+// Your face: the account's default avatar, framed under Profile with an entry to the
+// editor (doc 19). It is the default face a revealed link wears; a link can override
+// it with its own face from the share sheet (doc 15). The editor is onEditAvatar.
+export function FaceCard({
+  avatarSrc,
+  onEditAvatar,
+}: {
+  avatarSrc: string;
+  onEditAvatar: () => void;
+}) {
+  return (
+    <Card variant="flat" style={{ padding: 6 }}>
+      <Row
+        interactive={false}
+        lead={<Avatar size="lg" src={avatarSrc} alt="" />}
+        title={COPY.faceTitle}
+        sub={COPY.faceSub}
+        trail={
+          <Button variant="secondary" size="sm" onClick={onEditAvatar}>
+            {COPY.faceEdit}
+          </Button>
+        }
+      />
+    </Card>
+  );
+}
 
 // What rides on the card besides the status, self-declared, optional.
 export function AttributesCard({ state }: { state: PrivacyState }) {
@@ -121,6 +155,7 @@ export function AttributesCard({ state }: { state: PrivacyState }) {
 // the "unavailable" case points at the Add-to-Home-Screen step (doc 22 F) rather
 // than a dead end; everywhere else it is the normal supported / not-supported copy.
 function pushSub(push: PushControls): string {
+  if (push.supported && !push.ready) return COPY.pushNoContacts;
   if (push.supported) return COPY.pushRowSub;
   if (isIOS() && !isStandalone()) return COPY.pushIosInstall;
   return COPY.pushUnsupported;
@@ -178,7 +213,7 @@ function PushRow({ push }: { push: PushControls }) {
         </div>
         <Switch
           checked={push.enabled}
-          disabled={!push.supported || push.busy}
+          disabled={!push.supported || !push.ready || push.busy}
           onChange={(on) => (on ? push.enable() : push.disable())}
         />
       </div>
@@ -205,186 +240,96 @@ export function ControlsCard({
   push?: PushControls | undefined;
 }) {
   return (
-    <>
-      <div style={fieldLbl}>{COPY.controlsTitle}</div>
-      <Card
-        variant="flat"
-        style={{ display: "flex", flexDirection: "column", gap: 4 }}
-      >
-        {/* Partner alerts are baked in: informational row, no switch. */}
-        <div style={{ display: "flex", gap: 14, padding: "10px 8px" }}>
-          <span
-            style={{
-              flex: "none",
-              width: 40,
-              height: 40,
-              borderRadius: "var(--radius-sm)",
-              background: "var(--accent-soft)",
-              color: "var(--text-accent)",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Users size={20} />
-          </span>
-          <div style={{ flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span
-                style={{
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: "var(--text-strong)",
-                }}
-              >
-                {COPY.anonAlerts}
-              </span>
-              <span style={{ flex: "none", whiteSpace: "nowrap" }}>
-                <Badge variant="accent">Always on</Badge>
-              </span>
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                color: "var(--text-muted)",
-                lineHeight: 1.5,
-                marginTop: 2,
-              }}
-            >
-              {COPY.anonAlertsSub}
-            </div>
-          </div>
-        </div>
-        {push && <PushRow push={push} />}
-        <InstallRow />
-        {/* Manual pause: show plain gray to everyone (CtrlRow). */}
-        <div
+    <Card
+      variant="flat"
+      style={{ display: "flex", flexDirection: "column", gap: 4 }}
+    >
+      {/* Partner alerts are baked in: informational row, no switch. */}
+      <div style={{ display: "flex", gap: 14, padding: "10px 8px" }}>
+        <span
           style={{
-            display: "flex",
+            flex: "none",
+            width: 40,
+            height: 40,
+            borderRadius: "var(--radius-sm)",
+            background: "var(--accent-soft)",
+            color: "var(--text-accent)",
+            display: "inline-flex",
             alignItems: "center",
-            gap: 14,
-            padding: "10px 8px",
+            justifyContent: "center",
           }}
         >
-          <span
-            style={{
-              flex: "none",
-              width: 40,
-              height: 40,
-              borderRadius: "var(--radius-sm)",
-              background: "var(--accent-soft)",
-              color: "var(--text-accent)",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <EyeOff size={20} />
-          </span>
-          <div style={{ flex: 1 }}>
-            <div
+          <Users size={20} />
+        </span>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span
               style={{
                 fontSize: 15,
                 fontWeight: 600,
                 color: "var(--text-strong)",
               }}
             >
-              {COPY.pauseRow}
-            </div>
-            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-              {COPY.pauseRowSub}
-            </div>
+              {COPY.anonAlerts}
+            </span>
+            <span style={{ flex: "none", whiteSpace: "nowrap" }}>
+              <Badge variant="accent">Always on</Badge>
+            </span>
           </div>
-          <Switch checked={state.paused} onChange={state.setPaused} />
-        </div>
-      </Card>
-    </>
-  );
-}
-
-export function DangerZone({
-  state,
-  onDeleted,
-}: {
-  state: PrivacyState;
-  onDeleted?: (() => void) | undefined;
-}) {
-  return (
-    <>
-      <div style={{ ...fieldLbl, color: "var(--status-expired-fg)" }}>
-        {COPY.dangerTitle}
-      </div>
-      <Card
-        variant="flat"
-        style={{
-          borderColor: "var(--expired-100)",
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-        }}
-      >
-        <div style={{ display: "flex", gap: 12 }}>
-          <span
+          <div
             style={{
-              flex: "none",
-              width: 40,
-              height: 40,
-              borderRadius: "var(--radius-sm)",
-              background: "var(--expired-50)",
-              color: "var(--status-expired-base)",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
+              fontSize: 13,
+              color: "var(--text-muted)",
+              lineHeight: 1.5,
+              marginTop: 2,
             }}
           >
-            <Trash size={20} />
-          </span>
-          <div style={{ flex: 1 }}>
-            <div
-              style={{
-                fontSize: 15,
-                fontWeight: 700,
-                color: "var(--text-strong)",
-              }}
-            >
-              {COPY.deleteTitle}
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                color: "var(--text-muted)",
-                lineHeight: 1.45,
-              }}
-            >
-              {COPY.deleteSub}
-            </div>
+            {COPY.anonAlertsSub}
           </div>
         </div>
-        {!state.confirmDelete ? (
-          <Button
-            variant="danger"
-            size="md"
-            block
-            onClick={() => state.setConfirmDelete(true)}
+      </div>
+      {push && <PushRow push={push} />}
+      <InstallRow />
+      {/* Manual pause: show plain gray to everyone (CtrlRow). */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          padding: "10px 8px",
+        }}
+      >
+        <span
+          style={{
+            flex: "none",
+            width: 40,
+            height: 40,
+            borderRadius: "var(--radius-sm)",
+            background: "var(--accent-soft)",
+            color: "var(--text-accent)",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <EyeOff size={20} />
+        </span>
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              fontSize: 15,
+              fontWeight: 600,
+              color: "var(--text-strong)",
+            }}
           >
-            {COPY.deleteCta}
-          </Button>
-        ) : (
-          <div style={{ display: "flex", gap: 10 }}>
-            <Button
-              variant="quiet"
-              size="md"
-              block
-              onClick={() => state.setConfirmDelete(false)}
-            >
-              Keep it
-            </Button>
-            <Button variant="danger" size="md" block onClick={onDeleted}>
-              Delete now
-            </Button>
+            {COPY.pauseRow}
           </div>
-        )}
-      </Card>
-    </>
+          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+            {COPY.pauseRowSub}
+          </div>
+        </div>
+        <Switch checked={state.paused} onChange={state.setPaused} />
+      </div>
+    </Card>
   );
 }

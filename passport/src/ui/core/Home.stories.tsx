@@ -1,11 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Home } from "./Home.tsx";
 
-// C1 Home: the badge card is the hero, plus the single next-best action, the
-// "what this means" explainer, quick actions, and a re-test reminder. The
-// meaningful states are the two-state badge (blue / gray) and the owner-only
-// pause panel (manual hide vs. auto-pause), which always renders the hero as a
-// uniform gray to viewers.
+// Home is a single scannable dashboard: the owner's honest standing, the next
+// test, the three things blue needs, what people see on your links, and the
+// actions. The meaningful states are the standing kinds (untested, blue, lapsed,
+// a positive/treatment gray) plus the owner-only pause panel.
 const meta: Meta<typeof Home> = {
   title: "Passport/Core/Home",
   component: Home,
@@ -13,7 +12,7 @@ const meta: Meta<typeof Home> = {
 export default meta;
 type Story = StoryObj<typeof Home>;
 
-// Blue: up to date, on HIV prevention. The action is "Share my passport".
+// Blue: up to date, on HIV prevention. The primary action is "Share my passport".
 export const BlueUpToDate: Story = {
   args: {
     badge: "blue",
@@ -23,9 +22,9 @@ export const BlueUpToDate: Story = {
   },
 };
 
-// Gray: no status shared yet. The action is "Add a result". The "where you
-// stand" card reflects an untested owner (no requirement met yet).
-export const GrayNoStatus: Story = {
+// Untested: never recorded a panel. Reads as "Not set up yet", not clear/green.
+// The next-test line invites the first test and the checklist is all unmet.
+export const Untested: Story = {
   args: {
     badge: "gray",
     viewerBadge: "gray",
@@ -42,8 +41,38 @@ export const GrayNoStatus: Story = {
   },
 };
 
-// Manual pause: owner hid their status. Viewers see gray; the owner sees the
-// pause panel and a "Resume sharing" action.
+// Lapsed: tested before, but the last panel aged out of the 90-day window.
+// Reads "Time to re-test" and the next test is overdue.
+export const Lapsed: Story = {
+  args: {
+    badge: "gray",
+    viewerBadge: "gray",
+    labels: [],
+    handle: "robin",
+    standing: {
+      recentPanel: false,
+      clear: true,
+      route: true,
+      willBeBlue: false,
+    },
+    tested: true,
+    daysLeft: 0,
+  },
+};
+
+// Positive/treatment: a reported positive holds the badge gray on its own until
+// the clearance window passes. The owner sees the pause panel; viewers see gray.
+export const PositiveInTreatment: Story = {
+  args: {
+    badge: "gray",
+    viewerBadge: "gray",
+    labels: [],
+    handle: "robin",
+    autoPaused: true,
+  },
+};
+
+// Manual pause: owner hid their status. Viewers see gray; the owner can resume.
 export const PausedManual: Story = {
   args: {
     badge: "blue",
@@ -54,25 +83,13 @@ export const PausedManual: Story = {
   },
 };
 
-// Auto-pause: from a logged positive's clearance window. The panel shows an
-// earliest auto-resume date and a "Keep paused longer" action.
-export const PausedAuto: Story = {
-  args: {
-    badge: "blue",
-    viewerBadge: "gray",
-    labels: ["hiv"],
-    autoPaused: true,
-    handle: "robin",
-  },
-};
-
-// No display name set: greeting falls back to "Hey there!".
+// No display name set: the greeting falls back to "Your passport".
 export const NoName: Story = {
   args: { badge: "blue", viewerBadge: "blue", labels: ["hiv"] },
 };
 
-// Re-test due soon: the faint hint becomes a full reminder card.
-export const RetestDue: Story = {
+// Re-test due soon: fresh-but-approaching, so the next-test line counts down.
+export const RetestDueSoon: Story = {
   args: {
     badge: "blue",
     viewerBadge: "blue",

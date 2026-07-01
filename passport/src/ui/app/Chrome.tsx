@@ -14,6 +14,7 @@ import type {
   OwnerView,
   PassportStore,
 } from "../../store/index.ts";
+import type { AvatarConfig } from "../../lib/avatars.ts";
 import type { ScreenCtx } from "./screens/context.ts";
 import type { OnboardingActions } from "./useOnboarding.ts";
 import type { ReportOutcome } from "../../core/report.ts";
@@ -43,12 +44,11 @@ export interface ChromeProps {
   onRevokeShareLink: () => void;
   shareIdentity: AliasIdentity;
   onShareIdentityChange: (choice: AliasIdentity) => void;
-  shareDuration: number | null;
-  onShareDurationChange: (durationMs: number | null) => void;
+  shareAvatarOverride: AvatarConfig | undefined;
+  onShareAvatarOverrideChange: (avatar: AvatarConfig | undefined) => void;
   onDeleteAccount: () => void;
   onSetAvatar: ScreenCtx["onSetAvatar"];
   onSetName: ScreenCtx["onSetName"];
-  onSetHomeDefaultView: ScreenCtx["onSetHomeDefaultView"];
   knockCount: number;
   refreshKnocks: () => void;
   canApproveKnocks: boolean;
@@ -63,7 +63,6 @@ export interface ChromeProps {
   onCreateContactLink: ScreenCtx["onCreateContactLink"];
   onRenameContact: ScreenCtx["onRenameContact"];
   onRevokeContact: ScreenCtx["onRevokeContact"];
-  onSetContactDuration: ScreenCtx["onSetContactDuration"];
   faves: ScreenCtx["faves"];
   onToggleFave: ScreenCtx["onToggleFave"];
   pendingRequests: ScreenCtx["pendingRequests"];
@@ -118,8 +117,8 @@ function ShareOverlay({
   onRevokeShareLink,
   shareIdentity,
   onShareIdentityChange,
-  shareDuration,
-  onShareDurationChange,
+  shareAvatarOverride,
+  onShareAvatarOverrideChange,
 }: ChromeProps) {
   return (
     <ShareSheet
@@ -136,13 +135,9 @@ function ShareOverlay({
       onRetry={onRetryShareLink}
       identityChoice={shareIdentity}
       onIdentityChange={onShareIdentityChange}
-      durationChoice={shareDuration}
-      // Expiry is a private-link affordance only (doc 16): the durable public
-      // profile stays live until revoked, so it gets no lifetime control. Gating
-      // here keeps the share sheet itself mode-agnostic.
-      onDurationChange={
-        owner.sharingMode === "link" ? onShareDurationChange : undefined
-      }
+      avatar={owner.avatar}
+      avatarOverride={shareAvatarOverride}
+      onAvatarOverrideChange={onShareAvatarOverrideChange}
       onCopy={onCopyShareLink}
       onRevoke={onRevokeShareLink}
       onWallet={() => {
@@ -173,7 +168,6 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     onKeepSignedInChange: props.onKeepSignedInChange,
     onSetAvatar: props.onSetAvatar,
     onSetName: props.onSetName,
-    onSetHomeDefaultView: props.onSetHomeDefaultView,
     knockCount: props.knockCount,
     refreshKnocks: props.refreshKnocks,
     canApproveKnocks: props.canApproveKnocks,
@@ -188,7 +182,6 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     onCreateContactLink: props.onCreateContactLink,
     onRenameContact: props.onRenameContact,
     onRevokeContact: props.onRevokeContact,
-    onSetContactDuration: props.onSetContactDuration,
     faves: props.faves,
     onToggleFave: props.onToggleFave,
     pendingRequests: props.pendingRequests,

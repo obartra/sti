@@ -51,6 +51,10 @@ export interface PublicResolutionProps {
   // contact instead of knocking. onAccept resolves with the return link to share.
   canAccept?: boolean;
   onAccept?: ((label: string) => Promise<string>) | undefined;
+  // A logged-in viewer opening a RETURN link completes the two-way link in one tap
+  // (no paste). onConnect ingests the return and finishes their side.
+  canConnect?: boolean;
+  onConnect?: (() => void) | undefined;
   onBack?: () => void;
   onClaim?: () => void;
   onVerify?: () => void;
@@ -69,6 +73,8 @@ export function PublicResolution({
   initialKnockSent = false,
   canAccept = false,
   onAccept,
+  canConnect = false,
+  onConnect,
   onBack,
   onClaim,
   onVerify,
@@ -109,6 +115,8 @@ export function PublicResolution({
         knockSent={knockSent}
         canAccept={canAccept}
         onAccept={onAccept}
+        canConnect={canConnect}
+        onConnect={onConnect}
         onKnock={doKnock}
         onBack={onBack}
         onClaim={onClaim}

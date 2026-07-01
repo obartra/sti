@@ -87,9 +87,6 @@ async function walkController(controller: SessionController): Promise<void> {
   expect(shared.url).toMatch(URL_RE);
   const renewed = await controller.renewLink(shared.session);
   expect(renewed.url).toMatch(URL_RE);
-  expect(
-    await controller.setShareLinkDuration(renewed.session, 3_600_000),
-  ).not.toBeNull();
 
   // Inbox: one contentless ask (a count with no grantable pending) and an approve
   // that honors however many it is handed.
@@ -98,19 +95,15 @@ async function walkController(controller: SessionController): Promise<void> {
   expect(knocks.pending).toEqual([]);
   expect(await controller.approveKnocks(renewed.session, [])).toBe(0);
 
-  // Contacts: create persists, set-duration moves the expiry, revoke drops it.
+  // Contacts: create persists a durable link (no expiry), revoke drops it.
   const created = await controller.createContactLink(renewed.session, "Robin");
   expect(created.contact.label).toBe("Robin");
+  expect(created.contact.expiresAt).toBeNull();
   expect(created.session.blob.contacts.map((c) => c.label)).toContain("Robin");
-  const dated = await controller.setContactDuration(
+  const revoked = await controller.revokeContact(
     created.session,
     created.contact.id,
-    86_400_000,
   );
-  expect(
-    dated.blob.contacts.find((c) => c.id === created.contact.id)?.expiresAt,
-  ).toBe(86_400_000);
-  const revoked = await controller.revokeContact(dated, created.contact.id);
   expect(revoked.blob.contacts.map((c) => c.id)).not.toContain(
     created.contact.id,
   );

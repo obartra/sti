@@ -1,26 +1,12 @@
-import type { CSSProperties } from "react";
-import {
-  COPY,
-  usePrivacyState,
-  keepUntilLabel,
-  fieldLbl,
-} from "./Privacy.parts.tsx";
+import { COPY, usePrivacyState } from "./Privacy.parts.tsx";
 import type { OwnerState } from "../../core/badge.ts";
 import type { PushControls } from "../app/usePush.ts";
-import { NameCard } from "./Privacy.name.tsx";
-import { HomeViewCard } from "./Privacy.homeview.tsx";
-import { FindableName, type FindableOps } from "../findable/FindableName.tsx";
-import {
-  RecoveryPassword,
-  type RecoveryPasswordOps,
-} from "../settings/RecoveryPassword.tsx";
-import { ShareLinkGuide } from "../findable/ShareLinkGuide.tsx";
-import { AvatarCard } from "../onboarding/AvatarCard.tsx";
-import {
-  AttributesCard,
-  ControlsCard,
-  DangerZone,
-} from "./Privacy.sections.tsx";
+import { type FindableOps } from "../findable/FindableName.tsx";
+import { type RecoveryPasswordOps } from "../settings/RecoveryPassword.tsx";
+import { DangerZone } from "./Privacy.danger.tsx";
+import { AccountSection } from "./Privacy.account.tsx";
+import { ProfileSection } from "./Privacy.profile.tsx";
+import { AboutFooter } from "./Privacy.about.tsx";
 
 export interface PrivacyProps {
   ownerState: OwnerState;
@@ -40,10 +26,6 @@ export interface PrivacyProps {
   /** Persist a new (or cleared) local display name; absent hides the name editor
    * (e.g. logged-out preview / Storybook). */
   onSetName?: ((name: string | null) => void) | undefined;
-  /** Which face Home opens on; defaults to "criteria". */
-  homeDefaultView?: "criteria" | "shared" | undefined;
-  /** Persist the Home default-face preference; absent hides the control. */
-  onSetHomeDefaultView?: ((view: "criteria" | "shared") => void) | undefined;
   /** Live preview src for the current avatar; with onEditAvatar, shows the editor entry. */
   avatarSrc?: string | undefined;
   onEditAvatar?: (() => void) | undefined;
@@ -62,159 +44,26 @@ export interface PrivacyProps {
   findableOps?: FindableOps | undefined;
 }
 
-const legalLink: CSSProperties = {
-  alignSelf: "flex-start",
-  padding: 0,
-  background: "none",
-  border: "none",
-  cursor: "pointer",
-  fontSize: 13.5,
-  fontWeight: 700,
-  color: "var(--text-accent)",
-};
-
-// The app-native home for the trust links (doc 23): the logged-in app surfaces
-// promises, privacy, and terms here in settings rather than wearing a footer.
-function AboutLegal({
-  onViewPromises,
-  onViewPrivacyPolicy,
-  onViewTerms,
-}: {
-  onViewPromises?: (() => void) | undefined;
-  onViewPrivacyPolicy?: (() => void) | undefined;
-  onViewTerms?: (() => void) | undefined;
-}) {
-  if (!onViewPromises && !onViewPrivacyPolicy && !onViewTerms) return null;
+// A plain, safe log-out row at the top of Settings. Kept well away from the danger
+// zone: logging out is reversible (the phrase still works), delete is not.
+function LogOutRow({ onLogOut }: { onLogOut: () => void }) {
   return (
-    <div
+    <button
+      type="button"
+      onClick={onLogOut}
       style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 8,
-        marginTop: -8,
+        alignSelf: "flex-start",
+        padding: 0,
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+        fontSize: 14,
+        fontWeight: 700,
+        color: "var(--text-accent)",
       }}
     >
-      {onViewPromises && (
-        <button type="button" onClick={onViewPromises} style={legalLink}>
-          See the promises we keep &rarr;
-        </button>
-      )}
-      <div style={{ display: "flex", gap: 16 }}>
-        {onViewPrivacyPolicy && (
-          <button type="button" onClick={onViewPrivacyPolicy} style={legalLink}>
-            Privacy
-          </button>
-        )}
-        {onViewTerms && (
-          <button type="button" onClick={onViewTerms} style={legalLink}>
-            Terms
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// The public-name section: the claim/release card, plus the share guide once a
-// name is held. Both depend on the feature being wired in (findableOps present),
-// so they live together; this keeps the Privacy body's branching low.
-function FindableSection({
-  vanityName,
-  findableOps,
-}: {
-  vanityName: string | null | undefined;
-  findableOps: FindableOps | undefined;
-}) {
-  if (!findableOps) return null;
-  const name = vanityName ?? null;
-  return (
-    <>
-      <FindableName currentName={name} ops={findableOps} />
-      {name !== null && name !== "" && <ShareLinkGuide handle={name} />}
-    </>
-  );
-}
-
-// A calm transparency note (not an alarm): the server deletes an abandoned backup
-// after the inactivity window (server STI_ACCOUNT_INACTIVITY_TTL), and using the app
-// resets it. Since opening the app IS the reset, this is honest disclosure rather
-// than an actionable countdown; the date is the reference instant plus the window.
-function RetentionNote({ now }: { now: number }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 4,
-        padding: "2px 2px 0",
-      }}
-    >
-      <div style={fieldLbl}>{COPY.keepTitle}</div>
-      <p
-        style={{
-          margin: 0,
-          fontSize: 13,
-          lineHeight: 1.5,
-          color: "var(--text-muted)",
-        }}
-      >
-        {COPY.keepBody}
-      </p>
-      <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>
-        {COPY.keepPrefix}
-        <strong style={{ color: "var(--text-strong)", fontWeight: 700 }}>
-          {keepUntilLabel(now)}
-        </strong>
-        .
-      </p>
-    </div>
-  );
-}
-
-// The owner-only identity + preference cards (name, Home default face, avatar),
-// each shown only when its setter is wired. Split out so Privacy stays within its
-// complexity ceiling.
-function OwnerCards({
-  name,
-  onSetName,
-  homeDefaultView,
-  onSetHomeDefaultView,
-  avatarSrc,
-  onEditAvatar,
-}: {
-  name: string | null;
-  onSetName?: ((name: string | null) => void) | undefined;
-  homeDefaultView: "criteria" | "shared";
-  onSetHomeDefaultView?: ((view: "criteria" | "shared") => void) | undefined;
-  avatarSrc?: string | undefined;
-  onEditAvatar?: (() => void) | undefined;
-}) {
-  return (
-    <>
-      {onSetName && <NameCard name={name} onSave={onSetName} />}
-      {onSetHomeDefaultView && (
-        <HomeViewCard value={homeDefaultView} onChange={onSetHomeDefaultView} />
-      )}
-      {onEditAvatar && avatarSrc !== undefined && (
-        <AvatarCard src={avatarSrc} onEdit={onEditAvatar} />
-      )}
-    </>
-  );
-}
-
-// The password-factor card, wrapped so its presence check lives here (like
-// FindableSection) rather than adding a branch to Privacy. Renders nothing until the
-// caller wires the ops (recovery flag on + logged in).
-function RecoverySection({
-  recoveryName,
-  recoveryOps,
-}: {
-  recoveryName: string | null | undefined;
-  recoveryOps: RecoveryPasswordOps | undefined;
-}) {
-  if (!recoveryOps) return null;
-  return (
-    <RecoveryPassword recoveryName={recoveryName ?? null} ops={recoveryOps} />
+      {COPY.logOut}
+    </button>
   );
 }
 
@@ -229,8 +78,6 @@ export function Privacy({
   onViewTerms,
   name = null,
   onSetName,
-  homeDefaultView = "criteria",
-  onSetHomeDefaultView,
   avatarSrc,
   onEditAvatar,
   now,
@@ -246,7 +93,7 @@ export function Privacy({
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: 18,
+          gap: 22,
           width: "100%",
           maxWidth: 600,
         }}
@@ -262,55 +109,32 @@ export function Privacy({
           {COPY.title}
         </h1>
 
-        <AboutLegal
-          onViewPromises={onViewPromises}
-          onViewPrivacyPolicy={onViewPrivacyPolicy}
-          onViewTerms={onViewTerms}
-        />
+        {onLogOut && <LogOutRow onLogOut={onLogOut} />}
 
-        <OwnerCards
+        <AccountSection
           name={name}
           onSetName={onSetName}
-          homeDefaultView={homeDefaultView}
-          onSetHomeDefaultView={onSetHomeDefaultView}
-          avatarSrc={avatarSrc}
-          onEditAvatar={onEditAvatar}
-        />
-
-        {/* Public name (doc 17): the claim/release card, plus the share guide right
-            after a name is claimed. Shown only when the section is wired in (the
-            caller gates on the flag + login). */}
-        <FindableSection vanityName={vanityName} findableOps={findableOps} />
-
-        {/* The optional password factor (doc 32): shown only when the caller wires
-            the ops (recovery flag on + logged in). */}
-        <RecoverySection
+          vanityName={vanityName}
+          findableOps={findableOps}
           recoveryName={recoveryName}
           recoveryOps={recoveryOps}
         />
 
-        <AttributesCard state={state} />
-        <ControlsCard state={state} push={push} />
-        {onLogOut && (
-          <button
-            type="button"
-            onClick={onLogOut}
-            style={{
-              alignSelf: "flex-start",
-              padding: 0,
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 14,
-              fontWeight: 700,
-              color: "var(--text-accent)",
-            }}
-          >
-            Log out
-          </button>
-        )}
-        <RetentionNote now={now ?? Date.now()} />
+        <ProfileSection
+          state={state}
+          push={push}
+          avatarSrc={avatarSrc}
+          onEditAvatar={onEditAvatar}
+        />
+
         <DangerZone state={state} onDeleted={onDeleted} />
+
+        <AboutFooter
+          now={now ?? Date.now()}
+          onViewPromises={onViewPromises}
+          onViewPrivacyPolicy={onViewPrivacyPolicy}
+          onViewTerms={onViewTerms}
+        />
       </div>
     </div>
   );

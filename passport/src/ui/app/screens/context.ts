@@ -52,8 +52,6 @@ export interface ScreenCtx {
   onSetAvatar: (avatar: AvatarConfig) => void;
   /** Persist the owner's local display name (logged-in only; null clears it). */
   onSetName: (name: string | null) => void;
-  /** Persist which face the Home hero opens on (logged-in only). */
-  onSetHomeDefaultView: (view: "criteria" | "shared") => void;
   /** Count of current knocks across the owner's aliases (contentless; 0 logged out). */
   knockCount: number;
   /** Re-pull the knock count + pending approvals (e.g. when the inbox opens). */
@@ -76,21 +74,17 @@ export interface ScreenCtx {
   onRevokeAlias: (id: string) => void;
   /** The owner's per-contact links (newest last); empty logged out. */
   contacts: ContactRecord[];
-  /** Mint a new per-contact link for `label` with a chosen lifetime (days, or
-   * null for until-revoked) and a face (anonymous, or the owner's name); resolves
-   * with the contact + URL. */
+  /** Mint a new per-contact link for `label` with a face (anonymous, or the
+   * owner's name); resolves with the contact + URL. The link is durable until
+   * revoked. */
   onCreateContactLink: (
     label: string,
-    durationMs: number | null,
     identity: AliasIdentity,
   ) => Promise<ContactLinkResult>;
   /** Rename one contact link's local label (owner-only nickname; never shared). */
   onRenameContact: (id: string, label: string) => void;
   /** Revoke one contact link by id. */
   onRevokeContact: (id: string) => void;
-  /** Change one contact link's lifetime in place (days from today, or null for
-   * until-revoked). */
-  onSetContactDuration: (id: string, durationMs: number | null) => void;
   /** Starred contact ids (device-local display preference); empty logged out. */
   faves: ReadonlySet<string>;
   /** Toggle one contact's star. */

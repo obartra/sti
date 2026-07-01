@@ -39,27 +39,28 @@ export function parseAliasLink(
   return { id, key };
 }
 
-// The canonical site host that share links are built against.
-const SITE_HOST = "sti.care";
-
 /**
  * Parse the text decoded from a scanned QR into an {@link AliasLink}. A scanned
- * code is untrusted input, so this is deliberately strict: it must be a full URL
- * to our own site (the canonical host, or `selfHost` for same-origin testing),
- * and its path + fragment must be a well-formed public alias link. Anything else
- * (a different host, a non-link URL, junk, a private/keyless link) is null, so a
- * malicious QR can never redirect the viewer off-site. Pure and total.
+ * code is untrusted input, so this is deliberately strict about SHAPE: the text
+ * must be a full URL whose path + fragment is a well-formed public alias link
+ * (`/a/{id}#k={key}`), or it is null. Anything that is not that shape (a non-link
+ * URL, junk, a private/keyless link) is rejected.
+ *
+ * The host is deliberately NOT gated. A generated link always carries the
+ * canonical `sti.care` host (SHARE_ORIGIN), but a real deployment is reached
+ * through preview and staging hosts too, and only the id + key in the link
+ * matter: resolution runs against OUR own api regardless of the link's host, and
+ * the viewer is never navigated to the scanned URL's host (we open the parsed
+ * id/key inside our own resolution flow, never window.location = url). So a
+ * cross-host or preview link still resolves, while a scanned QR still cannot
+ * redirect anyone off-site. Pure and total.
  */
-export function parseScannedLink(
-  text: string,
-  selfHost?: string,
-): AliasLink | null {
+export function parseScannedLink(text: string): AliasLink | null {
   let url: URL;
   try {
     url = new URL(text.trim());
   } catch {
     return null;
   }
-  if (url.host !== SITE_HOST && url.host !== selfHost) return null;
   return parseAliasLink(url.pathname, url.hash);
 }

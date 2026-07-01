@@ -10,16 +10,22 @@ import { SETTINGS_SCREEN_NAME } from "../../copy/canonical.ts";
 // nothing here fakes it.)
 export const COPY = {
   title: SETTINGS_SCREEN_NAME,
-  avatarTitle: "Your avatar",
-  avatarSub: "The look you can choose to show on a link.",
-  avatarEdit: "Edit",
-  controlsTitle: "Controls",
+  accountTitle: "Account",
+  profileTitle: "Profile",
+  aboutTitle: "About sti.care",
+  logOut: "Log out",
+  faceTitle: "Your face",
+  faceSub:
+    "The default look when you reveal yourself. You can set a different one per link.",
+  faceEdit: "Edit",
+  profileSub: "What people see on your card.",
   anonAlerts: "Anonymous partner alerts",
   anonAlertsSub:
     "Built in. If you report a positive, recent connections get an anonymous heads-up. It's always on, and it goes out with no name attached.",
   pushRow: "Notify me on this device",
   pushRowSub:
     "Get the alert as a notification even when the app is closed. The heads-up stays the same: no name, no detail. You’ll still see it in-app either way.",
+  pushNoContacts: "You can turn this on once you’ve linked with someone.",
   pushOn: "On",
   pushUnsupported: "Not available on this device",
   pushIosInstall:
@@ -53,6 +59,9 @@ export const COPY = {
   keepBody:
     "We keep your saved data while you use the app. Stop using it and we delete your backup about two years later. Opening sti.care any time keeps it, and we have no other way to reach you, so we cannot warn you first.",
   keepPrefix: "As things stand, that would be around ",
+  aboutPromises: "The promises we keep",
+  aboutPrivacy: "Privacy",
+  aboutTerms: "Terms",
 } as const;
 
 // The inactivity window after which the server deletes an untouched account backup
@@ -91,6 +100,46 @@ export const fieldLbl: CSSProperties = {
   color: "var(--text-body)",
   marginBottom: 10,
 };
+
+// A settings section heading (Account, Profile), a touch stronger than fieldLbl.
+const sectionHeading: CSSProperties = {
+  fontSize: 17,
+  fontWeight: 800,
+  letterSpacing: "-0.01em",
+  color: "var(--text-strong)",
+};
+
+// A labeled block: a section heading, an optional sub-line, then its cards.
+export function Section({
+  title,
+  sub,
+  children,
+}: {
+  title: string;
+  sub?: string | undefined;
+  children: ReactNode;
+}) {
+  return (
+    <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div>
+        <div style={sectionHeading}>{title}</div>
+        {sub !== undefined && (
+          <div
+            style={{
+              fontSize: 13,
+              color: "var(--text-muted)",
+              lineHeight: 1.5,
+              marginTop: 2,
+            }}
+          >
+            {sub}
+          </div>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export function Chip({
   active,

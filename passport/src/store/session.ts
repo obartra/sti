@@ -47,16 +47,15 @@ import { gatherKnocks, grantPending } from "./knockOps.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { revokeAlias } from "./publish.ts";
 import type { AliasIdentity } from "./ownerCard.ts";
+import type { AvatarConfig } from "../lib/avatars.ts";
 import {
   mintContactLink,
   acceptContactInvite,
   ingestContactReturn,
   renameContactLabel,
   revokeContactLink,
-  setContactLinkExpiry,
   revokeAliasLink,
   shareLinkFor,
-  setShareLinkExpiry,
 } from "./shareOps.ts";
 import {
   primaryShareAlias,
@@ -171,6 +170,7 @@ export interface SessionController {
   shareLink(
     session: OwnerSession,
     identity?: AliasIdentity,
+    avatarOverride?: AvatarConfig,
   ): Promise<ShareLinkResult>;
   /**
    * Revoke the link for the current sharing mode (the old URL stops resolving to
@@ -181,17 +181,8 @@ export interface SessionController {
   renewLink(
     session: OwnerSession,
     identity?: AliasIdentity,
+    avatarOverride?: AvatarConfig,
   ): Promise<ShareLinkResult>;
-  /**
-   * Change the share-sheet link's lifetime in place (doc 16): the link for the
-   * current sharing mode keeps resolving, only its expiry moves. `durationMs` is
-   * counted from now (so it can be sub-day); null means until-revoked. Re-PUTs the
-   * card so the server enforces the new expiry. A no-op if no link exists yet.
-   */
-  setShareLinkDuration(
-    session: OwnerSession,
-    durationMs: number | null,
-  ): Promise<OwnerSession>;
   /**
    * Permanently delete the account: revoke every shared link and remove the
    * account blob, then forget this device's passkey binding. After this the
@@ -219,15 +210,15 @@ export interface SessionController {
   ): Promise<number>;
   /**
    * Mint a fresh PRIVATE link for one specific contact (a named, individually
-   * revocable link), publish the current card to it, and record it. `durationMs`
-   * sets the link's lifetime (ms from now, or null for until-revoked); omitted, it
-   * defaults to the 7-day expiry. Returns the session, the new contact, and the URL.
+   * revocable link), publish the current card to it, and record it. The link is
+   * durable: it never expires on its own and lives until revoked. Returns the
+   * session, the new contact, and the URL.
    */
   createContactLink(
     session: OwnerSession,
     label: string,
     identity?: AliasIdentity,
-    durationMs?: number | null,
+    avatarOverride?: AvatarConfig,
   ): Promise<ContactLinkResult>;
   /**
    * Rename one contact's local label (the owner-only nickname). Purely local: the
@@ -246,16 +237,6 @@ export interface SessionController {
   revokeContact(
     session: OwnerSession,
     contactId: string,
-  ): Promise<OwnerSession>;
-  /**
-   * Change one contact link's lifetime in place (extend or shorten): the same
-   * link keeps resolving, only its expiry moves. `durationMs` is counted from now;
-   * null means until-revoked. Re-PUTs so the server enforces it. No-op if unknown.
-   */
-  setContactDuration(
-    session: OwnerSession,
-    contactId: string,
-    durationMs: number | null,
   ): Promise<OwnerSession>;
   /**
    * Revoke one published alias (a public/casual link) by id: its URL stops
@@ -518,11 +499,11 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
     ...blobMethods(accounts),
 
-    shareLink(session, identity = "anonymous") {
-      return shareLinkFor(api, accounts, session, identity);
+    shareLink(session, identity = "anonymous", avatarOverride) {
+      return shareLinkFor(api, accounts, session, { identity, avatarOverride });
     },
 
-    async renewLink(session, identity = "anonymous") {
+    async renewLink(session, identity = "anonymous", avatarOverride) {
       const wantPublic = session.blob.sharingMode === "public";
       const existing = primaryShareAlias(session.blob, wantPublic);
       let working = session;
@@ -536,11 +517,8 @@ export function createSessionController(deps: SessionDeps): SessionController {
       }
       // Mint a fresh link for the current card (this is now the only alias for
       // the mode, since the old record is gone).
-      return shareLinkFor(api, accounts, working, identity);
+      return shareLinkFor(api, accounts, working, { identity, avatarOverride });
     },
-
-    setShareLinkDuration: (session, durationMs) =>
-      setShareLinkExpiry(api, accounts, session, durationMs),
 
     async deleteAccount(session) {
       // Best-effort: drop any public findable binding first (doc 17), so the name
@@ -576,11 +554,11 @@ export function createSessionController(deps: SessionDeps): SessionController {
       return grantPending(api, approvals);
     },
 
-    createContactLink(session, label, identity = "anonymous", durationMs) {
+    createContactLink(session, label, identity = "anonymous", avatarOverride) {
       return mintContactLink(api, accounts, session, {
         label,
         identity,
-        durationMs,
+        avatarOverride,
       });
     },
 
@@ -589,9 +567,6 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
     revokeContact: (session, contactId) =>
       revokeContactLink(api, accounts, session, contactId),
-
-    setContactDuration: (session, contactId, durationMs) =>
-      setContactLinkExpiry(api, accounts, session, { contactId, durationMs }),
 
     revokeAlias: (session, aliasId) =>
       revokeAliasLink(api, accounts, session, aliasId),

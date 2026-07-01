@@ -1,4 +1,5 @@
 import { useAppRouter } from "./app/useAppRouter.ts";
+import type { Route } from "./app/routes.ts";
 import { useSyncedRef } from "./app/useSyncedRef.ts";
 import { useDesktop } from "./desktop/Desktop.tsx";
 import { useOnboarding } from "./app/useOnboarding.ts";
@@ -118,6 +119,20 @@ function networkSession(
   return demoMode ? null : session;
 }
 
+// The route to actually render: a logged-out visitor is clamped off app-group
+// screens to the public landing (no /home deep-link into owner data). Demo is
+// exempt (its seeded account loads asynchronously, and demo is always "signed
+// in", so an app screen must never bounce to the landing there). Hoisted to keep
+// the clamp out of the App component's complexity.
+function renderedRoute(
+  route: Route,
+  hasSession: boolean,
+  demoMode: boolean,
+): Route {
+  if (demoMode || hasSession || route.group !== "app") return route;
+  return { screen: "a1-landing", group: "public", data: null };
+}
+
 // Demo mode (doc 28) as one prop, so the App's parameter list and complexity do
 // not grow per demo concern: the mode flag plus the enter/leave callbacks.
 interface DemoControls {
@@ -190,8 +205,8 @@ export function App({
     revokeLink,
     identity: shareIdentity,
     setIdentity: setShareIdentity,
-    duration: shareDuration,
-    setDuration: setShareDuration,
+    avatarOverride: shareAvatarOverride,
+    setAvatarOverride: setShareAvatarOverride,
   } = useShareLink(controller, sessionRef, setSession, setShareOpen);
 
   // The owner's quiet inbox: knock review + the partner-notify nudge (owner-pull).
@@ -236,16 +251,9 @@ export function App({
   return (
     <>
       <DemoBanner active={demo.mode} onExit={demo.onExit} />
-      <NotBackedUp pending={backupPending} />
+      <NotBackedUp pending={backupPending} demo={demo.mode} />
       <Chrome
-        // A logged-out visitor must never land on an app-group screen (e.g. a #home
-        // deep link): clamp those to the public landing until they sign in. Public
-        // screens (landing, a shared link, onboarding) are reachable either way.
-        route={
-          session === null && route.group === "app"
-            ? { screen: "a1-landing", group: "public", data: null }
-            : route
-        }
+        route={renderedRoute(route, session !== null, demo.mode)}
         nav={nav}
         owner={session ? deriveOwnerView(session.blob, todayEpochDay()) : OWNER}
         ownerState={session ? session.blob.state : INITIAL_OWNER_STATE}
@@ -266,8 +274,8 @@ export function App({
         onRevokeShareLink={revokeLink}
         shareIdentity={shareIdentity}
         onShareIdentityChange={setShareIdentity}
-        shareDuration={shareDuration}
-        onShareDurationChange={setShareDuration}
+        shareAvatarOverride={shareAvatarOverride}
+        onShareAvatarOverrideChange={setShareAvatarOverride}
         knockCount={knockCount}
         refreshKnocks={refreshInbox}
         canApproveKnocks={canApproveKnocks}

@@ -28,23 +28,16 @@ export interface OwnerActions {
   /** Persist the owner's local display name (keeps avatar + sharing mode); pass
    * null to clear it back to no name. Owner-facing only, never sent to a viewer. */
   onSetName: (name: string | null) => void;
-  /** Persist which face the Home hero opens on (keeps avatar + sharing mode). */
-  onSetHomeDefaultView: (view: "criteria" | "shared") => void;
-  /** Mint a new per-contact link with a chosen lifetime (days, or null for
-   * until-revoked) and a face (anonymous, or the owner's name); resolves with the
-   * contact + URL. */
+  /** Mint a new per-contact link with a face (anonymous, or the owner's name);
+   * resolves with the contact + URL. The link is durable until revoked. */
   onCreateContactLink: (
     label: string,
-    durationMs: number | null,
     identity: AliasIdentity,
   ) => Promise<ContactLinkResult>;
   /** Rename one contact link's local label (owner-only nickname; never shared). */
   onRenameContact: (id: string, label: string) => void;
   /** Revoke one contact link by id. */
   onRevokeContact: (id: string) => void;
-  /** Change one contact link's lifetime in place (days from today, or null for
-   * until-revoked); the same link keeps working. */
-  onSetContactDuration: (id: string, durationMs: number | null) => void;
   /** Revoke one published alias (public/casual link) by id. */
   onRevokeAlias: (id: string) => void;
   /** Accept a contact invite; resolves with the return invite to send back. */
@@ -115,18 +108,13 @@ export function useOwnerActions(
   const profile = useProfileActions(controller, sessionRef, setSession);
 
   const onCreateContactLink = useCallback(
-    async (
-      label: string,
-      durationMs: number | null,
-      identity: AliasIdentity,
-    ) => {
+    async (label: string, identity: AliasIdentity) => {
       const current = sessionRef.current;
       if (current === null) throw new Error("not signed in");
       const result = await controller.createContactLink(
         current,
         label,
         identity,
-        durationMs,
       );
       sessionRef.current = result.session;
       setSession(result.session);
@@ -209,10 +197,7 @@ function useContactActions(
   controller: SessionController,
   sessionRef: RefObject<OwnerSession | null>,
   setSession: (s: OwnerSession | null) => void,
-): Pick<
-  OwnerActions,
-  "onRenameContact" | "onRevokeContact" | "onSetContactDuration"
-> {
+): Pick<OwnerActions, "onRenameContact" | "onRevokeContact"> {
   const onRenameContact = useCallback(
     (id: string, label: string) => {
       const current = sessionRef.current;
@@ -243,22 +228,7 @@ function useContactActions(
     [controller, sessionRef, setSession],
   );
 
-  const onSetContactDuration = useCallback(
-    (id: string, durationMs: number | null) => {
-      const current = sessionRef.current;
-      if (current === null) return;
-      void controller
-        .setContactDuration(current, id, durationMs)
-        .then((updated) => {
-          sessionRef.current = updated;
-          setSession(updated);
-        })
-        .catch(() => undefined);
-    },
-    [controller, sessionRef, setSession],
-  );
-
-  return { onRenameContact, onRevokeContact, onSetContactDuration };
+  return { onRenameContact, onRevokeContact };
 }
 
 // The findable (vanity-name) mutations (claim / release), split out so
@@ -344,7 +314,7 @@ function useProfileActions(
   controller: SessionController,
   sessionRef: RefObject<OwnerSession | null>,
   setSession: (s: OwnerSession | null) => void,
-): Pick<OwnerActions, "onSetAvatar" | "onSetName" | "onSetHomeDefaultView"> {
+): Pick<OwnerActions, "onSetAvatar" | "onSetName"> {
   // Persist a profile edit and fold the re-sealed blob back into the session.
   // setProfile leaves any field the profile omits unchanged (doc 15), so each
   // editor passes only what it touches.
@@ -384,20 +354,7 @@ function useProfileActions(
     },
     [persist, sessionRef],
   );
-  const onSetHomeDefaultView = useCallback(
-    (view: "criteria" | "shared") => {
-      const current = sessionRef.current;
-      if (current === null) return;
-      // Keep avatar + sharing mode; only the Home default face changes.
-      persist({
-        avatar: current.blob.avatar,
-        sharingMode: current.blob.sharingMode,
-        homeDefaultView: view,
-      });
-    },
-    [persist, sessionRef],
-  );
-  return { onSetAvatar, onSetName, onSetHomeDefaultView };
+  return { onSetAvatar, onSetName };
 }
 
 // The circle mutations (create / rename+remember-members / delete), split out so

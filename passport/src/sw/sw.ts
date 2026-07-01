@@ -214,7 +214,6 @@ async function handleShareTarget(request: Request): Promise<Response> {
     const target = shareTargetRedirect(
       { url: str(form.get("url")), text: str(form.get("text")) },
       scope,
-      new URL(sw.location.origin).host,
     );
     return Response.redirect(target, 303);
   } catch {

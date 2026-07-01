@@ -4,8 +4,15 @@ import { X, Eye, Share, Refresh } from "../../design/icons.tsx";
 import { BadgeCard } from "../badge-card.tsx";
 import type { BadgeState, ProtectionLabel, Route } from "../badge-card.tsx";
 import type { AliasIdentity } from "../../store/index.ts";
-import { IdentityChoiceRow, previewFace } from "./ShareSheet.identity.tsx";
-import { DurationRow } from "./ShareSheet.duration.tsx";
+import {
+  avatarSrc as renderAvatar,
+  type AvatarConfig,
+} from "../../lib/avatars.ts";
+import {
+  IdentityChoiceRow,
+  FaceOverrideRow,
+  previewFace,
+} from "./ShareSheet.identity.tsx";
 import { Grabber, WalletRow } from "./ShareSheet.parts.tsx";
 import {
   UrlCard,
@@ -81,11 +88,17 @@ export interface ShareSheetProps {
   /** Choose the link's face. When absent, the identity control is hidden (e.g.
    * Storybook), and the preview shows whatever `identity`/`avatarSrc` is passed. */
   onIdentityChange?: ((choice: AliasIdentity) => void) | undefined;
-  /** The link's lifetime (doc 16): a day count, or null for until-revoked. */
-  durationChoice?: number | null | undefined;
-  /** Set the link's lifetime in place. When absent, the lifetime control is
-   * hidden (e.g. Storybook). */
-  onDurationChange?: ((durationMs: number | null) => void) | undefined;
+  /** The owner's default face config, edited when picking a per-link face with no
+   * override set yet. Absent hides the per-link face control (e.g. Storybook). */
+  avatar?: AvatarConfig | undefined;
+  /** A per-link face override for a revealed link (doc 15), or undefined for the
+   * account default. Only shown on a "main" link. */
+  avatarOverride?: AvatarConfig | undefined;
+  /** Pick a different face for this link, or undefined to fall back to the default.
+   * Absent hides the per-link face control (Storybook). */
+  onAvatarOverrideChange?:
+    | ((avatar: AvatarConfig | undefined) => void)
+    | undefined;
 }
 
 function SheetHeader({
@@ -246,21 +259,26 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
     desktop = false,
     identityChoice = "anonymous",
     onIdentityChange,
-    durationChoice = null,
-    onDurationChange,
+    avatar,
+    avatarOverride,
+    onAvatarOverrideChange,
     error,
     onRetry,
   } = props;
   const link = sharingMode === "link";
   const urlState = urlStateOf(realUrl, error);
   const { url, seed } = displayLink(realUrl, link);
-  // The preview shows the viewer's actual face for this link (see previewFace).
+  const overrideSrc =
+    avatarOverride !== undefined ? renderAvatar(avatarOverride) : undefined;
+  // The preview shows the viewer's actual face for this link (see previewFace). A
+  // per-link face override wins over the account face on a revealed link.
   const face = previewFace({
     choice: identityChoice,
     identity,
     avatarSrc,
     seed,
     hasControl: onIdentityChange !== undefined,
+    overrideSrc,
   });
 
   // Only a ready link can be shared/handed off; while preparing or after a
@@ -326,12 +344,12 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
           hasName={identity.handle !== undefined && identity.handle.length > 0}
           onChange={onIdentityChange}
         />
-        {/* Expiry is a private-link affordance (doc 16): a one-off link you hand
-            out can sensibly lapse. The Public profile is the durable "anyone who
-            scans sees my status" surface, so it stays live until revoked. The
-            wiring passes onDurationChange only for private links, and DurationRow
-            hides itself when it has no handler, so nothing renders for public. */}
-        <DurationRow choice={durationChoice} onChange={onDurationChange} />
+        <FaceOverrideRow
+          choice={identityChoice}
+          override={avatarOverride}
+          fallback={avatar}
+          onChange={onAvatarOverrideChange}
+        />
         <UrlCard
           link={link}
           state={urlState}

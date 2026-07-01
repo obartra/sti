@@ -12,6 +12,8 @@ import type {
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
 import { rootForTest } from "../test-support/phrase.ts";
+import { contactInviteUrl, mintNotify } from "../store/index.ts";
+import { randomAliasId } from "../crypto/index.ts";
 import {
   createDemoController,
   createDemoStore,
@@ -124,7 +126,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
         id: "c".repeat(43),
         label,
         createdDay: 0,
-        expiresAt: 7,
+        expiresAt: null,
         alias: {
           id: "v".repeat(43),
           writeToken: "w".repeat(43),
@@ -152,25 +154,6 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       blob = {
         ...blob,
         contacts: blob.contacts.filter((c) => c.id !== contactId),
-      };
-      return Promise.resolve({ root, blob });
-    },
-    setContactDuration: (_session, contactId, durationMs) => {
-      blob = {
-        ...blob,
-        contacts: blob.contacts.map((c) =>
-          c.id === contactId ? { ...c, expiresAt: durationMs } : c,
-        ),
-      };
-      return Promise.resolve({ root, blob });
-    },
-    setShareLinkDuration: (_session, durationMs) => {
-      const wantPublic = blob.sharingMode === "public";
-      blob = {
-        ...blob,
-        aliases: blob.aliases.map((a) =>
-          a.isPublic === wantPublic ? { ...a, expiresAt: durationMs } : a,
-        ),
       };
       return Promise.resolve({ root, blob });
     },
@@ -383,8 +366,11 @@ describe("App onboarding flow", () => {
     await onboard(user);
     expect((await screen.findAllByText(/@robin/)).length).toBeGreaterThan(0);
 
-    // Open Privacy (the home quick-action tile), then the danger zone's two-step delete.
-    await user.click(await screen.findByRole("button", { name: "Privacy" }));
+    // Open Settings (the home "Manage links" action routes there), then the
+    // danger zone's two-step delete.
+    await user.click(
+      await screen.findByRole("button", { name: "Manage links" }),
+    );
     await user.click(
       await screen.findByRole("button", { name: "Delete everything" }),
     );
@@ -472,6 +458,47 @@ describe("App onboarding flow", () => {
     await user.click(screen.getByRole("button", { name: /Options for Sam/ }));
     await user.click(screen.getByRole("button", { name: "Revoke" }));
     expect(screen.queryByText("Sam")).toBeNull();
+  });
+
+  it("links both ways by opening the return link, no paste (doc 13 path A)", async () => {
+    window.history.pushState({}, "", "/claim");
+    const user = userEvent.setup();
+    const controller = fakeController();
+    const ingest = vi.fn((session: OwnerSession) => Promise.resolve(session));
+    controller.ingestContactReturn = ingest;
+    // The return link resolves to the sender's card, so the connect action shows.
+    const view: ResolvedView = {
+      state: "blue",
+      labels: ["hiv"],
+      route: "hiv",
+      identity: { handle: "alex" },
+    };
+    render(<App store={stubStore(view)} controller={controller} />);
+    await onboard(user);
+
+    // A real RETURN link (keyed alias + notify + ref) opened while logged in: the
+    // router parses it to a2-public, and the logged-in viewer gets a one-tap connect.
+    const returnUrl = contactInviteUrl(
+      {
+        id: "R".repeat(43),
+        writeToken: "w".repeat(43),
+        key: "S".repeat(43),
+        isPublic: false,
+      },
+      mintNotify(),
+      { ref: randomAliasId() },
+    );
+    window.history.pushState(
+      {},
+      "",
+      returnUrl.replace(/^https?:\/\/[^/]+/, ""),
+    );
+    window.dispatchEvent(new PopStateEvent("popstate"));
+
+    const connect = await screen.findByRole("button", { name: "Connect" });
+    await user.click(connect);
+    expect(ingest).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(/Linked\./i)).toBeInTheDocument();
   });
 
   it("logs in on a new device with the recovery phrase (no passkey)", async () => {
@@ -595,9 +622,38 @@ describe("demo mode", () => {
     expect(
       screen.getByText("Demo. Nothing here is saved or sent."),
     ).toBeInTheDocument();
+    // The not-backed-up marker never shows in demo: there is no server to drain
+    // to, so the pending marker would otherwise stick on forever (bug A).
+    expect(
+      screen.queryByText(
+        "Saved on this device. It backs up when you're online.",
+      ),
+    ).toBeNull();
 
     // Leaving the demo calls back out (the root then remounts the real app).
     await user.click(screen.getByRole("button", { name: "Leave demo" }));
     expect(onExit).toHaveBeenCalledOnce();
+  });
+
+  it("stays in the app on an app-group route (Links), never bouncing to the landing", async () => {
+    // Deep-linking into an app screen in demo must not clamp to the public landing:
+    // the demo account seeds asynchronously, so there is a window with no session,
+    // and demo is always signed in (bug D, the glitchy redirect to the logged-out
+    // home when navigating to Links).
+    window.history.pushState({}, "", "/links");
+    render(
+      <App
+        store={createDemoStore()}
+        controller={createDemoController()}
+        demo={{ mode: true, onTry: () => undefined, onExit: () => undefined }}
+      />,
+    );
+
+    // The Links screen renders (its "Your links" list), and the logged-out landing
+    // never shows: the app-group route was not clamped away in demo.
+    expect((await screen.findAllByText("Your links")).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.queryByText("Claim your passport")).toBeNull();
   });
 });

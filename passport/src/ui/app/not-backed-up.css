@@ -1,12 +1,16 @@
-/* The not-backed-up marker (doc 22 slice 4): a quiet, low-contrast pill at the top
-   of the app, present only while local edits are unsynced. Calm, not an alarm, so
-   it sits on the warm panel tone with muted ink, no red. Tokens only. */
+/* The not-backed-up marker (doc 22 slice 4): a quiet, low-contrast pill near the
+   bottom of the app, present only while local edits are unsynced. Calm, not an
+   alarm, so it sits on the warm panel tone with muted ink, no red. It is a passive
+   marker only: `pointer-events: none` so it can never sit over and swallow taps on
+   a button or the nav bar, and it rides above the bottom safe-area/nav so it stays
+   clear of them. Tokens only. */
 .not-backed-up {
   position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + var(--space-2));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-8));
   left: 50%;
   transform: translateX(-50%);
   z-index: 40;
+  pointer-events: none;
   max-width: min(440px, calc(100vw - 2 * var(--space-4)));
   padding: var(--space-2) var(--space-4);
   background: var(--warm-100);

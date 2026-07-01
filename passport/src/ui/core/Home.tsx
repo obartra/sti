@@ -1,146 +1,58 @@
-import { useState } from "react";
-import { Button, Segmented } from "../../design/components/index.ts";
-import { BadgeCard } from "../badge-card.tsx";
-import type { ProtectionLabel, Route } from "../badge-card.tsx";
-import { avatarSrc, type AvatarConfigInput } from "../../lib/avatars.ts";
-import {
-  TODAY,
-  addDays,
-  nextAction,
-  MeansLine,
-  QuickActionsRow,
-  ReminderCard,
-  RetestHint,
-} from "./Home.parts.tsx";
+import { TODAY, addDays, fmtDate } from "./Home.parts.tsx";
 import type { HomeBadge } from "./Home.parts.tsx";
-import { CriteriaView } from "./Home.standing.tsx";
+import { avatarSrc, type AvatarConfigInput } from "../../lib/avatars.ts";
+import type { ProtectionLabel, Route } from "../badge-card.tsx";
+import { Avatar } from "../../design/components/index.ts";
+import { StandingLine, NextTestCard, BlueChecklist } from "./Home.standing.tsx";
+import { ViewerMirror } from "./Home.mirror.tsx";
+import { HomeActions } from "./Home.actions.tsx";
 import { PauseBanner } from "./Home.pause.tsx";
+import { standingOf, nextTest } from "./Home.status.ts";
 import type { ReportPreview } from "../../core/report.ts";
 
-// C1 Home (calm fold): the hero is one card that toggles between "what others
-// see" (the badge a viewer resolves) and "your criteria" (the owner-only
-// breakdown of where you stand), with the single next-best action under it. The
-// rest is demoted so the status keeps the focus: a quiet one-line "what this
-// means", a compact row of quick actions, and a re-test nudge that only becomes a
-// full card when it is actually due. The badge is TWO-STATE only (blue / gray).
+// Home is a single scannable dashboard, top to bottom: the owner's honest
+// standing, the next test, the three things blue needs, what people see on your
+// links, and the actions you'd take. No toggle between "your criteria" and "what
+// others see"; the dashboard shows both the breakdown and the honest mirror at
+// once. The status is always the real one, so a fresh owner reads "not set up",
+// never green (doc 31 "Home").
 
-// The two faces of the hero card. "criteria" is the owner-only breakdown of where
-// you stand and is the default the owner lands on (changeable in Settings, threaded
-// via defaultView); "shared" is the honest mirror of what a viewer resolves. The
-// toggle switches between them at any time, so the shared view is always one tap off.
-type HomeView = "shared" | "criteria";
-
-// The owner's saved default, falling back to the breakdown when none is threaded
-// (Storybook / before Settings wires the preference). Kept out of the Home param
-// list so it does not add to that function's branch budget.
-function initialView(v: HomeView | undefined): HomeView {
-  return v ?? "criteria";
-}
-
-// How close to the freshness lapse the re-test nudge earns a full card (vs the
-// faint hint). Mirrors the inbox's "re-test soon" window.
-const RETEST_SOON_DAYS = 14;
-
-const VIEW_OPTIONS: { value: HomeView; label: string }[] = [
-  { value: "shared", label: "What others see" },
-  { value: "criteria", label: "Your criteria" },
-];
-
-function HomeHero({
+function Greeting({
   handle,
   avatar,
-  viewerBadge,
-  labels,
-  route,
-  isPaused,
-  autoPaused,
-  clearBy,
-  onResume,
-  onExtend,
-  view,
-  onView,
-  standing,
-  daysLeft,
-  tested,
-  onFindTesting,
 }: {
   handle: string | undefined;
   avatar: AvatarConfigInput | undefined;
-  viewerBadge: HomeBadge;
-  labels: ProtectionLabel[];
-  route: Route;
-  isPaused: boolean;
-  autoPaused: boolean;
-  clearBy: Date;
-  onResume: (() => void) | undefined;
-  onExtend: (() => void) | undefined;
-  view: HomeView;
-  onView: (v: HomeView) => void;
-  standing: ReportPreview;
-  daysLeft: number;
-  tested: boolean;
-  onFindTesting: (() => void) | undefined;
 }) {
   return (
-    <>
-      <div style={{ marginTop: 2 }}>
-        <h1
-          style={{
-            fontSize: 26,
-            fontWeight: 800,
-            letterSpacing: "-0.02em",
-            color: "var(--text-strong)",
-          }}
-        >
-          {handle ? `Good to see you, @${handle}` : "Hey there!"}
-        </h1>
-      </div>
-
-      <Segmented
-        aria-label="Card view"
-        value={view}
-        onChange={onView}
-        options={VIEW_OPTIONS}
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <Avatar
+        src={avatar !== undefined ? avatarSrc(avatar) : undefined}
+        initials={(handle ?? "you").slice(0, 2).toUpperCase()}
+        size="sm"
       />
-
-      {view === "shared" ? (
-        <BadgeCard
-          state={viewerBadge}
-          labels={labels}
-          route={route}
-          identity={handle ? { handle } : null}
-          avatarSrc={avatar !== undefined ? avatarSrc(avatar) : undefined}
-          width="100%"
-        />
-      ) : (
-        <CriteriaView
-          standing={standing}
-          daysLeft={daysLeft}
-          tested={tested}
-          onFindTesting={onFindTesting}
-        />
-      )}
-
-      {isPaused && (
-        <PauseBanner
-          autoPaused={autoPaused}
-          clearBy={clearBy}
-          resume={onResume}
-          onExtend={onExtend}
-        />
-      )}
-    </>
+      <h1
+        style={{
+          fontSize: 22,
+          fontWeight: 800,
+          letterSpacing: "-0.02em",
+          color: "var(--text-strong)",
+        }}
+      >
+        {handle ? `@${handle}` : "Your passport"}
+      </h1>
+    </div>
   );
 }
 
 export interface HomeProps {
-  // Owner-facing status that drives the next action.
+  // Owner-facing status that drives the standing and the primary action.
   badge?: HomeBadge;
-  // The viewer-facing state of the hero card (gray while paused).
+  // The viewer-facing badge (gray while paused): the honest mirror.
   viewerBadge?: HomeBadge;
   labels?: ProtectionLabel[];
   route?: Route;
-  // Handle shown on the hero card; also the avatar fallback when no config is set.
+  // Handle shown on the greeting; also the avatar fallback when no config is set.
   handle?: string;
   // The owner's chosen avatar. Falls back to the handle-derived avatar in
   // isolation (Storybook), so the real app threads the config and stories don't.
@@ -148,26 +60,21 @@ export interface HomeProps {
   paused?: boolean;
   autoPaused?: boolean;
   sharingMode?: "public" | "link";
-  // Days left in the freshness window, for the re-test reminder.
+  // Days left in the 90-day freshness window (0 when untested or lapsed).
   daysLeft?: number;
-  // The owner-only "where you stand" breakdown (the three blue requirements and
+  // The owner-only "what blue needs" breakdown (the three requirements plus
   // whether the card is blue). Owner surface only; never shown to a viewer.
   standing?: ReportPreview;
-  // Whether the owner has ever recorded a test (shapes the standing footer copy).
+  // Whether the owner has ever recorded a test. Distinguishes "not set up" (never
+  // tested) from "time to re-test" (tested, then lapsed).
   tested?: boolean;
-  // The auto-pause clearance date, for the auto-pause panel.
+  // The auto-pause clearance date, for the pause panel.
   clearBy?: Date;
   onShare?: (() => void) | undefined;
   onReport?: (() => void) | undefined;
-  // Kept for callers that still pass it; the Home "Preview" tile was folded into
-  // the share surface, so it is no longer used here.
+  // Preview the viewer's-eye card (routes to the self public view).
   onViewAs?: (() => void) | undefined;
   onPrivacy?: (() => void) | undefined;
-  // Which face the hero card opens on. Defaults to "criteria" (your own
-  // standing); the app threads the owner's saved preference here so the default
-  // is changeable in Settings. The toggle still switches freely after open.
-  defaultView?: HomeView;
-  // Route to the testing finder (Care) from the "your criteria" view.
   onFindTesting?: (() => void) | undefined;
   onContinueCare?: (() => void) | undefined;
   onResume?: (() => void) | undefined;
@@ -175,39 +82,48 @@ export interface HomeProps {
   onExtend?: (() => void) | undefined;
 }
 
-export function Home({
-  badge = "blue",
-  viewerBadge = "blue",
-  labels = ["hiv"],
-  route = null,
-  handle,
-  avatar,
-  paused = false,
-  autoPaused = false,
-  daysLeft = 87,
-  standing = { recentPanel: true, clear: true, route: true, willBeBlue: true },
-  tested = true,
-  clearBy = addDays(TODAY, 9),
-  defaultView,
-  onShare,
-  onReport,
-  onPrivacy,
-  onFindTesting,
-  onContinueCare,
-  onResume,
-  onExtend,
-}: HomeProps) {
-  const isPaused = paused || autoPaused;
-  const [view, setView] = useState<HomeView>(initialView(defaultView));
-  const act = nextAction({
+// Story/isolation defaults, applied in one merge so the Home function stays
+// under the complexity cap (per-field defaults each add a branch). The real app
+// always threads every field via coreScreens, so these only shape Storybook.
+const HOME_DEFAULTS = {
+  badge: "blue",
+  viewerBadge: "blue",
+  labels: ["hiv"],
+  route: null,
+  paused: false,
+  autoPaused: false,
+  daysLeft: 87,
+  standing: { recentPanel: true, clear: true, route: true, willBeBlue: true },
+  tested: true,
+} as const satisfies Partial<HomeProps>;
+
+export function Home(props: HomeProps) {
+  const {
     badge,
-    paused: isPaused,
-    auto: autoPaused,
-    resume: onResume,
-    onContinueCare,
+    viewerBadge,
+    labels,
+    route,
+    handle,
+    avatar,
+    paused,
+    autoPaused,
+    daysLeft,
+    standing,
+    tested,
     onShare,
     onReport,
-  });
+    onViewAs,
+    onPrivacy,
+    onFindTesting,
+    onContinueCare,
+    onResume,
+    onExtend,
+  } = { ...HOME_DEFAULTS, ...props };
+  const isPaused = paused || autoPaused;
+  const clearBy = props.clearBy ?? addDays(TODAY, 9);
+  const status = standingOf({ badge, paused: isPaused, tested, daysLeft });
+  const next = nextTest(status, daysLeft, fmtDate(addDays(TODAY, daysLeft)));
+  const care = onContinueCare ?? onFindTesting;
 
   return (
     <div
@@ -219,77 +135,45 @@ export function Home({
         maxWidth: 600,
       }}
     >
-      <HomeHero
-        handle={handle}
-        avatar={avatar}
+      <Greeting handle={handle} avatar={avatar} />
+
+      <StandingLine standing={status} />
+
+      {isPaused ? (
+        <PauseBanner
+          autoPaused={autoPaused}
+          clearBy={clearBy}
+          resume={onResume}
+          onExtend={onExtend}
+        />
+      ) : (
+        <>
+          <NextTestCard next={next} onFindTesting={onFindTesting} />
+          <BlueChecklist
+            standing={standing}
+            actions={{
+              onReport,
+              onFindTesting,
+              onPrevention: onPrivacy,
+            }}
+          />
+        </>
+      )}
+
+      <ViewerMirror
         viewerBadge={viewerBadge}
         labels={labels}
         route={route}
-        isPaused={isPaused}
-        autoPaused={autoPaused}
-        clearBy={clearBy}
-        onResume={onResume}
-        onExtend={onExtend}
-        view={view}
-        onView={setView}
-        standing={standing}
-        daysLeft={daysLeft}
-        tested={tested}
-        onFindTesting={onFindTesting}
+        onViewAs={onViewAs}
+        onManageLinks={onPrivacy}
       />
 
-      <Button
-        variant="primary"
-        size="lg"
-        block
-        icon={act.icon}
-        onClick={act.run}
-      >
-        {act.label}
-      </Button>
-
-      <HomeExtras
-        isPaused={isPaused}
-        viewerBadge={viewerBadge}
-        daysLeft={daysLeft}
+      <HomeActions
+        standing={status}
+        onShare={onShare}
         onReport={onReport}
-        onPrivacy={onPrivacy}
+        onFindCare={care}
       />
     </div>
-  );
-}
-
-// The demoted, below-the-hero content: a quiet meaning line, the compact quick
-// actions, and the re-test nudge (all suppressed while paused; the nudge becomes a
-// full card only when the freshness window is close to lapsing, else a faint
-// hint). The "where you stand" breakdown is no longer here; it is the hero card's
-// "your criteria" toggle.
-function HomeExtras({
-  isPaused,
-  viewerBadge,
-  daysLeft,
-  onReport,
-  onPrivacy,
-}: {
-  isPaused: boolean;
-  viewerBadge: HomeBadge;
-  daysLeft: number;
-  onReport: (() => void) | undefined;
-  onPrivacy: (() => void) | undefined;
-}) {
-  const retestDue = daysLeft <= RETEST_SOON_DAYS;
-  return (
-    <>
-      {!isPaused && <MeansLine viewerBadge={viewerBadge} />}
-
-      <QuickActionsRow onReport={onReport} onPrivacy={onPrivacy} />
-
-      {!isPaused &&
-        (retestDue ? (
-          <ReminderCard daysLeft={daysLeft} />
-        ) : (
-          <RetestHint daysLeft={daysLeft} />
-        ))}
-    </>
   );
 }
