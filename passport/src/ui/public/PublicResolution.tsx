@@ -13,6 +13,7 @@ import {
   ResolutionActions,
 } from "./PublicResolution.parts.tsx";
 import { Explainer } from "./PublicResolution.explainer.tsx";
+import type { AcceptReveal } from "./PublicResolution.accept.tsx";
 
 // A2 public resolution. Faithful port of public.jsx PublicCard. Copy verbatim
 // from copy.js (publicCard). The viewer renders a resolved card, or the uniform
@@ -48,9 +49,16 @@ export interface PublicResolutionProps {
   linkHolder?: boolean;
   initialKnockSent?: boolean;
   // A logged-in viewer opening a contact invite can add the inviter as a two-way
-  // contact instead of knocking. onAccept resolves with the return link to share.
+  // contact instead of knocking. onAccept resolves with the return link to share,
+  // carrying the accepter's own reveal choice (anonymous by default, doc 15).
   canAccept?: boolean;
-  onAccept?: ((label: string) => Promise<string>) | undefined;
+  onAccept?:
+    | ((label: string, reveal: AcceptReveal) => Promise<string>)
+    | undefined;
+  // The accepter's own name + face for the reveal choice (doc 15): whether they have
+  // a name to show and the fallback face for the per-link picker. Never the inviter's.
+  accepterName?: string | undefined;
+  accepterAvatar?: AvatarConfig | undefined;
   // A logged-in viewer opening a RETURN link completes the two-way link in one tap
   // (no paste). onConnect ingests the return and finishes their side.
   canConnect?: boolean;
@@ -73,6 +81,8 @@ export function PublicResolution({
   initialKnockSent = false,
   canAccept = false,
   onAccept,
+  accepterName,
+  accepterAvatar,
   canConnect = false,
   onConnect,
   onBack,
@@ -115,6 +125,8 @@ export function PublicResolution({
         knockSent={knockSent}
         canAccept={canAccept}
         onAccept={onAccept}
+        accepterName={accepterName}
+        accepterAvatar={accepterAvatar}
         canConnect={canConnect}
         onConnect={onConnect}
         onKnock={doKnock}

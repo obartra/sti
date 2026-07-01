@@ -40,10 +40,14 @@ export interface OwnerActions {
   onRevokeContact: (id: string) => void;
   /** Revoke one published alias (public/casual link) by id. */
   onRevokeAlias: (id: string) => void;
-  /** Accept a contact invite; resolves with the return invite to send back. */
+  /** Accept a contact invite; resolves with the return invite to send back.
+   * The accepter can reveal their name (identity "main") and pick a per-link face
+   * (avatarOverride), mirroring the inviter's own choice; both default to anonymous. */
   onAcceptContactInvite: (
     invite: ContactInvite,
     label: string,
+    identity?: AliasIdentity,
+    avatarOverride?: AvatarConfig,
   ) => Promise<ContactLinkResult>;
   /** Ingest a return invite, completing the matching pending contact (no-op if none). */
   onIngestContactReturn: (ret: ContactInvite) => void;
@@ -141,13 +145,22 @@ export function useOwnerActions(
   );
 
   const onAcceptContactInvite = useCallback(
-    async (invite: ContactInvite, label: string) => {
+    async (
+      invite: ContactInvite,
+      label: string,
+      identity?: AliasIdentity,
+      avatarOverride?: AvatarConfig,
+    ) => {
       const current = sessionRef.current;
       if (current === null) throw new Error("not signed in");
       const result = await controller.acceptContactInvite(
         current,
         invite,
         label,
+        {
+          identity: identity ?? "anonymous",
+          avatarOverride,
+        },
       );
       sessionRef.current = result.session;
       setSession(result.session);

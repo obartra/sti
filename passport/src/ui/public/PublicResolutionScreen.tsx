@@ -2,11 +2,14 @@ import { useEffect, useState } from "react";
 import { PublicResolution, type ResolvedView } from "./PublicResolution.tsx";
 import { ReportName } from "../findable/ReportName.tsx";
 import type {
+  AliasIdentity,
   AliasLink,
   ContactInvite,
   ContactLinkResult,
   PassportStore,
 } from "../../store/index.ts";
+import type { AvatarConfig } from "../../lib/avatars.ts";
+import type { AcceptReveal } from "./PublicResolution.accept.tsx";
 import type { VanityReportReason } from "../../api/client.ts";
 
 // Resolves a shared link through the store and renders the public card. While
@@ -23,8 +26,17 @@ export interface PublicResolutionScreenProps {
   // two-way link in one tap instead (doc 13 path A).
   invite?: ContactInvite | undefined;
   onAcceptInvite?:
-    | ((invite: ContactInvite, label: string) => Promise<ContactLinkResult>)
+    | ((
+        invite: ContactInvite,
+        label: string,
+        identity?: AliasIdentity,
+        avatarOverride?: AvatarConfig,
+      ) => Promise<ContactLinkResult>)
     | undefined;
+  // The accepter's own name + face (doc 15): whether the reveal choice offers "show
+  // my name" and the fallback face for the per-link picker. Never the inviter's.
+  accepterName?: string | undefined;
+  accepterAvatar?: AvatarConfig | undefined;
   onIngestReturn?: ((ret: ContactInvite) => void) | undefined;
   onBack?: () => void;
   onClaim?: () => void;
@@ -46,12 +58,19 @@ const noop = (): void => undefined;
 function inviteActions(
   invite: ContactInvite | undefined,
   onAcceptInvite:
-    | ((invite: ContactInvite, label: string) => Promise<ContactLinkResult>)
+    | ((
+        invite: ContactInvite,
+        label: string,
+        identity?: AliasIdentity,
+        avatarOverride?: AvatarConfig,
+      ) => Promise<ContactLinkResult>)
     | undefined,
   onIngestReturn: ((ret: ContactInvite) => void) | undefined,
 ): {
   canAccept: boolean;
-  onAccept: ((label: string) => Promise<string>) | undefined;
+  onAccept:
+    | ((label: string, reveal: AcceptReveal) => Promise<string>)
+    | undefined;
   canConnect: boolean;
   onConnect: (() => void) | undefined;
 } {
@@ -69,7 +88,13 @@ function inviteActions(
   return {
     canAccept: acceptable,
     onAccept: acceptable
-      ? (label) => onAcceptInvite(invite, label).then((r) => r.url)
+      ? (label, reveal) =>
+          onAcceptInvite(
+            invite,
+            label,
+            reveal.identity,
+            reveal.avatarOverride,
+          ).then((r) => r.url)
       : undefined,
     canConnect: connectable,
     onConnect: connectable ? () => onIngestReturn(invite) : undefined,
@@ -89,6 +114,8 @@ export function PublicResolutionScreen({
   link,
   invite,
   onAcceptInvite,
+  accepterName,
+  accepterAvatar,
   onIngestReturn,
   onBack = noop,
   onClaim = noop,
@@ -194,6 +221,8 @@ export function PublicResolutionScreen({
       linkHolder
       canAccept={canAccept}
       onAccept={onAccept}
+      accepterName={accepterName}
+      accepterAvatar={accepterAvatar}
       canConnect={canConnect}
       onConnect={onConnect}
       onBack={onBack}

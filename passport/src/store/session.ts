@@ -56,6 +56,7 @@ import {
   revokeContactLink,
   revokeAliasLink,
   shareLinkFor,
+  type RevealChoice,
 } from "./shareOps.ts";
 import {
   primaryShareAlias,
@@ -252,7 +253,7 @@ export interface SessionController {
     session: OwnerSession,
     invite: ContactInvite,
     label: string,
-    identity?: AliasIdentity,
+    reveal?: RevealChoice,
   ): Promise<ContactLinkResult>;
   /**
    * Ingest a return invite, completing the pending contact it answers. A no-op
@@ -571,11 +572,12 @@ export function createSessionController(deps: SessionDeps): SessionController {
     revokeAlias: (session, aliasId) =>
       revokeAliasLink(api, accounts, session, aliasId),
 
-    acceptContactInvite(session, invite, label, identity = "anonymous") {
+    acceptContactInvite(session, invite, label, reveal) {
       return acceptContactInvite(api, accounts, session, {
         invite,
         label,
-        identity,
+        identity: reveal?.identity ?? "anonymous",
+        avatarOverride: reveal?.avatarOverride,
       });
     },
 
