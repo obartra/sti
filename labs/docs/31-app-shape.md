@@ -308,17 +308,20 @@ You appear in a group under **the handle you joined with** - your main identity,
 anonymous handle you mint for the occasion. One handle per group, so the roster is
 coherent: everyone there sees the same dot for you. Being in the group **is** sharing
 your ring color (blue / gray) with everyone in it. Because blue/gray carries so little
-information, that exposure is acceptable, and it lets the whole model stay simple: no
-per-member approval, no per-member visibility dials, no auto-minted per-group identity
-to manage.
+information, that exposure is acceptable, and it keeps the model simple: no per-member
+visibility dials, no auto-minted per-group identity to manage. Getting in is a two-sided
+act (an admin invites and you accept, or you request a public group and an admin
+accepts) and how the roster changes over time is owned by [33-shared-groups](33-shared-groups.md);
+this section is only about the face you wear and what joining discloses.
 
-The consent is joining. A group's membership can grow: an admin can add people after
-you joined, and they will see your color too. So the rule is plain: **if you are not
-comfortable with the admins adding members, do not join.** Two guardrails keep that an
-informed choice rather than a surprise:
+The consent is joining, and a group's membership can grow as admins invite more people
+(each of whom accepts). Two things must be plain at join time so that is an informed
+choice, not a surprise:
 
-- **Join-time honesty.** The join screen says plainly that anyone the admins add can
-  see your status here, and **leaving is one tap and always available.**
+- **Join-time honesty.** The join screen says plainly that everyone in the group sees
+  your color, that **if anyone in the group later reports a positive, everyone in it is
+  told to get tested** (the notify rule, doc 33), and that **leaving is one tap and
+  always available.**
 - **A fresh anonymous handle is the easy default.** Joining offers "join as a new
   anonymous handle" up front, so a person who wants this group uncorrelated from their
   other presence gets that with one tap. Reusing one handle across groups is allowed,

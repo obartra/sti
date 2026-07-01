@@ -153,7 +153,7 @@ strong as the phrase; it should read as a convenient way back in, with the phras
 as the real backstop. The strength gate's message says plainly that a weak password is
 not accepted, without lecturing.
 
-## The cross-device locator (the real crux to resolve)
+## The cross-device locator
 
 The envelope model glosses one hard problem: on a **new device with only the password**,
 how does the client find which envelope to fetch? The account id derives from the
@@ -185,7 +185,7 @@ the password on, distinct from the password:
 This keeps the invariant intact: nothing the server can see is derived from the password,
 and the always-present account id stays a function of the high-entropy phrase only.
 
-## Resolved decisions (pending sign-off)
+## Resolved decisions
 
 - **No password-only accounts.** The phrase always exists as the backstop, so a forgotten
   password is never terminal. A password is strictly an *additional* envelope, opt-in, and

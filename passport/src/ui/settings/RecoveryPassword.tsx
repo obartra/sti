@@ -39,10 +39,9 @@ const COPY = {
   // The honesty rule (doc 21/32): name the phrase as the real backstop and say plainly
   // that a password is weaker, without describing how it could be attacked.
   backstop:
-    "Your recovery phrase is still the real key. A password is a convenience, not as strong, so pick one only you would think of.",
+    "Your recovery phrase is still the real key. A password is a handy backup, so pick one only you would think of.",
   nameLabel: "Recovery name",
-  nameHelp:
-    "A name you'll remember. You use it with your password to get back in.",
+  nameHelp: "A name you'll remember, used with your password.",
   passwordLabel: "New password",
   confirmLabel: "Confirm password",
   phraseLabel: "Recovery phrase",
