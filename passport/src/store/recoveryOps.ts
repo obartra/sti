@@ -43,7 +43,7 @@ import type { OwnerSession, SessionController } from "./session.ts";
  *   envelope (detected by reading back and failing to open our own).
  * - `error`: a transport or unexpected failure.
  */
-type SetRecoveryPasswordOutcome =
+export type SetRecoveryPasswordOutcome =
   | "set"
   | "wrongPhrase"
   | "weakPassword"
