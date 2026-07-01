@@ -139,3 +139,92 @@ export async function unwrapPasswordEnvelope(
   );
   return open(key, envelope.wrappedRoot);
 }
+
+/**
+ * The single fixed wire size of a stored recovery envelope, mirrored from the
+ * server contract's RecoveryEnvelopeSize. Every PUT body and GET response is padded
+ * to exactly this, so the server serves a constant-length blob and a decoy on a miss
+ * is the same length as a real envelope (doc 32). Keep in lockstep with the Go const.
+ */
+export const RECOVERY_ENVELOPE_SIZE = 256;
+
+// The framed envelope header is self-describing (lengths precede the variable
+// fields) so a future salt or wrapped-root size opens without a format bump: a
+// version byte, three uint32 KDF params, then length-prefixed salt and wrapped root,
+// zero-padded to the fixed size.
+const VERSION_BYTE = 1;
+const HEADER_FIXED_BYTES = 1 + 4 + 4 + 4; // version + memoryKiB + iterations + parallelism
+
+/**
+ * Frame an envelope into exactly RECOVERY_ENVELOPE_SIZE bytes for storage. The
+ * layout is `version || memoryKiB || iterations || parallelism || saltLen || salt ||
+ * wrappedLen || wrappedRoot || zero-fill`, all integers big-endian. The zero-fill
+ * hides the true content length inside the fixed block, exactly as the server's
+ * fixed-size decoy does, so a stored envelope is indistinguishable from a decoy.
+ */
+function writeParams(view: DataView, params: Argon2Params): void {
+  view.setUint32(1, params.memoryKiB, false);
+  view.setUint32(5, params.iterations, false);
+  view.setUint32(9, params.parallelism, false);
+}
+
+export function serializeEnvelope(envelope: PasswordEnvelope): Bytes {
+  const { params, salt, wrappedRoot } = envelope;
+  const saltStart = HEADER_FIXED_BYTES + 1;
+  const wrappedLenAt = saltStart + salt.length;
+  const wrappedStart = wrappedLenAt + 2;
+  if (wrappedStart + wrappedRoot.length > RECOVERY_ENVELOPE_SIZE) {
+    throw new Error("serializeEnvelope: envelope exceeds the fixed size");
+  }
+  const out = new Uint8Array(RECOVERY_ENVELOPE_SIZE);
+  const view = new DataView(out.buffer);
+  out[0] = VERSION_BYTE;
+  writeParams(view, params);
+  out[HEADER_FIXED_BYTES] = salt.length;
+  out.set(salt, saltStart);
+  view.setUint16(wrappedLenAt, wrappedRoot.length, false);
+  out.set(wrappedRoot, wrappedStart);
+  return out;
+}
+
+/**
+ * Parse a framed envelope back out of its fixed-size block, the inverse of
+ * {@link serializeEnvelope}. It validates the version and that the declared field
+ * lengths stay within the block, throwing on anything malformed (a decoy a wrong
+ * locator returned, or a truncated blob), so a bad fetch fails closed rather than
+ * yielding a bogus envelope.
+ */
+function readParams(view: DataView): Argon2Params {
+  return {
+    version: 1,
+    memoryKiB: view.getUint32(1, false),
+    iterations: view.getUint32(5, false),
+    parallelism: view.getUint32(9, false),
+  };
+}
+
+export function deserializeEnvelope(bytes: Bytes): PasswordEnvelope {
+  if (bytes.length !== RECOVERY_ENVELOPE_SIZE) {
+    throw new Error("deserializeEnvelope: wrong block size");
+  }
+  if (bytes[0] !== VERSION_BYTE) {
+    throw new Error("deserializeEnvelope: unknown version");
+  }
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const saltLen = bytes[HEADER_FIXED_BYTES] ?? 0;
+  const saltStart = HEADER_FIXED_BYTES + 1;
+  const wrappedLenAt = saltStart + saltLen;
+  if (wrappedLenAt + 2 > RECOVERY_ENVELOPE_SIZE) {
+    throw new Error("deserializeEnvelope: salt length out of range");
+  }
+  const wrappedStart = wrappedLenAt + 2;
+  const wrappedLen = view.getUint16(wrappedLenAt, false);
+  if (wrappedStart + wrappedLen > RECOVERY_ENVELOPE_SIZE) {
+    throw new Error("deserializeEnvelope: wrapped length out of range");
+  }
+  return {
+    params: readParams(view),
+    salt: bytes.slice(saltStart, wrappedLenAt),
+    wrappedRoot: bytes.slice(wrappedStart, wrappedStart + wrappedLen),
+  };
+}

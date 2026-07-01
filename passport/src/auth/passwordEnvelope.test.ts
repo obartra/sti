@@ -3,6 +3,9 @@ import { describe, it, expect } from "vitest";
 import {
   wrapPasswordEnvelope,
   unwrapPasswordEnvelope,
+  serializeEnvelope,
+  deserializeEnvelope,
+  RECOVERY_ENVELOPE_SIZE,
   ARGON2_DEFAULT_PARAMS,
   type Argon2Params,
 } from "./passwordEnvelope.ts";
@@ -81,5 +84,53 @@ describe("password envelope", () => {
       iterations: 3,
       parallelism: 1,
     });
+  });
+});
+
+describe("recovery envelope wire framing", () => {
+  it("serializes to exactly the fixed block size", async () => {
+    const env = await wrapPasswordEnvelope(root(), "pw", CHEAP);
+    expect(serializeEnvelope(env)).toHaveLength(RECOVERY_ENVELOPE_SIZE);
+  });
+
+  it("round-trips through the wire: wrap, frame, parse, unwrap yields the root", async () => {
+    const r = root();
+    const framed = serializeEnvelope(
+      await wrapPasswordEnvelope(r, "pw", CHEAP),
+    );
+    const parsed = deserializeEnvelope(framed);
+    expect(parsed.params).toEqual(CHEAP);
+    expect(await unwrapPasswordEnvelope(parsed, "pw")).toEqual(r);
+  });
+
+  it("rejects a block of the wrong size", () => {
+    expect(() => deserializeEnvelope(new Uint8Array(10))).toThrow();
+  });
+
+  it("rejects an unknown version byte (a decoy or a newer format)", async () => {
+    const framed = serializeEnvelope(
+      await wrapPasswordEnvelope(root(), "pw", CHEAP),
+    );
+    framed[0] = 0xff; // corrupt the version
+    expect(() => deserializeEnvelope(framed)).toThrow();
+  });
+
+  it("fails closed on a random decoy block (never a usable envelope)", async () => {
+    // What a wrong locator returns: a full-size block of high-entropy bytes. It must
+    // not yield an openable envelope: either the frame is rejected, or the parsed
+    // wrapped root fails to open. Try many so a chance-valid frame is still caught.
+    for (let i = 0; i < 20; i++) {
+      const decoy = crypto.getRandomValues(
+        new Uint8Array(RECOVERY_ENVELOPE_SIZE),
+      );
+      let opened = false;
+      try {
+        await unwrapPasswordEnvelope(deserializeEnvelope(decoy), "pw");
+        opened = true;
+      } catch {
+        // expected: either deserialize or unwrap threw
+      }
+      expect(opened).toBe(false);
+    }
   });
 });
