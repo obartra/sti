@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { rootForTest } from "../test-support/phrase.ts";
 import { createAccountManager } from "./account.ts";
 import { createAccountSync } from "./accountSync.ts";
@@ -465,6 +465,33 @@ describe("account manager", () => {
     expect(Object.prototype.hasOwnProperty.call(cleared, "findable")).toBe(
       false,
     );
+  });
+
+  it("setRecoveryName stamps passwordSetAt on set and clears both on remove (doc 32)", async () => {
+    vi.useFakeTimers();
+    try {
+      const pinned = 1_700_000_000_000;
+      vi.setSystemTime(pinned);
+      const accounts = createAccountManager(fakeAccountApi());
+      const created = await accounts.create("robin");
+
+      // Turning the password on records the name AND the set date (from the injected
+      // clock), so the yearly refresh nudge can date the factor across devices.
+      const set = await accounts.setRecoveryName(created.root, "robin_backup");
+      expect(set.recoveryName).toBe("robin_backup");
+      expect(set.passwordSetAt).toBe(pinned);
+
+      // Turning it off drops both, by omission (no dangling `undefined` keys), so a
+      // removed factor never leaves a set date behind for the nudge to read.
+      const cleared = await accounts.setRecoveryName(created.root, null);
+      expect(cleared.recoveryName).toBeUndefined();
+      expect(cleared.passwordSetAt).toBeUndefined();
+      expect(
+        Object.prototype.hasOwnProperty.call(cleared, "passwordSetAt"),
+      ).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("saves state without throwing when a republish fails, and a retry converges", async () => {

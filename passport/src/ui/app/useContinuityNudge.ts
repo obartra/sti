@@ -30,18 +30,23 @@ const DEFAULT_STORAGE = browserContinuityStorage();
 
 /**
  * Which continuity nudge (if any) is due, plus a dismiss that records the time and
- * hides it for this session. `passwordSet` is whether the account has a password
- * factor (drives the yearly reminder). The due decision is read once per mount
- * (these prompts are rare, and re-checking on every render is needless), and a
- * dismiss both persists the timestamp and clears the on-screen nudge.
+ * hides it for this session. `passwordSetAt` is when the account's password was set
+ * or changed (the synced blob's `passwordSetAt`, doc 32), or undefined when no
+ * password is set or it predates that field; it drives the yearly reminder. The due
+ * decision is read once per mount (these prompts are rare, and re-checking on every
+ * render is needless), and a dismiss both persists the timestamp and clears the
+ * on-screen nudge.
  */
 export function useContinuityNudge(
-  passwordSet: boolean,
+  passwordSetAt: number | undefined,
   storage: StorageLike = DEFAULT_STORAGE,
 ): { nudge: ContinuityNudge | null; dismiss: () => void } {
   const initial = useMemo(
-    () => dueNudge(storage, { passwordSet }),
-    [storage, passwordSet],
+    () =>
+      dueNudge(storage, {
+        ...(passwordSetAt !== undefined ? { passwordSetAt } : {}),
+      }),
+    [storage, passwordSetAt],
   );
   const [nudge, setNudge] = useState<ContinuityNudge | null>(initial);
 

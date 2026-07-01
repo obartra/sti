@@ -5,7 +5,7 @@
 // REAL createAccountManager + shared storeRecoveryEnvelope over an in-memory api, so
 // the wrap/store/confirm/record sequence is exercised end to end, and the
 // recoverByPassword round trip proves the stored envelope actually opens the account.
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { createAccountManager } from "./account.ts";
 import { createAccountSync } from "./accountSync.ts";
 import { recoverByPassword } from "./recoveryOps.ts";
@@ -76,6 +76,10 @@ describe("sign-up with an optional password (doc 32)", () => {
       RECOVERY_ENVELOPE_SIZE,
     );
 
+    // Sign-up with a password records when it was set (doc 32), so the yearly refresh
+    // nudge dates the factor from sign-up and syncs it across devices.
+    expect(typeof created.blob.passwordSetAt).toBe("number");
+
     // The stored envelope truly opens the account: a fresh AccountManager (a "new
     // device") recovers by Username + password.
     const fresh = createAccountManager(api, createAccountSync(api));
@@ -83,6 +87,39 @@ describe("sign-up with an optional password (doc 32)", () => {
     expect(session).not.toBeNull();
     expect(session?.blob.handle).toBe("robin");
     expect(session?.blob.recoveryName).toBe("robin_backup");
+    // The set date survives the round trip through the synced blob.
+    expect(session?.blob.passwordSetAt).toBe(created.blob.passwordSetAt);
+  });
+
+  it("stamps passwordSetAt from the injected clock at sign-up", async () => {
+    vi.useFakeTimers();
+    try {
+      const pinned = 1_700_000_000_000;
+      vi.setSystemTime(pinned);
+      const { api } = fakeApi();
+      const accounts = createAccountManager(api, createAccountSync(api));
+      const created = await accounts.create("robin", {
+        recoveryName: "robin_backup",
+        password: STRONG,
+      });
+      expect(created.recoveryOutcome).toBe("set");
+      expect(created.blob.passwordSetAt).toBe(pinned);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("records no passwordSetAt when the optional password step declines", async () => {
+    const { api } = fakeApi();
+    const accounts = createAccountManager(api, createAccountSync(api));
+    // A weak password: the account is created but no password factor is set, so the
+    // set date must stay absent (the nudge never fires for a factor that is not set).
+    const created = await accounts.create("robin", {
+      recoveryName: "robin_backup",
+      password: WEAK,
+    });
+    expect(created.recoveryOutcome).toBe("weakPassword");
+    expect(created.blob.passwordSetAt).toBeUndefined();
   });
 
   it("is unchanged when no password is requested (no envelope, no outcome)", async () => {

@@ -253,13 +253,23 @@ function withFindable(
   return next;
 }
 
-// Set or clear the optional recovery locator (doc 32). Like withFindable, a clear
-// (null) deletes the key off a fresh copy rather than writing `recoveryName:
-// undefined` (exactOptionalPropertyTypes).
-function withRecoveryName(blob: AccountBlob, name: string | null): AccountBlob {
-  if (name !== null) return { ...blob, recoveryName: name };
+// Set or clear the optional recovery locator (doc 32), and with it the
+// `passwordSetAt` timestamp that dates the password factor: setting a name stamps
+// `setAt` (the injected now) so the yearly refresh nudge tracks the real change date
+// across devices; clearing the name drops both fields. Like withFindable, a clear
+// deletes the keys off a fresh copy rather than writing `undefined`
+// (exactOptionalPropertyTypes).
+function withRecoveryName(
+  blob: AccountBlob,
+  name: string | null,
+  setAt: number,
+): AccountBlob {
+  if (name !== null) {
+    return { ...blob, recoveryName: name, passwordSetAt: setAt };
+  }
   const next = { ...blob };
   delete (next as { recoveryName?: string }).recoveryName;
+  delete (next as { passwordSetAt?: number }).passwordSetAt;
   return next;
 }
 
@@ -357,7 +367,7 @@ function findableMethods(
     recordFindable: (root, alias, findable) =>
       modify(root, (blob) => withFindableAlias(blob, alias, findable)),
     setRecoveryName: (root, name) =>
-      modify(root, (blob) => withRecoveryName(blob, name)),
+      modify(root, (blob) => withRecoveryName(blob, name, nowMs())),
   };
 }
 
@@ -394,8 +404,15 @@ function lifecycleMethods(
         recovery !== undefined
           ? await wrapSignUpRecovery(api, { rootBytes, root, recovery })
           : undefined;
+      // A "set" outcome stamps passwordSetAt alongside the name (doc 32), so the
+      // yearly refresh nudge dates the factor from sign-up. The injected clock keeps
+      // sign-up tests deterministic.
       if (rec?.recoveryName != null)
-        blob = { ...blob, recoveryName: rec.recoveryName };
+        blob = {
+          ...blob,
+          recoveryName: rec.recoveryName,
+          passwordSetAt: nowMs(),
+        };
       await sync.save(root, blob);
       return {
         recoveryPhrase,
