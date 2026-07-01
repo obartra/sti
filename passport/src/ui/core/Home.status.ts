@@ -77,7 +77,13 @@ export function nextTest(
 ): NextTest {
   if (standing === "untested")
     return { label: "Take your first test", overdue: false };
-  if (daysLeft === 0) return { label: "Overdue, test now", overdue: true };
+  // Overdue is keyed to the LAPSED standing, not daysLeft === 0: on the last day
+  // of the window (age 90) the card is still blue while daysLeft is already 0, so
+  // "overdue" there would contradict the "up to date" lead line. That day reads
+  // "due today"; only a genuinely lapsed card is overdue.
+  if (standing === "lapsed")
+    return { label: "Overdue, test now", overdue: true };
+  if (daysLeft === 0) return { label: "Due today", overdue: false };
   const days = daysLeft === 1 ? "1 day" : `${daysLeft} days`;
   return { label: `Due ${dueLabel} · in ${days}`, overdue: false };
 }

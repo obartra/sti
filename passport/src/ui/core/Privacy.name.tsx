@@ -28,23 +28,37 @@ export function NameCard({
   const [value, setValue] = useState(name ?? "");
   const [saved, setSaved] = useState(false);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The valid change waiting to be persisted, or `undefined` for "nothing pending"
+  // (`null` is a real pending value: clear the name). Read on unmount so a debounce
+  // still in flight when the screen closes is flushed rather than dropped.
+  const pending = useRef<string | null | undefined>(undefined);
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
   const trimmed = value.trim();
   const tooShort = trimmed.length > 0 && trimmed.length < 3;
   const changed = trimmed !== (name ?? "");
 
   useEffect(() => {
-    if (tooShort || !changed) return;
+    if (tooShort || !changed) {
+      pending.current = undefined;
+      return;
+    }
+    pending.current = trimmed || null;
     const timer = setTimeout(() => {
-      onSave(trimmed || null);
+      onSaveRef.current(trimmed || null);
+      pending.current = undefined;
       setSaved(true);
       if (savedTimer.current) clearTimeout(savedTimer.current);
       savedTimer.current = setTimeout(() => setSaved(false), 2000);
     }, SAVE_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [trimmed, tooShort, changed, onSave]);
+  }, [trimmed, tooShort, changed]);
 
   useEffect(() => {
     return () => {
+      // Flush a debounce that had not fired yet, so a fast edit-then-navigate is
+      // not silently lost.
+      if (pending.current !== undefined) onSaveRef.current(pending.current);
       if (savedTimer.current) clearTimeout(savedTimer.current);
     };
   }, []);
