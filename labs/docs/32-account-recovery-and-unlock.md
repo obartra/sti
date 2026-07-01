@@ -344,8 +344,15 @@ same way it would from Settings.
    Re-viewing the phrase itself from Settings is also built: the phrase is stored inside
    the already-encrypted account blob (`store/accountBlob.ts`, written at sign-up and
    backfilled on a phrase login) so a root-holding session can re-display it behind a
-   deliberate gate (`ui/settings/RecoveryPhrase.tsx`: a collapsed row, a surroundings
-   warning, and an explicit "show it"). An account that has only resumed by passkey has
+   deliberate gate (`ui/settings/RecoveryPhrase.tsx`: a collapsed row and a surroundings
+   warning). The phrase is the master key, so when a passkey is enrolled on this device
+   the reveal requires a passkey check (a WebAuthn assertion, a biometric / user-presence
+   check) before it shows; on cancel or failure the card stays collapsed with a plain
+   "couldn't confirm it was you" line. That check is a pure yes/no presence gate: it runs
+   the enrolled-credential assertion and discards the result, never re-unwrapping the root
+   or disturbing the live session (`store/passkeyUnlock.ts` `verifyPasskeyPresence`, wired
+   as the controller's `verifyPasskey`). With no passkey enrolled, the fallback is the
+   plain two-step confirm ("show it"). An account that has only resumed by passkey has
    no stored phrase, so the card shows an honest "sign in with it once to see it here"
    fallback instead of erroring. Storing the phrase adds no derivation power (opening the
    blob already needs the root the phrase derives) and it never leaves the encrypted vault.

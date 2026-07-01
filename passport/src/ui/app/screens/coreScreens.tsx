@@ -174,6 +174,8 @@ export const coreRenderers: ScreenRenderers = {
     onReleaseVanityName,
     recoveryName,
     recoveryPhrase,
+    passkeyEnrolled,
+    onVerifyPasskey,
     onSetRecoveryPassword,
     onDisableRecoveryPassword,
     push,
@@ -219,6 +221,10 @@ export const coreRenderers: ScreenRenderers = {
       // phrase (a passkey-only resume that never stored one) renders the honest
       // fallback, so it is passed only when logged in and otherwise undefined.
       recoveryPhrase={isLoggedIn ? recoveryPhrase : undefined}
+      // When a passkey is enrolled on this device, revealing the phrase requires a
+      // passkey check first (doc 32); the verify is wired only for a logged-in owner.
+      passkeyEnrolled={isLoggedIn ? passkeyEnrolled : undefined}
+      onVerifyPasskey={isLoggedIn ? onVerifyPasskey : undefined}
       onDeleted={() => {
         // Really delete (revoke links + remove the blob, logs out), then reset
         // the URL to the public landing.

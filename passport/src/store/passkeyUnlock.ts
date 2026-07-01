@@ -38,6 +38,42 @@ export type UnlockResult =
   | { readonly ok: true; readonly root: RootKey }
   | { readonly ok: false; readonly reason: ResumeFailure };
 
+/**
+ * Whether this device has a passkey binding at all (doc 32). A pure local read of
+ * the device store, no authenticator prompt, so the UI can decide up front whether
+ * a passkey gate applies before it ever asks for a presence check.
+ */
+export function hasPasskeyBinding(devices: DeviceStore): boolean {
+  return devices.load() !== null;
+}
+
+/**
+ * A lightweight "confirm it's you" presence check against the enrolled passkey
+ * (doc 32): run the WebAuthn assertion with the saved credential (user
+ * verification / biometric), and resolve true only when it succeeds. It does NOT
+ * unwrap the root, import a key, or touch the live session: the PRF output is read
+ * and immediately discarded, so this is a yes/no presence gate, never a re-unlock.
+ * Returns false when no passkey is bound here or the assertion is cancelled /
+ * unavailable, so the caller keeps the phrase hidden with a plain retry message.
+ */
+export async function verifyPasskeyPresence(
+  devices: DeviceStore,
+  passkey: PasskeyAuth,
+): Promise<boolean> {
+  const cred = devices.load();
+  if (cred === null) return false;
+  try {
+    // The assertion IS the gate: a successful get() means the authenticator
+    // verified the user (presence + user verification is "required"). The PRF
+    // output it returns is deliberately ignored here, so the session's root is
+    // never re-derived and the unlocked session is never disturbed.
+    await passkey.unlock(cred.credentialId, cred.transports);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Unlock the root from this device's passkey binding, tagging why it failed.
 // `no-binding` when nothing is saved here; a PasskeyError's code when the get()
 // failed (cancelled / unavailable / no-prf); `mismatch` when unlock succeeded but

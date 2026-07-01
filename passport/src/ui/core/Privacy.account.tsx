@@ -22,6 +22,12 @@ export interface AccountSectionProps {
    * (logged-out preview); null shows the sign-in fallback; a string reveals behind
    * the gate. */
   recoveryPhrase?: string | null | undefined;
+  /** Whether a passkey is enrolled on this device (doc 32): gates the phrase re-view
+   * behind a passkey check when true. */
+  passkeyEnrolled?: boolean | undefined;
+  /** Run the passkey "confirm it's you" check before revealing the phrase (doc 32).
+   * A pure presence gate; never touches the session. */
+  onVerifyPasskey?: (() => Promise<boolean>) | undefined;
 }
 
 export function AccountSection({
@@ -32,6 +38,8 @@ export function AccountSection({
   recoveryName,
   recoveryOps,
   recoveryPhrase,
+  passkeyEnrolled,
+  onVerifyPasskey,
 }: AccountSectionProps) {
   const held = vanityName ?? null;
   // The public name is pinned when a password login is set on that same handle
@@ -54,7 +62,11 @@ export function AccountSection({
         />
       )}
       {recoveryPhrase !== undefined && (
-        <RecoveryPhrase phrase={recoveryPhrase} />
+        <RecoveryPhrase
+          phrase={recoveryPhrase}
+          passkeyEnrolled={passkeyEnrolled ?? false}
+          onVerifyPasskey={onVerifyPasskey}
+        />
       )}
     </Section>
   );

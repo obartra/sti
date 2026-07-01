@@ -19,9 +19,21 @@ export default meta;
 
 type Story = StoryObj<typeof RecoveryPhrase>;
 
-// The phrase is stored: the collapsed row, gated behind a confirm before it reveals.
+// The phrase is stored, no passkey on this device: the collapsed row, gated behind
+// the plain two-step confirm ("Show it") before it reveals.
 export const Stored: Story = {
   args: { phrase: PHRASE },
+};
+
+// The phrase is stored and a passkey is enrolled on this device: the confirm step
+// requires a passkey check ("Confirm it's you") before revealing. The check is
+// stubbed to resolve true so the reveal is reachable in the story.
+export const PasskeyGated: Story = {
+  args: {
+    phrase: PHRASE,
+    passkeyEnrolled: true,
+    onVerifyPasskey: () => Promise.resolve(true),
+  },
 };
 
 // The phrase is not on this device (a passkey-only resume): the honest fallback.

@@ -40,6 +40,12 @@ export interface PrivacyProps {
    * not stored on this device (the re-view card shows the sign-in fallback);
    * undefined hides the card entirely (a logged-out preview). */
   recoveryPhrase?: string | null | undefined;
+  /** Whether a passkey is enrolled on this device (doc 32): gates the phrase re-view
+   * behind a passkey check when true. */
+  passkeyEnrolled?: boolean | undefined;
+  /** Run the passkey "confirm it's you" check before revealing the phrase (doc 32).
+   * A pure presence gate; never touches the session. */
+  onVerifyPasskey?: (() => Promise<boolean>) | undefined;
   /** Turn the password factor on/off; present (and the card shown) only when
    * recovery is enabled and the owner is logged in. */
   recoveryOps?: RecoveryPasswordOps | undefined;
@@ -90,6 +96,8 @@ export function Privacy({
   recoveryName = null,
   recoveryOps,
   recoveryPhrase,
+  passkeyEnrolled,
+  onVerifyPasskey,
 }: PrivacyProps) {
   const state = usePrivacyState(ownerState, setOwnerState);
   return (
@@ -124,6 +132,8 @@ export function Privacy({
           recoveryName={recoveryName}
           recoveryOps={recoveryOps}
           recoveryPhrase={recoveryPhrase}
+          passkeyEnrolled={passkeyEnrolled}
+          onVerifyPasskey={onVerifyPasskey}
         />
 
         <ProfileSection

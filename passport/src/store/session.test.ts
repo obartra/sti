@@ -244,6 +244,71 @@ describe("session controller", () => {
     }
   });
 
+  it("passkeyEnrolled reflects whether a binding is saved on this device (doc 32)", async () => {
+    const { ctl } = setup();
+    const { recoveryPhrase } = await ctl.signUp("robin");
+    // No passkey yet: the phrase re-view gate would use the two-step confirm.
+    expect(ctl.passkeyEnrolled()).toBe(false);
+    await ctl.enrollPasskey(recoveryPhrase, "robin");
+    expect(ctl.passkeyEnrolled()).toBe(true);
+  });
+
+  it("verifyPasskey is a pure presence gate: true on assertion, and it never disturbs the session (doc 32)", async () => {
+    const { ctl, sync } = setup();
+    const { session, recoveryPhrase } = await ctl.signUp("robin");
+    await ctl.enrollPasskey(recoveryPhrase, "robin");
+
+    // The enrolled authenticator asserts successfully.
+    expect(await ctl.verifyPasskey()).toBe(true);
+    // The verify unwraps nothing and writes nothing: the stored account blob is
+    // untouched, so the live session is undisturbed (a yes/no gate, not a re-unlock).
+    expect(await sync.load(session.root)).toEqual(session.blob);
+  });
+
+  it("verifyPasskey resolves false with no binding (doc 32)", async () => {
+    // No passkey enrolled: a pure local miss, no prompt, resolves false.
+    const { ctl } = setup();
+    await ctl.signUp("robin");
+    expect(ctl.passkeyEnrolled()).toBe(false);
+    expect(await ctl.verifyPasskey()).toBe(false);
+  });
+
+  it("verifyPasskey resolves false when the assertion rejects (cancelled / unavailable) (doc 32)", async () => {
+    // Enroll a real binding with a working authenticator, then present a passkey
+    // whose assertion rejects (a cancelled prompt / unknown credential): the gate
+    // reports false so the phrase stays hidden with the retry line.
+    const { accounts, sync } = fakeBackend();
+    const devices = createDeviceStore(memoryStorage());
+    const working = fakePasskey();
+    const seed = createSessionController({
+      accounts,
+      sync,
+      devices,
+      passkey: working,
+      keys: createVolatileRootKeyStore(),
+      api: stubApi,
+    });
+    const { recoveryPhrase } = await seed.signUp("robin");
+    await seed.enrollPasskey(recoveryPhrase, "robin");
+
+    const rejecting: PasskeyAuth = {
+      available: () => true,
+      enroll: () => Promise.reject(new Error("unused")),
+      unlock: () => Promise.reject(new Error("cancelled")),
+    };
+    const gate = createSessionController({
+      accounts,
+      sync,
+      devices,
+      passkey: rejecting,
+      keys: createVolatileRootKeyStore(),
+      api: stubApi,
+    });
+    // The binding is present, but the assertion rejects, so the presence gate is false.
+    expect(gate.passkeyEnrolled()).toBe(true);
+    expect(await gate.verifyPasskey()).toBe(false);
+  });
+
   it("resume reports no-binding when no passkey is enrolled", async () => {
     const { ctl } = setup();
     await ctl.signUp("robin");

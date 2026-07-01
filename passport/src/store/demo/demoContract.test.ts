@@ -159,6 +159,11 @@ async function walkController(controller: SessionController): Promise<void> {
   expect(vanity.result).toBe("unavailable");
   expect(await controller.releaseVanityName(dropped)).not.toBeNull();
 
+  // Passkey gate (doc 32): the demo enrolls no passkey, so the phrase re-view
+  // gate reports none enrolled and a verify resolves false.
+  expect(controller.passkeyEnrolled()).toBe(false);
+  expect(await controller.verifyPasskey()).toBe(false);
+
   // Teardown: delete + forget resolve without error.
   await controller.deleteAccount(dropped);
   controller.forget();

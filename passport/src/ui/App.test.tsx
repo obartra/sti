@@ -199,6 +199,10 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       Promise.reject(new Error("not used in this test")),
     disableRecoveryPassword: () =>
       Promise.reject(new Error("not used in this test")),
+    // No passkey is enrolled in these UI-wiring tests, so the phrase re-view gate
+    // falls back to the two-step confirm and a verify is never reached.
+    passkeyEnrolled: () => false,
+    verifyPasskey: () => Promise.resolve(false),
     forget: () => undefined,
   };
 }
