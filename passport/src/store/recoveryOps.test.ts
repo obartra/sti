@@ -58,8 +58,13 @@ function baseBlob(): AccountBlob {
   };
 }
 
+// A stable fake "now" so the injected clock produces a deterministic passwordSetAt.
+const FAKE_NOW = 1_700_000_000_000;
+
 // A minimal AccountManager whose only exercised method is setRecoveryName, folding
-// the name into a mutable blob (as the real load-modify-save would persist it).
+// the name (and, mirroring the real withRecoveryName, the passwordSetAt timestamp)
+// into a mutable blob as the real load-modify-save would persist it. A clear drops
+// both the name and the timestamp.
 function fakeAccounts(
   blobRef: { blob: AccountBlob },
   opts: { noAccount?: boolean } = {},
@@ -69,7 +74,9 @@ function fakeAccounts(
     name: string | null,
   ): Promise<AccountBlob> => {
     const next: AccountBlob =
-      name === null ? baseBlob() : { ...blobRef.blob, recoveryName: name };
+      name === null
+        ? baseBlob()
+        : { ...blobRef.blob, recoveryName: name, passwordSetAt: FAKE_NOW };
     blobRef.blob = next;
     return Promise.resolve(next);
   };
@@ -104,6 +111,9 @@ describe("recovery password ops", () => {
     });
     expect(res.outcome).toBe("set");
     expect(res.session.blob.recoveryName).toBe("meow"); // normalized
+    // Setting the password records when it was set (doc 32), so the yearly refresh
+    // nudge can date the factor across devices.
+    expect(res.session.blob.passwordSetAt).toBe(FAKE_NOW);
     // The stored blob is exactly the fixed wire size, bound under the locator.
     expect(store.get("meow")?.bytes).toHaveLength(RECOVERY_ENVELOPE_SIZE);
   });
@@ -187,6 +197,9 @@ describe("recovery password ops", () => {
       set.session,
     );
     expect(off.blob.recoveryName).toBeUndefined();
+    // Turning the password off clears the set date with the name (doc 32), so the
+    // nudge never fires for a factor that is gone.
+    expect(off.blob.passwordSetAt).toBeUndefined();
     expect(store.has("meow")).toBe(false);
   });
 

@@ -132,6 +132,10 @@ export interface ScreenCtx {
   onReleaseVanityName: () => Promise<void>;
   /** The owner's recovery name, or null when no password factor is set (doc 32). */
   recoveryName: string | null;
+  /** When the recovery password was last set or changed (epoch ms, doc 32), or
+   * undefined when no password is set, logged out, or the password predates the
+   * field. Drives the yearly refresh nudge. */
+  passwordSetAt: number | undefined;
   /** The owner's stored recovery phrase, for re-viewing in Settings (doc 32), or
    * null when it is not stored on this device (logged out, or a passkey-only resume). */
   recoveryPhrase: string | null;

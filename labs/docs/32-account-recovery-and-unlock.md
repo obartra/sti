@@ -374,11 +374,16 @@ same way it would from Settings.
    year, and the once-a-year password refresh suggestion shown only when a password
    is set. They nudge, never strand: skipping is always a no-op to the account, and a
    confirm or a "remind me later" both just record the time so the prompt stays rare.
-   The cadence is device-local (`ui/app/continuityNudge.ts`, localStorage, like
-   starred contacts), so it adds nothing to the blob and no server-visible signal.
-   Because no set/changed timestamp for the password exists server-side or in the
-   blob (the envelope is opaque ciphertext), the yearly reminder tracks the password
-   factor's age by a device-local "present since first seen" mark, re-armed if the
-   password is turned off and on. If a server-side envelope timestamp is ever added,
-   prefer it over the device-local first-seen so the reminder tracks the real change
-   date. Reminders only, never a forced reset, never blocking use.
+   The DISMISSAL cadence (when each nudge was last shown-and-dismissed) is
+   device-local (`ui/app/continuityNudge.ts`, localStorage, like starred contacts),
+   so it adds nothing the server can see. The yearly reminder tracks the password
+   factor's age from `passwordSetAt` in the encrypted account blob
+   (`store/accountBlob.ts`): the real epoch-ms instant the password was set or
+   changed, recorded owner-side when the password is turned on or changed and cleared
+   when it is turned off. Because it lives in the blob it follows the owner across
+   devices, so a new device does not restart the year, and changing the password
+   resets it everywhere. It stays owner-only (the server still holds only the opaque
+   envelope) and is never derived from the password. An account whose password
+   predates this field has no `passwordSetAt`; the reminder treats a missing value as
+   "not yet due" so it never nags immediately, and the next set or change stamps it.
+   Reminders only, never a forced reset, never blocking use.

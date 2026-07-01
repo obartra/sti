@@ -71,7 +71,17 @@ import type { NotifyCapability } from "./notifyInbox.ts";
 // the app-phrase format so a malformed value fails the parse rather than surfacing a
 // broken phrase. The blob never leaves the device unencrypted, so the phrase only
 // ever lives inside the encrypted vault.
-const SCHEMA_VERSION = 14;
+//
+// v15 adds the optional `passwordSetAt` (doc 32): the epoch-ms instant the recovery
+// password was last set or changed. Recorded alongside `recoveryName` when the
+// password is turned on or changed, and cleared when it is turned off. It lets the
+// yearly "refresh your password" nudge track the real change date and sync it across
+// devices, replacing the earlier device-local "present since first seen" mark (which
+// did not sync). Absent when no password is set, and absent on an account that set
+// its password before this field existed, in which case the nudge treats it as "not
+// yet due" and never nags immediately. A non-secret timing value, never derived from
+// the password.
+const SCHEMA_VERSION = 15;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -230,6 +240,15 @@ export interface AccountBlob {
    * server in plaintext, in logs, or in any unencrypted store.
    */
   readonly recoveryPhrase?: string;
+  /**
+   * When the recovery password was last set or changed (doc 32), as an epoch-ms
+   * instant. Set alongside `recoveryName` when the password is turned on or changed;
+   * cleared when it is turned off. The yearly password-refresh nudge reads this to
+   * track the real change date across devices. Absent when no password is set, and
+   * absent on an account whose password predates this field (the nudge then treats it
+   * as not yet due). A non-secret timing value, never derived from the password.
+   */
+  readonly passwordSetAt?: number;
 }
 
 interface AccountBlobWire extends Omit<AccountBlob, "handle"> {
@@ -407,6 +426,15 @@ function isOptionalRecoveryPhrase(x: unknown): boolean {
   );
 }
 
+// The password set/changed timestamp (doc 32): absent, or a non-negative finite
+// epoch-ms instant. A malformed value fails the parse rather than mis-timing the
+// yearly nudge.
+function isOptionalPasswordSetAt(x: unknown): boolean {
+  return (
+    x === undefined || (typeof x === "number" && Number.isFinite(x) && x >= 0)
+  );
+}
+
 export function serializeAccountBlob(blob: AccountBlob): Bytes {
   // myInbox and theirNotify ride inside each contact; circles/findable are omitted
   // when absent, so a contact-only account stays compact.
@@ -428,6 +456,9 @@ export function serializeAccountBlob(blob: AccountBlob): Bytes {
       : {}),
     ...(blob.recoveryPhrase !== undefined
       ? { recoveryPhrase: blob.recoveryPhrase }
+      : {}),
+    ...(blob.passwordSetAt !== undefined
+      ? { passwordSetAt: blob.passwordSetAt }
       : {}),
   };
   return utf8ToBytes(JSON.stringify(wire));
@@ -472,6 +503,9 @@ function assertValidOptionalFields(o: Record<string, unknown>): void {
   if (!isOptionalRecoveryPhrase(o.recoveryPhrase)) {
     throw new Error("account blob: invalid recoveryPhrase");
   }
+  if (!isOptionalPasswordSetAt(o.passwordSetAt)) {
+    throw new Error("account blob: invalid passwordSetAt");
+  }
   if (!isOptionalHomeDefaultView(o.homeDefaultView)) {
     throw new Error("account blob: invalid homeDefaultView");
   }
@@ -504,6 +538,9 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
       : {}),
     ...(typeof o.recoveryPhrase === "string"
       ? { recoveryPhrase: o.recoveryPhrase }
+      : {}),
+    ...(typeof o.passwordSetAt === "number"
+      ? { passwordSetAt: o.passwordSetAt }
       : {}),
   };
 }

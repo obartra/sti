@@ -7,30 +7,30 @@ import { nowMs, DAY_MS } from "../../core/clock.ts";
 // - A rare recovery-phrase rehearsal ("can you still find it?"). Because the phrase
 //   is always the backstop, this is a rehearsal, never a lockout.
 // - A once-a-year suggestion to refresh a password, shown ONLY when a password is
-//   set and it has been present for ~365 days. A reminder, never a forced reset.
+//   set and it was last set or changed ~365 days ago. A reminder, never a forced reset.
 //
 // Both NUDGE, they never STRAND: they never block use, skipping never locks the
 // account, and dismissing just records the time so the prompt stays rare and does
 // not reappear immediately. Everyday unlock is biometrics/passkey, so these are
 // intentionally rare, not a tax on each open.
 //
-// The cadence lives DEVICE-LOCAL (localStorage), like starred contacts and the
-// keep-signed-in choice: it is timing, not account data, so it adds nothing to the
-// synced blob and no server-visible signal. Timestamps are epoch ms; tests inject
-// `now` so elapsed time is deterministic (core/clock is the only wall-clock edge).
+// The DISMISSAL cadence (when each nudge was last shown-and-dismissed) lives
+// DEVICE-LOCAL (localStorage), like starred contacts and the keep-signed-in choice:
+// it is per-device timing, not account data, so it adds nothing to the synced blob
+// and no server-visible signal. The password's AGE, by contrast, comes from
+// `passwordSetAt` in the synced account blob (doc 32): a real set/changed date that
+// follows the owner across devices, so a device that only just saw the password does
+// not restart the year. Timestamps are epoch ms; tests inject `now` so elapsed time
+// is deterministic (core/clock is the only wall-clock edge).
 
 // Show the phrase rehearsal about twice a year. Rare by design: the phrase does not
 // change, so this is muscle-memory upkeep, not a task.
 export const PHRASE_REHEARSAL_INTERVAL_MS = 182 * DAY_MS;
 
-// The password refresh suggestion fires once its factor has been present for a year
-// (doc 32: "unchanged for 365 days"). We track "present since first seen on this
-// device" rather than a true change date, because no set/changed timestamp is
-// stored server-side or in the blob (the envelope is opaque ciphertext). This is a
-// deliberate, minimal approximation: on a device that has held the password all
-// along it matches the real age; a device that only just saw the password starts its
-// own year. TODO(doc 32): if a server-side envelope timestamp is ever added, prefer
-// it over this device-local first-seen so the reminder tracks the real change date.
+// The password refresh suggestion fires once the factor has been set or changed for
+// a year (doc 32: "unchanged for 365 days"). The age comes from `passwordSetAt` in
+// the synced blob, a real set/changed date, so it is the same on every device and a
+// change resets the year everywhere.
 export const PASSWORD_REFRESH_AGE_MS = 365 * DAY_MS;
 
 // After the yearly password suggestion is dismissed, wait this long before it could
@@ -39,15 +39,14 @@ export const PASSWORD_REDISMISS_INTERVAL_MS = 182 * DAY_MS;
 
 const KEY = "sti.continuity.v1";
 
-/** The persisted cadence record. All fields optional so an older/partial record
- * still reads (fail-open to "never shown"). Times are epoch ms. */
+/** The persisted DISMISSAL cadence. All fields optional so an older/partial record
+ * still reads (fail-open to "never shown"). Times are epoch ms. The password's age
+ * is not here: it comes from the synced blob's `passwordSetAt`, not this device. */
 interface ContinuityState {
   /** When the phrase rehearsal was last shown-and-dismissed. */
   readonly phraseLastMs?: number;
   /** When the password refresh suggestion was last shown-and-dismissed. */
   readonly passwordLastMs?: number;
-  /** When this device first observed that a password factor is set. */
-  readonly passwordFirstSeenMs?: number;
 }
 
 /** Which nudge to show, or null when none is due. Only one shows at a time so the
@@ -68,11 +67,9 @@ function load(storage: StorageLike): ContinuityState {
     const o = parsed as Record<string, unknown>;
     const phraseLastMs = readNumber(o, "phraseLastMs");
     const passwordLastMs = readNumber(o, "passwordLastMs");
-    const passwordFirstSeenMs = readNumber(o, "passwordFirstSeenMs");
     return {
       ...(phraseLastMs !== undefined ? { phraseLastMs } : {}),
       ...(passwordLastMs !== undefined ? { passwordLastMs } : {}),
-      ...(passwordFirstSeenMs !== undefined ? { passwordFirstSeenMs } : {}),
     };
   } catch {
     return {};
@@ -88,10 +85,13 @@ function save(storage: StorageLike, state: ContinuityState): void {
   }
 }
 
-/** Inputs to the "is a nudge due?" decision. `passwordSet` is whether the account
- * currently has a password factor (a non-null recovery name). `now` is injected. */
+/** Inputs to the "is a nudge due?" decision. `passwordSetAt` is when the account's
+ * password was set or changed (the synced blob's `passwordSetAt`, doc 32), or
+ * undefined when no password is set OR the password predates that field. Either way
+ * the yearly reminder does not fire, so a legacy account is never nagged immediately.
+ * `now` is injected. */
 export interface ContinuityInputs {
-  readonly passwordSet: boolean;
+  readonly passwordSetAt?: number;
   readonly now?: number;
 }
 
@@ -102,67 +102,43 @@ function phraseDue(state: ContinuityState, now: number): boolean {
   return last === undefined || now - last >= PHRASE_REHEARSAL_INTERVAL_MS;
 }
 
-// Whether the yearly password suggestion is due: a password is set, it has been
-// present here for the full age, and it was not dismissed within the re-dismiss
-// window. Never fires when no password is set.
+// Whether the yearly password suggestion is due: a password is set with a known
+// set/changed date (`passwordSetAt`), that date is a full year old, and the nudge was
+// not dismissed within the re-dismiss window. Never fires when no password is set,
+// and never fires when `passwordSetAt` is absent (a password set before that field
+// existed): a missing date is treated as "not yet due" so a legacy account is never
+// nagged immediately. The date rides the synced blob, so turning the password off and
+// on (or changing it) writes a fresh `passwordSetAt` and the year restarts on every
+// device.
 function passwordDue(
   state: ContinuityState,
-  passwordSet: boolean,
+  passwordSetAt: number | undefined,
   now: number,
 ): boolean {
-  if (!passwordSet) return false;
-  const firstSeen = state.passwordFirstSeenMs;
-  if (firstSeen === undefined || now - firstSeen < PASSWORD_REFRESH_AGE_MS) {
+  if (
+    passwordSetAt === undefined ||
+    now - passwordSetAt < PASSWORD_REFRESH_AGE_MS
+  ) {
     return false;
   }
   const last = state.passwordLastMs;
   return last === undefined || now - last >= PASSWORD_REDISMISS_INTERVAL_MS;
 }
 
-// Keep the device-local "password first seen" mark in step with reality: stamp it
-// the first time we see a password set, and clear it when the password is gone (so a
-// later re-enable starts a fresh year rather than firing immediately). Returns the
-// possibly-updated state; persists only when it changed.
-function syncPasswordSeen(
-  storage: StorageLike,
-  state: ContinuityState,
-  passwordSet: boolean,
-  now: number,
-): ContinuityState {
-  if (passwordSet && state.passwordFirstSeenMs === undefined) {
-    const next = { ...state, passwordFirstSeenMs: now };
-    save(storage, next);
-    return next;
-  }
-  if (!passwordSet && state.passwordFirstSeenMs !== undefined) {
-    const rest: ContinuityState = {
-      ...(state.phraseLastMs !== undefined
-        ? { phraseLastMs: state.phraseLastMs }
-        : {}),
-      ...(state.passwordLastMs !== undefined
-        ? { passwordLastMs: state.passwordLastMs }
-        : {}),
-    };
-    save(storage, rest);
-    return rest;
-  }
-  return state;
-}
-
 /**
  * The pure decision: which continuity nudge (if any) is due right now. Password
  * takes priority when both are due, because it is tied to a specific one-year event
- * and is the rarer prompt; the phrase rehearsal comes back on its own next cycle.
- * Reading also stamps the password first-seen mark, so the year starts counting the
- * moment a password is observed.
+ * and is the rarer prompt; the phrase rehearsal comes back on its own next cycle. The
+ * password's age is read from `passwordSetAt` (the synced blob), not this device, so
+ * the reminder tracks the real change date wherever the owner is.
  */
 export function dueNudge(
   storage: StorageLike,
-  { passwordSet, now = nowMs() }: ContinuityInputs,
+  { passwordSetAt, now = nowMs() }: ContinuityInputs,
 ): ContinuityNudge | null {
-  const synced = syncPasswordSeen(storage, load(storage), passwordSet, now);
-  if (passwordDue(synced, passwordSet, now)) return "password";
-  if (phraseDue(synced, now)) return "phrase";
+  const state = load(storage);
+  if (passwordDue(state, passwordSetAt, now)) return "password";
+  if (phraseDue(state, now)) return "phrase";
   return null;
 }
 

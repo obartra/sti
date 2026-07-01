@@ -26,7 +26,7 @@ import {
   randomAliasId,
   randomWriteToken,
 } from "../../crypto/keys.ts";
-import { todayEpochDay } from "../../core/clock.ts";
+import { todayEpochDay, nowMs } from "../../core/clock.ts";
 import { DEFAULT_AVATAR } from "../../lib/avatars.ts";
 import { normalizeVanityName } from "../vanityName.ts";
 
@@ -102,15 +102,30 @@ function demoRecovery(
   getBlob: () => AccountBlob,
   setBlob: (b: AccountBlob) => void,
   session: () => Promise<OwnerSession>,
-): Pick<SessionController, "setRecoveryPassword" | "disableRecoveryPassword"> {
+): Pick<
+  SessionController,
+  | "setRecoveryPassword"
+  | "disableRecoveryPassword"
+  | "passkeyEnrolled"
+  | "verifyPasskey"
+> {
   return {
+    // The demo enrolls no passkey, so the phrase re-view gate falls back to the
+    // two-step confirm; a verify would never be reached, and resolves false.
+    passkeyEnrolled: () => false,
+    verifyPasskey: () => Promise.resolve(false),
     setRecoveryPassword: async (_s, input) => {
-      setBlob({ ...getBlob(), recoveryName: normalizeVanityName(input.name) });
+      setBlob({
+        ...getBlob(),
+        recoveryName: normalizeVanityName(input.name),
+        passwordSetAt: nowMs(),
+      });
       return { session: await session(), outcome: "set" as const };
     },
     disableRecoveryPassword: () => {
       const next = { ...getBlob() };
       delete (next as { recoveryName?: string }).recoveryName;
+      delete (next as { passwordSetAt?: number }).passwordSetAt;
       setBlob(next);
       return session();
     },
@@ -141,6 +156,7 @@ export function createDemoController(): SessionController {
         blob = {
           ...blob,
           recoveryName: normalizeVanityName(recovery.recoveryName),
+          passwordSetAt: nowMs(),
         };
       }
       return {
@@ -247,10 +263,6 @@ export function createDemoController(): SessionController {
       (b) => void (blob = b),
       session,
     ),
-    // The demo enrolls no passkey, so the phrase re-view gate falls back to the
-    // two-step confirm; a verify would never be reached, and resolves false.
-    passkeyEnrolled: () => false,
-    verifyPasskey: () => Promise.resolve(false),
     forget: () => undefined,
   };
 }

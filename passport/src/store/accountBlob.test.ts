@@ -258,6 +258,27 @@ describe("account blob codec", () => {
     ).toBeUndefined();
   });
 
+  it("round-trips a v15 password set/changed timestamp (doc 32)", () => {
+    const withSetAt: AccountBlob = {
+      ...blob,
+      recoveryName: "robin",
+      passwordSetAt: 1_700_000_000_000,
+    };
+    expect(parseAccountBlob(serializeAccountBlob(withSetAt))).toEqual(
+      withSetAt,
+    );
+    // A blob written without it stays valid and absent (no password, or a password
+    // that predates the field: the nudge treats a missing value as not yet due).
+    expect(
+      parseAccountBlob(serializeAccountBlob(blob)).passwordSetAt,
+    ).toBeUndefined();
+    // Zero is a valid (non-negative, finite) instant and round-trips.
+    const atZero: AccountBlob = { ...blob, passwordSetAt: 0 };
+    expect(parseAccountBlob(serializeAccountBlob(atZero)).passwordSetAt).toBe(
+      0,
+    );
+  });
+
   const reject = (label: string, json: unknown) =>
     it(`rejects ${label}`, () => {
       expect(() =>
@@ -277,7 +298,7 @@ describe("account blob codec", () => {
     avatar: A,
   };
   reject("a non-object", 7);
-  reject("an unknown version", { ...base, v: 15, sharingMode: "link" });
+  reject("an unknown version", { ...base, v: 16, sharingMode: "link" });
   reject("a prior version (v6 is no longer accepted)", {
     v: 6,
     handle: "x",
@@ -308,7 +329,7 @@ describe("account blob codec", () => {
   // A real current-version wire so these reach the findable validator (not the
   // version gate, which `base`'s v7 trips first).
   const vCurrent = {
-    v: 14,
+    v: 15,
     handle: "x",
     aliases: [],
     contacts: [],
@@ -338,6 +359,12 @@ describe("account blob codec", () => {
     ...vCurrent,
     recoveryPhrase: `!${"A".repeat(42)}`,
   });
+  // passwordSetAt must be a non-negative finite number when present (doc 32): a
+  // negative or non-number value fails the parse rather than mis-timing the yearly
+  // nudge. (NaN/Infinity cannot survive JSON, so null stands in for "not a number".)
+  reject("a negative passwordSetAt", { ...vCurrent, passwordSetAt: -1 });
+  reject("a null passwordSetAt", { ...vCurrent, passwordSetAt: null });
+  reject("a non-number passwordSetAt", { ...vCurrent, passwordSetAt: "soon" });
   reject("an empty handle", { ...base, handle: "", sharingMode: "link" });
   reject("a non-array aliases", { ...base, aliases: {}, sharingMode: "link" });
   reject("an alias with a malformed id", {

@@ -109,6 +109,29 @@ function recoveryName(session: OwnerSession | null): string | null {
   return session?.blob.recoveryName ?? null;
 }
 
+// When the owner's recovery password was last set or changed (epoch ms, doc 32), or
+// undefined (logged out, no password, or a password that predates the field). Drives
+// the yearly refresh nudge from a real, synced date.
+function passwordSetAt(session: OwnerSession | null): number | undefined {
+  return session?.blob.passwordSetAt;
+}
+
+// The recovery-related props Chrome forwards to Settings (doc 32), bundled so the App
+// render stays under its size cap: recovery name/phrase, the last set date, and the
+// passkey-presence gate (verifyPasskey never disturbs the live session).
+function recoveryProps(
+  session: OwnerSession | null,
+  controller: SessionController,
+) {
+  return {
+    recoveryName: recoveryName(session),
+    passwordSetAt: passwordSetAt(session),
+    recoveryPhrase: recoveryPhrase(session),
+    passkeyEnrolled: controller.passkeyEnrolled(),
+    onVerifyPasskey: () => controller.verifyPasskey(),
+  };
+}
+
 // The owner's stored recovery phrase for re-viewing in Settings (doc 32), or null
 // when it is not stored on this device (logged out, or an account that has only
 // resumed by passkey). Null makes Settings show the re-view-after-sign-in fallback.
@@ -305,13 +328,7 @@ export function App({
         onTryDemo={demo.onTry}
         circles={session ? (session.blob.circles ?? []) : []}
         vanityName={findableName(session)}
-        recoveryName={recoveryName(session)}
-        recoveryPhrase={recoveryPhrase(session)}
-        // The phrase re-view gate (doc 32): when a passkey is enrolled on this
-        // device, revealing the phrase requires a passkey check. verifyPasskey is a
-        // pure presence gate, so it never disturbs the live session.
-        passkeyEnrolled={controller.passkeyEnrolled()}
-        onVerifyPasskey={() => controller.verifyPasskey()}
+        {...recoveryProps(session, controller)}
         push={push}
         {...actions}
       />

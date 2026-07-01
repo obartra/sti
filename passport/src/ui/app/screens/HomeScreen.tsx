@@ -4,20 +4,21 @@ import type { ScreenCtx } from "./context.ts";
 import { blueChecklist, extendClearance } from "../../../core/report.ts";
 import { todayEpochDay } from "../../../core/clock.ts";
 
-// The Home dashboard wired to its context, wrapped so it can own the device-local
-// continuity nudge (doc 32) via a hook. A password factor is "set" when the owner
-// holds a recovery name; the nudge is shown only for a logged-in owner (a
-// logged-out preview has no way back in to rehearse and no Settings to open).
+// The Home dashboard wired to its context, wrapped so it can own the continuity
+// nudge (doc 32) via a hook. The yearly password reminder is driven by the synced
+// `passwordSetAt` (the real set/changed date), while the dismissal cadence stays
+// device-local; the nudge is shown only for a logged-in owner (a logged-out preview
+// has no way back in to rehearse and no Settings to open).
 export function HomeScreen({
   nav,
   owner,
   ownerState,
   openShare,
   setOwnerState,
-  recoveryName,
+  passwordSetAt,
   isLoggedIn,
 }: ScreenCtx) {
-  const { nudge, dismiss } = useContinuityNudge(recoveryName !== null);
+  const { nudge, dismiss } = useContinuityNudge(passwordSetAt);
   return (
     <Home
       badge={owner.badge}
