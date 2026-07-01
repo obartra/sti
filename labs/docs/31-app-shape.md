@@ -212,21 +212,26 @@ the more private path, not a degraded one.
 
 This is the biggest simplification, and the one most worth getting right.
 
-**The whole idea:** a group is the people you are meeting for an event, and being in
-the group *is* the sharing. You make a group, the people in it see each other's
-status as a row of color (blue or gray), and that is the feature. You can mint an
-anonymous handle to appear under, so a group never forces your main identity.
+**The whole idea:** a group is the people you are meeting, and being in the group *is*
+the sharing. It is the shortcut for wiring up many status views at once instead of one
+pairwise link at a time. The people in it see each other's status as a row of color
+(blue or gray), and that is the feature. You choose the face you appear under (your
+main identity or a fresh handle), so a group never forces your main identity, but you
+do appear, visibly, as a member. The full model (the group handle, the roles, the
+join/leave lifecycle, the crypto, and the notify rule) lives in
+[33-shared-groups](33-shared-groups.md); this section is just how it feels.
 
 What that means concretely:
 
-- **Membership is the consent.** There are no per-member visibility settings, no
-  "anonymous presence" mode, no per-group dials, and no per-member approval. If you
-  are in the group, your current status color shows to everyone in it; if you do not
-  want that, you leave. Admins can add members after you joined, and they see your
-  color too, so joining is consenting to that (see the roster-identity section for
-  the join-time honesty and the one-tap anonymous-handle default). One decision, not
-  a settings page. (Most of this complexity was feared, not built - the current group
-  record is just a name and a member list - so this is mostly *not adding* it.)
+- **Membership is the sharing, and everyone in the group sees everyone.** There are no
+  per-member visibility dials and no "anonymous presence" mode: if you are in the
+  group, your current color shows to every member, and you see theirs. Joining is that
+  one consent. Getting in is a two-sided act though (doc 33): an admin invites you and
+  you accept, or you find a public group and request in and an admin accepts. If you
+  do not want to share with the group any more, you leave.
+- **The group has one handle, public or private.** A public group is discoverable and
+  can be requested to join (like a findable name, doc 17); a private group is
+  invite-only. The handle names the group and carries no status.
 - **A calm roster, never a verdict.** The group shows each member as a status dot,
   newest or starred first. It does **not** compute a room rollup, print counts
   ("7 ready, 2 not shared"), or render a door/check-in "the room is ready" screen.
