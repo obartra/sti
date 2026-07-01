@@ -14,6 +14,8 @@ export const ID_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 export const ALIAS_PAYLOAD_SIZE = 4096;
 /** Upper bound on the account-sync blob. */
 export const ACCOUNT_BLOB_MAX_SIZE = 1 << 20;
+/** Every recovery-envelope PUT/GET is exactly this many bytes (real or decoy, doc 32). */
+export const RECOVERY_ENVELOPE_SIZE = 256;
 
 export const PATHS = {
   aliasPrefix: "/a/",
@@ -24,6 +26,7 @@ export const PATHS = {
   pushRegister: "/push/register",
   knockPrefix: "/knock/",
   vanityPrefix: "/u/",
+  recoveryPrefix: "/recovery/",
   health: "/healthz",
   vapid: "/vapid",
 } as const;

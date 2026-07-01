@@ -447,9 +447,9 @@ func (s *Store) TouchAccount(ctx context.Context, id string, now int64) error {
 }
 
 // --- Vanity name directory (doc 17, Findable) -------------------------------
-// name -> alias_id only. No status, key, or identity. The endpoints are gated
-// behind STI_FINDABLE_ENABLED; ownership of a name is proven by holding the write
-// token of the alias it points at (no separate owner record).
+// name -> alias_id only. No status, key, or identity. Ownership of a name is
+// proven by holding the write token of the alias it points at (no separate owner
+// record).
 
 // VanityStatus is the outcome of a claim attempt.
 type VanityStatus int
@@ -637,6 +637,100 @@ func (s *Store) PendingVanityReports(ctx context.Context, limit int) ([]VanityRe
 func (s *Store) ClearVanityReports(ctx context.Context, name string) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM vanity_report WHERE name = ?`, name)
 	return err
+}
+
+// --- Recovery envelopes (doc 32) --------------------------------------------
+//
+// A password-recovery envelope: the wrapped account root, keyed by an owner-chosen
+// non-secret locator. The server stores one fixed-size opaque blob per locator and
+// serves it existence-uniformly (the handler returns a decoy on a miss), so the
+// store is not an oracle for a guessable locator. Writes and deletes are gated by
+// hash(account write token): the first writer binds it, and only a matching token
+// overwrites or deletes.
+//
+// A write against a locator held under a DIFFERENT token is a silent no-op, never
+// an error the caller can see: the endpoint returns the same response whether the
+// locator was free, owned by the caller, or owned by someone else, so it reveals
+// nothing about which locators are taken (the write-path complement of the
+// decoy-uniform read). A legitimate owner detects a collision client-side by
+// fetching and trying to open the stored envelope with their own password (doc 32),
+// which no one else can do; the phrase remains the backstop regardless.
+
+// PutRecoveryEnvelope stores or replaces the envelope at locator. It inserts when
+// the locator is free (binding writeAuth), overwrites when writeAuth matches, and
+// does nothing when a row exists under a different token. It never surfaces the
+// authorized/collision distinction (see the section note); transactional so two
+// racing first-writers serialize.
+func (s *Store) PutRecoveryEnvelope(ctx context.Context, locator string, ciphertext []byte, writeAuth string, now int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var existing string
+	switch err := tx.QueryRowContext(ctx, `SELECT write_auth FROM recovery_envelope WHERE locator = ?`, locator).Scan(&existing); {
+	case errors.Is(err, sql.ErrNoRows):
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO recovery_envelope (locator, ciphertext, write_auth, updated_at) VALUES (?, ?, ?, ?)`,
+			locator, ciphertext, writeAuth, now); err != nil {
+			return err
+		}
+	case err != nil:
+		return err
+	default:
+		// Only the binding owner may overwrite; a mismatch is a silent no-op so the
+		// write path reveals nothing about whether the locator is taken.
+		if subtle.ConstantTimeCompare([]byte(existing), []byte(writeAuth)) == 1 {
+			if _, err := tx.ExecContext(ctx,
+				`UPDATE recovery_envelope SET ciphertext = ?, updated_at = ? WHERE locator = ?`,
+				ciphertext, now, locator); err != nil {
+				return err
+			}
+		}
+	}
+	return tx.Commit()
+}
+
+// GetRecoveryEnvelope returns the stored envelope and whether it exists. The
+// handler MUST NOT turn found=false into a distinguishable response; it returns a
+// fixed-size decoy for both a miss and an invalid locator.
+func (s *Store) GetRecoveryEnvelope(ctx context.Context, locator string) (ciphertext []byte, found bool, err error) {
+	err = s.db.QueryRowContext(ctx, `SELECT ciphertext FROM recovery_envelope WHERE locator = ?`, locator).Scan(&ciphertext)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	return ciphertext, true, nil
+}
+
+// DeleteRecoveryEnvelope removes the envelope at locator only when writeAuth matches
+// the bound token (turning the password off, doc 32). A missing row or a mismatched
+// token is a silent no-op, so the delete path reveals nothing about which locators
+// exist, mirroring the write path. The token check is a constant-time compare in Go
+// (not a SQL predicate), matching the write path's discipline.
+func (s *Store) DeleteRecoveryEnvelope(ctx context.Context, locator, writeAuth string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var existing string
+	switch err := tx.QueryRowContext(ctx, `SELECT write_auth FROM recovery_envelope WHERE locator = ?`, locator).Scan(&existing); {
+	case errors.Is(err, sql.ErrNoRows):
+		return nil // no row: uniform no-op
+	case err != nil:
+		return err
+	}
+	if subtle.ConstantTimeCompare([]byte(existing), []byte(writeAuth)) == 1 {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM recovery_envelope WHERE locator = ?`, locator); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 // --- Admin record management (doc 20 A3) ------------------------------------

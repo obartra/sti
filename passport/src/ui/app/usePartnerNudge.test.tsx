@@ -48,6 +48,7 @@ function stubController(
   return {
     signUp: unused,
     recover: unused,
+    recoverByPassword: unused,
     resume: unused,
     rememberDevice: unused,
     forgetDevice: unused,
@@ -77,6 +78,8 @@ function stubController(
     registerVanityName: unused,
     checkVanityName: unused,
     releaseVanityName: unused,
+    setRecoveryPassword: unused,
+    disableRecoveryPassword: unused,
     forget: unused,
   };
 }

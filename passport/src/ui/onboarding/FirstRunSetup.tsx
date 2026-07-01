@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { FINDABLE_ENABLED } from "../../features.ts";
 import { ConsentLine } from "./ConsentLine.tsx";
 import { KeepSignedInToggle } from "./KeepSignedInToggle.tsx";
 import { Card, Button, Segmented } from "../../design/components/index.ts";
@@ -35,9 +34,6 @@ const COPY = {
   reachGatedSub:
     "Post a link anywhere. Opening it only lets someone ask; you approve each person yourself before they see anything.",
   reachFindable: "Findable",
-  reachFindableSoon: "Soon",
-  reachFindableSub:
-    "A memorable name people can find and put in a bio. It needs a public name to work, so it’s coming later.",
   reachFindableReadySub:
     "A memorable name people can find and put in a bio. Claim one anytime from Settings.",
   reachNote:
@@ -134,28 +130,19 @@ function FreshnessCard() {
 
 // The Findable mode (vanity name + request, doc 16/17). Informational, not a
 // selectable sharing mode: a name is claimed separately from Settings, so this row
-// just points there. Until the feature ships (FINDABLE_ENABLED) it reads disabled
-// with a "Soon" badge so the roadmap stays honest.
+// just points there.
 function FindableRow() {
-  const ready = FINDABLE_ENABLED;
   return (
     <div
       style={{
         display: "flex",
         alignItems: "flex-start",
         gap: 8,
-        opacity: ready ? 1 : 0.55,
         borderTop: "1px solid var(--border-card)",
         paddingTop: 12,
       }}
     >
-      <span
-        style={{
-          flex: "none",
-          marginTop: 1,
-          color: ready ? "var(--text-accent)" : "var(--text-subtle)",
-        }}
-      >
+      <span style={{ flex: "none", marginTop: 1, color: "var(--text-accent)" }}>
         <Globe size={14} />
       </span>
       <div style={{ flex: 1 }}>
@@ -170,22 +157,6 @@ function FindableRow() {
           }}
         >
           {COPY.reachFindable}
-          {!ready && (
-            <span
-              style={{
-                fontSize: 10.5,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "0.04em",
-                color: "var(--text-subtle)",
-                background: "var(--surface-sunken)",
-                borderRadius: "var(--radius-pill)",
-                padding: "2px 8px",
-              }}
-            >
-              {COPY.reachFindableSoon}
-            </span>
-          )}
         </div>
         <div
           style={{
@@ -195,7 +166,7 @@ function FindableRow() {
             marginTop: 2,
           }}
         >
-          {ready ? COPY.reachFindableReadySub : COPY.reachFindableSub}
+          {COPY.reachFindableReadySub}
         </div>
       </div>
     </div>

@@ -10,7 +10,6 @@ import { applyPendingUpdate } from "../../pwa/swUpdate.ts";
 import { parseAliasLink, aliasIdFromPath } from "../../store/aliasLink.ts";
 import { parseContactInvite } from "../../store/contactInvite.ts";
 import { normalizeVanityName } from "../../store/vanityName.ts";
-import { FINDABLE_ENABLED } from "../../features.ts";
 
 export interface Nav {
   // Navigate to a screen, pushing the current one onto the history stack.
@@ -168,14 +167,12 @@ function aliasRoute(pathname: string, hash: string): Route | null {
 }
 
 // The id-carrying links whose data lives in the URL: a `/u/{name}` findable link
-// (doc 17, gated) and a `/a/{id}#k=` shared alias link (id in path, key in the
+// (doc 17) and a `/a/{id}#k=` shared alias link (id in path, key in the
 // fragment). Returns null when the location is neither.
 function parameterizedRoute(pathname: string, hash: string): Route | null {
-  if (FINDABLE_ENABLED) {
-    const name = findableNameFromPath(pathname);
-    if (name !== null) {
-      return { screen: "u-resolve", group: "public", data: { name } };
-    }
+  const name = findableNameFromPath(pathname);
+  if (name !== null) {
+    return { screen: "u-resolve", group: "public", data: { name } };
   }
   return aliasRoute(pathname, hash);
 }

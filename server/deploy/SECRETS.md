@@ -121,12 +121,11 @@ secrets recipients rm them@laptop
 
 Each gated feature is one or two env keys plus a `sync`. Generate, review, push:
 
-| Feature                | Keys                                            | One step                                | Then               |
-| ---------------------- | ----------------------------------------------- | --------------------------------------- | ------------------ |
-| Web Push delivery      | `STI_VAPID_PUBLIC_KEY`, `STI_VAPID_PRIVATE_KEY` | `secrets gen-vapid`                     | `diff` then `sync` |
-| Decoy secret (rotate)  | `STI_DECOY_SECRET`                              | `secrets gen-decoy`                     | `diff` then `sync` |
-| Admin surface (doc 20) | `STI_ADMIN_TOKEN`, `STI_ADMIN_ENABLED`          | `secrets gen-admin`                     | `diff` then `sync` |
-| Public names (doc 17)  | `STI_FINDABLE_ENABLED`                          | `secrets set STI_FINDABLE_ENABLED true` | `diff` then `sync` |
+| Feature                | Keys                                            | One step            | Then               |
+| ---------------------- | ----------------------------------------------- | ------------------- | ------------------ |
+| Web Push delivery      | `STI_VAPID_PUBLIC_KEY`, `STI_VAPID_PRIVATE_KEY` | `secrets gen-vapid` | `diff` then `sync` |
+| Decoy secret (rotate)  | `STI_DECOY_SECRET`                              | `secrets gen-decoy` | `diff` then `sync` |
+| Admin surface (doc 20) | `STI_ADMIN_TOKEN`, `STI_ADMIN_ENABLED`          | `secrets gen-admin` | `diff` then `sync` |
 
 For the admin surface specifically (the server refuses to boot with the flag on but
 no adequate token, so `gen-admin` sets both at once):

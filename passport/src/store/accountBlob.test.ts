@@ -262,7 +262,7 @@ describe("account blob codec", () => {
     avatar: A,
   };
   reject("a non-object", 7);
-  reject("an unknown version", { ...base, v: 13, sharingMode: "link" });
+  reject("an unknown version", { ...base, v: 14, sharingMode: "link" });
   reject("a prior version (v6 is no longer accepted)", {
     v: 6,
     handle: "x",
@@ -293,7 +293,7 @@ describe("account blob codec", () => {
   // A real current-version wire so these reach the findable validator (not the
   // version gate, which `base`'s v7 trips first).
   const vCurrent = {
-    v: 12,
+    v: 13,
     handle: "x",
     aliases: [],
     contacts: [],

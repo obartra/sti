@@ -74,6 +74,12 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       phrase === "RECOVER-ME-PHRASE"
         ? Promise.resolve({ root, blob: { ...blob, handle: "rosa" } })
         : Promise.resolve(null),
+    // New-device unlock by recovery name + password (doc 32): like phrase
+    // recovery, load a distinct account so the recovered session is provably in use.
+    recoverByPassword: (name, password) =>
+      name === "meow" && password === "correct-horse-battery-staple"
+        ? Promise.resolve({ root, blob: { ...blob, handle: "rosa" } })
+        : Promise.resolve(null),
     resume: () => Promise.resolve({ ok: false as const, reason: "no-binding" }),
     rememberDevice: () => Promise.resolve(),
     forgetDevice: () => Promise.resolve(),
@@ -204,6 +210,10 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       Promise.reject(new Error("not used in this test")),
     checkVanityName: () => Promise.reject(new Error("not used in this test")),
     releaseVanityName: () => Promise.reject(new Error("not used in this test")),
+    setRecoveryPassword: () =>
+      Promise.reject(new Error("not used in this test")),
+    disableRecoveryPassword: () =>
+      Promise.reject(new Error("not used in this test")),
     forget: () => undefined,
   };
 }
@@ -471,11 +481,37 @@ describe("App onboarding flow", () => {
 
     // From the landing, take the login route, then recover with the phrase.
     await user.click(await screen.findByRole("button", { name: "Log in" }));
-    // The login variant has a single text input: the recovery phrase.
-    await user.type(await screen.findByRole("textbox"), "RECOVER-ME-PHRASE");
+    // The login variant offers both no-passkey paths; target the phrase field by
+    // its label (the recovery-name + password card is the other one).
+    await user.type(
+      await screen.findByRole("textbox", { name: "Your recovery phrase" }),
+      "RECOVER-ME-PHRASE",
+    );
     await user.click(
       await screen.findByRole("button", { name: /Recover account/ }),
     );
+
+    // The recovered account drives the app (its handle, not the fixture's).
+    expect((await screen.findAllByText(/@rosa/)).length).toBeGreaterThan(0);
+    expect(screen.queryByText("@robin")).toBeNull();
+  });
+
+  it("logs in on a new device with the recovery name + password (doc 32)", async () => {
+    window.history.pushState({}, "", "/");
+    const user = userEvent.setup();
+    render(<App store={stubStore(null)} controller={fakeController()} />);
+
+    // Take the login route, then use the recovery-name + password path.
+    await user.click(await screen.findByRole("button", { name: "Log in" }));
+    await user.type(
+      await screen.findByRole("textbox", { name: "Recovery name" }),
+      "meow",
+    );
+    await user.type(
+      await screen.findByLabelText("Password"),
+      "correct-horse-battery-staple",
+    );
+    await user.click(await screen.findByRole("button", { name: "Sign in" }));
 
     // The recovered account drives the app (its handle, not the fixture's).
     expect((await screen.findAllByText(/@rosa/)).length).toBeGreaterThan(0);

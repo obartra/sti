@@ -103,6 +103,11 @@ function findableName(session: OwnerSession | null): string | null {
   return session?.blob.findable?.name ?? null;
 }
 
+// The owner's recovery name, or null (logged out, or no password factor set, doc 32).
+function recoveryName(session: OwnerSession | null): string | null {
+  return session?.blob.recoveryName ?? null;
+}
+
 // The session the network-touching hooks (push, backup sync) see: null in demo
 // mode, so they stay dormant and the demo never reaches the real api/offlineSync.
 // Hoisted so the demo branch lives here, not in the App component's complexity.
@@ -281,6 +286,7 @@ export function App({
         onTryDemo={demo.onTry}
         circles={session ? (session.blob.circles ?? []) : []}
         vanityName={findableName(session)}
+        recoveryName={recoveryName(session)}
         push={push}
         {...actions}
       />

@@ -49,6 +49,7 @@ function fakeBackend() {
       const blob = byId.get(await deriveAccountId(root));
       return blob ? { root, blob } : null;
     },
+    loadByRoot: async (root) => byId.get(await deriveAccountId(root)) ?? null,
     addAlias: () => Promise.reject(new Error("unused")),
     removeAlias: () => Promise.reject(new Error("unused")),
     addContact: () => Promise.reject(new Error("unused")),
@@ -62,6 +63,7 @@ function fakeBackend() {
     setProfile: () => Promise.reject(new Error("unused")),
     setFindable: () => Promise.reject(new Error("unused")),
     recordFindable: () => Promise.reject(new Error("unused")),
+    setRecoveryName: () => Promise.reject(new Error("unused")),
     sweepExpiredLinks: async (root) => {
       // No links expire in these tests, so a sweep is a pure read of the blob.
       const blob = byId.get(await deriveAccountId(root));

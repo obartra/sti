@@ -38,6 +38,9 @@ function fakeAccountApi(): ApiClient {
     releaseVanityName: unused,
     resolveVanityName: unused,
     reportVanityName: unused,
+    getRecoveryEnvelope: unused,
+    putRecoveryEnvelope: unused,
+    deleteRecoveryEnvelope: unused,
     health: unused,
     getAccount: (id) => {
       const e = store.get(id);
@@ -272,6 +275,9 @@ describe("account manager", () => {
       releaseVanityName: unused,
       resolveVanityName: unused,
       reportVanityName: unused,
+      getRecoveryEnvelope: unused,
+      putRecoveryEnvelope: unused,
+      deleteRecoveryEnvelope: unused,
       health: unused,
       getAccount: (id) => {
         const e = accountStore.get(id);
@@ -451,6 +457,9 @@ describe("account manager", () => {
       releaseVanityName: unused,
       resolveVanityName: unused,
       reportVanityName: unused,
+      getRecoveryEnvelope: unused,
+      putRecoveryEnvelope: unused,
+      deleteRecoveryEnvelope: unused,
       health: unused,
       getAccount: (id) => {
         const e = accountStore.get(id);

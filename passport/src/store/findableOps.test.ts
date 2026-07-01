@@ -51,6 +51,9 @@ function fakeApi(opts: {
     releaseVanityName: release,
     resolveVanityName: unused,
     reportVanityName: unused,
+    getRecoveryEnvelope: unused,
+    putRecoveryEnvelope: unused,
+    deleteRecoveryEnvelope: unused,
     health: unused,
     getAccount: (id) => {
       const blob = store.get(id);

@@ -4,10 +4,10 @@ _The full governance spec Public link mode is gated on. [Reach and Access](16-re
 describes the two-mode model (Private link / Public link) and the role of this namespace; this doc
 makes the public-link namespace implementable: the directory data model, the resolve endpoint and
 its handoff to the knock flow, the reserved + blocklist starter contents, the allocation lifecycle,
-and the metadata + legal posture. **Status: Findable LAUNCHED at the F6 flip** (client
-`FINDABLE_ENABLED` on, server `STI_FINDABLE_ENABLED` set on the box, a curated hate-only blocklist
-in place); the **gate** items below are the bar that was met, kept as a record. It does not change
-Private links; those use opaque ids and give immediate access._
+and the metadata + legal posture. **Status: Findable LAUNCHED** (the write endpoints are live and a
+curated hate-only blocklist ships compiled into the server); the **gate** items below are the bar
+that was met, kept as a record. It does not change Private links; those use opaque ids and give
+immediate access._
 
 ---
 

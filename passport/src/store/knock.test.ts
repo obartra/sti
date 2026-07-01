@@ -51,6 +51,9 @@ describe("knock", () => {
       releaseVanityName: unused,
       resolveVanityName: unused,
       reportVanityName: unused,
+      getRecoveryEnvelope: unused,
+      putRecoveryEnvelope: unused,
+      deleteRecoveryEnvelope: unused,
       health: unused,
       knock: (id, hash) => {
         seen = { id, hash };

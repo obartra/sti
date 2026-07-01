@@ -21,6 +21,12 @@ export const COPY = {
     "Enter the recovery phrase you saved at signup. It’s the only way back in without this device’s passkey.",
   recoverPlaceholder: "Your recovery phrase",
   recoverCta: "Recover account",
+  recoverPwLabel: "Use a recovery name and password",
+  recoverPwHint:
+    "If you set one up, sign in with your recovery name and password instead of the phrase.",
+  recoverPwNameLabel: "Recovery name",
+  recoverPwPasswordLabel: "Password",
+  recoverPwCta: "Sign in",
   identitySection: "Your identity",
   identityHandleLabel: "Your name (optional)",
   identityHandlePlaceholder: "Pick a display name",

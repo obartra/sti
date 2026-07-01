@@ -122,11 +122,8 @@ func main() {
 	}
 	adminToken := os.Getenv("STI_ADMIN_TOKEN")
 
-	// Findable directory writes (doc 17). OFF by default: GET /u resolve stays live
-	// (and 404s the empty directory), but PUT/DELETE /u are not registered until the
-	// launch gate flips this, so no name can be claimed pre-launch. The post-release
-	// lock window defaults to 24h; a short value lets a test exercise reclaim.
-	findableEnabled := os.Getenv("STI_FINDABLE_ENABLED") == "true"
+	// Findable directory (doc 17). The post-release lock window defaults to 24h; a
+	// short value lets a test exercise reclaim.
 	vanityLock := max(envDuration("STI_VANITY_LOCK", 0), 0)
 	// Global cap on GET /u resolve across all callers (doc 17), tunable for a busy
 	// deployment. Zero leaves the server defaults (50/sec, burst 200).
@@ -139,6 +136,11 @@ func main() {
 	reportBurst := envFloat("STI_REPORT_GLOBAL_BURST", 0)
 	knockGlobalRate := envFloat("STI_KNOCK_GLOBAL_RATE", 0)
 	knockGlobalBurst := envFloat("STI_KNOCK_GLOBAL_BURST", 0)
+	// The password-recovery envelope store (doc 32). The global caps bound a
+	// distributed sweep of the (guessable) locator namespace; zero leaves the server
+	// defaults (20/sec, burst 100).
+	recoveryRate := envFloat("STI_RECOVERY_GLOBAL_RATE", 0)
+	recoveryBurst := envFloat("STI_RECOVERY_GLOBAL_BURST", 0)
 
 	srv := server.New(st, server.Config{
 		DecoySecret:               secret,
@@ -155,7 +157,6 @@ func main() {
 		RepublishWindow:           republishWindow,
 		AdminEnabled:              adminEnabled,
 		AdminToken:                adminToken,
-		FindableEnabled:           findableEnabled,
 		VanityLockWindow:          vanityLock,
 		VanityResolveGlobalPerSec: resolveRate,
 		VanityResolveGlobalBurst:  resolveBurst,
@@ -163,6 +164,8 @@ func main() {
 		ReportGlobalBurst:         reportBurst,
 		KnockGlobalPerSec:         knockGlobalRate,
 		KnockGlobalBurst:          knockGlobalBurst,
+		RecoveryGlobalPerSec:      recoveryRate,
+		RecoveryGlobalBurst:       recoveryBurst,
 	}, log, nil)
 
 	// Host and process health gauges. All system facts, no subject data.

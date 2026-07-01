@@ -23,7 +23,6 @@ func newFindableServer(t *testing.T, lock time.Duration) (http.Handler, *store.S
 	t.Helper()
 	clock := int64(1_000_000)
 	srv, st := newServer(t, Config{
-		FindableEnabled:  true,
 		VanityLockWindow: lock,
 	}, func() int64 { return clock })
 	return srv.Handler(), st, &clock
@@ -163,7 +162,6 @@ func TestVanityRegisterGlobalRateLimit(t *testing.T) {
 	t.Cleanup(func() { st.Close() })
 	srv := New(st, Config{
 		DecoySecret:                make([]byte, 32),
-		FindableEnabled:            true,
 		IPRatePerSec:               1000, // generous, so the per-IP cap never trips first
 		IPBurst:                    1000,
 		VanityRegisterGlobalPerSec: 0.000001,
@@ -268,28 +266,6 @@ func TestVanityReleaseAndLock(t *testing.T) {
 	}
 }
 
-// With Findable disabled (the default), the write endpoints are not registered.
-// Since GET /u/{name} IS always present (a public resource), a PUT/DELETE to it
-// is a 405 method-not-allowed (not a 404) — which leaks nothing the public GET
-// doesn't already, and no name can be claimed. Resolve stays live.
-func TestVanityWritesGatedOffByDefault(t *testing.T) {
-	h := newTestServer(t) // Findable disabled
-	alias := publishAlias(t, h, "owner-token")
-
-	if rec := registerName(h, "robin", alias, "owner-token"); rec.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("register while gated off: %d, want 405", rec.Code)
-	}
-	del := httptest.NewRequest("DELETE", contract.PathVanityPrefix+"robin", nil)
-	del.Header.Set(contract.HeaderWriteToken, "owner-token")
-	if rec := do(h, del); rec.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("release while gated off: %d, want 405", rec.Code)
-	}
-	// Resolve still works (and 404s the empty directory).
-	if rec := resolveName(h, "robin"); rec.Code != http.StatusNotFound {
-		t.Fatalf("resolve while gated off: %d, want 404", rec.Code)
-	}
-}
-
 func reportName(h http.Handler, name, reason string) *httptest.ResponseRecorder {
 	body, _ := json.Marshal(contract.VanityReportRequest{Reason: reason})
 	return do(h, httptest.NewRequest("POST", contract.PathVanityPrefix+name+"/report", bytes.NewReader(body)))
@@ -346,15 +322,6 @@ func TestVanityReportAutoTakedownOnRuleMatch(t *testing.T) {
 	}
 }
 
-// With Findable disabled, /u/{name}/report is not registered at all (no GET on
-// that path either), so it is a bare 404.
-func TestVanityReportGatedOff(t *testing.T) {
-	h := newTestServer(t)
-	if rec := reportName(h, "robin", contract.ReportSpam); rec.Code != http.StatusNotFound {
-		t.Fatalf("report while gated off: %d, want 404", rec.Code)
-	}
-}
-
 // The global resolve cap (doc 17) sheds bulk enumeration across ALL callers, not
 // just per IP: with a tiny global budget, distinct client IPs still share the one
 // bucket, so the (burst+1)th resolve is a 429 regardless of who sends it. A frozen
@@ -405,7 +372,6 @@ func TestVanityReportGlobalRateLimit(t *testing.T) {
 	t.Cleanup(func() { st.Close() })
 	srv := New(st, Config{
 		DecoySecret:        make([]byte, 32),
-		FindableEnabled:    true,
 		IPRatePerSec:       1000, // generous, so the per-IP cap never trips first
 		IPBurst:            1000,
 		ReportGlobalPerSec: 0.000001,

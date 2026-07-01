@@ -13,6 +13,10 @@ import type {
   PendingKnock,
 } from "../../../store/index.ts";
 import type { VanityRegisterResult } from "../../../api/client.ts";
+import type {
+  SetRecoveryPasswordInput,
+  SetRecoveryPasswordOutcome,
+} from "../../../store/recoveryOps.ts";
 import type { OnboardingActions } from "../useOnboarding.ts";
 import type { PushControls } from "../usePush.ts";
 import type { ReportOutcome } from "../../../core/report.ts";
@@ -130,6 +134,14 @@ export interface ScreenCtx {
   onCheckVanityName: (name: string) => Promise<"free" | "taken" | "error">;
   /** Release the owner's claimed findable name (no-op if none). */
   onReleaseVanityName: () => Promise<void>;
+  /** The owner's recovery name, or null when no password factor is set (doc 32). */
+  recoveryName: string | null;
+  /** Turn the password factor on (or change it); resolves with the outcome. */
+  onSetRecoveryPassword: (
+    input: SetRecoveryPasswordInput,
+  ) => Promise<SetRecoveryPasswordOutcome>;
+  /** Turn the password factor off (a no-op when none is set). */
+  onDisableRecoveryPassword: () => Promise<void>;
   /** Device push controls (the partner-notify wake), for the Privacy toggle. */
   push: PushControls;
   store: PassportStore;

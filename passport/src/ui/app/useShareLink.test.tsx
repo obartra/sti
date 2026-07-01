@@ -45,6 +45,7 @@ function stubController(over: Partial<SessionController>): SessionController {
   return {
     signUp: unused,
     recover: unused,
+    recoverByPassword: unused,
     resume: unused,
     rememberDevice: unused,
     forgetDevice: unused,
@@ -74,6 +75,8 @@ function stubController(over: Partial<SessionController>): SessionController {
     registerVanityName: unused,
     checkVanityName: unused,
     releaseVanityName: unused,
+    setRecoveryPassword: unused,
+    disableRecoveryPassword: unused,
     forget: unused,
     ...over,
   };

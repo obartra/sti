@@ -32,6 +32,11 @@ export interface OnboardingActions {
    * Returns true on success (the only way back in with no passkey on this device).
    */
   recoverPhrase(phrase: string): Promise<boolean>;
+  /**
+   * Login on a new device with the recovery name + password (doc 32). Returns true
+   * on success; a wrong name or password is one uniform failure.
+   */
+  recoverPassword(name: string, password: string): Promise<boolean>;
 }
 
 // The created account + chosen avatar + the recovery phrase, carried from b1 to
@@ -41,6 +46,100 @@ interface OnboardingDraft {
   session: OwnerSession;
   avatar: AvatarConfig;
   recoveryPhrase: string;
+}
+
+// The shared in-flight state the login/claim callbacks all guard on: a synchronous
+// latch (so a double-click can't fire two attempts before `busy` re-renders) plus
+// the busy/error setters. Passed as one object to keep hook signatures within the
+// param cap.
+interface Latch {
+  inFlight: { current: boolean };
+  setBusy: (v: boolean) => void;
+  setError: (v: string | null) => void;
+}
+
+// The three no-passkey/passkey login callbacks, split out of useOnboarding so its
+// body stays within the size ceiling. Each shares the latch with claim/finish, so
+// only one account action runs at a time across the whole flow.
+function useLoginActions(
+  controller: SessionController,
+  onSession: (session: OwnerSession) => void,
+  latch: Latch,
+) {
+  const { inFlight, setBusy, setError } = latch;
+
+  const loginPasskey = useCallback(async () => {
+    if (inFlight.current) return false;
+    inFlight.current = true;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await controller.resume();
+      if (result.ok) {
+        onSession(result.session);
+        return true;
+      }
+      // Say what actually went wrong (locked, cancelled, can't-do-PRF, or truly
+      // no passkey here) instead of always "no passkey found".
+      setError(passkeyUnlockMessage(result.reason));
+      return false;
+    } finally {
+      setBusy(false);
+      inFlight.current = false;
+    }
+  }, [controller, onSession, inFlight, setBusy, setError]);
+
+  // Shared login boilerplate for the no-passkey paths (phrase, password): the
+  // in-flight latch + busy/error handling around an attempt that returns a session
+  // or null. On null we show the caller's mismatch message; a throw is a transient
+  // failure. Keeps recoverPhrase/recoverPassword to one line each.
+  const runRecover = useCallback(
+    async (
+      load: () => Promise<OwnerSession | null>,
+      mismatch: string,
+    ): Promise<boolean> => {
+      if (inFlight.current) return false;
+      inFlight.current = true;
+      setBusy(true);
+      setError(null);
+      try {
+        const session = await load();
+        if (session !== null) {
+          onSession(session);
+          return true;
+        }
+        setError(mismatch);
+        return false;
+      } catch {
+        setError("Could not sign in right now. Please try again.");
+        return false;
+      } finally {
+        setBusy(false);
+        inFlight.current = false;
+      }
+    },
+    [onSession, inFlight, setBusy, setError],
+  );
+
+  const recoverPhrase = useCallback(
+    (phrase: string) =>
+      runRecover(
+        () => controller.recover(phrase.trim()),
+        "That phrase doesn't match an account. Check it and try again.",
+      ),
+    [controller, runRecover],
+  );
+
+  const recoverPassword = useCallback(
+    (name: string, password: string) =>
+      runRecover(
+        () => controller.recoverByPassword(name.trim(), password),
+        "That recovery name and password didn't match. Check them and try again.",
+      ),
+    [controller, runRecover],
+  );
+
+  return { loginPasskey, recoverPhrase, recoverPassword };
 }
 
 export function useOnboarding(
@@ -119,52 +218,10 @@ export function useOnboarding(
     [controller, onSession],
   );
 
-  const loginPasskey = useCallback(async () => {
-    if (inFlight.current) return false;
-    inFlight.current = true;
-    setBusy(true);
-    setError(null);
-    try {
-      const result = await controller.resume();
-      if (result.ok) {
-        onSession(result.session);
-        return true;
-      }
-      // Say what actually went wrong (locked, cancelled, can't-do-PRF, or truly
-      // no passkey here) instead of always "no passkey found".
-      setError(passkeyUnlockMessage(result.reason));
-      return false;
-    } finally {
-      setBusy(false);
-      inFlight.current = false;
-    }
-  }, [controller, onSession]);
-
-  const recoverPhrase = useCallback(
-    async (phrase: string) => {
-      if (inFlight.current) return false;
-      inFlight.current = true;
-      setBusy(true);
-      setError(null);
-      try {
-        const session = await controller.recover(phrase.trim());
-        if (session !== null) {
-          onSession(session);
-          return true;
-        }
-        setError(
-          "That phrase doesn't match an account. Check it and try again.",
-        );
-        return false;
-      } catch {
-        setError("Could not recover right now. Please try again.");
-        return false;
-      } finally {
-        setBusy(false);
-        inFlight.current = false;
-      }
-    },
-    [controller, onSession],
+  const { loginPasskey, recoverPhrase, recoverPassword } = useLoginActions(
+    controller,
+    onSession,
+    { inFlight, setBusy, setError },
   );
 
   return {
@@ -175,5 +232,6 @@ export function useOnboarding(
     finish,
     loginPasskey,
     recoverPhrase,
+    recoverPassword,
   };
 }

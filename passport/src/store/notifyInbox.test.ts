@@ -55,6 +55,9 @@ function fakeApi(): ApiClient {
     releaseVanityName: unused,
     resolveVanityName: unused,
     reportVanityName: unused,
+    getRecoveryEnvelope: unused,
+    putRecoveryEnvelope: unused,
+    deleteRecoveryEnvelope: unused,
     health: unused,
   };
 }

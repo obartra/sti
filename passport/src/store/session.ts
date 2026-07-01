@@ -43,7 +43,7 @@ import {
 import type { ContactInvite } from "./contactInvite.ts";
 import type { NotifyLockResult } from "./partnerNotify.ts";
 import { notifyLinkedContacts, pollPartnerNudge } from "./notifyOps.ts";
-import { grantAccess } from "./grant.ts";
+import { gatherKnocks, grantPending } from "./knockOps.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { revokeAlias } from "./publish.ts";
 import type { AliasIdentity } from "./ownerCard.ts";
@@ -64,6 +64,11 @@ import {
   releaseVanityName,
   type VanityRegisterOutcome,
 } from "./findableOps.ts";
+import {
+  recoveryControllerMethods,
+  type SetRecoveryPasswordInput,
+  type SetRecoveryPasswordResult,
+} from "./recoveryOps.ts";
 
 /**
  * An unlocked session: the root and the loaded account. The root is a
@@ -93,6 +98,15 @@ export interface SessionController {
   signUp(handle?: string): Promise<SignUpResult>;
   /** Login / recovery by phrase. null when no account exists for it. */
   recover(phrase: string): Promise<OwnerSession | null>;
+  /**
+   * New-device unlock by recovery name + password (doc 32): fetch and open the
+   * password envelope, recover the root, and load the account. null on any failure
+   * (unknown name, wrong password, no account), so the form shows one uniform message.
+   */
+  recoverByPassword(
+    name: string,
+    password: string,
+  ): Promise<OwnerSession | null>;
   /**
    * Reload: unlock via the enrolled passkey and load the account. Returns a
    * tagged result so login can show a true message: `ok` with the session, or a
@@ -326,6 +340,23 @@ export interface SessionController {
    * no name is claimed. Returns the updated session.
    */
   releaseVanityName(session: OwnerSession): Promise<OwnerSession>;
+  /**
+   * Turn the optional password factor on, or change it (doc 32). Wraps the account
+   * root under `password` and stores the envelope at the owner-chosen recovery
+   * `name`, then records that name so it can be re-viewed and turned off. Requires
+   * the recovery `phrase`: the session root is non-extractable (doc 24), so the raw
+   * bytes are re-derived from the phrase, which also proves the phrase names this
+   * account. Returns the outcome; only "set" advances the session.
+   */
+  setRecoveryPassword(
+    session: OwnerSession,
+    input: SetRecoveryPasswordInput,
+  ): Promise<SetRecoveryPasswordResult>;
+  /**
+   * Turn the password factor off (doc 32): drop the stored envelope and clear the
+   * recovery name. A no-op when no password is set. The phrase and passkey remain.
+   */
+  disableRecoveryPassword(session: OwnerSession): Promise<OwnerSession>;
   /** Forget this device's passkey binding. The phrase still recovers. */
   forget(): void;
 }
@@ -364,55 +395,6 @@ export interface SessionDeps {
   readonly keys: RootKeyStore;
   /** Transport for publishing/republishing the owner's shareable alias. */
   readonly api: ApiClient;
-}
-
-// Every alias a knock can land on: the public/casual aliases plus every
-// per-contact link. Used by the owner-pull knock review and the approve flow.
-function ownerLinks(session: OwnerSession): AliasRecord[] {
-  return [
-    ...session.blob.aliases,
-    ...session.blob.contacts.map((c) => c.alias),
-  ];
-}
-
-// One knock-review sweep across every owner link: sum the contentless count and
-// collect the grantable knocks (those that carried a key), each tagged with its
-// alias. A single pass per alias, so count and pending can't read a torn pair.
-// Best-effort per alias: an unreachable one contributes nothing.
-async function gatherKnocks(
-  api: ApiClient,
-  session: OwnerSession,
-): Promise<OwnerKnocks> {
-  const perAlias = await Promise.all(
-    ownerLinks(session).map(async (alias) => {
-      const review = await api
-        .knockReview(alias.id, alias.writeToken)
-        .catch(() => ({ count: 0, pending: [] }));
-      return {
-        count: review.count,
-        pending: review.pending
-          .filter((p) => p.pubKey)
-          .map((pending) => ({ alias, pending })),
-      };
-    }),
-  );
-  return {
-    count: perAlias.reduce((sum, r) => sum + r.count, 0),
-    pending: perAlias.flatMap((r) => r.pending),
-  };
-}
-
-// Seal each approval's alias key to its waiting requester (the in-app grant).
-// Returns how many were granted. All-or-nothing for the caller: a single failure
-// rejects the whole call (so the UI marks none as granted and the owner retries
-// all); grantAccess is idempotent, so re-sealing the ones that already succeeded
-// is harmless.
-async function grantPending(
-  api: ApiClient,
-  approvals: PendingApproval[],
-): Promise<number> {
-  await Promise.all(approvals.map((x) => grantAccess(api, x.alias, x.pending)));
-  return approvals.length;
 }
 
 // Enforce link expiry on load, best-effort (closes the passive-owner gap). A
@@ -505,10 +487,12 @@ export function createSessionController(deps: SessionDeps): SessionController {
     },
 
     async recover(phrase) {
-      const recovered = await accounts.recover(phrase);
-      if (recovered === null) return null;
-      const blob = await sweptOnLoad(accounts, recovered.root, recovered.blob);
-      return { root: recovered.root, blob };
+      const r = await accounts.recover(phrase);
+      if (r === null) return null;
+      return {
+        root: r.root,
+        blob: await sweptOnLoad(accounts, r.root, r.blob),
+      };
     },
 
     ...resumeMethods(deps),
@@ -653,8 +637,8 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
     releaseVanityName: (session) => releaseVanityName(api, accounts, session),
 
-    forget() {
-      devices.clear();
-    },
+    ...recoveryControllerMethods(api, accounts),
+
+    forget: () => devices.clear(),
   };
 }

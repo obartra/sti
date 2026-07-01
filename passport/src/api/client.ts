@@ -20,6 +20,7 @@ import {
   validId,
   type PushRegisterRequest,
 } from "./contract.ts";
+import { recoveryMethods } from "./recovery.ts";
 
 export type ApiErrorKind =
   | "unreachable" // network failure or a shed (503): map to gray
@@ -137,6 +138,21 @@ export interface ApiClient {
    * fixed reason code, no reporter identity. Resolves on accept (202), throws on
    * a real failure. */
   reportVanityName(name: string, reason: VanityReportReason): Promise<void>;
+  /**
+   * Recovery envelope store (doc 32). getRecoveryEnvelope returns the fixed-size
+   * body the server sends (real or a decoy on a miss) and never signals a miss; a
+   * miss is discovered only when the crypto layer fails to open it, exactly like
+   * getAlias. put/delete carry the account write token that gates the write; both
+   * resolve on the server's uniform success (a collision or wrong-token delete is a
+   * silent no-op server-side, so neither leaks whether the locator exists).
+   */
+  getRecoveryEnvelope(locator: string): Promise<Bytes>;
+  putRecoveryEnvelope(
+    locator: string,
+    envelope: Bytes,
+    writeToken: string,
+  ): Promise<void>;
+  deleteRecoveryEnvelope(locator: string, writeToken: string): Promise<void>;
   health(): Promise<boolean>;
 }
 
@@ -151,7 +167,7 @@ export type VanityReportReason =
   | "spam"
   | "other";
 
-const OCTET_STREAM = "application/octet-stream";
+export const OCTET_STREAM = "application/octet-stream";
 
 // The X-Expires-At header for an alias PUT (doc 16). Undefined leaves the stored
 // expiry untouched (a badge republish); null clears it; a number is an epoch-ms
@@ -172,7 +188,7 @@ function assertAccountId(id: string): void {
 }
 
 /** Read a response body as raw bytes (captures nothing; hoisted out of the client). */
-async function readBytes(res: Response): Promise<Bytes> {
+export async function readBytes(res: Response): Promise<Bytes> {
   return new Uint8Array(await res.arrayBuffer());
 }
 
@@ -278,7 +294,7 @@ async function jsonBody(res: Response, op: string): Promise<unknown> {
 }
 
 /** Map a non-ok HTTP status to the typed error kind. */
-function statusToKind(status: number): ApiErrorKind {
+export function statusToKind(status: number): ApiErrorKind {
   if (status === 429) return "rateLimited";
   if (status === 403) return "forbidden";
   if (status === 409) return "conflict"; // stale optimistic-concurrency version
@@ -515,6 +531,8 @@ export function createApiClient(
     getVapidPublicKey: () => fetchVapidPublicKey(call),
 
     ...vanityMethods(call),
+
+    ...recoveryMethods(call),
 
     async health() {
       // A liveness probe is a boolean: unreachable/shed = not healthy, not error.

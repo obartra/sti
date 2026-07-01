@@ -49,21 +49,32 @@ const (
 	// AccountBlobMaxSize caps the device-sync blob (not existence-sensitive; the
 	// account id is derived from the owner's own key).
 	AccountBlobMaxSize = 1 << 20 // 1 MiB
+
+	// RecoveryEnvelopeSize is the single fixed wire size of every recovery-envelope
+	// PUT body and GET response (doc 32). The client frames its envelope (KDF params,
+	// salt, wrapped root) and pads to exactly this, so the server stores and serves a
+	// constant-size opaque blob and can return a decoy of the SAME length on a miss.
+	// That makes a real envelope and a "no such locator" byte-identical on the wire,
+	// so the store is not an existence oracle for a (guessable, human-chosen) locator.
+	// 256 bytes comfortably holds the ~90-byte envelope with headroom for future
+	// params/versions without another size migration.
+	RecoveryEnvelopeSize = 256
 )
 
 // --- Endpoints --------------------------------------------------------------
 
 const (
-	PathAliasPrefix   = "/a/"            // GET: resolve an alias (hot read)
-	PathInboxPrefix   = "/inbox/"        // GET/PUT: per-device notify inbox (alias-shaped)
-	PathAccountPrefix = "/acct/"         // GET/PUT: device-sync blob
-	PathNotify        = "/notify"        // POST: enqueue a contentless wake
-	PathRepublish     = "/republish"     // POST: deferred jittered batch of alias overwrites
-	PathPushRegister  = "/push/register" // POST: register a Web Push endpoint
-	PathKnockPrefix   = "/knock/"        // POST: contentless knock
-	PathVanityPrefix  = "/u/"            // GET resolve; PUT register / DELETE release (gated)
-	PathHealth        = "/healthz"       // GET: liveness
-	PathVapid         = "/vapid"         // GET: the active Web Push public key
+	PathAliasPrefix    = "/a/"            // GET: resolve an alias (hot read)
+	PathInboxPrefix    = "/inbox/"        // GET/PUT: per-device notify inbox (alias-shaped)
+	PathAccountPrefix  = "/acct/"         // GET/PUT: device-sync blob
+	PathNotify         = "/notify"        // POST: enqueue a contentless wake
+	PathRepublish      = "/republish"     // POST: deferred jittered batch of alias overwrites
+	PathPushRegister   = "/push/register" // POST: register a Web Push endpoint
+	PathKnockPrefix    = "/knock/"        // POST: contentless knock
+	PathVanityPrefix   = "/u/"            // GET resolve; PUT register / DELETE release (gated)
+	PathRecoveryPrefix = "/recovery/"     // GET fetch / PUT store / DELETE drop a password envelope (doc 32, gated)
+	PathHealth         = "/healthz"       // GET: liveness
+	PathVapid          = "/vapid"         // GET: the active Web Push public key
 
 	// The operator surface (doc 20). Bearer + flag gated, rate-limited, audited.
 	// Registered only when admin is enabled; otherwise these paths are a bare 404,
