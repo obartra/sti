@@ -149,8 +149,10 @@ export interface AccountManager {
 
 // A brand-new account: empty links, default avatar, private (link) sharing. The
 // notify inbox is no longer account-level; each contact gets its own at link time
-// (doc 13). Onboarding updates the avatar and sharing default via setProfile.
-function freshBlob(handle?: string): AccountBlob {
+// (doc 13). Onboarding updates the avatar and sharing default via setProfile. The
+// recovery phrase is stored in the (encrypted) blob so Settings can re-view it later
+// (doc 32); it is the same phrase shown once at sign-up, kept only inside this vault.
+function freshBlob(recoveryPhrase: string, handle?: string): AccountBlob {
   return {
     ...(handle ? { handle } : {}),
     aliases: [],
@@ -158,6 +160,7 @@ function freshBlob(handle?: string): AccountBlob {
     state: INITIAL_OWNER_STATE,
     avatar: DEFAULT_AVATAR,
     sharingMode: "link",
+    recoveryPhrase,
   };
 }
 
@@ -360,7 +363,7 @@ function lifecycleMethods(
       // Derive the transient bytes, import them into the non-extractable root
       // key (doc 24), then drop the bytes: no layer below holds raw root key bytes.
       const root = await importRootKey(await deriveRootKey(recoveryPhrase));
-      const blob = freshBlob(handle);
+      const blob = freshBlob(recoveryPhrase, handle);
       await sync.save(root, blob);
       return { recoveryPhrase, root, blob };
     },
@@ -369,7 +372,17 @@ function lifecycleMethods(
       if (parsed === null) return null;
       const root = await importRootKey(await deriveRootKey(parsed));
       const blob = await sync.load(root);
-      return blob === null ? null : { root, blob };
+      if (blob === null) return null;
+      // Backfill the stored phrase for accounts created before it was kept in the
+      // blob (doc 32): a successful phrase login is the one moment the phrase is
+      // known, so persist it now (into the same encrypted blob) so Settings can
+      // re-view it. A no-op when it is already stored.
+      if (blob.recoveryPhrase === undefined) {
+        const next: AccountBlob = { ...blob, recoveryPhrase: parsed };
+        await sync.save(root, next);
+        return { root, blob: next };
+      }
+      return { root, blob };
     },
   };
 }

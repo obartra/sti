@@ -1,0 +1,117 @@
+// @vitest-environment node
+import { describe, it, expect } from "vitest";
+import type { StorageLike } from "../../auth/deviceStore.ts";
+import { DAY_MS } from "../../core/clock.ts";
+import {
+  dueNudge,
+  dismissNudge,
+  PHRASE_REHEARSAL_INTERVAL_MS,
+  PASSWORD_REFRESH_AGE_MS,
+  PASSWORD_REDISMISS_INTERVAL_MS,
+} from "./continuityNudge.ts";
+
+function memory(seed: Record<string, string> = {}): StorageLike {
+  const map = new Map(Object.entries(seed));
+  return {
+    getItem: (k) => map.get(k) ?? null,
+    setItem: (k, v) => void map.set(k, v),
+    removeItem: (k) => void map.delete(k),
+  };
+}
+
+// A fixed "now" far enough from the epoch that intervals never go negative.
+const T0 = 2_000 * DAY_MS;
+
+describe("continuity nudge cadence", () => {
+  it("shows the phrase rehearsal on a fresh device (never shown before)", () => {
+    const store = memory();
+    expect(dueNudge(store, { passwordSet: false, now: T0 })).toBe("phrase");
+  });
+
+  it("does not re-show the phrase rehearsal right after dismissing it", () => {
+    const store = memory();
+    dismissNudge(store, "phrase", T0);
+    expect(dueNudge(store, { passwordSet: false, now: T0 })).toBeNull();
+    // A day later is still far too soon.
+    expect(
+      dueNudge(store, { passwordSet: false, now: T0 + DAY_MS }),
+    ).toBeNull();
+  });
+
+  it("shows the phrase rehearsal again only after the full interval", () => {
+    const store = memory();
+    dismissNudge(store, "phrase", T0);
+    const justBefore = T0 + PHRASE_REHEARSAL_INTERVAL_MS - DAY_MS;
+    expect(dueNudge(store, { passwordSet: false, now: justBefore })).toBeNull();
+    const due = T0 + PHRASE_REHEARSAL_INTERVAL_MS;
+    expect(dueNudge(store, { passwordSet: false, now: due })).toBe("phrase");
+  });
+
+  it("never shows the password reminder when no password is set", () => {
+    const store = memory();
+    // Even long after any age, no password means no password reminder.
+    const far = T0 + PASSWORD_REFRESH_AGE_MS * 3;
+    // Dismiss the phrase so it does not mask the (absent) password result.
+    dismissNudge(store, "phrase", far);
+    expect(dueNudge(store, { passwordSet: false, now: far })).toBeNull();
+  });
+
+  it("does not show the password reminder until the factor has aged a year", () => {
+    const store = memory();
+    // First observation stamps first-seen at T0; dismiss the phrase so it does not
+    // mask the password result.
+    dismissNudge(store, "phrase", T0);
+    expect(dueNudge(store, { passwordSet: true, now: T0 })).toBeNull();
+    // Just under a year: the password reminder is not due (the phrase rehearsal may
+    // be, on its own faster cadence, so assert specifically that it is not password).
+    const justBefore = T0 + PASSWORD_REFRESH_AGE_MS - DAY_MS;
+    expect(dueNudge(store, { passwordSet: true, now: justBefore })).not.toBe(
+      "password",
+    );
+  });
+
+  it("shows the password reminder once the factor has been present a year", () => {
+    const store = memory();
+    dismissNudge(store, "phrase", T0);
+    // Observe the password at T0 (stamps first-seen).
+    dueNudge(store, { passwordSet: true, now: T0 });
+    const aged = T0 + PASSWORD_REFRESH_AGE_MS;
+    expect(dueNudge(store, { passwordSet: true, now: aged })).toBe("password");
+  });
+
+  it("password takes priority over an also-due phrase rehearsal", () => {
+    const store = memory();
+    dueNudge(store, { passwordSet: true, now: T0 }); // stamp first-seen
+    const aged = T0 + PASSWORD_REFRESH_AGE_MS;
+    // Both are due here (phrase never shown, password aged a year).
+    expect(dueNudge(store, { passwordSet: true, now: aged })).toBe("password");
+  });
+
+  it("does not re-show the password reminder right after dismissing it", () => {
+    const store = memory();
+    dueNudge(store, { passwordSet: true, now: T0 }); // stamp first-seen
+    const aged = T0 + PASSWORD_REFRESH_AGE_MS;
+    dismissNudge(store, "password", aged);
+    dismissNudge(store, "phrase", aged);
+    expect(dueNudge(store, { passwordSet: true, now: aged })).toBeNull();
+    const soon = aged + PASSWORD_REDISMISS_INTERVAL_MS - DAY_MS;
+    expect(dueNudge(store, { passwordSet: true, now: soon })).toBeNull();
+  });
+
+  it("re-arms the password year when the factor is turned off then back on", () => {
+    const store = memory();
+    dueNudge(store, { passwordSet: true, now: T0 }); // first-seen at T0
+    // Turn the password off: this clears the first-seen mark.
+    dueNudge(store, { passwordSet: false, now: T0 + DAY_MS });
+    // Re-enable much later: the year restarts from the new first-seen, so a
+    // freshly re-enabled password is not instantly "a year old".
+    const reEnable = T0 + PASSWORD_REFRESH_AGE_MS * 2;
+    dismissNudge(store, "phrase", reEnable);
+    expect(dueNudge(store, { passwordSet: true, now: reEnable })).toBeNull();
+  });
+
+  it("ignores a malformed stored record and treats it as never shown", () => {
+    const store = memory({ "sti.continuity.v1": "not json {" });
+    expect(dueNudge(store, { passwordSet: false, now: T0 })).toBe("phrase");
+  });
+});

@@ -7,6 +7,8 @@ import { StandingLine, NextTestCard, BlueChecklist } from "./Home.standing.tsx";
 import { ViewerMirror } from "./Home.mirror.tsx";
 import { HomeActions } from "./Home.actions.tsx";
 import { PauseBanner } from "./Home.pause.tsx";
+import { ContinuityNudgeCard } from "./ContinuityNudgeCard.tsx";
+import type { ContinuityNudge } from "../app/continuityNudge.ts";
 import { standingOf, nextTest } from "./Home.status.ts";
 import type { ReportPreview } from "../../core/report.ts";
 
@@ -80,6 +82,13 @@ export interface HomeProps {
   onResume?: (() => void) | undefined;
   // Extend the clearance auto-pause by one window (persists; never shortens).
   onExtend?: (() => void) | undefined;
+  // A due continuity reminder (doc 32), or null/undefined when none. Never blocks
+  // anything; it only appears when rare cadence says so.
+  continuityNudge?: ContinuityNudge | null;
+  // Open Settings for the nudge (the phrase re-view or the password card).
+  onNudgeSettings?: (() => void) | undefined;
+  // Dismiss the nudge (records the time; a no-op to the account).
+  onNudgeDismiss?: (() => void) | undefined;
 }
 
 // Story/isolation defaults, applied in one merge so the Home function stays
@@ -118,6 +127,9 @@ export function Home(props: HomeProps) {
     onContinueCare,
     onResume,
     onExtend,
+    continuityNudge,
+    onNudgeSettings,
+    onNudgeDismiss,
   } = { ...HOME_DEFAULTS, ...props };
   const isPaused = paused || autoPaused;
   const clearBy = props.clearBy ?? addDays(TODAY, 9);
@@ -138,6 +150,14 @@ export function Home(props: HomeProps) {
       <Greeting handle={handle} avatar={avatar} />
 
       <StandingLine standing={status} />
+
+      {continuityNudge && onNudgeSettings && onNudgeDismiss && (
+        <ContinuityNudgeCard
+          kind={continuityNudge}
+          onGoToSettings={onNudgeSettings}
+          onDismiss={onNudgeDismiss}
+        />
+      )}
 
       {isPaused ? (
         <PauseBanner

@@ -6,6 +6,7 @@ import {
   RecoveryPassword,
   type RecoveryPasswordOps,
 } from "../settings/RecoveryPassword.tsx";
+import { RecoveryPhrase } from "../settings/RecoveryPhrase.tsx";
 
 // Account: who you are and how you get back in. The display name (a device-local
 // label that autosaves), the public name (claim/manage the public handle, doc 17),
@@ -17,6 +18,10 @@ export interface AccountSectionProps {
   findableOps: FindableOps | undefined;
   recoveryName: string | null | undefined;
   recoveryOps: RecoveryPasswordOps | undefined;
+  /** The stored recovery phrase to re-view (doc 32). undefined hides the card
+   * (logged-out preview); null shows the sign-in fallback; a string reveals behind
+   * the gate. */
+  recoveryPhrase?: string | null | undefined;
 }
 
 export function AccountSection({
@@ -26,6 +31,7 @@ export function AccountSection({
   findableOps,
   recoveryName,
   recoveryOps,
+  recoveryPhrase,
 }: AccountSectionProps) {
   const held = vanityName ?? null;
   return (
@@ -42,6 +48,9 @@ export function AccountSection({
           recoveryName={recoveryName ?? null}
           ops={recoveryOps}
         />
+      )}
+      {recoveryPhrase !== undefined && (
+        <RecoveryPhrase phrase={recoveryPhrase} />
       )}
     </Section>
   );

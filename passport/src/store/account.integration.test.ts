@@ -50,8 +50,13 @@ describe("account lifecycle against a live blind store", () => {
     const created = await accounts.create("robin");
     expect(created.recoveryPhrase).toMatch(/^[A-Za-z0-9_-]{43}$/);
     // A fresh account has no account-level notify inbox: those are minted per
-    // contact at link time (doc 13), so the blob is the fresh default exactly.
-    expect(created.blob).toEqual({ handle: "robin", ...FRESH });
+    // contact at link time (doc 13), so the blob is the fresh default plus the
+    // recovery phrase stored for re-view (doc 32), which is the one just shown.
+    expect(created.blob).toEqual({
+      handle: "robin",
+      ...FRESH,
+      recoveryPhrase: created.recoveryPhrase,
+    });
 
     // Recovery sees the same blob round-tripped through the store.
     const recovered = await accounts.recover(created.recoveryPhrase);
