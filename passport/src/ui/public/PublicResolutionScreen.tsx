@@ -18,11 +18,14 @@ export interface PublicResolutionScreenProps {
   store: PassportStore;
   link: AliasLink;
   // When a logged-in viewer opened a contact invite: the parsed invite + the
-  // accept action. "Add to contacts" then replaces the knock affordance.
+  // accept action. "Add to contacts" then replaces the knock affordance. When the
+  // invite is a RETURN link (it carries `ref`), onIngestReturn completes the
+  // two-way link in one tap instead (doc 13 path A).
   invite?: ContactInvite | undefined;
   onAcceptInvite?:
     | ((invite: ContactInvite, label: string) => Promise<ContactLinkResult>)
     | undefined;
+  onIngestReturn?: ((ret: ContactInvite) => void) | undefined;
   onBack?: () => void;
   onClaim?: () => void;
   onVerify?: () => void;
@@ -35,6 +38,43 @@ export interface PublicResolutionScreenProps {
 }
 
 const noop = (): void => undefined;
+
+// The two-way link actions the opened invite unlocks for a logged-in viewer:
+// a fresh invite (no `ref`) offers accept (mint + return link); a RETURN link
+// (`ref` present) offers connect (ingest, completing the link in one tap). Split
+// out so the screen body stays under its complexity cap.
+function inviteActions(
+  invite: ContactInvite | undefined,
+  onAcceptInvite:
+    | ((invite: ContactInvite, label: string) => Promise<ContactLinkResult>)
+    | undefined,
+  onIngestReturn: ((ret: ContactInvite) => void) | undefined,
+): {
+  canAccept: boolean;
+  onAccept: ((label: string) => Promise<string>) | undefined;
+  canConnect: boolean;
+  onConnect: (() => void) | undefined;
+} {
+  if (invite === undefined) {
+    return {
+      canAccept: false,
+      onAccept: undefined,
+      canConnect: false,
+      onConnect: undefined,
+    };
+  }
+  const isReturn = invite.ref !== undefined;
+  const acceptable = !isReturn && onAcceptInvite !== undefined;
+  const connectable = isReturn && onIngestReturn !== undefined;
+  return {
+    canAccept: acceptable,
+    onAccept: acceptable
+      ? (label) => onAcceptInvite(invite, label).then((r) => r.url)
+      : undefined,
+    canConnect: connectable,
+    onConnect: connectable ? () => onIngestReturn(invite) : undefined,
+  };
+}
 
 // How often the viewer re-checks for an approved in-app grant after knocking.
 // Owner approval is a human action, so a few seconds is responsive enough and
@@ -49,6 +89,7 @@ export function PublicResolutionScreen({
   link,
   invite,
   onAcceptInvite,
+  onIngestReturn,
   onBack = noop,
   onClaim = noop,
   onVerify = noop,
@@ -125,16 +166,13 @@ export function PublicResolutionScreen({
       .finally(() => setRequested(true));
   };
 
-  // A logged-in viewer who opened an invite (not a return) can add the inviter as
-  // a two-way contact; the action resolves with the return link to send back.
-  const canAccept =
-    invite !== undefined &&
-    invite.ref === undefined &&
-    onAcceptInvite !== undefined;
-  const onAccept = canAccept
-    ? (label: string) =>
-        onAcceptInvite(invite, label).then((result) => result.url)
-    : undefined;
+  // The two-way link actions a logged-in viewer gets from the opened invite: accept
+  // (a fresh invite) or connect (a RETURN link). Derived once, off the hot path.
+  const { canAccept, onAccept, canConnect, onConnect } = inviteActions(
+    invite,
+    onAcceptInvite,
+    onIngestReturn,
+  );
 
   // The report affordance exists only when the viewer arrived via a findable name
   // and a transport was wired (the gated path); otherwise it stays absent.
@@ -156,6 +194,8 @@ export function PublicResolutionScreen({
       linkHolder
       canAccept={canAccept}
       onAccept={onAccept}
+      canConnect={canConnect}
+      onConnect={onConnect}
       onBack={onBack}
       onClaim={onClaim}
       onVerify={onVerify}

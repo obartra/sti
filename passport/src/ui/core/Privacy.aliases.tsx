@@ -5,42 +5,56 @@ import {
   Lock,
   Link as LinkIcon,
   Trash,
-  Eye,
+  Share as ShareIcon,
 } from "../../design/icons.tsx";
 import type { AliasRecord, ContactRecord } from "../../store/index.ts";
-import { nowMs, DAY_MS } from "../../core/clock.ts";
+import {
+  aliasLinkUrl,
+  contactInviteUrl,
+  keyedAliasLinkUrl,
+} from "../../store/index.ts";
+import {
+  useLinkShare,
+  type LinkShareContext,
+} from "./Privacy.aliases.share.tsx";
 
 // "Your links": one honest list of everything that can currently resolve to the
-// owner's status, the public/casual aliases plus every per-contact link, each
-// individually revocable. The single "what's out there, cut it off" control. No
-// per-alias handles/avatars or findable/vanity claims (the account has one handle
-// and one avatar); those were a fixture, not the real model.
+// owner's status, the public/casual aliases plus every per-contact link. Each row
+// can be shared on its own (its own URL + QR) and revoked on its own; revoking is
+// the single "cut it off" control. No per-alias handles/avatars or findable/vanity
+// claims (the account has one handle and one avatar).
 export interface LiveLinksProps {
   aliases: AliasRecord[];
   contacts: ContactRecord[];
   onRevokeAlias: (id: string) => void;
   onRevokeContact: (id: string) => void;
-  onViewAs?: (() => void) | undefined;
+  /** The owner's current badge context, so each link's share sheet previews the
+   * same card a viewer resolves. Absent hides the per-link share action. */
+  share?: LinkShareContext | undefined;
+  desktop?: boolean | undefined;
 }
 
-function expiryLabel(expiresAt: number | null, now: number): string {
-  if (expiresAt === null) return "No expiry";
-  const left = expiresAt - now;
-  if (left <= 0) return "Expired";
-  const days = Math.ceil(left / DAY_MS);
-  if (days === 1) return "Expires tomorrow";
-  return `Expires in ${days} days`;
+// The full shareable URL for a per-contact link: the keyed alias plus the notify
+// capability (when the link has an inbox), so the recipient can open it AND link
+// back (doc 13 path A). A link minted before per-contact inboxes falls back to the
+// plain keyed alias link (still opens to the owner's status).
+function contactUrl(c: ContactRecord): string {
+  return c.myInbox !== undefined
+    ? contactInviteUrl(c.alias, c.myInbox)
+    : keyedAliasLinkUrl(c.alias);
 }
 
 function LinkRow({
   icon,
   title,
   sub,
+  onShare,
   onRevoke,
 }: {
   icon: ReactNode;
   title: string;
   sub: string;
+  onShare?: (() => void) | undefined;
   onRevoke: () => void;
 }) {
   return (
@@ -82,6 +96,17 @@ function LinkRow({
         </div>
         <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{sub}</div>
       </div>
+      {onShare && (
+        <Button
+          variant="quiet"
+          size="sm"
+          aria-label={`Share ${title}`}
+          icon={<ShareIcon size={15} />}
+          onClick={onShare}
+        >
+          Share
+        </Button>
+      )}
       <Button
         variant="quiet"
         size="sm"
@@ -100,10 +125,17 @@ export function LiveLinks({
   contacts,
   onRevokeAlias,
   onRevokeContact,
-  onViewAs,
+  share,
+  desktop = false,
 }: LiveLinksProps) {
-  const now = nowMs();
   const empty = aliases.length === 0 && contacts.length === 0;
+  // One share sheet for the whole list (only one link is shared at a time); rows
+  // just hand it the URL to open. Absent when no badge context was passed.
+  const linkShare = useLinkShare(
+    share ?? { state: "gray", labels: [], route: null },
+    desktop,
+  );
+  const canShare = share !== undefined;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div>
@@ -125,21 +157,11 @@ export function LiveLinks({
             marginTop: 4,
           }}
         >
-          Everything that can resolve to your status right now. Revoke any one
-          to cut it off, the old link stops working immediately.
+          Everything that can resolve to your status right now. Share any one
+          again, or revoke it to cut it off, the old link stops working
+          immediately.
         </p>
       </div>
-
-      {onViewAs && (
-        <Button
-          variant="secondary"
-          size="sm"
-          icon={<Eye size={15} />}
-          onClick={onViewAs}
-        >
-          See what others see
-        </Button>
-      )}
 
       {empty ? (
         <Card
@@ -159,6 +181,9 @@ export function LiveLinks({
               icon={a.isPublic ? <Globe size={18} /> : <Lock size={18} />}
               title={a.isPublic ? "Public profile" : "Casual link"}
               sub={a.isPublic ? "Anyone with the link" : "Link-only, unlisted"}
+              onShare={
+                canShare ? () => linkShare.open(aliasLinkUrl(a)) : undefined
+              }
               onRevoke={() => onRevokeAlias(a.id)}
             />
           ))}
@@ -168,15 +193,19 @@ export function LiveLinks({
               icon={<LinkIcon size={18} />}
               title={c.label || "Unnamed link"}
               sub={
-                (c.theirStatusAlias !== undefined
-                  ? "Linked both ways · "
-                  : "") + expiryLabel(c.expiresAt, now)
+                c.theirStatusAlias !== undefined
+                  ? "Linked both ways"
+                  : "Private link"
+              }
+              onShare={
+                canShare ? () => linkShare.open(contactUrl(c)) : undefined
               }
               onRevoke={() => onRevokeContact(c.id)}
             />
           ))}
         </Card>
       )}
+      {linkShare.sheet}
     </div>
   );
 }

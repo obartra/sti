@@ -192,15 +192,6 @@ export function createDemoController(): SessionController {
       };
       return session();
     },
-    setContactDuration: async (_s, contactId, durationMs) => {
-      blob = {
-        ...blob,
-        contacts: blob.contacts.map((c) =>
-          c.id === contactId ? { ...c, expiresAt: durationMs } : c,
-        ),
-      };
-      return session();
-    },
     revokeAlias: async (_s, aliasId) => {
       blob = { ...blob, aliases: blob.aliases.filter((a) => a.id !== aliasId) };
       return session();

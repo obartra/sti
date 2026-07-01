@@ -18,15 +18,7 @@ import { requesterHash } from "./knock.ts";
 import { parseContactInvite } from "./contactInvite.ts";
 import { lockNotifyDraft, parsePartnerPing } from "./partnerNotify.ts";
 import { pollInbox, mintNotify } from "./notifyInbox.ts";
-import { todayEpochDay, nowMs, DAY_MS } from "../core/clock.ts";
-
-// Link expiry is an absolute ms instant set to `now + duration` at call time, so
-// assert it lands within a few seconds of the expected instant (the wall clock
-// moves between the call and the check).
-function expectExpiryNear(actual: number | null, durationMs: number): void {
-  expect(actual).not.toBeNull();
-  expect(Math.abs((actual ?? 0) - (nowMs() + durationMs))).toBeLessThan(5000);
-}
+import { todayEpochDay, nowMs } from "../core/clock.ts";
 import {
   generateGrantKeyPair,
   bytesToBase64url,
@@ -655,7 +647,7 @@ describe("owner session against a live blind store", () => {
     expect(await store.resolveAlias(caps(alias))).toBeNull();
   });
 
-  it("createContactLink mints a private, keyed, 7-day link that resolves, then revokes", async () => {
+  it("createContactLink mints a private, keyed, durable link that resolves, then revokes", async () => {
     const { ctl, api } = controller(fakePasskey());
     const store = createBackendStore(api);
     const { session } = await ctl.signUp("nat");
@@ -663,8 +655,8 @@ describe("owner session against a live blind store", () => {
     const made = await ctl.createContactLink(session, "Sam");
     expect(made.contact.label).toBe("Sam");
     expect(made.contact.alias.isPublic).toBe(false);
-    // Default 7-day expiry.
-    expectExpiryNear(made.contact.expiresAt, 7 * DAY_MS);
+    // Durable: the link never expires on its own, it lives until revoked.
+    expect(made.contact.expiresAt).toBeNull();
     expect(made.session.blob.contacts).toHaveLength(1);
     // The link carries the key, so the one recipient can open it directly.
     expect(made.url).toContain(`/a/${made.contact.alias.id}#k=`);
@@ -682,67 +674,6 @@ describe("owner session against a live blind store", () => {
     const after = await ctl.revokeContact(made.session, made.contact.id);
     expect(after.blob.contacts).toHaveLength(0);
     expect(await store.resolveAlias(caps(made.contact.alias))).toBeNull();
-  });
-
-  it("createContactLink honours a chosen lifetime (a duration in ms, or until-revoked)", async () => {
-    const { ctl } = controller(fakePasskey());
-    const { session } = await ctl.signUp("dora");
-
-    // A 1-day link expires tomorrow.
-    const short = await ctl.createContactLink(
-      session,
-      "Sam",
-      "anonymous",
-      DAY_MS,
-    );
-    expectExpiryNear(short.contact.expiresAt, DAY_MS);
-
-    // null = no expiry (lives until revoked); the sweep + republish-skip treat a
-    // null expiry as always-live.
-    const forever = await ctl.createContactLink(
-      short.session,
-      "Ari",
-      "anonymous",
-      null,
-    );
-    expect(forever.contact.expiresAt).toBeNull();
-  });
-
-  it("setContactDuration moves a link's expiry in place (same link keeps working)", async () => {
-    const { ctl, api } = controller(fakePasskey());
-    const store = createBackendStore(api);
-    const { session } = await ctl.signUp("eli");
-    const made = await ctl.createContactLink(
-      session,
-      "Sam",
-      "anonymous",
-      7 * DAY_MS,
-    );
-    const aliasId = made.contact.alias.id;
-
-    // Extend to 30 days: same contact id, same alias (URL unchanged), new expiry.
-    const extended = await ctl.setContactDuration(
-      made.session,
-      made.contact.id,
-      30 * DAY_MS,
-    );
-    const updated = extended.blob.contacts.find(
-      (c) => c.id === made.contact.id,
-    );
-    expect(updated?.alias.id).toBe(aliasId);
-    expectExpiryNear(updated?.expiresAt ?? null, 30 * DAY_MS);
-    // The link still resolves (it was not revoked or re-minted).
-    expect(await store.resolveAlias(caps(made.contact.alias))).not.toBeNull();
-
-    // Set to never expire.
-    const forever = await ctl.setContactDuration(
-      extended,
-      made.contact.id,
-      null,
-    );
-    expect(
-      forever.blob.contacts.find((c) => c.id === made.contact.id)?.expiresAt,
-    ).toBeNull();
   });
 
   it("the server returns a decoy once an alias's expiry has passed (doc 16)", async () => {

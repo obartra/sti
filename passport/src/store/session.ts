@@ -53,7 +53,6 @@ import {
   ingestContactReturn,
   renameContactLabel,
   revokeContactLink,
-  setContactLinkExpiry,
   revokeAliasLink,
   shareLinkFor,
 } from "./shareOps.ts";
@@ -208,15 +207,14 @@ export interface SessionController {
   ): Promise<number>;
   /**
    * Mint a fresh PRIVATE link for one specific contact (a named, individually
-   * revocable link), publish the current card to it, and record it. `durationMs`
-   * sets the link's lifetime (ms from now, or null for until-revoked); omitted, it
-   * defaults to the 7-day expiry. Returns the session, the new contact, and the URL.
+   * revocable link), publish the current card to it, and record it. The link is
+   * durable: it never expires on its own and lives until revoked. Returns the
+   * session, the new contact, and the URL.
    */
   createContactLink(
     session: OwnerSession,
     label: string,
     identity?: AliasIdentity,
-    durationMs?: number | null,
   ): Promise<ContactLinkResult>;
   /**
    * Rename one contact's local label (the owner-only nickname). Purely local: the
@@ -235,16 +233,6 @@ export interface SessionController {
   revokeContact(
     session: OwnerSession,
     contactId: string,
-  ): Promise<OwnerSession>;
-  /**
-   * Change one contact link's lifetime in place (extend or shorten): the same
-   * link keeps resolving, only its expiry moves. `durationMs` is counted from now;
-   * null means until-revoked. Re-PUTs so the server enforces it. No-op if unknown.
-   */
-  setContactDuration(
-    session: OwnerSession,
-    contactId: string,
-    durationMs: number | null,
   ): Promise<OwnerSession>;
   /**
    * Revoke one published alias (a public/casual link) by id: its URL stops
@@ -562,11 +550,10 @@ export function createSessionController(deps: SessionDeps): SessionController {
       return grantPending(api, approvals);
     },
 
-    createContactLink(session, label, identity = "anonymous", durationMs) {
+    createContactLink(session, label, identity = "anonymous") {
       return mintContactLink(api, accounts, session, {
         label,
         identity,
-        durationMs,
       });
     },
 
@@ -575,9 +562,6 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
     revokeContact: (session, contactId) =>
       revokeContactLink(api, accounts, session, contactId),
-
-    setContactDuration: (session, contactId, durationMs) =>
-      setContactLinkExpiry(api, accounts, session, { contactId, durationMs }),
 
     revokeAlias: (session, aliasId) =>
       revokeAliasLink(api, accounts, session, aliasId),

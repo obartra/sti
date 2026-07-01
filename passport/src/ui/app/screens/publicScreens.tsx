@@ -55,8 +55,10 @@ export const publicRenderers: ScreenRenderers = {
     // (`#k=`) can decrypt directly; a keyless id — a Findable name resolved via
     // u-resolve — has no key, so resolveAlias yields gray-nothing and the screen
     // shows the knock affordance (the gated path). If the link is a contact invite
-    // (it carried a notify capability) and the viewer is logged in, offer "Add to
-    // contacts" instead of a knock; an invite always carries a key.
+    // (it carried a notify capability) and the viewer is logged in, offer to link:
+    // a fresh invite offers "Add to contacts", and a RETURN link (it carries `ref`)
+    // offers a one-tap "Connect" that completes the two-way link. An invite always
+    // carries a key.
     const { id, key, notify, ref, name } = ctx.data ?? {};
     if (id !== undefined) {
       const invite =
@@ -73,6 +75,7 @@ export const publicRenderers: ScreenRenderers = {
           link={{ id, key: key ?? "" }}
           invite={invite}
           onAcceptInvite={ctx.onAcceptContactInvite}
+          onIngestReturn={ctx.onIngestContactReturn}
           onBack={ctx.nav.back}
           onClaim={onClaim}
           onVerify={onVerify}

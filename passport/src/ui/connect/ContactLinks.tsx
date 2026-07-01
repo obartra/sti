@@ -1,61 +1,28 @@
 import { useState } from "react";
-import {
-  Button,
-  Card,
-  Input,
-  Segmented,
-} from "../../design/components/index.ts";
+import { Button, Card, Input } from "../../design/components/index.ts";
 import { Link, Trash, Dots } from "../../design/icons.tsx";
 import { AvatarCard } from "../onboarding/AvatarCard.tsx";
 import { IdentityChoiceRow } from "../share/ShareSheet.identity.tsx";
-import { DAY_MS } from "../../core/clock.ts";
-import { CreatedLink, IngestReturn } from "./ContactLinks.parts.tsx";
-import type {
-  AliasIdentity,
-  ContactInvite,
-  ContactRecord,
-} from "../../store/index.ts";
+import { CreatedLink } from "./ContactLinks.parts.tsx";
+import type { AliasIdentity, ContactRecord } from "../../store/index.ts";
 
 /* ContactLinks: the owner's per-contact private links (doc 13). Each link is for
-   one person, individually revocable, and expires on its own (default 7 days).
-   The link carries the key, so the recipient opens it directly. No status is
-   shown here; this is link management, not a viewer surface. */
-
-// The lifetimes a link can be minted with, as a duration in ms from now (doc 16);
-// null means until-revoked. 7 days is the default, matching the prior behavior.
-const DURATIONS: { key: string; label: string; ms: number | null }[] = [
-  { key: "1", label: "24h", ms: DAY_MS },
-  { key: "7", label: "7 days", ms: 7 * DAY_MS },
-  { key: "30", label: "30 days", ms: 30 * DAY_MS },
-  { key: "none", label: "No expiry", ms: null },
-];
-const DEFAULT_DURATION = "7";
-
-function durationMsFor(key: string): number | null {
-  return DURATIONS.find((d) => d.key === key)?.ms ?? null;
-}
+   one person and individually revocable; it never expires on its own, so revoking
+   it is the single cut-off. The link carries the key, so the recipient opens it
+   directly. No status is shown here; this is link management, not a viewer surface. */
 
 export interface ContactLinksProps {
   contacts: ContactRecord[];
-  /** Now as epoch ms, for the expiry countdown. */
-  now: number;
-  /** Mint a new link for `label` with a chosen lifetime (ms from now, or null for
-   * until-revoked) and a face (anonymous, or the owner's name); resolves with the
-   * shareable URL. */
+  /** Mint a new link for `label` with a face (anonymous, or the owner's name);
+   * resolves with the shareable URL. The link is durable until revoked. */
   onCreate: (
     label: string,
-    durationMs: number | null,
     identity: AliasIdentity,
   ) => Promise<{ url: string }>;
   onRevoke: (id: string) => void;
   /** Rename one link's local label (the owner-only nickname; never shared with the
    * recipient). Empty clears it back to the placeholder. Absent hides the control. */
   onRename?: ((id: string, label: string) => void) | undefined;
-  /** Change one link's lifetime in place (ms from now, or null for
-   * until-revoked); the same link keeps working. */
-  onSetDuration: (id: string, durationMs: number | null) => void;
-  /** Ingest a return link a contact sent back, completing the pending link. */
-  onIngestReturn?: ((ret: ContactInvite) => void) | undefined;
   /** Whether the owner has a display name to show: gates the "show my name" choice
    * on the create card (with no name there is nothing to share). Defaults to false. */
   canShowName?: boolean | undefined;
@@ -65,26 +32,15 @@ export interface ContactLinksProps {
   onEditAvatar?: (() => void) | undefined;
 }
 
-function expiryLabel(expiresAt: number | null, now: number): string {
-  if (expiresAt === null) return "No expiry";
-  const left = expiresAt - now;
-  if (left <= 0) return "Expired";
-  const days = Math.ceil(left / DAY_MS);
-  if (days === 1) return "Expires tomorrow";
-  return `Expires in ${days} days`;
-}
-
 // The "mint a new link" card: nickname, the face choice (when the owner has a name
-// to show), lifetime, and the create button, with an inline error so the action
-// never silently no-ops.
+// to show), and the create button, with an inline error so the action never
+// silently no-ops.
 function CreateCard({
   label,
   setLabel,
   identity,
   setIdentity,
   canShowName,
-  duration,
-  setDuration,
   busy,
   error,
   onCreate,
@@ -94,8 +50,6 @@ function CreateCard({
   identity: AliasIdentity;
   setIdentity: (v: AliasIdentity) => void;
   canShowName: boolean;
-  duration: string;
-  setDuration: (v: string) => void;
   busy: boolean;
   error: string | null;
   onCreate: () => void;
@@ -118,17 +72,6 @@ function CreateCard({
         hasName={canShowName}
         onChange={setIdentity}
       />
-      <div
-        style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-subtle)" }}
-      >
-        Lasts
-      </div>
-      <Segmented
-        aria-label="Link lifetime"
-        value={duration}
-        onChange={setDuration}
-        options={DURATIONS.map((d) => ({ value: d.key, label: d.label }))}
-      />
       <Button
         variant="primary"
         size="md"
@@ -149,19 +92,15 @@ function CreateCard({
 
 export function ContactLinks({
   contacts,
-  now,
   onCreate,
   onRevoke,
   onRename,
-  onSetDuration,
-  onIngestReturn,
   canShowName = false,
   avatarSrc,
   onEditAvatar,
 }: ContactLinksProps): React.ReactElement {
   const [label, setLabel] = useState("");
   const [identity, setIdentity] = useState<AliasIdentity>("anonymous");
-  const [duration, setDuration] = useState(DEFAULT_DURATION);
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -171,7 +110,7 @@ export function ContactLinks({
     setBusy(true);
     setCreated(null);
     setError(null);
-    void onCreate(label.trim(), durationMsFor(duration), identity)
+    void onCreate(label.trim(), identity)
       .then((r) => {
         setCreated(r.url);
         setLabel("");
@@ -208,8 +147,8 @@ export function ContactLinks({
           Your links
         </h1>
         <p style={{ fontSize: 14, color: "var(--text-body)", marginTop: 6 }}>
-          A private link for one person. They open it to see your status. Revoke
-          any link anytime; each link expires on its own when its time is up.
+          A private link for one person. They open it to see your status. It
+          works until you revoke it.
         </p>
       </div>
 
@@ -223,18 +162,12 @@ export function ContactLinks({
         identity={identity}
         setIdentity={setIdentity}
         canShowName={canShowName}
-        duration={duration}
-        setDuration={setDuration}
         busy={busy}
         error={error}
         onCreate={create}
       />
 
       {created !== null && <CreatedLink url={created} />}
-
-      {onIngestReturn !== undefined && (
-        <IngestReturn onIngest={onIngestReturn} />
-      )}
 
       {contacts.length > 0 && (
         <Card
@@ -245,7 +178,6 @@ export function ContactLinks({
             <ContactRow
               key={c.id}
               contact={c}
-              now={now}
               onRevoke={() => {
                 // Clear the "link ready" panel if it belongs to the link being
                 // revoked, so a now-dead URL never lingers on screen.
@@ -253,7 +185,6 @@ export function ContactLinks({
                 onRevoke(c.id);
               }}
               onRename={onRename ? (label) => onRename(c.id, label) : undefined}
-              onSetDuration={(ms) => onSetDuration(c.id, ms)}
             />
           ))}
         </Card>
@@ -303,18 +234,16 @@ function RenameField({
   );
 }
 
-// The rename + lifetime + revoke menu revealed under a row (the "⋯" panel).
-// Renaming changes only the local nickname; setting a lifetime changes the link's
-// expiry in place; the link keeps working through both.
+// The rename + revoke menu revealed under a row (the "⋯" panel). Renaming changes
+// only the local nickname; revoke cuts the link off. The link keeps working until
+// revoked.
 function RowMenu({
   label,
   onRename,
-  onSetDuration,
   onRevoke,
 }: {
   label: string;
   onRename: ((label: string) => void) | undefined;
-  onSetDuration: (durationMs: number | null) => void;
   onRevoke: () => void;
 }): React.ReactElement {
   return (
@@ -328,17 +257,6 @@ function RowMenu({
       }}
     >
       {onRename && <RenameField label={label} onRename={onRename} />}
-      <div
-        style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-subtle)" }}
-      >
-        Change lifetime
-      </div>
-      <Segmented
-        aria-label="Change link lifetime"
-        value=""
-        onChange={(key) => onSetDuration(durationMsFor(key))}
-        options={DURATIONS.map((d) => ({ value: d.key, label: d.label }))}
-      />
       <Button
         variant="quiet"
         size="sm"
@@ -351,20 +269,16 @@ function RowMenu({
   );
 }
 
-// One contact row: the private label, a linked-vs-pending line with the expiry,
-// and a "⋯" menu to change the link's lifetime or revoke it.
+// One contact row: the private label, a linked-vs-pending line, and a "⋯" menu to
+// rename or revoke the link.
 function ContactRow({
   contact,
-  now,
   onRevoke,
   onRename,
-  onSetDuration,
 }: {
   contact: ContactRecord;
-  now: number;
   onRevoke: () => void;
   onRename: ((label: string) => void) | undefined;
-  onSetDuration: (durationMs: number | null) => void;
 }): React.ReactElement {
   const [open, setOpen] = useState(false);
   const status =
@@ -392,7 +306,7 @@ function ContactRow({
             {contact.label || "Unnamed link"}
           </div>
           <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-            {`${status} · ${expiryLabel(contact.expiresAt, now)}`}
+            {status}
           </div>
         </div>
         <button
@@ -429,10 +343,6 @@ function ContactRow({
                 }
               : undefined
           }
-          onSetDuration={(ms) => {
-            onSetDuration(ms);
-            setOpen(false);
-          }}
           onRevoke={() => {
             onRevoke();
             setOpen(false);

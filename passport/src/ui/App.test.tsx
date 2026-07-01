@@ -12,6 +12,8 @@ import type {
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
 import { rootForTest } from "../test-support/phrase.ts";
+import { contactInviteUrl, mintNotify } from "../store/index.ts";
+import { randomAliasId } from "../crypto/index.ts";
 import {
   createDemoController,
   createDemoStore,
@@ -124,7 +126,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
         id: "c".repeat(43),
         label,
         createdDay: 0,
-        expiresAt: 7,
+        expiresAt: null,
         alias: {
           id: "v".repeat(43),
           writeToken: "w".repeat(43),
@@ -152,15 +154,6 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       blob = {
         ...blob,
         contacts: blob.contacts.filter((c) => c.id !== contactId),
-      };
-      return Promise.resolve({ root, blob });
-    },
-    setContactDuration: (_session, contactId, durationMs) => {
-      blob = {
-        ...blob,
-        contacts: blob.contacts.map((c) =>
-          c.id === contactId ? { ...c, expiresAt: durationMs } : c,
-        ),
       };
       return Promise.resolve({ root, blob });
     },
@@ -465,6 +458,47 @@ describe("App onboarding flow", () => {
     await user.click(screen.getByRole("button", { name: /Options for Sam/ }));
     await user.click(screen.getByRole("button", { name: "Revoke" }));
     expect(screen.queryByText("Sam")).toBeNull();
+  });
+
+  it("links both ways by opening the return link, no paste (doc 13 path A)", async () => {
+    window.history.pushState({}, "", "/claim");
+    const user = userEvent.setup();
+    const controller = fakeController();
+    const ingest = vi.fn((session: OwnerSession) => Promise.resolve(session));
+    controller.ingestContactReturn = ingest;
+    // The return link resolves to the sender's card, so the connect action shows.
+    const view: ResolvedView = {
+      state: "blue",
+      labels: ["hiv"],
+      route: "hiv",
+      identity: { handle: "alex" },
+    };
+    render(<App store={stubStore(view)} controller={controller} />);
+    await onboard(user);
+
+    // A real RETURN link (keyed alias + notify + ref) opened while logged in: the
+    // router parses it to a2-public, and the logged-in viewer gets a one-tap connect.
+    const returnUrl = contactInviteUrl(
+      {
+        id: "R".repeat(43),
+        writeToken: "w".repeat(43),
+        key: "S".repeat(43),
+        isPublic: false,
+      },
+      mintNotify(),
+      { ref: randomAliasId() },
+    );
+    window.history.pushState(
+      {},
+      "",
+      returnUrl.replace(/^https?:\/\/[^/]+/, ""),
+    );
+    window.dispatchEvent(new PopStateEvent("popstate"));
+
+    const connect = await screen.findByRole("button", { name: "Connect" });
+    await user.click(connect);
+    expect(ingest).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(/Linked\./i)).toBeInTheDocument();
   });
 
   it("logs in on a new device with the recovery phrase (no passkey)", async () => {
