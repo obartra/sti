@@ -325,9 +325,9 @@ same way it would from Settings.
    above). The locator shares the vanity-name charset and is shape-validated. Go tests
    cover the round trip, the fixed-size decoy on a miss, wrong-size/malformed/missing-token
    rejects, the uniform-and-safe collision, and delete; the ciphertext-projection guard
-   allowlists the new getter. _Change to build: the locator is unified with the doc 17
-   public handle rather than a standalone name, and the write is authorized by the handle's
-   alias write token so the envelope and the directory entry share an owner._
+   allowlists the new getter. Built: a handle that carries a password envelope is pinned,
+   so a release of that name is refused server-side (doc 17), which keeps the envelope and
+   the directory entry from being split across owners.
 4. **Settings: manage factors (doc 31).** _Built._ The `/recovery` API client,
    `store/recoveryOps.ts` (`setRecoveryPassword` / `disableRecoveryPassword`) wired
    through the SessionController. Because the session root is non-extractable (doc 24),
@@ -338,9 +338,9 @@ same way it would from Settings.
    with live strength feedback + confirm + phrase) and an on state (handle, change, turn
    off), rendered from the Privacy screen for a logged-in owner. The envelope crypto and
    the strength gate load via dynamic import, so their WASM/estimator stay out of the
-   precached shell. _Change to build: the login name is a public handle (claim a new one
-   or reuse one you hold) rather than a standalone recovery name; setting a password pins
-   the handle and turning it off unpins it (doc 17); turning it off drops the envelope._
+   precached shell. Built: the login name is a public handle (claim a new one or reuse one
+   you hold); setting a password pins that handle so it cannot be released while the
+   password is set, and turning the password off unpins it and drops the envelope (doc 17).
    Re-viewing the phrase itself from Settings is also built: the phrase is stored inside
    the already-encrypted account blob (`store/accountBlob.ts`, written at sign-up and
    backfilled on a phrase login) so a root-holding session can re-display it behind a
@@ -359,14 +359,15 @@ same way it would from Settings.
 5. **New-device unlock by @handle + password.** _Built._ The sign-in screen offers this
    beside the passkey and the recovery phrase: enter @handle + password, which fetches the
    envelope by handle and opens it, recovering the root key and loading the account. A
-   wrong name or password is one uniform failure. _Change to build: the field is a public
-   handle, and the sign-in shape leads with passkey and folds @handle + password and the
-   recovery phrase under an "other ways to log in" disclosure (doc 31)._
-6. **Password at sign-up (new capability to build).** Offer @handle + password as a
-   sign-up choice beside the passkey, wrapping the in-memory root on the spot with **no
-   phrase re-entry**, and always still generating and showing the recovery phrase. Claiming
-   the handle at sign-up pins it (doc 17). This is the one genuinely new build here; the
-   Settings add-later path above is unchanged apart from the public-handle rename.
+   wrong name or password is one uniform failure. Built: the field is a public handle, and
+   the sign-in shape leads with passkey and folds @handle + password and the recovery
+   phrase under an "other ways to log in" disclosure (doc 31).
+6. **Password at sign-up.** _Built._ Offers @handle + password as a sign-up choice beside
+   the passkey, wrapping the in-memory root on the spot with **no phrase re-entry**, and
+   always still generating and showing the recovery phrase. It is optional and skippable
+   (a collapsed disclosure), so the passkey stays the default. Claiming the handle at
+   sign-up pins it (doc 17); a taken handle is a plain inline error and the account is
+   created regardless.
 7. **Continuity nudges.** _Built._ Both reminders from the sections above, as one
    low-key dismissible card on Home (`ui/core/ContinuityNudgeCard.tsx`) shown only
    when a rare cadence says a nudge is due: the phrase rehearsal ("can you still find
