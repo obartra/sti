@@ -28,8 +28,6 @@ export interface OwnerActions {
   /** Persist the owner's local display name (keeps avatar + sharing mode); pass
    * null to clear it back to no name. Owner-facing only, never sent to a viewer. */
   onSetName: (name: string | null) => void;
-  /** Persist which face the Home hero opens on (keeps avatar + sharing mode). */
-  onSetHomeDefaultView: (view: "criteria" | "shared") => void;
   /** Mint a new per-contact link with a chosen lifetime (days, or null for
    * until-revoked) and a face (anonymous, or the owner's name); resolves with the
    * contact + URL. */
@@ -344,7 +342,7 @@ function useProfileActions(
   controller: SessionController,
   sessionRef: RefObject<OwnerSession | null>,
   setSession: (s: OwnerSession | null) => void,
-): Pick<OwnerActions, "onSetAvatar" | "onSetName" | "onSetHomeDefaultView"> {
+): Pick<OwnerActions, "onSetAvatar" | "onSetName"> {
   // Persist a profile edit and fold the re-sealed blob back into the session.
   // setProfile leaves any field the profile omits unchanged (doc 15), so each
   // editor passes only what it touches.
@@ -384,20 +382,7 @@ function useProfileActions(
     },
     [persist, sessionRef],
   );
-  const onSetHomeDefaultView = useCallback(
-    (view: "criteria" | "shared") => {
-      const current = sessionRef.current;
-      if (current === null) return;
-      // Keep avatar + sharing mode; only the Home default face changes.
-      persist({
-        avatar: current.blob.avatar,
-        sharingMode: current.blob.sharingMode,
-        homeDefaultView: view,
-      });
-    },
-    [persist, sessionRef],
-  );
-  return { onSetAvatar, onSetName, onSetHomeDefaultView };
+  return { onSetAvatar, onSetName };
 }
 
 // The circle mutations (create / rename+remember-members / delete), split out so

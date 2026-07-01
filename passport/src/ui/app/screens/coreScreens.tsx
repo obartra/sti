@@ -130,9 +130,6 @@ export const coreRenderers: ScreenRenderers = {
       autoPaused={owner.autoPaused}
       clearBy={owner.clearBy}
       sharingMode={owner.sharingMode}
-      {...(owner.homeDefaultView !== undefined
-        ? { defaultView: owner.homeDefaultView }
-        : {})}
       daysLeft={owner.daysLeft}
       standing={blueChecklist(ownerState, todayEpochDay())}
       tested={ownerState.testing.lastPanelDay !== null}
@@ -195,7 +192,6 @@ export const coreRenderers: ScreenRenderers = {
     onDeleteAccount,
     onLogOut,
     onSetName,
-    onSetHomeDefaultView,
     vanityName,
     onRegisterVanityName,
     onCheckVanityName,
@@ -212,8 +208,6 @@ export const coreRenderers: ScreenRenderers = {
       push={push}
       name={owner.handle ?? null}
       onSetName={isLoggedIn ? onSetName : undefined}
-      homeDefaultView={owner.homeDefaultView ?? "criteria"}
-      onSetHomeDefaultView={isLoggedIn ? onSetHomeDefaultView : undefined}
       avatarSrc={avatarSrc(owner.avatar)}
       onEditAvatar={isLoggedIn ? () => nav.go("avatar-edit") : undefined}
       onViewPromises={() => nav.go("promises")}

@@ -373,8 +373,11 @@ describe("App onboarding flow", () => {
     await onboard(user);
     expect((await screen.findAllByText(/@robin/)).length).toBeGreaterThan(0);
 
-    // Open Privacy (the home quick-action tile), then the danger zone's two-step delete.
-    await user.click(await screen.findByRole("button", { name: "Privacy" }));
+    // Open Settings (the home "Manage links" action routes there), then the
+    // danger zone's two-step delete.
+    await user.click(
+      await screen.findByRole("button", { name: "Manage links" }),
+    );
     await user.click(
       await screen.findByRole("button", { name: "Delete everything" }),
     );

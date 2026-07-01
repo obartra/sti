@@ -1,75 +1,79 @@
 import { Button, Card } from "../../design/components/index.ts";
-import { Care as CareIcon } from "../../design/icons.tsx";
-import { CheckRow } from "./Report.route.tsx";
-import { COPY as REPORT_COPY } from "./Report.parts.tsx";
+import { Care as CareIcon, Check, Calendar } from "../../design/icons.tsx";
+import { leadTile } from "./Home.parts.tsx";
+import {
+  STANDING_COPY,
+  checklistRows,
+  type Standing,
+  type NextTest,
+  type ChecklistRow,
+} from "./Home.status.ts";
 import type { ReportPreview } from "../../core/report.ts";
 
-/* "Your criteria": the owner-only standing breakdown on Home. This is the
-   owner's own screen, not a viewer surface, so it can show the per-requirement
-   detail the badge collapses: where you are toward blue, when the next test is
-   due, and a way straight to testing. On Home it is one side of a labeled toggle
-   ("what others see" / "your criteria"), so it is unambiguous that this view is
-   private to the owner and is not what gets shared. */
-
-// What the footer line says given the current standing, so the breakdown ends on
-// a plain "you're fine" / "here's why not" sentence rather than just check rows.
-function footerLine(
-  standing: ReportPreview,
-  daysLeft: number,
-  tested: boolean,
-): string {
-  if (standing.willBeBlue) {
-    const days = daysLeft === 1 ? "1 day" : `${daysLeft} days`;
-    return `You're up to date. Next test in ${days}.`;
-  }
-  if (tested && daysLeft === 0)
-    return "Your last test is too old now. A fresh test brings your status back.";
-  return "Still gray until each of these is met.";
+// The dashboard's lead: the owner's real standing in one line. Blue reads blue;
+// every gray reason (untested, lapsed, still-gray, paused) reads honestly, never
+// green by default. This is the fix for a fresh owner reading as "Clear".
+export function StandingLine({ standing }: { standing: Standing }) {
+  const c = STANDING_COPY[standing];
+  const blue = c.tone === "blue";
+  return (
+    <Card
+      variant="flat"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        borderColor: blue ? "var(--border-strong)" : undefined,
+      }}
+    >
+      <span
+        style={{
+          ...leadTile,
+          background: blue ? "var(--status-clear-bg)" : "var(--surface-sunken)",
+          color: blue ? "var(--status-clear-base)" : "var(--text-muted)",
+        }}
+      >
+        {blue ? <Check size={20} /> : <Calendar size={20} />}
+      </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{ fontSize: 17, fontWeight: 800, color: "var(--text-strong)" }}
+        >
+          {c.title}
+        </div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{c.sub}</div>
+      </div>
+    </Card>
+  );
 }
 
-export function CriteriaView({
-  standing,
-  daysLeft,
-  tested,
+// The prominent next-test line with a Find testing action. Overdue reads firm,
+// not alarmist; an untested owner takes their first test.
+export function NextTestCard({
+  next,
   onFindTesting,
 }: {
-  standing: ReportPreview;
-  daysLeft: number;
-  tested: boolean;
+  next: NextTest;
   onFindTesting: (() => void) | undefined;
 }) {
   return (
     <Card
       variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 14 }}
+      style={{ display: "flex", alignItems: "center", gap: 14 }}
     >
-      <CheckRow
-        met={standing.recentPanel}
-        title={REPORT_COPY.blueRecent}
-        sub={REPORT_COPY.blueRecentSub}
-      />
-      <CheckRow
-        met={standing.clear}
-        title={REPORT_COPY.blueClear}
-        sub={REPORT_COPY.blueClearSub}
-      />
-      <CheckRow
-        met={standing.route}
-        title={REPORT_COPY.blueRoute}
-        sub={REPORT_COPY.blueRouteSub}
-      />
-      <div
-        style={{
-          fontSize: 12.5,
-          fontWeight: 700,
-          color: standing.willBeBlue
-            ? "var(--status-clear-base)"
-            : "var(--text-subtle)",
-          borderTop: "1px solid var(--divider)",
-          paddingTop: 11,
-        }}
-      >
-        {footerLine(standing, daysLeft, tested)}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+          Next test
+        </div>
+        <div
+          style={{
+            fontSize: 15,
+            fontWeight: 700,
+            color: next.overdue ? "var(--text-strong)" : "var(--text-body)",
+          }}
+        >
+          {next.label}
+        </div>
       </div>
       <Button
         variant="secondary"
@@ -79,6 +83,97 @@ export function CriteriaView({
       >
         Find testing
       </Button>
+    </Card>
+  );
+}
+
+interface ChecklistActions {
+  onReport: (() => void) | undefined;
+  onFindTesting: (() => void) | undefined;
+  onPrevention: (() => void) | undefined;
+}
+
+function actionFor(row: ChecklistRow, actions: ChecklistActions): () => void {
+  const map = {
+    test: actions.onReport,
+    clear: actions.onFindTesting,
+    route: actions.onPrevention,
+  } as const;
+  const run = map[row.kind];
+  return run ?? (() => undefined);
+}
+
+function ChecklistItem({
+  row,
+  onAct,
+}: {
+  row: ChecklistRow;
+  onAct: () => void;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+      <span
+        style={{
+          flex: "none",
+          width: 22,
+          height: 22,
+          borderRadius: "50%",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: row.met ? "var(--status-clear-bg)" : "transparent",
+          color: row.met ? "var(--status-clear-base)" : "var(--text-subtle)",
+          border: row.met ? "none" : "2px solid var(--border-card)",
+        }}
+      >
+        {row.met ? <Check size={14} /> : null}
+      </span>
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          fontSize: 14,
+          fontWeight: 600,
+          color: row.met ? "var(--text-strong)" : "var(--text-body)",
+        }}
+      >
+        {row.title}
+      </div>
+      {row.met ? null : (
+        <Button variant="ghost" size="sm" onClick={onAct}>
+          {row.action}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+// The three things a blue card needs, each a met/unmet row plus the one action
+// that advances it. The owner-only breakdown the badge collapses; never shared.
+export function BlueChecklist({
+  standing,
+  actions,
+}: {
+  standing: ReportPreview;
+  actions: ChecklistActions;
+}) {
+  return (
+    <Card
+      variant="flat"
+      style={{ display: "flex", flexDirection: "column", gap: 14 }}
+    >
+      <div
+        style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)" }}
+      >
+        For a blue card
+      </div>
+      {checklistRows(standing).map((row) => (
+        <ChecklistItem
+          key={row.kind}
+          row={row}
+          onAct={actionFor(row, actions)}
+        />
+      ))}
     </Card>
   );
 }

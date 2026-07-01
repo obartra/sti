@@ -46,7 +46,6 @@ export interface ChromeProps {
   onDeleteAccount: () => void;
   onSetAvatar: ScreenCtx["onSetAvatar"];
   onSetName: ScreenCtx["onSetName"];
-  onSetHomeDefaultView: ScreenCtx["onSetHomeDefaultView"];
   knockCount: number;
   refreshKnocks: () => void;
   canApproveKnocks: boolean;
@@ -162,7 +161,6 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     onKeepSignedInChange: props.onKeepSignedInChange,
     onSetAvatar: props.onSetAvatar,
     onSetName: props.onSetName,
-    onSetHomeDefaultView: props.onSetHomeDefaultView,
     knockCount: props.knockCount,
     refreshKnocks: props.refreshKnocks,
     canApproveKnocks: props.canApproveKnocks,

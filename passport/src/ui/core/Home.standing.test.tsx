@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import { CriteriaView } from "./Home.standing.tsx";
+import { StandingLine, NextTestCard, BlueChecklist } from "./Home.standing.tsx";
 
 const blue = {
   recentPanel: true,
@@ -9,54 +9,54 @@ const blue = {
   willBeBlue: true,
 } as const;
 
-describe("CriteriaView (the home 'your criteria' view)", () => {
-  it("shows the requirement detail and the retest timing", () => {
-    render(
-      <CriteriaView
-        standing={blue}
-        daysLeft={40}
-        tested
-        onFindTesting={() => undefined}
-      />,
-    );
-    expect(
-      screen.getByText("You're up to date. Next test in 40 days."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Find testing" }),
-    ).toBeInTheDocument();
+describe("StandingLine", () => {
+  it("untested reads as not set up, never green", () => {
+    render(<StandingLine standing="untested" />);
+    expect(screen.getByText("Not set up yet")).toBeInTheDocument();
   });
 
-  it("routes to testing when Find testing is tapped", () => {
+  it("blue reads as up to date", () => {
+    render(<StandingLine standing="blue" />);
+    expect(screen.getByText("Up to date")).toBeInTheDocument();
+  });
+
+  it("lapsed reads as time to re-test", () => {
+    render(<StandingLine standing="lapsed" />);
+    expect(screen.getByText("Time to re-test")).toBeInTheDocument();
+  });
+});
+
+describe("NextTestCard", () => {
+  it("shows the due date and days left, and finds testing", () => {
     const onFindTesting = vi.fn();
     render(
-      <CriteriaView
-        standing={blue}
-        daysLeft={40}
-        tested
+      <NextTestCard
+        next={{ label: "Due 5 Sep 2026 · in 40 days", overdue: false }}
         onFindTesting={onFindTesting}
       />,
     );
+    expect(screen.getByText("Due 5 Sep 2026 · in 40 days")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Find testing" }));
     expect(onFindTesting).toHaveBeenCalledOnce();
   });
+});
 
-  it("tells a lapsed owner their last test is too old", () => {
+describe("BlueChecklist", () => {
+  it("a met requirement shows no action; an unmet one carries its action", () => {
+    const onReport = vi.fn();
     render(
-      <CriteriaView
-        standing={{
-          recentPanel: false,
-          clear: true,
-          route: true,
-          willBeBlue: false,
+      <BlueChecklist
+        standing={{ ...blue, recentPanel: false }}
+        actions={{
+          onReport,
+          onFindTesting: undefined,
+          onPrevention: undefined,
         }}
-        daysLeft={0}
-        tested
-        onFindTesting={() => undefined}
       />,
     );
-    expect(
-      screen.getByText(/Your last test is too old now/),
-    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Add a result" }));
+    expect(onReport).toHaveBeenCalledOnce();
+    // The met rows expose no action buttons.
+    expect(screen.queryByRole("button", { name: "Update care" })).toBeNull();
   });
 });

@@ -101,32 +101,6 @@ describe("Privacy name editor", () => {
   });
 });
 
-describe("Privacy home-view preference", () => {
-  it("sets the Home default face when an option is chosen", async () => {
-    const onSetHomeDefaultView = vi.fn();
-    render(
-      <Privacy
-        ownerState={INITIAL_OWNER_STATE}
-        setOwnerState={() => undefined}
-        homeDefaultView="criteria"
-        onSetHomeDefaultView={onSetHomeDefaultView}
-      />,
-    );
-    await userEvent.click(screen.getByRole("tab", { name: "What others see" }));
-    expect(onSetHomeDefaultView).toHaveBeenCalledWith("shared");
-  });
-
-  it("hides the control when no setter is provided", () => {
-    render(
-      <Privacy
-        ownerState={INITIAL_OWNER_STATE}
-        setOwnerState={() => undefined}
-      />,
-    );
-    expect(screen.queryByText("Home opens on")).not.toBeInTheDocument();
-  });
-});
-
 describe("Privacy findable section (doc 17)", () => {
   const ops = {
     register: () => Promise.resolve("registered" as const),
