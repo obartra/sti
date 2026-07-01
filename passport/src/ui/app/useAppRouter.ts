@@ -49,7 +49,7 @@ export function findableNameFromPath(pathname: string): string | null {
 // The fixed clean path each non-parameterized screen owns. The id-carrying screens
 // are not here; they build a path param from route data (`paramPath`): `a2-public`
 // (`/a/{id}#k=`), `u-resolve` (`/u/{name}`), `group-detail` (`/groups/{id}`),
-// `group-create` edit (`/groups/{id}/edit`), `learn-detail` (`/care/learn/{id}`).
+// `group-create` edit (`/groups/{id}/edit`).
 // The two "privacy" surfaces resolve their old naming clash here: the Settings
 // screen (id `privacy`) is `/settings`, the privacy POLICY page (id
 // `privacy-policy`) is `/privacy`.
@@ -76,8 +76,6 @@ const SCREEN_PATH: Partial<Record<Screen, string>> = {
   care: "/care",
   notifications: "/notifications",
   "avatar-edit": "/avatar",
-  learn: "/care/learn",
-  "learn-uu": "/care/learn/uu",
   groups: "/groups",
   "group-create": "/groups/new",
   report: "/report",
@@ -102,7 +100,7 @@ PATH_SCREEN["/"] = "home";
 
 // The path an id-carrying screen builds from its route data, or null when the screen
 // has no param (or the datum is missing): `/u/{name}`, `/groups/{id}`,
-// `/groups/{id}/edit`, `/care/learn/{id}`.
+// `/groups/{id}/edit`.
 function paramPath(screen: Screen, data: RouteData | null): string | null {
   if (data === null) return null;
   if (screen === "u-resolve" && data.name) {
@@ -110,7 +108,6 @@ function paramPath(screen: Screen, data: RouteData | null): string | null {
   }
   if (screen === "group-create" && data.id) return `/groups/${data.id}/edit`;
   if (screen === "group-detail" && data.id) return `/groups/${data.id}`;
-  if (screen === "learn-detail" && data.id) return `/care/learn/${data.id}`;
   return null;
 }
 
@@ -147,18 +144,14 @@ const LEGACY_REDIRECT: Record<string, Screen> = {
   "/connect/share": "alias-share",
 };
 
-// The id-carrying app paths: `/groups/{id}`, `/groups/{id}/edit`,
-// `/care/learn/{id}`. Checked after the exact table so `/groups/new` and
-// `/care/learn/uu` (real screens) are not mistaken for ids.
+// The id-carrying app paths: `/groups/{id}`, `/groups/{id}/edit`. Checked after the
+// exact table so `/groups/new` (a real screen) is not mistaken for an id.
 function pathParamRoute(cleanPath: string): Route | null {
   const edit = /^\/groups\/([^/]+)\/edit$/.exec(cleanPath)?.[1];
   if (edit) return { screen: "group-create", group: "app", data: { id: edit } };
   const circle = /^\/groups\/([^/]+)$/.exec(cleanPath)?.[1];
   if (circle)
     return { screen: "group-detail", group: "app", data: { id: circle } };
-  const article = /^\/care\/learn\/([^/]+)$/.exec(cleanPath)?.[1];
-  if (article)
-    return { screen: "learn-detail", group: "app", data: { id: article } };
   return null;
 }
 

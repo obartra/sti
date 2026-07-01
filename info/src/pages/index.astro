@@ -1,0 +1,133 @@
+---
+import { getCollection } from "astro:content";
+import Base from "../layouts/Base.astro";
+import Chip from "../components/Chip.astro";
+import Icon from "../components/Icon.astro";
+import { LIBRARY as c } from "../data/library.ts";
+import { RESOURCES } from "../data/resources.ts";
+
+// The library index: a title, the tappable condition list, the U=U card, and the
+// prevention / vaccine / testing framing. Ported from the app's Library.
+const conditions = (await getCollection("conditions")).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+---
+
+<Base title="STI basics" description={c.sub}>
+  <div>
+    <h1 class="info-title">{c.title}</h1>
+    <p class="info-lead">{c.sub}</p>
+  </div>
+
+  <div class="sti-card sti-card--flat info-list">
+    {
+      conditions.map((cond) => (
+        <a class="info-list__row" href={`/${cond.slug}`}>
+          <span class="info-list__name">{cond.data.name}</span>
+          <Chip label={cond.data.label} tone={cond.data.tone} />
+          <Icon name="chevron" size={17} class="info-list__chev" />
+        </a>
+      ))
+    }
+  </div>
+
+  <a class="sti-card sti-card--tint info-row" href="/uu">
+    <span class="info-tile info-tile--clear">U=U</span>
+    <span style="flex:1;min-width:0">
+      <span class="info-cardtitle" style="display:block">{c.uuCard.title}</span>
+      <span class="info-cardsub" style="display:block">{c.uuCard.sub}</span>
+    </span>
+    <Icon name="chevron" size={17} class="info-list__chev" />
+  </a>
+
+  <div
+    class="sti-card sti-card--flat info-stack"
+    style="border-color: var(--status-treat-base)"
+  >
+    <div class="info-row" style="justify-content:space-between">
+      <div class="info-row" style="gap:10px">
+        <span class="info-tile info-tile--treat" style="width:38px;height:38px">
+          <Icon name="clock" size={19} />
+        </span>
+        <span class="info-cardtitle">{c.pep.title}</span>
+      </div>
+      <span class="info-pillcap">{c.pep.chip}</span>
+    </div>
+    <div class="info-note">{c.pep.body}</div>
+    <a
+      class="sti-btn sti-btn--secondary sti-btn--md sti-btn--block"
+      href={RESOURCES.pep}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <span class="sti-btn__icon"><Icon name="mapPin" size={16} /></span>{c.pep.cta}
+    </a>
+  </div>
+
+  <div class="sti-card sti-card--flat info-stack" style="gap:12px">
+    <div>
+      <div class="info-cardtitle">{c.tools.title}</div>
+      <div class="info-cardsub">{c.tools.body}</div>
+    </div>
+    {
+      c.tools.items.map((row) => (
+        <div class="info-item">
+          <span class="info-item__icon"><Icon name="shield" size={16} /></span>
+          <div>
+            <strong>{row[0]}</strong>, {row[1]}
+          </div>
+        </div>
+      ))
+    }
+  </div>
+
+  <div class="sti-card sti-card--flat info-stack" style="gap:12px">
+    <div>
+      <div class="info-cardtitle">{c.vax.title}</div>
+      <div class="info-cardsub">{c.vax.body}</div>
+    </div>
+    {
+      c.vax.items.map((row) => (
+        <div class="info-item">
+          <span class="info-item__icon"><Icon name="stethoscope" size={16} /></span>
+          <div>
+            <strong>{row[0]}</strong>, {row[1]}
+          </div>
+        </div>
+      ))
+    }
+    <a
+      class="sti-btn sti-btn--secondary sti-btn--md sti-btn--block"
+      href={RESOURCES.clinic}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <span class="sti-btn__icon"><Icon name="mapPin" size={16} /></span>{c.vax.cta}
+    </a>
+  </div>
+
+  <div class="sti-card sti-card--flat info-stack" style="gap:12px">
+    <div class="info-note">{c.testing.disclaimer}</div>
+    <a
+      class="sti-btn sti-btn--primary sti-btn--lg sti-btn--block"
+      href={RESOURCES.clinic}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <span class="sti-btn__icon"><Icon name="mapPin" size={18} /></span>{
+        c.testing.findTesting
+      }
+    </a>
+    <div class="info-subnote">{c.testing.findTestingSub}</div>
+    <a
+      href={RESOURCES.clinic}
+      target="_blank"
+      rel="noopener noreferrer"
+      style="text-align:center;font-size:13px;font-weight:600;color:var(--text-accent);text-decoration:underline;text-underline-offset:3px"
+    >
+      {c.testing.official}
+    </a>
+  </div>
+
+  <div class="info-disclaimer">{c.footer}</div>
+</Base>

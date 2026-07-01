@@ -1,0 +1,51 @@
+---
+// The shared page frame for info.sti.care. Imports the app's design tokens and
+// component classes directly from the passport package (one source of truth for the
+// palette, type, and primitives, never a duplicated theme), then the small
+// site-specific stylesheet on top. A slim header links back to the app; the footer
+// crosses the library and back to sti.care.
+import "../../../passport/src/design/index.css";
+import "../styles/site.css";
+import Icon from "../components/Icon.astro";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+const {
+  title,
+  description = "Plain, judgment-free answers about sexual health, testing, and prevention.",
+} = Astro.props;
+
+const APP_URL = "https://sti.care";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="light" />
+    <title>{title}</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
+  </head>
+  <body>
+    <header class="info-header">
+      <a class="info-back" href={APP_URL}><Icon name="back" size={18} />sti.care</a>
+      <span class="info-wordmark">Learn</span>
+    </header>
+    <main class="info-page">
+      <slot />
+    </main>
+    <footer class="info-footer">
+      <nav class="info-footer__links">
+        <a href="/">STI basics</a>
+        <a href="/uu">U=U</a>
+        <a href={APP_URL}>Back to sti.care</a>
+      </nav>
+      <div class="info-footer__tag">Plain answers. No judgment.</div>
+    </footer>
+  </body>
+</html>

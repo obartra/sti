@@ -7,6 +7,8 @@ import { Alert } from "../../public/Alert.tsx";
 import { Exposed } from "../../public/Exposed.tsx";
 import { FindableResolve } from "../../findable/FindableResolve.tsx";
 import { SAMPLE_RESOLVED } from "../fixtures.ts";
+import { openResource } from "../../../lib/resources.ts";
+import { infoUrl } from "../../../lib/info.ts";
 import type { ScreenRenderers } from "./context.ts";
 
 export const publicRenderers: ScreenRenderers = {
@@ -34,7 +36,9 @@ export const publicRenderers: ScreenRenderers = {
   ),
   "a2-public": (ctx) => {
     const onClaim = () => ctx.nav.go("b1-claim");
-    const onVerify = () => ctx.nav.go("learn");
+    // "Learn what this means" opens the education library on its own site (doc 34),
+    // in a new tab so the viewer keeps the card they are looking at.
+    const onVerify = () => openResource(infoUrl("/"));
 
     // Self-preview ("what others see"): per alias (doc 15). The owner picks which
     // link to preview and sees the exact face it resolves to, computed locally.

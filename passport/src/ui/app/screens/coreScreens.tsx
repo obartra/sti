@@ -4,6 +4,7 @@ import { Notifications } from "../../core/Notifications.tsx";
 import type { NotificationItem } from "../../core/Notifications.tsx";
 import { Privacy } from "../../core/Privacy.tsx";
 import { RESOURCES, openResource } from "../../../lib/resources.ts";
+import { infoUrl } from "../../../lib/info.ts";
 import { avatarSrc } from "../../../lib/avatars.ts";
 import type { ScreenRenderers } from "./context.ts";
 import { PARTNER_NOTIFY_PROMPT } from "../../../copy/canonical.ts";
@@ -117,10 +118,10 @@ export function notificationItems(
 
 export const coreRenderers: ScreenRenderers = {
   home: (ctx) => <HomeScreen {...ctx} />,
-  care: ({ nav, owner }) => (
+  care: ({ owner }) => (
     <Care
       badge={owner.badge}
-      onLearn={() => nav.go("learn")}
+      onLearn={() => openResource(infoUrl("/"))}
       onFindClinic={() => openResource(RESOURCES.clinic)}
       onLearnOfficial={() => openResource(RESOURCES.clinic)}
       onFindCondoms={() => openResource(RESOURCES.condoms)}

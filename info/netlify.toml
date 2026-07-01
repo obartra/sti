@@ -1,0 +1,30 @@
+# info.sti.care (doc 34). Configured in Netlify as its own site with the base
+# directory set to `info`, so Netlify reads this file, runs the build here, and
+# publishes info/dist. Netlify installs dependencies automatically before the
+# command. The build reaches one level up into the repo for the app's design tokens,
+# which is why this is a repo-checkout site rather than a detached folder.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Security + always-HTTPS headers, mirroring the app (netlify.toml at the repo root).
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "DENY"
+    Permissions-Policy = "geolocation=(), camera=(), microphone=()"
+
+# Astro fingerprints hashed assets under /_astro, so they can be cached forever.
+[[headers]]
+  for = "/_astro/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# HTML revalidates so a deploy is picked up immediately.
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

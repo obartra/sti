@@ -45,6 +45,19 @@ jobs:
           path: passport/html
           if-no-files-found: error
 
+  info:
+    # The static education library (info.sti.care, doc 34): astro type + content
+    # check, the voice/jargon lint over the copy, and a production build.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: ./.github/actions/setup-node
+        with:
+          cache-dependency-path: info/package-lock.json
+      - run: npm ci
+        working-directory: info
+      - run: make check-info
+
   integration:
     # The frontend api client against a real instance of the Go blind store:
     # publish -> resolve -> decrypt must round-trip. Needs both Node and Go, so

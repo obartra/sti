@@ -40,7 +40,7 @@ export interface ReportProps {
   onSavedPositive?: (() => void) | undefined;
   /** Saved with no positive: return home (nav("home", "app")). */
   onSavedHome?: (() => void) | undefined;
-  /** Open the Learn explainer for an infection (nav("learn-detail", ...)). */
+  /** Open the education explainer for an infection on info.sti.care (doc 34). */
   onLearn?: ((id: string) => void) | undefined;
   /** Persist the derived badge inputs (the prototype's setTweak). */
   onTweak?: ((tweak: Record<string, string>) => void) | undefined;

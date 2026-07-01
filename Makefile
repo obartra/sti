@@ -31,9 +31,9 @@ WOKE_VERSION ?= v0.19.0
 DEADCODE_VERSION ?= v0.47.0
 
 .PHONY: help backend web dev \
-	check-root check-web test-integration test-e2e check-server deadcode vulncheck smoke \
+	check-root check-web check-info test-integration test-e2e check-server deadcode vulncheck smoke \
 	inclusive-language \
-	check ci build-web build-server build-release \
+	check ci build-web build-info build-server build-release \
 	secrets secrets-pull secrets-diff secrets-sync secrets-edit gen-vapid gen-decoy gen-admin
 
 help: ## List the targets
@@ -67,6 +67,11 @@ check-web: ## Passport: lint + typecheck + unused-code (knip) + unit tests
 	cd passport && npm run knip
 	cd passport && npm run test:cov
 
+check-info: ## Info site: astro check + voice lint + static build (doc 34)
+	cd info && npm run check
+	cd info && npm run lint:voice
+	cd info && npm run build
+
 test-integration: ## Passport API client against a real Go store
 	cd passport && npm run test:integration
 
@@ -93,14 +98,17 @@ smoke: ## Server: build, boot a throwaway instance, run the smoke script
 
 ## --- Aggregates ---
 
-check: check-root check-web check-server ## Fast pre-push gates (no integration/e2e)
+check: check-root check-web check-info check-server ## Fast pre-push gates (no integration/e2e)
 
-ci: check-root check-web test-integration test-e2e check-server vulncheck smoke ## Everything CI runs
+ci: check-root check-web check-info test-integration test-e2e check-server vulncheck smoke ## Everything CI runs
 
 ## --- Build ---
 
 build-web: ## Build the passport frontend
 	cd passport && npm run build
+
+build-info: ## Build the info site (static)
+	cd info && npm run build
 
 build-server: ## Build the Go server
 	cd server && go build ./...

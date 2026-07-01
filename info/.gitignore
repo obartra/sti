@@ -1,0 +1,10 @@
+# build output
+dist/
+# generated types + content cache (astro sync regenerates on build/check)
+.astro/
+src/env.d.ts
+# deps
+node_modules/
+# env
+.env
+.env.production

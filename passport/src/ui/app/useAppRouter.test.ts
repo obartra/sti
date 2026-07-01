@@ -203,16 +203,11 @@ describe("parameterized deep-links and cold-hit redirects", () => {
       screen: "group-create",
       data: { id: "abc123" },
     });
-    expect(routeAt("/care/learn/prep")).toMatchObject({
-      screen: "learn-detail",
-      data: { id: "prep" },
-    });
   });
 
-  it("does not mistake the fixed /groups/new and /care/learn/uu for ids", () => {
+  it("does not mistake the fixed /groups/new for an id", () => {
     expect(routeAt("/groups/new")?.screen).toBe("group-create");
     expect(routeAt("/groups/new")?.data).toBeNull();
-    expect(routeAt("/care/learn/uu")?.screen).toBe("learn-uu");
   });
 
   it("redirects the cold transient paths to a safe fallback", () => {
@@ -254,8 +249,6 @@ describe("every screen owns a clean path", () => {
     expect(routeAt("/links")?.screen).toBe("links");
     expect(routeAt("/groups")?.screen).toBe("groups");
     expect(routeAt("/groups/new")?.screen).toBe("group-create");
-    expect(routeAt("/care/learn")?.screen).toBe("learn");
-    expect(routeAt("/care/learn/uu")?.screen).toBe("learn-uu");
     expect(routeAt("/links/share")?.screen).toBe("alias-share");
     expect(routeAt("/people/scan")?.screen).toBe("scan");
     expect(routeAt("/wallet")?.screen).toBe("wallet");
