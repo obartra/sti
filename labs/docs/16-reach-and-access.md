@@ -133,9 +133,9 @@ Duration is a property of the link/capability, not a per-viewer timer.
 - **v1 supports an updatable lifetime + immediate revoke.** The owner can extend or shorten a link's
   lifetime at any time and can revoke immediately (overwrite the payload to garbage, drop the
   record). Nothing is immutable.
-- **Expiry is an absolute timestamp (epoch ms), so it can be sub-day.** Durations are presets the
-  owner picks (e.g. 1 day, 7 days, 30 days, or no expiry); the link's `expiresAt` is `now + preset`
-  at the moment it is set.
+- **Expiry is an absolute timestamp (epoch ms); the mechanism allows sub-day, though the presets
+  today are day-granular.** Durations are presets the owner picks (1 day, 7 days, 30 days, or no
+  expiry); the link's `expiresAt` is `now + preset` at the moment it is set.
 - **Enforcement is server-side, and the device also sweeps.** The server stores each alias's
   `expiresAt` and, once reached, answers reads with a decoy, the same uniform response a
   non-existent id gets. The owner's device sweeps (revoke + drop) on its next action.
