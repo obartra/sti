@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { NavLink } from "../app/NavLink.tsx";
 import { pathForScreen } from "../app/useAppRouter.ts";
+import { infoUrl } from "../../lib/info.ts";
 import { TRUST_FOOTER } from "./trustCopy.ts";
 
 // The quiet trust footer shown on the public surfaces (doc 23): the landing, the
@@ -91,6 +92,17 @@ export function TrustFooter({
             {TRUST_FOOTER.shareLink}
           </NavLink>
         )}
+        {/* The education library lives on its own site (doc 34), so this is a real
+            external anchor, not an in-app route. noreferrer keeps the app origin off
+            the outbound request. */}
+        <a
+          href={infoUrl("/")}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={linkStyle}
+        >
+          {TRUST_FOOTER.library}
+        </a>
       </div>
       <div style={{ fontSize: 12, color: "var(--text-subtle)" }}>
         {TRUST_FOOTER.tagline}

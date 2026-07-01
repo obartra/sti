@@ -15,6 +15,9 @@ export const TRUST_FOOTER = {
   feedbackLead: "Something wrong?",
   feedbackLink: "Tell us",
   shareLink: "Share your link",
+  // Opens the education library on its own static site (doc 34). External, so it is a
+  // real anchor to info.sti.care rather than an in-app route.
+  library: "STI basics",
 } as const;
 
 /** The short link near the landing call to action. */
