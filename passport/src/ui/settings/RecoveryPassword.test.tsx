@@ -20,7 +20,7 @@ describe("RecoveryPassword", () => {
     const ops = okOps();
     render(<RecoveryPassword recoveryName={null} ops={ops} />);
 
-    await userEvent.type(screen.getByLabelText("Recovery name"), "RobiN");
+    await userEvent.type(screen.getByLabelText("Username"), "RobiN");
     await userEvent.type(screen.getByLabelText("New password"), STRONG);
     await userEvent.type(screen.getByLabelText("Confirm password"), STRONG);
     await userEvent.type(
@@ -42,7 +42,7 @@ describe("RecoveryPassword", () => {
     const ops = okOps();
     render(<RecoveryPassword recoveryName={null} ops={ops} />);
 
-    await userEvent.type(screen.getByLabelText("Recovery name"), "robin");
+    await userEvent.type(screen.getByLabelText("Username"), "robin");
     await userEvent.type(screen.getByLabelText("New password"), STRONG);
     await userEvent.type(
       screen.getByLabelText("Confirm password"),
@@ -75,7 +75,7 @@ describe("RecoveryPassword", () => {
     };
     render(<RecoveryPassword recoveryName={null} ops={ops} />);
 
-    await userEvent.type(screen.getByLabelText("Recovery name"), "robin");
+    await userEvent.type(screen.getByLabelText("Username"), "robin");
     await userEvent.type(screen.getByLabelText("New password"), STRONG);
     await userEvent.type(screen.getByLabelText("Confirm password"), STRONG);
     await userEvent.type(screen.getByLabelText("Recovery phrase"), "phrase");
@@ -84,7 +84,7 @@ describe("RecoveryPassword", () => {
     );
 
     expect(
-      await screen.findByText("That recovery name is taken. Try another one."),
+      await screen.findByText("That username is taken. Try another one."),
     ).toBeInTheDocument();
   });
 });

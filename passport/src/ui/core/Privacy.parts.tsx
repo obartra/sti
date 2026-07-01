@@ -10,10 +10,14 @@ import { SETTINGS_SCREEN_NAME } from "../../copy/canonical.ts";
 // nothing here fakes it.)
 export const COPY = {
   title: SETTINGS_SCREEN_NAME,
-  avatarTitle: "Your avatar",
-  avatarSub: "The look you can choose to show on a link.",
-  avatarEdit: "Edit",
-  controlsTitle: "Controls",
+  accountTitle: "Account",
+  profileTitle: "Profile",
+  aboutTitle: "About sti.care",
+  logOut: "Log out",
+  faceTitle: "Your face",
+  faceSub: "The look you can show when you reveal yourself on a link.",
+  faceEdit: "Edit",
+  profileSub: "What people see on your card.",
   anonAlerts: "Anonymous partner alerts",
   anonAlertsSub:
     "Built in. If you report a positive, recent connections get an anonymous heads-up. It's always on, and it goes out with no name attached.",
@@ -54,6 +58,9 @@ export const COPY = {
   keepBody:
     "We keep your saved data while you use the app. Stop using it and we delete your backup about two years later. Opening sti.care any time keeps it, and we have no other way to reach you, so we cannot warn you first.",
   keepPrefix: "As things stand, that would be around ",
+  aboutPromises: "The promises we keep",
+  aboutPrivacy: "Privacy",
+  aboutTerms: "Terms",
 } as const;
 
 // The inactivity window after which the server deletes an untouched account backup
@@ -92,6 +99,46 @@ export const fieldLbl: CSSProperties = {
   color: "var(--text-body)",
   marginBottom: 10,
 };
+
+// A settings section heading (Account, Profile), a touch stronger than fieldLbl.
+const sectionHeading: CSSProperties = {
+  fontSize: 17,
+  fontWeight: 800,
+  letterSpacing: "-0.01em",
+  color: "var(--text-strong)",
+};
+
+// A labeled block: a section heading, an optional sub-line, then its cards.
+export function Section({
+  title,
+  sub,
+  children,
+}: {
+  title: string;
+  sub?: string | undefined;
+  children: ReactNode;
+}) {
+  return (
+    <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div>
+        <div style={sectionHeading}>{title}</div>
+        {sub !== undefined && (
+          <div
+            style={{
+              fontSize: 13,
+              color: "var(--text-muted)",
+              lineHeight: 1.5,
+              marginTop: 2,
+            }}
+          >
+            {sub}
+          </div>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export function Chip({
   active,

@@ -1,4 +1,10 @@
-import { render, screen, renderHook, act } from "@testing-library/react";
+import {
+  render,
+  screen,
+  renderHook,
+  act,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, it, expect, vi, type Mock } from "vitest";
 import { Privacy } from "./Privacy.tsx";
@@ -23,8 +29,8 @@ function applyLast(set: Mock, from: OwnerState): OwnerState {
   return (call[0] as Updater)(from);
 }
 
-describe("Privacy avatar editor entry (doc 19 slice 5)", () => {
-  it("shows the avatar entry and routes to the editor on Edit", async () => {
+describe("Privacy face editor entry (doc 19 slice 5)", () => {
+  it("shows the face entry and routes to the editor on Edit", async () => {
     const onEditAvatar = vi.fn();
     render(
       <Privacy
@@ -34,12 +40,12 @@ describe("Privacy avatar editor entry (doc 19 slice 5)", () => {
         onEditAvatar={onEditAvatar}
       />,
     );
-    expect(screen.getByText("Your avatar")).toBeInTheDocument();
+    expect(screen.getByText("Your face")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Edit" }));
     expect(onEditAvatar).toHaveBeenCalledTimes(1);
   });
 
-  it("hides the avatar entry when no editor handler is provided", () => {
+  it("hides the face entry when no editor handler is provided", () => {
     render(
       <Privacy
         ownerState={INITIAL_OWNER_STATE}
@@ -47,12 +53,12 @@ describe("Privacy avatar editor entry (doc 19 slice 5)", () => {
         avatarSrc="data:image/svg+xml,<svg/>"
       />,
     );
-    expect(screen.queryByText("Your avatar")).not.toBeInTheDocument();
+    expect(screen.queryByText("Your face")).not.toBeInTheDocument();
   });
 });
 
-describe("Privacy name editor", () => {
-  it("saves an edited local display name", async () => {
+describe("Privacy display-name editor (autosaves as you type)", () => {
+  it("saves an edited local display name, no button", async () => {
     const onSetName = vi.fn();
     render(
       <Privacy
@@ -62,17 +68,19 @@ describe("Privacy name editor", () => {
         onSetName={onSetName}
       />,
     );
+    // No save button: the label is a device-local one that autosaves.
+    expect(
+      screen.queryByRole("button", { name: "Save" }),
+    ).not.toBeInTheDocument();
     const input = screen.getByPlaceholderText("Pick a display name");
-    // Save is disabled until the value changes.
-    const save = screen.getByRole("button", { name: "Save" });
-    expect(save).toBeDisabled();
     await userEvent.clear(input);
     await userEvent.type(input, "robin2");
-    await userEvent.click(save);
-    expect(onSetName).toHaveBeenCalledWith("robin2");
+    // Debounced, and a quiet "Saved" appears once it lands.
+    await waitFor(() => expect(onSetName).toHaveBeenCalledWith("robin2"));
+    expect(await screen.findByText("Saved")).toBeInTheDocument();
   });
 
-  it("clears the name to null on an empty save", async () => {
+  it("clears the name to null when emptied", async () => {
     const onSetName = vi.fn();
     render(
       <Privacy
@@ -83,8 +91,7 @@ describe("Privacy name editor", () => {
       />,
     );
     await userEvent.clear(screen.getByPlaceholderText("Pick a display name"));
-    await userEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(onSetName).toHaveBeenCalledWith(null);
+    await waitFor(() => expect(onSetName).toHaveBeenCalledWith(null));
   });
 
   it("hides the name editor when no setter is provided", () => {
@@ -275,6 +282,48 @@ describe("Privacy retention notice (auto-delete after inactivity)", () => {
 
   it("keepUntilLabel adds the retention window as a plain Month YYYY", () => {
     expect(keepUntilLabel(1_750_000_000_000)).toBe("June 2027");
+  });
+});
+
+describe("Privacy log out and About footer", () => {
+  it("shows Log out as a plain row, not inside the danger zone", async () => {
+    const onLogOut = vi.fn();
+    render(
+      <Privacy
+        ownerState={INITIAL_OWNER_STATE}
+        setOwnerState={() => undefined}
+        onLogOut={onLogOut}
+      />,
+    );
+    const logOut = screen.getByRole("button", { name: "Log out" });
+    // It must not sit next to Delete: the danger card is a separate subtree.
+    expect(logOut.closest("section")).toBeNull();
+    await userEvent.click(logOut);
+    expect(onLogOut).toHaveBeenCalledTimes(1);
+  });
+
+  it("moves the legal pages into the About footer", async () => {
+    const onViewPromises = vi.fn();
+    const onViewPrivacyPolicy = vi.fn();
+    const onViewTerms = vi.fn();
+    render(
+      <Privacy
+        ownerState={INITIAL_OWNER_STATE}
+        setOwnerState={() => undefined}
+        onViewPromises={onViewPromises}
+        onViewPrivacyPolicy={onViewPrivacyPolicy}
+        onViewTerms={onViewTerms}
+      />,
+    );
+    expect(screen.getByText("About sti.care")).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "The promises we keep" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Privacy" }));
+    await userEvent.click(screen.getByRole("button", { name: "Terms" }));
+    expect(onViewPromises).toHaveBeenCalledTimes(1);
+    expect(onViewPrivacyPolicy).toHaveBeenCalledTimes(1);
+    expect(onViewTerms).toHaveBeenCalledTimes(1);
   });
 });
 
