@@ -122,22 +122,22 @@ In both modes, the server never sees the status, the AES key, the handle, or the
 
 Duration is a property of the link/capability, not a per-viewer timer.
 
-- **Expiry is a per-contact one-off-link affordance only.** The owner's standing share link is
-  durable in either mode: the opaque `/a/` link and the named `/u/` public profile alike stay live
-  until revoked and never carry a server expiry (a standing link that silently lapses is a trap).
-  Taking one down is a revoke, or releasing its public name, never a timer. Only the individually
-  addressed **one-off links** the owner mints for a single person (per-contact links) carry an
-  expiry, because a link you hand to one person sensibly lapses. Everything else in this section is
-  about those one-off links. (Enforced in the publish layer: the standing share alias is always
-  written with no expiry. See doc 31.)
-- **v1 supports updatable per-contact duration + immediate revoke.** The owner can extend or shorten
-  a one-off link's lifetime at any time and can revoke immediately (overwrite the payload to
-  garbage, drop the record). Nothing is immutable.
+- **The private link is expirable; the public profile and public name are durable.** The owner picks
+  how long the private `/a/` link keeps working (a preset lifetime, or until they turn it off), so a
+  link handed to one person can sensibly lapse. The public surfaces never carry a server expiry: the
+  opaque public profile and the named `/u/` public profile stay live until revoked (or until the
+  public name is released), because a standing public link that silently lapses is a trap. Per-contact
+  one-off links, the individually addressed links the owner mints for a single person, carry an
+  expiry the same way. (Enforced in the publish layer: any public alias is always written with no
+  expiry, so a private lifetime never leaks onto a public link. See doc 31.)
+- **v1 supports an updatable lifetime + immediate revoke.** The owner can extend or shorten a link's
+  lifetime at any time and can revoke immediately (overwrite the payload to garbage, drop the
+  record). Nothing is immutable.
 - **Expiry is an absolute timestamp (epoch ms), so it can be sub-day.** Durations are presets the
-  owner picks for a one-off link (e.g. 1 hour, 24 hours, 7 days, 30 days, or no expiry); the link's
-  `expiresAt` is `now + preset` at the moment it is set.
+  owner picks (e.g. 1 day, 7 days, 30 days, or no expiry); the link's `expiresAt` is `now + preset`
+  at the moment it is set.
 - **Enforcement is server-side, and the device also sweeps.** The server stores each alias's
-  `expiresAt` and, once reached, answers reads with a decoy — the same uniform response a
+  `expiresAt` and, once reached, answers reads with a decoy, the same uniform response a
   non-existent id gets. The owner's device sweeps (revoke + drop) on its next action.
 - **Deferred:** true per-viewer durations (expiring one recipient without affecting others). That
   needs per-viewer re-keying, which breaks the single fixed-size ciphertext; stated as a known
@@ -191,7 +191,7 @@ passport they are requesting). A private link defaults to a pseudonym but can be
 4. **Blob upgrade:** `findable: FindableRegistration` (single, optional) →
    `findable: FindableRegistration[]` (array, capped at 5 at write time). Each entry carries its
    own handle + alias id. Bump the blob version.
-5. **Updatable per-link duration UI** (extend/shorten + revoke-now) for both modes.
+5. **Updatable lifetime UI** on the private link (a "link lasts" preset row); revoke-now in both modes.
 6. **QR** (private-link encoder + scan entry point for in-person sharing). No server surface.
 7. **Existing vanity infrastructure stays unchanged:** vanity_name table, /u/ server endpoint,
    charset validation, reserved list, blocklist, admin review endpoints and panel, report intake,

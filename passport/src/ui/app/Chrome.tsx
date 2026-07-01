@@ -46,6 +46,9 @@ export interface ChromeProps {
   onShareIdentityChange: (choice: AliasIdentity) => void;
   shareAvatarOverride: AvatarConfig | undefined;
   onShareAvatarOverrideChange: (avatar: AvatarConfig | undefined) => void;
+  /** How long the private link keeps working, or null for until turned off. */
+  shareLifetime: number | null;
+  onShareLifetimeChange: (durationMs: number | null) => void;
   onDeleteAccount: () => void;
   onSetAvatar: ScreenCtx["onSetAvatar"];
   onSetName: ScreenCtx["onSetName"];
@@ -119,7 +122,14 @@ function ShareOverlay({
   onShareIdentityChange,
   shareAvatarOverride,
   onShareAvatarOverrideChange,
+  shareLifetime,
+  onShareLifetimeChange,
 }: ChromeProps) {
+  // The lifetime control is a private-link affordance only (doc 16): a public
+  // profile never lapses, so the handler is passed only in "link" mode, and the
+  // sheet hides the row when it has no handler.
+  const onLifetimeChange =
+    owner.sharingMode === "link" ? onShareLifetimeChange : undefined;
   return (
     <ShareSheet
       open={shareOpen}
@@ -138,6 +148,8 @@ function ShareOverlay({
       avatar={owner.avatar}
       avatarOverride={shareAvatarOverride}
       onAvatarOverrideChange={onShareAvatarOverrideChange}
+      lifetime={shareLifetime}
+      onLifetimeChange={onLifetimeChange}
       onCopy={onCopyShareLink}
       onRevoke={onRevokeShareLink}
       onWallet={() => {

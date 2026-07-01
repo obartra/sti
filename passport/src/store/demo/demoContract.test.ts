@@ -87,6 +87,11 @@ async function walkController(controller: SessionController): Promise<void> {
   expect(shared.url).toMatch(URL_RE);
   const renewed = await controller.renewLink(shared.session);
   expect(renewed.url).toMatch(URL_RE);
+  // Setting a lifetime resolves to a session (the demo has no server to enforce
+  // an expiry, so it is inert but must still round-trip like the real method).
+  expect(
+    await controller.setShareLinkExpiry(renewed.session, null),
+  ).not.toBeNull();
 
   // Inbox: one contentless ask (a count with no grantable pending) and an approve
   // that honors however many it is handed.

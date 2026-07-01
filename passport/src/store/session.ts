@@ -55,6 +55,7 @@ import {
   renameContactLabel,
   revokeContactLink,
   revokeAliasLink,
+  setShareLinkExpiry,
   shareLinkFor,
   type RevealChoice,
 } from "./shareOps.ts";
@@ -184,6 +185,17 @@ export interface SessionController {
     identity?: AliasIdentity,
     avatarOverride?: AvatarConfig,
   ): Promise<ShareLinkResult>;
+  /**
+   * Set how long the private link keeps working (doc 16): re-publish the current
+   * private-link alias with a new expiry so the server stops answering for it once
+   * it lapses. `durationMs` is counted from now; null keeps it working until the
+   * owner turns it off. A no-op in public mode (a public profile never lapses) or
+   * when no private link exists yet. Returns the (possibly updated) session.
+   */
+  setShareLinkExpiry(
+    session: OwnerSession,
+    durationMs: number | null,
+  ): Promise<OwnerSession>;
   /**
    * Permanently delete the account: revoke every shared link and remove the
    * account blob, then forget this device's passkey binding. After this the
@@ -520,6 +532,9 @@ export function createSessionController(deps: SessionDeps): SessionController {
       // the mode, since the old record is gone).
       return shareLinkFor(api, accounts, working, { identity, avatarOverride });
     },
+
+    setShareLinkExpiry: (session, durationMs) =>
+      setShareLinkExpiry(api, accounts, session, durationMs),
 
     async deleteAccount(session) {
       // Best-effort: drop any public findable binding first (doc 17), so the name

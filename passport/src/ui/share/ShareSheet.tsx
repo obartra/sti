@@ -14,6 +14,7 @@ import {
   previewFace,
 } from "./ShareSheet.identity.tsx";
 import { Grabber, WalletRow } from "./ShareSheet.parts.tsx";
+import { LifetimeRow } from "./ShareSheet.lifetime.tsx";
 import {
   UrlCard,
   urlStateOf,
@@ -99,6 +100,12 @@ export interface ShareSheetProps {
   onAvatarOverrideChange?:
     | ((avatar: AvatarConfig | undefined) => void)
     | undefined;
+  /** How long the private link keeps working (doc 16): a duration in ms, or null
+   * for until the owner turns it off. Only read when the lifetime control shows. */
+  lifetime?: number | null | undefined;
+  /** Set the private link's lifetime. When absent (public mode, or Storybook), the
+   * lifetime control is hidden: only a private link lapses, a profile never does. */
+  onLifetimeChange?: ((durationMs: number | null) => void) | undefined;
 }
 
 function SheetHeader({
@@ -241,7 +248,31 @@ function SheetActions({
   );
 }
 
-export function ShareSheet(props: ShareSheetProps): ReactElement {
+// The reassurance line under the badge card ("Just your status, nothing else").
+function Reassurance(): ReactElement {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        justifyContent: "center",
+        margin: "14px 0 14px",
+        color: "var(--text-subtle)",
+        fontSize: 12.5,
+        textAlign: "center",
+      }}
+    >
+      <Eye size={14} /> {COPY.reassurance}
+    </div>
+  );
+}
+
+// The sheet panel itself (the positioned card, or bottom sheet): badge preview,
+// the identity / face / lifetime controls, the URL card, and the action row.
+// Lifted out of ShareSheet so that component stays within its size/complexity
+// caps; it just resolves props and mounts the overlay + this panel.
+function SheetPanel(props: ShareSheetProps): ReactElement {
   const {
     open,
     onClose,
@@ -262,10 +293,16 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
     avatar,
     avatarOverride,
     onAvatarOverrideChange,
+    lifetime = null,
+    onLifetimeChange,
     error,
     onRetry,
   } = props;
   const link = sharingMode === "link";
+  // The lifetime control belongs to the private link only (doc 16): a public
+  // profile and a public name never lapse, so the handler is dropped outside
+  // link mode and LifetimeRow then hides itself.
+  const onLifetime = link ? onLifetimeChange : undefined;
   const urlState = urlStateOf(realUrl, error);
   const { url, seed } = displayLink(realUrl, link);
   const overrideSrc =
@@ -287,6 +324,52 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
   const onShare = () =>
     nativeShareOrClose(nativeShare, realUrl ?? `https://${url}`, onClose);
 
+  return (
+    <div style={sheetStyleFor(desktop, open)}>
+      <Grabber desktop={desktop} />
+      <SheetHeader link={link} onClose={onClose} />
+      <BadgeCard
+        state={state}
+        labels={labels}
+        route={route}
+        identity={{ handle: face.handle }}
+        avatarSrc={face.avatarSrc}
+        width="100%"
+      />
+      <Reassurance />
+      <IdentityChoiceRow
+        choice={identityChoice}
+        hasName={identity.handle !== undefined && identity.handle.length > 0}
+        onChange={onIdentityChange}
+      />
+      <FaceOverrideRow
+        choice={identityChoice}
+        override={avatarOverride}
+        fallback={avatar}
+        onChange={onAvatarOverrideChange}
+      />
+      <LifetimeRow choice={lifetime} onChange={onLifetime} />
+      <UrlCard
+        link={link}
+        state={urlState}
+        url={url}
+        seed={seed}
+        onCopy={onCopy}
+        onRetry={onRetry}
+      />
+      <WalletRow show={showWallet} onWallet={onWallet} />
+      <SheetActions
+        link={link}
+        nativeShare={nativeShare}
+        onShare={onShare}
+        onRevoke={onRevoke}
+      />
+    </div>
+  );
+}
+
+export function ShareSheet(props: ShareSheetProps): ReactElement {
+  const { open, onClose } = props;
   return (
     <div
       aria-hidden={!open}
@@ -314,58 +397,7 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
           transition: "opacity var(--dur-base) var(--ease-gentle)",
         }}
       />
-      <div style={sheetStyleFor(desktop, open)}>
-        <Grabber desktop={desktop} />
-        <SheetHeader link={link} onClose={onClose} />
-        <BadgeCard
-          state={state}
-          labels={labels}
-          route={route}
-          identity={{ handle: face.handle }}
-          avatarSrc={face.avatarSrc}
-          width="100%"
-        />
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            justifyContent: "center",
-            margin: "14px 0 14px",
-            color: "var(--text-subtle)",
-            fontSize: 12.5,
-            textAlign: "center",
-          }}
-        >
-          <Eye size={14} /> {COPY.reassurance}
-        </div>
-        <IdentityChoiceRow
-          choice={identityChoice}
-          hasName={identity.handle !== undefined && identity.handle.length > 0}
-          onChange={onIdentityChange}
-        />
-        <FaceOverrideRow
-          choice={identityChoice}
-          override={avatarOverride}
-          fallback={avatar}
-          onChange={onAvatarOverrideChange}
-        />
-        <UrlCard
-          link={link}
-          state={urlState}
-          url={url}
-          seed={seed}
-          onCopy={onCopy}
-          onRetry={onRetry}
-        />
-        <WalletRow show={showWallet} onWallet={onWallet} />
-        <SheetActions
-          link={link}
-          nativeShare={nativeShare}
-          onShare={onShare}
-          onRevoke={onRevoke}
-        />
-      </div>
+      <SheetPanel {...props} />
     </div>
   );
 }

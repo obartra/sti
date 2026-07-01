@@ -118,6 +118,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
     // Revoke & renew: a distinct id, so the surfaced link visibly changes.
     renewLink: (session) =>
       Promise.resolve({ session, url: `https://sti.care/a/${"w".repeat(43)}` }),
+    setShareLinkExpiry: (session) => Promise.resolve(session),
     deleteAccount: () => Promise.resolve(),
     reviewKnocks: () => Promise.resolve({ count: 0, pending: [] }),
     approveKnocks: () => Promise.resolve(0),
