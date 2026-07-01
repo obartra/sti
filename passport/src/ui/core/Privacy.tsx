@@ -36,6 +36,10 @@ export interface PrivacyProps {
   vanityName?: string | null | undefined;
   /** The owner's recovery name, or null when no password is set (doc 32). */
   recoveryName?: string | null | undefined;
+  /** The owner's stored recovery phrase for re-viewing (doc 32). null means it is
+   * not stored on this device (the re-view card shows the sign-in fallback);
+   * undefined hides the card entirely (a logged-out preview). */
+  recoveryPhrase?: string | null | undefined;
   /** Turn the password factor on/off; present (and the card shown) only when
    * recovery is enabled and the owner is logged in. */
   recoveryOps?: RecoveryPasswordOps | undefined;
@@ -85,6 +89,7 @@ export function Privacy({
   findableOps,
   recoveryName = null,
   recoveryOps,
+  recoveryPhrase,
 }: PrivacyProps) {
   const state = usePrivacyState(ownerState, setOwnerState);
   return (
@@ -118,6 +123,7 @@ export function Privacy({
           findableOps={findableOps}
           recoveryName={recoveryName}
           recoveryOps={recoveryOps}
+          recoveryPhrase={recoveryPhrase}
         />
 
         <ProfileSection

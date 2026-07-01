@@ -132,6 +132,9 @@ export interface ScreenCtx {
   onReleaseVanityName: () => Promise<void>;
   /** The owner's recovery name, or null when no password factor is set (doc 32). */
   recoveryName: string | null;
+  /** The owner's stored recovery phrase, for re-viewing in Settings (doc 32), or
+   * null when it is not stored on this device (logged out, or a passkey-only resume). */
+  recoveryPhrase: string | null;
   /** Turn the password factor on (or change it); resolves with the outcome. */
   onSetRecoveryPassword: (
     input: SetRecoveryPasswordInput,

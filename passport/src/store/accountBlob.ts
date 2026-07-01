@@ -13,7 +13,11 @@
  * are added in later slices; the version guards that growth.
  */
 
-import { utf8ToBytes, type Bytes } from "../crypto/index.ts";
+import {
+  utf8ToBytes,
+  parseRecoveryPhrase,
+  type Bytes,
+} from "../crypto/index.ts";
 import { validId } from "../api/contract.ts";
 import { hasVanityNameShape } from "./vanityName.ts";
 import { isOwnerState, type OwnerState } from "../core/badge.ts";
@@ -56,7 +60,18 @@ import type { NotifyCapability } from "./notifyInbox.ts";
 // is not a secret and never derived from the password (the account id still derives
 // from the phrase only); it shares the vanity-name charset but is a separate
 // namespace, shape-validated only.
-const SCHEMA_VERSION = 13;
+//
+// v14 adds the optional `recoveryPhrase` (doc 32): the account's own recovery
+// phrase, stored inside this already-encrypted blob so the owner can re-view it from
+// Settings. The phrase is the 256-bit root secret; keeping it here adds no new
+// derivation power (opening the blob already needs the root the phrase derives), it
+// only lets a root-holding session re-display it. It is written at sign-up and
+// backfilled on the next phrase login for accounts created before this feature;
+// absent on an account that has only ever resumed by passkey. Validated strictly to
+// the app-phrase format so a malformed value fails the parse rather than surfacing a
+// broken phrase. The blob never leaves the device unencrypted, so the phrase only
+// ever lives inside the encrypted vault.
+const SCHEMA_VERSION = 14;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -204,6 +219,17 @@ export interface AccountBlob {
    * never derived from the password.
    */
   readonly recoveryName?: string;
+  /**
+   * The account's own recovery phrase (doc 32), stored inside this encrypted blob so
+   * Settings can re-view it. It is the 43-char app-generated phrase and is validated
+   * to that exact format on parse. Written at sign-up and backfilled on a phrase
+   * login; absent on an account that has only resumed by passkey (the phrase is not
+   * available there), in which case Settings shows a re-view-after-sign-in fallback.
+   * Storing it adds no derivation power: opening this blob already needs the root the
+   * phrase derives. It only ever lives inside the encrypted vault, never on the
+   * server in plaintext, in logs, or in any unencrypted store.
+   */
+  readonly recoveryPhrase?: string;
 }
 
 interface AccountBlobWire extends Omit<AccountBlob, "handle"> {
@@ -371,6 +397,16 @@ function isOptionalRecoveryName(x: unknown): boolean {
   return x === undefined || hasVanityNameShape(x);
 }
 
+// The stored recovery phrase (doc 32): absent, or an exact app-phrase (the 43-char
+// base64url format parseRecoveryPhrase validates). A malformed value fails the parse
+// rather than surfacing a broken phrase in Settings.
+function isOptionalRecoveryPhrase(x: unknown): boolean {
+  return (
+    x === undefined ||
+    (typeof x === "string" && parseRecoveryPhrase(x) !== null)
+  );
+}
+
 export function serializeAccountBlob(blob: AccountBlob): Bytes {
   // myInbox and theirNotify ride inside each contact; circles/findable are omitted
   // when absent, so a contact-only account stays compact.
@@ -389,6 +425,9 @@ export function serializeAccountBlob(blob: AccountBlob): Bytes {
     ...(blob.findable !== undefined ? { findable: blob.findable } : {}),
     ...(blob.recoveryName !== undefined
       ? { recoveryName: blob.recoveryName }
+      : {}),
+    ...(blob.recoveryPhrase !== undefined
+      ? { recoveryPhrase: blob.recoveryPhrase }
       : {}),
   };
   return utf8ToBytes(JSON.stringify(wire));
@@ -430,6 +469,9 @@ function assertValidOptionalFields(o: Record<string, unknown>): void {
   if (!isOptionalRecoveryName(o.recoveryName)) {
     throw new Error("account blob: invalid recoveryName");
   }
+  if (!isOptionalRecoveryPhrase(o.recoveryPhrase)) {
+    throw new Error("account blob: invalid recoveryPhrase");
+  }
   if (!isOptionalHomeDefaultView(o.homeDefaultView)) {
     throw new Error("account blob: invalid homeDefaultView");
   }
@@ -459,6 +501,9 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
     ...(isFindableRegistration(o.findable) ? { findable: o.findable } : {}),
     ...(hasVanityNameShape(o.recoveryName)
       ? { recoveryName: o.recoveryName }
+      : {}),
+    ...(typeof o.recoveryPhrase === "string"
+      ? { recoveryPhrase: o.recoveryPhrase }
       : {}),
   };
 }

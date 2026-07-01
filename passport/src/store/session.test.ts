@@ -38,6 +38,9 @@ function fakeBackend() {
         state: INITIAL_OWNER_STATE,
         avatar: DEFAULT_AVATAR,
         sharingMode: "link",
+        // The phrase is stored in the (encrypted) blob so Settings can re-view it
+        // (doc 32), mirroring the real AccountManager.
+        recoveryPhrase,
       };
       byId.set(await deriveAccountId(root), blob);
       return { recoveryPhrase, root, blob };
@@ -134,7 +137,7 @@ function setup(passkey: PasskeyAuth = fakePasskey()) {
     keys: createVolatileRootKeyStore(),
     api: stubApi,
   };
-  return { ctl: createSessionController(deps), devices, passkey };
+  return { ctl: createSessionController(deps), devices, passkey, sync };
 }
 
 describe("session controller", () => {
@@ -207,6 +210,37 @@ describe("session controller", () => {
     if (resumed.ok) {
       expect(resumed.session.root).toEqual(session.root);
       expect(resumed.session.blob).toEqual(session.blob);
+    }
+  });
+
+  it("signUp stores the phrase in the session blob, and resume preserves it (doc 32)", async () => {
+    const { ctl } = setup();
+    const { session, recoveryPhrase } = await ctl.signUp("robin");
+    expect(session.blob.recoveryPhrase).toBe(recoveryPhrase);
+    await ctl.enrollPasskey(recoveryPhrase, "robin");
+    const resumed = await ctl.resume();
+    expect(resumed.ok).toBe(true);
+    if (resumed.ok) {
+      expect(resumed.session.blob.recoveryPhrase).toBe(recoveryPhrase);
+    }
+  });
+
+  it("passkey resume never fabricates a phrase for a passkey-only blob (doc 32)", async () => {
+    // A passkey-only account has no stored phrase (it was never seen on this
+    // device). Resume must return the blob as-is, absent phrase and all, so the
+    // Settings re-view shows its honest fallback rather than a made-up value.
+    const { ctl, sync } = setup();
+    const { session, recoveryPhrase } = await ctl.signUp("robin");
+    await ctl.enrollPasskey(recoveryPhrase, "robin");
+    // Strip the stored phrase to model a pre-feature / passkey-only blob.
+    const stripped = { ...session.blob };
+    delete (stripped as { recoveryPhrase?: string }).recoveryPhrase;
+    await sync.save(session.root, stripped);
+
+    const resumed = await ctl.resume();
+    expect(resumed.ok).toBe(true);
+    if (resumed.ok) {
+      expect(resumed.session.blob.recoveryPhrase).toBeUndefined();
     }
   });
 

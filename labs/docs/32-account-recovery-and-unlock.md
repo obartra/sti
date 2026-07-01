@@ -341,7 +341,14 @@ same way it would from Settings.
    precached shell. _Change to build: the login name is a public handle (claim a new one
    or reuse one you hold) rather than a standalone recovery name; setting a password pins
    the handle and turning it off unpins it (doc 17); turning it off drops the envelope._
-   Follow-up: re-viewing the phrase itself from Settings.
+   Re-viewing the phrase itself from Settings is also built: the phrase is stored inside
+   the already-encrypted account blob (`store/accountBlob.ts`, written at sign-up and
+   backfilled on a phrase login) so a root-holding session can re-display it behind a
+   deliberate gate (`ui/settings/RecoveryPhrase.tsx`: a collapsed row, a surroundings
+   warning, and an explicit "show it"). An account that has only resumed by passkey has
+   no stored phrase, so the card shows an honest "sign in with it once to see it here"
+   fallback instead of erroring. Storing the phrase adds no derivation power (opening the
+   blob already needs the root the phrase derives) and it never leaves the encrypted vault.
 5. **New-device unlock by @handle + password.** _Built._ The sign-in screen offers this
    beside the passkey and the recovery phrase: enter @handle + password, which fetches the
    envelope by handle and opens it, recovering the root key and loading the account. A

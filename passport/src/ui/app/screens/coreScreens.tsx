@@ -197,6 +197,7 @@ export const coreRenderers: ScreenRenderers = {
     onCheckVanityName,
     onReleaseVanityName,
     recoveryName,
+    recoveryPhrase,
     onSetRecoveryPassword,
     onDisableRecoveryPassword,
     push,
@@ -238,6 +239,10 @@ export const coreRenderers: ScreenRenderers = {
             }
           : undefined
       }
+      // The re-view phrase card (doc 32) is shown only for a logged-in owner. A null
+      // phrase (a passkey-only resume that never stored one) renders the honest
+      // fallback, so it is passed only when logged in and otherwise undefined.
+      recoveryPhrase={isLoggedIn ? recoveryPhrase : undefined}
       onDeleted={() => {
         // Really delete (revoke links + remove the blob, logs out), then reset
         // the URL to the public landing.

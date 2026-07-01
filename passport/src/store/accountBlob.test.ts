@@ -243,6 +243,21 @@ describe("account blob codec", () => {
     );
   });
 
+  it("round-trips a v14 stored recovery phrase (doc 32)", () => {
+    // A well-formed 43-char app phrase (base64url, no padding).
+    const phrase = "abcdefghijklmnopqrstuvwxyz0123456789-_ABCDE";
+    expect(phrase).toHaveLength(43);
+    const withPhrase: AccountBlob = { ...blob, recoveryPhrase: phrase };
+    expect(parseAccountBlob(serializeAccountBlob(withPhrase))).toEqual(
+      withPhrase,
+    );
+    // A blob written without the phrase stays valid and absent (the passkey-only
+    // account: Settings shows the sign-in fallback rather than erroring).
+    expect(
+      parseAccountBlob(serializeAccountBlob(blob)).recoveryPhrase,
+    ).toBeUndefined();
+  });
+
   const reject = (label: string, json: unknown) =>
     it(`rejects ${label}`, () => {
       expect(() =>
@@ -262,7 +277,7 @@ describe("account blob codec", () => {
     avatar: A,
   };
   reject("a non-object", 7);
-  reject("an unknown version", { ...base, v: 14, sharingMode: "link" });
+  reject("an unknown version", { ...base, v: 15, sharingMode: "link" });
   reject("a prior version (v6 is no longer accepted)", {
     v: 6,
     handle: "x",
@@ -293,7 +308,7 @@ describe("account blob codec", () => {
   // A real current-version wire so these reach the findable validator (not the
   // version gate, which `base`'s v7 trips first).
   const vCurrent = {
-    v: 13,
+    v: 14,
     handle: "x",
     aliases: [],
     contacts: [],
@@ -312,6 +327,16 @@ describe("account blob codec", () => {
   reject("a findable that is not an object", {
     ...vCurrent,
     findable: "robin",
+  });
+  // The stored recovery phrase must be an exact app phrase; a too-short or
+  // wrong-charset value fails the parse rather than surfacing a broken phrase.
+  reject("a recovery phrase that is too short", {
+    ...vCurrent,
+    recoveryPhrase: "too-short",
+  });
+  reject("a recovery phrase with a bad character", {
+    ...vCurrent,
+    recoveryPhrase: `!${"A".repeat(42)}`,
   });
   reject("an empty handle", { ...base, handle: "", sharingMode: "link" });
   reject("a non-array aliases", { ...base, aliases: {}, sharingMode: "link" });

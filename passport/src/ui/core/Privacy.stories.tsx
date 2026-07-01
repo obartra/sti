@@ -70,3 +70,15 @@ export const PasswordOff: Story = {
 export const PasswordOn: Story = {
   args: { recoveryName: "robin", recoveryOps },
 };
+
+// The re-view recovery phrase card (doc 32) in Account: stored on this device
+// (collapsed behind a confirm gate), and the sign-in fallback when it is not.
+const PHRASE = "abcdefghijklmnopqrstuvwxyz0123456789-_ABCDEF";
+
+export const PhraseStored: Story = {
+  args: { recoveryPhrase: PHRASE },
+};
+
+export const PhraseNotStored: Story = {
+  args: { recoveryPhrase: null },
+};

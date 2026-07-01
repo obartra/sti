@@ -109,6 +109,13 @@ function recoveryName(session: OwnerSession | null): string | null {
   return session?.blob.recoveryName ?? null;
 }
 
+// The owner's stored recovery phrase for re-viewing in Settings (doc 32), or null
+// when it is not stored on this device (logged out, or an account that has only
+// resumed by passkey). Null makes Settings show the re-view-after-sign-in fallback.
+function recoveryPhrase(session: OwnerSession | null): string | null {
+  return session?.blob.recoveryPhrase ?? null;
+}
+
 // The session the network-touching hooks (push, backup sync) see: null in demo
 // mode, so they stay dormant and the demo never reaches the real api/offlineSync.
 // Hoisted so the demo branch lives here, not in the App component's complexity.
@@ -299,6 +306,7 @@ export function App({
         circles={session ? (session.blob.circles ?? []) : []}
         vanityName={findableName(session)}
         recoveryName={recoveryName(session)}
+        recoveryPhrase={recoveryPhrase(session)}
         push={push}
         {...actions}
       />
