@@ -138,7 +138,7 @@ export interface ApiClient {
    * fixed reason code, no reporter identity. Resolves on accept (202), throws on
    * a real failure. */
   reportVanityName(name: string, reason: VanityReportReason): Promise<void>;
-  /** File a "Something wrong?" report (doc 34): public + rate-limited intake, a
+  /** File a "Something wrong?" report (doc 35): public + rate-limited intake, a
    * fixed category and an optional note, no reporter identity. Resolves on accept
    * (202), throws on a real failure. */
   submitFeedback(reason: FeedbackReason, body: string): Promise<void>;
@@ -171,7 +171,7 @@ export type VanityReportReason =
   | "spam"
   | "other";
 
-/** The fixed "Something wrong?" categories (doc 34); mirrors the server's set. */
+/** The fixed "Something wrong?" categories (doc 35); mirrors the server's set. */
 export type FeedbackReason = "broken" | "confusing" | "safety" | "other";
 
 /** The longest note the "Something wrong?" form accepts, mirroring the server cap

@@ -76,7 +76,7 @@ export const trustRenderers: ScreenRenderers = {
       />
     </TrustShell>
   ),
-  // The "Something wrong?" form (doc 34): the same trust shell, no rail item lit,
+  // The "Something wrong?" form (doc 35): the same trust shell, no rail item lit,
   // wired to the store's public feedback intake.
   feedback: ({ nav, store }) => (
     <TrustShell onBack={nav.back} {...footerLinks(nav)}>

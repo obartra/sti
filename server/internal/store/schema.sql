@@ -159,7 +159,7 @@ CREATE TABLE IF NOT EXISTS vanity_report (
 );
 CREATE INDEX IF NOT EXISTS idx_vanity_report_name ON vanity_report (name);
 
--- "Something wrong?" reports filed through the public in-app form (doc 34). Public,
+-- "Something wrong?" reports filed through the public in-app form (doc 35). Public,
 -- unauthenticated intake (rate-limited) inserts a row; the admin queue reads the
 -- rows and the operator resolves one, which deletes it (like a vanity dismiss). This
 -- is the ONLY table that holds text a user typed (`body`, an optional note), so it is

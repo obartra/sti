@@ -56,7 +56,7 @@ export interface PassportStore {
    */
   reportVanityName(name: string, reason: VanityReportReason): Promise<void>;
   /**
-   * File a "Something wrong?" report (doc 34): public, rate-limited intake of a
+   * File a "Something wrong?" report (doc 35): public, rate-limited intake of a
    * fixed category and an optional note, no reporter identity. Success/failure IS
    * shown to the person (the form retries on error), so this resolves on accept and
    * rejects only on a real transport failure.

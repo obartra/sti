@@ -73,7 +73,7 @@ Plus a one-line, voice-compliant tagline (no meta, no jargon), for example
 muted color, never competing with a screen's primary action.
 
 It also carries a quiet "Something wrong?" link that opens a short in-app form
-([doc 34](34-something-wrong-reports.md)). It replaced a `mailto:` link so a
+([doc 35](35-something-wrong-reports.md)). It replaced a `mailto:` link so a
 report lands in the operator queue instead of an inbox; `privacy@sti.care` stays
 on this page and the terms page as the way to reach a human for a reply.
 
@@ -120,7 +120,7 @@ We do not ask you for your email, your real name, or your location, and we do no
 store what you write. The one exception is a problem report you send us on
 purpose, so we can read it and help (we can't fix what we can't see); the form
 asks you to leave out anything sensitive, and no identity is stored with it. We
-hold no list of who your contacts are ([doc 34](34-something-wrong-reports.md)).
+hold no list of who your contacts are ([doc 35](35-something-wrong-reports.md)).
 
 ### What we never collect
 

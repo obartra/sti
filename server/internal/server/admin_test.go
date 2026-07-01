@@ -438,7 +438,7 @@ func TestAdminAuditFailureBlocksMutation(t *testing.T) {
 	}
 }
 
-// The "Something wrong?" review flow over the admin endpoints (doc 34): the queue
+// The "Something wrong?" review flow over the admin endpoints (doc 35): the queue
 // lists reports with the note the person typed (authed), resolve deletes one and
 // writes an audit row keyed by the opaque id (never the note), and reads stay
 // unauthed-rejected.

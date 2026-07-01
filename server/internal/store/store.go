@@ -639,7 +639,7 @@ func (s *Store) ClearVanityReports(ctx context.Context, name string) error {
 	return err
 }
 
-// --- "Something wrong?" reports (doc 34) ------------------------------------
+// --- "Something wrong?" reports (doc 35) ------------------------------------
 //
 // The one store that holds text a person typed (a short optional note),
 // operator-readable by design so a human can read and act on it. reason is a fixed,

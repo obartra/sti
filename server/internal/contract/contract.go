@@ -75,7 +75,7 @@ const (
 	PathRecoveryPrefix = "/recovery/"     // GET fetch / PUT store / DELETE drop a password envelope (doc 32, gated)
 	PathHealth         = "/healthz"       // GET: liveness
 	PathVapid          = "/vapid"         // GET: the active Web Push public key
-	PathFeedback       = "/feedback"      // POST: file a "Something wrong?" report (doc 34, public)
+	PathFeedback       = "/feedback"      // POST: file a "Something wrong?" report (doc 35, public)
 
 	// The operator surface (doc 20). Bearer + flag gated, rate-limited, audited.
 	// Registered only when admin is enabled; otherwise these paths are a bare 404,
@@ -85,7 +85,7 @@ const (
 	PathAdminReports  = "/admin/reports"  // GET: the vanity-name review queue (doc 17/20)
 	PathAdminAudit    = "/admin/audit"    // GET: recent admin actions, newest first (doc 20 A4)
 	PathAdminMetrics  = "/admin/metrics"  // GET: aggregate, identifier-free service totals (doc 20 A5)
-	PathAdminFeedback = "/admin/feedback" // GET: the "Something wrong?" review queue (doc 34)
+	PathAdminFeedback = "/admin/feedback" // GET: the "Something wrong?" review queue (doc 35)
 )
 
 // --- JSON bodies (only the non-byte endpoints) ------------------------------
@@ -235,7 +235,7 @@ type VanityReportRequest struct {
 	Reason string `json:"reason"`
 }
 
-// Feedback reason codes for the "Something wrong?" form (doc 34). A FIXED set, like
+// Feedback reason codes for the "Something wrong?" form (doc 35). A FIXED set, like
 // the vanity report reasons; the optional free-text note travels separately and is
 // length-capped. The client form maps to exactly these; the server rejects anything
 // else.

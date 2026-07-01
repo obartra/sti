@@ -78,7 +78,7 @@ const PUBLIC: readonly Screen[] = [
   "privacy-policy",
   "terms",
   "share-link",
-  // The "Something wrong?" form (doc 34), reachable logged out from the footer.
+  // The "Something wrong?" form (doc 35), reachable logged out from the footer.
   "feedback",
 ];
 const ONBOARD: readonly Screen[] = ["b1-claim", "b2-recovery", "b3-setup"];

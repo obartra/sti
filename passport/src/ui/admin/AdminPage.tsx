@@ -69,7 +69,7 @@ export interface AdminPageProps {
    */
   metricsOps?: MetricsOps;
   /**
-   * "Something wrong?" review transport (doc 34). Defaults to the real feedback
+   * "Something wrong?" review transport (doc 35). Defaults to the real feedback
    * endpoints bound to apiBase; injectable so tests and Storybook drive it.
    */
   feedbackOps?: FeedbackOps;

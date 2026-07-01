@@ -281,7 +281,7 @@ type janitorTTLs struct {
 	aliasGrace        time.Duration // delete an alias this long after its link expired
 	reportMaxAge      time.Duration // delete an orphan vanity report once this old
 	accountInactivity time.Duration // delete an account backup unread/unwritten this long
-	feedbackMaxAge    time.Duration // delete a "Something wrong?" report once this old (doc 34)
+	feedbackMaxAge    time.Duration // delete a "Something wrong?" report once this old (doc 35)
 }
 
 // background runs the periodic janitors: expire knocks, purge long-dead alias and

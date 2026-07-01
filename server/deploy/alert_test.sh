@@ -206,7 +206,7 @@ run_case "email-unset fail-safe" "$work/m11" "test-from@example.com" ""
 assert_contains "unset recipient logs instead of sending" "STI_ALERT_EMAIL unset"
 assert_absent "unset recipient emits no message" "From: test-from@example.com"
 
-# Case 12: a rise in the "Something wrong?" counter (doc 34) emails a bare nudge,
+# Case 12: a rise in the "Something wrong?" counter (doc 35) emails a bare nudge,
 # separate from the ops alert, on otherwise-healthy metrics. Only the count leaves.
 seed_state 60 0 0 0 0 9000 8999 9000
 echo "feedback=5" >>"$work/state"

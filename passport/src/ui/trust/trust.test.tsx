@@ -99,7 +99,7 @@ describe("TrustFooter", () => {
     expect(screen.queryByRole("link", { name: "Share your link" })).toBeNull();
   });
 
-  it("opens the report form (doc 34) when a feedback handler is given", async () => {
+  it("opens the report form (doc 35) when a feedback handler is given", async () => {
     const onFeedback = vi.fn();
     render(<TrustFooter onFeedback={onFeedback} />);
     // A real in-app link to the form screen, not a mailto; a click routes the SPA.

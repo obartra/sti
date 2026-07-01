@@ -6,7 +6,7 @@ import type {
   AdminFeedbackResult,
 } from "./adminApi.ts";
 
-// The "Something wrong?" review panel (doc 34): the queue of reports filed through
+// The "Something wrong?" review panel (doc 35): the queue of reports filed through
 // the public form, each with its category, the optional note the person typed, and a
 // time, plus one action, Resolve, which deletes it once handled. The note is the one
 // piece of user-typed text the store holds; this panel is where the operator reads

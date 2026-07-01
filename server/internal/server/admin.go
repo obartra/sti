@@ -79,7 +79,7 @@ func (s *Server) registerAdminRoutes() {
 	s.mux.HandleFunc("GET "+contract.PathAdminMetrics, s.requireAdmin(s.handleAdminMetrics))
 	s.mux.HandleFunc("POST /admin/vanity/{name}/takedown", s.requireAdmin(s.handleVanityTakedown))
 	s.mux.HandleFunc("POST /admin/vanity/{name}/dismiss", s.requireAdmin(s.handleVanityDismiss))
-	// "Something wrong?" review (doc 34): the report queue and a one-click resolve.
+	// "Something wrong?" review (doc 35): the report queue and a one-click resolve.
 	s.mux.HandleFunc("GET "+contract.PathAdminFeedback, s.requireAdmin(s.handleAdminFeedback))
 	s.mux.HandleFunc("POST /admin/feedback/{id}/resolve", s.requireAdmin(s.handleFeedbackResolve))
 	// Account / alias management (doc 20 A3): all within the blind-store boundary.
@@ -234,7 +234,7 @@ func (s *Server) handleAdminMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleAdminFeedback answers GET /admin/feedback: the "Something wrong?" review
-// queue, newest first (doc 34). A read, so it is not audited. The note is text the
+// queue, newest first (doc 35). A read, so it is not audited. The note is text the
 // person wrote and is operator-readable by design; there is no reporter identity.
 func (s *Server) handleAdminFeedback(w http.ResponseWriter, r *http.Request) {
 	fb, err := s.st.OpenFeedback(r.Context(), adminReportsLimit)

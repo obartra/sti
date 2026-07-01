@@ -672,7 +672,7 @@ func (s *Server) handleVanityReport(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
-// handleFeedback answers POST /feedback (doc 34): public, unauthenticated intake of a
+// handleFeedback answers POST /feedback (doc 35): public, unauthenticated intake of a
 // "Something wrong?" report. It records a fixed category and an optional, length-
 // capped note (the one free-text field the store holds), bumps a counter the box
 // diffs to nudge the operator, and returns a uniform 202 that echoes nothing. Rate-

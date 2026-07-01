@@ -10,7 +10,7 @@ export const TRUST_FOOTER = {
   privacy: "Privacy",
   terms: "Terms",
   // A quiet way to flag a problem, on every public surface. It opens a short in-app
-  // form (doc 34) whose report lands in the operator queue; the form is rate-limited
+  // form (doc 35) whose report lands in the operator queue; the form is rate-limited
   // and asks the person to leave out anything they would not want kept.
   feedbackLead: "Something wrong?",
   feedbackLink: "Tell us",
