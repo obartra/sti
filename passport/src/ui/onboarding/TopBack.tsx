@@ -1,23 +1,24 @@
 import type { CSSProperties } from "react";
-import { Back } from "../../design/icons.tsx";
+import { Chevron } from "../../design/icons.tsx";
 
 const backBtn: CSSProperties = {
   appearance: "none",
   border: "none",
-  background: "var(--surface-card)",
-  boxShadow: "var(--shadow-sm)",
-  width: 36,
-  height: 36,
-  borderRadius: "50%",
-  flex: "none",
+  background: "none",
+  padding: "4px 6px 4px 0",
   cursor: "pointer",
   display: "inline-flex",
   alignItems: "center",
-  justifyContent: "center",
+  gap: 2,
+  font: "inherit",
+  fontSize: 14,
+  fontWeight: 700,
   color: "var(--text-body)",
 };
 
-// Shared onboarding step header: a round back button + the step label.
+// Shared onboarding header row: a "Back" control on the left (chevron + label, a
+// clear affordance) and the step progress on the right, so the two never read as
+// the same thing.
 export function TopBack({
   title,
   onBack,
@@ -27,16 +28,30 @@ export function TopBack({
 }) {
   return (
     <div
-      style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 2 }}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 8,
+        paddingTop: 2,
+      }}
     >
-      <button type="button" onClick={onBack} aria-label="Back" style={backBtn}>
-        <Back size={20} />
+      <button type="button" onClick={onBack} style={backBtn}>
+        <span
+          style={{ display: "inline-flex", transform: "rotate(180deg)" }}
+          aria-hidden="true"
+        >
+          <Chevron size={16} />
+        </span>
+        Back
       </button>
-      <span
-        style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)" }}
-      >
-        {title}
-      </span>
+      {title && (
+        <span
+          style={{ fontSize: 12, fontWeight: 600, color: "var(--text-subtle)" }}
+        >
+          {title}
+        </span>
+      )}
     </div>
   );
 }

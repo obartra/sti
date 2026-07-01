@@ -20,27 +20,26 @@ import { TopBack } from "./TopBack.tsx";
 // name) is the third mode, not built yet, shown disabled so the roadmap is honest.
 const COPY = {
   title: "How your passport works",
-  sub: "Two quick defaults. You can change either later in settings.",
+  sub: "Two quick defaults. Change either later in settings.",
   selfTitle: "You add your own results",
   selfBody:
-    "You add results yourself, no clinic logins, no waiting. What you share is your own honest word: as you report it, not a medical test.",
+    "No clinic logins, no waiting. What you share is your own word, as you report it.",
   freshTitle: "Freshness window",
   freshBody: "Your status stays current for 90 days, then asks for a re-test.",
   reachTitle: "How people reach your status",
   reachDirect: "Direct link",
   reachDirectSub:
-    "Default. You hand someone a link (a DM, a scan, a link made for one person) and it opens to your status right away. Handing it over is the trust step.",
+    "You hand someone a link and it opens to your status right away.",
   reachGated: "Ask first",
   reachGatedSub:
-    "Post a link anywhere. Opening it only lets someone ask; you approve each person yourself before they see anything.",
+    "Post a link anywhere. You approve each person before they see anything.",
   reachFindable: "Findable",
   reachFindableReadySub:
-    "A memorable name people can find and put in a bio. Claim one anytime from Settings.",
-  reachNote:
-    "Either way, your status stays off the open web: no name to look up, and someone without a link can’t even tell you exist.",
+    "A memorable name people can find. Claim one anytime from settings.",
+  reachNote: "Either way, only people you send a link to can find you.",
   anonTitle: "A heads-up that looks out for you",
   anonBody:
-    "If someone you’ve linked with reports a positive, you get a private heads-up. Always anonymous, and never names a condition.",
+    "If someone you've linked with reports a positive, you get a private heads-up. Always anonymous, never names a condition.",
   cta: "Enter my passport",
 } as const;
 

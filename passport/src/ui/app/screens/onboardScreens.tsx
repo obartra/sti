@@ -46,6 +46,9 @@ export const onboardRenderers: ScreenRenderers = {
       onBack={nav.back}
       keepSignedIn={keepSignedIn}
       onKeepSignedInChange={onKeepSignedInChange}
+      onSwitchMode={() =>
+        nav.go("b1-claim", { isLogin: !(data?.isLogin ?? false) })
+      }
       onClaim={(handle, avatar) => {
         // Create the real account, then show its genuine recovery phrase. Stay
         // put on failure (the hook surfaces the error).

@@ -1,57 +1,20 @@
-import type { CSSProperties } from "react";
-
 // B1 claim account copy. Passkey is the one MVP unlock path: no email, no phone,
-// no SSO. The handle + avatar are your MAIN IDENTITY (doc 15): the face you can
-// choose to show. Every link is anonymous by default; how a link is reached
-// (Direct / Gated / Findable) is chosen later at first-run setup (doc 16).
+// no SSO. A screen here is a title plus its controls; no explainer prose.
 export const COPY = {
   title: "Create your account",
-  sub: "One key unlocks everything you make. No name, no email required.",
-  step: "Step 1 of 3",
-  loginTitle: "Welcome back",
-  loginSub: "Unlock with your passkey.",
-  loginStep: "Log in",
-  passkey: "Passkey",
-  usePasskeyLogin: "Unlock with passkey",
-  keyLabel: "Your account key",
-  passkeyHint:
-    "Face or fingerprint is your account key, the anchor that unlocks every link you make. Never shown, never in a link.",
-  recoverLabel: "On a new device?",
-  recoverHint:
-    "Enter the recovery phrase you saved at signup. It’s the only way back in without this device’s passkey.",
-  recoverPlaceholder: "Your recovery phrase",
-  recoverCta: "Recover account",
-  recoverPwLabel: "Use a recovery name and password",
-  recoverPwHint:
-    "If you set one up, sign in with your recovery name and password instead of the phrase.",
-  recoverPwNameLabel: "Recovery name",
+  loginTitle: "Log in",
+  usePasskeyLogin: "Log in with a passkey",
+  otherWaysLabel: "Other ways to log in",
+  recoverLabel: "Recovery phrase",
+  recoverCta: "Log in",
+  recoverPwNameLabel: "Username",
   recoverPwPasswordLabel: "Password",
-  recoverPwCta: "Sign in",
-  identitySection: "Your identity",
-  identityHandleLabel: "Your name (optional)",
-  identityHandlePlaceholder: "Pick a display name",
-  identityHandleTooShort: "At least 3 characters.",
-  identityHandleHint:
-    "Only you see this. You can add it later, and it's never required.",
-  avatarLabel: "Your face",
-  avatarHint:
-    "No photos on sti.care. Pick hair, skin, and colors, a mood, and a beard. This is your avatar, the look you can choose to show.",
-  defaultSection: "What a link shows by default",
-  anonNote:
-    "A link shows an anonymous face and address by default, not your avatar. Your avatar only appears on a link when you choose to reveal yourself. Two links can’t be tied together.",
-  promiseTitle: "Our privacy promise",
-  promise: [
-    "We never show what you tested for, only a status.",
-    "You can revoke any link or delete everything, anytime.",
-    "Partner alerts are anonymous by design.",
-  ],
+  recoverPwCta: "Log in",
+  switchToCreate: "New here? Create an account",
+  switchToLogin: "Already have an account? Log in",
+  nameLabel: "What should we call you?",
+  nameHint: "Only you see this.",
+  shuffleLabel: "Shuffle a name",
+  nameTooShort: "At least 3 characters.",
   cta: "Continue",
 } as const;
-
-export const sectionLabel: CSSProperties = {
-  fontSize: 11,
-  fontWeight: 800,
-  letterSpacing: "0.1em",
-  textTransform: "uppercase",
-  color: "var(--text-subtle)",
-};

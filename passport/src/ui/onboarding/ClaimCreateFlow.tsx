@@ -1,128 +1,59 @@
-import { useState } from "react";
-import { Button, Card, Input, Field } from "../../design/components/index.ts";
-import { Info, Check, ShieldCheck, ArrowRight } from "../../design/icons.tsx";
-import { randomAvatar, anonymousFace } from "../../lib/avatars.ts";
+import { useId, useState } from "react";
+import {
+  Button,
+  Field,
+  IconButton,
+  Input,
+} from "../../design/components/index.ts";
+import { Dice, ArrowRight } from "../../design/icons.tsx";
+import { randomAvatar } from "../../lib/avatars.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
-import { COPY, sectionLabel } from "./claimCopy.ts";
+import { COPY } from "./claimCopy.ts";
+import { funName } from "./funName.ts";
 
-// The opaque id of the previewed default link. Fixed here (no session yet); the
-// real one is a random id minted at publish. The anonymous face is derived from
-// it the same way the wire does (anonymousFace), so the preview is honest: this
-// is the face a link wears by default, not the identity above.
-const PREVIEW_ALIAS_ID = "a7f3k9q2";
+// Only lowercase letters, digits, and underscore make a name (matches the handle
+// shape the account accepts). Shared by typing and the shuffle button.
+const sanitize = (raw: string) => raw.replace(/[^a-z0-9_]/gi, "").toLowerCase();
 
-// The default-link preview: the anonymous, id-derived face (doc 15) and the
-// opaque URL. Deliberately NOT the identity the owner is building above; that
-// face only appears when they choose to show it (per link, at share time).
-function DefaultLinkCard({ aliasId }: { aliasId: string }) {
-  // The id-derived anonymous identity (doc 19): handle and face both seed on the
-  // opaque alias id the wire seals, so the preview is honest.
-  const { handle, avatarSrc: faceSrc } = anonymousFace(aliasId);
+// The name field with a shuffle button that fills a short, playful name.
+function NameField({
+  value,
+  error,
+  onChange,
+  onShuffle,
+}: {
+  value: string;
+  error: string | undefined;
+  onChange: (next: string) => void;
+  onShuffle: () => void;
+}) {
+  const inputId = useId();
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <img
-          src={faceSrc}
-          alt=""
-          style={{
-            width: 46,
-            height: 46,
-            borderRadius: "50%",
-            boxShadow: "var(--shadow-sm)",
-            flex: "none",
-          }}
-        />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: 15,
-              fontWeight: 700,
-              color: "var(--text-strong)",
-            }}
-          >
-            @{handle}
-          </div>
-          <div
-            style={{
-              fontSize: 12.5,
-              color: "var(--text-subtle)",
-              fontFamily: "var(--font-mono)",
-              marginTop: 2,
-            }}
-          >
-            sti.care/a/{aliasId}
-          </div>
-        </div>
-      </div>
-      <div
-        style={{
-          fontSize: 12,
-          color: "var(--text-subtle)",
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 6,
-          lineHeight: 1.45,
-        }}
-      >
-        <span style={{ flex: "none", marginTop: 1 }}>
-          <Info size={13} />
-        </span>{" "}
-        {COPY.anonNote}
-      </div>
-    </Card>
-  );
-}
-
-function PromiseCard() {
-  return (
-    <Card
-      variant="tint"
-      style={{ display: "flex", flexDirection: "column", gap: 12 }}
+    <Field
+      label={COPY.nameLabel}
+      hint={COPY.nameHint}
+      error={error}
+      htmlFor={inputId}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          color: "var(--text-accent)",
-          fontSize: 13,
-          fontWeight: 700,
-        }}
-      >
-        <ShieldCheck size={16} /> {COPY.promiseTitle}
+      <div style={{ display: "flex", gap: 8 }}>
+        <Input
+          id={inputId}
+          value={value}
+          onChange={(e) => onChange(sanitize(e.target.value))}
+          style={{ flex: 1 }}
+        />
+        <IconButton aria-label={COPY.shuffleLabel} onClick={onShuffle}>
+          <Dice size={18} />
+        </IconButton>
       </div>
-      {COPY.promise.map((p, i) => (
-        <div
-          key={i}
-          style={{ display: "flex", gap: 9, alignItems: "flex-start" }}
-        >
-          <span
-            style={{
-              color: "var(--text-accent)",
-              flex: "none",
-              marginTop: 1,
-            }}
-          >
-            <Check size={16} />
-          </span>
-          <span
-            style={{
-              fontSize: 13.5,
-              color: "var(--text-body)",
-              lineHeight: 1.5,
-            }}
-          >
-            {p}
-          </span>
-        </div>
-      ))}
-    </Card>
+    </Field>
   );
 }
 
-// The create-account body shown when not in the login variant. Holds the main
-// identity (handle + avatar), which the login variant never touches. Reach mode
-// (Direct / Gated / Findable) is chosen later, at first-run setup (doc 16).
+// The create-account body. It collects only the name (optional, private). A fresh
+// account gets a random avatar customized later from the dedicated editor (doc
+// 19), so a random one is minted here and carried through. Reach mode (Direct /
+// Gated / Findable) is chosen later, at first-run setup (doc 16).
 export function CreateFlow({
   busy = false,
   onClaim,
@@ -132,47 +63,23 @@ export function CreateFlow({
     | ((handle: string | undefined, avatar: AvatarConfig) => void)
     | undefined;
 }) {
-  // Start empty: the owner types their own name (don't prefill a demo handle).
-  const [handle, setHandle] = useState("");
-  const trimmed = handle.trim();
+  const [name, setName] = useState("");
+  const trimmed = name.trim();
   // Empty is allowed (name is optional); if something is typed it needs ≥3 chars.
   const ok = trimmed.length === 0 || trimmed.length >= 3;
-  // The avatar is not built here (doc 19): a fresh account gets a random one and
-  // the owner customizes it later from the dedicated editor. Seed once per mount so
-  // every new account starts with a different face.
+  // Seed one random avatar per mount so every new account starts with a face.
   const [avatar] = useState<AvatarConfig>(() =>
     randomAvatar(Math.floor(Math.random() * 0x7fffffff)),
   );
 
   return (
     <>
-      <div style={{ ...sectionLabel, marginTop: 2 }}>
-        {COPY.identitySection}
-      </div>
-
-      <Field
-        label={COPY.identityHandleLabel}
-        hint={COPY.identityHandleHint}
-        error={
-          trimmed.length > 0 && !ok ? COPY.identityHandleTooShort : undefined
-        }
-      >
-        <Input
-          value={handle}
-          placeholder={COPY.identityHandlePlaceholder}
-          onChange={(e) =>
-            setHandle(e.target.value.replace(/[^a-z0-9_]/gi, "").toLowerCase())
-          }
-        />
-      </Field>
-
-      <div style={{ ...sectionLabel, marginTop: 2 }}>{COPY.defaultSection}</div>
-      {/* The opaque id is the only thing in the URL, and the previewed face is
-          id-derived, so the default link reveals neither your identity nor a
-          way to link it to another alias. */}
-      <DefaultLinkCard aliasId={PREVIEW_ALIAS_ID} />
-
-      <PromiseCard />
+      <NameField
+        value={name}
+        error={trimmed.length > 0 && !ok ? COPY.nameTooShort : undefined}
+        onChange={setName}
+        onShuffle={() => setName(sanitize(funName()))}
+      />
       <Button
         variant="primary"
         size="lg"
