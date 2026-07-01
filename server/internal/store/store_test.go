@@ -787,7 +787,7 @@ func TestVanityReportPerNameCap(t *testing.T) {
 	}
 }
 
-// "Something wrong?" reports (doc 34): add lands in the queue newest-first with the
+// "Something wrong?" reports (doc 35): add lands in the queue newest-first with the
 // note intact, count reflects the open rows, resolve deletes one, and resolve of a
 // missing id is a no-op.
 func TestFeedback(t *testing.T) {

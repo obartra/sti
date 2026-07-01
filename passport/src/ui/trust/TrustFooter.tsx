@@ -23,7 +23,7 @@ export interface TrustFooterProps {
   onTerms?: (() => void) | undefined;
   /** Open the public "share your link" guide (docs 16, 17). */
   onShareLink?: (() => void) | undefined;
-  /** Open the "Something wrong?" report form (doc 34). */
+  /** Open the "Something wrong?" report form (doc 35). */
   onFeedback?: (() => void) | undefined;
 }
 

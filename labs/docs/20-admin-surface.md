@@ -73,7 +73,7 @@ is where the richer aggregate views live.
 - **v1 panel — Findable review (doc 17 §146):** the queue of reported vanity names not auto-actioned,
   each with the reported name, the report reason, and two one-click actions: **Take down** (revoke →
   24h lock) or **Dismiss**. Volume is shown but never auto-acts.
-- **Something-wrong panel ([doc 34](34-something-wrong-reports.md)):** the queue of reports filed
+- **Something-wrong panel ([doc 35](35-something-wrong-reports.md)):** the queue of reports filed
   through the public "Something wrong?" form, each with its category, the optional note the person
   typed, and a time, with one action: **Resolve** (clear it once handled). The note is the one piece of
   user-typed text the store holds; the panel is where the operator reads it.
@@ -108,7 +108,7 @@ chrome and is never linked from the app.
 - `POST /admin/vanity/{name}/takedown` — revoke the name's alias mapping → 24h lock (doc 17 lifecycle).
 - `POST /admin/vanity/{name}/dismiss` — clear the report(s) without action.
 - `GET /admin/feedback`: open "Something wrong?" reports (id, category, note, created_at), newest
-  first, capped ([doc 34](34-something-wrong-reports.md)). A read, so not itself audited. Operator-readable
+  first, capped ([doc 35](35-something-wrong-reports.md)). A read, so not itself audited. Operator-readable
   by design (the note is text the person wrote), never encrypted user content.
 - `POST /admin/feedback/{id}/resolve`: mark a report handled so it leaves the queue. Audited.
 - `POST /admin/account/{id}/disable` — working-delete the account sync blob (aliases are revoked

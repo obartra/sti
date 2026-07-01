@@ -19,7 +19,7 @@ func postFeedback(h http.Handler, reason, body string) *httptest.ResponseRecorde
 
 // A well-formed "Something wrong?" report is accepted (202) and stored with its note
 // intact; a note is optional; an unknown category and an over-length note are 400 and
-// store nothing (doc 34).
+// store nothing (doc 35).
 func TestFeedbackIntake(t *testing.T) {
 	srv, st := newServer(t, Config{}, func() int64 { return 1_000 })
 	h := srv.Handler()
@@ -53,7 +53,7 @@ func TestFeedbackIntake(t *testing.T) {
 }
 
 // Intake is rate-limited: the per-IP burst is the tightest bucket, so once it is
-// spent the next report is turned away with a uniform 429 (doc 34).
+// spent the next report is turned away with a uniform 429 (doc 35).
 func TestFeedbackIntakeRateLimited(t *testing.T) {
 	srv, _ := newServer(t, Config{}, func() int64 { return 1_000 })
 	h := srv.Handler()

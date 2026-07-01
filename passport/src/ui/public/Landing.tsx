@@ -310,7 +310,7 @@ export interface LandingProps {
   /** Open the list of requests this viewer has made. */
   onRequests?: () => void;
   onShareLink?: () => void;
-  /** Open the "Something wrong?" report form (doc 34). */
+  /** Open the "Something wrong?" report form (doc 35). */
   onFeedback?: () => void;
 }
 

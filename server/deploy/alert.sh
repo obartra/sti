@@ -121,7 +121,7 @@ c_shed="$(sum_metric sti_shed_total)"
 c_ratelimit="$(sum_metric sti_ratelimit_rejections_total)"
 c_sensitive="$(sum_metric sti_sensitive_overload_total)"
 c_errors="$(sum_metric sti_errors_total)"
-# "Something wrong?" reports filed (doc 34): a monotonic counter we diff to nudge
+# "Something wrong?" reports filed (doc 35): a monotonic counter we diff to nudge
 # the operator about new reports. Absent on an old binary, so it defaults to 0.
 c_feedback="$(val sti_feedback_received_total)"
 c_a_count="$(val 'sti_request_duration_seconds_count{endpoint="/a/{id}"}')"
@@ -164,7 +164,7 @@ a_le_page=$c_a_le_page
 EOF
 mv -f "$tmp" "$STATE"
 
-# New "Something wrong?" reports since the last scrape (doc 34): a bare-nudge signal,
+# New "Something wrong?" reports since the last scrape (doc 35): a bare-nudge signal,
 # independent of the ops-alert window below. A counter that went backwards (a restart
 # with a lost snapshot) yields no nudge, the same reset guard the rate checks use.
 new_reports=0
@@ -222,7 +222,7 @@ fi
 # deliver SUBJECT SEV BODY -> email the message via $SENDER, or on a missing
 # recipient / sender / From log the reason PLUS the body to the journal, so a missing
 # prerequisite is a fail-safe (never a guaranteed bounce, never a lost signal). Both
-# the ops alert and the "new report(s)" nudge (doc 34) go through this one path.
+# the ops alert and the "new report(s)" nudge (doc 35) go through this one path.
 deliver() {
 	local subject="$1" sev="$2" body="$3"
 	if [ -z "$EMAIL" ]; then
@@ -272,7 +272,7 @@ if [ "$total" -gt 0 ]; then
 	deliver "[sti.care][${sev}] ${total} alert(s) on ${HOST}" "$sev" "$body"
 fi
 
-# The "Something wrong?" nudge (doc 34): a SEPARATE, bare message so the ops alert
+# The "Something wrong?" nudge (doc 35): a SEPARATE, bare message so the ops alert
 # stays page/warn-only. Only the count leaves the box, never a category or note.
 if [ "$new_reports" -gt 0 ]; then
 	deliver "[sti.care] ${new_reports} new report(s) waiting" "info" \

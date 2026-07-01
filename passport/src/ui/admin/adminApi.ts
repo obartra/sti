@@ -244,7 +244,7 @@ export async function actOnVanityName(
   return "error";
 }
 
-// --- "Something wrong?" review (doc 34) -------------------------------------
+// --- "Something wrong?" review (doc 35) -------------------------------------
 
 const ADMIN_FEEDBACK_PATH = "/admin/feedback";
 

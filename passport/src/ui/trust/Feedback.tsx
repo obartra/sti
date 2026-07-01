@@ -3,7 +3,7 @@ import { Button, Card, Field } from "../../design/components/index.ts";
 import { Help, Check } from "../../design/icons.tsx";
 import { type FeedbackReason, FEEDBACK_BODY_MAX } from "../../api/client.ts";
 
-// The "Something wrong?" form (doc 34). It replaced a mailto so a report lands in
+// The "Something wrong?" form (doc 35). It replaced a mailto so a report lands in
 // the operator queue instead of an inbox. A person picks a fixed category and can add
 // an optional note; the note is the one free-text field the server stores, so the copy
 // asks them to leave out anything they would not want kept, and it never promises a

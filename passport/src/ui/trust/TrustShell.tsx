@@ -18,7 +18,7 @@ type TrustScreen = "promises" | "privacy" | "terms" | "share-link";
 
 export interface TrustShellProps extends TrustFooterProps {
   /** The rail item to light, or undefined for a shell page with no rail entry
-   * (the "Something wrong?" form, doc 34). */
+   * (the "Something wrong?" form, doc 35). */
   current?: TrustScreen | undefined;
   onBack?: (() => void) | undefined;
   /** Let the content use the full center measure (the promises grid) rather than
