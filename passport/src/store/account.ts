@@ -126,6 +126,13 @@ export interface AccountManager {
     findable: FindableRegistration,
   ): Promise<AccountBlob>;
   /**
+   * Record (or clear, when null) the owner's recovery locator (doc 32): the name
+   * their password-recovery envelope is stored under. Pure persistence; minting or
+   * dropping the server-side envelope is driven a layer up (recoveryOps), so this
+   * just writes the blob field after that has succeeded.
+   */
+  setRecoveryName(root: RootKey, name: string | null): Promise<AccountBlob>;
+  /**
    * Enforce link expiry on load: revoke + drop any links (aliases or contact
    * links) past their expiry, then persist. A no-op (no write) when nothing is
    * expired. No republish, the badge is unchanged. This closes the passive-owner
@@ -219,6 +226,16 @@ function withFindable(
   return next;
 }
 
+// Set or clear the optional recovery locator (doc 32). Like withFindable, a clear
+// (null) deletes the key off a fresh copy rather than writing `recoveryName:
+// undefined` (exactOptionalPropertyTypes).
+function withRecoveryName(blob: AccountBlob, name: string | null): AccountBlob {
+  if (name !== null) return { ...blob, recoveryName: name };
+  const next = { ...blob };
+  delete (next as { recoveryName?: string }).recoveryName;
+  return next;
+}
+
 // Upsert the dedicated findable alias AND set the registration in one step, so a
 // claim's two facts land in a single blob write (no alias-without-registration gap).
 function withFindableAlias(
@@ -306,12 +323,14 @@ type BlobModify = (
 // claim/release lives a layer up (findableOps).
 function findableMethods(
   modify: BlobModify,
-): Pick<AccountManager, "setFindable" | "recordFindable"> {
+): Pick<AccountManager, "setFindable" | "recordFindable" | "setRecoveryName"> {
   return {
     setFindable: (root, findable) =>
       modify(root, (blob) => withFindable(blob, findable)),
     recordFindable: (root, alias, findable) =>
       modify(root, (blob) => withFindableAlias(blob, alias, findable)),
+    setRecoveryName: (root, name) =>
+      modify(root, (blob) => withRecoveryName(blob, name)),
   };
 }
 

@@ -49,7 +49,14 @@ import type { NotifyCapability } from "./notifyInbox.ts";
 // let a recipient with two of the owner's links correlate them to one owner; a
 // per-contact inbox does not. There are no real older accounts, so the version is
 // parsed exclusively and an older blob fails the strict check (see below).
-const SCHEMA_VERSION = 12;
+//
+// v13 adds the optional `recoveryName` (doc 32): the non-secret, owner-chosen
+// locator that names the account's password-recovery envelope, so Settings can
+// re-view it and turn the password off. Absent when no password factor is set. It
+// is not a secret and never derived from the password (the account id still derives
+// from the phrase only); it shares the vanity-name charset but is a separate
+// namespace, shape-validated only.
+const SCHEMA_VERSION = 13;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -162,7 +169,7 @@ export function isSharingMode(x: unknown): x is SharingMode {
 }
 
 export interface AccountBlob {
-  /** The owner's local display name — owner-facing only, never sent to the server. Optional. */
+  /** The owner's local display name, owner-facing only, never sent to the server. Optional. */
   readonly handle?: string;
   readonly aliases: AliasRecord[];
   /** Private, individually-revocable links, one per contact the owner shared with. */
@@ -190,6 +197,13 @@ export interface AccountBlob {
    * alias is also present in `aliases`.
    */
   readonly findable?: FindableRegistration;
+  /**
+   * The recovery locator that names this account's password-recovery envelope (doc
+   * 32): the non-secret, owner-chosen name the envelope is stored under. Absent when
+   * no password factor is set. Shape-validated (vanity charset), never a secret, and
+   * never derived from the password.
+   */
+  readonly recoveryName?: string;
 }
 
 interface AccountBlobWire extends Omit<AccountBlob, "handle"> {
@@ -350,6 +364,13 @@ function isOptionalFindable(x: unknown): boolean {
   return x === undefined || isFindableRegistration(x);
 }
 
+// The recovery locator (doc 32): shape-only, since it names a private envelope, not
+// a public directory entry, so the mutable reserved/blocked sets never apply. Absent
+// when no password factor is set.
+function isOptionalRecoveryName(x: unknown): boolean {
+  return x === undefined || hasVanityNameShape(x);
+}
+
 export function serializeAccountBlob(blob: AccountBlob): Bytes {
   // myInbox and theirNotify ride inside each contact; circles/findable are omitted
   // when absent, so a contact-only account stays compact.
@@ -366,6 +387,9 @@ export function serializeAccountBlob(blob: AccountBlob): Bytes {
       : {}),
     ...(blob.circles !== undefined ? { circles: blob.circles } : {}),
     ...(blob.findable !== undefined ? { findable: blob.findable } : {}),
+    ...(blob.recoveryName !== undefined
+      ? { recoveryName: blob.recoveryName }
+      : {}),
   };
   return utf8ToBytes(JSON.stringify(wire));
 }
@@ -403,6 +427,9 @@ function assertValidOptionalFields(o: Record<string, unknown>): void {
   if (!isOptionalFindable(o.findable)) {
     throw new Error("account blob: invalid findable");
   }
+  if (!isOptionalRecoveryName(o.recoveryName)) {
+    throw new Error("account blob: invalid recoveryName");
+  }
   if (!isOptionalHomeDefaultView(o.homeDefaultView)) {
     throw new Error("account blob: invalid homeDefaultView");
   }
@@ -430,5 +457,8 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
       ? { circles: o.circles as CircleRecord[] }
       : {}),
     ...(isFindableRegistration(o.findable) ? { findable: o.findable } : {}),
+    ...(hasVanityNameShape(o.recoveryName)
+      ? { recoveryName: o.recoveryName }
+      : {}),
   };
 }

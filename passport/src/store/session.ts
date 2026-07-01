@@ -64,6 +64,11 @@ import {
   releaseVanityName,
   type VanityRegisterOutcome,
 } from "./findableOps.ts";
+import {
+  recoveryControllerMethods,
+  type SetRecoveryPasswordInput,
+  type SetRecoveryPasswordResult,
+} from "./recoveryOps.ts";
 
 /**
  * An unlocked session: the root and the loaded account. The root is a
@@ -326,6 +331,23 @@ export interface SessionController {
    * no name is claimed. Returns the updated session.
    */
   releaseVanityName(session: OwnerSession): Promise<OwnerSession>;
+  /**
+   * Turn the optional password factor on, or change it (doc 32). Wraps the account
+   * root under `password` and stores the envelope at the owner-chosen recovery
+   * `name`, then records that name so it can be re-viewed and turned off. Requires
+   * the recovery `phrase`: the session root is non-extractable (doc 24), so the raw
+   * bytes are re-derived from the phrase, which also proves the phrase names this
+   * account. Returns the outcome; only "set" advances the session.
+   */
+  setRecoveryPassword(
+    session: OwnerSession,
+    input: SetRecoveryPasswordInput,
+  ): Promise<SetRecoveryPasswordResult>;
+  /**
+   * Turn the password factor off (doc 32): drop the stored envelope and clear the
+   * recovery name. A no-op when no password is set. The phrase and passkey remain.
+   */
+  disableRecoveryPassword(session: OwnerSession): Promise<OwnerSession>;
   /** Forget this device's passkey binding. The phrase still recovers. */
   forget(): void;
 }
@@ -653,8 +675,8 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
     releaseVanityName: (session) => releaseVanityName(api, accounts, session),
 
-    forget() {
-      devices.clear();
-    },
+    ...recoveryControllerMethods(api, accounts),
+
+    forget: () => devices.clear(),
   };
 }

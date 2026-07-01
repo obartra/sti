@@ -28,6 +28,7 @@ import {
 } from "../../crypto/keys.ts";
 import { todayEpochDay } from "../../core/clock.ts";
 import { DEFAULT_AVATAR } from "../../lib/avatars.ts";
+import { normalizeVanityName } from "../vanityName.ts";
 
 /** The reserved handle the demo account wears everywhere (server-reserved too). */
 export const DEMO_HANDLE = "demo";
@@ -91,6 +92,29 @@ const DEMO_PEER_CARD: ResolvedView = {
 
 function demoUrl(): string {
   return `https://sti.care/a/${randomAliasId()}`;
+}
+
+// The recovery-factor demo methods (doc 32). The demo has no server, so it just
+// records or clears the recovery name locally and reports success, so the Settings
+// factor row reflects the toggle faithfully. Split out to keep createDemoController
+// within its length ceiling.
+function demoRecovery(
+  getBlob: () => AccountBlob,
+  setBlob: (b: AccountBlob) => void,
+  session: () => Promise<OwnerSession>,
+): Pick<SessionController, "setRecoveryPassword" | "disableRecoveryPassword"> {
+  return {
+    setRecoveryPassword: async (_s, input) => {
+      setBlob({ ...getBlob(), recoveryName: normalizeVanityName(input.name) });
+      return { session: await session(), outcome: "set" as const };
+    },
+    disableRecoveryPassword: () => {
+      const next = { ...getBlob() };
+      delete (next as { recoveryName?: string }).recoveryName;
+      setBlob(next);
+      return session();
+    },
+  };
 }
 
 /**
@@ -215,6 +239,11 @@ export function createDemoController(): SessionController {
       Promise.resolve({ session: s, result: "unavailable" as const }),
     checkVanityName: () => Promise.resolve("taken" as const),
     releaseVanityName: (s) => Promise.resolve(s),
+    ...demoRecovery(
+      () => blob,
+      (b) => void (blob = b),
+      session,
+    ),
     forget: () => undefined,
   };
 }

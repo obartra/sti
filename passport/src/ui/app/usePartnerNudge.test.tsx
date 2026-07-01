@@ -77,6 +77,8 @@ function stubController(
     registerVanityName: unused,
     checkVanityName: unused,
     releaseVanityName: unused,
+    setRecoveryPassword: unused,
+    disableRecoveryPassword: unused,
     forget: unused,
   };
 }
