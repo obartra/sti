@@ -709,12 +709,28 @@ func (s *Store) GetRecoveryEnvelope(ctx context.Context, locator string) (cipher
 // DeleteRecoveryEnvelope removes the envelope at locator only when writeAuth matches
 // the bound token (turning the password off, doc 32). A missing row or a mismatched
 // token is a silent no-op, so the delete path reveals nothing about which locators
-// exist, mirroring the write path.
+// exist, mirroring the write path. The token check is a constant-time compare in Go
+// (not a SQL predicate), matching the write path's discipline.
 func (s *Store) DeleteRecoveryEnvelope(ctx context.Context, locator, writeAuth string) error {
-	_, err := s.db.ExecContext(ctx,
-		`DELETE FROM recovery_envelope WHERE locator = ? AND write_auth = ?`,
-		locator, writeAuth)
-	return err
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var existing string
+	switch err := tx.QueryRowContext(ctx, `SELECT write_auth FROM recovery_envelope WHERE locator = ?`, locator).Scan(&existing); {
+	case errors.Is(err, sql.ErrNoRows):
+		return nil // no row: uniform no-op
+	case err != nil:
+		return err
+	}
+	if subtle.ConstantTimeCompare([]byte(existing), []byte(writeAuth)) == 1 {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM recovery_envelope WHERE locator = ?`, locator); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 // --- Admin record management (doc 20 A3) ------------------------------------
