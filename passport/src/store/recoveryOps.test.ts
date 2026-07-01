@@ -1,6 +1,10 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { setRecoveryPassword, disableRecoveryPassword } from "./recoveryOps.ts";
+import {
+  setRecoveryPassword,
+  disableRecoveryPassword,
+  recoverByPassword,
+} from "./recoveryOps.ts";
 import type { OwnerSession } from "./session.ts";
 import type { AccountManager } from "./account.ts";
 import type { ApiClient } from "../api/client.ts";
@@ -56,7 +60,10 @@ function baseBlob(): AccountBlob {
 
 // A minimal AccountManager whose only exercised method is setRecoveryName, folding
 // the name into a mutable blob (as the real load-modify-save would persist it).
-function fakeAccounts(blobRef: { blob: AccountBlob }): AccountManager {
+function fakeAccounts(
+  blobRef: { blob: AccountBlob },
+  opts: { noAccount?: boolean } = {},
+): AccountManager {
   const setRecoveryName = (
     _root: RootKey,
     name: string | null,
@@ -66,9 +73,15 @@ function fakeAccounts(blobRef: { blob: AccountBlob }): AccountManager {
     blobRef.blob = next;
     return Promise.resolve(next);
   };
-  return { setRecoveryName } as Pick<
+  return {
+    setRecoveryName,
+    // The new-device unlock path loads the account from the recovered root; noAccount
+    // simulates a valid password whose account blob no longer exists.
+    loadByRoot: () => Promise.resolve(opts.noAccount ? null : blobRef.blob),
+    sweepExpiredLinks: () => Promise.resolve(blobRef.blob),
+  } as Pick<
     AccountManager,
-    "setRecoveryName"
+    "setRecoveryName" | "loadByRoot" | "sweepExpiredLinks"
   > as AccountManager;
 }
 
@@ -184,5 +197,76 @@ describe("recovery password ops", () => {
     const session: OwnerSession = { root, blob: ref.blob };
     const same = await disableRecoveryPassword(api, fakeAccounts(ref), session);
     expect(same).toBe(session);
+  });
+});
+
+describe("recoverByPassword (new-device unlock)", () => {
+  // Set the password up on the "old device", then unlock from a fresh accounts.
+  async function withEnvelope(): Promise<{
+    api: ApiClient;
+    ref: { blob: AccountBlob };
+    phrase: string;
+    root: RootKey;
+  }> {
+    const phrase = randomRecoveryPhrase();
+    const root = await rootFor(phrase);
+    const ref = { blob: baseBlob() };
+    const { api } = fakeRecoveryApi();
+    await setRecoveryPassword(
+      api,
+      fakeAccounts(ref),
+      { root, blob: ref.blob },
+      {
+        name: "meow",
+        password: STRONG,
+        phrase,
+      },
+    );
+    return { api, ref, phrase, root };
+  }
+
+  it("recovers with the right recovery name + password", async () => {
+    const { api, ref } = await withEnvelope();
+    const session = await recoverByPassword(
+      api,
+      fakeAccounts(ref),
+      "MeoW", // normalized
+      STRONG,
+    );
+    expect(session).not.toBeNull();
+    expect(session?.blob).toBeDefined();
+  });
+
+  it("returns null on the wrong password", async () => {
+    const { api, ref } = await withEnvelope();
+    const session = await recoverByPassword(
+      api,
+      fakeAccounts(ref),
+      "meow",
+      "a-different-strong-passphrase",
+    );
+    expect(session).toBeNull();
+  });
+
+  it("returns null for an unknown recovery name (a decoy that won't open)", async () => {
+    const { api, ref } = await withEnvelope();
+    const session = await recoverByPassword(
+      api,
+      fakeAccounts(ref),
+      "nobodyhome",
+      STRONG,
+    );
+    expect(session).toBeNull();
+  });
+
+  it("returns null when no account loads for the recovered root", async () => {
+    const { api, ref } = await withEnvelope();
+    const session = await recoverByPassword(
+      api,
+      fakeAccounts(ref, { noAccount: true }),
+      "meow",
+      STRONG,
+    );
+    expect(session).toBeNull();
   });
 });

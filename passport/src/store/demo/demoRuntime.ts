@@ -141,6 +141,8 @@ export function createDemoController(): SessionController {
       };
     },
     recover: () => session(),
+    // The demo has no server, so there is nothing to unlock by password.
+    recoverByPassword: () => Promise.resolve(null),
     resume: () => Promise.resolve({ ok: false as const, reason: "no-binding" }),
     rememberDevice: () => Promise.resolve(),
     forgetDevice: () => Promise.resolve(),

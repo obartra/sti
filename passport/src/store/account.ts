@@ -69,6 +69,12 @@ export interface AccountManager {
   create(handle?: string): Promise<NewAccount>;
   /** Recover with a phrase. Returns null when no account exists for it. */
   recover(phrase: string): Promise<RecoveredAccount | null>;
+  /**
+   * Load the account blob for an already-recovered root (doc 32 new-device unlock):
+   * the password path unwraps the envelope to the root bytes itself, so it needs to
+   * load the blob from the root rather than from a phrase. Null when no blob exists.
+   */
+  loadByRoot(root: RootKey): Promise<AccountBlob | null>;
   /** Record a published alias into the account and persist it. */
   addAlias(root: RootKey, record: AliasRecord): Promise<AccountBlob>;
   /** Drop an alias record from the account (after its payload is revoked). */
@@ -341,8 +347,9 @@ function findableMethods(
 // from arbitrary text.
 function lifecycleMethods(
   sync: AccountSync,
-): Pick<AccountManager, "create" | "recover"> {
+): Pick<AccountManager, "create" | "recover" | "loadByRoot"> {
   return {
+    loadByRoot: (root) => sync.load(root),
     async create(handle) {
       // Validate when set: an invalid handle would seal fine but throw on
       // parseAccountBlob during recovery, locking the owner out.

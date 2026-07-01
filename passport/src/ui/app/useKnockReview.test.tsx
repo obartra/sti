@@ -51,6 +51,7 @@ function stubController(
   return {
     signUp: unused,
     recover: unused,
+    recoverByPassword: unused,
     resume: unused,
     rememberDevice: unused,
     forgetDevice: unused,

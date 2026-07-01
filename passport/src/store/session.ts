@@ -99,6 +99,15 @@ export interface SessionController {
   /** Login / recovery by phrase. null when no account exists for it. */
   recover(phrase: string): Promise<OwnerSession | null>;
   /**
+   * New-device unlock by recovery name + password (doc 32): fetch and open the
+   * password envelope, recover the root, and load the account. null on any failure
+   * (unknown name, wrong password, no account), so the form shows one uniform message.
+   */
+  recoverByPassword(
+    name: string,
+    password: string,
+  ): Promise<OwnerSession | null>;
+  /**
    * Reload: unlock via the enrolled passkey and load the account. Returns a
    * tagged result so login can show a true message: `ok` with the session, or a
    * {@link ResumeFailure} reason (no binding on this device, the passkey was
@@ -527,10 +536,12 @@ export function createSessionController(deps: SessionDeps): SessionController {
     },
 
     async recover(phrase) {
-      const recovered = await accounts.recover(phrase);
-      if (recovered === null) return null;
-      const blob = await sweptOnLoad(accounts, recovered.root, recovered.blob);
-      return { root: recovered.root, blob };
+      const r = await accounts.recover(phrase);
+      if (r === null) return null;
+      return {
+        root: r.root,
+        blob: await sweptOnLoad(accounts, r.root, r.blob),
+      };
     },
 
     ...resumeMethods(deps),

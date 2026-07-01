@@ -49,6 +49,7 @@ function fakeBackend() {
       const blob = byId.get(await deriveAccountId(root));
       return blob ? { root, blob } : null;
     },
+    loadByRoot: async (root) => byId.get(await deriveAccountId(root)) ?? null,
     addAlias: () => Promise.reject(new Error("unused")),
     removeAlias: () => Promise.reject(new Error("unused")),
     addContact: () => Promise.reject(new Error("unused")),

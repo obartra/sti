@@ -45,6 +45,7 @@ function stubController(over: Partial<SessionController>): SessionController {
   return {
     signUp: unused,
     recover: unused,
+    recoverByPassword: unused,
     resume: unused,
     rememberDevice: unused,
     forgetDevice: unused,

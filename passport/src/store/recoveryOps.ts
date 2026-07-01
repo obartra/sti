@@ -191,17 +191,54 @@ export async function disableRecoveryPassword(
 }
 
 /**
- * The two recovery-factor controller methods, bound to the api + accounts, ready to
- * spread into the SessionController (mirroring how findableOps' methods are wired).
+ * New-device unlock (doc 32): fetch the envelope named by the recovery name, open it
+ * with the password to recover the account root, and load the account. Returns the
+ * session, or null on ANY failure (unknown name, wrong password, no account), so the
+ * login form shows one uniform "didn't match" message and never distinguishes them.
+ */
+export async function recoverByPassword(
+  api: ApiClient,
+  accounts: AccountManager,
+  name: string,
+  password: string,
+): Promise<OwnerSession | null> {
+  const locator = normalizeVanityName(name);
+  if (!hasVanityNameShape(locator)) return null;
+  try {
+    const vault = await loadVault();
+    const fetched = await api.getRecoveryEnvelope(locator);
+    const rootBytes = await vault.unwrapPasswordEnvelope(
+      vault.deserializeEnvelope(fetched),
+      password,
+    );
+    const root = await importRootKey(rootBytes);
+    const blob = await accounts.loadByRoot(root);
+    if (blob === null) return null;
+    // Enforce link expiry on load like the other sign-in paths (doc 16), best-effort.
+    const swept = await accounts.sweepExpiredLinks(root).catch(() => blob);
+    return { root, blob: swept };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The recovery-factor controller methods, bound to the api + accounts, ready to spread
+ * into the SessionController (mirroring how findableOps' methods are wired).
  */
 export function recoveryControllerMethods(
   api: ApiClient,
   accounts: AccountManager,
-): Pick<SessionController, "setRecoveryPassword" | "disableRecoveryPassword"> {
+): Pick<
+  SessionController,
+  "setRecoveryPassword" | "disableRecoveryPassword" | "recoverByPassword"
+> {
   return {
     setRecoveryPassword: (session, input) =>
       setRecoveryPassword(api, accounts, session, input),
     disableRecoveryPassword: (session) =>
       disableRecoveryPassword(api, accounts, session),
+    recoverByPassword: (name, password) =>
+      recoverByPassword(api, accounts, name, password),
   };
 }
