@@ -23,12 +23,13 @@ import (
 // Audit action names. Stable, opaque verbs written to the admin_audit log; they
 // name an action, never user content.
 const (
-	auditActionPing           = "ping"
-	auditActionTakedown       = "vanity.takedown"
-	auditActionTakedownAuto   = "vanity.takedown.auto" // hands-free, from a rule-match report
-	auditActionDismiss        = "vanity.dismiss"
-	auditActionAccountDisable = "account.disable"
-	auditActionAliasRevoke    = "alias.revoke"
+	auditActionPing            = "ping"
+	auditActionTakedown        = "vanity.takedown"
+	auditActionTakedownAuto    = "vanity.takedown.auto" // hands-free, from a rule-match report
+	auditActionDismiss         = "vanity.dismiss"
+	auditActionAccountDisable  = "account.disable"
+	auditActionAliasRevoke     = "alias.revoke"
+	auditActionFeedbackResolve = "feedback.resolve"
 )
 
 // adminReportsLimit caps the review queue page. The queue is operator-facing and
@@ -78,6 +79,9 @@ func (s *Server) registerAdminRoutes() {
 	s.mux.HandleFunc("GET "+contract.PathAdminMetrics, s.requireAdmin(s.handleAdminMetrics))
 	s.mux.HandleFunc("POST /admin/vanity/{name}/takedown", s.requireAdmin(s.handleVanityTakedown))
 	s.mux.HandleFunc("POST /admin/vanity/{name}/dismiss", s.requireAdmin(s.handleVanityDismiss))
+	// "Something wrong?" review (doc 34): the report queue and a one-click resolve.
+	s.mux.HandleFunc("GET "+contract.PathAdminFeedback, s.requireAdmin(s.handleAdminFeedback))
+	s.mux.HandleFunc("POST /admin/feedback/{id}/resolve", s.requireAdmin(s.handleFeedbackResolve))
 	// Account / alias management (doc 20 A3): all within the blind-store boundary.
 	// Delete/revoke opaque records and read opaque metadata, never any content.
 	s.mux.HandleFunc("POST /admin/account/{id}/disable", s.requireAdmin(s.handleAccountDisable))
@@ -213,14 +217,57 @@ func (s *Server) handleAdminMetrics(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
 		return
 	}
+	pendingFeedback, err := s.st.OpenFeedbackCount(r.Context())
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
 	s.writeJSON(w, http.StatusOK, contract.AdminMetricsResponse{
-		Accounts:       st.AccountRows,
-		Aliases:        st.AliasRows,
-		Knocks:         st.KnockRows,
-		SendQueueDepth: st.SendQueueDepth,
-		DBSizeBytes:    st.DBSizeBytes,
-		PendingReports: len(reports),
+		Accounts:        st.AccountRows,
+		Aliases:         st.AliasRows,
+		Knocks:          st.KnockRows,
+		SendQueueDepth:  st.SendQueueDepth,
+		DBSizeBytes:     st.DBSizeBytes,
+		PendingReports:  len(reports),
+		PendingFeedback: pendingFeedback,
 	})
+}
+
+// handleAdminFeedback answers GET /admin/feedback: the "Something wrong?" review
+// queue, newest first (doc 34). A read, so it is not audited. The note is text the
+// person wrote and is operator-readable by design; there is no reporter identity.
+func (s *Server) handleAdminFeedback(w http.ResponseWriter, r *http.Request) {
+	fb, err := s.st.OpenFeedback(r.Context(), adminReportsLimit)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	out := make([]contract.AdminFeedback, len(fb))
+	for i, f := range fb {
+		out[i] = contract.AdminFeedback{ID: f.ID, Reason: f.Reason, Body: f.Body, CreatedAt: f.CreatedAt}
+	}
+	s.writeJSON(w, http.StatusOK, contract.AdminFeedbackResponse{Feedback: out})
+}
+
+// handleFeedbackResolve answers POST /admin/feedback/{id}/resolve: the operator has
+// handled a report, so it is deleted from the queue (like a vanity dismiss). Audited
+// before acting, so a resolved report is still reconstructable as an action (the
+// opaque row id, never its content).
+func (s *Server) handleFeedbackResolve(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || id <= 0 {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "bad id")
+		return
+	}
+	if !s.auditOrFail(r.Context(), w, auditActionFeedbackResolve, idStr) {
+		return
+	}
+	if err := s.st.ResolveFeedback(r.Context(), id); err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleVanityTakedown answers POST /admin/vanity/{name}/takedown: the reviewer

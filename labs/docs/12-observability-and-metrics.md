@@ -147,6 +147,7 @@ same `/metrics` (`alerts.example.yml`) remains the path for longer-window smooth
 | `send_queue_oldest_age_seconds` | gauge | none | Age of the oldest queued send; a stuck queue grows this even when depth looks normal. |
 | `knock_rows` | gauge | none | Rows in the `knock` table (capacity of the auto-expiring store). |
 | `errors_total` | counter | `type` (small fixed enum: `store`, `decode`, `enqueue`, `janitor`) | Error rate by subsystem, never by value. |
+| `feedback_received_total` | counter | none | "Something wrong?" reports filed ([doc 34](34-something-wrong-reports.md)). A rise between scrapes is what makes the box email the operator a bare "N new report(s)" nudge; the count is all that leaves, never a category or note. |
 | `janitor_last_run_seconds` | gauge | none | Heartbeat: unix time of the last background-loop tick. Going stale means the loop stalled. |
 | `goroutines`, `memstats_heap_*_bytes`, `gc_cycles_total` | gauge | none | Go runtime health (concurrency, memory, GC churn). |
 | `build_info` | gauge (value 1) | `version` | Which binary is running; one series. |

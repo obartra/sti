@@ -87,6 +87,7 @@ const SCREEN_PATH: Partial<Record<Screen, string>> = {
   "privacy-policy": "/privacy",
   terms: "/terms",
   "share-link": "/share-link",
+  feedback: "/feedback",
 };
 
 // The reverse lookup (path -> screen), built once from the single SCREEN_PATH source.

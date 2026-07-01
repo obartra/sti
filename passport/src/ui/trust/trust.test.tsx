@@ -99,13 +99,19 @@ describe("TrustFooter", () => {
     expect(screen.queryByRole("link", { name: "Share your link" })).toBeNull();
   });
 
-  it("offers a mailto feedback link to the published address", () => {
-    render(<TrustFooter />);
-    const link = screen.getByRole("link", { name: "Email us" });
-    expect(link).toHaveAttribute(
-      "href",
-      expect.stringContaining("mailto:privacy@sti.care"),
-    );
+  it("opens the report form (doc 34) when a feedback handler is given", async () => {
+    const onFeedback = vi.fn();
+    render(<TrustFooter onFeedback={onFeedback} />);
+    // A real in-app link to the form screen, not a mailto; a click routes the SPA.
+    const link = screen.getByRole("link", { name: "Tell us" });
+    expect(link).toHaveAttribute("href", "/feedback");
+    await userEvent.click(link);
+    expect(onFeedback).toHaveBeenCalledOnce();
+  });
+
+  it("omits the feedback link when no handler is given", () => {
+    render(<TrustFooter onPromises={vi.fn()} />);
+    expect(screen.queryByRole("link", { name: "Tell us" })).toBeNull();
   });
 });
 
@@ -122,6 +128,7 @@ describe("footerLinks", () => {
     links.onPrivacy();
     links.onTerms();
     links.onShareLink();
+    links.onFeedback();
 
     const targets = go.mock.calls.map((c) => c[0]);
     expect(targets).toEqual([
@@ -129,6 +136,7 @@ describe("footerLinks", () => {
       "privacy-policy",
       "terms",
       "share-link",
+      "feedback",
     ]);
     for (const target of targets) {
       expect(isScreen(target), `${target} is not a real screen`).toBe(true);

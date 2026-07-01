@@ -6,8 +6,10 @@ import {
   actOnVanityName,
   getAdminMetrics,
   listAdminAudit,
+  listAdminFeedback,
   listAdminReports,
   pingAdmin,
+  resolveFeedback,
   type AdminPingResult,
 } from "./adminApi.ts";
 import {
@@ -18,6 +20,7 @@ import {
 import { ReviewPanel, type ReviewOps } from "./ReviewPanel.tsx";
 import { ActivityPanel, type AuditOps } from "./ActivityPanel.tsx";
 import { MetricsPanel, type MetricsOps } from "./MetricsPanel.tsx";
+import { FeedbackPanel, type FeedbackOps } from "./FeedbackPanel.tsx";
 
 // The operator surface (doc 20): a dedicated, gated /admin page, isolated from the
 // user flows and never linked from the app. It renders nothing actionable until a
@@ -65,6 +68,11 @@ export interface AdminPageProps {
    * apiBase; injectable so tests and Storybook drive the panel without a server.
    */
   metricsOps?: MetricsOps;
+  /**
+   * "Something wrong?" review transport (doc 34). Defaults to the real feedback
+   * endpoints bound to apiBase; injectable so tests and Storybook drive it.
+   */
+  feedbackOps?: FeedbackOps;
 }
 
 // Build the panel transports: each defaults to the real admin endpoints bound to
@@ -72,10 +80,19 @@ export interface AdminPageProps {
 // so the component stays within its length ceiling.
 function useAdminTransports(
   apiBase: string,
-  reviewOps: ReviewOps | undefined,
-  auditOps: AuditOps | undefined,
-  metricsOps: MetricsOps | undefined,
-): { ops: ReviewOps; audit: AuditOps; metrics: MetricsOps } {
+  over: {
+    reviewOps?: ReviewOps | undefined;
+    auditOps?: AuditOps | undefined;
+    metricsOps?: MetricsOps | undefined;
+    feedbackOps?: FeedbackOps | undefined;
+  },
+): {
+  ops: ReviewOps;
+  audit: AuditOps;
+  metrics: MetricsOps;
+  feedback: FeedbackOps;
+} {
+  const { reviewOps, auditOps, metricsOps, feedbackOps } = over;
   const ops = useMemo<ReviewOps>(
     () =>
       reviewOps ?? {
@@ -94,7 +111,15 @@ function useAdminTransports(
     () => metricsOps ?? { get: (t) => getAdminMetrics(apiBase, t) },
     [metricsOps, apiBase],
   );
-  return { ops, audit, metrics };
+  const feedback = useMemo<FeedbackOps>(
+    () =>
+      feedbackOps ?? {
+        list: (t) => listAdminFeedback(apiBase, t),
+        resolve: (t, id) => resolveFeedback(apiBase, t, id),
+      },
+    [feedbackOps, apiBase],
+  );
+  return { ops, audit, metrics, feedback };
 }
 
 // The token-gate state machine, split out so AdminPage stays within its length
@@ -189,17 +214,18 @@ export function AdminPage({
   reviewOps,
   auditOps,
   metricsOps,
+  feedbackOps,
 }: AdminPageProps) {
   const validate = useCallback(
     (token: string) => (ping ? ping(token) : pingAdmin(apiBase, token)),
     [ping, apiBase],
   );
-  const { ops, audit, metrics } = useAdminTransports(
-    apiBase,
+  const { ops, audit, metrics, feedback } = useAdminTransports(apiBase, {
     reviewOps,
     auditOps,
     metricsOps,
-  );
+    feedbackOps,
+  });
   const { phase, token, setToken, error, onSubmit, lock, expire } =
     useAdminGate(validate);
 
@@ -233,6 +259,7 @@ export function AdminPage({
             ops={ops}
             auditOps={audit}
             metricsOps={metrics}
+            feedbackOps={feedback}
             onLock={lock}
             onExpire={expire}
           />
@@ -323,6 +350,7 @@ function AuthedShell({
   ops,
   auditOps,
   metricsOps,
+  feedbackOps,
   onLock,
   onExpire,
 }: {
@@ -330,6 +358,7 @@ function AuthedShell({
   ops: ReviewOps;
   auditOps: AuditOps;
   metricsOps: MetricsOps;
+  feedbackOps: FeedbackOps;
   onLock: () => void;
   onExpire: () => void;
 }) {
@@ -370,6 +399,11 @@ function AuthedShell({
         }}
       >
         <ReviewPanel token={token} ops={ops} onUnauthorized={onExpire} />
+        <FeedbackPanel
+          token={token}
+          ops={feedbackOps}
+          onUnauthorized={onExpire}
+        />
         <ActivityPanel token={token} ops={auditOps} onUnauthorized={onExpire} />
       </div>
     </>

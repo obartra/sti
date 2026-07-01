@@ -89,6 +89,7 @@ function StatGrid({ metrics }: { metrics: AdminMetrics }) {
     { label: "Live links", value: humanCount(metrics.aliases) },
     { label: "Live knocks", value: humanCount(metrics.knocks) },
     { label: "Review queue", value: humanCount(metrics.pendingReports) },
+    { label: "Feedback", value: humanCount(metrics.pendingFeedback) },
     { label: "Send queue", value: humanCount(metrics.sendQueueDepth) },
     { label: "Database", value: humanBytes(metrics.dbSizeBytes) },
   ];

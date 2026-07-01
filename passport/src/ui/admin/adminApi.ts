@@ -162,6 +162,7 @@ export interface AdminMetrics {
   sendQueueDepth: number;
   dbSizeBytes: number;
   pendingReports: number;
+  pendingFeedback: number;
 }
 
 export type AdminMetricsResult =
@@ -176,6 +177,7 @@ const ZERO_METRICS: AdminMetrics = {
   sendQueueDepth: 0,
   dbSizeBytes: 0,
   pendingReports: 0,
+  pendingFeedback: 0,
 };
 
 /**
@@ -234,6 +236,77 @@ export async function actOnVanityName(
       `${apiBase}/admin/vanity/${encodeURIComponent(name)}/${action}`,
       { method: "POST", headers: { Authorization: `Bearer ${token}` } },
     );
+  } catch {
+    return "error";
+  }
+  if (res.status === 204) return "ok";
+  if (res.status === 401) return "unauthorized";
+  return "error";
+}
+
+// --- "Something wrong?" review (doc 34) -------------------------------------
+
+const ADMIN_FEEDBACK_PATH = "/admin/feedback";
+
+/** One "Something wrong?" report in the queue (mirrors the server's AdminFeedback).
+ * `body` is the note the person typed, `id` is the resolve target. */
+export interface AdminFeedback {
+  id: number;
+  reason: string;
+  body: string;
+  createdAt: number;
+}
+
+export type AdminFeedbackResult =
+  | { kind: "ok"; feedback: AdminFeedback[] }
+  | { kind: "unauthorized" }
+  | { kind: "error" };
+
+/**
+ * Fetch the open "Something wrong?" report queue. Same error shape as the other
+ * reads: 401 surfaces distinctly so the page can re-lock; any other non-200, a
+ * network failure, or a malformed body is a generic error the panel shows.
+ */
+export async function listAdminFeedback(
+  apiBase: string,
+  token: string,
+  fetchImpl: FetchLike = (input, init) => globalThis.fetch(input, init),
+): Promise<AdminFeedbackResult> {
+  let res: Response;
+  try {
+    res = await fetchImpl(apiBase + ADMIN_FEEDBACK_PATH, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    return { kind: "error" };
+  }
+  if (res.status === 401) return { kind: "unauthorized" };
+  if (res.status !== 200) return { kind: "error" };
+  try {
+    const body = (await res.json()) as { feedback?: AdminFeedback[] };
+    return { kind: "ok", feedback: body.feedback ?? [] };
+  } catch {
+    return { kind: "error" };
+  }
+}
+
+/**
+ * Resolve a report (the operator has handled it), which deletes it from the queue.
+ * 204 = done; 401 re-locks; anything else is a generic error.
+ */
+export async function resolveFeedback(
+  apiBase: string,
+  token: string,
+  id: number,
+  fetchImpl: FetchLike = (input, init) => globalThis.fetch(input, init),
+): Promise<AdminActionResult> {
+  let res: Response;
+  try {
+    res = await fetchImpl(`${apiBase}/admin/feedback/${id}/resolve`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
   } catch {
     return "error";
   }

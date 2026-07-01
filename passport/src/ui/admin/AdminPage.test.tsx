@@ -6,6 +6,7 @@ import type { AdminPingResult } from "./adminApi.ts";
 import type { ReviewOps } from "./ReviewPanel.tsx";
 import type { AuditOps } from "./ActivityPanel.tsx";
 import type { MetricsOps } from "./MetricsPanel.tsx";
+import type { FeedbackOps } from "./FeedbackPanel.tsx";
 
 afterEach(() => {
   sessionStorage.clear();
@@ -40,8 +41,16 @@ const emptyMetrics: MetricsOps = {
         sendQueueDepth: 0,
         dbSizeBytes: 0,
         pendingReports: 0,
+        pendingFeedback: 0,
       },
     }),
+};
+
+// The feedback panel also loads on mount; stub it so the authed shell stays
+// server-free. The panel has its own dedicated tests.
+const emptyFeedback: FeedbackOps = {
+  list: () => Promise.resolve({ kind: "ok", feedback: [] }),
+  resolve: () => Promise.resolve("ok"),
 };
 
 function renderPage(
@@ -55,6 +64,7 @@ function renderPage(
       reviewOps={reviewOps}
       auditOps={emptyAudit}
       metricsOps={emptyMetrics}
+      feedbackOps={emptyFeedback}
     />,
   );
 }

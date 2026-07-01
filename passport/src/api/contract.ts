@@ -29,6 +29,7 @@ export const PATHS = {
   recoveryPrefix: "/recovery/",
   health: "/healthz",
   vapid: "/vapid",
+  feedback: "/feedback",
 } as const;
 
 export const HEADER_WRITE_TOKEN = "X-Write-Token";

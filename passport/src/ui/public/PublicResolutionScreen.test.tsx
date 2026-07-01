@@ -32,6 +32,7 @@ function storeResolving(
     redeemGrant,
     resolveVanityName: () => Promise.resolve(null),
     reportVanityName: () => Promise.resolve(),
+    submitFeedback: () => Promise.resolve(),
     pendingRequests: () => [],
     forgetRequest: () => undefined,
   };

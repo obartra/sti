@@ -206,6 +206,39 @@ run_case "email-unset fail-safe" "$work/m11" "test-from@example.com" ""
 assert_contains "unset recipient logs instead of sending" "STI_ALERT_EMAIL unset"
 assert_absent "unset recipient emits no message" "From: test-from@example.com"
 
+# Case 12: a rise in the "Something wrong?" counter (doc 34) emails a bare nudge,
+# separate from the ops alert, on otherwise-healthy metrics. Only the count leaves.
+seed_state 60 0 0 0 0 9000 8999 9000
+echo "feedback=5" >>"$work/state"
+{ healthy_metrics; echo 'sti_feedback_received_total 8'; } >"$work/m12"
+run_case "feedback nudge" "$work/m12"
+assert_contains "nudge subject carries the count" "3 new report(s) waiting"
+assert_contains "nudge body carries the count" "3 new report(s) came in"
+assert_contains "nudge points at /admin" "https://sti.care/admin"
+assert_absent "nudge is not an ops alert" "[page]"
+assert_absent "nudge carries no category or note" "broken"
+
+# Case 13: a flat report counter sends no nudge (and no ops alert on healthy metrics).
+seed_state 60 0 0 0 0 9000 8999 9000
+echo "feedback=8" >>"$work/state"
+{ healthy_metrics; echo 'sti_feedback_received_total 8'; } >"$work/m13"
+run_case "feedback flat" "$work/m13"
+assert_empty "a flat report counter is silent"
+
+# Case 14: a counter that went backwards (a restart) sends no nudge (reset guard).
+seed_state 60 0 0 0 0 9000 8999 9000
+echo "feedback=8" >>"$work/state"
+{ healthy_metrics; echo 'sti_feedback_received_total 2'; } >"$work/m14"
+run_case "feedback reset guard" "$work/m14"
+assert_empty "a report counter reset is silent"
+
+# Case 15: first run with reports present but no prior state -> no nudge (no
+# baseline to diff), so the first scrape never floods for the backlog.
+rm -f "$work/state"
+{ healthy_metrics; echo 'sti_feedback_received_total 8'; } >"$work/m15"
+run_case "feedback first-run" "$work/m15"
+assert_empty "first run does not nudge for the backlog"
+
 echo
 if [ "$fails" -eq 0 ]; then
 	echo "alert_test: all checks passed"

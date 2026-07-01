@@ -121,13 +121,17 @@ c_shed="$(sum_metric sti_shed_total)"
 c_ratelimit="$(sum_metric sti_ratelimit_rejections_total)"
 c_sensitive="$(sum_metric sti_sensitive_overload_total)"
 c_errors="$(sum_metric sti_errors_total)"
+# "Something wrong?" reports filed (doc 34): a monotonic counter we diff to nudge
+# the operator about new reports. Absent on an old binary, so it defaults to 0.
+c_feedback="$(val sti_feedback_received_total)"
 c_a_count="$(val 'sti_request_duration_seconds_count{endpoint="/a/{id}"}')"
 c_a_le_warn="$(val "sti_request_duration_seconds_bucket{endpoint=\"/a/{id}\",le=\"${P99_WARN_SEC}\"}")"
 c_a_le_page="$(val "sti_request_duration_seconds_bucket{endpoint=\"/a/{id}\",le=\"${P99_PAGE_SEC}\"}")"
-: "${c_a_count:=0}" "${c_a_le_warn:=0}" "${c_a_le_page:=0}"
+: "${c_feedback:=0}" "${c_a_count:=0}" "${c_a_le_warn:=0}" "${c_a_le_page:=0}"
 
 prev_ts=""
 p_shed=0 p_ratelimit=0 p_sensitive=0 p_errors=0 p_a_count=0 p_a_le_warn=0 p_a_le_page=0
+p_feedback=0
 if [ -f "$STATE" ]; then
 	while IFS='=' read -r k v; do
 		case "$k" in
@@ -136,6 +140,7 @@ if [ -f "$STATE" ]; then
 		ratelimit) p_ratelimit="$v" ;;
 		sensitive) p_sensitive="$v" ;;
 		errors) p_errors="$v" ;;
+		feedback) p_feedback="$v" ;;
 		a_count) p_a_count="$v" ;;
 		a_le_warn) p_a_le_warn="$v" ;;
 		a_le_page) p_a_le_page="$v" ;;
@@ -152,11 +157,20 @@ shed=$c_shed
 ratelimit=$c_ratelimit
 sensitive=$c_sensitive
 errors=$c_errors
+feedback=$c_feedback
 a_count=$c_a_count
 a_le_warn=$c_a_le_warn
 a_le_page=$c_a_le_page
 EOF
 mv -f "$tmp" "$STATE"
+
+# New "Something wrong?" reports since the last scrape (doc 34): a bare-nudge signal,
+# independent of the ops-alert window below. A counter that went backwards (a restart
+# with a lost snapshot) yields no nudge, the same reset guard the rate checks use.
+new_reports=0
+if [ -n "$prev_ts" ] && [ "$c_feedback" -gt "$p_feedback" ]; then
+	new_reports=$((c_feedback - p_feedback))
+fi
 
 window_ok=0
 if [ -n "$prev_ts" ]; then
@@ -205,42 +219,32 @@ fi
 
 # --- deliver ----------------------------------------------------------------
 
-total=$(( ${#warns[@]} + ${#pages[@]} ))
-[ "$total" -eq 0 ] && exit 0
-
-body="sti.care alert on ${HOST} at $(date -u '+%Y-%m-%d %H:%M:%SZ')"$'\n\n'
-for a in "${pages[@]:-}"; do [ -n "$a" ] && body+="- [page] ${a}"$'\n'; done
-for a in "${warns[@]:-}"; do [ -n "$a" ] && body+="- [warn] ${a}"$'\n'; done
-
-# log_only surfaces the alert in the journal instead of mailing it, so a missing
-# sender or an unset From never loses the signal.
-log_only() {
-	echo "stiapi-alert: ${1}; ${total} alert(s):" >&2
-	printf '%s\n' "${pages[@]:-}" "${warns[@]:-}" | grep -v '^$' >&2 || true
-}
-
-if [ -z "$EMAIL" ]; then
-	log_only "STI_ALERT_EMAIL unset (no recipient)"
-	exit 0
-fi
-if ! command -v "${SENDER%% *}" >/dev/null 2>&1; then
-	log_only "no sender (${SENDER%% *})"
-	exit 0
-fi
-if [ -z "$FROM" ]; then
-	log_only "STI_ALERT_FROM unset (set it to the sender's authenticated address; sti.care is DMARC p=reject so an unaligned From would bounce)"
-	exit 0
-fi
-
-sev="warn"
-[ "${#pages[@]}" -gt 0 ] && sev="PAGE"
-# A real Date and Message-ID plus the auto-message markers (MIME, Auto-Submitted,
-# Precedence) so the forward is accepted by spam filters and never triggers an
-# auto-reply loop. Date uses an explicit +0000 (portable across BSD/GNU date).
-msgid="<$(date +%s).$$.${RANDOM}@$(hostname -f 2>/dev/null || echo "$HOST")>"
-message="To: ${EMAIL}
+# deliver SUBJECT SEV BODY -> email the message via $SENDER, or on a missing
+# recipient / sender / From log the reason PLUS the body to the journal, so a missing
+# prerequisite is a fail-safe (never a guaranteed bounce, never a lost signal). Both
+# the ops alert and the "new report(s)" nudge (doc 34) go through this one path.
+deliver() {
+	local subject="$1" sev="$2" body="$3"
+	if [ -z "$EMAIL" ]; then
+		printf 'stiapi-alert: STI_ALERT_EMAIL unset (no recipient):\n%s\n' "$body" >&2
+		return 0
+	fi
+	if ! command -v "${SENDER%% *}" >/dev/null 2>&1; then
+		printf 'stiapi-alert: no sender (%s):\n%s\n' "${SENDER%% *}" "$body" >&2
+		return 0
+	fi
+	if [ -z "$FROM" ]; then
+		printf "stiapi-alert: STI_ALERT_FROM unset (set it to the sender's authenticated address; sti.care is DMARC p=reject so an unaligned From would bounce):\n%s\n" "$body" >&2
+		return 0
+	fi
+	# A real Date and Message-ID plus the auto-message markers (MIME, Auto-Submitted,
+	# Precedence) so the forward is accepted by spam filters and never triggers an
+	# auto-reply loop. Date uses an explicit +0000 (portable across BSD/GNU date).
+	local msgid message
+	msgid="<$(date +%s).$$.${RANDOM}@$(hostname -f 2>/dev/null || echo "$HOST")>"
+	message="To: ${EMAIL}
 From: ${FROM}
-Subject: [sti.care][${sev}] ${total} alert(s) on ${HOST}
+Subject: ${subject}
 Date: $(date -u '+%a, %d %b %Y %H:%M:%S +0000')
 Message-ID: ${msgid}
 MIME-Version: 1.0
@@ -249,6 +253,28 @@ Auto-Submitted: auto-generated
 Precedence: bulk
 
 ${body}"
+	printf '%s\n' "$message" | $SENDER
+	echo "stiapi-alert: sent (${sev}) to ${EMAIL}" >&2
+}
 
-printf '%s\n' "$message" | $SENDER
-echo "stiapi-alert: sent ${total} alert(s) to ${EMAIL}" >&2
+total=$(( ${#warns[@]} + ${#pages[@]} ))
+if [ "$total" -eq 0 ] && [ "$new_reports" -eq 0 ]; then
+	exit 0
+fi
+
+# The operational alert: the "address it now" conditions in one page-or-warn email.
+if [ "$total" -gt 0 ]; then
+	body="sti.care alert on ${HOST} at $(date -u '+%Y-%m-%d %H:%M:%SZ')"$'\n\n'
+	for a in "${pages[@]:-}"; do [ -n "$a" ] && body+="- [page] ${a}"$'\n'; done
+	for a in "${warns[@]:-}"; do [ -n "$a" ] && body+="- [warn] ${a}"$'\n'; done
+	sev="warn"
+	[ "${#pages[@]}" -gt 0 ] && sev="PAGE"
+	deliver "[sti.care][${sev}] ${total} alert(s) on ${HOST}" "$sev" "$body"
+fi
+
+# The "Something wrong?" nudge (doc 34): a SEPARATE, bare message so the ops alert
+# stays page/warn-only. Only the count leaves the box, never a category or note.
+if [ "$new_reports" -gt 0 ]; then
+	deliver "[sti.care] ${new_reports} new report(s) waiting" "info" \
+		"${new_reports} new report(s) came in. Open https://sti.care/admin to review."
+fi

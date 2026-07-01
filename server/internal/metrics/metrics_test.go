@@ -90,6 +90,21 @@ func TestShedAndRateLimitAttribution(t *testing.T) {
 	}
 }
 
+// The feedback counter is pre-registered at zero and increments per filed report.
+// The box diffs this counter to nudge the operator (doc 34), so it must be exposed
+// and start at zero (a restart continues it from the snapshot, not a fresh count).
+func TestFeedbackReceivedCounter(t *testing.T) {
+	m := New()
+	if out := scrape(t, m); !strings.Contains(out, "sti_feedback_received_total 0") {
+		t.Fatalf("counter not pre-registered at zero:\n%s", out)
+	}
+	m.FeedbackReceived()
+	m.FeedbackReceived()
+	if out := scrape(t, m); !strings.Contains(out, "sti_feedback_received_total 2") {
+		t.Fatalf("counter did not increment to 2:\n%s", out)
+	}
+}
+
 // The /a p99 latency alert (doc 12) reads the 25ms and 100ms bucket boundaries:
 // it watches how the histogram fills around those edges. Dropping or moving either
 // boundary silently breaks the alert, so pin them here.

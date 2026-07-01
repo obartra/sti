@@ -3,8 +3,10 @@ import {
   actOnVanityName,
   getAdminMetrics,
   listAdminAudit,
+  listAdminFeedback,
   listAdminReports,
   pingAdmin,
+  resolveFeedback,
   type FetchLike,
 } from "./adminApi.ts";
 
@@ -120,6 +122,7 @@ describe("getAdminMetrics", () => {
       sendQueueDepth: 1,
       dbSizeBytes: 4096,
       pendingReports: 2,
+      pendingFeedback: 8,
     };
     const ok = vi.fn<FetchLike>().mockResolvedValue(jsonResp(200, metrics));
     expect(await getAdminMetrics("https://api.example", "t", ok)).toEqual({
@@ -147,6 +150,7 @@ describe("getAdminMetrics", () => {
         sendQueueDepth: 0,
         dbSizeBytes: 0,
         pendingReports: 0,
+        pendingFeedback: 0,
       },
     });
   });
@@ -300,5 +304,85 @@ describe("actOnVanityName", () => {
         c,
       ),
     ).toBe("error");
+  });
+});
+
+describe("listAdminFeedback", () => {
+  it("returns the queue on 200, sending the bearer in the header", async () => {
+    const feedback = [
+      { id: 2, reason: "broken", body: "share button dead", createdAt: 200 },
+      { id: 1, reason: "confusing", body: "", createdAt: 100 },
+    ];
+    const ok = vi
+      .fn<FetchLike>()
+      .mockResolvedValue(jsonResp(200, { feedback }));
+    expect(await listAdminFeedback("https://api.example", "t", ok)).toEqual({
+      kind: "ok",
+      feedback,
+    });
+    expect(ok).toHaveBeenCalledWith(
+      "https://api.example/admin/feedback",
+      expect.objectContaining({
+        method: "GET",
+        headers: { Authorization: "Bearer t" },
+      }),
+    );
+  });
+
+  it("defaults a missing feedback array to empty", async () => {
+    const noField = vi.fn<FetchLike>().mockResolvedValue(jsonResp(200, {}));
+    expect(
+      await listAdminFeedback("https://api.example", "t", noField),
+    ).toEqual({ kind: "ok", feedback: [] });
+  });
+
+  it("maps 401 to unauthorized, other statuses, network and bad body to error", async () => {
+    const un = vi.fn<FetchLike>().mockResolvedValue(resp(401));
+    expect((await listAdminFeedback("https://api.example", "t", un)).kind).toBe(
+      "unauthorized",
+    );
+    const five = vi.fn<FetchLike>().mockResolvedValue(resp(503));
+    expect(
+      (await listAdminFeedback("https://api.example", "t", five)).kind,
+    ).toBe("error");
+    const netDown = vi.fn<FetchLike>().mockRejectedValue(new Error("offline"));
+    expect(
+      (await listAdminFeedback("https://api.example", "t", netDown)).kind,
+    ).toBe("error");
+    const badBody = vi
+      .fn<FetchLike>()
+      .mockResolvedValue(new Response("not json", { status: 200 }));
+    expect(
+      (await listAdminFeedback("https://api.example", "t", badBody)).kind,
+    ).toBe("error");
+  });
+});
+
+describe("resolveFeedback", () => {
+  it("POSTs to the resolve path with the bearer and maps 204 to ok", async () => {
+    const f = vi.fn<FetchLike>().mockResolvedValue(resp(204));
+    expect(await resolveFeedback("https://api.example", "t", 7, f)).toBe("ok");
+    expect(f).toHaveBeenCalledWith(
+      "https://api.example/admin/feedback/7/resolve",
+      expect.objectContaining({
+        method: "POST",
+        headers: { Authorization: "Bearer t" },
+      }),
+    );
+  });
+
+  it("maps 401 to unauthorized, other statuses and network errors to error", async () => {
+    const un = vi.fn<FetchLike>().mockResolvedValue(resp(401));
+    expect(await resolveFeedback("https://api.example", "t", 1, un)).toBe(
+      "unauthorized",
+    );
+    const five = vi.fn<FetchLike>().mockResolvedValue(resp(500));
+    expect(await resolveFeedback("https://api.example", "t", 1, five)).toBe(
+      "error",
+    );
+    const netDown = vi.fn<FetchLike>().mockRejectedValue(new Error("offline"));
+    expect(await resolveFeedback("https://api.example", "t", 1, netDown)).toBe(
+      "error",
+    );
   });
 });
