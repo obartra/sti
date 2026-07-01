@@ -62,9 +62,10 @@ const SCREEN_PATH: Partial<Record<Screen, string>> = {
   "b2-recovery": "/recovery",
   "b3-setup": "/setup",
   home: "/home",
-  connect: "/connect",
-  "alias-share": "/connect/share",
-  scan: "/connect/scan",
+  links: "/links",
+  people: "/people",
+  "alias-share": "/links/share",
+  scan: "/people/scan",
   wallet: "/wallet",
   care: "/care",
   notifications: "/notifications",
@@ -123,6 +124,15 @@ const COLD_REDIRECT: Record<string, Screen> = {
   "/recovery": "b1-claim",
   "/setup": "b1-claim",
   "/report/saved": "home",
+};
+
+// Legacy paths kept working so an installed PWA (or an old shortcut/bookmark) never
+// strands: the old Connect tab and its sub-paths now live under People / Links.
+// A cold hit resolves to the new screen and mount normalizes the URL.
+const LEGACY_REDIRECT: Record<string, Screen> = {
+  "/connect": "people",
+  "/connect/scan": "scan",
+  "/connect/share": "alias-share",
 };
 
 // The id-carrying app paths: `/groups/{id}`, `/groups/{id}/edit`,
@@ -189,7 +199,7 @@ export function routeFromLocation(): Route | null {
   const param = parameterizedRoute(pathname, hash);
   if (param) return param;
   const cleanPath = pathname.replace(/\/$/, "") || "/";
-  const redirect = COLD_REDIRECT[cleanPath];
+  const redirect = COLD_REDIRECT[cleanPath] ?? LEGACY_REDIRECT[cleanPath];
   if (redirect)
     return { screen: redirect, group: groupOf(redirect), data: null };
   const screen = PATH_SCREEN[cleanPath];

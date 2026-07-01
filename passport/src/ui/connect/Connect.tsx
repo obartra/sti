@@ -1,26 +1,25 @@
 import { useState } from "react";
-import { Link, QrCode } from "../../design/icons.tsx";
+import { QrCode } from "../../design/icons.tsx";
 import { COPY, DiscoverTile, FavesSection, PrivacySection } from "./parts.tsx";
 import { RecentSection } from "./recent.tsx";
 import type { ContactRecord } from "../../store/accountBlob.ts";
 
-// Connect: your linkups (the contacts you've connected with), via SCAN / SHARE-LINK
-// only. A linkup IS a contact link: there is one underlying record, shown here as a
-// browsable, starrable list (newest first) and managed as links under "Share my
-// link". Discovery is member-initiated and link/scan-scoped; you only ever appear to
-// people you've scanned or sent a link to. No badge/status is surfaced here. Faves
-// (stars) are a device-local display preference, never synced.
+// People: your connections (the contacts you've connected with), via SCAN / SHARE-LINK
+// only. A connection IS a contact link: there is one underlying record, shown here as a
+// browsable, starrable list (newest first). Discovery is member-initiated and
+// link/scan-scoped; you only ever appear to people you've scanned or sent a link to.
+// No badge/status is surfaced here. Stars are a device-local display preference, never
+// synced. Managing the links themselves lives in the Links tab.
 export interface ConnectProps {
-  /** The owner's contacts (a linkup == a contact); shown newest first. */
+  /** The owner's contacts (a connection == a contact); shown newest first. */
   contacts: ContactRecord[];
   /** Today as an epoch day, for the relative "when" labels. */
   nowDay: number;
   /** Starred contact ids (device-local). */
   faves: ReadonlySet<string>;
   onToggleFave: (contactId: string) => void;
-  /** Delete a contact link (the "delete linkup" row action). */
+  /** Delete a contact link (the "delete connection" row action). */
   onRemoveContact: (contactId: string) => void;
-  onShareLink?: (() => void) | undefined;
   /** Open the in-app QR scanner to read someone's code. */
   onScan?: (() => void) | undefined;
 }
@@ -31,7 +30,6 @@ export function Connect({
   faves,
   onToggleFave,
   onRemoveContact,
-  onShareLink,
   onScan,
 }: ConnectProps) {
   const [visible, setVisible] = useState(6);
@@ -66,14 +64,8 @@ export function Connect({
           </p>
         </div>
 
-        {/* the two ways to connect: share your link, or scan someone's code */}
+        {/* meet someone in person: scan their code to connect */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <DiscoverTile
-            icon={<Link size={22} />}
-            title={COPY.shareTile}
-            sub={COPY.shareTileSub}
-            onClick={onShareLink}
-          />
           <DiscoverTile
             icon={<QrCode size={22} />}
             title={COPY.scanTile}

@@ -37,16 +37,13 @@ describe("LiveLinks", () => {
     expect(screen.getByText("Casual link")).toBeInTheDocument();
     expect(screen.getByText("Sam")).toBeInTheDocument();
 
-    // Aliases come first (public, casual), then contact links.
-    const [aliasRevoke, , contactRevoke] = screen.getAllByRole("button", {
-      name: "Revoke",
-    });
-    if (!aliasRevoke || !contactRevoke) {
-      throw new Error("expected a revoke for each link");
-    }
-    await user.click(aliasRevoke);
+    // Each revoke names the link it acts on (so a screen with two lists stays
+    // unambiguous): the public profile, and the "Sam" contact link.
+    await user.click(
+      screen.getByRole("button", { name: "Revoke Public profile" }),
+    );
     expect(onRevokeAlias).toHaveBeenCalledWith(id("A"));
-    await user.click(contactRevoke);
+    await user.click(screen.getByRole("button", { name: "Revoke Sam" }));
     expect(onRevokeContact).toHaveBeenCalledWith(id("C"));
   });
 

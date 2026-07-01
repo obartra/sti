@@ -10,7 +10,7 @@ import { Matrix } from "../../lib/qr.tsx";
 import {
   Passport,
   Users,
-  Circles,
+  Link,
   Care,
   Plus,
   Bell,
@@ -19,20 +19,20 @@ import {
   Eye,
   type IconProps,
 } from "../../design/icons.tsx";
+import type { Tab } from "../app/routes.ts";
 
 /* Chrome pieces for the desktop app shell (sidebar, header, share rail, content
    area), split out of Desktop.tsx so each file stays under the length ceiling.
    Faithful port of the design's app/desktop.jsx; output is unchanged. */
 
-export type DesktopTab = "home" | "connect" | "groups" | "care";
+export type DesktopTab = Tab;
 
-// Copy inlined verbatim from copy.js (the strings the desktop AppShell reads:
-// nav.*, home.*).
+// The sidebar nav copy + the home actions the header/rail read.
 const COPY = {
   nav: {
     passport: "Passport",
-    connect: "Connect",
-    groups: "Groups",
+    links: "Links",
+    people: "People",
     care: "Care",
   },
   home: {
@@ -48,8 +48,8 @@ export const NAV_ITEMS: {
   icon: (p: IconProps) => ReactNode;
 }[] = [
   { id: "home", label: COPY.nav.passport, icon: Passport },
-  { id: "connect", label: COPY.nav.connect, icon: Users },
-  { id: "groups", label: COPY.nav.groups, icon: Circles },
+  { id: "links", label: COPY.nav.links, icon: Link },
+  { id: "people", label: COPY.nav.people, icon: Users },
   { id: "care", label: COPY.nav.care, icon: Care },
 ];
 
