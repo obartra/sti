@@ -43,7 +43,7 @@ import {
 import type { ContactInvite } from "./contactInvite.ts";
 import type { NotifyLockResult } from "./partnerNotify.ts";
 import { notifyLinkedContacts, pollPartnerNudge } from "./notifyOps.ts";
-import { grantAccess } from "./grant.ts";
+import { gatherKnocks, grantPending } from "./knockOps.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { revokeAlias } from "./publish.ts";
 import type { AliasIdentity } from "./ownerCard.ts";
@@ -395,55 +395,6 @@ export interface SessionDeps {
   readonly keys: RootKeyStore;
   /** Transport for publishing/republishing the owner's shareable alias. */
   readonly api: ApiClient;
-}
-
-// Every alias a knock can land on: the public/casual aliases plus every
-// per-contact link. Used by the owner-pull knock review and the approve flow.
-function ownerLinks(session: OwnerSession): AliasRecord[] {
-  return [
-    ...session.blob.aliases,
-    ...session.blob.contacts.map((c) => c.alias),
-  ];
-}
-
-// One knock-review sweep across every owner link: sum the contentless count and
-// collect the grantable knocks (those that carried a key), each tagged with its
-// alias. A single pass per alias, so count and pending can't read a torn pair.
-// Best-effort per alias: an unreachable one contributes nothing.
-async function gatherKnocks(
-  api: ApiClient,
-  session: OwnerSession,
-): Promise<OwnerKnocks> {
-  const perAlias = await Promise.all(
-    ownerLinks(session).map(async (alias) => {
-      const review = await api
-        .knockReview(alias.id, alias.writeToken)
-        .catch(() => ({ count: 0, pending: [] }));
-      return {
-        count: review.count,
-        pending: review.pending
-          .filter((p) => p.pubKey)
-          .map((pending) => ({ alias, pending })),
-      };
-    }),
-  );
-  return {
-    count: perAlias.reduce((sum, r) => sum + r.count, 0),
-    pending: perAlias.flatMap((r) => r.pending),
-  };
-}
-
-// Seal each approval's alias key to its waiting requester (the in-app grant).
-// Returns how many were granted. All-or-nothing for the caller: a single failure
-// rejects the whole call (so the UI marks none as granted and the owner retries
-// all); grantAccess is idempotent, so re-sealing the ones that already succeeded
-// is harmless.
-async function grantPending(
-  api: ApiClient,
-  approvals: PendingApproval[],
-): Promise<number> {
-  await Promise.all(approvals.map((x) => grantAccess(api, x.alias, x.pending)));
-  return approvals.length;
 }
 
 // Enforce link expiry on load, best-effort (closes the passive-owner gap). A
