@@ -1,6 +1,6 @@
 # 33 - Shared groups (the model)
 
-## Status: PROPOSED (design); the shape below is agreed, the two crypto open questions at the end are for discussion before build
+## Status: APPROVED (design); ready to build. Storage is (A) a server group blob, allowed only if it adds no oracle the alias store does not already have; removal rotates the group key.
 
 A group is one shared thing many people are in, used to **set up a whole network of
 status-sharing at once** instead of one pairwise link at a time. This doc owns what a
@@ -134,29 +134,23 @@ a cheaper scheme later, is the second open question below.
   unlinkable to their other aliases, and the group is opaque to anyone without `Kg`.
   (Decorrelation _between members_ is intentionally dropped: members see each other.)
 
-## The two open questions (for discussion before build)
+## The two decisions (resolved)
 
-1. **Where the group object lives, without loosening our guarantees.**
-   - **(A) A server-stored group blob**, sealed so only members can read it, that
-     members poll for roster and key changes. Cleanest for propagation (an admin
-     writes it, members read it). The server learns one more opaque blob exists and is
-     read by some clients, never its contents or who. The thing to nail so we do not
-     loosen guarantees: the write-authorization story (who may change the blob) and
-     making its existence and reads as uniform/rate-limited as alias reads, so a group
-     blob is not a new oracle.
-   - **(B) No server object; the roster and key changes ride the per-member channels**
-     an admin already holds. The server stays even blinder (there is no group object at
-     all), at the cost of propagation being N messages and membership state drifting
-     between members until they sync.
+1. **Where the group object lives: (A) a server-stored group blob**, sealed so only
+   members can read it, that members poll for roster and key changes. An admin writes
+   it, members read it. Chosen for its simpler propagation, under **one hard
+   constraint: the group blob must add no oracle the alias store does not already
+   have.** Concretely, that means the group blob is stored and read exactly like an
+   alias payload: an opaque id, a fixed-or-decoy-uniform read so its existence is not
+   revealed, per-IP + global rate limits, and writes gated by a capability token
+   (which admin may change it). If any of those cannot hold for the group blob, we fall
+   back to (B) channel-only rather than accept a new oracle. Slice 2 must demonstrate
+   the no-new-oracle property before the blob ships.
 
-   Leaning A for its simpler propagation, but only if we can show the group blob adds
-   no oracle the alias store does not already have. This is the "don't loosen our
-   guarantees" call to make together.
-
-2. **The cost of remove = rotate + everyone republishes.** Is that acceptable at the
-   group sizes we target (event-sized, tens not thousands), or do we want a cheaper
-   key scheme (e.g. per-epoch keys) as a later optimization? It is correct either way;
-   this is only about cost.
+2. **Removal = rotate the group key + every remaining member republishes once.**
+   Accepted for v1. It is the honest meaning of "no future reads" and is correct at the
+   group sizes we target (event-sized, tens not thousands). A cheaper key scheme (e.g.
+   per-epoch keys) is a possible later optimization, not a v1 requirement.
 
 ## Corner cases
 
@@ -170,12 +164,14 @@ a cheaper scheme later, is the second open question below.
 - **Adding a hostile member** is a social problem with a one-tap exit (leave), not a
   visibility leak: the roster is fully visible and joining is consented.
 
-## Implementation plan (slices; do not start until the two open questions are closed)
+## Implementation plan (slices)
 
 1. **Crypto:** group card seal/open under `Kg`, and wrap/unwrap `Kg` per member
    (mirrors publish.ts + the envelope wraps). Pure, unit-tested.
-2. **Group object + roster** in the chosen storage shape (A or B), within the
-   blind-store boundary. Server tests if (A).
+2. **Group object + roster:** the server group blob (A), stored and read exactly like
+   an alias payload (opaque id, existence-uniform read, rate-limited, capability-gated
+   writes) so it adds no new oracle; fall back to channel-only if that cannot hold.
+   Server tests, including the existence-uniformity of the blob read.
 3. **Create + public/private handle**: mint `Kg`, choose the handle and its visibility;
    a public handle resolves to an opaque join pointer (doc 17-style).
 4. **Membership lifecycle**: invite / accept / reject / revoke, request / approve /
