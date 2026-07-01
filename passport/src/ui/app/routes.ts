@@ -32,6 +32,7 @@ const ALL_SCREENS = [
   "privacy-policy",
   "terms",
   "share-link",
+  "feedback",
 ] as const;
 
 export type Screen = (typeof ALL_SCREENS)[number];
@@ -77,6 +78,8 @@ const PUBLIC: readonly Screen[] = [
   "privacy-policy",
   "terms",
   "share-link",
+  // The "Something wrong?" form (doc 34), reachable logged out from the footer.
+  "feedback",
 ];
 const ONBOARD: readonly Screen[] = ["b1-claim", "b2-recovery", "b3-setup"];
 

@@ -46,6 +46,7 @@ function fakeAccountApi(): ApiClient {
     releaseVanityName: unused,
     resolveVanityName: unused,
     reportVanityName: unused,
+    submitFeedback: unused,
     getRecoveryEnvelope: unused,
     putRecoveryEnvelope: unused,
     deleteRecoveryEnvelope: unused,

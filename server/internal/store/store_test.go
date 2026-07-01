@@ -787,6 +787,101 @@ func TestVanityReportPerNameCap(t *testing.T) {
 	}
 }
 
+// "Something wrong?" reports (doc 34): add lands in the queue newest-first with the
+// note intact, count reflects the open rows, resolve deletes one, and resolve of a
+// missing id is a no-op.
+func TestFeedback(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	if got, err := s.OpenFeedback(ctx, 10); err != nil || len(got) != 0 {
+		t.Fatalf("empty queue: %d err %v", len(got), err)
+	}
+	if n, err := s.OpenFeedbackCount(ctx); err != nil || n != 0 {
+		t.Fatalf("empty count: %d err %v", n, err)
+	}
+
+	if err := s.AddFeedback(ctx, "broken", "the share button does nothing", 100); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AddFeedback(ctx, "confusing", "", 200); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := s.OpenFeedback(ctx, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("queue rows = %d, want 2", len(got))
+	}
+	// Newest first: the confusing (empty-note) row, then the broken one with its note.
+	if got[0].Reason != "confusing" || got[0].Body != "" || got[0].CreatedAt != 200 {
+		t.Fatalf("row 0 = %+v", got[0])
+	}
+	if got[1].Reason != "broken" || got[1].Body != "the share button does nothing" {
+		t.Fatalf("row 1 = %+v", got[1])
+	}
+	if n, err := s.OpenFeedbackCount(ctx); err != nil || n != 2 {
+		t.Fatalf("count = %d err %v, want 2", n, err)
+	}
+
+	// Resolve deletes one row; the other stays.
+	if err := s.ResolveFeedback(ctx, got[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	rest, _ := s.OpenFeedback(ctx, 10)
+	if len(rest) != 1 || rest[0].Reason != "broken" {
+		t.Fatalf("after resolve: %+v", rest)
+	}
+	// Resolving a missing id is a no-op, not an error.
+	if err := s.ResolveFeedback(ctx, 999999); err != nil {
+		t.Fatalf("resolve missing: %v", err)
+	}
+	if n, _ := s.OpenFeedbackCount(ctx); n != 1 {
+		t.Fatalf("count after no-op resolve = %d, want 1", n)
+	}
+}
+
+// The feedback table is capped so a flood of intake cannot grow it without bound;
+// intake stays existence-uniform, so rows past the cap are silently dropped.
+func TestFeedbackCap(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+	for i := 0; i < feedbackCap+50; i++ {
+		if err := s.AddFeedback(ctx, "other", "", int64(i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n, err := s.OpenFeedbackCount(ctx); err != nil || n != feedbackCap {
+		t.Fatalf("count = %d err %v, want capped at %d", n, err, feedbackCap)
+	}
+}
+
+// PurgeFeedback deletes reports older than the window (by created_at) so the one
+// user-typed store is bounded in time, resolved or not.
+func TestPurgeFeedback(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+	const day = 24 * 60 * 60 * 1000
+
+	if err := s.AddFeedback(ctx, "broken", "old", 1*day); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AddFeedback(ctx, "broken", "recent", 95*day); err != nil {
+		t.Fatal(err)
+	}
+	// now = 100 days, max age = 30 days: only the 1-day-old report qualifies.
+	n, err := s.PurgeFeedback(ctx, 100*day, 30*day)
+	if err != nil || n != 1 {
+		t.Fatalf("purge feedback: n=%d err=%v, want 1", n, err)
+	}
+	rest, _ := s.OpenFeedback(ctx, 10)
+	if len(rest) != 1 || rest[0].Body != "recent" {
+		t.Fatalf("after purge: %+v", rest)
+	}
+}
+
 // Admin record management (doc 20 A3): force-delete an alias (it then reads as a
 // miss), release the vanity names pointing at it into the lock, and read opaque
 // metadata across the alias/account/inbox tables, never any content.

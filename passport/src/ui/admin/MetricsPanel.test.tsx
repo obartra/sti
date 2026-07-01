@@ -11,6 +11,7 @@ const sample: AdminMetrics = {
   sendQueueDepth: 2,
   dbSizeBytes: 5 * 1024 * 1024,
   pendingReports: 3,
+  pendingFeedback: 1,
 };
 
 function okOps(metrics: AdminMetrics): MetricsOps {

@@ -310,6 +310,8 @@ export interface LandingProps {
   /** Open the list of requests this viewer has made. */
   onRequests?: () => void;
   onShareLink?: () => void;
+  /** Open the "Something wrong?" report form (doc 34). */
+  onFeedback?: () => void;
 }
 
 export function Landing({
@@ -322,6 +324,7 @@ export function Landing({
   pendingCount,
   onRequests,
   onShareLink,
+  onFeedback,
 }: LandingProps) {
   return (
     <div
@@ -347,6 +350,7 @@ export function Landing({
         onPrivacy={onPrivacyPolicy}
         onTerms={onTerms}
         onShareLink={onShareLink}
+        onFeedback={onFeedback}
       />
     </div>
   );

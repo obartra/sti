@@ -72,6 +72,11 @@ Plus a one-line, voice-compliant tagline (no meta, no jargon), for example
 "Encrypted on your phone. We can't read it." The footer is quiet: small type,
 muted color, never competing with a screen's primary action.
 
+It also carries a quiet "Something wrong?" link that opens a short in-app form
+([doc 34](34-something-wrong-reports.md)). It replaced a `mailto:` link so a
+report lands in the operator queue instead of an inbox; `privacy@sti.care` stays
+on this page and the terms page as the way to reach a human for a reply.
+
 The landing screen additionally gets a primary-adjacent link into the promises
 page (a short "See what we promise" link near the main call to action), since
 that is where the trust decision is made and a footer alone is too quiet there.
@@ -109,9 +114,13 @@ sign-in unlocks none of it; the admin tools only ever touch encrypted records.
 | Notification subscription, if you turn notifications on | A push-service address + keys (`push_endpoint`) | The address is a third-party push service's, not your identity |
 | Admin action log | What an operator did and to which opaque record, and when (`admin_audit`) | It records actions, never content |
 | Reports against public names | A fixed reason code + the public name (`vanity_report`) | No free text |
+| A "something wrong" note, if you send one | The category you picked and any message you typed (`feedback`) | Yes, so we can read and act on it |
 
-We do not store your email, your real name, your location, or any identifier
-that ties a record back to you. We hold no list of who your contacts are.
+We do not ask you for your email, your real name, or your location, and we do not
+store what you write. The one exception is a problem report you send us on
+purpose, so we can read it and help (we can't fix what we can't see); the form
+asks you to leave out anything sensitive, and no identity is stored with it. We
+hold no list of who your contacts are ([doc 34](34-something-wrong-reports.md)).
 
 ### What we never collect
 
@@ -144,6 +153,8 @@ We do not sell or share your data, because we do not have readable data to sell.
   them.
 - Access requests are short-lived and auto-expire.
 - Your account backup stays until you delete it.
+- A "something wrong" note is kept until we have read it, then swept on a fixed
+  schedule; we do not keep it indefinitely.
 - The admin action log is append-only and retained for accountability; it holds
   no content.
 

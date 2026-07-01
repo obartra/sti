@@ -97,7 +97,8 @@ type Metrics struct {
 	inflightHi  *gauge
 	inflightMax *gauge
 
-	janitorLastRun *gauge // unix seconds of the last background-loop tick
+	janitorLastRun *gauge   // unix seconds of the last background-loop tick
+	feedbackTotal  *counter // "Something wrong?" reports filed (doc 34)
 }
 
 type seriesKey struct {
@@ -151,8 +152,17 @@ func New() *Metrics {
 	m.inflightHi = r.gauge("sti_inflight_highwater", "Peak in-flight requests since start.", nil)
 	m.inflightMax = r.gauge("sti_inflight_max", "Configured MaxInflight concurrency cap.", nil)
 	m.janitorLastRun = r.gauge("sti_janitor_last_run_seconds", "Unix time of the last background-loop tick (heartbeat).", nil)
+	m.feedbackTotal = r.counter("sti_feedback_received_total",
+		"Something-wrong reports filed (doc 34). A rise between scrapes is what makes the box email a bare nudge; the count is all that leaves.",
+		nil)
 	return m
 }
+
+// FeedbackReceived records one filed "Something wrong?" report. The box's minute
+// scrape diffs this counter and emails the operator a bare "N new report(s)" nudge on
+// a rise (doc 34); the count is the only thing that leaves the box, never a category
+// or note.
+func (m *Metrics) FeedbackReceived() { m.feedbackTotal.Inc() }
 
 // JanitorRan records that the background loop completed a tick at unixSeconds. A
 // stalled loop shows up as this gauge going stale (now minus it grows without

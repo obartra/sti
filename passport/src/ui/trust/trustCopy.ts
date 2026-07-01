@@ -9,15 +9,13 @@ export const TRUST_FOOTER = {
   promises: "Our promises",
   privacy: "Privacy",
   terms: "Terms",
-  // A quiet way to reach a human, on every public surface, without an in-app form
-  // (and the spam intake one would invite). Mailto only, so nothing is collected.
+  // A quiet way to flag a problem, on every public surface. It opens a short in-app
+  // form (doc 34) whose report lands in the operator queue; the form is rate-limited
+  // and asks the person to leave out anything they would not want kept.
   feedbackLead: "Something wrong?",
-  feedbackLink: "Email us",
+  feedbackLink: "Tell us",
   shareLink: "Share your link",
 } as const;
-
-/** The published address a user reaches the team at (already in the legal pages). */
-export const SUPPORT_EMAIL = "privacy@sti.care";
 
 /** The short link near the landing call to action. */
 export const LANDING_PROMISES_LINK = "See what we promise";
@@ -80,14 +78,15 @@ export const PRIVACY_POLICY: LegalDoc = {
         "A notification subscription, only if you turn notifications on: an address at your phone's push service, not your identity.",
         "An admin action log: a record of what an operator did and to which encrypted record, never any content.",
         "Reports against public names: a fixed reason and the public name, with no free text.",
+        "A problem report, if you send one: the kind of problem and any note you write, kept so we can read it and help. It is the one thing you type that we store, so please leave out anything sensitive.",
       ],
     },
     {
       heading: "What we never collect",
       summary:
-        "No analytics, trackers, ads, or third-party scripts. The app talks only to our server, and we don't store your email, real name, or location.",
+        "No analytics, trackers, ads, or third-party scripts. We don't ask for your email, real name, or location, and we don't store what you write. The one exception is a problem report you send us, so we can help.",
       paragraphs: [
-        "No analytics. No trackers. No advertising. No tracking cookies. No third-party scripts. The app talks to exactly one server, ours. We do not store your email, your real name, or your location.",
+        "No analytics. No trackers. No advertising. No tracking cookies. No third-party scripts. The app talks to exactly one server, ours. We don't ask for your email, your real name, or your location, and we don't store what you write. The one exception is a problem report you send us on purpose, so we can read it and help. We can't fix what we can't see, so please leave out anything sensitive.",
       ],
     },
     {
@@ -115,6 +114,7 @@ export const PRIVACY_POLICY: LegalDoc = {
         "A shared link's card is kept until it expires, or until you turn it off, which overwrites it.",
         "Access requests expire on their own.",
         "Your account backup stays until you delete it, or until about two years without using the app, whichever comes first. Opening the app keeps it; we have no other way to reach you, so we cannot warn you first.",
+        "A problem report you send stays until we've read it, then it's removed. We don't keep it indefinitely.",
         "The admin action log is kept for accountability and holds no content.",
       ],
     },

@@ -138,6 +138,10 @@ export interface ApiClient {
    * fixed reason code, no reporter identity. Resolves on accept (202), throws on
    * a real failure. */
   reportVanityName(name: string, reason: VanityReportReason): Promise<void>;
+  /** File a "Something wrong?" report (doc 34): public + rate-limited intake, a
+   * fixed category and an optional note, no reporter identity. Resolves on accept
+   * (202), throws on a real failure. */
+  submitFeedback(reason: FeedbackReason, body: string): Promise<void>;
   /**
    * Recovery envelope store (doc 32). getRecoveryEnvelope returns the fixed-size
    * body the server sends (real or a decoy on a miss) and never signals a miss; a
@@ -166,6 +170,13 @@ export type VanityReportReason =
   | "slur"
   | "spam"
   | "other";
+
+/** The fixed "Something wrong?" categories (doc 34); mirrors the server's set. */
+export type FeedbackReason = "broken" | "confusing" | "safety" | "other";
+
+/** The longest note the "Something wrong?" form accepts, mirroring the server cap
+ * so an over-length body is caught before the request. */
+export const FEEDBACK_BODY_MAX = 2000;
 
 export const OCTET_STREAM = "application/octet-stream";
 
@@ -529,6 +540,11 @@ export function createApiClient(
     },
 
     getVapidPublicKey: () => fetchVapidPublicKey(call),
+
+    async submitFeedback(reason, body) {
+      // Intake is a uniform 202; postJson treats any 2xx as ok and maps the rest.
+      await postJson(call, PATHS.feedback, { reason, body }, "feedback");
+    },
 
     ...vanityMethods(call),
 

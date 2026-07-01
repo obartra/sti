@@ -2,6 +2,7 @@ import { Promises } from "../../promises/Promises.tsx";
 import { TrustShell } from "../../trust/TrustShell.tsx";
 import { LegalPage } from "../../trust/LegalPage.tsx";
 import { PRIVACY_POLICY, TERMS } from "../../trust/trustCopy.ts";
+import { Feedback } from "../../trust/Feedback.tsx";
 import { ShareLinkPage } from "../../findable/ShareLinkPage.tsx";
 import type { ScreenCtx, ScreenRenderers } from "./context.ts";
 
@@ -17,12 +18,14 @@ export function footerLinks(nav: ScreenCtx["nav"]): {
   onPrivacy: () => void;
   onTerms: () => void;
   onShareLink: () => void;
+  onFeedback: () => void;
 } {
   return {
     onPromises: () => nav.go("promises"),
     onPrivacy: () => nav.go("privacy-policy"),
     onTerms: () => nav.go("terms"),
     onShareLink: () => nav.go("share-link"),
+    onFeedback: () => nav.go("feedback"),
   };
 }
 
@@ -70,6 +73,16 @@ export const trustRenderers: ScreenRenderers = {
             ? vanityName
             : undefined
         }
+      />
+    </TrustShell>
+  ),
+  // The "Something wrong?" form (doc 34): the same trust shell, no rail item lit,
+  // wired to the store's public feedback intake.
+  feedback: ({ nav, store }) => (
+    <TrustShell onBack={nav.back} {...footerLinks(nav)}>
+      <Feedback
+        submit={(reason, body) => store.submitFeedback(reason, body)}
+        onClose={nav.back}
       />
     </TrustShell>
   ),

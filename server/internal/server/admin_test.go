@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -437,11 +438,66 @@ func TestAdminAuditFailureBlocksMutation(t *testing.T) {
 	}
 }
 
-// The Findable review endpoints are admin-gated: disabled admin = bare 404.
+// The "Something wrong?" review flow over the admin endpoints (doc 34): the queue
+// lists reports with the note the person typed (authed), resolve deletes one and
+// writes an audit row keyed by the opaque id (never the note), and reads stay
+// unauthed-rejected.
+func TestAdminFeedbackReview(t *testing.T) {
+	h, st := newTestAdminServer(t, testAdminToken)
+	ctx := context.Background()
+	bearer := "Bearer " + testAdminToken
+	authed := func(method, path string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, nil)
+		req.Header.Set("Authorization", bearer)
+		return do(h, req)
+	}
+
+	if err := st.AddFeedback(ctx, contract.FeedbackBroken, "the share button does nothing", 100); err != nil {
+		t.Fatal(err)
+	}
+
+	// The queue lists the report with its note; an unauthed read is 401.
+	rec := authed("GET", contract.PathAdminFeedback)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("feedback queue: %d", rec.Code)
+	}
+	var resp contract.AdminFeedbackResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Feedback) != 1 || resp.Feedback[0].Reason != contract.FeedbackBroken ||
+		resp.Feedback[0].Body != "the share button does nothing" {
+		t.Fatalf("queue = %+v", resp.Feedback)
+	}
+	if rec := do(h, httptest.NewRequest("GET", contract.PathAdminFeedback, nil)); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("feedback no auth: %d, want 401", rec.Code)
+	}
+
+	// Resolve: the report leaves the queue and the action is audited by opaque id.
+	idStr := strconv.FormatInt(resp.Feedback[0].ID, 10)
+	if rec := authed("POST", "/admin/feedback/"+idStr+"/resolve"); rec.Code != http.StatusNoContent {
+		t.Fatalf("resolve: %d", rec.Code)
+	}
+	if n, _ := st.OpenFeedbackCount(ctx); n != 0 {
+		t.Fatalf("resolve left the report, count = %d", n)
+	}
+	if a, _ := st.RecentAudits(ctx, 0, 10); len(a) == 0 || a[0].Action != "feedback.resolve" || a[0].Target != idStr {
+		t.Fatalf("resolve not audited: %+v", a)
+	}
+	// A non-numeric id is a 400.
+	if rec := authed("POST", "/admin/feedback/abc/resolve"); rec.Code != http.StatusBadRequest {
+		t.Fatalf("bad id: %d, want 400", rec.Code)
+	}
+}
+
+// The review endpoints are admin-gated: disabled admin = bare 404.
 func TestAdminFindableReviewGatedOffWithAdmin(t *testing.T) {
 	h := newTestServer(t) // admin disabled
 	if rec := do(h, httptest.NewRequest("GET", contract.PathAdminReports, nil)); rec.Code != http.StatusNotFound {
 		t.Fatalf("reports while admin off: %d, want 404", rec.Code)
+	}
+	if rec := do(h, httptest.NewRequest("GET", contract.PathAdminFeedback, nil)); rec.Code != http.StatusNotFound {
+		t.Fatalf("feedback while admin off: %d, want 404", rec.Code)
 	}
 }
 

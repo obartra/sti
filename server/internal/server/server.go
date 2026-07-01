@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"sti.care/api/internal/contract"
 	"sti.care/api/internal/metrics"
@@ -304,6 +305,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /knock/{id}", s.handleKnockReview)
 	s.mux.HandleFunc("GET /healthz", s.handleHealth)
 	s.mux.HandleFunc("GET /vapid", s.handleVapid)
+	s.mux.HandleFunc("POST /feedback", s.handleFeedback)
 	s.mux.HandleFunc("GET /{$}", s.handleRoot) // exactly "/", a public landing
 	s.registerAdminRoutes()                    // no-op unless AdminEnabled (doc 20)
 }
@@ -667,6 +669,34 @@ func (s *Server) handleVanityReport(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	w.WriteHeader(http.StatusAccepted)
+}
+
+// handleFeedback answers POST /feedback (doc 34): public, unauthenticated intake of a
+// "Something wrong?" report. It records a fixed category and an optional, length-
+// capped note (the one free-text field the store holds), bumps a counter the box
+// diffs to nudge the operator, and returns a uniform 202 that echoes nothing. Rate-
+// limited per-IP and globally like the vanity-name report intake.
+func (s *Server) handleFeedback(w http.ResponseWriter, r *http.Request) {
+	if !s.ipLimit.allow(clientIP(r), s.now()) || !s.reportLim.allow("feedback", s.now()) {
+		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
+		return
+	}
+	var req contract.FeedbackRequest
+	if err := decodeJSON(r, &req); err != nil || !contract.ValidFeedbackReason(req.Reason) {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "missing or invalid reason")
+		return
+	}
+	body := strings.TrimSpace(req.Body)
+	if utf8.RuneCountInString(body) > contract.FeedbackBodyMaxRunes {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "note too long")
+		return
+	}
+	if err := s.st.AddFeedback(r.Context(), req.Reason, body, s.now()); err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	s.metrics.FeedbackReceived()
 	w.WriteHeader(http.StatusAccepted)
 }
 

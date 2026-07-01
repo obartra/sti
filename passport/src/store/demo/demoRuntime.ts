@@ -253,6 +253,7 @@ export function createDemoStore(): PassportStore {
     redeemGrant: () => Promise.resolve(null),
     resolveVanityName: () => Promise.resolve(null),
     reportVanityName: () => Promise.resolve(),
+    submitFeedback: () => Promise.resolve(),
     pendingRequests: () => [],
     forgetRequest: () => undefined,
   };

@@ -2,12 +2,14 @@ import type { Decorator, Meta, StoryObj } from "@storybook/react-vite";
 import { AdminPage } from "./AdminPage.tsx";
 import type {
   AdminAuditEntry,
+  AdminFeedback,
   AdminMetrics,
   AdminPingResult,
 } from "./adminApi.ts";
 import type { ReviewOps } from "./ReviewPanel.tsx";
 import type { AuditOps } from "./ActivityPanel.tsx";
 import type { MetricsOps } from "./MetricsPanel.tsx";
+import type { FeedbackOps } from "./FeedbackPanel.tsx";
 
 // The operator surface (doc 20): a dedicated, gated /admin page isolated from the
 // user flows. The stories stub the token validator and the review transport so the
@@ -44,6 +46,11 @@ const metricsOps = (metrics: AdminMetrics): MetricsOps => ({
   get: () => Promise.resolve({ kind: "ok", metrics }),
 });
 
+const feedbackOps = (feedback: AdminFeedback[]): FeedbackOps => ({
+  list: () => Promise.resolve({ kind: "ok", feedback }),
+  resolve: () => Promise.resolve("ok"),
+});
+
 const SAMPLE_METRICS: AdminMetrics = {
   accounts: 1840,
   aliases: 5210,
@@ -51,7 +58,24 @@ const SAMPLE_METRICS: AdminMetrics = {
   sendQueueDepth: 4,
   dbSizeBytes: 18 * 1024 * 1024,
   pendingReports: 2,
+  pendingFeedback: 1,
 };
+
+// Fixed UTC instants so the feedback panel's timestamps are deterministic.
+const SAMPLE_FEEDBACK: AdminFeedback[] = [
+  {
+    id: 2,
+    reason: "broken",
+    body: "the share button does nothing on my phone",
+    createdAt: Date.UTC(2026, 5, 25, 15, 2, 0),
+  },
+  {
+    id: 1,
+    reason: "confusing",
+    body: "",
+    createdAt: Date.UTC(2026, 5, 24, 11, 20, 0),
+  },
+];
 
 // Fixed UTC instants so the Activity panel's timestamps are deterministic.
 const SAMPLE_AUDIT: AdminAuditEntry[] = [
@@ -98,6 +122,7 @@ export const AuthedWithReports: Story = {
     ]),
     auditOps: auditOps(SAMPLE_AUDIT),
     metricsOps: metricsOps(SAMPLE_METRICS),
+    feedbackOps: feedbackOps(SAMPLE_FEEDBACK),
   },
   decorators: [seedToken],
 };
@@ -115,7 +140,9 @@ export const AuthedEmpty: Story = {
       sendQueueDepth: 0,
       dbSizeBytes: 0,
       pendingReports: 0,
+      pendingFeedback: 0,
     }),
+    feedbackOps: feedbackOps([]),
   },
   decorators: [seedToken],
 };

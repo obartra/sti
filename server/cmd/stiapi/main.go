@@ -206,6 +206,7 @@ func main() {
 		aliasGrace:        envDuration("STI_ALIAS_PURGE_GRACE", 7*24*time.Hour),
 		reportMaxAge:      envDuration("STI_REPORT_ORPHAN_MAX_AGE", 30*24*time.Hour),
 		accountInactivity: envDuration("STI_ACCOUNT_INACTIVITY_TTL", 2*365*24*time.Hour),
+		feedbackMaxAge:    envDuration("STI_FEEDBACK_MAX_AGE", 90*24*time.Hour),
 	}
 	go background(ctx, st, srv, metricsState, janitorInterval, ttls, log)
 
@@ -280,6 +281,7 @@ type janitorTTLs struct {
 	aliasGrace        time.Duration // delete an alias this long after its link expired
 	reportMaxAge      time.Duration // delete an orphan vanity report once this old
 	accountInactivity time.Duration // delete an account backup unread/unwritten this long
+	feedbackMaxAge    time.Duration // delete a "Something wrong?" report once this old (doc 34)
 }
 
 // background runs the periodic janitors: expire knocks, purge long-dead alias and
@@ -324,6 +326,14 @@ func background(ctx context.Context, st *store.Store, srv *server.Server, metric
 					log.Error("purge inactive accounts", "err", err)
 				} else if n > 0 {
 					log.Info("purged inactive accounts", "count", n)
+				}
+			}
+			if ttls.feedbackMaxAge > 0 {
+				if n, err := st.PurgeFeedback(ctx, now, ttls.feedbackMaxAge.Milliseconds()); err != nil {
+					srv.Metrics().Error(metrics.ErrJanitor)
+					log.Error("purge feedback", "err", err)
+				} else if n > 0 {
+					log.Info("purged old feedback", "count", n)
 				}
 			}
 			srv.DrainRepublishes(ctx, now)

@@ -639,6 +639,85 @@ func (s *Store) ClearVanityReports(ctx context.Context, name string) error {
 	return err
 }
 
+// --- "Something wrong?" reports (doc 34) ------------------------------------
+//
+// The one store that holds text a person typed (a short optional note),
+// operator-readable by design so a human can read and act on it. reason is a fixed,
+// validated code and body is length-capped at intake. The operator resolves a
+// report, which deletes it (like a vanity dismiss), and the janitor sweeps anything
+// older than a bounded window so nothing lingers unread.
+
+// Feedback is one "Something wrong?" report (GET /admin/feedback).
+type Feedback struct {
+	ID        int64
+	Reason    string
+	Body      string
+	CreatedAt int64
+}
+
+// feedbackCap bounds the table so a flood of intake cannot grow it without bound.
+// Intake stays existence-uniform (the handler returns the same 202 whether or not a
+// row was written), so the cap is a silent ceiling, not a signal.
+const feedbackCap = 5000
+
+// AddFeedback records one report. reason is a fixed code and body is already
+// length-capped by the caller. The conditional insert applies the table cap without
+// a second round trip.
+func (s *Store) AddFeedback(ctx context.Context, reason, body string, now int64) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO feedback (reason, body, created_at)
+		 SELECT ?, ?, ?
+		 WHERE (SELECT COUNT(*) FROM feedback) < ?`,
+		reason, body, now, feedbackCap)
+	return err
+}
+
+// OpenFeedback returns the review queue: reports newest first, capped at limit.
+func (s *Store) OpenFeedback(ctx context.Context, limit int) ([]Feedback, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, reason, body, created_at FROM feedback
+		 ORDER BY id DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Feedback
+	for rows.Next() {
+		var f Feedback
+		if err := rows.Scan(&f.ID, &f.Reason, &f.Body, &f.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
+// OpenFeedbackCount is the number of reports awaiting review, for the admin metrics
+// panel.
+func (s *Store) OpenFeedbackCount(ctx context.Context) (int, error) {
+	var n int
+	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM feedback`).Scan(&n)
+	return n, err
+}
+
+// ResolveFeedback deletes one report once the operator has handled it. Idempotent:
+// resolving a missing id is a no-op.
+func (s *Store) ResolveFeedback(ctx context.Context, id int64) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM feedback WHERE id = ?`, id)
+	return err
+}
+
+// PurgeFeedback deletes reports older than maxAgeMs, so the one user-typed store is
+// bounded in time even if a report is never resolved. Returns the number removed.
+func (s *Store) PurgeFeedback(ctx context.Context, now, maxAgeMs int64) (int64, error) {
+	res, err := s.db.ExecContext(ctx,
+		`DELETE FROM feedback WHERE created_at < ?`, now-maxAgeMs)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 // --- Recovery envelopes (doc 32) --------------------------------------------
 //
 // A password-recovery envelope: the wrapped account root, keyed by an owner-chosen

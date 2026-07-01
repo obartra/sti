@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { NavLink } from "../app/NavLink.tsx";
 import { pathForScreen } from "../app/useAppRouter.ts";
-import { TRUST_FOOTER, SUPPORT_EMAIL } from "./trustCopy.ts";
+import { TRUST_FOOTER } from "./trustCopy.ts";
 
 // The quiet trust footer shown on the public surfaces (doc 23): the landing, the
 // trust pages themselves, and the marketing site. Not worn by the logged-in app,
@@ -23,6 +23,8 @@ export interface TrustFooterProps {
   onTerms?: (() => void) | undefined;
   /** Open the public "share your link" guide (docs 16, 17). */
   onShareLink?: (() => void) | undefined;
+  /** Open the "Something wrong?" report form (doc 34). */
+  onFeedback?: (() => void) | undefined;
 }
 
 export function TrustFooter({
@@ -30,6 +32,7 @@ export function TrustFooter({
   onPrivacy,
   onTerms,
   onShareLink,
+  onFeedback,
 }: TrustFooterProps) {
   return (
     <footer
@@ -92,15 +95,23 @@ export function TrustFooter({
       <div style={{ fontSize: 12, color: "var(--text-subtle)" }}>
         {TRUST_FOOTER.tagline}
       </div>
-      <div style={{ fontSize: 12, color: "var(--text-subtle)" }}>
-        {TRUST_FOOTER.feedbackLead}{" "}
-        <a
-          href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Something wrong on sti.care")}`}
-          style={{ color: "var(--text-accent)", fontWeight: 700 }}
-        >
-          {TRUST_FOOTER.feedbackLink}
-        </a>
-      </div>
+      {onFeedback && (
+        <div style={{ fontSize: 12, color: "var(--text-subtle)" }}>
+          {TRUST_FOOTER.feedbackLead}{" "}
+          <NavLink
+            href={pathForScreen("feedback")}
+            onNavigate={onFeedback}
+            style={{
+              color: "var(--text-accent)",
+              fontWeight: 700,
+              textDecoration: "none",
+              cursor: "pointer",
+            }}
+          >
+            {TRUST_FOOTER.feedbackLink}
+          </NavLink>
+        </div>
+      )}
     </footer>
   );
 }

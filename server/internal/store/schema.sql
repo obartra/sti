@@ -158,3 +158,17 @@ CREATE TABLE IF NOT EXISTS vanity_report (
     created_at  INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_vanity_report_name ON vanity_report (name);
+
+-- "Something wrong?" reports filed through the public in-app form (doc 34). Public,
+-- unauthenticated intake (rate-limited) inserts a row; the admin queue reads the
+-- rows and the operator resolves one, which deletes it (like a vanity dismiss). This
+-- is the ONLY table that holds text a user typed (`body`, an optional note), so it is
+-- length-capped at intake and swept by the janitor after a bounded window. Operator-
+-- readable by design, never encrypted user content, never a reporter identity.
+CREATE TABLE IF NOT EXISTS feedback (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    reason      TEXT NOT NULL,            -- a fixed reason code (see contract), validated
+    body        TEXT NOT NULL DEFAULT '', -- optional free text, length-capped at intake
+    created_at  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback (created_at);

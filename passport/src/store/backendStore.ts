@@ -110,5 +110,11 @@ export function createBackendStore(
       // (the form retries on error), so let a transport failure reject.
       return api.reportVanityName(name, reason);
     },
+
+    submitFeedback(reason, body) {
+      // Like reportVanityName: not fail-closed, the form shows the outcome and
+      // retries on error, so a transport failure rejects.
+      return api.submitFeedback(reason, body);
+    },
   };
 }

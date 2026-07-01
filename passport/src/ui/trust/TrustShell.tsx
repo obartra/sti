@@ -17,7 +17,9 @@ import { TrustFooter, type TrustFooterProps } from "./TrustFooter.tsx";
 type TrustScreen = "promises" | "privacy" | "terms" | "share-link";
 
 export interface TrustShellProps extends TrustFooterProps {
-  current: TrustScreen;
+  /** The rail item to light, or undefined for a shell page with no rail entry
+   * (the "Something wrong?" form, doc 34). */
+  current?: TrustScreen | undefined;
   onBack?: (() => void) | undefined;
   /** Let the content use the full center measure (the promises grid) rather than
    * the narrower reading column the legal pages want. */
@@ -107,7 +109,7 @@ function Rail({
   onBack,
   footer,
 }: {
-  current: TrustScreen;
+  current?: TrustScreen | undefined;
   onBack?: (() => void) | undefined;
   footer: TrustFooterProps;
 }) {

@@ -75,15 +75,17 @@ const (
 	PathRecoveryPrefix = "/recovery/"     // GET fetch / PUT store / DELETE drop a password envelope (doc 32, gated)
 	PathHealth         = "/healthz"       // GET: liveness
 	PathVapid          = "/vapid"         // GET: the active Web Push public key
+	PathFeedback       = "/feedback"      // POST: file a "Something wrong?" report (doc 34, public)
 
 	// The operator surface (doc 20). Bearer + flag gated, rate-limited, audited.
 	// Registered only when admin is enabled; otherwise these paths are a bare 404,
 	// so the surface is invisible by default.
-	PathAdminPrefix  = "/admin/"        // all admin endpoints share this prefix
-	PathAdminPing    = "/admin/ping"    // GET: 204 if the admin bearer token is valid
-	PathAdminReports = "/admin/reports" // GET: the vanity-name review queue (doc 17/20)
-	PathAdminAudit   = "/admin/audit"   // GET: recent admin actions, newest first (doc 20 A4)
-	PathAdminMetrics = "/admin/metrics" // GET: aggregate, identifier-free service totals (doc 20 A5)
+	PathAdminPrefix   = "/admin/"         // all admin endpoints share this prefix
+	PathAdminPing     = "/admin/ping"     // GET: 204 if the admin bearer token is valid
+	PathAdminReports  = "/admin/reports"  // GET: the vanity-name review queue (doc 17/20)
+	PathAdminAudit    = "/admin/audit"    // GET: recent admin actions, newest first (doc 20 A4)
+	PathAdminMetrics  = "/admin/metrics"  // GET: aggregate, identifier-free service totals (doc 20 A5)
+	PathAdminFeedback = "/admin/feedback" // GET: the "Something wrong?" review queue (doc 34)
 )
 
 // --- JSON bodies (only the non-byte endpoints) ------------------------------
@@ -233,6 +235,53 @@ type VanityReportRequest struct {
 	Reason string `json:"reason"`
 }
 
+// Feedback reason codes for the "Something wrong?" form (doc 34). A FIXED set, like
+// the vanity report reasons; the optional free-text note travels separately and is
+// length-capped. The client form maps to exactly these; the server rejects anything
+// else.
+const (
+	FeedbackBroken    = "broken"
+	FeedbackConfusing = "confusing"
+	FeedbackSafety    = "safety"
+	FeedbackOther     = "other"
+)
+
+var feedbackReasons = map[string]struct{}{
+	FeedbackBroken: {}, FeedbackConfusing: {}, FeedbackSafety: {}, FeedbackOther: {},
+}
+
+// ValidFeedbackReason reports whether r is one of the fixed feedback reason codes.
+func ValidFeedbackReason(r string) bool {
+	_, ok := feedbackReasons[r]
+	return ok
+}
+
+// FeedbackBodyMaxRunes caps the optional note, the one free-text field the store
+// holds, so intake cannot be used to dump unbounded content. A longer body is a 400.
+const FeedbackBodyMaxRunes = 2000
+
+// FeedbackRequest is the body of POST /feedback: a fixed reason code and an optional
+// note. The endpoint is public + rate-limited; the record names no reporter.
+type FeedbackRequest struct {
+	Reason string `json:"reason"`
+	Body   string `json:"body"`
+}
+
+// AdminFeedback is one open report in the admin queue (GET /admin/feedback): its row
+// id (the resolve target), category, the optional note the person typed, and when it
+// came in. Operator-readable by design; never a reporter identity.
+type AdminFeedback struct {
+	ID        int64  `json:"id"`
+	Reason    string `json:"reason"`
+	Body      string `json:"body"`
+	CreatedAt int64  `json:"createdAt"`
+}
+
+// AdminFeedbackResponse is GET /admin/feedback's body.
+type AdminFeedbackResponse struct {
+	Feedback []AdminFeedback `json:"feedback"`
+}
+
 // AdminReport is one entry in the admin review queue (GET /admin/reports): a
 // reported name, its report count, the most recent reason, and when it was first
 // reported. The name is public and the reason is a fixed code; nothing here is
@@ -271,12 +320,13 @@ type AdminAuditResponse struct {
 // distribution that could fingerprint one account, so it stays within the
 // blind-store boundary (doc 12). A read, so it is not itself audited.
 type AdminMetricsResponse struct {
-	Accounts       int64 `json:"accounts"`       // distinct account-sync blobs
-	Aliases        int64 `json:"aliases"`        // distinct alias (live-link) ciphertext rows
-	Knocks         int64 `json:"knocks"`         // live knock rows (auto-expiring)
-	SendQueueDepth int64 `json:"sendQueueDepth"` // wake jobs awaiting drain
-	DBSizeBytes    int64 `json:"dbSizeBytes"`    // logical database size
-	PendingReports int   `json:"pendingReports"` // names awaiting review in the queue
+	Accounts        int64 `json:"accounts"`        // distinct account-sync blobs
+	Aliases         int64 `json:"aliases"`         // distinct alias (live-link) ciphertext rows
+	Knocks          int64 `json:"knocks"`          // live knock rows (auto-expiring)
+	SendQueueDepth  int64 `json:"sendQueueDepth"`  // wake jobs awaiting drain
+	DBSizeBytes     int64 `json:"dbSizeBytes"`     // logical database size
+	PendingReports  int   `json:"pendingReports"`  // names awaiting review in the queue
+	PendingFeedback int   `json:"pendingFeedback"` // "Something wrong?" reports awaiting review
 }
 
 // AdminRecordInfo is opaque metadata about one stored record (doc 20 A3): whether
