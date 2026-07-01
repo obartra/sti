@@ -1,6 +1,6 @@
 # 32 - Account recovery and unlock
 
-## Status: LAUNCHED (the plan at the end tracks what is built; the public-handle login name and password-at-sign-up are the remaining build; the continuity nudges are built)
+## Status: LAUNCHED (the plan at the end tracks what is built; the public-handle login name, the pin that keeps a login handle from being released, and password-at-sign-up are built; the continuity nudges are built)
 
 How a person keeps access to their account across devices and over time, and how an
 optional, memorable password can fit without weakening the blind store. This doc owns

@@ -34,12 +34,16 @@ export function AccountSection({
   recoveryPhrase,
 }: AccountSectionProps) {
   const held = vanityName ?? null;
+  // The public name is pinned when a password login is set on that same handle
+  // (doc 17, doc 32): releasing it would break the sign-in, so FindableName hides
+  // the release control. The server enforces the same rule.
+  const pinned = held !== null && held !== "" && recoveryName === held;
   return (
     <Section title={COPY.accountTitle}>
       {onSetName && <NameCard name={name} onSave={onSetName} />}
       {findableOps && (
         <>
-          <FindableName currentName={held} ops={findableOps} />
+          <FindableName currentName={held} ops={findableOps} pinned={pinned} />
           {held !== null && held !== "" && <ShareLinkGuide handle={held} />}
         </>
       )}

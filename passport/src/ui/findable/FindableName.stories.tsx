@@ -25,3 +25,9 @@ export const Register: Story = {
 export const Registered: Story = {
   args: { currentName: "robin", ops },
 };
+
+// Pinned: a password login is set on this name (doc 32), so it is the sign-in
+// username and cannot be released. The release control is replaced by the reason.
+export const Pinned: Story = {
+  args: { currentName: "robin", ops, pinned: true },
+};
