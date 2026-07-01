@@ -12,6 +12,10 @@ import { LiveLinks } from "./Privacy.aliases.tsx";
 import { NameCard } from "./Privacy.name.tsx";
 import { HomeViewCard } from "./Privacy.homeview.tsx";
 import { FindableName, type FindableOps } from "../findable/FindableName.tsx";
+import {
+  RecoveryPassword,
+  type RecoveryPasswordOps,
+} from "../settings/RecoveryPassword.tsx";
 import { ShareLinkGuide } from "../findable/ShareLinkGuide.tsx";
 import { AvatarCard } from "../onboarding/AvatarCard.tsx";
 import {
@@ -55,6 +59,11 @@ export interface PrivacyProps {
   now?: number | undefined;
   /** The owner's claimed findable name, or null when none (doc 17). */
   vanityName?: string | null | undefined;
+  /** The owner's recovery name, or null when no password is set (doc 32). */
+  recoveryName?: string | null | undefined;
+  /** Turn the password factor on/off; present (and the card shown) only when
+   * recovery is enabled and the owner is logged in. */
+  recoveryOps?: RecoveryPasswordOps | undefined;
   /** Findable claim/release transport; present (and the section shown) only when
    * the feature is enabled and the owner is logged in. */
   findableOps?: FindableOps | undefined;
@@ -202,6 +211,22 @@ function OwnerCards({
   );
 }
 
+// The password-factor card, wrapped so its presence check lives here (like
+// FindableSection) rather than adding a branch to Privacy. Renders nothing until the
+// caller wires the ops (recovery flag on + logged in).
+function RecoverySection({
+  recoveryName,
+  recoveryOps,
+}: {
+  recoveryName: string | null | undefined;
+  recoveryOps: RecoveryPasswordOps | undefined;
+}) {
+  if (!recoveryOps) return null;
+  return (
+    <RecoveryPassword recoveryName={recoveryName ?? null} ops={recoveryOps} />
+  );
+}
+
 export function Privacy({
   ownerState,
   setOwnerState,
@@ -225,6 +250,8 @@ export function Privacy({
   now,
   vanityName = null,
   findableOps,
+  recoveryName = null,
+  recoveryOps,
 }: PrivacyProps) {
   const state = usePrivacyState(ownerState, setOwnerState);
   return (
@@ -278,6 +305,13 @@ export function Privacy({
             after a name is claimed. Shown only when the section is wired in (the
             caller gates on the flag + login). */}
         <FindableSection vanityName={vanityName} findableOps={findableOps} />
+
+        {/* The optional password factor (doc 32): shown only when the caller wires
+            the ops (recovery flag on + logged in). */}
+        <RecoverySection
+          recoveryName={recoveryName}
+          recoveryOps={recoveryOps}
+        />
 
         <AttributesCard state={state} />
         <ControlsCard state={state} push={push} />

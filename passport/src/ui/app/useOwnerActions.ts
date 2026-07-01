@@ -8,6 +8,10 @@ import type {
   SessionController,
 } from "../../store/index.ts";
 import type { VanityRegisterResult } from "../../api/client.ts";
+import type {
+  SetRecoveryPasswordInput,
+  SetRecoveryPasswordOutcome,
+} from "../../store/recoveryOps.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
 import { disablePush } from "../../store/push.ts";
 import {
@@ -66,6 +70,13 @@ export interface OwnerActions {
   onCheckVanityName: (name: string) => Promise<"free" | "taken" | "error">;
   /** Release the owner's claimed findable name (no-op if none). */
   onReleaseVanityName: () => Promise<void>;
+  /** Turn the password factor on (or change it, doc 32); resolves with the outcome
+   * the Settings card shows (set / wrong phrase / taken name / weak / error). */
+  onSetRecoveryPassword: (
+    input: SetRecoveryPasswordInput,
+  ) => Promise<SetRecoveryPasswordOutcome>;
+  /** Turn the password factor off (a no-op when none is set). */
+  onDisableRecoveryPassword: () => Promise<void>;
 }
 
 /**
@@ -174,6 +185,7 @@ export function useOwnerActions(
 
   const circle = useCircleActions(controller, sessionRef, setSession);
   const findable = useFindableActions(controller, sessionRef, setSession);
+  const recovery = useRecoveryActions(controller, sessionRef, setSession);
 
   return {
     onDeleteAccount,
@@ -185,6 +197,7 @@ export function useOwnerActions(
     ...profile,
     ...circle,
     ...findable,
+    ...recovery,
   };
 }
 
@@ -287,6 +300,42 @@ function useFindableActions(
   }, [controller, sessionRef, setSession]);
 
   return { onRegisterVanityName, onCheckVanityName, onReleaseVanityName };
+}
+
+// The recovery-password mutations (turn on/off, doc 32), split out like the findable
+// ones. onSetRecoveryPassword folds the resulting session (the blob now carries the
+// recovery name) and returns the outcome for the card; onDisable folds the cleared one.
+function useRecoveryActions(
+  controller: SessionController,
+  sessionRef: RefObject<OwnerSession | null>,
+  setSession: (s: OwnerSession | null) => void,
+): Pick<OwnerActions, "onSetRecoveryPassword" | "onDisableRecoveryPassword"> {
+  const onSetRecoveryPassword = useCallback(
+    async (
+      input: SetRecoveryPasswordInput,
+    ): Promise<SetRecoveryPasswordOutcome> => {
+      const current = sessionRef.current;
+      if (current === null) return "error";
+      const { session, outcome } = await controller.setRecoveryPassword(
+        current,
+        input,
+      );
+      sessionRef.current = session;
+      setSession(session);
+      return outcome;
+    },
+    [controller, sessionRef, setSession],
+  );
+
+  const onDisableRecoveryPassword = useCallback(async (): Promise<void> => {
+    const current = sessionRef.current;
+    if (current === null) return;
+    const updated = await controller.disableRecoveryPassword(current);
+    sessionRef.current = updated;
+    setSession(updated);
+  }, [controller, sessionRef, setSession]);
+
+  return { onSetRecoveryPassword, onDisableRecoveryPassword };
 }
 
 // The profile mutation (avatar today), split out so useOwnerActions stays within

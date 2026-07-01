@@ -2,7 +2,7 @@
  * Build-time feature flags. A single, greppable place to gate features that are
  * implemented but intentionally not exposed yet.
  *
- * TECH DEBT — WALLET (Apple/Google Wallet passes): the wallet screen + pass
+ * TECH DEBT, WALLET (Apple/Google Wallet passes): the wallet screen + pass
  * renditions are fully built (`src/ui/wallet/`) but the entry point is hidden.
  * Shipping real passes needs signing credentials we do not have yet: an Apple
  * PassKit pass-type certificate and a Google Wallet issuer account + service-
@@ -30,3 +30,13 @@ export const WALLET_ENABLED = false;
 // Kept widened to `boolean` (not the literal `true`) so the `if (FINDABLE_ENABLED)`
 // gate's other branch isn't flagged as dead code.
 export const FINDABLE_ENABLED = true as boolean;
+
+/**
+ * RECOVERY (doc 32, the optional password factor): the Settings card to turn a
+ * password on and off is built behind this. Gated off until launch, coupled to the
+ * server's STI_RECOVERY_ENABLED: the /recovery endpoints are a bare 404 until that
+ * is set, so with this true but the server flag off the card would show while
+ * setup fails. Flip both together (and the new-device unlock path lands with it).
+ */
+// Widened to `boolean` so the gate's off-branch is not flagged as dead code.
+export const RECOVERY_ENABLED = false as boolean;

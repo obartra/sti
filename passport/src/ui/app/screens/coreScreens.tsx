@@ -3,7 +3,7 @@ import { Care } from "../../core/Care.tsx";
 import { Notifications } from "../../core/Notifications.tsx";
 import type { NotificationItem } from "../../core/Notifications.tsx";
 import { Privacy } from "../../core/Privacy.tsx";
-import { FINDABLE_ENABLED } from "../../../features.ts";
+import { FINDABLE_ENABLED, RECOVERY_ENABLED } from "../../../features.ts";
 import { blueChecklist, extendClearance } from "../../../core/report.ts";
 import { todayEpochDay } from "../../../core/clock.ts";
 import { RESOURCES, openResource } from "../../../lib/resources.ts";
@@ -205,6 +205,9 @@ export const coreRenderers: ScreenRenderers = {
     onRegisterVanityName,
     onCheckVanityName,
     onReleaseVanityName,
+    recoveryName,
+    onSetRecoveryPassword,
+    onDisableRecoveryPassword,
     push,
     isLoggedIn,
   }) => (
@@ -237,6 +240,17 @@ export const coreRenderers: ScreenRenderers = {
               register: onRegisterVanityName,
               check: onCheckVanityName,
               release: onReleaseVanityName,
+            }
+          : undefined
+      }
+      // The password card is gated here too (doc 32), so Privacy + RecoveryPassword
+      // stay flag-agnostic: present the ops only when recovery is on and logged in.
+      recoveryName={recoveryName}
+      recoveryOps={
+        RECOVERY_ENABLED && isLoggedIn
+          ? {
+              set: onSetRecoveryPassword,
+              disable: onDisableRecoveryPassword,
             }
           : undefined
       }

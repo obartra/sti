@@ -229,87 +229,115 @@ function SetupForm({
       >
         {COPY.backstop}
       </div>
-      <form
-        onSubmit={submit}
-        style={{ display: "flex", flexDirection: "column", gap: 12 }}
-      >
-        <Field
-          label={COPY.nameLabel}
-          htmlFor="recovery-name"
-          hint={COPY.nameHelp}
-        >
-          <Input
-            id="recovery-name"
-            value={s.name}
-            error={nameBad}
-            disabled={s.busy}
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            placeholder="e.g. robin"
-            onChange={(e) => {
-              s.setName(e.target.value);
-              s.setError(null);
-            }}
-          />
-        </Field>
-        <Field label={COPY.passwordLabel} htmlFor="recovery-password">
-          <Input
-            id="recovery-password"
-            type="password"
-            value={s.password}
-            error={weak !== null}
-            disabled={s.busy}
-            autoComplete="new-password"
-            onChange={(e) => {
-              s.setPassword(e.target.value);
-              s.setError(null);
-            }}
-          />
-        </Field>
-        <ErrorLine text={s.password === "" ? null : weak} />
-        <Field label={COPY.confirmLabel} htmlFor="recovery-confirm">
-          <Input
-            id="recovery-confirm"
-            type="password"
-            value={s.confirm}
-            error={mismatch}
-            disabled={s.busy}
-            autoComplete="new-password"
-            onChange={(e) => s.setConfirm(e.target.value)}
-          />
-        </Field>
-        <ErrorLine text={mismatch ? COPY.mismatch : null} />
-        <Field
-          label={COPY.phraseLabel}
-          htmlFor="recovery-phrase"
-          hint={COPY.phraseHelp}
-        >
-          <Input
-            id="recovery-phrase"
-            value={s.phrase}
-            disabled={s.busy}
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            onChange={(e) => {
-              s.setPhrase(e.target.value);
-              s.setError(null);
-            }}
-          />
-        </Field>
-        <ErrorLine text={s.error} />
-        <Button
-          type="submit"
-          variant="primary"
-          size="md"
-          block
-          disabled={blocked}
-        >
-          {s.busy ? COPY.saving : COPY.turnOn}
-        </Button>
-      </form>
+      <SetupFields
+        s={s}
+        nameBad={nameBad}
+        weak={weak}
+        mismatch={mismatch}
+        blocked={blocked}
+        submit={submit}
+      />
     </Card>
+  );
+}
+
+// The setup form's fields, split out so SetupForm stays under its size ceiling.
+function SetupFields({
+  s,
+  nameBad,
+  weak,
+  mismatch,
+  blocked,
+  submit,
+}: {
+  s: ReturnType<typeof useSetupState>;
+  nameBad: boolean;
+  weak: string | null;
+  mismatch: boolean;
+  blocked: boolean;
+  submit: (e: React.SyntheticEvent) => void;
+}) {
+  return (
+    <form
+      onSubmit={submit}
+      style={{ display: "flex", flexDirection: "column", gap: 12 }}
+    >
+      <Field
+        label={COPY.nameLabel}
+        htmlFor="recovery-name"
+        hint={COPY.nameHelp}
+      >
+        <Input
+          id="recovery-name"
+          value={s.name}
+          error={nameBad}
+          disabled={s.busy}
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          placeholder="e.g. robin"
+          onChange={(e) => {
+            s.setName(e.target.value);
+            s.setError(null);
+          }}
+        />
+      </Field>
+      <Field label={COPY.passwordLabel} htmlFor="recovery-password">
+        <Input
+          id="recovery-password"
+          type="password"
+          value={s.password}
+          error={weak !== null}
+          disabled={s.busy}
+          autoComplete="new-password"
+          onChange={(e) => {
+            s.setPassword(e.target.value);
+            s.setError(null);
+          }}
+        />
+      </Field>
+      <ErrorLine text={s.password === "" ? null : weak} />
+      <Field label={COPY.confirmLabel} htmlFor="recovery-confirm">
+        <Input
+          id="recovery-confirm"
+          type="password"
+          value={s.confirm}
+          error={mismatch}
+          disabled={s.busy}
+          autoComplete="new-password"
+          onChange={(e) => s.setConfirm(e.target.value)}
+        />
+      </Field>
+      <ErrorLine text={mismatch ? COPY.mismatch : null} />
+      <Field
+        label={COPY.phraseLabel}
+        htmlFor="recovery-phrase"
+        hint={COPY.phraseHelp}
+      >
+        <Input
+          id="recovery-phrase"
+          value={s.phrase}
+          disabled={s.busy}
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          onChange={(e) => {
+            s.setPhrase(e.target.value);
+            s.setError(null);
+          }}
+        />
+      </Field>
+      <ErrorLine text={s.error} />
+      <Button
+        type="submit"
+        variant="primary"
+        size="md"
+        block
+        disabled={blocked}
+      >
+        {s.busy ? COPY.saving : COPY.turnOn}
+      </Button>
+    </form>
   );
 }
 
