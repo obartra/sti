@@ -1,0 +1,22 @@
+{
+  "name": "@sti/info",
+  "type": "module",
+  "private": true,
+  "version": "0.0.0",
+  "description": "info.sti.care, the static STI education library (doc 34)",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "lint:voice": "node scripts/voice-lint.mjs",
+    "test": "npm run check && npm run lint:voice"
+  },
+  "dependencies": {
+    "astro": "^4.16.18"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "typescript": "^5.6.3"
+  }
+}

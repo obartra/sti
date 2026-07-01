@@ -22,9 +22,6 @@ const ALL_SCREENS = [
   "care",
   "notifications",
   "avatar-edit",
-  "learn",
-  "learn-detail",
-  "learn-uu",
   "groups",
   "group-create",
   "group-detail",
@@ -112,9 +109,6 @@ const SECTION: Partial<Record<Screen, Tab>> = {
   groups: "people",
   "group-create": "people",
   "group-detail": "people",
-  learn: "care",
-  "learn-detail": "care",
-  "learn-uu": "care",
 };
 
 export function sectionOf(screen: Screen): Tab {

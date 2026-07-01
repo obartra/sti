@@ -1,0 +1,55 @@
+---
+// The "share this page" control. Progressive enhancement: with no JavaScript the
+// button is inert but the page URL is always in the address bar to copy by hand;
+// with JS it uses the Web Share sheet where available and falls back to copying the
+// URL, flipping the label to a brief confirmation. Matches the app's ShareRow.
+import Icon from "./Icon.astro";
+interface Props {
+  label?: string;
+  copied?: string;
+}
+const { label = "Share this page", copied = "Link copied" } = Astro.props;
+---
+
+<button
+  type="button"
+  class="sti-btn sti-btn--secondary sti-btn--md sti-btn--block"
+  data-share
+  data-copied={copied}
+>
+  <span class="sti-btn__icon" data-share-icon><Icon name="share" size={16} /></span>
+  <span data-share-label>{label}</span>
+</button>
+
+<script>
+  const CHECK =
+    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17 19 7"></path></svg>';
+
+  for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-share]")) {
+    const labelEl = btn.querySelector<HTMLElement>("[data-share-label]");
+    const iconEl = btn.querySelector<HTMLElement>("[data-share-icon]");
+    if (!labelEl || !iconEl) continue;
+    const originalLabel = labelEl.textContent ?? "";
+    const originalIcon = iconEl.innerHTML;
+    const copied = btn.getAttribute("data-copied") ?? "Link copied";
+
+    btn.addEventListener("click", async () => {
+      const url = window.location.href;
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: document.title, url });
+          return;
+        }
+        await navigator.clipboard.writeText(url);
+      } catch {
+        return; // share sheet dismissed, or clipboard blocked: leave the label as is
+      }
+      labelEl.textContent = copied;
+      iconEl.innerHTML = CHECK;
+      window.setTimeout(() => {
+        labelEl.textContent = originalLabel;
+        iconEl.innerHTML = originalIcon;
+      }, 1800);
+    });
+  }
+</script>

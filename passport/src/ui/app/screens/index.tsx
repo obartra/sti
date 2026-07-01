@@ -8,7 +8,6 @@ import { trustRenderers } from "./trustScreens.tsx";
 import { reportRenderers } from "./reportScreens.tsx";
 import { peopleRenderers } from "./peopleScreens.tsx";
 import { linksRenderers } from "./linksScreens.tsx";
-import { learnRenderers } from "./learnScreens.tsx";
 import { groupRenderers } from "./groupScreens.tsx";
 
 const RENDERERS: ScreenRenderers = {
@@ -19,7 +18,6 @@ const RENDERERS: ScreenRenderers = {
   ...reportRenderers,
   ...peopleRenderers,
   ...linksRenderers,
-  ...learnRenderers,
   ...groupRenderers,
 };
 

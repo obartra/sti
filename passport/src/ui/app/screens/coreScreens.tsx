@@ -6,6 +6,7 @@ import { Privacy } from "../../core/Privacy.tsx";
 import { blueChecklist, extendClearance } from "../../../core/report.ts";
 import { todayEpochDay } from "../../../core/clock.ts";
 import { RESOURCES, openResource } from "../../../lib/resources.ts";
+import { infoUrl } from "../../../lib/info.ts";
 import { avatarSrc } from "../../../lib/avatars.ts";
 import type { ScreenRenderers } from "./context.ts";
 import { PARTNER_NOTIFY_PROMPT } from "../../../copy/canonical.ts";
@@ -142,10 +143,10 @@ export const coreRenderers: ScreenRenderers = {
       onExtend={() => setOwnerState((s) => extendClearance(s, todayEpochDay()))}
     />
   ),
-  care: ({ nav, owner }) => (
+  care: ({ owner }) => (
     <Care
       badge={owner.badge}
-      onLearn={() => nav.go("learn")}
+      onLearn={() => openResource(infoUrl("/"))}
       onFindClinic={() => openResource(RESOURCES.clinic)}
       onLearnOfficial={() => openResource(RESOURCES.clinic)}
       onFindCondoms={() => openResource(RESOURCES.condoms)}

@@ -1,0 +1,316 @@
+/* info.sti.care, on top of the app's design tokens (imported in Base.astro).
+   Only what the static pages need beyond the shared .sti-btn / .sti-card / token
+   set: page frame, header, footer, the condition chip, list rows, and the prose
+   styling for the markdown Q&A bodies. Everything references design tokens. */
+
+/* ------------------------------------------------------------------ frame --- */
+.info-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-5) var(--space-10);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ----------------------------------------------------------------- header --- */
+.info-header {
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+  padding: var(--space-4) var(--space-5) 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.info-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-accent);
+}
+.info-back svg {
+  width: 18px;
+  height: 18px;
+}
+.info-wordmark {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-snug);
+  color: var(--text-subtle);
+}
+
+/* ------------------------------------------------------------- page title --- */
+.info-title {
+  font-size: var(--text-h2);
+  font-weight: var(--weight-extrabold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-strong);
+  line-height: var(--leading-tight);
+}
+.info-lead {
+  font-size: 14.5px;
+  color: var(--text-body);
+  margin-top: 5px;
+  line-height: var(--leading-normal);
+}
+.info-titlerow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ------------------------------------------------------------------- chip --- */
+.info-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  font-size: 11.5px;
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+}
+.info-chip svg {
+  width: 11px;
+  height: 11px;
+}
+.info-chip--clear {
+  background: var(--status-clear-bg);
+  color: var(--status-clear-fg);
+}
+.info-chip--treat {
+  background: var(--status-treat-bg);
+  color: var(--status-treat-fg);
+}
+.info-chip--none {
+  background: var(--status-none-bg);
+  color: var(--status-none-fg);
+}
+
+/* ------------------------------------------------------- condition list --- */
+.info-list {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+.info-list__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 10px;
+  border-radius: var(--radius-sm);
+  transition: background var(--dur-fast) var(--ease-gentle);
+}
+.info-list__row:hover {
+  background: var(--surface-sunken);
+}
+.info-list__name {
+  flex: 1;
+  font-size: 15.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+.info-list__chev {
+  flex: none;
+  color: var(--text-subtle);
+  width: 17px;
+  height: 17px;
+}
+
+/* --------------------------------------------------------- generic cards --- */
+.info-cardtitle {
+  font-size: 14.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+.info-cardsub {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: var(--leading-normal);
+  margin-top: 2px;
+}
+.info-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13.5px;
+  line-height: var(--leading-normal);
+  color: var(--text-body);
+}
+.info-item__icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--text-accent);
+  width: 16px;
+  height: 16px;
+}
+.info-item strong {
+  color: var(--text-strong);
+}
+
+/* row: leading tile + body + trailing chevron (the U=U link, the how-to-test) */
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.info-tile {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--weight-extrabold);
+  font-size: 13px;
+}
+.info-tile--clear {
+  background: var(--status-clear-bg);
+  color: var(--status-clear-fg);
+}
+.info-tile--accent {
+  background: var(--surface-card);
+  color: var(--text-accent);
+}
+.info-tile--treat {
+  background: var(--status-treat-bg);
+  color: var(--status-treat-base);
+}
+.info-tile svg {
+  width: 19px;
+  height: 19px;
+}
+
+/* the small caps pill used on the PEP card */
+.info-pillcap {
+  flex: none;
+  background: var(--status-treat-bg);
+  color: var(--status-treat-fg);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: var(--weight-extrabold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.info-note {
+  font-size: 13.5px;
+  color: var(--text-body);
+  line-height: var(--leading-normal);
+}
+.info-subnote {
+  font-size: 12.5px;
+  color: var(--text-subtle);
+  text-align: center;
+}
+.info-disclaimer {
+  font-size: 11.5px;
+  color: var(--text-subtle);
+  line-height: var(--leading-normal);
+  text-align: center;
+  padding: 0 8px;
+}
+
+/* --------------------------------------------------- prose (Q&A markdown) --- */
+.info-qa {
+  display: flex;
+  flex-direction: column;
+}
+.info-qa h2 {
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  margin: 0;
+  padding-top: var(--space-4);
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--divider);
+}
+.info-qa h2:first-child {
+  padding-top: 0;
+  margin-top: 0;
+  border-top: none;
+}
+.info-qa p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-body);
+  margin: 6px 0 0;
+}
+.info-qa strong {
+  color: var(--text-strong);
+}
+
+/* ---------------------------------------------------------------- footer --- */
+.info-footer {
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+  padding: var(--space-6) var(--space-5) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--divider);
+}
+.info-footer__links {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.info-footer a {
+  font-size: 12.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-accent);
+}
+.info-footer__tag {
+  font-size: 12px;
+  color: var(--text-subtle);
+  text-align: center;
+}
+
+/* generic helpers */
+.info-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.info-hero {
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  background: var(--status-clear-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.info-hero__label {
+  align-self: flex-start;
+  background: var(--status-clear-base);
+  color: #fff;
+  border-radius: var(--radius-pill);
+  padding: 4px 12px;
+  font-size: 12.5px;
+  font-weight: var(--weight-extrabold);
+  letter-spacing: 0.04em;
+}
+.info-hero__title {
+  font-size: var(--text-h2);
+  font-weight: var(--weight-extrabold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--status-clear-fg);
+  line-height: 1.15;
+}
+.info-hero__intro {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--status-clear-fg);
+  opacity: 0.9;
+}

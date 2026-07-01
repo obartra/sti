@@ -1,0 +1,56 @@
+---
+// Inline SVG icons, the exact same paths as the app's design/icons.tsx so the two
+// stay visually identical. Only the handful the library uses are included.
+interface Props {
+  name:
+    | "back"
+    | "chevron"
+    | "heart"
+    | "clock"
+    | "mapPin"
+    | "shield"
+    | "stethoscope"
+    | "share"
+    | "check"
+    | "arrowRight"
+    | "lock";
+  size?: number;
+  class?: string;
+  style?: string;
+}
+const { name, size = 24, class: cls, style } = Astro.props;
+
+const PATHS: Record<Props["name"], string> = {
+  back: '<path d="m15 18-6-6 6-6"></path>',
+  chevron: '<path d="m9 18 6-6-6-6"></path>',
+  heart:
+    '<path d="M12 20s-7-4.5-7-9.5A3.5 3.5 0 0 1 12 7a3.5 3.5 0 0 1 7 3.5C19 15.5 12 20 12 20Z"></path>',
+  clock: '<circle cx="12" cy="12" r="9"></circle><path d="M12 8v4l3 2"></path>',
+  mapPin:
+    '<path d="M20 10c0 5-8 11-8 11s-8-6-8-11a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="2.6"></circle>',
+  shield:
+    '<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3Z"></path><path d="m9 12 2 2 4-4"></path>',
+  stethoscope:
+    '<path d="M5 3v5a4 4 0 0 0 8 0V3"></path><path d="M5 3H3.5M13 3h1.5"></path><path d="M9 16v1a4 4 0 0 0 8 0v-2"></path><circle cx="18" cy="11" r="2"></circle>',
+  share:
+    '<circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 13.5 6.8 4"></path><path d="m15.4 6.5-6.8 4"></path>',
+  check: '<path d="M5 12.5 10 17 19 7"></path>',
+  arrowRight: '<path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path>',
+  lock: '<rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path>',
+};
+---
+
+<svg
+  viewBox="0 0 24 24"
+  width={size}
+  height={size}
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+  class={cls}
+  style={style}
+  set:html={PATHS[name]}
+></svg>

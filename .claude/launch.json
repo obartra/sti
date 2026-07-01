@@ -28,6 +28,13 @@
       "runtimeArgs": ["run", "storybook"],
       "cwd": "passport",
       "port": 6006
+    },
+    {
+      "name": "info",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "info",
+      "port": 4321
     }
   ]
 }

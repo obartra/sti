@@ -1,5 +1,7 @@
 import { Report, ReportSaved } from "../../core/Report.tsx";
 import { Wallet } from "../../wallet/Wallet.tsx";
+import { openResource } from "../../../lib/resources.ts";
+import { infoUrl } from "../../../lib/info.ts";
 import type { ScreenRenderers } from "./context.ts";
 
 export const reportRenderers: ScreenRenderers = {
@@ -8,7 +10,7 @@ export const reportRenderers: ScreenRenderers = {
       onBack={nav.back}
       onSavedPositive={() => nav.go("report-saved")}
       onSavedHome={() => nav.jump("home")}
-      onLearn={(id) => nav.go("learn-detail", { id })}
+      onLearn={(id) => openResource(infoUrl(`/${id}`))}
       onApply={onReport}
       ownerState={ownerState}
       onSetOwnerState={setOwnerState}
