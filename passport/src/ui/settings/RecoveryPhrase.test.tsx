@@ -86,4 +86,85 @@ describe("RecoveryPhrase", () => {
       screen.queryByRole("button", { name: "View recovery phrase" }),
     ).not.toBeInTheDocument();
   });
+
+  // With a passkey enrolled, the reveal is gated behind a passkey check (a WebAuthn
+  // assertion): the phrase must not show until that check resolves true, and a
+  // failed / cancelled check keeps it hidden with the plain retry line. The check
+  // itself is mocked, so jsdom never runs real WebAuthn.
+  describe("passkey-gated reveal", () => {
+    it("does not reveal until the passkey check resolves successfully", async () => {
+      const verify = vi.fn().mockResolvedValue(true);
+      render(
+        <RecoveryPhrase
+          phrase={PHRASE}
+          passkeyEnrolled
+          onVerifyPasskey={verify}
+        />,
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "View recovery phrase" }),
+      );
+      // The confirm step shows the passkey action, not the plain "Show it", and the
+      // phrase is still hidden.
+      expect(
+        screen.getByRole("button", { name: "Confirm it's you" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Show it" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(PHRASE)).not.toBeInTheDocument();
+
+      // The check runs on confirm; only then does the phrase reveal.
+      await userEvent.click(
+        screen.getByRole("button", { name: "Confirm it's you" }),
+      );
+      expect(verify).toHaveBeenCalledTimes(1);
+      expect(screen.getByText(PHRASE)).toBeInTheDocument();
+    });
+
+    it("stays hidden with a plain message when the passkey check fails or is cancelled", async () => {
+      const verify = vi.fn().mockResolvedValue(false);
+      render(
+        <RecoveryPhrase
+          phrase={PHRASE}
+          passkeyEnrolled
+          onVerifyPasskey={verify}
+        />,
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "View recovery phrase" }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Confirm it's you" }),
+      );
+      expect(verify).toHaveBeenCalledTimes(1);
+      // The phrase is never shown, and the plain, non-alarmist retry line appears.
+      expect(screen.queryByText(PHRASE)).not.toBeInTheDocument();
+      expect(
+        screen.getByText("Couldn't confirm it was you. Try again."),
+      ).toBeInTheDocument();
+      // The confirm action is still there for a retry.
+      expect(
+        screen.getByRole("button", { name: "Confirm it's you" }),
+      ).toBeInTheDocument();
+    });
+
+    it("falls back to the plain two-step confirm when no passkey is enrolled", async () => {
+      const verify = vi.fn().mockResolvedValue(true);
+      render(
+        <RecoveryPhrase
+          phrase={PHRASE}
+          passkeyEnrolled={false}
+          onVerifyPasskey={verify}
+        />,
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "View recovery phrase" }),
+      );
+      // The plain "Show it" reveal, and no passkey check is ever run.
+      await userEvent.click(screen.getByRole("button", { name: "Show it" }));
+      expect(verify).not.toHaveBeenCalled();
+      expect(screen.getByText(PHRASE)).toBeInTheDocument();
+    });
+  });
 });

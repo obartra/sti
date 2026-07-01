@@ -23,7 +23,12 @@ import {
 } from "../crypto/index.ts";
 import { wrapRoot } from "../auth/keyVault.ts";
 import type { PasskeyAuth } from "../auth/passkey.ts";
-import { unlockRoot, type ResumeFailure } from "./passkeyUnlock.ts";
+import {
+  unlockRoot,
+  hasPasskeyBinding,
+  verifyPasskeyPresence,
+  type ResumeFailure,
+} from "./passkeyUnlock.ts";
 import type { DeviceStore } from "../auth/deviceStore.ts";
 import type { RootKeyStore } from "../auth/rootKeyStore.ts";
 import type { ApiClient, PendingKnock } from "../api/client.ts";
@@ -370,6 +375,20 @@ export interface SessionController {
    * recovery name. A no-op when no password is set. The phrase and passkey remain.
    */
   disableRecoveryPassword(session: OwnerSession): Promise<OwnerSession>;
+  /**
+   * Whether a passkey is enrolled on this device (doc 32). A pure local read, no
+   * authenticator prompt, so a caller (the phrase re-view gate) can decide whether
+   * to require a presence check before revealing the phrase.
+   */
+  passkeyEnrolled(): boolean;
+  /**
+   * A "confirm it's you" presence check against the enrolled passkey (doc 32):
+   * run the WebAuthn assertion (biometric / user verification) and resolve true
+   * only on success. It never unwraps the root, imports a key, or changes the live
+   * session, so it is a pure yes/no gate, safe to run mid-session. Resolves false
+   * when no passkey is bound here or the prompt is cancelled / unavailable.
+   */
+  verifyPasskey(): Promise<boolean>;
   /** Forget this device's passkey binding. The phrase still recovers. */
   forget(): void;
 }
@@ -446,18 +465,27 @@ function blobMethods(
   };
 }
 
-// The reload paths, split out so createSessionController stays under its length
-// ceiling. resume() unlocks via the enrolled passkey; resumeFromStore() uses the
-// persisted non-extractable root (doc 24); rememberDevice/forgetDevice manage
-// that store (the "keep me signed in" toggle + logout).
+// The reload + passkey-gate paths, split out so createSessionController stays under
+// its length ceiling. resume() unlocks via the enrolled passkey; resumeFromStore()
+// uses the persisted non-extractable root (doc 24); rememberDevice/forgetDevice
+// manage that store (the "keep me signed in" toggle + logout); passkeyEnrolled +
+// verifyPasskey are the phrase re-view gate's presence check (doc 32), which shares
+// the same devices + passkey layer but never touches the session.
 function resumeMethods(
   deps: SessionDeps,
 ): Pick<
   SessionController,
-  "resume" | "rememberDevice" | "forgetDevice" | "resumeFromStore"
+  | "resume"
+  | "rememberDevice"
+  | "forgetDevice"
+  | "resumeFromStore"
+  | "passkeyEnrolled"
+  | "verifyPasskey"
 > {
   const { accounts, sync, devices, passkey, keys } = deps;
   return {
+    passkeyEnrolled: () => hasPasskeyBinding(devices),
+    verifyPasskey: () => verifyPasskeyPresence(devices, passkey),
     async resume(): Promise<ResumeResult> {
       const unlocked = await unlockRoot(devices, passkey);
       if (!unlocked.ok) return { ok: false, reason: unlocked.reason };

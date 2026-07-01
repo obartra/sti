@@ -247,6 +247,10 @@ export function createDemoController(): SessionController {
       (b) => void (blob = b),
       session,
     ),
+    // The demo enrolls no passkey, so the phrase re-view gate falls back to the
+    // two-step confirm; a verify would never be reached, and resolves false.
+    passkeyEnrolled: () => false,
+    verifyPasskey: () => Promise.resolve(false),
     forget: () => undefined,
   };
 }

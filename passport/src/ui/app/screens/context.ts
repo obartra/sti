@@ -135,6 +135,12 @@ export interface ScreenCtx {
   /** The owner's stored recovery phrase, for re-viewing in Settings (doc 32), or
    * null when it is not stored on this device (logged out, or a passkey-only resume). */
   recoveryPhrase: string | null;
+  /** Whether a passkey is enrolled on this device (doc 32): the phrase re-view
+   * requires a passkey check before revealing when true. */
+  passkeyEnrolled: boolean;
+  /** Run the passkey "confirm it's you" check before revealing the phrase (doc 32);
+   * resolves true on success. A pure presence gate; never touches the session. */
+  onVerifyPasskey: () => Promise<boolean>;
   /** Turn the password factor on (or change it); resolves with the outcome. */
   onSetRecoveryPassword: (
     input: SetRecoveryPasswordInput,

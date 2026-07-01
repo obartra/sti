@@ -62,6 +62,8 @@ function stubController(over: Partial<SessionController>): SessionController {
     releaseVanityName: unused,
     setRecoveryPassword: unused,
     disableRecoveryPassword: unused,
+    passkeyEnrolled: unused,
+    verifyPasskey: unused,
     forget: unused,
     ...over,
   };

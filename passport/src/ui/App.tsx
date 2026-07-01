@@ -307,6 +307,11 @@ export function App({
         vanityName={findableName(session)}
         recoveryName={recoveryName(session)}
         recoveryPhrase={recoveryPhrase(session)}
+        // The phrase re-view gate (doc 32): when a passkey is enrolled on this
+        // device, revealing the phrase requires a passkey check. verifyPasskey is a
+        // pure presence gate, so it never disturbs the live session.
+        passkeyEnrolled={controller.passkeyEnrolled()}
+        onVerifyPasskey={() => controller.verifyPasskey()}
         push={push}
         {...actions}
       />
