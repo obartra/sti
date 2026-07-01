@@ -6,7 +6,6 @@
 // crosses the library and back to sti.care.
 import "../../../passport/src/design/index.css";
 import "../styles/site.css";
-import Icon from "../components/Icon.astro";
 
 interface Props {
   title: string;
@@ -33,8 +32,11 @@ const APP_URL = "https://sti.care";
   </head>
   <body>
     <header class="info-header">
-      <a class="info-back" href={APP_URL}><Icon name="back" size={18} />sti.care</a>
-      <span class="info-wordmark">Learn</span>
+      <a class="info-home" href="/">
+        <span class="info-home__brand">sti.care</span>
+        <span class="info-home__tag">Learn</span>
+      </a>
+      <a class="info-toapp" href={APP_URL}>Back to the app</a>
     </header>
     <main class="info-page">
       <slot />
@@ -43,7 +45,6 @@ const APP_URL = "https://sti.care";
       <nav class="info-footer__links">
         <a href="/">STI basics</a>
         <a href="/uu">U=U</a>
-        <a href={APP_URL}>Back to sti.care</a>
       </nav>
       <div class="info-footer__tag">Plain answers. No judgment.</div>
     </footer>
