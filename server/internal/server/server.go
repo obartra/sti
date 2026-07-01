@@ -607,6 +607,21 @@ func (s *Server) handleVanityRelease(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusForbidden, contract.ErrBadRequest, "write token does not own that name")
 		return
 	}
+	// Pinned handle (doc 17, doc 32): a name that carries a password login cannot be
+	// released, since releasing it would orphan the login or hand the login name to a
+	// stranger who could then set their own password on it. The envelope store is
+	// keyed by the same normalized public name (recoveryLocator uses the same Normalize
+	// + ValidFormat as this handler), so this is a per-name lookup the server already
+	// holds, no cross-alias grouping and no new oracle: the release is already
+	// write-token authorized, so only the owner reaches this check, and they already
+	// know they set a password. Fail closed: on a lookup error, do NOT release.
+	if _, pinned, err := s.st.GetRecoveryEnvelope(r.Context(), name); err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	} else if pinned {
+		s.writeError(w, http.StatusConflict, contract.ErrConflict, "this name is your sign-in username; turn the password off first to release it")
+		return
+	}
 	if err := s.st.ReleaseVanityName(r.Context(), name, s.now(), s.cfg.VanityLockWindow.Milliseconds()); err != nil {
 		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
 		return

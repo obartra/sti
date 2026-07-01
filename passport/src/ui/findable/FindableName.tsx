@@ -30,6 +30,10 @@ export interface FindableNameProps {
   ops: FindableOps;
   /** Persist the result: the new name on a claim, or null on release. */
   onChange?: (name: string | null) => void;
+  /** True when this name is the owner's sign-in username (a password is set on it,
+   * doc 32): the name is pinned, so the release control is hidden and a plain reason
+   * is shown. The server enforces the same rule (doc 17); this is the matching UI. */
+  pinned?: boolean;
 }
 
 const NAME_ERROR: Record<VanityNameError, string> = {
@@ -66,12 +70,18 @@ const COPY = {
   registeredAt: "People can find you at this name:",
   release: "Release name",
   releasing: "Releasing…",
+  // Shown in place of the release control when the name is the owner's sign-in
+  // username (doc 32): releasing it would break the password login, so we point at
+  // the fix instead of a dead end. Matches the server's refusal reason.
+  pinned:
+    "This name is your sign-in username. Turn the password off first to release it.",
 } as const;
 
 export function FindableName({
   currentName,
   ops,
   onChange,
+  pinned = false,
 }: FindableNameProps) {
   if (currentName !== null) {
     return (
@@ -79,6 +89,7 @@ export function FindableName({
         name={currentName}
         ops={ops}
         onReleased={() => onChange?.(null)}
+        pinned={pinned}
       />
     );
   }
@@ -235,10 +246,12 @@ function RegisteredView({
   name,
   ops,
   onReleased,
+  pinned,
 }: {
   name: string;
   ops: FindableOps;
   onReleased: () => void;
+  pinned: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -249,7 +262,12 @@ function RegisteredView({
     void ops
       .release()
       .then(onReleased)
-      .catch(() => setError(COPY.failed))
+      // The server enforces the pin too (doc 17): if a password was set on this name
+      // (e.g. in another tab) after we rendered, it refuses with a 409. Surface the
+      // plain reason rather than a generic failure.
+      .catch((e: unknown) =>
+        setError(isPinRefusal(e) ? COPY.pinned : COPY.failed),
+      )
       .finally(() => setBusy(false));
   }, [ops, onReleased]);
 
@@ -284,10 +302,35 @@ function RegisteredView({
           {error}
         </div>
       )}
-      <Button variant="secondary" size="md" disabled={busy} onClick={release}>
-        {busy ? COPY.releasing : COPY.release}
-      </Button>
+      {/* Pinned (doc 32): this name is the sign-in username, so we do not offer to
+          release it. Show the fix instead of a control that would be refused. */}
+      {pinned ? (
+        <div
+          style={{
+            fontSize: 12.5,
+            color: "var(--text-muted)",
+            lineHeight: 1.5,
+          }}
+        >
+          {COPY.pinned}
+        </div>
+      ) : (
+        <Button variant="secondary" size="md" disabled={busy} onClick={release}>
+          {busy ? COPY.releasing : COPY.release}
+        </Button>
+      )}
     </Card>
+  );
+}
+
+// A release the server refused because the name carries a password login (doc 17
+// pin): the DELETE answers 409, which the api client surfaces as a "conflict" kind.
+function isPinRefusal(e: unknown): boolean {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "kind" in e &&
+    (e as { kind?: unknown }).kind === "conflict"
   );
 }
 

@@ -176,4 +176,32 @@ describe("FindableName", () => {
     expect(release).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(onChange).toHaveBeenCalledWith(null));
   });
+
+  it("hides the release control and explains why when the name is pinned", () => {
+    const release = vi.fn(() => Promise.resolve());
+    render(<FindableName currentName="robin" ops={ops({ release })} pinned />);
+
+    expect(screen.getByText("robin")).toBeInTheDocument();
+    // No release control while the name is the sign-in username (doc 32).
+    expect(
+      screen.queryByRole("button", { name: /release name/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/your sign-in username/i)).toBeInTheDocument();
+  });
+
+  it("surfaces the plain pin reason if the server refuses a release (409)", async () => {
+    const user = userEvent.setup();
+    // A pin set in another tab after render: the release is not gated here, but the
+    // server refuses with a 409, surfaced by the api client as a "conflict".
+    const conflict = Object.assign(new Error("vanity release"), {
+      kind: "conflict" as const,
+    });
+    const release = vi.fn(() => Promise.reject(conflict));
+    render(<FindableName currentName="robin" ops={ops({ release })} />);
+
+    await user.click(screen.getByRole("button", { name: /release name/i }));
+    expect(
+      await screen.findByText(/your sign-in username/i),
+    ).toBeInTheDocument();
+  });
 });

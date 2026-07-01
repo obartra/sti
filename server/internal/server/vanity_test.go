@@ -266,6 +266,70 @@ func TestVanityReleaseAndLock(t *testing.T) {
 	}
 }
 
+// A handle that carries a password login is pinned (doc 17, doc 32): while a
+// recovery envelope exists at that same normalized name, the owner's release is
+// refused with a 409 and the name stays registered. Turning the password off (the
+// envelope is deleted) lifts the pin, and the release then succeeds.
+func TestVanityReleasePinnedByRecoveryEnvelope(t *testing.T) {
+	h, st, _ := newFindableServer(t, time.Hour)
+	ctx := context.Background()
+	mine := publishAlias(t, h, "me")
+
+	if rec := registerName(h, "robin", mine, "me"); rec.Code != http.StatusNoContent {
+		t.Fatalf("claim: %d", rec.Code)
+	}
+	// Turn a password on: an envelope now lives at the same normalized name, keyed by
+	// the handle's alias write token (as the recovery PUT would store it).
+	env := bytes.Repeat([]byte{0x11}, contract.RecoveryEnvelopeSize)
+	if err := st.PutRecoveryEnvelope(ctx, "robin", env, hashToken("me"), 1_000_000); err != nil {
+		t.Fatalf("put envelope: %v", err)
+	}
+
+	rel := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest("DELETE", contract.PathVanityPrefix+"robin", nil)
+		req.Header.Set(contract.HeaderWriteToken, "me")
+		return do(h, req)
+	}
+
+	// Pinned: the release is refused, and the name is still registered.
+	if rec := rel(); rec.Code != http.StatusConflict {
+		t.Fatalf("release pinned: %d, want 409", rec.Code)
+	}
+	if rec := resolveName(h, "robin"); rec.Code != http.StatusOK {
+		t.Fatalf("still registered after refused release: %d, want 200", rec.Code)
+	}
+
+	// Turn the password off: the pin lifts and the release now succeeds.
+	if err := st.DeleteRecoveryEnvelope(ctx, "robin", hashToken("me")); err != nil {
+		t.Fatalf("delete envelope: %v", err)
+	}
+	if rec := rel(); rec.Code != http.StatusNoContent {
+		t.Fatalf("release after unpin: %d, want 204", rec.Code)
+	}
+	if rec := resolveName(h, "robin"); rec.Code != http.StatusNotFound {
+		t.Fatalf("after release resolves: %d, want 404", rec.Code)
+	}
+}
+
+// A name with no recovery envelope is not pinned: the owner's release succeeds
+// normally (204). This guards against the pin check over-refusing.
+func TestVanityReleaseUnpinnedSucceeds(t *testing.T) {
+	h, _, _ := newFindableServer(t, time.Hour)
+	mine := publishAlias(t, h, "me")
+
+	if rec := registerName(h, "robin", mine, "me"); rec.Code != http.StatusNoContent {
+		t.Fatalf("claim: %d", rec.Code)
+	}
+	req := httptest.NewRequest("DELETE", contract.PathVanityPrefix+"robin", nil)
+	req.Header.Set(contract.HeaderWriteToken, "me")
+	if rec := do(h, req); rec.Code != http.StatusNoContent {
+		t.Fatalf("release unpinned: %d, want 204", rec.Code)
+	}
+	if rec := resolveName(h, "robin"); rec.Code != http.StatusNotFound {
+		t.Fatalf("after release resolves: %d, want 404", rec.Code)
+	}
+}
+
 func reportName(h http.Handler, name, reason string) *httptest.ResponseRecorder {
 	body, _ := json.Marshal(contract.VanityReportRequest{Reason: reason})
 	return do(h, httptest.NewRequest("POST", contract.PathVanityPrefix+name+"/report", bytes.NewReader(body)))

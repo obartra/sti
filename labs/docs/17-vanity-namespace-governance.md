@@ -101,6 +101,8 @@ reasons.) Format errors (too short, bad characters) are their own specific, non-
 
 ## Pinned handles (a handle that carries a password login)
 
+**Status: built.**
+
 A handle is normally releasable and deletable under the lifecycle above. There is one
 exception: **while a password login is set on a handle, that handle is pinned.**
 [32-account-recovery-and-unlock](32-account-recovery-and-unlock.md) lets a person log in
@@ -122,14 +124,19 @@ password on it. So:
   that a password depends on.
 
 This is a client-and-server rule. The client will not offer to release a pinned handle,
-and the server enforces the pin directly: a release/rename-off/delete of name X first
-checks whether X has a recovery envelope, and refuses if it does. That is a **per-name
-lookup the server already can do** (it holds both the directory and the envelope store,
-each keyed by the same public name), so it needs no cross-alias grouping and adds no new
+and the server enforces the pin directly: the self-service release of name X (the only
+"free just this one name" path) first checks whether X has a recovery envelope and refuses
+with a 409 if it does, before touching the directory. That is a **per-name lookup the
+server already can do** (it holds both the directory and the envelope store, each keyed by
+the same normalized public name), so it needs no cross-alias grouping and adds no new
 oracle the directory did not already have: the release path is authorized by the handle's
 alias write token, so only the owner can trigger the check, and they already know they set
-a password. The pin therefore cannot be worked around by releasing the name out from under
-a live login.
+a password. The check fails closed (a lookup error refuses the release, never frees the
+name), and because release is the sole self-service path that frees a single name, the pin
+cannot be worked around by releasing the name out from under a live login. Full account
+deletion legitimately removes everything (the directory entry and the envelope alike), so
+it is not pin-blocked; it is the owner tearing down their own account, not orphaning a live
+login.
 
 ## Reserved names + blocklist (gate; resolves doc 16 OPEN)
 

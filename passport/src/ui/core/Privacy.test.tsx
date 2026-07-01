@@ -157,6 +157,24 @@ describe("Privacy findable section (doc 17)", () => {
       screen.getByRole("button", { name: /release name/i }),
     ).toBeInTheDocument();
   });
+
+  it("pins the public name (no release) when a password is set on that same name", () => {
+    render(
+      <Privacy
+        ownerState={INITIAL_OWNER_STATE}
+        setOwnerState={() => undefined}
+        vanityName="robin"
+        findableOps={ops}
+        recoveryName="robin"
+      />,
+    );
+    // The name shows, but the release control is replaced by the plain reason (the
+    // name is the sign-in username, doc 17/32).
+    expect(
+      screen.queryByRole("button", { name: /release name/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/your sign-in username/i)).toBeInTheDocument();
+  });
 });
 
 describe("usePrivacyState card-attribute wiring", () => {
