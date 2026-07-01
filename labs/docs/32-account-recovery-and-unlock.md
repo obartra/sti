@@ -259,17 +259,19 @@ and the always-present account id stays a function of the high-entropy phrase on
    trip, the fixed-size decoy on a miss, wrong-size/malformed/missing-token rejects, the
    uniform-and-safe collision, delete, and the gated-off 404; the ciphertext-projection
    guard allowlists the new getter.
-4. **Settings: manage factors (doc 31).** _Store layer built; UI pending._ The client
-   plumbing is in: the `/recovery` API client, `store/recoveryOps.ts`
-   (`setRecoveryPassword` / `disableRecoveryPassword`) wired through the SessionController,
-   and a `recoveryName` field on the account blob (schema v13) so the chosen locator is
-   remembered for re-view and turn-off. Because the session root is non-extractable (doc
-   24), turning the password on takes the recovery **phrase**, re-derives the root, and
-   verifies the phrase names this account before wrapping; a locator collision is caught
-   client-side (read back and confirm our own password opens it). The password-envelope
-   crypto and the strength gate load via dynamic import so their WASM/estimator stay out
-   of the precached shell. Still to build: the Settings card UI (pick a recovery name, set
-   + confirm past the gate, change, turn off, re-view the phrase) and its stories.
+4. **Settings: manage factors (doc 31).** _Built._ The `/recovery` API client,
+   `store/recoveryOps.ts` (`setRecoveryPassword` / `disableRecoveryPassword`) wired
+   through the SessionController, and a `recoveryName` field on the account blob (schema
+   v13) so the chosen locator is remembered for re-view and turn-off. Because the session
+   root is non-extractable (doc 24), turning the password on takes the recovery **phrase**,
+   re-derives the root, and verifies the phrase names this account before wrapping; a
+   locator collision is caught client-side (read back and confirm our own password opens
+   it). The Settings card (`ui/settings/RecoveryPassword.tsx`) has an off state (recovery
+   name + password with live strength feedback + confirm + phrase) and an on state (name,
+   change, turn off), rendered from the Privacy screen behind the `RECOVERY_ENABLED` build
+   flag (paired with the server's `STI_RECOVERY_ENABLED`). The envelope crypto and the
+   strength gate load via dynamic import, so their WASM/estimator stay out of the precached
+   shell. Follow-up: re-viewing the phrase itself from Settings.
 5. **New-device unlock by recovery name + password.** The login path that fetches the
    envelope by locator and opens it with the password, recovering the root key and loading
    the account, alongside the existing phrase and passkey paths.
