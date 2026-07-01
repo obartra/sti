@@ -85,6 +85,7 @@ function LinkRow({
       <Button
         variant="quiet"
         size="sm"
+        aria-label={`Revoke ${title}`}
         icon={<Trash size={15} />}
         onClick={onRevoke}
       >
@@ -145,7 +146,7 @@ export function LiveLinks({
           variant="flat"
           style={{ fontSize: 13.5, color: "var(--text-muted)" }}
         >
-          No links shared yet. Create one from the share sheet or Connect.
+          No links shared yet. Create one from the share sheet or Links.
         </Card>
       ) : (
         <Card

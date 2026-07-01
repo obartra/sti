@@ -1,9 +1,7 @@
-// Copy for Connect and its presentational sections.
+// Copy for People and its presentational sections.
 export const COPY = {
-  title: "Connect",
+  title: "People",
   sub: "Connections stay private and live only on your device. There’s no search. You connect by sharing or scanning a link.",
-  shareTile: "Share my link",
-  shareTileSub: "Send your link for someone to open",
   scanTile: "Scan a code",
   scanTileSub: "Open someone’s passport by scanning their code",
   favesTitle: "Starred",

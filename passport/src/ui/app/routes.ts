@@ -14,7 +14,8 @@ const ALL_SCREENS = [
   "b2-recovery",
   "b3-setup",
   "home",
-  "connect",
+  "links",
+  "people",
   "alias-share",
   "scan",
   "wallet",
@@ -83,7 +84,7 @@ const PUBLIC: readonly Screen[] = [
 const ONBOARD: readonly Screen[] = ["b1-claim", "b2-recovery", "b3-setup"];
 
 // The bottom tab bar (mobile) / sidebar (desktop) destinations.
-const TABS = ["home", "connect", "groups", "care"] as const;
+const TABS = ["home", "links", "people", "care"] as const;
 export type Tab = (typeof TABS)[number];
 
 export function groupOf(screen: Screen): Group {
@@ -106,9 +107,11 @@ const SECTION: Partial<Record<Screen, Tab>> = {
   wallet: "home",
   "avatar-edit": "home",
   "a3-alert": "home",
-  "alias-share": "connect",
-  "group-create": "groups",
-  "group-detail": "groups",
+  "alias-share": "links",
+  scan: "people",
+  groups: "people",
+  "group-create": "people",
+  "group-detail": "people",
   learn: "care",
   "learn-detail": "care",
   "learn-uu": "care",

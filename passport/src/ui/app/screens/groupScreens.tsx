@@ -60,7 +60,7 @@ export const groupRenderers: ScreenRenderers = {
         onEdit={() => nav.go("group-create", { id: circle.id })}
         onDelete={() => {
           onRemoveCircle(circle.id);
-          nav.go("groups");
+          nav.go("people");
         }}
       />
     );

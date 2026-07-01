@@ -42,17 +42,17 @@
     {
       "name": "Care",
       "short_name": "Care",
-      "url": "./#care"
+      "url": "./care"
     },
     {
       "name": "Share",
       "short_name": "Share",
-      "url": "./#alias-share"
+      "url": "./links/share"
     },
     {
-      "name": "Connect",
-      "short_name": "Connect",
-      "url": "./#connect"
+      "name": "People",
+      "short_name": "People",
+      "url": "./people"
     }
   ],
   "share_target": {

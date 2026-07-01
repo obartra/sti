@@ -6,9 +6,7 @@ import {
   fieldLbl,
 } from "./Privacy.parts.tsx";
 import type { OwnerState } from "../../core/badge.ts";
-import type { AliasRecord, ContactRecord } from "../../store/index.ts";
 import type { PushControls } from "../app/usePush.ts";
-import { LiveLinks } from "./Privacy.aliases.tsx";
 import { NameCard } from "./Privacy.name.tsx";
 import { HomeViewCard } from "./Privacy.homeview.tsx";
 import { FindableName, type FindableOps } from "../findable/FindableName.tsx";
@@ -27,12 +25,7 @@ import {
 export interface PrivacyProps {
   ownerState: OwnerState;
   setOwnerState: (update: (prev: OwnerState) => OwnerState) => void;
-  aliases?: AliasRecord[];
-  contacts?: ContactRecord[];
-  onRevokeAlias?: ((id: string) => void) | undefined;
-  onRevokeContact?: ((id: string) => void) | undefined;
   push?: PushControls | undefined;
-  onViewAs?: (() => void) | undefined;
   onDeleted?: (() => void) | undefined;
   /** Open the plain-English privacy promises page. */
   onViewPromises?: (() => void) | undefined;
@@ -68,8 +61,6 @@ export interface PrivacyProps {
    * the feature is enabled and the owner is logged in. */
   findableOps?: FindableOps | undefined;
 }
-
-const noop = (): void => undefined;
 
 const legalLink: CSSProperties = {
   alignSelf: "flex-start",
@@ -230,12 +221,7 @@ function RecoverySection({
 export function Privacy({
   ownerState,
   setOwnerState,
-  aliases = [],
-  contacts = [],
-  onRevokeAlias = noop,
-  onRevokeContact = noop,
   push,
-  onViewAs,
   onDeleted,
   onViewPromises,
   onLogOut,
@@ -289,16 +275,6 @@ export function Privacy({
           onSetHomeDefaultView={onSetHomeDefaultView}
           avatarSrc={avatarSrc}
           onEditAvatar={onEditAvatar}
-        />
-
-        {/* One unified list of every live link (public/casual aliases + contact
-            links), each individually revocable. */}
-        <LiveLinks
-          aliases={aliases}
-          contacts={contacts}
-          onRevokeAlias={onRevokeAlias}
-          onRevokeContact={onRevokeContact}
-          onViewAs={onViewAs}
         />
 
         {/* Public name (doc 17): the claim/release card, plus the share guide right

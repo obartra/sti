@@ -2,12 +2,13 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Connect } from "./Connect.tsx";
 import type { ContactRecord } from "../../store/accountBlob.ts";
 
-// Connect: your linkups (contacts), reached only by scan or shared link. No
-// directory, no @-search. A linkup IS a contact, shown by your private label and
-// newest first; faves are a device-local star; recent paginates via "Show more".
-// Nothing here surfaces a clinical badge or status.
+// People (connections): reached only by scan or shared link. No directory, no
+// @-search. A connection IS a contact, shown by your private label and newest
+// first; stars are device-local; recent paginates via "Show more". Nothing here
+// surfaces a clinical badge or status. (This renders the connections list; the
+// People tab also folds groups in below it.)
 const meta: Meta<typeof Connect> = {
-  title: "Passport/Connect",
+  title: "Passport/People",
   component: Connect,
 };
 export default meta;

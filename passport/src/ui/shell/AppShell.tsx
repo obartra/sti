@@ -7,23 +7,25 @@ import {
   Back,
   Passport,
   Users,
-  Circles,
+  Link,
   Care,
   type IconProps,
 } from "../../design/icons.tsx";
+import type { Tab } from "../app/routes.ts";
 import "./app-shell.css";
 
 const cx = (...parts: (string | false | undefined)[]) =>
   parts.filter(Boolean).join(" ");
 
-export type TabId = "home" | "connect" | "groups" | "care";
+export type TabId = Tab;
 
-// Order, labels, and icons reproduced from shell.jsx TabBar + copy.js nav.
+// Order, labels, and icons for the bottom bar. Links comes first: sharing and
+// managing your links is the app's second job (doc 31).
 const TABS: { id: TabId; label: string; Icon: (p: IconProps) => ReactNode }[] =
   [
     { id: "home", label: "Passport", Icon: Passport },
-    { id: "connect", label: "Connect", Icon: Users },
-    { id: "groups", label: "Groups", Icon: Circles },
+    { id: "links", label: "Links", Icon: Link },
+    { id: "people", label: "People", Icon: Users },
     { id: "care", label: "Care", Icon: Care },
   ];
 

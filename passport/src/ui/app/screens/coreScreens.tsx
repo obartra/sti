@@ -196,10 +196,6 @@ export const coreRenderers: ScreenRenderers = {
     onLogOut,
     onSetName,
     onSetHomeDefaultView,
-    aliases,
-    contacts,
-    onRevokeAlias,
-    onRevokeContact,
     vanityName,
     onRegisterVanityName,
     onCheckVanityName,
@@ -213,10 +209,6 @@ export const coreRenderers: ScreenRenderers = {
     <Privacy
       ownerState={ownerState}
       setOwnerState={setOwnerState}
-      aliases={aliases}
-      contacts={contacts}
-      onRevokeAlias={onRevokeAlias}
-      onRevokeContact={onRevokeContact}
       push={push}
       name={owner.handle ?? null}
       onSetName={isLoggedIn ? onSetName : undefined}
@@ -224,7 +216,6 @@ export const coreRenderers: ScreenRenderers = {
       onSetHomeDefaultView={isLoggedIn ? onSetHomeDefaultView : undefined}
       avatarSrc={avatarSrc(owner.avatar)}
       onEditAvatar={isLoggedIn ? () => nav.go("avatar-edit") : undefined}
-      onViewAs={() => nav.go("a2-public", { self: true })}
       onViewPromises={() => nav.go("promises")}
       onLogOut={isLoggedIn ? onLogOut : undefined}
       onViewPrivacyPolicy={() => nav.go("privacy-policy")}

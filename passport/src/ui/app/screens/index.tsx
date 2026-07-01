@@ -6,7 +6,8 @@ import { onboardRenderers } from "./onboardScreens.tsx";
 import { coreRenderers } from "./coreScreens.tsx";
 import { trustRenderers } from "./trustScreens.tsx";
 import { reportRenderers } from "./reportScreens.tsx";
-import { connectRenderers } from "./connectScreens.tsx";
+import { peopleRenderers } from "./peopleScreens.tsx";
+import { linksRenderers } from "./linksScreens.tsx";
 import { learnRenderers } from "./learnScreens.tsx";
 import { groupRenderers } from "./groupScreens.tsx";
 
@@ -16,7 +17,8 @@ const RENDERERS: ScreenRenderers = {
   ...coreRenderers,
   ...trustRenderers,
   ...reportRenderers,
-  ...connectRenderers,
+  ...peopleRenderers,
+  ...linksRenderers,
   ...learnRenderers,
   ...groupRenderers,
 };

@@ -447,15 +447,14 @@ describe("App onboarding flow", () => {
     expect(row.textContent).not.toMatch(/\d/);
   });
 
-  it("creates and revokes a per-contact link from the Connect screen", async () => {
+  it("creates and revokes a per-contact link from the Links screen", async () => {
     window.history.pushState({}, "", "/claim");
     const user = userEvent.setup();
     render(<App store={stubStore(null)} controller={fakeController()} />);
 
-    // Onboard, then open Connect -> Share my link (the per-contact manager).
+    // Onboard, then open the Links tab (the per-contact link manager lives there).
     await onboard(user);
-    await user.click(await screen.findByRole("button", { name: "Connect" }));
-    await user.click(await screen.findByText("Share my link"));
+    await user.click(await screen.findByRole("button", { name: "Links" }));
 
     // Name a link and create it: the shareable URL appears and the link is listed.
     await user.type(
@@ -468,9 +467,10 @@ describe("App onboarding flow", () => {
     ).toBeInTheDocument();
     expect((await screen.findAllByText("Sam")).length).toBeGreaterThan(0);
 
-    // Open the link's options menu, then revoke it: the entry is gone.
+    // Open the link's options menu, then revoke it (the manager's menu Revoke, not
+    // the live-links list one, which names its link): the entry is gone.
     await user.click(screen.getByRole("button", { name: /Options for Sam/ }));
-    await user.click(screen.getByRole("button", { name: /Revoke/ }));
+    await user.click(screen.getByRole("button", { name: "Revoke" }));
     expect(screen.queryByText("Sam")).toBeNull();
   });
 

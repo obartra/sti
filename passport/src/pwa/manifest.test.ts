@@ -88,19 +88,22 @@ describe("web app manifest (PWA slice 1)", () => {
     expect(indexHtml).toContain('rel="apple-touch-icon"');
   });
 
-  it("points its shortcuts at in-scope app routes", () => {
+  it("points its shortcuts at in-scope, base-agnostic clean app routes", () => {
+    // The shortcuts deep-link to the app's real clean paths (the router reads paths,
+    // not `#screen` hashes). Relative like start_url/scope so any deploy base works.
     for (const shortcut of manifest.shortcuts ?? []) {
-      expect(shortcut.url.startsWith("./#")).toBe(true);
+      expect(shortcut.url.startsWith("./")).toBe(true);
+      expect(shortcut.url.startsWith("./#")).toBe(false);
     }
   });
 
-  it("ships exactly the three named shortcuts: Care, Share, Connect (G17)", () => {
+  it("ships exactly the three named shortcuts: Care, Share, People (G17)", () => {
     // The install shortcuts are user-facing labels; pin the exact set and order so a
     // rename or a dropped/added shortcut is a deliberate, reviewed change.
     expect((manifest.shortcuts ?? []).map((s) => s.name)).toEqual([
       "Care",
       "Share",
-      "Connect",
+      "People",
     ]);
   });
 
