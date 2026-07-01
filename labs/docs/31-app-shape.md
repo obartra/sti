@@ -144,11 +144,20 @@ without preaching:
 - **"What should we call you?"** is the display-name step: a single labeled field with a
   dice / shuffle button that fills a short, playful name the person can keep or edit. It is
   the private name from Identity above, never shared.
-- **A choice of how to get back in.** Sign-up offers a passkey and/or @handle plus password
-  (doc 32), and **always still shows the recovery phrase** as the ultimate backup. Because
-  the freshly generated root is in memory at sign-up, choosing a password here needs **no
-  recovery-phrase re-entry** (that friction only exists when adding a password later, doc
-  32).
+- **A choice of how to get back in, with the passkey as the default.** The recommended,
+  one-tap path is a passkey (biometrics), which needs no handle; a person can stop there.
+  Choosing a **password** instead (or as well) means **also picking a public handle** as its
+  login name (doc 17), so "@handle plus password" is set together, the common case being a
+  person who wants that familiar pairing. Whatever they pick, sign-up **always still shows
+  the recovery phrase** as the ultimate backup. Because the freshly generated root is in
+  memory at sign-up, choosing a password here needs **no recovery-phrase re-entry** (that
+  friction only exists when adding a password later, doc 32).
+- **Guide toward the stronger choice, hold a floor under every path.** The flow nudges
+  toward the passkey (phishing-resistant, the default) and frames the password as the weaker
+  opt-in, but it does not lecture or block. The guidance is soft; the quality floors are not:
+  a real password-strength gate (reject weak, not merely score it), and the recovery phrase
+  generated no matter what. Good defaults and honest nudges, with a safety floor that does
+  not bend.
 - **No "account key" explainer.** The old preachy, not-fully-true account-key screen is
   dropped; the recovery phrase is shown plainly as the backup, without a lecture.
 - **A clear "Back" affordance, and a step indicator that is not the back label.** The step
