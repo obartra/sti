@@ -114,6 +114,48 @@ resolving before building is whether an anonymous face is **fresh per connection
 **stable per person** (recognizable to that one person, linkable only if they collude),
 which is the doc 18 decorrelation tradeoff applied to 1:1 links.
 
+## Getting in: sign in and sign up
+
+The way back into an account, and the way to make one, are governed by the factor model in
+[32-account-recovery-and-unlock](32-account-recovery-and-unlock.md) (the root key, wrapped
+by a passkey, a recovery phrase, and an optional password). This section owns the **shape**
+of those two screens.
+
+**Sign in leads with the passkey.** The primary action is "log in with passkey," because it
+is the recommended path: nothing to type, and it cannot be phished. The other two ways in
+sit behind an **"other ways to log in"** disclosure rather than stacked as three equal
+cards, so the common case is one obvious button. Expanding the disclosure offers a choice:
+
+- **@handle and password** - the person's public handle plus their password (doc 32). This
+  is the memorable, weaker, opt-in path.
+- **Recovery phrase** - the high-entropy backstop, for anyone who has neither a passkey nor
+  a password on this device.
+
+The **"keep me signed in on this device"** toggle (doc 24) stays always visible, not hidden
+in the disclosure, because it is a choice every sign-in makes. Switching between **log in**
+and **sign up** is easy and obvious, one tap either way; a person who opened the wrong one
+should not have to hunt.
+
+**Sign up is simplified.** It collects only what a new account needs, and it is honest
+without preaching:
+
+- **No avatar step.** An avatar belongs to a handle, not to the account (see Identity: the
+  owner has no avatar). The onboarding avatar builder is dropped.
+- **"What should we call you?"** is the display-name step: a single labeled field with a
+  dice / shuffle button that fills a short, playful name the person can keep or edit. It is
+  the private name from Identity above, never shared.
+- **A choice of how to get back in.** Sign-up offers a passkey and/or @handle plus password
+  (doc 32), and **always still shows the recovery phrase** as the ultimate backup. Because
+  the freshly generated root is in memory at sign-up, choosing a password here needs **no
+  recovery-phrase re-entry** (that friction only exists when adding a password later, doc
+  32).
+- **No "account key" explainer.** The old preachy, not-fully-true account-key screen is
+  dropped; the recovery phrase is shown plainly as the backup, without a lecture.
+- **A clear "Back" affordance, and a step indicator that is not the back label.** The step
+  indicator must read as progress, not as the back button, so the two are never confused.
+- **The honest public-name note stays.** Choosing @handle plus password means claiming a
+  public name people can find you by, so that disclosure (doc 17) rides with the choice.
+
 ## Home
 
 The honesty principle from [03-design](03-design.md) holds: the owner must never
@@ -338,9 +380,10 @@ be descriptive.
 
 ## Open questions (do not block; resolve before building)
 
-- **Owner avatar removal scope:** remove the avatar concept entirely (drop the
-  onboarding step and the edit screen), or just stop showing an owner avatar while
-  the per-link avatar picker stays? The latter is far less invasive.
+- **Owner avatar removal scope:** the onboarding avatar step is dropped (see Getting in:
+  sign in and sign up). What is still open is the edit screen: remove the owner-avatar edit
+  entirely, or just stop showing an owner avatar while the per-link avatar picker stays? The
+  latter is far less invasive.
 - **Links tab vs. Settings overlap:** the "sharing default" toggle could live in
   either; proposed home is Settings, with Links showing the result.
 - **Sequencing:** the Settings section, the "be scanned" half, and the Home toggle
@@ -360,8 +403,10 @@ copy contradict the screen that is still there). Tracked here so none is forgott
 - **Privacy to Settings:** the `PRIVACY_SCREEN_NAME` constant and the screen title /
   nav label.
 - **Recovery + optional password:** the recovery copy stays phrase-only until the
-  password envelope ships, then gains an honest "convenience, not the equal of the
-  phrase" line (never overclaiming).
+  password login ships, then gains an honest "a convenient, weaker way back in, not the
+  equal of the phrase or a passkey" line (never overclaiming), plus the note that a
+  password means claiming a public name people can find you by (doc 17). The password's
+  login name is a public handle, not a separate recovery name (doc 32).
 
 Already corrected (copy that was wrong against shipped behaviour): the contact-prune
 line, the name-availability message, the share-sheet identity warning, and the groups
