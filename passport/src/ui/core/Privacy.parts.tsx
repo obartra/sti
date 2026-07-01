@@ -16,7 +16,7 @@ export const COPY = {
   controlsTitle: "Controls",
   anonAlerts: "Anonymous partner alerts",
   anonAlertsSub:
-    "Built in. If you report a positive, recent connections get an anonymous heads-up. Never optional, never traceable to you.",
+    "Built in. If you report a positive, recent connections get an anonymous heads-up. It's always on, and it goes out with no name attached.",
   pushRow: "Notify me on this device",
   pushRowSub:
     "Get the alert as a notification even when the app is closed. The heads-up stays the same: no name, no detail. You’ll still see it in-app either way.",

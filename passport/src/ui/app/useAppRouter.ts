@@ -53,6 +53,12 @@ export function findableNameFromPath(pathname: string): string | null {
 // The two "privacy" surfaces resolve their old naming clash here: the Settings
 // screen (id `privacy`) is `/settings`, the privacy POLICY page (id
 // `privacy-policy`) is `/privacy`.
+//
+// The root `/` is shared: the signed-in Home and the logged-out landing both
+// canonicalize to it (a jump to either writes `/`). The reverse lookup can only
+// name one owner of `/`, and it names `home` (see PATH_SCREEN below); the App
+// clamps that `home` route to the landing for a visitor with no session, so a
+// signed-out `/` still shows the landing.
 const SCREEN_PATH: Partial<Record<Screen, string>> = {
   "a1-landing": "/",
   "a3-alert": "/alert",
@@ -61,7 +67,7 @@ const SCREEN_PATH: Partial<Record<Screen, string>> = {
   "b1-claim": "/claim",
   "b2-recovery": "/recovery",
   "b3-setup": "/setup",
-  home: "/home",
+  home: "/",
   links: "/links",
   people: "/people",
   "alias-share": "/links/share",
@@ -89,6 +95,10 @@ for (const screen of Object.keys(SCREEN_PATH) as Screen[]) {
   const path = SCREEN_PATH[screen];
   if (path !== undefined) PATH_SCREEN[path] = screen;
 }
+// `/` is shared by `home` and `a1-landing` in SCREEN_PATH; the root resolves to
+// `home` (the App clamps it to the landing when there is no session). Pinned here
+// so the resolution never rides on object-key iteration order.
+PATH_SCREEN["/"] = "home";
 
 // The path an id-carrying screen builds from its route data, or null when the screen
 // has no param (or the datum is missing): `/u/{name}`, `/groups/{id}`,
@@ -127,9 +137,11 @@ const COLD_REDIRECT: Record<string, Screen> = {
 };
 
 // Legacy paths kept working so an installed PWA (or an old shortcut/bookmark) never
-// strands: the old Connect tab and its sub-paths now live under People / Links.
-// A cold hit resolves to the new screen and mount normalizes the URL.
+// strands: the old Connect tab and its sub-paths now live under People / Links, and
+// Home moved from `/home` to the root `/`. A cold hit resolves to the new screen and
+// mount normalizes the URL.
 const LEGACY_REDIRECT: Record<string, Screen> = {
+  "/home": "home",
   "/connect": "people",
   "/connect/scan": "scan",
   "/connect/share": "alias-share",
@@ -250,7 +262,7 @@ export function useAppRouter(initial: Route = START): Router {
   const depth = useRef(0);
 
   // Mount-only URL normalization: replace the URL the app loaded at (e.g. a stale
-  // `/#a1-landing`, or a bare `/home`) with its canonical form, never pushing, so the
+  // `/#a1-landing`, or a legacy `/home`) with its canonical form, never pushing, so the
   // user is never one extra Back press from leaving. Owned-URL screens are left
   // exactly as loaded. After mount, `go`/`jump` own every URL write directly, so this
   // never runs again (guarded on firstUrlSync).
