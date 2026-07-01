@@ -231,8 +231,14 @@ and the always-present account id stays a function of the high-entropy phrase on
    only by the recovery/settings chunk so it stays out of the precached shell. The params
    are stored with the envelope and versioned; confirm the cost on a target phone before
    launch.
-2. **Strength gate.** A pure `gradePassword(pw) -> { ok, reason }` (length + estimator +
-   wordlist), client-only, with honest reject copy. Unit-tested against weak/strong cases.
+2. **Strength gate.** _Built._ A pure `gradePassword(pw) -> { ok } | { ok: false, reason }`
+   in `auth/passwordStrength.ts`: minimum length, a local common-password wordlist
+   (`auth/commonPasswords.ts`), and a zxcvbn estimate that must reach its strongest bucket
+   (score 4). The estimator is `@zxcvbn-ts/core` (the pattern engine) seeded with the
+   compact bundled wordlist instead of the multi-megabyte language pack, so it stays in the
+   lazy recovery/settings chunk. Client-only (no candidate ever leaves the device); reject
+   copy follows the voice guide (plain, no lecturing, no attack description). Unit-tested
+   against weak/strong cases and the pinned constants.
 3. **Server: envelope storage.** A new table + the read (rate-limited, decoy-uniform) and
    the write/delete (write-token authorized) endpoints, within the blind-store boundary
    (the server only ever sees ciphertext + salt + params + locator). Go tests mirror the
