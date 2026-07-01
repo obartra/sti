@@ -13,6 +13,13 @@
 
 GET /{$}                           public landing HTML served to browsers, never an API call
 
+# Password-recovery envelope store (doc 32): the server slice landed ahead of the
+# client. These entries go when the Settings factor-management and new-device-unlock
+# slices wire the calls (doc 32 slices 4 and 5).
+GET /recovery/{locator}            recovery envelope fetch; frontend caller lands in doc 32 slice 5 (new-device unlock)
+PUT /recovery/{locator}            recovery envelope store; frontend caller lands in doc 32 slice 4 (Settings factor management)
+DELETE /recovery/{locator}         recovery envelope drop; frontend caller lands in doc 32 slice 4 (Settings factor management)
+
 # Operator surface (doc 20): bearer-gated, invoked by hand with the admin token.
 # These shipped as endpoints but have no admin-console panel calling them yet
 # (doc 20 A3). Wire a panel and the entry must go; drop the route if unneeded.

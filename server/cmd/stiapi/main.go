@@ -139,6 +139,14 @@ func main() {
 	reportBurst := envFloat("STI_REPORT_GLOBAL_BURST", 0)
 	knockGlobalRate := envFloat("STI_KNOCK_GLOBAL_RATE", 0)
 	knockGlobalBurst := envFloat("STI_KNOCK_GLOBAL_BURST", 0)
+	// The password-recovery envelope store (doc 32). Off by default: GET/PUT/DELETE
+	// /recovery are not registered until STI_RECOVERY_ENABLED flips, so the surface is
+	// a bare 404 until recovery ships. The global caps bound a distributed sweep of
+	// the (guessable) locator namespace; zero leaves the server defaults (20/sec,
+	// burst 100).
+	recoveryEnabled := os.Getenv("STI_RECOVERY_ENABLED") == "true"
+	recoveryRate := envFloat("STI_RECOVERY_GLOBAL_RATE", 0)
+	recoveryBurst := envFloat("STI_RECOVERY_GLOBAL_BURST", 0)
 
 	srv := server.New(st, server.Config{
 		DecoySecret:               secret,
@@ -163,6 +171,9 @@ func main() {
 		ReportGlobalBurst:         reportBurst,
 		KnockGlobalPerSec:         knockGlobalRate,
 		KnockGlobalBurst:          knockGlobalBurst,
+		RecoveryEnabled:           recoveryEnabled,
+		RecoveryGlobalPerSec:      recoveryRate,
+		RecoveryGlobalBurst:       recoveryBurst,
 	}, log, nil)
 
 	// Host and process health gauges. All system facts, no subject data.

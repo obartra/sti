@@ -106,6 +106,22 @@ CREATE TABLE IF NOT EXISTS vanity_name (
 -- before a claim. Released rows (alias_id = '') are excluded, so it stays small.
 CREATE INDEX IF NOT EXISTS idx_vanity_alias ON vanity_name (alias_id) WHERE alias_id != '';
 
+-- Password-recovery envelopes (doc 32). One fixed-size opaque blob per owner-chosen
+-- locator: the account root wrapped by a memory-hard KDF of the owner's password.
+-- The server never sees the password or anything derived from it; it stores bytes
+-- and serves them existence-uniformly (a decoy on a miss), so a short, guessable
+-- locator is not an existence oracle. write_auth is hash(account write token): the
+-- first writer binds it, and only a matching token may overwrite or delete, so no
+-- one but the owner can replace or drop someone's envelope. The locator shares the
+-- vanity-name charset ([a-z0-9_]{3,30}) but is a SEPARATE namespace: it names an
+-- envelope, never a public directory entry, and is validated for shape only.
+CREATE TABLE IF NOT EXISTS recovery_envelope (
+    locator     TEXT PRIMARY KEY,   -- owner-chosen non-secret name; shape-validated
+    ciphertext  BLOB NOT NULL,      -- exactly contract.RecoveryEnvelopeSize bytes (opaque)
+    write_auth  TEXT NOT NULL,      -- hash(account write token); gates overwrite/delete
+    updated_at  INTEGER NOT NULL
+) WITHOUT ROWID;
+
 CREATE TABLE IF NOT EXISTS knock (
     target_id       TEXT NOT NULL,         -- alias being knocked on
     requester_hash  TEXT NOT NULL,         -- opaque per-requester token

@@ -25,6 +25,8 @@ var payloadGetters = map[string]bool{
 	"GetAlias":       true, // public card payload read
 	"GetAccount":     true, // account sync blob read
 	"DueRepublishes": true, // deferred overwrite carries the ciphertext to re-apply
+
+	"GetRecoveryEnvelope": true, // password-recovery envelope read (doc 32)
 }
 
 // ciphertextSelectRe matches a SELECT whose projection names the ciphertext

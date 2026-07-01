@@ -114,6 +114,18 @@ type Config struct {
 	// (20/sec, burst 100).
 	PushRegisterGlobalPerSec float64
 	PushRegisterGlobalBurst  float64
+	// RecoveryEnabled gates the password-recovery envelope endpoints (GET/PUT/DELETE
+	// /recovery/{locator}, doc 32). Off by default: like the Findable write half, the
+	// surface stays invisible (a bare 404) until the recovery feature ships and this
+	// flag flips, so no envelope can be stored or fetched pre-launch.
+	RecoveryEnabled bool
+	// RecoveryGlobal* bounds the recovery-envelope endpoints across ALL callers, on
+	// top of the per-IP cap: the locator is a short, human-chosen (guessable) name, so
+	// this caps a distributed attempt to harvest or enumerate the store. Reads stay
+	// existence-uniform (a decoy on a miss), so a 429 leaks nothing about a locator.
+	// Zero leaves the defaults (20/sec, burst 100).
+	RecoveryGlobalPerSec float64
+	RecoveryGlobalBurst  float64
 }
 
 func (c *Config) withDefaults() {
@@ -183,6 +195,12 @@ func (c *Config) withDefaults() {
 	if c.PushRegisterGlobalBurst == 0 {
 		c.PushRegisterGlobalBurst = 100
 	}
+	if c.RecoveryGlobalPerSec == 0 {
+		c.RecoveryGlobalPerSec = 20
+	}
+	if c.RecoveryGlobalBurst == 0 {
+		c.RecoveryGlobalBurst = 100
+	}
 }
 
 // Server is the HTTP handler set.
@@ -199,6 +217,7 @@ type Server struct {
 	uResolveLim  *limiter     // single global bucket capping GET /u resolve (doc 17)
 	registerLim  *limiter     // single global bucket capping PUT /u register (doc 17)
 	pushRegLim   *limiter     // single global bucket capping POST /push/register
+	recoveryLim  *limiter     // single global bucket capping /recovery/* (doc 32)
 	inflight     chan struct{}
 	mux          *http.ServeMux
 	metrics      *metrics.Metrics // blind aggregate self-telemetry (loopback only)
@@ -234,6 +253,7 @@ func New(st *store.Store, cfg Config, log *slog.Logger, now func() int64) *Serve
 		uResolveLim:  newLimiter(cfg.VanityResolveGlobalPerSec, cfg.VanityResolveGlobalBurst),
 		registerLim:  newLimiter(cfg.VanityRegisterGlobalPerSec, cfg.VanityRegisterGlobalBurst),
 		pushRegLim:   newLimiter(cfg.PushRegisterGlobalPerSec, cfg.PushRegisterGlobalBurst),
+		recoveryLim:  newLimiter(cfg.RecoveryGlobalPerSec, cfg.RecoveryGlobalBurst),
 		inflight:     make(chan struct{}, cfg.MaxInflight),
 		mux:          http.NewServeMux(),
 		metrics:      metrics.New(),
@@ -285,6 +305,14 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /acct/{id}", s.handleAccountGet)
 	s.mux.HandleFunc("PUT /acct/{id}", s.handleAccountPut)
 	s.mux.HandleFunc("DELETE /acct/{id}", s.handleAccountDelete)
+	if s.cfg.RecoveryEnabled {
+		// The password-recovery envelope store (doc 32), gated behind the launch flag
+		// so the surface stays a bare 404 until recovery ships. Reads are
+		// existence-uniform (decoy on a miss); writes/deletes are write-token gated.
+		s.mux.HandleFunc("GET /recovery/{locator}", s.handleRecoveryGet)
+		s.mux.HandleFunc("PUT /recovery/{locator}", s.handleRecoveryPut)
+		s.mux.HandleFunc("DELETE /recovery/{locator}", s.handleRecoveryDelete)
+	}
 	s.mux.HandleFunc("POST /notify", s.handleNotify)
 	s.mux.HandleFunc("POST /republish", s.handleRepublish)
 	s.mux.HandleFunc("POST /push/register", s.handlePushRegister)
@@ -1090,4 +1118,5 @@ func (s *Server) SweepLimiters(now int64) {
 	s.reportLim.sweep(cutoff)
 	s.adminLim.sweep(cutoff)
 	s.uResolveLim.sweep(cutoff)
+	s.recoveryLim.sweep(cutoff)
 }

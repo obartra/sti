@@ -214,11 +214,22 @@ and the always-present account id stays a function of the high-entropy phrase on
   wrapped-key envelopes as opaque records keyed by the locator: `{ locator, factor,
   version, kdfParams, salt, wrappedRoot }`. Everything is opaque ciphertext except
   `kdfParams` + `salt` (needed to derive the unwrap key; a salt is not a secret).
-  Fetching an envelope is **rate-limited per IP** like a sensitive read and returns a
-  uniform envelope-shaped response (real or decoy), so the store is not a freely
-  harvestable target and not an existence oracle. Writing/replacing an envelope (enable,
-  change, disable) is authorized by the account's write token (derived from the
-  phrase-root the owner already holds when they manage factors in Settings).
+  Fetching an envelope is **rate-limited per IP** (and by a global bucket) like a
+  sensitive read and returns a uniform, fixed-size envelope-shaped response (real or a
+  deterministic decoy on a miss), so the store is not a freely harvestable target and
+  not an existence oracle. Writing/replacing an envelope (enable, change, disable) is
+  authorized by the account's write token (derived from the phrase-root the owner
+  already holds when they manage factors in Settings).
+
+  **The write and delete paths are existence-uniform too.** A write against a locator
+  already held under a different token is a silent no-op (never an overwrite, never a
+  distinguishing error), and a delete with a non-matching token or a missing locator is
+  likewise a uniform success. So neither the write nor the delete path confirms whether
+  a locator is taken, the complement of the decoy-uniform read. The cost is that a
+  genuine locator collision is not reported at set-time by the server; instead the owner
+  detects it **client-side** by fetching the just-written envelope and confirming their
+  own password opens it (only they can), and picks another recovery name if it does not.
+  The phrase remains the backstop, so a mis-set recovery name is never account-ending.
 
 ## Implementation plan (slices)
 
@@ -239,10 +250,15 @@ and the always-present account id stays a function of the high-entropy phrase on
    lazy recovery/settings chunk. Client-only (no candidate ever leaves the device); reject
    copy follows the voice guide (plain, no lecturing, no attack description). Unit-tested
    against weak/strong cases and the pinned constants.
-3. **Server: envelope storage.** A new table + the read (rate-limited, decoy-uniform) and
-   the write/delete (write-token authorized) endpoints, within the blind-store boundary
-   (the server only ever sees ciphertext + salt + params + locator). Go tests mirror the
-   admin/alias endpoint patterns.
+3. **Server: envelope storage.** _Built._ A `recovery_envelope` table (locator -> one
+   fixed-size opaque blob + `hash(account write token)`), the fixed-size decoy-uniform
+   read, and the write/delete (write-token authorized, and existence-uniform per the note
+   above), all behind an `STI_RECOVERY_ENABLED` launch gate so the surface is a bare 404
+   until recovery ships. The locator shares the vanity-name charset but is shape-validated
+   only (a private lookup key, not a public directory entry). Go tests cover the round
+   trip, the fixed-size decoy on a miss, wrong-size/malformed/missing-token rejects, the
+   uniform-and-safe collision, delete, and the gated-off 404; the ciphertext-projection
+   guard allowlists the new getter.
 4. **Settings: manage factors (doc 31).** Turn the password on (pick a recovery name, set
    + confirm a password past the gate, mint the envelope), change it (re-wrap a fresh
    envelope; root + account id untouched), turn it off (drop the envelope), and see which
