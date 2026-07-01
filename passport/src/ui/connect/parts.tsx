@@ -23,20 +23,32 @@ export function contactName(contact: ContactRecord): string {
 }
 
 // Consistent section header: uppercase eyebrow + optional soft count chip +
-// optional one-line sub. Keeps Faves / Recent on one visual rhythm.
+// optional one-line sub. Keeps Faves / Recent on one visual rhythm. `muted`
+// lightens the eyebrow so a secondary section (the full contact list) sits below
+// the prominent ones (starred, groups).
 export function SectionHead({
   title,
   count,
   sub,
+  muted = false,
 }: {
   title: string;
   count?: ReactNode;
   sub?: string;
+  muted?: boolean;
 }) {
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={sectionLbl}>{title}</span>
+        <span
+          style={
+            muted
+              ? { ...sectionLbl, fontWeight: 600, color: "var(--text-muted)" }
+              : sectionLbl
+          }
+        >
+          {title}
+        </span>
         {count != null && (
           <span
             style={{
@@ -48,10 +60,10 @@ export function SectionHead({
               height: 20,
               padding: "0 7px",
               borderRadius: "var(--radius-pill)",
-              background: "var(--accent-soft)",
-              color: "var(--text-accent)",
+              background: muted ? "var(--surface-app)" : "var(--accent-soft)",
+              color: muted ? "var(--text-subtle)" : "var(--text-accent)",
               fontSize: 11.5,
-              fontWeight: 800,
+              fontWeight: muted ? 700 : 800,
             }}
           >
             {count}

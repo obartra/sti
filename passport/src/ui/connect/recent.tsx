@@ -188,6 +188,7 @@ export function RecentSection({
         title={COPY.recentTitle}
         count={recent.length}
         sub={COPY.pruneNote}
+        muted
       />
       {recent.length === 0 ? (
         <Card
