@@ -47,6 +47,7 @@ import { gatherKnocks, grantPending } from "./knockOps.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { revokeAlias } from "./publish.ts";
 import type { AliasIdentity } from "./ownerCard.ts";
+import type { AvatarConfig } from "../lib/avatars.ts";
 import {
   mintContactLink,
   acceptContactInvite,
@@ -169,6 +170,7 @@ export interface SessionController {
   shareLink(
     session: OwnerSession,
     identity?: AliasIdentity,
+    avatarOverride?: AvatarConfig,
   ): Promise<ShareLinkResult>;
   /**
    * Revoke the link for the current sharing mode (the old URL stops resolving to
@@ -179,6 +181,7 @@ export interface SessionController {
   renewLink(
     session: OwnerSession,
     identity?: AliasIdentity,
+    avatarOverride?: AvatarConfig,
   ): Promise<ShareLinkResult>;
   /**
    * Permanently delete the account: revoke every shared link and remove the
@@ -215,6 +218,7 @@ export interface SessionController {
     session: OwnerSession,
     label: string,
     identity?: AliasIdentity,
+    avatarOverride?: AvatarConfig,
   ): Promise<ContactLinkResult>;
   /**
    * Rename one contact's local label (the owner-only nickname). Purely local: the
@@ -495,11 +499,11 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
     ...blobMethods(accounts),
 
-    shareLink(session, identity = "anonymous") {
-      return shareLinkFor(api, accounts, session, identity);
+    shareLink(session, identity = "anonymous", avatarOverride) {
+      return shareLinkFor(api, accounts, session, { identity, avatarOverride });
     },
 
-    async renewLink(session, identity = "anonymous") {
+    async renewLink(session, identity = "anonymous", avatarOverride) {
       const wantPublic = session.blob.sharingMode === "public";
       const existing = primaryShareAlias(session.blob, wantPublic);
       let working = session;
@@ -513,7 +517,7 @@ export function createSessionController(deps: SessionDeps): SessionController {
       }
       // Mint a fresh link for the current card (this is now the only alias for
       // the mode, since the old record is gone).
-      return shareLinkFor(api, accounts, working, identity);
+      return shareLinkFor(api, accounts, working, { identity, avatarOverride });
     },
 
     async deleteAccount(session) {
@@ -550,10 +554,11 @@ export function createSessionController(deps: SessionDeps): SessionController {
       return grantPending(api, approvals);
     },
 
-    createContactLink(session, label, identity = "anonymous") {
+    createContactLink(session, label, identity = "anonymous", avatarOverride) {
       return mintContactLink(api, accounts, session, {
         label,
         identity,
+        avatarOverride,
       });
     },
 

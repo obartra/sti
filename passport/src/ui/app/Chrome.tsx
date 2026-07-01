@@ -14,6 +14,7 @@ import type {
   OwnerView,
   PassportStore,
 } from "../../store/index.ts";
+import type { AvatarConfig } from "../../lib/avatars.ts";
 import type { ScreenCtx } from "./screens/context.ts";
 import type { OnboardingActions } from "./useOnboarding.ts";
 import type { ReportOutcome } from "../../core/report.ts";
@@ -43,6 +44,8 @@ export interface ChromeProps {
   onRevokeShareLink: () => void;
   shareIdentity: AliasIdentity;
   onShareIdentityChange: (choice: AliasIdentity) => void;
+  shareAvatarOverride: AvatarConfig | undefined;
+  onShareAvatarOverrideChange: (avatar: AvatarConfig | undefined) => void;
   onDeleteAccount: () => void;
   onSetAvatar: ScreenCtx["onSetAvatar"];
   onSetName: ScreenCtx["onSetName"];
@@ -114,6 +117,8 @@ function ShareOverlay({
   onRevokeShareLink,
   shareIdentity,
   onShareIdentityChange,
+  shareAvatarOverride,
+  onShareAvatarOverrideChange,
 }: ChromeProps) {
   return (
     <ShareSheet
@@ -130,6 +135,9 @@ function ShareOverlay({
       onRetry={onRetryShareLink}
       identityChoice={shareIdentity}
       onIdentityChange={onShareIdentityChange}
+      avatar={owner.avatar}
+      avatarOverride={shareAvatarOverride}
+      onAvatarOverrideChange={onShareAvatarOverrideChange}
       onCopy={onCopyShareLink}
       onRevoke={onRevokeShareLink}
       onWallet={() => {

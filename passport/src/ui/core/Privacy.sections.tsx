@@ -13,8 +13,9 @@ import type { PushControls } from "../app/usePush.ts";
 import { InstallRow } from "./Privacy.install.tsx";
 import { isIOS, isStandalone } from "../../pwa/installPrompt.ts";
 
-// Your face: the single account avatar, framed under Profile with an entry to the
-// editor (doc 19). One account avatar, not per-handle; the editor is onEditAvatar.
+// Your face: the account's default avatar, framed under Profile with an entry to the
+// editor (doc 19). It is the default face a revealed link wears; a link can override
+// it with its own face from the share sheet (doc 15). The editor is onEditAvatar.
 export function FaceCard({
   avatarSrc,
   onEditAvatar,

@@ -215,30 +215,85 @@ function shareSession(
 describe("shareLinkFor public name vs opaque link (doc 17)", () => {
   it("hands out the /u/{name} link when sharing publicly as yourself", async () => {
     const { api, accounts, session } = shareSession("public", "meow");
-    const { url } = await shareLinkFor(api, accounts, session, "main");
+    const { url } = await shareLinkFor(api, accounts, session, {
+      identity: "main",
+    });
     expect(url).toBe(publicProfileUrl("meow"));
     expect(url).toBe("https://sti.care/u/meow");
   });
 
   it("uses the opaque /a/ link when sharing publicly but anonymously", async () => {
     const { api, accounts, session } = shareSession("public", "meow");
-    const { url } = await shareLinkFor(api, accounts, session, "anonymous");
+    const { url } = await shareLinkFor(api, accounts, session, {
+      identity: "anonymous",
+    });
     expect(url).toContain("/a/");
     expect(url).not.toContain("/u/");
   });
 
   it("never uses /u/ for a private (link-mode) share, even as yourself", async () => {
     const { api, accounts, session } = shareSession("link", "meow");
-    const { url } = await shareLinkFor(api, accounts, session, "main");
+    const { url } = await shareLinkFor(api, accounts, session, {
+      identity: "main",
+    });
     expect(url).toContain("/a/");
     expect(url).not.toContain("/u/");
   });
 
   it("falls back to the opaque link when no public name is claimed", async () => {
     const { api, accounts, session } = shareSession("public", null);
-    const { url } = await shareLinkFor(api, accounts, session, "main");
+    const { url } = await shareLinkFor(api, accounts, session, {
+      identity: "main",
+    });
     expect(url).toContain("/a/");
     expect(url).not.toContain("/u/");
+  });
+});
+
+describe("per-link avatar override (doc 15)", () => {
+  const face = { hair: 2, mood: 1, skin: 4, hairColor: 3, beard: 1 };
+
+  it("stamps a chosen face onto a revealed share alias, not the account default", async () => {
+    const { api, accounts, session } = shareSession("link", null);
+    const { session: next } = await shareLinkFor(api, accounts, session, {
+      identity: "main",
+      avatarOverride: face,
+    });
+    const alias = next.blob.aliases[0];
+    expect(alias?.avatar).toEqual(face);
+    expect(alias?.avatar).not.toEqual(DEFAULT_AVATAR);
+    // The revealed handle is still the account's, so only the face differs.
+    expect(alias?.handle).toBe("robin");
+  });
+
+  it("falls back to the account default face when no override is passed", async () => {
+    const { api, accounts, session } = shareSession("link", null);
+    const { session: next } = await shareLinkFor(api, accounts, session, {
+      identity: "main",
+    });
+    expect(next.blob.aliases[0]?.avatar).toEqual(DEFAULT_AVATAR);
+  });
+
+  it("never stamps a face on an anonymous link (id-derived face stays)", async () => {
+    const { api, accounts, session } = shareSession("link", null);
+    const { session: next } = await shareLinkFor(api, accounts, session, {
+      identity: "anonymous",
+      avatarOverride: face,
+    });
+    // Anonymous leaves the record untouched: no handle, no avatar override, so the
+    // viewer resolves the id-derived face and the override is ignored.
+    expect(next.blob.aliases[0]?.avatar).toBeUndefined();
+    expect(next.blob.aliases[0]?.handle).toBeUndefined();
+  });
+
+  it("stamps a chosen face onto a per-contact link too", async () => {
+    const { api, accounts, session } = freshOwner("robin");
+    const { contact } = await mintContactLink(api, accounts, session, {
+      label: "sam",
+      identity: "main",
+      avatarOverride: face,
+    });
+    expect(contact.alias.avatar).toEqual(face);
   });
 });
 

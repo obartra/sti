@@ -1,7 +1,11 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import { previewFace, IdentityChoiceRow } from "./ShareSheet.identity.tsx";
-import { avatarFor, pseudonymFor } from "../../lib/avatars.ts";
+import {
+  previewFace,
+  IdentityChoiceRow,
+  FaceOverrideRow,
+} from "./ShareSheet.identity.tsx";
+import { avatarFor, pseudonymFor, DEFAULT_AVATAR } from "../../lib/avatars.ts";
 
 describe("previewFace", () => {
   const identity = { handle: "ari" };
@@ -73,6 +77,76 @@ describe("previewFace", () => {
       hasControl: false,
     });
     expect(face).toEqual({ handle: "ari", avatarSrc: "data:avatar" });
+  });
+
+  it("a per-link override wins over the account face on a main link (doc 15)", () => {
+    const face = previewFace({
+      choice: "main",
+      identity,
+      avatarSrc: "data:account",
+      seed: "a7f3k9q2",
+      hasControl: true,
+      overrideSrc: "data:override",
+    });
+    expect(face).toEqual({ handle: "ari", avatarSrc: "data:override" });
+  });
+});
+
+describe("FaceOverrideRow", () => {
+  it("is hidden on an anonymous link (nothing to override)", () => {
+    const { container } = render(
+      <FaceOverrideRow
+        choice="anonymous"
+        override={undefined}
+        fallback={DEFAULT_AVATAR}
+        onChange={vi.fn()}
+      />,
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("is hidden when no control is wired (Storybook)", () => {
+    const { container } = render(
+      <FaceOverrideRow
+        choice="main"
+        override={undefined}
+        fallback={DEFAULT_AVATAR}
+      />,
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("offers to pick a face on a revealed link, then opens the builder", () => {
+    render(
+      <FaceOverrideRow
+        choice="main"
+        override={undefined}
+        fallback={DEFAULT_AVATAR}
+        onChange={vi.fn()}
+      />,
+    );
+    // Collapsed: the pick control, no reset yet (no override).
+    expect(screen.getByText("Pick a face")).toBeInTheDocument();
+    expect(screen.queryByText("Use my default")).toBeNull();
+    fireEvent.click(screen.getByText("Pick a face"));
+    // Expanded: the avatar builder is present (its "Surprise me" shuffle).
+    expect(screen.getByText(/Surprise me/)).toBeInTheDocument();
+  });
+
+  it("clearing the override reports undefined and closes the builder", () => {
+    const onChange = vi.fn();
+    const override = { hair: 1, mood: 2, skin: 2, hairColor: 4, beard: 0 };
+    render(
+      <FaceOverrideRow
+        choice="main"
+        override={override}
+        fallback={DEFAULT_AVATAR}
+        onChange={onChange}
+      />,
+    );
+    fireEvent.click(screen.getByText("Pick a face"));
+    fireEvent.click(screen.getByText("Use my default"));
+    expect(onChange).toHaveBeenCalledWith(undefined);
   });
 });
 

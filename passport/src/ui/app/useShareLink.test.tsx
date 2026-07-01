@@ -141,7 +141,7 @@ describe("useShareLink identity choice", () => {
 
     expect(result.current.identity).toBe("anonymous");
     act(() => result.current.setShareOpen(true));
-    expect(shareLink).toHaveBeenCalledWith(session, "anonymous");
+    expect(shareLink).toHaveBeenCalledWith(session, "anonymous", undefined);
     await act(async () => {
       d.resolve(RESULT);
       await d.promise;
@@ -155,7 +155,7 @@ describe("useShareLink identity choice", () => {
 
     act(() => result.current.setIdentity("main"));
     expect(result.current.identity).toBe("main");
-    expect(renewLink).toHaveBeenCalledWith(session, "main");
+    expect(renewLink).toHaveBeenCalledWith(session, "main", undefined);
     await act(async () => {
       d.resolve(RESULT);
       await d.promise;
@@ -167,5 +167,41 @@ describe("useShareLink identity choice", () => {
     const { result } = setup(stubController({ renewLink }));
     act(() => result.current.setIdentity("anonymous")); // already anonymous
     expect(renewLink).not.toHaveBeenCalled();
+  });
+
+  it("picking a per-link face rotates carrying that override (doc 15)", async () => {
+    const d = deferred<ShareLinkResult>();
+    const renewLink = vi.fn(() => d.promise);
+    const { result } = setup(stubController({ renewLink }));
+
+    const face = { hair: 2, mood: 1, skin: 4, hairColor: 3, beard: 1 };
+    act(() => result.current.setIdentity("main"));
+    await act(async () => {
+      d.resolve(RESULT);
+      await d.promise;
+    });
+    const d2 = deferred<ShareLinkResult>();
+    renewLink.mockReturnValueOnce(d2.promise);
+    act(() => result.current.setAvatarOverride(face));
+    expect(result.current.avatarOverride).toEqual(face);
+    expect(renewLink).toHaveBeenLastCalledWith(session, "main", face);
+    await act(async () => {
+      d2.resolve(RESULT);
+      await d2.promise;
+    });
+  });
+
+  it("clearing the per-link face falls back to the default (undefined override)", async () => {
+    const d = deferred<ShareLinkResult>();
+    const renewLink = vi.fn(() => d.promise);
+    const { result } = setup(stubController({ renewLink }));
+
+    act(() => result.current.setAvatarOverride(undefined));
+    expect(result.current.avatarOverride).toBeUndefined();
+    expect(renewLink).toHaveBeenLastCalledWith(session, "anonymous", undefined);
+    await act(async () => {
+      d.resolve(RESULT);
+      await d.promise;
+    });
   });
 });

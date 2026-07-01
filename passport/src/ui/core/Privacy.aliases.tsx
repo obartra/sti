@@ -21,8 +21,8 @@ import {
 // "Your links": one honest list of everything that can currently resolve to the
 // owner's status, the public/casual aliases plus every per-contact link. Each row
 // can be shared on its own (its own URL + QR) and revoked on its own; revoking is
-// the single "cut it off" control. No per-alias handles/avatars or findable/vanity
-// claims (the account has one handle and one avatar).
+// the single "cut it off" control. The per-link face (handle + avatar) is chosen in
+// the share sheet at mint time (doc 15), not edited from this list.
 export interface LiveLinksProps {
   aliases: AliasRecord[];
   contacts: ContactRecord[];

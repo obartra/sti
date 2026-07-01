@@ -109,6 +109,11 @@ export type AliasIdentity = "anonymous" | "main";
  * deterministic, so applying it to the record passed to the card builder and to the
  * record that gets persisted yields the same override (the card and the stored
  * record can never disagree). `anonymous` returns the record unchanged.
+ *
+ * The face is per link (doc 15): `main` shows the account's identity by default, but
+ * a caller can pass an `avatar` override so a revealed link can wear a different face
+ * than the account default. That is what keeps two revealed links from being tied
+ * together by an identical face. Absent, the account avatar is the default.
  */
 export function withIdentity(
   record: AliasRecord,

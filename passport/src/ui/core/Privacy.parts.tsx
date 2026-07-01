@@ -15,7 +15,8 @@ export const COPY = {
   aboutTitle: "About sti.care",
   logOut: "Log out",
   faceTitle: "Your face",
-  faceSub: "The look you can show when you reveal yourself on a link.",
+  faceSub:
+    "The default look when you reveal yourself. You can set a different one per link.",
   faceEdit: "Edit",
   profileSub: "What people see on your card.",
   anonAlerts: "Anonymous partner alerts",
