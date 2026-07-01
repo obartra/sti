@@ -11,9 +11,29 @@ export default meta;
 type Story = StoryObj<typeof Claim>;
 
 // Default create flow: the name field (with a shuffle button), Continue, and the
-// one-tap switch to log in.
+// one-tap switch to log in. The optional "add a username and password" affordance
+// (doc 32) sits collapsed below the name, so the passkey/phrase default stays clean.
 export const CreateAccount: Story = {
-  args: { isLogin: false, onSwitchMode: () => undefined },
+  args: {
+    isLogin: false,
+    onClaim: () => Promise.resolve({ created: true }),
+    onSwitchMode: () => undefined,
+  },
+};
+
+// Create flow with the optional password (doc 32) expanded: a Username (the public
+// handle) and a password with the live strength gate, revealed behind the disclosure.
+export const CreateAccountWithPassword: Story = {
+  args: {
+    isLogin: false,
+    onClaim: () => Promise.resolve({ created: true }),
+    onSwitchMode: () => undefined,
+  },
+  play: ({ canvasElement }) => {
+    Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button"))
+      .find((b) => b.textContent.includes("Add a username and password"))
+      ?.click();
+  },
 };
 
 const loginArgs = {

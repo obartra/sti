@@ -17,4 +17,17 @@ export const COPY = {
   shuffleLabel: "Shuffle a name",
   nameTooShort: "At least 3 characters.",
   cta: "Continue",
+  // The optional password path at sign-up (doc 32). A passkey stays the default; this
+  // is a skippable, quieter alternative. The copy names the phrase as the real backstop
+  // and stays plain (doc 21): no lecturing, no describing how a password could fail.
+  passwordDisclosure: "Add a username and password",
+  passwordBackstop:
+    "A username and password let you sign in on any device. Your recovery phrase is still the real key, so pick a password only you would think of.",
+  pwNameLabel: "Username",
+  pwNameHint: "A public name people can find you by.",
+  pwPasswordLabel: "Password",
+  pwConfirmLabel: "Confirm password",
+  pwMismatch: "The passwords don't match.",
+  pwNameTaken: "That username is taken. Try another one, or skip it.",
+  pwNameBad: "Use 3 to 30 letters, numbers, or underscores.",
 } as const;

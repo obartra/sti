@@ -7,6 +7,8 @@ import { SwitchAuthMode } from "./SwitchAuthMode.tsx";
 import { CreateFlow } from "./ClaimCreateFlow.tsx";
 import { COPY } from "./claimCopy.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
+import type { SignUpRecovery } from "../../store/index.ts";
+import type { ClaimResult } from "../app/useOnboarding.ts";
 
 // B1 claim account. Passkey is the one MVP unlock path: no email, no phone, no
 // SSO. Each screen is a title plus its controls; the reach mode (Direct / Gated /
@@ -20,9 +22,18 @@ export interface ClaimProps {
   /** A user-facing error from the last attempt (sign-up or passkey login). */
   error?: string | null;
   onBack?: (() => void) | undefined;
-  /** Create variant: the chosen name (optional) + avatar, on continue. */
+  /**
+   * Create variant: the chosen name (optional) + avatar, plus an optional Username +
+   * password to set at sign-up (doc 32), on continue. Resolves with the claim result
+   * so the create screen can show a taken-Username inline error and stay put, or let
+   * the parent advance. Navigation to the phrase step is the parent's call.
+   */
   onClaim?:
-    | ((handle: string | undefined, avatar: AvatarConfig) => void)
+    | ((
+        handle: string | undefined,
+        avatar: AvatarConfig,
+        recovery?: SignUpRecovery,
+      ) => Promise<ClaimResult>)
     | undefined;
   /** Login variant: unlock with the device passkey. */
   onLogin?: (() => void) | undefined;

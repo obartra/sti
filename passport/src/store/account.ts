@@ -14,6 +14,7 @@ import {
   randomRecoveryPhrase,
   type RootKey,
 } from "../crypto/index.ts";
+import { wrapSignUpRecovery } from "./recoveryOps.ts";
 import {
   INITIAL_OWNER_STATE,
   isOwnerState,
@@ -52,11 +53,22 @@ export interface OwnerProfile {
   readonly homeDefaultView?: "criteria" | "shared" | undefined;
 }
 
+// The at-sign-up password factor (doc 32) lives with the rest of the recovery
+// crypto in recoveryOps; re-exported here for the create() surface.
+export type { SignUpRecovery, SignUpRecoveryOutcome } from "./recoveryOps.ts";
+import type { SignUpRecovery, SignUpRecoveryOutcome } from "./recoveryOps.ts";
+
 export interface NewAccount {
   /** Shown once to the owner; the only way back into the account. */
   readonly recoveryPhrase: string;
   readonly root: RootKey;
   readonly blob: AccountBlob;
+  /**
+   * The outcome of the optional at-sign-up password step (doc 32), or undefined when
+   * none was requested. The account is always created regardless; a non-"set" value
+   * means only the optional password step did not complete.
+   */
+  readonly recoveryOutcome?: SignUpRecoveryOutcome;
 }
 
 export interface RecoveredAccount {
@@ -65,8 +77,14 @@ export interface RecoveredAccount {
 }
 
 export interface AccountManager {
-  /** Mint a new account: generate the recovery phrase, save an empty blob. */
-  create(handle?: string): Promise<NewAccount>;
+  /**
+   * Mint a new account: generate the recovery phrase, save an empty blob. When
+   * `recovery` is given, also wrap the fresh root under that password and store the
+   * envelope at the public handle on the spot (doc 32, no phrase re-entry), recording
+   * the name in the blob. The account is created and phrase/passkey-recoverable
+   * regardless; `NewAccount.recoveryOutcome` reports whether the optional step landed.
+   */
+  create(handle?: string, recovery?: SignUpRecovery): Promise<NewAccount>;
   /** Recover with a phrase. Returns null when no account exists for it. */
   recover(phrase: string): Promise<RecoveredAccount | null>;
   /**
@@ -349,23 +367,42 @@ function findableMethods(
 // (parseRecoveryPhrase) so a malformed one fails closed instead of deriving a key
 // from arbitrary text.
 function lifecycleMethods(
+  api: ApiClient,
   sync: AccountSync,
 ): Pick<AccountManager, "create" | "recover" | "loadByRoot"> {
   return {
     loadByRoot: (root) => sync.load(root),
-    async create(handle) {
+    async create(handle, recovery) {
       // Validate when set: an invalid handle would seal fine but throw on
       // parseAccountBlob during recovery, locking the owner out.
       if (handle !== undefined && !isValidHandle(handle)) {
         throw new Error("create: invalid handle");
       }
       const recoveryPhrase = randomRecoveryPhrase();
-      // Derive the transient bytes, import them into the non-extractable root
-      // key (doc 24), then drop the bytes: no layer below holds raw root key bytes.
-      const root = await importRootKey(await deriveRootKey(recoveryPhrase));
-      const blob = freshBlob(recoveryPhrase, handle);
+      // Keep the transient root bytes so an at-sign-up password can wrap them with
+      // no phrase re-entry (doc 32), then import them into the non-extractable root
+      // key (doc 24). The raw bytes are dropped at the end of this scope: no layer
+      // below holds them, and they never outlive create.
+      const rootBytes = await deriveRootKey(recoveryPhrase);
+      const root = await importRootKey(rootBytes);
+      let blob = freshBlob(recoveryPhrase, handle);
+      // Wrap + store the optional password envelope BEFORE the account save, so a
+      // "set" outcome folds the recovery name into the SAME blob write (one save, no
+      // name-without-envelope gap). A failed optional step never blocks the account:
+      // the name is null, the blob is unchanged, and the account is still created.
+      const rec =
+        recovery !== undefined
+          ? await wrapSignUpRecovery(api, { rootBytes, root, recovery })
+          : undefined;
+      if (rec?.recoveryName != null)
+        blob = { ...blob, recoveryName: rec.recoveryName };
       await sync.save(root, blob);
-      return { recoveryPhrase, root, blob };
+      return {
+        recoveryPhrase,
+        root,
+        blob,
+        ...(rec !== undefined ? { recoveryOutcome: rec.outcome } : {}),
+      };
     },
     async recover(phrase) {
       const parsed = parseRecoveryPhrase(phrase);
@@ -414,7 +451,7 @@ export function createAccountManager(
   };
 
   return {
-    ...lifecycleMethods(sync),
+    ...lifecycleMethods(api, sync),
 
     addAlias(root, record) {
       // Upsert by id so a lost-response retry does not record the alias twice

@@ -49,12 +49,23 @@ export const onboardRenderers: ScreenRenderers = {
       onSwitchMode={() =>
         nav.go("b1-claim", { isLogin: !(data?.isLogin ?? false) })
       }
-      onClaim={(handle, avatar) => {
-        // Create the real account, then show its genuine recovery phrase. Stay
-        // put on failure (the hook surfaces the error).
-        void onboarding.claim(handle, avatar).then((ok) => {
-          if (ok) nav.go("b2-recovery");
-        });
+      onClaim={async (handle, avatar, recovery) => {
+        // Create the real account, then show its genuine recovery phrase. When a
+        // Username + password was chosen it is wrapped at sign-up (doc 32). A taken
+        // Username never blocks the account: the create screen keeps the owner on
+        // this step to retry or skip, and advancing is its call via the result.
+        const result = await onboarding.claim(handle, avatar, recovery);
+        // Advance once the account exists and the optional password either landed or
+        // was not attempted; a Username still to resolve keeps us here.
+        if (
+          result.created &&
+          result.recoveryOutcome !== "nameUnavailable" &&
+          result.recoveryOutcome !== "weakPassword" &&
+          result.recoveryOutcome !== "error"
+        ) {
+          nav.go("b2-recovery");
+        }
+        return result;
       }}
       onLogin={() => void onboarding.loginPasskey()}
       onRecover={(phrase) => void onboarding.recoverPhrase(phrase)}
