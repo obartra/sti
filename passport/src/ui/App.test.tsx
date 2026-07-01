@@ -164,16 +164,6 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       };
       return Promise.resolve({ root, blob });
     },
-    setShareLinkDuration: (_session, durationMs) => {
-      const wantPublic = blob.sharingMode === "public";
-      blob = {
-        ...blob,
-        aliases: blob.aliases.map((a) =>
-          a.isPublic === wantPublic ? { ...a, expiresAt: durationMs } : a,
-        ),
-      };
-      return Promise.resolve({ root, blob });
-    },
     revokeAlias: (_session, aliasId) => {
       blob = { ...blob, aliases: blob.aliases.filter((a) => a.id !== aliasId) };
       return Promise.resolve({ root, blob });

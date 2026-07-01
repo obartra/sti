@@ -53,7 +53,8 @@ trust decision. **Default mode for new aliases.**
   handle + avatar for this link, unlinkable to the owner's other links. The owner can override to a
   recognizable face if they want.
 - **Private links are forwardable.** Whoever holds the keyed URL sees the live status, including
-  via a forward. Mitigated by per-link revocation and expiry, not per-viewer gating.
+  via a forward. Mitigated by revocation (and, for a per-contact one-off link, its expiry), not
+  per-viewer gating.
 
 ### Public link (handle + /u/ + knock)
 
@@ -121,17 +122,20 @@ In both modes, the server never sees the status, the AES key, the handle, or the
 
 Duration is a property of the link/capability, not a per-viewer timer.
 
-- **Expiry is a private-link affordance only.** A public profile is the durable "anyone who scans
-  sees my status" surface, so it never carries a server expiry: it is taken down by revoking it or
-  releasing its public name, never a timer. Everything else in this section is about **private
-  links**. (Enforced in the publish layer: a public alias is always written with no expiry. See
-  doc 31.)
-- **v1 supports updatable per-link duration + immediate revoke.** The owner can extend or shorten
-  a private link's lifetime at any time and can revoke immediately (overwrite the payload to
+- **Expiry is a per-contact one-off-link affordance only.** The owner's standing share link is
+  durable in either mode: the opaque `/a/` link and the named `/u/` public profile alike stay live
+  until revoked and never carry a server expiry (a standing link that silently lapses is a trap).
+  Taking one down is a revoke, or releasing its public name, never a timer. Only the individually
+  addressed **one-off links** the owner mints for a single person (per-contact links) carry an
+  expiry, because a link you hand to one person sensibly lapses. Everything else in this section is
+  about those one-off links. (Enforced in the publish layer: the standing share alias is always
+  written with no expiry. See doc 31.)
+- **v1 supports updatable per-contact duration + immediate revoke.** The owner can extend or shorten
+  a one-off link's lifetime at any time and can revoke immediately (overwrite the payload to
   garbage, drop the record). Nothing is immutable.
 - **Expiry is an absolute timestamp (epoch ms), so it can be sub-day.** Durations are presets the
-  owner picks (e.g. 1 hour, 24 hours, 7 days, 30 days, or no expiry); the link's `expiresAt` is
-  `now + preset` at the moment it is set.
+  owner picks for a one-off link (e.g. 1 hour, 24 hours, 7 days, 30 days, or no expiry); the link's
+  `expiresAt` is `now + preset` at the moment it is set.
 - **Enforcement is server-side, and the device also sweeps.** The server stores each alias's
   `expiresAt` and, once reached, answers reads with a decoy — the same uniform response a
   non-existent id gets. The owner's device sweeps (revoke + drop) on its next action.

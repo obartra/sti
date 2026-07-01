@@ -69,7 +69,6 @@ function stubController(
     renameContact: unused,
     revokeContact: unused,
     setContactDuration: unused,
-    setShareLinkDuration: unused,
     revokeAlias: unused,
     acceptContactInvite: unused,
     ingestContactReturn: unused,

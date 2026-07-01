@@ -5,7 +5,6 @@ import { BadgeCard } from "../badge-card.tsx";
 import type { BadgeState, ProtectionLabel, Route } from "../badge-card.tsx";
 import type { AliasIdentity } from "../../store/index.ts";
 import { IdentityChoiceRow, previewFace } from "./ShareSheet.identity.tsx";
-import { DurationRow } from "./ShareSheet.duration.tsx";
 import { Grabber, WalletRow } from "./ShareSheet.parts.tsx";
 import {
   UrlCard,
@@ -81,11 +80,6 @@ export interface ShareSheetProps {
   /** Choose the link's face. When absent, the identity control is hidden (e.g.
    * Storybook), and the preview shows whatever `identity`/`avatarSrc` is passed. */
   onIdentityChange?: ((choice: AliasIdentity) => void) | undefined;
-  /** The link's lifetime (doc 16): a day count, or null for until-revoked. */
-  durationChoice?: number | null | undefined;
-  /** Set the link's lifetime in place. When absent, the lifetime control is
-   * hidden (e.g. Storybook). */
-  onDurationChange?: ((durationMs: number | null) => void) | undefined;
 }
 
 function SheetHeader({
@@ -246,8 +240,6 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
     desktop = false,
     identityChoice = "anonymous",
     onIdentityChange,
-    durationChoice = null,
-    onDurationChange,
     error,
     onRetry,
   } = props;
@@ -326,12 +318,6 @@ export function ShareSheet(props: ShareSheetProps): ReactElement {
           hasName={identity.handle !== undefined && identity.handle.length > 0}
           onChange={onIdentityChange}
         />
-        {/* Expiry is a private-link affordance (doc 16): a one-off link you hand
-            out can sensibly lapse. The Public profile is the durable "anyone who
-            scans sees my status" surface, so it stays live until revoked. The
-            wiring passes onDurationChange only for private links, and DurationRow
-            hides itself when it has no handler, so nothing renders for public. */}
-        <DurationRow choice={durationChoice} onChange={onDurationChange} />
         <UrlCard
           link={link}
           state={urlState}

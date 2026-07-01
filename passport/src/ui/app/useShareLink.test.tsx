@@ -63,7 +63,6 @@ function stubController(over: Partial<SessionController>): SessionController {
     renameContact: unused,
     revokeContact: unused,
     setContactDuration: unused,
-    setShareLinkDuration: unused,
     revokeAlias: unused,
     acceptContactInvite: unused,
     ingestContactReturn: unused,
@@ -169,51 +168,5 @@ describe("useShareLink identity choice", () => {
     const { result } = setup(stubController({ renewLink }));
     act(() => result.current.setIdentity("anonymous")); // already anonymous
     expect(renewLink).not.toHaveBeenCalled();
-  });
-});
-
-describe("useShareLink lifetime", () => {
-  it("defaults to no expiry and sets a lifetime in place (no renew)", () => {
-    const setShareLinkDuration = vi.fn(() => Promise.resolve(session));
-    const renewLink = vi.fn();
-    const { result } = setup(
-      stubController({ setShareLinkDuration, renewLink }),
-    );
-
-    expect(result.current.duration).toBeNull();
-    act(() => result.current.setDuration(7));
-    expect(result.current.duration).toBe(7);
-    // The link's expiry moves in place; it is NOT a renew (the URL is unchanged).
-    expect(setShareLinkDuration).toHaveBeenCalledWith(session, 7);
-    expect(renewLink).not.toHaveBeenCalled();
-  });
-
-  it("re-selecting the current lifetime is a no-op", () => {
-    const setShareLinkDuration = vi.fn(() => Promise.resolve(session));
-    const { result } = setup(stubController({ setShareLinkDuration }));
-    act(() => result.current.setDuration(null)); // already null
-    expect(setShareLinkDuration).not.toHaveBeenCalled();
-  });
-
-  it("resets the lifetime when the face changes (renew mints a no-expiry alias)", () => {
-    const renewLink = vi.fn(() => Promise.resolve(RESULT));
-    const setShareLinkDuration = vi.fn(() => Promise.resolve(session));
-    const { result } = setup(
-      stubController({ renewLink, setShareLinkDuration }),
-    );
-
-    act(() => result.current.setDuration(7));
-    expect(result.current.duration).toBe(7);
-
-    // Changing the face renews the alias, which drops its expiry: the control
-    // must fall back to "no expiry" so it does not claim a lifetime the new link
-    // lacks.
-    act(() => result.current.setIdentity("main"));
-    expect(result.current.duration).toBeNull();
-
-    // And re-applying that same lifetime now works (not deduped against a stale
-    // value).
-    act(() => result.current.setDuration(7));
-    expect(setShareLinkDuration).toHaveBeenCalledTimes(2);
   });
 });

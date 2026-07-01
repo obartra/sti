@@ -87,9 +87,6 @@ async function walkController(controller: SessionController): Promise<void> {
   expect(shared.url).toMatch(URL_RE);
   const renewed = await controller.renewLink(shared.session);
   expect(renewed.url).toMatch(URL_RE);
-  expect(
-    await controller.setShareLinkDuration(renewed.session, 3_600_000),
-  ).not.toBeNull();
 
   // Inbox: one contentless ask (a count with no grantable pending) and an approve
   // that honors however many it is handed.

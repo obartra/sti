@@ -62,15 +62,3 @@ export const IdentityMain: Story = {
     onIdentityChange: () => undefined,
   },
 };
-
-// The link-lifetime choice (doc 16). Wiring onDurationChange surfaces the "Link
-// lasts" control; here it shows a 7-day lifetime selected.
-export const WithLifetime: Story = {
-  args: {
-    ...base,
-    sharingMode: "link",
-    desktop: false,
-    durationChoice: 7,
-    onDurationChange: () => undefined,
-  },
-};

@@ -163,7 +163,6 @@ export function createDemoController(): SessionController {
     },
     shareLink: (s) => Promise.resolve({ session: s, url: demoUrl() }),
     renewLink: (s) => Promise.resolve({ session: s, url: demoUrl() }),
-    setShareLinkDuration: () => session(),
     deleteAccount: () => Promise.resolve(),
     // One contentless ask, so the demo inbox shows "someone asked to see your
     // status" (faithful to real behavior: a count with no grantable pending is an

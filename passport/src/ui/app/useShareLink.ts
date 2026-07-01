@@ -28,13 +28,6 @@ export interface ShareLinkControls {
    * face (a renew), since an already-shared alias keeps the face it was minted with.
    */
   readonly setIdentity: (choice: AliasIdentity) => void;
-  /** The link's lifetime: a duration in ms, or null for until-revoked (default). */
-  readonly duration: number | null;
-  /**
-   * Set the link's lifetime in place (ms from now, or null for until-revoked).
-   * The same link keeps working, only its expiry moves; the server is told too.
-   */
-  readonly setDuration: (durationMs: number | null) => void;
 }
 
 /**
@@ -61,16 +54,6 @@ export function useShareLink(
   // without re-subscribing. Defaults to anonymous (the unlinkable id-derived face).
   const [identity, setIdentityState] = useState<AliasIdentity>("anonymous");
   const identityRef = useRef<AliasIdentity>("anonymous");
-  // The link's lifetime, mirrored in a ref like identity. Defaults to null
-  // (until-revoked), matching how an alias is minted, and is reset to null
-  // whenever a renew mints a fresh alias (see resetDuration).
-  // KNOWN LIMITATION (cosmetic): opening the sheet for an alias that already
-  // carries an expiry does not pre-select that lifetime here, it shows "No
-  // expiry" until the owner picks. Reflecting a stored expiry exactly would need
-  // a control that can show an arbitrary remaining duration (the presets
-  // can't), so it is deferred; the underlying expiry mechanism is unaffected.
-  const [duration, setDurationState] = useState<number | null>(null);
-  const durationRef = useRef<number | null>(null);
   // Serializes link work (mint / republish / revoke) against the session: a
   // second call while one is in flight is dropped, so two opens cannot race into
   // duplicate mints and a revoke cannot interleave with an open. Reset on settle.
@@ -118,18 +101,9 @@ export function useShareLink(
     [controller, prepare, setShareOpen],
   );
 
-  // A renew mints a fresh alias with NO expiry, so the lifetime control must
-  // reset to match: otherwise it shows a lifetime the new link does not have, and
-  // the setDuration dedupe (below) silently blocks re-applying that same value.
-  const resetDuration = useCallback(() => {
-    durationRef.current = null;
-    setDurationState(null);
-  }, []);
-
   const revokeLink = useCallback(() => {
-    resetDuration();
     prepare((s) => controller.renewLink(s, identityRef.current), false);
-  }, [controller, prepare, resetDuration]);
+  }, [controller, prepare]);
 
   // Changing the face rotates to a fresh alias carrying it (renew), because an
   // already-minted alias keeps the face it was sealed with. A no-op if unchanged.
@@ -138,31 +112,9 @@ export function useShareLink(
       if (choice === identityRef.current) return;
       identityRef.current = choice;
       setIdentityState(choice);
-      resetDuration();
       prepare((s) => controller.renewLink(s, choice), false);
     },
-    [controller, prepare, resetDuration],
-  );
-
-  // Changing the lifetime moves the current link's expiry in place (no renew, so
-  // the URL is unchanged), then folds the updated session back in. A no-op if
-  // unchanged or logged out / before the link is minted.
-  const setDuration = useCallback(
-    (durationMs: number | null) => {
-      if (durationMs === durationRef.current) return;
-      durationRef.current = durationMs;
-      setDurationState(durationMs);
-      const current = sessionRef.current;
-      if (current === null) return;
-      void controller
-        .setShareLinkDuration(current, durationMs)
-        .then((updated) => {
-          sessionRef.current = updated;
-          setSession(updated);
-        })
-        .catch(() => undefined);
-    },
-    [controller, sessionRef, setSession],
+    [controller, prepare],
   );
 
   const copyShareLink = useCallback(() => {
@@ -179,7 +131,5 @@ export function useShareLink(
     revokeLink,
     identity,
     setIdentity,
-    duration,
-    setDuration,
   };
 }

@@ -93,20 +93,13 @@ describe("ShareSheet link wiring", () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
-  it("shows the lifetime control only when a duration handler is wired", () => {
-    // The public-vs-private gating lives at the Chrome wiring (it passes a
-    // handler only for private links); the sheet just shows the control when it
-    // has one to drive, and DurationRow hides itself otherwise.
-    const onDurationChange = vi.fn();
+  it("never shows a lifetime control (the standing link is durable, doc 16)", () => {
+    // The standing share link (either mode) never carries an expiry: only
+    // per-contact one-off links lapse. The sheet has no lifetime affordance.
     const { rerender } = render(
-      <ShareSheet
-        {...base}
-        sharingMode="link"
-        url="https://sti.care/a/abc"
-        onDurationChange={onDurationChange}
-      />,
+      <ShareSheet {...base} sharingMode="link" url="https://sti.care/a/abc" />,
     );
-    expect(screen.getByText("Link lasts")).toBeInTheDocument();
+    expect(screen.queryByText("Link lasts")).toBeNull();
     rerender(
       <ShareSheet
         {...base}

@@ -745,27 +745,6 @@ describe("owner session against a live blind store", () => {
     ).toBeNull();
   });
 
-  it("setShareLinkDuration moves the share-sheet link's expiry in place", async () => {
-    const { ctl, api } = controller(fakePasskey());
-    const store = createBackendStore(api);
-    const { session } = await ctl.signUp("fern");
-    const shared = await ctl.shareLink(session);
-    const aliasId = shared.session.blob.aliases[0]?.id;
-
-    // Give the share-sheet link a 30-day lifetime: same alias, expiry moves.
-    const dated = await ctl.setShareLinkDuration(shared.session, 30 * DAY_MS);
-    const alias = dated.blob.aliases.find((a) => a.id === aliasId);
-    expectExpiryNear(alias?.expiresAt ?? null, 30 * DAY_MS);
-    // The link still resolves (it was not revoked or re-minted).
-    expect(await store.resolveAlias(caps(alias))).not.toBeNull();
-
-    // Clear it back to no expiry.
-    const forever = await ctl.setShareLinkDuration(dated, null);
-    expect(
-      forever.blob.aliases.find((a) => a.id === aliasId)?.expiresAt,
-    ).toBeNull();
-  });
-
   it("the server returns a decoy once an alias's expiry has passed (doc 16)", async () => {
     // End-to-end through the real client + server: the same id resolves while
     // live and goes to a decoy once expired, proving server-side enforcement (not

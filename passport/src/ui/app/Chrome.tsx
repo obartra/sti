@@ -43,8 +43,6 @@ export interface ChromeProps {
   onRevokeShareLink: () => void;
   shareIdentity: AliasIdentity;
   onShareIdentityChange: (choice: AliasIdentity) => void;
-  shareDuration: number | null;
-  onShareDurationChange: (durationMs: number | null) => void;
   onDeleteAccount: () => void;
   onSetAvatar: ScreenCtx["onSetAvatar"];
   onSetName: ScreenCtx["onSetName"];
@@ -118,8 +116,6 @@ function ShareOverlay({
   onRevokeShareLink,
   shareIdentity,
   onShareIdentityChange,
-  shareDuration,
-  onShareDurationChange,
 }: ChromeProps) {
   return (
     <ShareSheet
@@ -136,13 +132,6 @@ function ShareOverlay({
       onRetry={onRetryShareLink}
       identityChoice={shareIdentity}
       onIdentityChange={onShareIdentityChange}
-      durationChoice={shareDuration}
-      // Expiry is a private-link affordance only (doc 16): the durable public
-      // profile stays live until revoked, so it gets no lifetime control. Gating
-      // here keeps the share sheet itself mode-agnostic.
-      onDurationChange={
-        owner.sharingMode === "link" ? onShareDurationChange : undefined
-      }
       onCopy={onCopyShareLink}
       onRevoke={onRevokeShareLink}
       onWallet={() => {
