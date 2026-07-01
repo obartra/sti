@@ -5,10 +5,10 @@ import {
   unwrapPasswordEnvelope,
   serializeEnvelope,
   deserializeEnvelope,
-  RECOVERY_ENVELOPE_SIZE,
   ARGON2_DEFAULT_PARAMS,
   type Argon2Params,
 } from "./passwordEnvelope.ts";
+import { RECOVERY_ENVELOPE_SIZE } from "../api/contract.ts";
 
 // A deliberately cheap cost for the round-trip tests: the crypto path is identical
 // to production, only the work factor differs, so correctness is exercised without

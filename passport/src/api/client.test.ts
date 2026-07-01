@@ -8,6 +8,7 @@ import {
   ALIAS_PAYLOAD_SIZE,
   HEADER_VERSION,
   HEADER_WRITE_TOKEN,
+  RECOVERY_ENVELOPE_SIZE,
 } from "./contract.ts";
 
 const GOOD_ID = "A".repeat(43);
@@ -400,5 +401,67 @@ describe("reportVanityName (Findable report, doc 17)", () => {
     await expect(bad.reportVanityName("rob1n", "spam")).rejects.toBeInstanceOf(
       ApiError,
     );
+  });
+});
+
+describe("recovery envelope", () => {
+  const envelope = () => new Uint8Array(RECOVERY_ENVELOPE_SIZE).fill(7);
+
+  it("fetches the fixed-size body from the URL-encoded locator", async () => {
+    const m = mockFetch(() => new Response(envelope(), { status: 200 }));
+    const api = createApiClient(BASE, m.fetch);
+    const body = await api.getRecoveryEnvelope("me ow");
+    expect(body).toHaveLength(RECOVERY_ENVELOPE_SIZE);
+    expect(m.last().url).toBe(BASE + "/recovery/me%20ow");
+    expect(m.last().init?.method).toBe("GET");
+  });
+
+  it("rejects a wrong-size fetched body as a protocol error", async () => {
+    const api = createApiClient(BASE, () =>
+      Promise.resolve(new Response(new Uint8Array(10), { status: 200 })),
+    );
+    await expect(api.getRecoveryEnvelope("meow")).rejects.toMatchObject({
+      kind: "protocol",
+    });
+  });
+
+  it("puts the envelope with the write token and the fixed size", async () => {
+    const m = mockFetch(() => new Response(null, { status: 204 }));
+    const api = createApiClient(BASE, m.fetch);
+    await expect(
+      api.putRecoveryEnvelope("meow", envelope(), "acct-token"),
+    ).resolves.toBeUndefined();
+    const { url, init } = m.last();
+    expect(url).toBe(BASE + "/recovery/meow");
+    expect(init?.method).toBe("PUT");
+    expect((init?.headers as Record<string, string>)[HEADER_WRITE_TOKEN]).toBe(
+      "acct-token",
+    );
+  });
+
+  it("refuses to put a wrong-size envelope before the wire", async () => {
+    const m = mockFetch(() => new Response(null, { status: 204 }));
+    const api = createApiClient(BASE, m.fetch);
+    await expect(
+      api.putRecoveryEnvelope("meow", new Uint8Array(5), "t"),
+    ).rejects.toMatchObject({ kind: "protocol" });
+  });
+
+  it("deletes with the write token", async () => {
+    const m = mockFetch(() => new Response(null, { status: 204 }));
+    const api = createApiClient(BASE, m.fetch);
+    await expect(
+      api.deleteRecoveryEnvelope("meow", "acct-token"),
+    ).resolves.toBeUndefined();
+    expect(m.last().init?.method).toBe("DELETE");
+  });
+
+  it("maps a rate-limited fetch to the typed error", async () => {
+    const api = createApiClient(BASE, () =>
+      Promise.resolve(new Response(null, { status: 429 })),
+    );
+    await expect(api.getRecoveryEnvelope("meow")).rejects.toMatchObject({
+      kind: "rateLimited",
+    });
   });
 });

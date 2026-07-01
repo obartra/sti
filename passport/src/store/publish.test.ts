@@ -52,6 +52,9 @@ function recordingApi(): { api: ApiClient; puts: PutCall[] } {
       releaseVanityName: unused,
       resolveVanityName: unused,
       reportVanityName: unused,
+      getRecoveryEnvelope: unused,
+      putRecoveryEnvelope: unused,
+      deleteRecoveryEnvelope: unused,
       health: unused,
       putAlias: (id, payload, writeToken, expiresAt) => {
         puts.push({ id, payload, writeToken, expiresAt });

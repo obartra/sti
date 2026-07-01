@@ -95,6 +95,9 @@ function fakeApi(poisonInboxId?: string): {
     releaseVanityName: unused,
     resolveVanityName: unused,
     reportVanityName: unused,
+    getRecoveryEnvelope: unused,
+    putRecoveryEnvelope: unused,
+    deleteRecoveryEnvelope: unused,
     health: unused,
   };
   return { api, pings, notified };

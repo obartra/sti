@@ -32,6 +32,7 @@ import {
   utf8ToBytes,
   type Bytes,
 } from "../crypto/index.ts";
+import { RECOVERY_ENVELOPE_SIZE } from "../api/contract.ts";
 
 /**
  * The Argon2id cost, versioned and stored with each envelope so an old envelope
@@ -140,15 +141,9 @@ export async function unwrapPasswordEnvelope(
   return open(key, envelope.wrappedRoot);
 }
 
-/**
- * The single fixed wire size of a stored recovery envelope, mirrored from the
- * server contract's RecoveryEnvelopeSize. Every PUT body and GET response is padded
- * to exactly this, so the server serves a constant-length blob and a decoy on a miss
- * is the same length as a real envelope (doc 32). Keep in lockstep with the Go const.
- */
-export const RECOVERY_ENVELOPE_SIZE = 256;
-
-// The framed envelope header is self-describing (lengths precede the variable
+// The framed envelope is padded to RECOVERY_ENVELOPE_SIZE (the contract mirror of the
+// Go RecoveryEnvelopeSize), so a stored envelope and a decoy on a miss are the same
+// length on the wire (doc 32). The header is self-describing (lengths precede the variable
 // fields) so a future salt or wrapped-root size opens without a format bump: a
 // version byte, three uint32 KDF params, then length-prefixed salt and wrapped root,
 // zero-padded to the fixed size.
