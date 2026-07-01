@@ -6,7 +6,7 @@
  *
  * The floor is three checks, all on-device (no candidate ever leaves the device,
  * doc 32):
- *   1. a minimum length (and a sane maximum),
+ *   1. a minimum length (and a bounded maximum),
  *   2. a local common-password / breach wordlist (commonPasswords.ts),
  *   3. a zxcvbn estimate that must reach its strongest bucket (score 4).
  *
@@ -32,7 +32,7 @@ export const MIN_PASSWORD_LENGTH = 10;
 
 /**
  * An upper bound, so the field cannot take a pathologically long input. The KDF cost
- * does not depend on length, so this is sanity, not security.
+ * does not depend on length, so this is just a guard, not security.
  */
 export const MAX_PASSWORD_LENGTH = 128;
 
