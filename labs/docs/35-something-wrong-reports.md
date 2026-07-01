@@ -77,6 +77,13 @@ No category, no note, no content leaves the box. The nudge is a separate message
 the operational alerts so "page / warn" severity stays clean, and it fails safe the
 same way (a missing recipient or sender logs to the journal, never a silent loss).
 
+**Activation.** The nudge logic lives in the `alert.sh` timer script, which the
+binary-only CI deploy does not touch on purpose (a leaked deploy key must not be able
+to ship a root script, see `stiapi-deploy.sh`). So the intake, the counter, and the
+queue go live with the normal backend deploy, but the nudge itself starts firing only
+after the operator refreshes the box's `stiapi-alert` via a `provision.sh` run. Until
+then reports still land in `/admin`; the operator just is not emailed about them.
+
 ## Privacy
 
 The privacy policy ([doc 23](23-privacy-terms-and-trust-links.md)) owns what the
