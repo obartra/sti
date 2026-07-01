@@ -1,8 +1,9 @@
-import { useId, useState } from "react";
-import { Button, Card, Field, Input } from "../../design/components/index.ts";
-import { Fingerprint, Key } from "../../design/icons.tsx";
+import { Button, Card } from "../../design/components/index.ts";
+import { Fingerprint } from "../../design/icons.tsx";
 import { TopBack } from "./TopBack.tsx";
 import { KeepSignedInToggle } from "./KeepSignedInToggle.tsx";
+import { OtherWaysToLogIn } from "./OtherWaysToLogIn.tsx";
+import { SwitchAuthMode } from "./SwitchAuthMode.tsx";
 import { CreateFlow } from "./ClaimCreateFlow.tsx";
 import { COPY, sectionLabel } from "./claimCopy.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
@@ -28,142 +29,17 @@ export interface ClaimProps {
   onLogin?: (() => void) | undefined;
   /** Login variant: recover the account from its phrase (new device). */
   onRecover?: ((phrase: string) => void) | undefined;
-  /** Login variant: sign in with a recovery name + password (doc 32). Present only
-   * when recovery is enabled; absent hides the password sign-in option. */
+  /** Login variant: sign in with a handle + password (doc 32). Present only when
+   * recovery is enabled; absent hides the password sign-in option. */
   onRecoverPassword?: ((name: string, password: string) => void) | undefined;
   /** Login variant: "keep me signed in on this device" choice + setter (doc 24). */
   keepSignedIn?: boolean;
   onKeepSignedInChange?: (v: boolean) => void;
+  /** Flip between the login and create variants (one tap either way). */
+  onSwitchMode?: (() => void) | undefined;
 }
 
-// Recovery-phrase entry: the no-passkey way back in on any device.
-function RecoverFlow({
-  busy,
-  onRecover,
-}: {
-  busy: boolean;
-  onRecover?: ((phrase: string) => void) | undefined;
-}) {
-  const [phrase, setPhrase] = useState("");
-  const phraseId = useId();
-  const ok = phrase.trim().length > 0;
-  return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 12 }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ color: "var(--text-accent)", flex: "none" }}>
-          <Key size={18} />
-        </span>
-        <div
-          style={{
-            fontSize: 14.5,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-          }}
-        >
-          {COPY.recoverLabel}
-        </div>
-      </div>
-      <div
-        style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}
-      >
-        {COPY.recoverHint}
-      </div>
-      <Field label={COPY.recoverPlaceholder} htmlFor={phraseId}>
-        <Input
-          id={phraseId}
-          value={phrase}
-          onChange={(e) => setPhrase(e.target.value)}
-          autoComplete="off"
-          spellCheck={false}
-        />
-      </Field>
-      <Button
-        variant="secondary"
-        size="lg"
-        block
-        disabled={!ok || busy}
-        onClick={() => onRecover?.(phrase.trim())}
-      >
-        {COPY.recoverCta}
-      </Button>
-    </Card>
-  );
-}
-
-// Recovery name + password entry: the other no-passkey way back in (doc 32),
-// shown only when recovery is enabled. A wrong name or password is one uniform
-// failure, surfaced through the shared error line above.
-function RecoverPasswordFlow({
-  busy,
-  onRecoverPassword,
-}: {
-  busy: boolean;
-  onRecoverPassword: (name: string, password: string) => void;
-}) {
-  const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
-  const nameId = useId();
-  const passwordId = useId();
-  const ok = name.trim().length > 0 && password.length > 0;
-  return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 12 }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ color: "var(--text-accent)", flex: "none" }}>
-          <Key size={18} />
-        </span>
-        <div
-          style={{
-            fontSize: 14.5,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-          }}
-        >
-          {COPY.recoverPwLabel}
-        </div>
-      </div>
-      <div
-        style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}
-      >
-        {COPY.recoverPwHint}
-      </div>
-      <Field label={COPY.recoverPwNameLabel} htmlFor={nameId}>
-        <Input
-          id={nameId}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          autoComplete="off"
-          spellCheck={false}
-        />
-      </Field>
-      <Field label={COPY.recoverPwPasswordLabel} htmlFor={passwordId}>
-        <Input
-          id={passwordId}
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="off"
-        />
-      </Field>
-      <Button
-        variant="secondary"
-        size="lg"
-        block
-        disabled={!ok || busy}
-        onClick={() => onRecoverPassword(name.trim(), password)}
-      >
-        {COPY.recoverPwCta}
-      </Button>
-    </Card>
-  );
-}
-
-// The account-key card. On login it carries the passkey unlock; on create it
+// The passkey unlock, the one obvious action on the login variant. On create it
 // just explains the account key (the passkey is enrolled at the end of setup).
 // Passkey / passphrase is the one MVP path: no email-or-phone field.
 function PasskeyCard({
@@ -250,26 +126,50 @@ function ClaimHeader({
   );
 }
 
-// The no-passkey ways back in, shown together on the login variant: the recovery
-// phrase always, and the recovery name + password when recovery is enabled.
-function LoginRecovery({
+// The login variant's body: the passkey leads, the keep-signed-in choice stays
+// always visible, then the shared error line, then the collapsed "other ways in"
+// disclosure holding the phrase and handle + password paths.
+function LoginBody({
   busy,
+  error,
+  onLogin,
   onRecover,
   onRecoverPassword,
+  keepSignedIn,
+  onKeepSignedInChange,
 }: {
   busy: boolean;
+  error: string | null;
+  onLogin?: (() => void) | undefined;
   onRecover?: ((phrase: string) => void) | undefined;
   onRecoverPassword?: ((name: string, password: string) => void) | undefined;
+  keepSignedIn: boolean;
+  onKeepSignedInChange?: ((v: boolean) => void) | undefined;
 }) {
   return (
     <>
-      <RecoverFlow busy={busy} onRecover={onRecover} />
-      {onRecoverPassword && (
-        <RecoverPasswordFlow
-          busy={busy}
-          onRecoverPassword={onRecoverPassword}
-        />
+      <PasskeyCard isLogin busy={busy} onLogin={onLogin} />
+      <KeepSignedInToggle
+        checked={keepSignedIn}
+        onChange={onKeepSignedInChange}
+      />
+      {error !== null && (
+        <div
+          role="alert"
+          style={{
+            fontSize: 13,
+            lineHeight: 1.5,
+            color: "var(--status-expired-fg)",
+          }}
+        >
+          {error}
+        </div>
       )}
+      <OtherWaysToLogIn
+        busy={busy}
+        onRecover={onRecover}
+        onRecoverPassword={onRecoverPassword}
+      />
     </>
   );
 }
@@ -285,6 +185,7 @@ export function Claim({
   onRecoverPassword,
   keepSignedIn = true,
   onKeepSignedInChange,
+  onSwitchMode,
 }: ClaimProps) {
   return (
     <div
@@ -298,33 +199,35 @@ export function Claim({
     >
       <ClaimHeader isLogin={isLogin} onBack={onBack} />
       <div style={sectionLabel}>{COPY.keyLabel}</div>
-      <PasskeyCard isLogin={isLogin} busy={busy} onLogin={onLogin} />
-      {isLogin && (
-        <KeepSignedInToggle
-          checked={keepSignedIn}
-          onChange={onKeepSignedInChange}
-        />
-      )}
-      {error !== null && (
-        <div
-          role="alert"
-          style={{
-            fontSize: 13,
-            lineHeight: 1.5,
-            color: "var(--status-expired-fg)",
-          }}
-        >
-          {error}
-        </div>
-      )}
-      {isLogin && (
-        <LoginRecovery
+      {isLogin ? (
+        <LoginBody
           busy={busy}
+          error={error}
+          onLogin={onLogin}
           onRecover={onRecover}
           onRecoverPassword={onRecoverPassword}
+          keepSignedIn={keepSignedIn}
+          onKeepSignedInChange={onKeepSignedInChange}
         />
+      ) : (
+        <>
+          <PasskeyCard isLogin={false} busy={busy} onLogin={onLogin} />
+          {error !== null && (
+            <div
+              role="alert"
+              style={{
+                fontSize: 13,
+                lineHeight: 1.5,
+                color: "var(--status-expired-fg)",
+              }}
+            >
+              {error}
+            </div>
+          )}
+          <CreateFlow busy={busy} onClaim={onClaim} />
+        </>
       )}
-      {!isLogin && <CreateFlow busy={busy} onClaim={onClaim} />}
+      <SwitchAuthMode isLogin={isLogin} onSwitch={onSwitchMode} />
     </div>
   );
 }

@@ -479,10 +479,14 @@ describe("App onboarding flow", () => {
     const user = userEvent.setup();
     render(<App store={stubStore(null)} controller={fakeController()} />);
 
-    // From the landing, take the login route, then recover with the phrase.
+    // From the landing, take the login route, open "other ways to log in," then
+    // recover with the phrase.
     await user.click(await screen.findByRole("button", { name: "Log in" }));
-    // The login variant offers both no-passkey paths; target the phrase field by
-    // its label (the recovery-name + password card is the other one).
+    await user.click(
+      await screen.findByRole("button", { name: /Other ways to log in/ }),
+    );
+    // The disclosure offers both no-passkey paths; target the phrase field by its
+    // label (the handle + password card is the other one).
     await user.type(
       await screen.findByRole("textbox", { name: "Your recovery phrase" }),
       "RECOVER-ME-PHRASE",
@@ -501,10 +505,14 @@ describe("App onboarding flow", () => {
     const user = userEvent.setup();
     render(<App store={stubStore(null)} controller={fakeController()} />);
 
-    // Take the login route, then use the recovery-name + password path.
+    // Take the login route, open "other ways to log in," then use the handle +
+    // password path.
     await user.click(await screen.findByRole("button", { name: "Log in" }));
+    await user.click(
+      await screen.findByRole("button", { name: /Other ways to log in/ }),
+    );
     await user.type(
-      await screen.findByRole("textbox", { name: "Recovery name" }),
+      await screen.findByRole("textbox", { name: "Your handle" }),
       "meow",
     );
     await user.type(
