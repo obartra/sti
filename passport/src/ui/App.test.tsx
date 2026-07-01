@@ -607,4 +607,26 @@ describe("demo mode", () => {
     await user.click(screen.getByRole("button", { name: "Leave demo" }));
     expect(onExit).toHaveBeenCalledOnce();
   });
+
+  it("stays in the app on an app-group route (Links), never bouncing to the landing", async () => {
+    // Deep-linking into an app screen in demo must not clamp to the public landing:
+    // the demo account seeds asynchronously, so there is a window with no session,
+    // and demo is always signed in (bug D, the glitchy redirect to the logged-out
+    // home when navigating to Links).
+    window.history.pushState({}, "", "/links");
+    render(
+      <App
+        store={createDemoStore()}
+        controller={createDemoController()}
+        demo={{ mode: true, onTry: () => undefined, onExit: () => undefined }}
+      />,
+    );
+
+    // The Links screen renders (its "Your links" list), and the logged-out landing
+    // never shows: the app-group route was not clamped away in demo.
+    expect((await screen.findAllByText("Your links")).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.queryByText("Claim your passport")).toBeNull();
+  });
 });
