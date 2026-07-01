@@ -9,6 +9,10 @@ import { defineConfig } from "astro/config";
 // allowed to read one level up.
 export default defineConfig({
   site: "https://info.sti.care",
+  // Flat, clean URLs with no trailing slash: /gonorrhea and /uu serve directly
+  // (gonorrhea.html), rather than /gonorrhea redirecting to /gonorrhea/.
+  trailingSlash: "never",
+  build: { format: "file" },
   vite: {
     server: {
       fs: {
