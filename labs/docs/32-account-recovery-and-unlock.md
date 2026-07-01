@@ -1,6 +1,6 @@
 # 32 - Account recovery and unlock
 
-## Status: LAUNCHED (the plan at the end tracks what is built; the public-handle login name and password-at-sign-up are the remaining build, and continuity nudges stay optional/later)
+## Status: LAUNCHED (the plan at the end tracks what is built; the public-handle login name and password-at-sign-up are the remaining build; the continuity nudges are built)
 
 How a person keeps access to their account across devices and over time, and how an
 optional, memorable password can fit without weakening the blind store. This doc owns
@@ -360,5 +360,18 @@ same way it would from Settings.
    phrase re-entry**, and always still generating and showing the recovery phrase. Claiming
    the handle at sign-up pins it (doc 17). This is the one genuinely new build here; the
    Settings add-later path above is unchanged apart from the public-handle rename.
-7. **Continuity nudges (later, optional).** The gentle rehearsal and the once-a-year
-   reminder from the sections above: reminders, never forced resets, never blocking use.
+7. **Continuity nudges.** _Built._ Both reminders from the sections above, as one
+   low-key dismissible card on Home (`ui/core/ContinuityNudgeCard.tsx`) shown only
+   when a rare cadence says a nudge is due: the phrase rehearsal ("can you still find
+   your recovery phrase?", pointing at the Settings phrase re-view) about twice a
+   year, and the once-a-year password refresh suggestion shown only when a password
+   is set. They nudge, never strand: skipping is always a no-op to the account, and a
+   confirm or a "remind me later" both just record the time so the prompt stays rare.
+   The cadence is device-local (`ui/app/continuityNudge.ts`, localStorage, like
+   starred contacts), so it adds nothing to the blob and no server-visible signal.
+   Because no set/changed timestamp for the password exists server-side or in the
+   blob (the envelope is opaque ciphertext), the yearly reminder tracks the password
+   factor's age by a device-local "present since first seen" mark, re-armed if the
+   password is turned off and on. If a server-side envelope timestamp is ever added,
+   prefer it over the device-local first-seen so the reminder tracks the real change
+   date. Reminders only, never a forced reset, never blocking use.

@@ -98,3 +98,17 @@ export const RetestDueSoon: Story = {
     daysLeft: 6,
   },
 };
+
+// A continuity nudge is due (doc 32): the dismissible phrase-rehearsal card sits
+// near the top of the dashboard. It never blocks anything and skipping is a no-op.
+export const ContinuityNudgeDue: Story = {
+  args: {
+    badge: "blue",
+    viewerBadge: "blue",
+    labels: ["hiv"],
+    handle: "robin",
+    continuityNudge: "phrase",
+    onNudgeSettings: () => undefined,
+    onNudgeDismiss: () => undefined,
+  },
+};
