@@ -20,6 +20,7 @@ export const COPY = {
   pushRow: "Notify me on this device",
   pushRowSub:
     "Get the alert as a notification even when the app is closed. The heads-up stays the same: no name, no detail. You’ll still see it in-app either way.",
+  pushNoContacts: "You can turn this on once you’ve linked with someone.",
   pushOn: "On",
   pushUnsupported: "Not available on this device",
   pushIosInstall:

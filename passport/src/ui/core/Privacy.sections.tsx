@@ -121,6 +121,7 @@ export function AttributesCard({ state }: { state: PrivacyState }) {
 // the "unavailable" case points at the Add-to-Home-Screen step (doc 22 F) rather
 // than a dead end; everywhere else it is the normal supported / not-supported copy.
 function pushSub(push: PushControls): string {
+  if (push.supported && !push.ready) return COPY.pushNoContacts;
   if (push.supported) return COPY.pushRowSub;
   if (isIOS() && !isStandalone()) return COPY.pushIosInstall;
   return COPY.pushUnsupported;
@@ -178,7 +179,7 @@ function PushRow({ push }: { push: PushControls }) {
         </div>
         <Switch
           checked={push.enabled}
-          disabled={!push.supported || push.busy}
+          disabled={!push.supported || !push.ready || push.busy}
           onChange={(on) => (on ? push.enable() : push.disable())}
         />
       </div>

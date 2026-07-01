@@ -14,6 +14,10 @@ import { API_BASE_URL } from "../../config.ts";
 export interface PushControls {
   /** This browser can do Web Push at all. */
   supported: boolean;
+  /** There is at least one contact inbox to be woken for, so enabling can do
+   * something. Push wakes this device when a linked contact reports a positive,
+   * so with no contacts yet there is nothing to subscribe to. */
+  ready: boolean;
   /** Push is currently enabled on this device. */
   enabled: boolean;
   /** An enable/disable is in flight. */
@@ -103,5 +107,13 @@ export function usePush(
       .finally(() => setBusy(false));
   }, [busy]);
 
-  return { supported, enabled, busy, error, enable, disable };
+  return {
+    supported,
+    ready: caps.length > 0,
+    enabled,
+    busy,
+    error,
+    enable,
+    disable,
+  };
 }
