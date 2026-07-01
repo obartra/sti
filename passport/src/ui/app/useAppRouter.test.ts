@@ -161,7 +161,8 @@ describe("the trust pages own clean, real paths", () => {
         window.history.replaceState(null, "", "/");
         window.dispatchEvent(new PopStateEvent("popstate"));
       });
-      expect(result.current.route.screen).toBe("a1-landing");
+      // The root resolves to Home (App clamps to the landing when signed out).
+      expect(result.current.route.screen).toBe("home");
     } finally {
       window.history.replaceState(null, "", "/");
     }
@@ -248,7 +249,7 @@ describe("every screen owns a clean path", () => {
   };
 
   it("routes app screens from their clean paths", () => {
-    expect(routeAt("/home")?.screen).toBe("home");
+    expect(routeAt("/")?.screen).toBe("home");
     expect(routeAt("/people")?.screen).toBe("people");
     expect(routeAt("/links")?.screen).toBe("links");
     expect(routeAt("/groups")?.screen).toBe("groups");
@@ -268,6 +269,12 @@ describe("every screen owns a clean path", () => {
     expect(routeAt("/connect/share")?.screen).toBe("alias-share");
   });
 
+  it("redirects the legacy /home path to Home at the root (old bookmarks)", () => {
+    // Home moved from `/home` to the root `/`; an old shortcut or bookmark still
+    // resolves to Home, and mount normalizes the URL back to `/`.
+    expect(routeAt("/home")?.screen).toBe("home");
+  });
+
   it("keeps the Settings screen (/settings) distinct from the privacy POLICY (/privacy)", () => {
     // The old id clash: route id `privacy` is the Settings screen; the policy page
     // is `privacy-policy`. The paths are unambiguous.
@@ -278,7 +285,7 @@ describe("every screen owns a clean path", () => {
   });
 
   it("normalizes the Settings screen to /settings, never /#privacy", async () => {
-    window.history.replaceState(null, "", "/home");
+    window.history.replaceState(null, "", "/");
     try {
       const { result } = renderHook(() => useAppRouter());
       act(() => result.current.nav.go("privacy"));
@@ -293,12 +300,12 @@ describe("every screen owns a clean path", () => {
 
   it("no longer honors a legacy /#home bookmark (the transitional reader is gone)", async () => {
     // Every screen owns a clean path now, so the `/#screen` hash is not read: a
-    // stale bookmark falls through to the bare-root entry (the landing) and the
-    // hash is stripped on mount, rather than deep-linking to /home.
+    // stale bookmark falls through to the bare-root entry (Home) and the hash is
+    // stripped on mount, rather than deep-linking to a `/#home` fragment.
     window.history.replaceState(null, "", "/#home");
     try {
       const { result } = renderHook(() => useAppRouter());
-      expect(result.current.route.screen).toBe("a1-landing");
+      expect(result.current.route.screen).toBe("home");
       await waitFor(() => {
         expect(window.location.pathname).toBe("/");
         expect(window.location.hash).toBe("");
@@ -311,7 +318,7 @@ describe("every screen owns a clean path", () => {
 
 describe("back is driven by the browser history, not an in-app stack", () => {
   it("go pushes an entry; a back (popstate) returns to the prior screen", () => {
-    window.history.replaceState(null, "", "/home");
+    window.history.replaceState(null, "", "/");
     try {
       const { result } = renderHook(() => useAppRouter());
       expect(result.current.route.screen).toBe("home");
@@ -320,7 +327,7 @@ describe("back is driven by the browser history, not an in-app stack", () => {
       expect(result.current.route.screen).toBe("wallet");
       act(() => {
         // The browser back button: the URL returns, then popstate fires.
-        window.history.replaceState(null, "", "/home");
+        window.history.replaceState(null, "", "/");
         window.dispatchEvent(new PopStateEvent("popstate"));
       });
       expect(result.current.route.screen).toBe("home");
@@ -330,7 +337,7 @@ describe("back is driven by the browser history, not an in-app stack", () => {
   });
 
   it("jump replaces (a tab switch is not a back target) and back falls home", () => {
-    window.history.replaceState(null, "", "/home");
+    window.history.replaceState(null, "", "/");
     try {
       const { result } = renderHook(() => useAppRouter());
       act(() => result.current.nav.jump("care"));
@@ -346,14 +353,15 @@ describe("back is driven by the browser history, not an in-app stack", () => {
   });
 });
 
-describe("the landing keeps the clean root URL", () => {
-  it("visiting / stays at / and does not bounce to /#a1-landing", async () => {
+describe("the root keeps the clean URL", () => {
+  it("visiting / resolves to Home and stays at / (no /#home bounce)", async () => {
     window.history.replaceState(null, "", "/");
     try {
       const { result } = renderHook(() => useAppRouter());
-      // The bare root resolves to the landing...
-      expect(result.current.route.screen).toBe("a1-landing");
-      // ...and the URL is normalized to the clean root, not /#a1-landing.
+      // The bare root resolves to Home (App clamps it to the landing when there is
+      // no session; see App.test.tsx)...
+      expect(result.current.route.screen).toBe("home");
+      // ...and the URL stays the clean root, never a /#home fragment.
       await waitFor(() => {
         expect(window.location.pathname).toBe("/");
         expect(window.location.hash).toBe("");
@@ -367,7 +375,9 @@ describe("the landing keeps the clean root URL", () => {
     window.history.replaceState(null, "", "/#a1-landing");
     try {
       const { result } = renderHook(() => useAppRouter());
-      expect(result.current.route.screen).toBe("a1-landing");
+      // The `/#screen` hash is no longer read, so this falls to the bare-root Home
+      // and the stale fragment is stripped on mount.
+      expect(result.current.route.screen).toBe("home");
       await waitFor(() => expect(window.location.hash).toBe(""));
       expect(window.location.pathname).toBe("/");
     } finally {

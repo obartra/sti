@@ -22,13 +22,16 @@ export interface ResumableSession {
   readonly setKeepSignedIn: (v: boolean) => void;
 }
 
-// True when the app loaded at the bare root or the public landing, i.e. no explicit
-// destination. routeFromLocation returns null for the bare root (the app maps that
-// to the landing); every public content page and shared link resolves to its own
-// non-landing route, which a silent resume should leave intact.
+// True when the app loaded at the bare root, i.e. no explicit destination. The root
+// `/` resolves to the `home` screen (the landing is what a logged-out visitor sees
+// there); the resolver also returns null / `a1-landing` for a stale root hash. Every
+// public content page and shared link resolves to its own non-root route, which a
+// silent resume should leave intact.
 function openedAtLanding(): boolean {
   const here = routeFromLocation();
-  return here === null || here.screen === "a1-landing";
+  return (
+    here === null || here.screen === "a1-landing" || here.screen === "home"
+  );
 }
 
 export function useResumableSession(

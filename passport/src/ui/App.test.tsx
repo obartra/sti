@@ -521,7 +521,18 @@ describe("App onboarding flow", () => {
   it("keeps a logged-out visitor out of app screens (no owner data leaks)", async () => {
     // A deep link to an app-group screen must clamp to the public landing when
     // there is no session, never render the OWNER placeholder's data.
-    window.history.pushState({}, "", "/home");
+    window.history.pushState({}, "", "/wallet");
+    render(<App store={stubStore(null)} controller={fakeController()} />);
+
+    expect(await screen.findByText("Claim your passport")).toBeInTheDocument();
+    expect(screen.queryByText("@robin")).toBeNull();
+    expect(screen.queryByText("Good to see you,")).toBeNull();
+  });
+
+  it("shows the landing at the root / when signed out (Home lives at /)", async () => {
+    // Home now owns the root `/`, which resolves to the app-group `home` screen;
+    // with no session the clamp still shows the public landing, not owner data.
+    window.history.pushState({}, "", "/");
     render(<App store={stubStore(null)} controller={fakeController()} />);
 
     expect(await screen.findByText("Claim your passport")).toBeInTheDocument();
