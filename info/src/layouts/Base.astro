@@ -2,21 +2,39 @@
 // The shared page frame for info.sti.care. Imports the app's design tokens and
 // component classes directly from the passport package (one source of truth for the
 // palette, type, and primitives, never a duplicated theme), then the small
-// site-specific stylesheet on top. A slim header links back to the app; the footer
-// crosses the library and back to sti.care.
+// site-specific stylesheets on top: site.css is the phone column, desktop.css the
+// wide-screen layer. A slim header links back to the app; the footer crosses the
+// library and back to sti.care. Pages composed for wide screens pass `wide`;
+// without it the main column keeps the phone width everywhere.
+import { getCollection } from "astro:content";
 import "../../../passport/src/design/index.css";
 import "../styles/site.css";
+import "../styles/desktop.css";
+import { SITE } from "../data/site.ts";
 
 interface Props {
   title: string;
   description?: string;
+  wide?: boolean;
 }
 const {
   title,
   description = "Plain, judgment-free answers about sexual health, testing, and prevention.",
+  wide = false,
 } = Astro.props;
 
 const APP_URL = "https://sti.care";
+
+// The nav crosses the whole site: the library index, each guide (short label
+// from its frontmatter), and U=U.
+const guides = (await getCollection("guides")).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+const nav = [
+  SITE.nav[0],
+  ...guides.map((g) => ({ label: g.data.navLabel, href: `/${g.slug}` })),
+  SITE.nav[1],
+];
 ---
 
 <!doctype html>
@@ -32,21 +50,34 @@ const APP_URL = "https://sti.care";
   </head>
   <body>
     <header class="info-header">
-      <a class="info-home" href="/">
-        <span class="info-home__brand">sti.care</span>
-        <span class="info-home__tag">Learn</span>
-      </a>
-      <a class="info-toapp" href={APP_URL}>Back to the app</a>
+      <div class="info-header__inner">
+        <a class="info-home" href="/">
+          <span class="info-home__brand">{SITE.brand}</span>
+          <span class="info-home__tag">{SITE.tag}</span>
+        </a>
+        <nav class="info-header__nav">
+          {nav.map((item) => <a href={item.href}>{item.label}</a>)}
+        </nav>
+        <a class="info-toapp" href={APP_URL}>{SITE.backToApp}</a>
+      </div>
     </header>
-    <main class="info-page">
+    <main class:list={["info-page", { "info-page--wide": wide }]}>
       <slot />
     </main>
     <footer class="info-footer">
-      <nav class="info-footer__links">
-        <a href="/">STI basics</a>
-        <a href="/uu">U=U</a>
-      </nav>
-      <div class="info-footer__tag">Plain answers. No judgment.</div>
+      <div class="info-footer__inner">
+        <div class="info-footer__brand">
+          <span class="info-home__brand">{SITE.brand}</span>
+          <span class="info-home__tag">{SITE.tag}</span>
+        </div>
+        <nav class="info-footer__links">
+          {nav.map((item) => <a href={item.href}>{item.label}</a>)}
+        </nav>
+        <div class="info-footer__end">
+          <div class="info-footer__tag">{SITE.tagline}</div>
+          <div class="info-footer__note">{SITE.note}</div>
+        </div>
+      </div>
     </footer>
   </body>
 </html>

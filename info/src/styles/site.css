@@ -13,6 +13,30 @@
   gap: var(--space-4);
 }
 
+/* Page sections: on a phone they are transparent stacks inside the page column,
+   matching the page's own gap; the desktop sheet turns them into framed rows and
+   full-bleed bands. */
+.info-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.info-band {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.info-band__inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+/* Desktop-only elements (the header nav, hero extras); the desktop sheet reveals
+   them. */
+.info-desktop {
+  display: none;
+}
+
 /* ----------------------------------------------------------------- header --- */
 .info-header {
   max-width: 640px;
@@ -23,6 +47,14 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
+}
+/* On a phone the header's inner wrapper and nav do not exist visually; the
+   desktop sheet turns them into the sticky chrome row. */
+.info-header__inner {
+  display: contents;
+}
+.info-header__nav {
+  display: none;
 }
 /* The brand, top-left, links to the info home (the library index), not the app. */
 .info-home {
@@ -67,6 +99,14 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+/* explainer pages: a bigger title, a fuller lead */
+.info-title--page {
+  font-size: 27px;
+}
+.info-lead--lg {
+  font-size: 15px;
+  color: var(--text-body);
 }
 
 /* ------------------------------------------------------------------- chip --- */
@@ -164,6 +204,31 @@
   align-items: center;
   gap: 12px;
 }
+.info-row--top {
+  align-items: flex-start;
+}
+.info-row--between {
+  justify-content: space-between;
+}
+.info-row--snug {
+  gap: 10px;
+}
+.info-row__icon {
+  color: var(--text-accent);
+  flex: none;
+  margin-top: 1px;
+}
+/* a row's text block: small bold title over a note */
+.info-rowbody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.info-rowtitle {
+  font-size: 13.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
 .info-tile {
   flex: none;
   width: 44px;
@@ -187,9 +252,30 @@
   background: var(--status-treat-bg);
   color: var(--status-treat-base);
 }
+.info-tile--sm {
+  width: 38px;
+  height: 38px;
+  font-size: 12px;
+}
 .info-tile svg {
   width: 19px;
   height: 19px;
+}
+
+/* the body of a tappable link card (tile + title/sub + chevron) */
+.info-cardlink__body {
+  flex: 1;
+  min-width: 0;
+}
+.info-cardlink__label {
+  flex: 1;
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-strong);
+}
+.info-cardlink__go {
+  color: var(--text-accent);
+  flex: none;
 }
 
 /* the small caps pill used on the PEP card */
@@ -211,6 +297,19 @@
   color: var(--text-body);
   line-height: var(--leading-normal);
 }
+.info-finetext {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-body);
+}
+.info-textlink {
+  text-align: center;
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .info-subnote {
   font-size: 12.5px;
   color: var(--text-subtle);
@@ -222,6 +321,39 @@
   line-height: var(--leading-normal);
   text-align: center;
   padding: 0 8px;
+}
+
+/* the quiet end-of-article source links (public health agencies) */
+.info-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.info-sources--center {
+  align-items: center;
+}
+.info-sources__label {
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.info-sources a {
+  font-size: 12.5px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* the aside's what-the-label-means card */
+.info-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
 }
 
 /* --------------------------------------------------- prose (Q&A markdown) --- */
@@ -252,6 +384,24 @@
 .info-qa strong {
   color: var(--text-strong);
 }
+.info-qa ul {
+  margin: 6px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.info-qa li {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-body);
+}
+.info-qa a {
+  color: var(--text-accent);
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 
 /* ---------------------------------------------------------------- footer --- */
 .info-footer {
@@ -264,6 +414,20 @@
   align-items: center;
   gap: 8px;
   border-top: 1px solid var(--divider);
+}
+/* Same trick as the header: the inner wrapper, brand column, and site note only
+   take shape on the desktop sheet. */
+.info-footer__inner {
+  display: contents;
+}
+.info-footer__brand {
+  display: none;
+}
+.info-footer__end {
+  display: contents;
+}
+.info-footer__note {
+  display: none;
 }
 .info-footer__links {
   display: flex;
@@ -287,6 +451,29 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+/* a framing card's inner stack (title block, item rows, an optional CTA) */
+.info-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* the time-critical PEP callout keeps its warm border */
+.info-callout {
+  border-color: var(--status-treat-base);
+}
+/* The closing call to action's button stack; a plain pass-through on a phone,
+   the desktop sheet makes it the card's right column. */
+.info-cta__action {
+  display: contents;
+}
+/* Explainer pages: the reading column and its aside are pass-throughs on a
+   phone; the desktop sheet turns them into a two-column spread with the aside
+   pinned while the article scrolls. */
+.info-detail__main,
+.info-detail__aside,
+.info-aside-cta {
+  display: contents;
 }
 .info-hero {
   border-radius: var(--radius-lg);
@@ -318,4 +505,21 @@
   line-height: 1.6;
   color: var(--status-clear-fg);
   opacity: 0.9;
+}
+
+/* the U=U question-and-answer cards */
+.info-uu-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.info-uu-card__q {
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+.info-uu-card__a {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-body);
 }

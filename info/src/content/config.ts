@@ -1,11 +1,17 @@
 import { defineCollection, z } from "astro:content";
 
+// Outbound source links rendered as the quiet "sources" block on a page. Always
+// public health agencies ("based on", never "reviewed by").
+const sources = z
+  .array(z.object({ label: z.string(), href: z.string().url() }))
+  .optional();
+
 // The condition explainers (doc 34). One markdown file per condition under
 // content/conditions/{id}.md; the filename is the URL slug (info.sti.care/{id}).
 // Frontmatter carries the display name, the status label and its tone (which
 // drives the chip color, always paired with the word so it reads in grayscale),
-// the sort order on the index, the one-line "how to test", and the intro. The
-// body is the question-and-answer copy.
+// the sort order on the index, the one-line "how to test", the intro, and the
+// source links. The body is the question-and-answer copy.
 const conditions = defineCollection({
   type: "content",
   schema: z.object({
@@ -15,7 +21,27 @@ const conditions = defineCollection({
     order: z.number(),
     test: z.string(),
     intro: z.string(),
+    sources,
   }),
 });
 
-export const collections = { conditions };
+// The guides: practical how-to reading (getting tested, symptoms, telling a
+// partner). One markdown file per guide under content/guides/{id}.md; the
+// filename is the URL slug, flat at the root like the conditions. Frontmatter
+// carries the page title, the short nav label, the one-line card sub for the
+// index, the icon on its index card, the sort order, the intro, and the source
+// links. The body is plain markdown sections.
+const guides = defineCollection({
+  type: "content",
+  schema: z.object({
+    title: z.string(),
+    navLabel: z.string(),
+    tag: z.string(),
+    icon: z.enum(["stethoscope", "shield", "eye", "mail", "clock", "heart"]),
+    order: z.number(),
+    intro: z.string(),
+    sources,
+  }),
+});
+
+export const collections = { conditions, guides };

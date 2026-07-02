@@ -7,42 +7,54 @@ import { LIBRARY as c } from "../data/library.ts";
 import { emph } from "../lib/emph.ts";
 
 // The U=U page: a made-to-share explainer, deliberately separate from anyone's
-// status. Ported from the app's UU card.
+// status. On a phone the hero and cards stack; at desktop the hero is a wide band
+// and the questions sit two across.
 ---
 
-<Base title="Undetectable = Untransmittable (U=U)" description={u.intro}>
-  <div class="info-hero">
-    <span class="info-hero__label">{u.label}</span>
-    <h1 class="info-hero__title">{u.title}</h1>
-    <p class="info-hero__intro">{u.intro}</p>
-  </div>
-
-  <div class="info-stack">
-    {
-      u.qa.map((row) => (
-        <div class="sti-card" style="display:flex;flex-direction:column;gap:6px">
-          <div style="font-size:15px;font-weight:700;color:var(--text-strong)">
-            {row[0]}
-          </div>
-          <div
-            style="font-size:14px;line-height:1.6;color:var(--text-body)"
-            set:html={emph(row[1])}
-          />
-        </div>
-      ))
-    }
-  </div>
-
-  <div class="sti-card sti-card--tint info-row" style="gap:12px;align-items:flex-start">
-    <span style="color:var(--text-accent);flex:none;margin-top:1px">
-      <Icon name="lock" size={17} />
-    </span>
-    <div style="font-size:13px;line-height:1.55;color:var(--text-body)">
-      {u.privacyNote}
+<Base title="Undetectable = Untransmittable (U=U)" description={u.intro} wide>
+  <section class="info-section">
+    <div class="info-hero">
+      <span class="info-hero__label">{u.label}</span>
+      <h1 class="info-hero__title">{u.title}</h1>
+      <p class="info-hero__intro">{u.intro}</p>
     </div>
-  </div>
+  </section>
 
-  <SharePage label={c.shareLabel} copied={c.copied} />
+  <section class="info-section">
+    <div class="info-stack info-qa-grid">
+      {
+        u.qa.map((row) => (
+          <div class="sti-card info-uu-card">
+            <div class="info-uu-card__q">{row[0]}</div>
+            <div class="info-uu-card__a" set:html={emph(row[1])} />
+          </div>
+        ))
+      }
+    </div>
+  </section>
 
-  <div class="info-disclaimer">{u.disclaimer}</div>
+  <section class="info-section info-uu-foot">
+    <div class="sti-card sti-card--tint info-row info-row--top">
+      <span class="info-row__icon">
+        <Icon name="lock" size={17} />
+      </span>
+      <div class="info-finetext">{u.privacyNote}</div>
+    </div>
+
+    <SharePage label={c.shareLabel} copied={c.copied} />
+  </section>
+
+  <section class="info-section">
+    <div class="info-sources info-sources--center">
+      <div class="info-sources__label">{c.sourcesLabel}</div>
+      {
+        u.sources.map((s) => (
+          <a href={s.href} target="_blank" rel="noopener noreferrer">
+            {s.label}
+          </a>
+        ))
+      }
+    </div>
+    <div class="info-disclaimer">{u.disclaimer}</div>
+  </section>
 </Base>

@@ -1,0 +1,375 @@
+/* Desktop layer for info.sti.care, on top of site.css. One breakpoint, the same
+   900px the app's desktop shell uses. Below it nothing here applies and the pages
+   render as the phone column in site.css. Pages opt in with the info-page--wide
+   modifier on <main>; the frame, header, and footer widen for everyone.
+
+   Values that only exist at desktop (the 1120px frame, the 40px gutters, the
+   clamped display type) are local to this sheet, the same way the app's desktop
+   landing hardcodes its own. Everything else references the shared tokens. */
+
+@media (min-width: 900px) {
+  :root {
+    --info-max: 1120px;
+    --info-pad-x: 40px;
+  }
+
+  /* ---------------------------------------------------------------- frame --- */
+  /* A wide page is a stack of self-framed sections instead of a phone column. */
+  .info-page--wide {
+    max-width: none;
+    padding: 0 0 var(--space-10);
+    gap: var(--space-8);
+    overflow-x: clip;
+  }
+  .info-page--wide > .info-section {
+    width: 100%;
+    max-width: var(--info-max);
+    margin: 0 auto;
+    padding: 0 var(--info-pad-x);
+  }
+  /* A band bleeds its background across the viewport, framing its content. */
+  .info-page--wide > .info-band {
+    width: 100%;
+    background: var(--surface-card);
+    border-top: 1px solid var(--divider);
+    border-bottom: 1px solid var(--divider);
+  }
+  .info-page--wide > .info-band > .info-band__inner {
+    width: 100%;
+    max-width: var(--info-max);
+    margin: 0 auto;
+    padding: 48px var(--info-pad-x);
+  }
+  .info-desktop {
+    display: block;
+  }
+
+  /* --------------------------------------------------------------- header --- */
+  .info-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    max-width: none;
+    padding: 0;
+    background: color-mix(in srgb, var(--surface-app), transparent 8%);
+    backdrop-filter: saturate(1.2) blur(8px);
+    -webkit-backdrop-filter: saturate(1.2) blur(8px);
+    border-bottom: 1px solid var(--divider);
+  }
+  .info-header__inner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    width: 100%;
+    max-width: var(--info-max);
+    margin: 0 auto;
+    padding: 14px var(--info-pad-x);
+  }
+  .info-header__nav {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    margin-left: auto;
+  }
+  .info-header__nav a {
+    font-size: 13.5px;
+    font-weight: var(--weight-semibold);
+    color: var(--text-body);
+    transition: color var(--dur-fast) var(--ease-gentle);
+  }
+  .info-header__nav a:hover {
+    color: var(--text-strong);
+  }
+  /* The way back to the app reads as a quiet bordered button at desktop. */
+  .info-toapp {
+    padding: 8px 14px;
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-pill);
+    background: var(--surface-card);
+    font-size: 13px;
+    transition: border-color var(--dur-fast) var(--ease-gentle);
+  }
+  .info-toapp:hover {
+    border-color: var(--text-subtle);
+  }
+
+  /* ---------------------------------------------------------------- index --- */
+  /* The hero row: copy on the left, the condition list on the right, with a soft
+     accent glow behind, matching the app landing's hero grammar. */
+  .info-lede {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 72px;
+    align-items: center;
+    padding-top: 44px;
+  }
+  .info-lede::before {
+    content: "";
+    position: absolute;
+    top: -240px;
+    right: -140px;
+    width: 620px;
+    height: 620px;
+    background: radial-gradient(
+      closest-side,
+      color-mix(in srgb, var(--accent), transparent 82%),
+      transparent
+    );
+    pointer-events: none;
+  }
+  .info-lede__copy,
+  .info-lede__side {
+    position: relative;
+  }
+  .info-eyebrow {
+    font-size: 13px;
+    font-weight: var(--weight-extrabold);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-accent);
+    margin-bottom: 18px;
+  }
+  .info-lede .info-title {
+    font-size: clamp(36px, 3.6vw, 52px);
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    text-wrap: balance;
+  }
+  .info-lede .info-lead {
+    font-size: 18px;
+    line-height: 1.6;
+    margin-top: 14px;
+    max-width: 460px;
+  }
+  .info-lede__extra {
+    margin-top: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+  .info-lede__cta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .info-lede__note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-subtle);
+    font-size: 13.5px;
+  }
+  .info-lede__note svg {
+    flex: none;
+  }
+
+  /* The PEP callout composes as one row: copy left, action right. */
+  .info-callout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 48px;
+    row-gap: 10px;
+    align-items: center;
+    padding: 20px 24px;
+  }
+  .info-callout > .info-row--between {
+    justify-content: flex-start;
+    gap: 12px;
+  }
+  .info-callout .info-note {
+    max-width: 72ch;
+  }
+  .info-callout__cta {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+  .info-callout .sti-btn--block {
+    width: auto;
+  }
+
+  /* Link cards (U=U, the guides) sit two across. */
+  .info-grid2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  /* The value band's cards become plain columns on the band surface. */
+  .info-valueband {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 44px;
+    align-items: start;
+  }
+  .info-valueband > .sti-card {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    border-radius: 0;
+  }
+  .info-valueband .info-cardtitle {
+    font-size: 17px;
+  }
+  .info-valueband .info-cardsub {
+    font-size: 14px;
+    margin-top: 4px;
+  }
+  .info-valueband .info-item {
+    font-size: 14px;
+  }
+
+  /* The closing call to action: copy left, the testing action right. */
+  .info-cta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px 56px;
+    padding: 32px 36px;
+    background: var(--surface-tint);
+    border: none;
+  }
+  .info-cta .info-note {
+    font-size: 16.5px;
+    line-height: 1.6;
+    max-width: 56ch;
+  }
+  .info-cta__action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .info-cta__action .sti-btn--block {
+    width: auto;
+  }
+
+  /* ------------------------------------------------------- explainer pages --- */
+  .info-detail {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 56px;
+    align-items: start;
+    padding-top: 36px;
+  }
+  .info-detail__main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+  .info-detail .info-title--page {
+    font-size: clamp(30px, 3vw, 40px);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .info-detail .info-lead--lg {
+    font-size: 17px;
+    line-height: 1.6;
+    max-width: 62ch;
+  }
+  /* The article is the reading column: book-size type on a comfortable measure. */
+  .info-detail .info-qa {
+    padding: var(--space-7);
+  }
+  .info-detail .info-qa h2 {
+    font-size: 18px;
+  }
+  .info-detail .info-qa p,
+  .info-detail .info-qa li {
+    font-size: 16px;
+    line-height: 1.65;
+    max-width: 68ch;
+  }
+  .info-detail__aside {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    position: sticky;
+    top: 84px;
+  }
+  .info-aside-cta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* ------------------------------------------------------------------ U=U --- */
+  .info-page--wide .info-hero {
+    padding: 44px 48px;
+    margin-top: 20px;
+  }
+  .info-page--wide .info-hero__title {
+    font-size: clamp(30px, 3vw, 40px);
+  }
+  .info-page--wide .info-hero__intro {
+    font-size: 16.5px;
+    max-width: 62ch;
+  }
+  .info-qa-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  .info-qa-grid .info-uu-card {
+    padding: var(--space-6);
+  }
+  .info-qa-grid .info-uu-card__q {
+    font-size: 16px;
+  }
+  .info-qa-grid .info-uu-card__a {
+    font-size: 15px;
+  }
+  .info-uu-foot {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 20px;
+    align-items: center;
+  }
+
+  /* --------------------------------------------------------------- footer --- */
+  .info-footer {
+    max-width: none;
+    padding: 0;
+    border-top: 1px solid var(--divider);
+  }
+  .info-footer__inner {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-6);
+    width: 100%;
+    max-width: var(--info-max);
+    margin: 0 auto;
+    padding: var(--space-7) var(--info-pad-x) var(--space-8);
+  }
+  .info-footer__brand {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 7px;
+  }
+  .info-footer__links {
+    justify-content: flex-start;
+    gap: 22px;
+  }
+  .info-footer__end {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    max-width: 380px;
+  }
+  .info-footer__tag {
+    text-align: right;
+  }
+  .info-footer__note {
+    display: block;
+    font-size: 12px;
+    color: var(--text-subtle);
+    line-height: var(--leading-normal);
+    text-align: right;
+  }
+}

@@ -1,5 +1,5 @@
 ---
-import type { GetStaticPaths } from "astro";
+import type { GetStaticPaths, InferGetStaticPropsType } from "astro";
 import { getCollection } from "astro:content";
 import Base from "../layouts/Base.astro";
 import Chip from "../components/Chip.astro";
@@ -8,76 +8,149 @@ import SharePage from "../components/SharePage.astro";
 import { LIBRARY as c } from "../data/library.ts";
 import { RESOURCES } from "../data/resources.ts";
 
-// One page per condition explainer, at the root (info.sti.care/gonorrhea). The
-// filename is the slug. Ported from the app's Detail.
+// One page per condition explainer and per guide, all at the root
+// (info.sti.care/gonorrhea, info.sti.care/testing). The filename is the slug. On
+// a phone everything stacks; at desktop the article is the reading column and
+// the practical pieces (how to test, when to see a clinician, the testing
+// action, share) sit in a sticky aside.
 export const getStaticPaths = (async () => {
   const conditions = await getCollection("conditions");
-  return conditions.map((entry) => ({
-    params: { slug: entry.slug },
-    props: { entry },
-  }));
-}) satisfies GetStaticPaths;
+  const guides = await getCollection("guides");
 
-const { entry } = Astro.props;
-const { Content } = await entry.render();
-const d = entry.data;
----
-
-<Base title={`${d.name} · STI basics`} description={d.intro}>
-  <div>
-    <div class="info-titlerow">
-      <h1 class="info-title" style="font-size:27px">{d.name}</h1>
-      <Chip label={d.label} tone={d.tone} />
-    </div>
-    <p class="info-lead" style="font-size:15px;color:var(--text-body)">{d.intro}</p>
-  </div>
-
-  <article class="sti-card sti-card--flat info-qa">
-    <Content />
-  </article>
-
-  <div class="sti-card sti-card--tint info-row" style="align-items:flex-start;gap:12px">
-    <span
-      class="info-tile info-tile--accent"
-      style="width:38px;height:38px;border-radius:var(--radius-sm)"
-    >
-      <Icon name="stethoscope" size={19} />
-    </span>
-    <div>
-      <div style="font-size:13.5px;font-weight:700;color:var(--text-strong)">
-        {c.howToTest}
-      </div>
-      <div class="info-note" style="margin-top:2px">{d.test}</div>
-    </div>
-  </div>
-
-  {
-    entry.slug === "hiv" && (
-      <a class="sti-card sti-card--tint info-row" href="/uu">
-        <span class="info-tile info-tile--clear" style="width:38px;height:38px;font-size:12px">
-          U=U
-        </span>
-        <span style="flex:1;font-size:14px;font-weight:600;color:var(--text-strong)">
-          {c.uuFromHiv}
-        </span>
-        <Icon name="arrowRight" size={17} style="color:var(--text-accent);flex:none" />
-      </a>
-    )
+  // Every slug across both collections and the reserved pages must be unique,
+  // so a clash can never ship silently (doc 34).
+  const seen = new Set(["uu"]);
+  for (const entry of [...conditions, ...guides]) {
+    if (seen.has(entry.slug)) {
+      throw new Error(`info route collision on /${entry.slug}`);
+    }
+    seen.add(entry.slug);
   }
 
-  <a
-    class="sti-btn sti-btn--primary sti-btn--lg sti-btn--block"
-    href={RESOURCES.clinic}
-    target="_blank"
-    rel="noopener noreferrer"
-  >
-    <span class="sti-btn__icon"><Icon name="mapPin" size={18} /></span>{
-      c.testing.findTesting
-    }
-  </a>
-  <div class="info-subnote">{c.testing.findTestingSub}</div>
+  return [
+    ...conditions.map((entry) => ({
+      params: { slug: entry.slug },
+      props: { kind: "condition" as const, entry },
+    })),
+    ...guides.map((entry) => ({
+      params: { slug: entry.slug },
+      props: { kind: "guide" as const, entry },
+    })),
+  ];
+}) satisfies GetStaticPaths;
 
-  <SharePage label={c.shareLabel} copied={c.copied} />
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+const props = Astro.props as Props;
 
-  <div class="info-disclaimer">{c.footer}</div>
+const cond = props.kind === "condition" ? props.entry : undefined;
+const guide = props.kind === "guide" ? props.entry : undefined;
+const { Content } = await props.entry.render();
+
+const pageTitle = cond?.data.name ?? guide?.data.title ?? "";
+const intro = cond?.data.intro ?? guide?.data.intro ?? "";
+const sources = cond?.data.sources ?? guide?.data.sources;
+---
+
+<Base title={`${pageTitle} · STI basics`} description={intro} wide>
+  <div class="info-section info-detail">
+    <div class="info-detail__main">
+      <div>
+        <div class="info-titlerow">
+          <h1 class="info-title info-title--page">{pageTitle}</h1>
+          {cond && <Chip label={cond.data.label} tone={cond.data.tone} />}
+        </div>
+        <p class="info-lead info-lead--lg">{intro}</p>
+      </div>
+
+      <article class="sti-card sti-card--flat info-qa">
+        <Content />
+      </article>
+
+      {
+        sources && (
+          <div class="info-sources">
+            <div class="info-sources__label">{c.sourcesLabel}</div>
+            {sources.map((s) => (
+              <a href={s.href} target="_blank" rel="noopener noreferrer">
+                {s.label}
+              </a>
+            ))}
+          </div>
+        )
+      }
+    </div>
+
+    <aside class="info-detail__aside">
+      {
+        cond && (
+          <div class="sti-card sti-card--tint info-row info-row--top">
+            <span class="info-tile info-tile--accent info-tile--sm">
+              <Icon name="stethoscope" size={19} />
+            </span>
+            <div class="info-rowbody">
+              <div class="info-rowtitle">{c.howToTest}</div>
+              <div class="info-note">{cond.data.test}</div>
+            </div>
+          </div>
+        )
+      }
+
+      {
+        cond && (
+          <div class="sti-card sti-card--flat info-facts">
+            <div class="info-rowtitle">{c.labelsTitle}</div>
+            <Chip label={cond.data.label} tone={cond.data.tone} />
+            <div class="info-note">{c.labelNotes[cond.data.tone]}</div>
+          </div>
+        )
+      }
+
+      {
+        cond?.slug === "hiv" && (
+          <a class="sti-card sti-card--tint info-row" href="/uu">
+            <span class="info-tile info-tile--clear info-tile--sm">U=U</span>
+            <span class="info-cardlink__label">{c.uuFromHiv}</span>
+            <Icon name="arrowRight" size={17} class="info-cardlink__go" />
+          </a>
+        )
+      }
+
+      <div class="sti-card sti-card--flat info-panel">
+        <div>
+          <div class="info-cardtitle">{c.clinician.title}</div>
+          <div class="info-cardsub">{c.clinician.body}</div>
+        </div>
+        {
+          c.clinician.items.map((row) => (
+            <div class="info-item">
+              <span class="info-item__icon"><Icon name="check" size={16} /></span>
+              <div>
+                <strong>{row[0]}</strong>, {row[1]}
+              </div>
+            </div>
+          ))
+        }
+      </div>
+
+      <div class="info-aside-cta">
+        <a
+          class="sti-btn sti-btn--primary sti-btn--lg sti-btn--block"
+          href={RESOURCES.clinic}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span class="sti-btn__icon"><Icon name="mapPin" size={18} /></span>{
+            c.testing.findTesting
+          }
+        </a>
+        <div class="info-subnote">{c.testing.findTestingSub}</div>
+      </div>
+
+      <SharePage label={c.shareLabel} copied={c.copied} />
+    </aside>
+  </div>
+
+  <section class="info-section">
+    <div class="info-disclaimer">{c.footer}</div>
+  </section>
 </Base>

@@ -5,6 +5,9 @@ tone: treat
 order: 5
 test: Not in a standard panel. A swab of a sore, only if you have one, so ask for it.
 intro: A very common virus. It can cause sores on the mouth, dick, or pussy. Most people who have it never know.
+sources:
+  - label: U.S. CDC, About genital herpes
+    href: https://www.cdc.gov/herpes/about/index.html
 ---
 
 ## Is it serious?

@@ -5,6 +5,9 @@ tone: none
 order: 6
 test: No simple test for most people. Ask a clinic which checks are right for you.
 intro: The most common infection from sex. Almost everyone gets it at some point. Most people never know.
+sources:
+  - label: U.S. CDC, About genital HPV infection
+    href: https://www.cdc.gov/sti/about/about-genital-hpv-infection.html
 ---
 
 ## Is it serious?

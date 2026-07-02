@@ -5,6 +5,9 @@ tone: clear
 order: 2
 test: A quick swab or a pee test. Often part of a standard panel.
 intro: A very common infection from sex. It can be in the dick, pussy, ass, or throat.
+sources:
+  - label: U.S. CDC, About chlamydia
+    href: https://www.cdc.gov/chlamydia/about/index.html
 ---
 
 ## Would I know if I had it?
