@@ -1,0 +1,46 @@
+/* Layout for the Editorial/Styleguide story only: the demo page's own frame
+   and spacing, unlayered (component-adjacent CSS is final). The pieces being
+   demoed style themselves via the .e-* grammar. */
+
+.sg {
+  width: min(92vw, 720px);
+}
+
+.sg__head-title {
+  margin-top: var(--space-3);
+}
+
+.sg__head-lead {
+  margin-top: var(--space-4);
+}
+
+.sg__section {
+  margin-top: var(--rhythm-block);
+}
+
+.sg__section-label {
+  margin-top: var(--space-3);
+}
+
+.sg__section-body {
+  margin-top: var(--space-4);
+}
+
+.sg__inline {
+  display: flex;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.sg__stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.sg__gap-sm {
+  margin-top: var(--space-2);
+}
+
+.sg__artifact-pad {
+  padding: var(--space-6);
+}
