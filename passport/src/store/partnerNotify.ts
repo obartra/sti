@@ -21,6 +21,8 @@ import {
   sha256Base64url,
   utf8ToBytes,
   bytesToUtf8,
+  bytesToBase64url,
+  base64urlToBytes,
   type Bytes,
 } from "../crypto/index.ts";
 import type { AccountBlob, ContactRecord } from "./accountBlob.ts";
@@ -35,27 +37,66 @@ import { writePing, type NotifyCapability } from "./notifyInbox.ts";
 // auto-deleted, only the default selection is bounded.
 export const NOTIFY_DEFAULT_LOOKBACK_DAYS = 183;
 
-const PING_VERSION = 1;
+// Bumped to 2 with the per-ping nonce (below). A pre-nonce v1 ping now parses to
+// null (fail-closed on the version too), which at worst costs a returning recipient
+// one missed nudge, never a wrong or a duplicated one; partner-notify is a
+// get-screened nudge, not a real-time alarm (doc 03 section 10).
+const PING_VERSION = 2;
 const PING_KIND = "partner-notify";
 
-/** A decoded partner-notify ping. Contentless by design: only its kind matters. */
+// A fresh 16-byte random nonce, carried base64url. It is NOT content: it names no
+// who/when/what, only THIS report event, so a recipient device can tell a re-poll
+// of the same delivered ping from a genuinely new one WITHOUT writing a read-marker
+// back to the server. That local dedup (swInbox.consumePartnerPing) is what lets the
+// recipient poll path stay a pure read: see the header there for why the old
+// clear-write was a recipient-identifying oracle under cover-broadcast.
+const PING_NONCE_BYTES = 16;
+
+function randomPingNonce(): string {
+  return bytesToBase64url(
+    crypto.getRandomValues(new Uint8Array(PING_NONCE_BYTES)),
+  );
+}
+
+/**
+ * A decoded partner-notify ping. Contentless by design: only its kind matters, plus
+ * an opaque per-report `nonce` used ONLY for device-local dedup (never sent as a
+ * read-marker, never carrying who/when/what).
+ */
 export interface PartnerPing {
   readonly kind: typeof PING_KIND;
+  readonly nonce: string;
 }
 
-/** Encode the fixed, contentless partner-notify ping (no who/when/what). */
+/**
+ * Encode the fixed, contentless partner-notify ping (no who/when/what) with a fresh
+ * per-call nonce. notifyOps.notifyPositive calls this ONCE per report and writes the
+ * SAME sealed bytes to every target inbox, so all recipients of one report share a
+ * nonce: that is intentional. A nonce identifies a report event, and dedup is keyed
+ * per (inboxId, nonce), so a shared nonce never links two recipients' inboxes.
+ */
 export function encodePartnerPing(): Bytes {
-  return utf8ToBytes(JSON.stringify({ v: PING_VERSION, kind: PING_KIND }));
+  return utf8ToBytes(
+    JSON.stringify({ v: PING_VERSION, kind: PING_KIND, n: randomPingNonce() }),
+  );
 }
 
-/** Decode a decrypted ping; null if it is not a well-formed partner-notify ping. */
+/**
+ * Decode a decrypted ping; null if it is not a well-formed partner-notify ping.
+ * Fail-closed on a missing, non-string, or too-short nonce so a truncated or forged
+ * ping never notifies (and never bypasses the local consumed-nonce dedup).
+ */
 export function parsePartnerPing(bytes: Bytes): PartnerPing | null {
   try {
     const o: unknown = JSON.parse(bytesToUtf8(bytes));
     if (typeof o !== "object" || o === null) return null;
     const r = o as Record<string, unknown>;
     if (r.v !== PING_VERSION || r.kind !== PING_KIND) return null;
-    return { kind: PING_KIND };
+    if (typeof r.n !== "string") return null;
+    // Decode fully so a malformed nonce throws into the fail-closed catch, and a
+    // short one (fewer than the fixed nonce bytes) is rejected outright.
+    if (base64urlToBytes(r.n).length < PING_NONCE_BYTES) return null;
+    return { kind: PING_KIND, nonce: r.n };
   } catch {
     return null;
   }
