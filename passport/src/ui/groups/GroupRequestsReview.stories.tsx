@@ -41,7 +41,7 @@ export const WithRequests: Story = {
   },
 };
 
-// No one waiting.
-export const Empty: Story = {
-  args: { group, onReview: () => Promise.resolve([]), ...actions },
-};
+// The empty state (a carded "no one is waiting to join" line) is covered by the
+// component test, not a visual story: on its own it is a small element on a large
+// blank canvas, which the baseline-regen blank-guard rejects. It renders in context
+// inside the admin group-detail view, where the surrounding screen has content.
