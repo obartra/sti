@@ -2,24 +2,28 @@
 import type { GetStaticPaths, InferGetStaticPropsType } from "astro";
 import { getCollection } from "astro:content";
 import Base from "../layouts/Base.astro";
-import Chip from "../components/Chip.astro";
 import Icon from "../components/Icon.astro";
+import StatusLabel from "../components/StatusLabel.astro";
+import FactsStrip from "../components/FactsStrip.astro";
+import Callout from "../components/Callout.astro";
+import ClinicianList from "../components/ClinicianList.astro";
+import SourceList from "../components/SourceList.astro";
 import SharePage from "../components/SharePage.astro";
 import { LIBRARY as c } from "../data/library.ts";
 import { RESOURCES } from "../data/resources.ts";
+import { SECTIONS } from "../data/sections.ts";
 
-// One page per condition explainer and per guide, all at the root
-// (info.sti.care/gonorrhea, info.sti.care/testing). The filename is the slug. On
-// a phone everything stacks; at desktop the article is the reading column and
-// the practical pieces (how to test, when to see a clinician, the testing
-// action, share) sit in a sticky aside.
+// One page per condition explainer and per guide, all at the root. Source
+// order is the phone priority order: head, the condition facts, the action,
+// the article, then the supportive pieces. At 900px the article is the
+// reading column and the action card pins beside it while it scrolls.
 export const getStaticPaths = (async () => {
   const conditions = await getCollection("conditions");
   const guides = await getCollection("guides");
 
   // Every slug across both collections and the reserved pages must be unique,
   // so a clash can never ship silently (doc 34).
-  const seen = new Set(["uu"]);
+  const seen = new Set(["uu", "styleguide"]);
   for (const entry of [...conditions, ...guides]) {
     if (seen.has(entry.slug)) {
       throw new Error(`info route collision on /${entry.slug}`);
@@ -49,122 +53,198 @@ const { Content } = await props.entry.render();
 const pageTitle = cond?.data.name ?? guide?.data.title ?? "";
 const intro = cond?.data.intro ?? guide?.data.intro ?? "";
 const sources = cond?.data.sources ?? guide?.data.sources;
+const eyebrow = cond
+  ? c.conditionEyebrow
+  : (SECTIONS.find((s) => s.id === guide?.data.topic)?.title ?? "");
+const guideCta = guide?.data.cta
+  ? { label: c.guideCtas[guide.data.cta], href: RESOURCES[guide.data.cta] }
+  : null;
 ---
 
-<Base title={`${pageTitle} · STI basics`} description={intro} wide>
-  <div class="info-section info-detail">
-    <div class="info-detail__main">
-      <div>
-        <div class="info-titlerow">
-          <h1 class="info-title info-title--page">{pageTitle}</h1>
-          {cond && <Chip label={cond.data.label} tone={cond.data.tone} />}
-        </div>
-        <p class="info-lead info-lead--lg">{intro}</p>
+<Base title={`${pageTitle} · STI basics`} description={intro}>
+  <article class="det l-frame l-grid">
+    <header class="det__head">
+      <p class="u-eyebrow">{eyebrow}</p>
+      <div class="det__titlerow">
+        <h1 class="det__title">{pageTitle}</h1>
+        {cond && <StatusLabel label={cond.data.label} tone={cond.data.tone} />}
       </div>
+      <p class="det__lead">{intro}</p>
+    </header>
 
-      <article class="sti-card sti-card--flat info-qa">
+    {
+      cond && (
+        <div class="det__facts l-zone">
+          <FactsStrip
+            test={cond.data.test}
+            label={cond.data.label}
+            tone={cond.data.tone}
+            related={cond.data.related}
+          />
+        </div>
+      )
+    }
+
+    <div class="det__cta">
+      <Callout variant="action">
+        <div class="det__ctainner">
+          {
+            guideCta && (
+              <a
+                class="sti-btn sti-btn--primary sti-btn--lg u-btn-fluid"
+                href={guideCta.href}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span class="sti-btn__icon">
+                  <Icon name="mapPin" size={18} />
+                </span>
+                {guideCta.label}
+              </a>
+            )
+          }
+          <a
+            class:list={[
+              "sti-btn",
+              "u-btn-fluid",
+              guideCta
+                ? ["sti-btn--secondary", "sti-btn--md"]
+                : ["sti-btn--primary", "sti-btn--lg"],
+            ]}
+            href={RESOURCES.clinic}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span class="sti-btn__icon"><Icon name="mapPin" size={16} /></span>{
+              c.testing.findTesting
+            }
+          </a>
+          <p class="det__ctasub u-micro">{c.testing.findTestingSub}</p>
+        </div>
+      </Callout>
+    </div>
+
+    <div class="det__prose">
+      <div class="prose">
         <Content />
-      </article>
-
+      </div>
       {
         sources && (
-          <div class="info-sources">
-            <div class="info-sources__label">{c.sourcesLabel}</div>
-            {sources.map((s) => (
-              <a href={s.href} target="_blank" rel="noopener noreferrer">
-                {s.label}
-              </a>
-            ))}
+          <div class="det__sources">
+            <SourceList label={c.sourcesLabel} sources={sources} />
           </div>
         )
       }
     </div>
 
-    <aside class="info-detail__aside">
-      {
-        cond && (
-          <div class="sti-card sti-card--tint info-row info-row--top">
-            <span class="info-tile info-tile--accent info-tile--sm">
-              <Icon name="stethoscope" size={19} />
-            </span>
-            <div class="info-rowbody">
-              <div class="info-rowtitle">{c.howToTest}</div>
-              <div class="info-note">{cond.data.test}</div>
-            </div>
-          </div>
-        )
-      }
-
-      {
-        cond && (
-          <div class="sti-card sti-card--flat info-facts">
-            <div class="info-rowtitle">{c.labelsTitle}</div>
-            <Chip label={cond.data.label} tone={cond.data.tone} />
-            <div class="info-note">{c.labelNotes[cond.data.tone]}</div>
-          </div>
-        )
-      }
-
-      {
-        cond?.data.related?.map((r) => (
-          <a class="sti-card sti-card--tint info-row" href={r.href}>
-            <span class="info-cardlink__label">{r.label}</span>
-            <Icon name="arrowRight" size={17} class="info-cardlink__go" />
-          </a>
-        ))
-      }
-
-      <div class="sti-card sti-card--flat info-panel">
-        <div>
-          <div class="info-cardtitle">{c.clinician.title}</div>
-          <div class="info-cardsub">{c.clinician.body}</div>
-        </div>
-        {
-          c.clinician.items.map((row) => (
-            <div class="info-item">
-              <span class="info-item__icon"><Icon name="check" size={16} /></span>
-              <div>
-                <strong>{row.term}</strong>, {row.sub}
-              </div>
-            </div>
-          ))
-        }
+    <aside class="det__aside">
+      <ClinicianList />
+      <div class="det__share">
+        <SharePage label={c.shareLabel} copied={c.copied} />
       </div>
-
-      <div class="info-aside-cta">
-        {
-          guide?.data.cta && (
-            <a
-              class="sti-btn sti-btn--secondary sti-btn--md sti-btn--block"
-              href={RESOURCES[guide.data.cta]}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span class="sti-btn__icon">
-                <Icon name="mapPin" size={16} />
-              </span>
-              {c.guideCtas[guide.data.cta]}
-            </a>
-          )
-        }
-        <a
-          class="sti-btn sti-btn--primary sti-btn--lg sti-btn--block"
-          href={RESOURCES.clinic}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <span class="sti-btn__icon"><Icon name="mapPin" size={18} /></span>{
-            c.testing.findTesting
-          }
-        </a>
-        <div class="info-subnote">{c.testing.findTestingSub}</div>
-      </div>
-
-      <SharePage label={c.shareLabel} copied={c.copied} />
     </aside>
-  </div>
+  </article>
 
-  <section class="info-section">
-    <div class="info-disclaimer">{c.footer}</div>
-  </section>
+  <div class="l-frame l-section">
+    <p class="det__disclaimer u-micro">{c.footer}</p>
+  </div>
 </Base>
+
+<style>
+  .det {
+    padding-top: var(--space-6);
+    row-gap: 0;
+  }
+  .det__titlerow {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    margin-top: var(--space-3);
+  }
+  .det__title {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: var(--type-title);
+    line-height: 1.12;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    color: var(--text-strong);
+    margin: 0;
+  }
+  .det__lead {
+    font-size: var(--type-lead);
+    line-height: 1.6;
+    color: var(--text-body);
+    margin: var(--space-4) 0 0;
+    max-width: 62ch;
+  }
+  .det__facts {
+    margin-top: var(--space-6);
+  }
+  .det__cta {
+    margin-top: var(--space-6);
+  }
+  .det__ctainner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .det__ctasub {
+    margin: 0;
+    text-align: center;
+  }
+  .det__prose {
+    margin-top: var(--space-7);
+  }
+  .det__sources {
+    margin-top: var(--space-7);
+    max-width: var(--measure);
+  }
+  .det__aside {
+    margin-top: var(--space-7);
+  }
+  .det__share {
+    margin-top: var(--space-5);
+    max-width: 340px;
+  }
+  .det__disclaimer {
+    text-align: center;
+    max-width: 62ch;
+    margin: 0 auto;
+  }
+
+  @media (min-width: 900px) {
+    .det {
+      padding-top: var(--space-8);
+    }
+    .det__head {
+      grid-column: 1 / 9;
+      grid-row: 1;
+    }
+    .det__facts {
+      grid-column: 1 / 13;
+      grid-row: 2;
+      margin-top: var(--space-7);
+    }
+    .det__cta {
+      grid-column: 9 / 13;
+      grid-row: 3;
+      margin-top: var(--space-7);
+      align-self: start;
+      position: sticky;
+      top: var(--header-clear);
+    }
+    .det__prose {
+      grid-column: 1 / 9;
+      grid-row: 3;
+      margin-top: var(--space-7);
+    }
+    .det__aside {
+      grid-column: 9 / 13;
+      grid-row: 4;
+      align-self: start;
+      margin-top: var(--space-7);
+    }
+  }
+</style>

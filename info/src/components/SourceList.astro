@@ -1,0 +1,52 @@
+---
+// The quiet end-of-article source links: an eyebrow and the public health
+// pages the copy is based on. Never "reviewed by"; the site claims no review.
+interface Props {
+  label: string;
+  sources: readonly { label: string; href: string }[];
+  center?: boolean;
+}
+const { label, sources, center = false } = Astro.props;
+---
+
+<div class:list={["srcs", { "srcs--center": center }]}>
+  <p class="u-eyebrow">{label}</p>
+  <ul class="srcs__list">
+    {
+      sources.map((s) => (
+        <li>
+          <a href={s.href} target="_blank" rel="noopener noreferrer">
+            {s.label}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</div>
+
+<style>
+  .srcs {
+    border-top: var(--hairline);
+    padding-top: var(--space-4);
+  }
+  .srcs__list {
+    list-style: none;
+    margin: var(--space-2) 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .srcs__list a {
+    font-size: 13px;
+    font-weight: var(--weight-semibold);
+    color: var(--text-accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .srcs--center {
+    text-align: center;
+    border-top: 0;
+    padding-top: 0;
+  }
+</style>

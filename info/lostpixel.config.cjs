@@ -28,10 +28,10 @@ const slugs = fs
   .map((f) => f.replace(/\.html$/, ""))
   .sort();
 
-// Phone and desktop widths straddling the 900px breakpoint (doc 34). Lost
-// Pixel's per-page `breakpoints` shoots a full-page capture per width and
-// suffixes the shot name (`{slug}__[w390px].png`).
-const WIDTHS = [390, 1440];
+// The 320px floor, a phone, and desktop, straddling the 900px breakpoint
+// (docs 34/36). Lost Pixel's per-page `breakpoints` shoots a full-page capture
+// per width and suffixes the shot name (`{slug}__[w390px].png`).
+const WIDTHS = [320, 390, 1440];
 
 // Absolute pixel threshold for sub-pixel antialiasing noise; real regressions
 // (recolor, layout shift) are in the thousands of pixels.

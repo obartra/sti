@@ -34,7 +34,7 @@ The whole site is the library, so pages sit at the root with no section prefix:
 - `/uu` the U=U page.
 
 Slugs from both collections share the root, so every slug across the conditions, the
-guides, and the reserved pages (`uu`, the index) must be unique. The dynamic route
+guides, and the reserved pages (`uu`, `styleguide`, the index) must be unique. The dynamic route
 throws at build time on any duplicate, so a clash can never ship silently.
 
 ### The app side
@@ -123,35 +123,23 @@ layout provides the header, a back-to-app affordance, and a footer that crosses 
 library and back to sti.care. The design-tokens directory is never edited from the
 info site; everything site-specific lives in `info/src/styles/`.
 
-### Desktop layout
+### Design language and layout
 
-The site is composed for wide screens, not a scaled-up phone column. It shares the
-app's desktop breakpoint (the 900px the desktop shell uses) and the landing's design
-grammar: 1120px max-width sections with 40px gutters, a sticky blurred header with
-the site nav, and a footer row of brand, nav, and the what-this-site-is note.
+The site runs on the editorial design language owned by
+[36-info-design-language](36-info-design-language.md): serif display headings
+over the shared sans, hairline-structured flat surfaces instead of tinted
+cards, quiet status labels instead of pill chips, a 1120px frame with a
+12-column grid at the app's shared 900px breakpoint, container queries for
+everything content-level, and cascade-layered stylesheets
+(`info/src/styles/global.css`) with per-component scoped styles. Source order
+is the phone priority order on every page; desktop repositions by grid
+placement only. Doc 36 also owns the type scale, color rules, the derived
+AA-safe status inks, the one-primary-action rule, and the `/styleguide` page.
 
-The nav is the index, the topic sections (as index anchors), and U=U, so it stays
-the same size however many guides exist. Anchor jumps clear the sticky desktop
-header via scroll-margin on the section headings; the phone header is not sticky,
-so no offset applies there.
-
-- `info/src/styles/site.css` is the phone column; `desktop.css` is one
-  `min-width: 900px` layer on top. Pages opt into the wide frame with a modifier on
-  the main column; below the breakpoint nothing in the desktop sheet applies.
-- **Index**: a hero row (the copy beside the condition list, with a soft accent
-  glow), the PEP callout as a single row with its action on the right, the titled
-  topic sections with their guide cards two across, a full-bleed value band
-  (prevention, vaccines and screening, when to see a clinician; terms link into
-  the guides that own the depth), and a closing testing call to action.
-- **Explainers and guides**: the article is the reading column (16px type on a
-  capped measure) and the practical pieces (how to test, what the label means, when
-  to see a clinician, the testing action, share) sit in a sticky aside.
-- **U=U**: a wide hero band, the questions two across, and the privacy note beside
-  the share action.
-
-Desktop-only values (the frame width, gutters, clamped display type) are local to the
-info stylesheets, the same way the app's desktop landing hardcodes its own; the
-shared tokens stay the single source for color, type, and spacing.
+The nav is the index, the topic sections (as index anchors), and U=U, so it
+stays the same size however many guides exist. Anchor jumps clear the sticky
+desktop header via scroll-margin on the section headings; the phone header is
+not sticky, so no offset applies there.
 
 ### Authority signals
 
@@ -203,6 +191,9 @@ Two behaviors are the site's only client JavaScript:
   content collection, a schema violation, or a slug collision fails.
 - **Link check.** The app's outbound links into the library are pinned to a real info
   route by a small test in the app.
+- **Style lint.** `info/scripts/style-lint.mjs` fails the build on inline
+  `style=` attributes, raw hex colors outside the theme file, and viewport
+  media queries beyond the 900px chrome breakpoint (doc 36's rules).
 - **Formatting.** The repo-root `prettier --check .` covers `info/`'s markdown,
   styles, and config.
 - **Visual baselines.** The same lost-pixel mechanism as the passport

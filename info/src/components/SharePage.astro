@@ -7,13 +7,23 @@ import Icon from "./Icon.astro";
 interface Props {
   label?: string;
   copied?: string;
+  variant?: "primary" | "secondary";
 }
-const { label = "Share this page", copied = "Link copied" } = Astro.props;
+const {
+  label = "Share this page",
+  copied = "Link copied",
+  variant = "secondary",
+} = Astro.props;
 ---
 
 <button
   type="button"
-  class="sti-btn sti-btn--secondary sti-btn--md sti-btn--block"
+  class:list={[
+    "sti-btn",
+    variant === "primary" ? "sti-btn--primary sti-btn--lg" : "sti-btn--md",
+    variant === "secondary" && "sti-btn--secondary",
+    "sti-btn--block",
+  ]}
   data-share
   data-copied={copied}
 >

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Verify visual-baselines/ exactly matches the built page corpus: one PNG per
-# dist/*.html page per breakpoint width (390 phone, 1440 desktop; lost-pixel
+# dist/*.html page per breakpoint width (320 floor, 390 phone, 1440 desktop; lost-pixel
 # names them {slug}__[w390px].png), the same corpus lostpixel.config.cjs
 # captures. Missing (page without PNG) or stale (PNG without page) fails. Same
 # mechanism as passport/scripts/check-baselines.sh.
@@ -23,7 +23,7 @@ fi
 expected=$(
   for f in dist/*.html; do
     slug="$(basename "$f" .html)"
-    printf '%s__[w390px].png\n%s__[w1440px].png\n' "$slug" "$slug"
+    printf '%s__[w320px].png\n%s__[w390px].png\n%s__[w1440px].png\n' "$slug" "$slug" "$slug"
   done | sort -u
 )
 actual=$(

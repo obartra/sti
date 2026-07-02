@@ -1,0 +1,49 @@
+---
+// A section opening: hairline rule, serif numeral (the skin's one decorative
+// accent), serif title, quiet sub. The id is the nav's anchor target.
+interface Props {
+  number?: string | undefined;
+  id?: string | undefined;
+  title: string;
+  sub?: string | undefined;
+}
+const { number, id, title, sub } = Astro.props;
+---
+
+<header class="sechead" id={id}>
+  {number && <span class="sechead__num" aria-hidden="true">{number}</span>}
+  <h2 class="sechead__title">{title}</h2>
+  {sub && <p class="sechead__sub">{sub}</p>}
+</header>
+
+<style>
+  .sechead {
+    border-top: var(--hairline);
+    padding-top: var(--space-5);
+    scroll-margin-top: var(--header-clear);
+  }
+  .sechead__num {
+    display: block;
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-accent);
+    margin-bottom: 6px;
+  }
+  .sechead__title {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: var(--type-section);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    color: var(--text-strong);
+    margin: 0;
+  }
+  .sechead__sub {
+    font-size: 14px;
+    line-height: var(--leading-normal);
+    color: var(--text-muted);
+    margin: 6px 0 0;
+    max-width: 38ch;
+  }
+</style>

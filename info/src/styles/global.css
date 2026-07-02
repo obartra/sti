@@ -1,0 +1,24 @@
+/* info.sti.care style entry (doc 36). One cascade-layer order for the whole
+   site, lowest to highest:
+
+     passport   the app's design tokens and primitives, imported verbatim and
+                READ-ONLY (that directory is synced from the design source)
+     theme      info-level tokens layered over the passport ones (the serif,
+                the editorial scale, hairlines, frame, derived status inks)
+     layout     the frame, the 12-column grid, container-query zones
+     components global component styles that cannot live in a scoped block
+                (the markdown prose body)
+     utilities  the tiny shared helpers
+
+   Astro's per-component <style> blocks are unlayered, so they beat all of
+   these by design: component-local decisions are final. Global files never
+   style component internals. */
+
+@layer passport, theme, layout, components, utilities;
+
+@import "../../../passport/src/design/index.css" layer(passport);
+@import "./fonts.css" layer(theme);
+@import "./theme.css" layer(theme);
+@import "./layout.css" layer(layout);
+@import "./prose.css" layer(components);
+@import "./utilities.css" layer(utilities);

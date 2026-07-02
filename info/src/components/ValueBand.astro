@@ -1,0 +1,141 @@
+---
+// The full-bleed prevention band: three quiet columns (ways to lower HIV risk,
+// vaccines and screening, when to see a clinician) between hairlines,
+// separated by hairlines at desktop. Buttons demote to text links here; the
+// page's one primary action lives elsewhere.
+import Icon from "./Icon.astro";
+import { LIBRARY as c } from "../data/library.ts";
+import { RESOURCES } from "../data/resources.ts";
+
+const groups = [
+  { head: c.tools, icon: "shield" as const, items: c.tools.items, link: null },
+  {
+    head: c.vax,
+    icon: "stethoscope" as const,
+    items: c.vax.items,
+    link: { label: c.vax.cta, href: RESOURCES.clinic },
+  },
+  {
+    head: c.clinician,
+    icon: "check" as const,
+    items: c.clinician.items,
+    link: null,
+  },
+];
+---
+
+<div class="band l-frame">
+  {
+    groups.map((g) => (
+      <section class="band__col">
+        <h2 class="u-eyebrow band__title">{g.head.title}</h2>
+        <p class="band__sub">{g.head.body}</p>
+        <ul class="band__items">
+          {g.items.map((row) => (
+            <li class="band__item">
+              <span class="band__icon">
+                <Icon name={g.icon} size={16} />
+              </span>
+              <span>
+                {row.href ? (
+                  <a class="band__term" href={row.href}>
+                    {row.term}
+                  </a>
+                ) : (
+                  <strong class="band__termplain">{row.term}</strong>
+                )}
+                , {row.sub}
+              </span>
+            </li>
+          ))}
+        </ul>
+        {g.link && (
+          <a
+            class="band__link"
+            href={g.link.href}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {g.link.label}
+          </a>
+        )}
+      </section>
+    ))
+  }
+</div>
+
+<style>
+  .band {
+    padding-top: var(--space-8);
+    padding-bottom: var(--space-8);
+  }
+  .band__col + .band__col {
+    border-top: var(--hairline);
+    margin-top: var(--space-6);
+    padding-top: var(--space-6);
+  }
+  .band__sub {
+    font-size: 14px;
+    line-height: var(--leading-normal);
+    color: var(--text-muted);
+    margin: var(--space-2) 0 0;
+  }
+  .band__items {
+    list-style: none;
+    margin: var(--space-4) 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .band__item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 14px;
+    line-height: var(--leading-normal);
+    color: var(--text-body);
+  }
+  .band__icon {
+    display: inline-flex;
+    flex: none;
+    margin-top: 2px;
+    color: var(--text-muted);
+  }
+  .band__term {
+    font-weight: var(--weight-semibold);
+    color: var(--text-strong);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .band__term:hover {
+    color: var(--text-accent);
+  }
+  .band__termplain {
+    color: var(--text-strong);
+  }
+  .band__link {
+    display: inline-block;
+    margin-top: var(--space-4);
+    font-size: 14px;
+    font-weight: var(--weight-semibold);
+    color: var(--text-accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  @media (min-width: 900px) {
+    .band {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      column-gap: var(--grid-gap);
+    }
+    .band__col + .band__col {
+      border-top: 0;
+      margin-top: 0;
+      padding-top: 0;
+      border-left: var(--hairline);
+      padding-left: var(--grid-gap);
+    }
+  }
+</style>

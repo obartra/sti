@@ -23,9 +23,8 @@ interface Props {
     | "calendar";
   size?: number;
   class?: string;
-  style?: string;
 }
-const { name, size = 24, class: cls, style } = Astro.props;
+const { name, size = 24, class: cls } = Astro.props;
 
 const PATHS: Record<Props["name"], string> = {
   back: '<path d="m15 18-6-6 6-6"></path>',
@@ -69,6 +68,5 @@ const PATHS: Record<Props["name"], string> = {
   stroke-linejoin="round"
   aria-hidden="true"
   class={cls}
-  style={style}
   set:html={PATHS[name]}
 ></svg>

@@ -1,18 +1,22 @@
 ---
 import { getCollection } from "astro:content";
 import Base from "../layouts/Base.astro";
-import Chip from "../components/Chip.astro";
 import Icon from "../components/Icon.astro";
+import Callout from "../components/Callout.astro";
+import ConditionTable from "../components/ConditionTable.astro";
+import GuideRow from "../components/GuideRow.astro";
+import SectionHead from "../components/SectionHead.astro";
+import ValueBand from "../components/ValueBand.astro";
 import { LIBRARY as c } from "../data/library.ts";
 import { RESOURCES } from "../data/resources.ts";
 import { SITE } from "../data/site.ts";
 import { SECTIONS } from "../data/sections.ts";
 
-// The library index. On a phone: the tappable condition list, the U=U card, and
-// the prevention / vaccine / testing framing, stacked. At desktop the same content
-// composes like the app's landing: a hero row (copy beside the condition list),
-// the PEP callout, the link-card grid, a full-bleed value band, and a closing
-// testing call to action.
+// The library index. Source order is the phone priority order: the lookup
+// (title, condition table), the one primary action, the time-critical PEP
+// callout, then the topic sections, the prevention band, and the closing
+// restatement. At 900px the hero becomes copy-beside-table and each topic
+// section becomes a title rail beside its rows.
 const conditions = (await getCollection("conditions")).sort(
   (a, b) => a.data.order - b.data.order,
 );
@@ -20,20 +24,100 @@ const guides = (await getCollection("guides")).sort(
   (a, b) => a.data.order - b.data.order,
 );
 const bySection = (id: string) => guides.filter((g) => g.data.topic === id);
+const sections = SECTIONS.filter(
+  (s) => s.id === "positive" || bySection(s.id).length > 0,
+);
 ---
 
-<Base title="STI basics" description={c.sub} wide>
-  <section class="info-section info-lede">
-    <div class="info-lede__copy">
-      <div class="info-eyebrow info-desktop">{c.eyebrow}</div>
-      <div>
-        <h1 class="info-title">{c.title}</h1>
-        <p class="info-lead">{c.sub}</p>
+<Base title="STI basics" description={c.sub}>
+  <section class="hero l-frame l-grid">
+    <div class="hero__head">
+      <p class="u-eyebrow">{c.eyebrow}</p>
+      <h1 class="hero__title">{c.title}</h1>
+      <p class="hero__lead">{c.sub}</p>
+    </div>
+    <div class="hero__side l-zone">
+      <ConditionTable conditions={conditions} eyebrow={c.conditionsLabel} />
+    </div>
+    <div class="hero__cta">
+      <a
+        class="sti-btn sti-btn--primary sti-btn--lg u-btn-fluid hero__btn"
+        href={RESOURCES.clinic}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <span class="sti-btn__icon"><Icon name="mapPin" size={18} /></span>{
+          c.testing.findTesting
+        }
+      </a>
+      <p class="hero__note u-micro">{SITE.note}</p>
+    </div>
+  </section>
+
+  <div class="l-frame l-section">
+    <Callout variant="urgent">
+      <div class="pep">
+        <div class="pep__copy">
+          <p class="pep__title">
+            {c.pep.title}
+            <span class="pep__meta">{c.pep.chip}</span>
+          </p>
+          <p class="pep__body">{c.pep.body}</p>
+        </div>
+        <a
+          class="sti-btn sti-btn--secondary sti-btn--md u-btn-fluid pep__btn"
+          href={RESOURCES.pep}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span class="sti-btn__icon"><Icon name="mapPin" size={16} /></span>{
+            c.pep.cta
+          }
+        </a>
       </div>
-      <div class="info-lede__extra info-desktop">
-        <div class="info-lede__cta">
+    </Callout>
+  </div>
+
+  {
+    sections.map((section, i) => (
+      <section class="topic l-frame l-grid l-section">
+        <div class="topic__rail">
+          <SectionHead
+            number={String(i + 1).padStart(2, "0")}
+            id={section.id}
+            title={section.title}
+            sub={section.sub}
+          />
+        </div>
+        <div class="topic__rows l-zone">
+          <div class="topic__grid">
+            {section.id === "positive" && (
+              <GuideRow href="/uu" title={c.uuCard.title} tag={c.uuCard.sub} />
+            )}
+            {bySection(section.id).map((g) => (
+              <GuideRow
+                href={`/${g.slug}`}
+                title={g.data.title}
+                tag={g.data.tag}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+    ))
+  }
+
+  <div class="l-band l-section">
+    <ValueBand />
+  </div>
+
+  <div class="l-frame l-section">
+    <Callout variant="action">
+      <div class="cta">
+        <p class="cta__copy">{c.testing.disclaimer}</p>
+        <div class="cta__action">
           <a
-            class="sti-btn sti-btn--primary sti-btn--lg"
+            class="sti-btn sti-btn--primary sti-btn--lg u-btn-fluid cta__btn"
             href={RESOURCES.clinic}
             target="_blank"
             rel="noopener noreferrer"
@@ -42,192 +126,194 @@ const bySection = (id: string) => guides.filter((g) => g.data.topic === id);
               c.testing.findTesting
             }
           </a>
-        </div>
-        <div class="info-lede__note">
-          <Icon name="stethoscope" size={15} />
-          {SITE.note}
+          <p class="cta__sub u-micro">{c.testing.findTestingSub}</p>
+          <a
+            class="cta__official"
+            href={RESOURCES.clinic}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {c.testing.official}
+          </a>
         </div>
       </div>
-    </div>
-    <div class="info-lede__side">
-      <div class="sti-card sti-card--flat info-list">
-        {
-          conditions.map((cond) => (
-            <a class="info-list__row" href={`/${cond.slug}`}>
-              <span class="info-list__name">{cond.data.name}</span>
-              <Chip label={cond.data.label} tone={cond.data.tone} />
-              <Icon name="chevron" size={17} class="info-list__chev" />
-            </a>
-          ))
-        }
-      </div>
-    </div>
-  </section>
-
-  <section class="info-section">
-    <div class="sti-card sti-card--flat info-stack info-callout">
-      <div class="info-row info-row--between">
-        <div class="info-row info-row--snug">
-          <span class="info-tile info-tile--treat info-tile--sm">
-            <Icon name="clock" size={19} />
-          </span>
-          <span class="info-cardtitle">{c.pep.title}</span>
-        </div>
-        <span class="info-pillcap">{c.pep.chip}</span>
-      </div>
-      <div class="info-note">{c.pep.body}</div>
-      <a
-        class="sti-btn sti-btn--secondary sti-btn--md sti-btn--block info-callout__cta"
-        href={RESOURCES.pep}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <span class="sti-btn__icon"><Icon name="mapPin" size={16} /></span>{c.pep.cta}
-      </a>
-    </div>
-  </section>
-
-  {
-    SECTIONS.filter(
-      (section) =>
-        section.id === "positive" || bySection(section.id).length > 0,
-    ).map((section) => (
-      <section class="info-section">
-        <div class="info-secthead" id={section.id}>
-          <h2 class="info-secthead__title">{section.title}</h2>
-          <p class="info-secthead__sub">{section.sub}</p>
-        </div>
-        <div class="info-grid2">
-          {section.id === "positive" && (
-            <a class="sti-card sti-card--tint info-row" href="/uu">
-              <span class="info-tile info-tile--clear">U=U</span>
-              <div class="info-cardlink__body">
-                <div class="info-cardtitle">{c.uuCard.title}</div>
-                <div class="info-cardsub">{c.uuCard.sub}</div>
-              </div>
-              <Icon name="chevron" size={17} class="info-list__chev" />
-            </a>
-          )}
-          {bySection(section.id).map((g) => (
-            <a class="sti-card sti-card--tint info-row" href={`/${g.slug}`}>
-              <span class="info-tile info-tile--accent">
-                <Icon name={g.data.icon} size={19} />
-              </span>
-              <div class="info-cardlink__body">
-                <div class="info-cardtitle">{g.data.title}</div>
-                <div class="info-cardsub">{g.data.tag}</div>
-              </div>
-              <Icon name="chevron" size={17} class="info-list__chev" />
-            </a>
-          ))}
-        </div>
-      </section>
-    ))
-  }
-
-  <div class="info-band">
-    <div class="info-band__inner info-valueband">
-      <div class="sti-card sti-card--flat info-panel">
-        <div>
-          <div class="info-cardtitle">{c.tools.title}</div>
-          <div class="info-cardsub">{c.tools.body}</div>
-        </div>
-        {
-          c.tools.items.map((row) => (
-            <div class="info-item">
-              <span class="info-item__icon"><Icon name="shield" size={16} /></span>
-              <div>
-                {row.href ? (
-                  <a href={row.href}>
-                    <strong>{row.term}</strong>
-                  </a>
-                ) : (
-                  <strong>{row.term}</strong>
-                )}, {row.sub}
-              </div>
-            </div>
-          ))
-        }
-      </div>
-
-      <div class="sti-card sti-card--flat info-panel">
-        <div>
-          <div class="info-cardtitle">{c.vax.title}</div>
-          <div class="info-cardsub">{c.vax.body}</div>
-        </div>
-        {
-          c.vax.items.map((row) => (
-            <div class="info-item">
-              <span class="info-item__icon"><Icon name="stethoscope" size={16} /></span>
-              <div>
-                {row.href ? (
-                  <a href={row.href}>
-                    <strong>{row.term}</strong>
-                  </a>
-                ) : (
-                  <strong>{row.term}</strong>
-                )}, {row.sub}
-              </div>
-            </div>
-          ))
-        }
-        <a
-          class="sti-btn sti-btn--secondary sti-btn--md sti-btn--block"
-          href={RESOURCES.clinic}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <span class="sti-btn__icon"><Icon name="mapPin" size={16} /></span>{c.vax.cta}
-        </a>
-      </div>
-
-      <div class="sti-card sti-card--flat info-panel">
-        <div>
-          <div class="info-cardtitle">{c.clinician.title}</div>
-          <div class="info-cardsub">{c.clinician.body}</div>
-        </div>
-        {
-          c.clinician.items.map((row) => (
-            <div class="info-item">
-              <span class="info-item__icon"><Icon name="check" size={16} /></span>
-              <div>
-                <strong>{row.term}</strong>, {row.sub}
-              </div>
-            </div>
-          ))
-        }
-      </div>
-    </div>
+    </Callout>
   </div>
 
-  <section class="info-section">
-    <div class="sti-card sti-card--flat info-panel info-cta">
-      <div class="info-note">{c.testing.disclaimer}</div>
-      <div class="info-cta__action">
-        <a
-          class="sti-btn sti-btn--primary sti-btn--lg sti-btn--block"
-          href={RESOURCES.clinic}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <span class="sti-btn__icon"><Icon name="mapPin" size={18} /></span>{
-            c.testing.findTesting
-          }
-        </a>
-        <div class="info-subnote">{c.testing.findTestingSub}</div>
-        <a
-          class="info-textlink"
-          href={RESOURCES.clinic}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {c.testing.official}
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <section class="info-section">
-    <div class="info-disclaimer">{c.footer}</div>
-  </section>
+  <div class="l-frame l-section">
+    <p class="disclaimer u-micro">{c.footer}</p>
+  </div>
 </Base>
+
+<style>
+  /* ---- hero: lookup first ---- */
+  .hero {
+    padding-top: var(--space-6);
+  }
+  .hero__title {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: var(--type-display);
+    line-height: 1.08;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    color: var(--text-strong);
+    margin: var(--space-3) 0 0;
+  }
+  .hero__lead {
+    font-size: var(--type-lead);
+    line-height: 1.6;
+    color: var(--text-body);
+    margin: var(--space-4) 0 0;
+    max-width: 46ch;
+  }
+  .hero__side {
+    margin-top: var(--space-6);
+  }
+  .hero__cta {
+    margin-top: var(--space-6);
+  }
+  .hero__note {
+    display: flex;
+    gap: 8px;
+    margin: var(--space-4) 0 0;
+    max-width: 52ch;
+  }
+
+  /* ---- the PEP callout row ---- */
+  .pep__title {
+    font-size: 16px;
+    font-weight: var(--weight-bold);
+    color: var(--text-strong);
+    margin: 0;
+  }
+  .pep__meta {
+    display: inline-block;
+    margin-left: 10px;
+    font-size: 12px;
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--status-ink-treat);
+    white-space: nowrap;
+  }
+  .pep__body {
+    font-size: 14px;
+    line-height: var(--leading-normal);
+    color: var(--text-body);
+    margin: var(--space-2) 0 0;
+    max-width: 72ch;
+  }
+  .pep__btn {
+    margin-top: var(--space-4);
+  }
+
+  /* ---- topic sections ---- */
+  .topic__rows {
+    margin-top: var(--space-4);
+  }
+  .topic__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    column-gap: var(--grid-gap);
+  }
+  @container (min-width: 560px) {
+    .topic__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  /* ---- closing CTA ---- */
+  .cta__copy {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--text-body);
+    margin: 0;
+    max-width: 56ch;
+  }
+  .cta__action {
+    margin-top: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .cta__sub {
+    margin: 0;
+    text-align: center;
+  }
+  .cta__official {
+    font-size: 13px;
+    font-weight: var(--weight-semibold);
+    color: var(--text-accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .disclaimer {
+    text-align: center;
+    max-width: 62ch;
+    margin: 0 auto;
+  }
+
+  /* ---- 900px compositions ---- */
+  @media (min-width: 900px) {
+    .hero {
+      padding-top: var(--space-8);
+      row-gap: 0;
+    }
+    .hero__head {
+      grid-column: 1 / 8;
+      grid-row: 1;
+    }
+    .hero__side {
+      grid-column: 8 / 13;
+      grid-row: 1 / 3;
+      margin-top: 0;
+    }
+    .hero__cta {
+      grid-column: 1 / 8;
+      grid-row: 2;
+      align-self: end;
+      margin-top: var(--space-6);
+    }
+    .hero__btn {
+      width: auto;
+    }
+
+    .pep {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      column-gap: var(--space-7);
+    }
+    .pep__btn {
+      width: auto;
+      margin-top: 0;
+    }
+
+    .topic__rail {
+      grid-column: 1 / 5;
+    }
+    .topic__rows {
+      grid-column: 5 / 13;
+      margin-top: 0;
+    }
+
+    .cta {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      column-gap: var(--space-8);
+    }
+    .cta__copy {
+      font-size: 16.5px;
+    }
+    .cta__action {
+      margin-top: 0;
+    }
+    .cta__action :global(.cta__btn) {
+      width: auto;
+    }
+  }
+</style>

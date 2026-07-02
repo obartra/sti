@@ -2,59 +2,137 @@
 import Base from "../layouts/Base.astro";
 import Icon from "../components/Icon.astro";
 import SharePage from "../components/SharePage.astro";
+import SourceList from "../components/SourceList.astro";
 import { UU as u } from "../data/uu.ts";
 import { LIBRARY as c } from "../data/library.ts";
 import { emph } from "../lib/emph.ts";
 
 // The U=U page: a made-to-share explainer, deliberately separate from anyone's
-// status. On a phone the hero and cards stack; at desktop the hero is a wide band
-// and the questions sit two across.
+// status. Its identity is typographic: a centered axis, the claim in serif,
+// the questions two across when the zone allows, and share as the page's one
+// primary action.
 ---
 
-<Base title="Undetectable = Untransmittable (U=U)" description={u.intro} wide>
-  <section class="info-section">
-    <div class="info-hero">
-      <span class="info-hero__label">{u.label}</span>
-      <h1 class="info-hero__title">{u.title}</h1>
-      <p class="info-hero__intro">{u.intro}</p>
-    </div>
-  </section>
+<Base title="Undetectable = Untransmittable (U=U)" description={u.intro}>
+  <div class="uu l-frame l-zone">
+    <header class="uu__head">
+      <p class="u-eyebrow uu__label">{u.label}</p>
+      <h1 class="uu__title">{u.title}</h1>
+      <p class="uu__lead">{u.intro}</p>
+    </header>
 
-  <section class="info-section">
-    <div class="info-stack info-qa-grid">
+    <div class="uu__grid">
       {
         u.qa.map((row) => (
-          <div class="sti-card info-uu-card">
-            <div class="info-uu-card__q">{row[0]}</div>
-            <div class="info-uu-card__a" set:html={emph(row[1])} />
-          </div>
+          <section class="uu__block">
+            <h2 class="uu__q">{row[0]}</h2>
+            <p class="uu__a" set:html={emph(row[1])} />
+          </section>
         ))
       }
     </div>
-  </section>
 
-  <section class="info-section info-uu-foot">
-    <div class="sti-card sti-card--tint info-row info-row--top">
-      <span class="info-row__icon">
-        <Icon name="lock" size={17} />
-      </span>
-      <div class="info-finetext">{u.privacyNote}</div>
+    <div class="uu__share">
+      <SharePage label={c.shareLabel} copied={c.copied} variant="primary" />
     </div>
 
-    <SharePage label={c.shareLabel} copied={c.copied} />
-  </section>
+    <p class="uu__privacy u-micro">
+      <span class="uu__lock"><Icon name="lock" size={14} /></span>
+      {u.privacyNote}
+    </p>
 
-  <section class="info-section">
-    <div class="info-sources info-sources--center">
-      <div class="info-sources__label">{c.sourcesLabel}</div>
-      {
-        u.sources.map((s) => (
-          <a href={s.href} target="_blank" rel="noopener noreferrer">
-            {s.label}
-          </a>
-        ))
-      }
+    <div class="uu__sources">
+      <SourceList label={c.sourcesLabel} sources={u.sources} center />
     </div>
-    <div class="info-disclaimer">{u.disclaimer}</div>
-  </section>
+
+    <p class="uu__disclaimer u-micro">{u.disclaimer}</p>
+  </div>
 </Base>
+
+<style>
+  .uu {
+    max-width: calc(720px + 2 * var(--frame-pad));
+    padding-top: var(--space-7);
+    text-align: center;
+  }
+  .uu__label {
+    color: var(--status-ink-clear);
+  }
+  .uu__title {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: var(--type-title);
+    line-height: 1.12;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    color: var(--text-strong);
+    margin: var(--space-3) 0 0;
+  }
+  .uu__lead {
+    font-size: var(--type-lead);
+    line-height: 1.6;
+    color: var(--text-body);
+    margin: var(--space-4) auto 0;
+    max-width: 46ch;
+  }
+  .uu__grid {
+    margin-top: var(--space-7);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0 var(--space-8);
+    text-align: left;
+  }
+  .uu__block {
+    border-top: var(--hairline);
+    padding: var(--space-5) 0;
+  }
+  .uu__q {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: var(--type-q);
+    line-height: 1.3;
+    color: var(--text-strong);
+    margin: 0;
+  }
+  .uu__a {
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--text-body);
+    margin: var(--space-3) 0 0;
+  }
+  .uu__a :global(strong) {
+    color: var(--text-strong);
+  }
+  .uu__share {
+    margin: var(--space-6) auto 0;
+    max-width: 340px;
+  }
+  .uu__privacy {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    justify-content: center;
+    text-align: left;
+    max-width: 52ch;
+    margin: var(--space-5) auto 0;
+  }
+  .uu__lock {
+    display: inline-flex;
+    flex: none;
+    margin-top: 2px;
+  }
+  .uu__sources {
+    margin-top: var(--space-7);
+  }
+  .uu__disclaimer {
+    text-align: center;
+    margin: var(--space-5) auto 0;
+    max-width: 62ch;
+  }
+
+  @container (min-width: 560px) {
+    .uu__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+</style>

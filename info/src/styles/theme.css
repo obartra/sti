@@ -1,0 +1,41 @@
+/* Info-level tokens (doc 36), layered over the passport tokens and never
+   redefining them. Everything here is the editorial skin's vocabulary: the
+   serif scale, the reading measure, hairlines, the frame, section rhythm, and
+   status inks derived to pass WCAG AA as small text on the warm background. */
+
+:root {
+  /* ---------------------------------------------------------------- type --- */
+  --font-serif:
+    "Source Serif 4", "Source Serif 4 Fallback", Georgia, "Times New Roman",
+    serif;
+  /* Clamps interpolate 320px -> 1120px viewports. */
+  --type-display: clamp(32px, 2.8vw + 23px, 54px); /* index h1            */
+  --type-title: clamp(27px, 1.7vw + 21px, 40px); /* article h1            */
+  --type-section: clamp(21px, 0.9vw + 18px, 28px); /* index section h2    */
+  --type-q: 20px; /* prose question h2                                    */
+  --type-lead: clamp(16px, 0.4vw + 15px, 18px);
+  --measure: 66ch;
+
+  /* ------------------------------------------------------------ surfaces --- */
+  --hairline: 1px solid var(--warm-200);
+  --hairline-strong: 1px solid var(--ink-200);
+
+  /* --------------------------------------------------------------- frame --- */
+  --frame-max: 1120px;
+  --frame-pad: clamp(16px, 5vw, 40px);
+  --grid-gap: clamp(16px, 2.5vw, 32px);
+  --header-clear: 84px; /* sticky-header scroll offset for anchors          */
+
+  /* -------------------------------------------------------------- rhythm --- */
+  --rhythm-section: clamp(48px, 5vw + 32px, 88px);
+  --rhythm-block: var(--space-6);
+
+  /* ------------------------------------------------- derived status inks --- */
+  /* The status base colors fail AA as small text on warm-50, so the label
+     word takes an ink mixed toward ink-900 (measured: clear 5.4:1, treat
+     5.7:1, none 4.9:1). The icon keeps the raw base color; the word carries
+     the meaning, so grayscale and color-blind reading is unchanged. */
+  --status-ink-clear: color-mix(in srgb, var(--clear-600) 85%, var(--ink-900));
+  --status-ink-treat: color-mix(in srgb, var(--treat-600) 60%, var(--ink-900));
+  --status-ink-none: var(--neutral-600);
+}
