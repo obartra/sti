@@ -14,6 +14,7 @@ import {
 } from "./PublicResolution.parts.tsx";
 import { Explainer } from "./PublicResolution.explainer.tsx";
 import type { AcceptReveal } from "./PublicResolution.accept.tsx";
+import "./public-resolution.css";
 
 // A2 public resolution. Faithful port of public.jsx PublicCard. Copy verbatim
 // from copy.js (publicCard). The viewer renders a resolved card, or the uniform
@@ -98,15 +99,7 @@ export function PublicResolution({
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 18,
-        width: "100%",
-        maxWidth: 600,
-      }}
-    >
+    <div className="pres">
       <BackBar onBack={onBack} />
 
       {self && <SelfBanner />}
@@ -145,20 +138,7 @@ export function PublicResolution({
 // primary actions and never competes with them.
 function ReportNameLink({ onReport }: { onReport: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onReport}
-      style={{
-        background: "none",
-        border: "none",
-        padding: 0,
-        alignSelf: "center",
-        fontSize: 12.5,
-        color: "var(--text-subtle)",
-        textDecoration: "underline",
-        cursor: "pointer",
-      }}
-    >
+    <button type="button" onClick={onReport} className="pres__report-name">
       Report this name
     </button>
   );

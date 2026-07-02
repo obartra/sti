@@ -18,7 +18,7 @@ const meta: Meta<typeof SelfPreview> = {
   },
   decorators: [
     (Story) => (
-      <div style={{ position: "relative", width: 402, padding: 20 }}>
+      <div className="spv__story-frame">
         <Story />
       </div>
     ),

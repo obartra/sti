@@ -120,6 +120,37 @@
   color: var(--text-muted);
 }
 
+/* An interactive row: button semantics on the same hairline grammar. The
+   chevron is a decorative stroke (ink-400 is allowed there, doc 36); the lead
+   icon stays muted so rows read as a quiet list, never icon tiles. */
+.e-row--action {
+  appearance: none;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.e-row--action:hover .e-row__title {
+  color: var(--text-accent);
+}
+
+.e-row__lead {
+  display: inline-flex;
+  flex: none;
+  color: var(--text-muted);
+}
+
+.e-row__trail {
+  display: inline-flex;
+  flex: none;
+  color: var(--ink-400);
+}
+
 /* ---------------------------------------------------------------- status --- */
 /* The status word: uppercase, derived AA ink, heart glyph in the raw status
    color beside it. Word plus icon is mandatory so status reads in grayscale

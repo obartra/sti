@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { CREATE_ACCOUNT_CTA } from "../../copy/canonical.ts";
 
 export const COPY = {
@@ -42,19 +41,3 @@ export const COPY = {
 // "received" too; this string is the user-facing half of that uniformity.)
 export const KNOCK_UNIFORM =
   "If this person registered, your request was sent.";
-
-export const backBtn: CSSProperties = {
-  appearance: "none",
-  border: "none",
-  background: "var(--surface-card)",
-  boxShadow: "var(--shadow-sm)",
-  width: 36,
-  height: 36,
-  borderRadius: "50%",
-  flex: "none",
-  cursor: "pointer",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  color: "var(--text-body)",
-};

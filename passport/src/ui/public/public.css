@@ -1,0 +1,41 @@
+/* Shared pieces for the public viewer surfaces (doc 37): the anxious-reader
+   template. A quiet circular back control (hairline, no shadow) and the page
+   column frame. */
+
+.pub-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.pub-headrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pub-back {
+  appearance: none;
+  border: var(--hairline-strong);
+  background: var(--surface-card);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-body);
+  flex: none;
+}
+
+.pub-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 22px;
+  line-height: 1.2;
+  color: var(--text-strong);
+}

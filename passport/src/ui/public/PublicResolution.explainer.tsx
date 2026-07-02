@@ -1,63 +1,26 @@
 import { useState } from "react";
-import { Card, Button } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
 import { Info } from "../../design/icons.tsx";
+import { cx } from "../../lib/cx.ts";
 import { COPY } from "./PublicResolution.copy.ts";
+import "./public-resolution.css";
 
-function ExplainerCard({ onClose }: { onClose: () => void }) {
+function ExplainerBlock({ onClose }: { onClose: () => void }) {
   return (
-    <Card
-      variant="flat"
-      style={{
-        marginTop: 10,
-        display: "flex",
-        flexDirection: "column",
-        gap: 14,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 15.5,
-          fontWeight: 800,
-          letterSpacing: "-0.01em",
-          color: "var(--text-strong)",
-        }}
-      >
-        {COPY.explainerTitle}
-      </div>
+    <div className="pres__explainer">
+      <div className="pres__explainer-title">{COPY.explainerTitle}</div>
       {COPY.explainer.map((row) => (
-        <div
-          key={row[0]}
-          style={{ display: "flex", flexDirection: "column", gap: 3 }}
-        >
-          <div
-            style={{
-              fontSize: 13.5,
-              fontWeight: 700,
-              color: "var(--text-strong)",
-            }}
-          >
-            {row[0]}
-          </div>
-          <div
-            style={{
-              fontSize: 13.5,
-              lineHeight: 1.55,
-              color: "var(--text-body)",
-            }}
-          >
-            {row[1]}
-          </div>
+        <div key={row[0]} className="pres__explainer-row">
+          <div className="pres__explainer-term">{row[0]}</div>
+          <div className="pres__explainer-def">{row[1]}</div>
         </div>
       ))}
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={onClose}
-        style={{ alignSelf: "flex-start" }}
-      >
-        {COPY.explainerClose}
-      </Button>
-    </Card>
+      <span className="pres__explainer-close">
+        <Button variant="secondary" size="sm" onClick={onClose}>
+          {COPY.explainerClose}
+        </Button>
+      </span>
+    </div>
   );
 }
 
@@ -71,20 +34,7 @@ export function Explainer() {
           setExplainerOpen((v) => !v);
         }}
         aria-expanded={explainerOpen}
-        style={{
-          appearance: "none",
-          border: "none",
-          background: "transparent",
-          cursor: "pointer",
-          font: "inherit",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "2px 4px",
-          fontSize: 13.5,
-          fontWeight: 700,
-          color: "var(--text-accent)",
-        }}
+        className="pres__explainer-tap"
       >
         <Info size={16} /> {COPY.explainerTap}
         <svg
@@ -96,17 +46,16 @@ export function Explainer() {
           strokeWidth="2.4"
           strokeLinecap="round"
           strokeLinejoin="round"
-          style={{
-            flex: "none",
-            transform: explainerOpen ? "rotate(180deg)" : "none",
-            transition: "transform var(--dur-fast) var(--ease-gentle)",
-          }}
+          className={cx(
+            "pres__explainer-chev",
+            explainerOpen && "pres__explainer-chev--open",
+          )}
         >
           <path d="m6 9 6 6 6-6" />
         </svg>
       </button>
       {explainerOpen && (
-        <ExplainerCard
+        <ExplainerBlock
           onClose={() => {
             setExplainerOpen(false);
           }}
