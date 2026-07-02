@@ -133,17 +133,6 @@
     "styles": 19,
     "legacy": 2
   },
-  "src/ui/desktop/DesktopFooter.tsx": {
-    "styles": 10
-  },
-  "src/ui/desktop/DesktopLanding.tsx": {
-    "styles": 1
-  },
-  "src/ui/desktop/DesktopLandingParts.tsx": {
-    "styles": 29,
-    "hex": 1,
-    "legacy": 1
-  },
   "src/ui/findable/BioMock.stories.tsx": {
     "styles": 1
   },
@@ -250,51 +239,6 @@
   },
   "src/ui/onboarding/TopBack.tsx": {
     "styles": 4
-  },
-  "src/ui/public/Alert.parts.tsx": {
-    "styles": 21,
-    "legacy": 3
-  },
-  "src/ui/public/Alert.resources.tsx": {
-    "styles": 24,
-    "legacy": 3
-  },
-  "src/ui/public/Alert.tsx": {
-    "styles": 1
-  },
-  "src/ui/public/Exposed.tsx": {
-    "styles": 8,
-    "legacy": 6
-  },
-  "src/ui/public/Landing.tsx": {
-    "styles": 21,
-    "hex": 1,
-    "legacy": 1
-  },
-  "src/ui/public/PublicResolution.accept.tsx": {
-    "styles": 15,
-    "legacy": 4
-  },
-  "src/ui/public/PublicResolution.explainer.tsx": {
-    "styles": 8,
-    "legacy": 1
-  },
-  "src/ui/public/PublicResolution.parts.tsx": {
-    "styles": 22,
-    "legacy": 4
-  },
-  "src/ui/public/PublicResolution.tsx": {
-    "styles": 2
-  },
-  "src/ui/public/Requests.tsx": {
-    "styles": 11,
-    "legacy": 2
-  },
-  "src/ui/public/SelfPreview.stories.tsx": {
-    "styles": 1
-  },
-  "src/ui/public/SelfPreview.tsx": {
-    "styles": 6
   },
   "src/ui/pwa/installScreenshots.stories.tsx": {
     "styles": 2,

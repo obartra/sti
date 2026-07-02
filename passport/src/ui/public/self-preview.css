@@ -1,0 +1,62 @@
+/* The owner's "see what others see" preview picker (doc 37): choice chips are
+   interactive controls, so they keep their pill shape, but the selected state
+   reads through the accent border and strong ink, never a tinted fill. */
+
+.spv {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.spv__label {
+  font-size: 11px;
+  font-weight: var(--weight-extrabold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.spv__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.spv__chip {
+  appearance: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: var(--radius-pill);
+  border: var(--hairline-strong);
+  background: var(--surface-card);
+  color: var(--text-strong);
+  font: inherit;
+  font-size: 13px;
+  font-weight: var(--weight-bold);
+}
+
+.spv__chip--active {
+  border: 1.5px solid var(--text-accent);
+}
+
+.spv__chip-tag {
+  font-size: 11px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-subtle);
+}
+
+.spv__none {
+  font-size: 12px;
+  color: var(--text-subtle);
+  line-height: 1.45;
+}
+
+/* Story-only frame for deterministic capture (matches the old inline wrapper). */
+.spv__story-frame {
+  position: relative;
+  width: 402px;
+  padding: 20px;
+}

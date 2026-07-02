@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { Card, Button } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
 import { ArrowRight, Back } from "../../design/icons.tsx";
-import { backBtn } from "./PublicResolution.copy.ts";
+import { cx } from "../../lib/cx.ts";
 import type { ResolvedView } from "./PublicResolution.tsx";
 import type { PendingKnock } from "../../store/index.ts";
 import { relativeDayLabel, todayEpochDay } from "../../core/clock.ts";
+import "./public.css";
+import "./requests.css";
 
 // The viewer's own list of access requests they've made (doc 13/16), the way back
 // for a logged-out viewer. On open it quietly re-checks each one: if the owner has
@@ -69,71 +71,35 @@ export function Requests({
   const today = todayEpochDay();
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-        width: "100%",
-        maxWidth: 600,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div className="pub-col">
+      <div className="pub-headrow">
         <button
           type="button"
           onClick={onBack}
           aria-label="Back"
-          style={backBtn}
+          className="pub-back"
         >
           <Back size={20} />
         </button>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 20,
-            fontWeight: 800,
-            letterSpacing: "-0.02em",
-            color: "var(--text-strong)",
-          }}
-        >
-          {COPY.title}
-        </h1>
+        <h1 className="pub-title">{COPY.title}</h1>
       </div>
 
       {requests.length === 0 ? (
-        <Card variant="tint">
-          <p
-            style={{
-              margin: 0,
-              fontSize: 14,
-              lineHeight: 1.55,
-              color: "var(--text-muted)",
-            }}
-          >
-            {COPY.empty}
-          </p>
-        </Card>
+        <p className="req__empty">{COPY.empty}</p>
       ) : (
         <>
-          <p
-            style={{
-              margin: 0,
-              fontSize: 13.5,
-              lineHeight: 1.55,
-              color: "var(--text-muted)",
-            }}
-          >
-            {COPY.intro}
-          </p>
-          {requests.map((r) => (
-            <RequestRow
-              key={r.id}
-              state={states[r.id] ?? "checking"}
-              askedLabel={relativeDayLabel(r.at, today)}
-              onOpen={() => onOpen(r.id)}
-              onForget={() => onForget(r.id)}
-            />
-          ))}
+          <p className="req__intro">{COPY.intro}</p>
+          <div>
+            {requests.map((r) => (
+              <RequestRow
+                key={r.id}
+                state={states[r.id] ?? "checking"}
+                askedLabel={relativeDayLabel(r.at, today)}
+                onOpen={() => onOpen(r.id)}
+                onForget={() => onForget(r.id)}
+              />
+            ))}
+          </div>
         </>
       )}
     </div>
@@ -153,49 +119,21 @@ function RequestRow({
 }) {
   const ready = state === "ready";
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
-        }}
-      >
-        <span
-          style={{
-            fontSize: 15,
-            fontWeight: 700,
-            color: ready ? "var(--text-strong)" : "var(--text-muted)",
-          }}
-        >
+    <div className="req__row">
+      <div className="req__row-head">
+        <span className={cx("req__state", ready && "req__state--ready")}>
           {ready ? COPY.ready : COPY.waiting}
         </span>
-        <span style={{ fontSize: 12.5, color: "var(--text-subtle)" }}>
-          {askedLabel}
-        </span>
+        <span className="req__when">{askedLabel}</span>
       </div>
       {ready && (
         <Button variant="primary" size="md" block onClick={onOpen}>
           {COPY.readyCta} <ArrowRight size={17} />
         </Button>
       )}
-      <button
-        type="button"
-        onClick={onForget}
-        style={{
-          alignSelf: "flex-start",
-          padding: 0,
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          fontSize: 12.5,
-          color: "var(--text-subtle)",
-          textDecoration: "underline",
-        }}
-      >
+      <button type="button" onClick={onForget} className="req__forget">
         {COPY.forget}
       </button>
-    </Card>
+    </div>
   );
 }

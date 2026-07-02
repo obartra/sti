@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, Button, Input } from "../../design/components/index.ts";
+import { Button, Input } from "../../design/components/index.ts";
 import { Copy, Link as LinkIcon } from "../../design/icons.tsx";
 import {
   IdentityChoiceRow,
@@ -7,6 +7,7 @@ import {
 } from "../share/ShareSheet.identity.tsx";
 import type { AvatarConfig } from "../../lib/avatars.ts";
 import type { AliasIdentity } from "../../store/index.ts";
+import "./public-resolution.css";
 
 // The accepter's per-link reveal choice (doc 15): stay anonymous (the default) or
 // show their own name, with an optional per-link face when showing the name. The
@@ -17,7 +18,7 @@ export interface AcceptReveal {
 }
 
 // The return link the inviter must open to finish the two-way link (doc 13 path A).
-// Same shape as the Connect "link ready" card: a mono URL + a copy button.
+// Same shape as the Connect "link ready" note: a mono URL + a copy button.
 function ReturnLink({ handle, url }: { handle: string; url: string }) {
   const copy = () => {
     try {
@@ -27,25 +28,11 @@ function ReturnLink({ handle, url }: { handle: string; url: string }) {
     }
   };
   return (
-    <Card
-      variant="tint"
-      style={{ display: "flex", flexDirection: "column", gap: 8 }}
-    >
-      <div
-        style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong)" }}
-      >
+    <div className="pres__done">
+      <div className="pres__done-title">
         Added. Send this link back to @{handle} so they can see you too.
       </div>
-      <div
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: 12.5,
-          color: "var(--text-strong)",
-          wordBreak: "break-all",
-        }}
-      >
-        {url.replace(/^https?:\/\//, "")}
-      </div>
+      <div className="pres__mono">{url.replace(/^https?:\/\//, "")}</div>
       <Button
         variant="secondary"
         size="sm"
@@ -54,7 +41,7 @@ function ReturnLink({ handle, url }: { handle: string; url: string }) {
       >
         Copy link to send back
       </Button>
-    </Card>
+    </div>
   );
 }
 
@@ -75,60 +62,28 @@ export function ConnectSection({
   };
   if (done) {
     return (
-      <Card
-        variant="tint"
-        style={{ display: "flex", flexDirection: "column", gap: 8 }}
-      >
-        <div
-          style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong)" }}
-        >
+      <div className="pres__done">
+        <div className="pres__done-title">
           Linked. You and @{handle} can see each other now.
         </div>
-      </Card>
+      </div>
     );
   }
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span
-          style={{
-            flex: "none",
-            width: 34,
-            height: 34,
-            borderRadius: "var(--radius-sm)",
-            background: "var(--accent-soft)",
-            color: "var(--text-accent)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+    <div className="e-card pres__knock">
+      <div className="pres__knock-head">
+        <span className="pres__knock-icon">
           <LinkIcon size={18} />
         </span>
-        <span
-          style={{
-            fontSize: 15.5,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-          }}
-        >
-          Link both ways with @{handle}
-        </span>
+        <span className="pres__knock-title">Link both ways with @{handle}</span>
       </div>
-      <p
-        style={{
-          margin: 0,
-          fontSize: 13.5,
-          lineHeight: 1.55,
-          color: "var(--text-muted)",
-        }}
-      >
+      <p className="pres__knock-body">
         They sent this link back so you can see each other&apos;s status.
       </p>
       <Button variant="primary" size="lg" block onClick={connect}>
         Connect
       </Button>
-    </Card>
+    </div>
   );
 }
 
@@ -169,41 +124,16 @@ export function AcceptInviteSection({
   if (returnUrl !== null) return <ReturnLink handle={handle} url={returnUrl} />;
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span
-          style={{
-            flex: "none",
-            width: 34,
-            height: 34,
-            borderRadius: "var(--radius-sm)",
-            background: "var(--accent-soft)",
-            color: "var(--text-accent)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+    <div className="e-card pres__knock">
+      <div className="pres__knock-head">
+        <span className="pres__knock-icon">
           <LinkIcon size={18} />
         </span>
-        <span
-          style={{
-            fontSize: 15.5,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-          }}
-        >
+        <span className="pres__knock-title">
           Add @{handle} to your contacts
         </span>
       </div>
-      <p
-        style={{
-          margin: 0,
-          fontSize: 13.5,
-          lineHeight: 1.55,
-          color: "var(--text-muted)",
-        }}
-      >
+      <p className="pres__knock-body">
         You’ll see each other&apos;s status and can alert each other. They’re
         added once you send the link back.
       </p>
@@ -227,6 +157,6 @@ export function AcceptInviteSection({
       <Button variant="primary" size="lg" block onClick={add}>
         {busy ? "Adding..." : "Add to contacts"}
       </Button>
-    </Card>
+    </div>
   );
 }
