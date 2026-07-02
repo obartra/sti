@@ -101,6 +101,13 @@ func main() {
 	// Window over which the decorrelation cover broadcast spreads its per-route
 	// wakes (doc 13 §2). Default 2 min; only matters once notify delivery is on.
 	coverWindow := max(envDuration("STI_COVER_WINDOW", 2*time.Minute), 0)
+	// Fixed wall-clock cadence of the SCHEDULED cover broadcast (doc 13 §2): the drain
+	// fires a population-wide contentless wake once per interval regardless of whether
+	// any real wake is pending, so the broadcast's timing leaks nothing about real
+	// activity. Default 6h. A non-positive value is clamped to 0 so withDefaults applies
+	// the default rather than disabling the heartbeat: the broadcast is meant to be
+	// always-on, so the conservative fallback keeps it firing.
+	coverHeartbeat := max(envDuration("STI_COVER_HEARTBEAT", 6*time.Hour), 0)
 	// Window over which a republish batch's alias overwrites are spread (doc 11), so
 	// an owner's shared cards do not all change at the same instant. Default 3 min;
 	// the status update is delayed by at most this, which is fine for a badge refresh.
@@ -154,6 +161,7 @@ func main() {
 		SensitiveWait:             sensitiveWait,
 		KnockTTL:                  knockTTL,
 		CoverWindow:               coverWindow,
+		CoverHeartbeat:            coverHeartbeat,
 		RepublishWindow:           republishWindow,
 		AdminEnabled:              adminEnabled,
 		AdminToken:                adminToken,

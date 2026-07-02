@@ -18,83 +18,131 @@ type Sender interface {
 	Send(ctx context.Context, t store.PushTarget) error
 }
 
-// drainBatch bounds how many due wakes one drain pass claims, so a backlog is
+// drainBatch bounds how many due jobs one drain pass claims, so a backlog is
 // worked down steadily rather than in one unbounded sweep.
 const drainBatch = 256
 
-// DrainSends advances the two-stage wake pipeline (doc 13 §2). With NotifyEnabled
-// false it is a no-op, and since handleNotify enqueues nothing while off, both
-// queues stay empty.
+// DrainSends advances the wake pipeline (doc 13 §2). With NotifyEnabled false it is
+// a no-op, and since handleNotify enqueues nothing while off, both queues stay empty.
 //
-// Stage 1 (fanOutCover): a real wake coming due never goes to its recipient
-// directly. Instead it fans out one cover wake per registered push route into the
-// cover queue, each at a jittered time inside CoverWindow, then drops the real
-// job. The recipient is woken only as one anonymous member of that broadcast.
+// The cover broadcast is a SCHEDULED heartbeat, not a reaction to real activity. On a
+// fixed wall-clock cadence (CoverHeartbeat) the drain fires one population-wide
+// contentless cover broadcast whether or not any real wake is pending. Because the
+// schedule is constant, the mere EXISTENCE and TIMING of a broadcast carries no
+// information about whether anyone reported: a quiet period and a busy period emit the
+// identical heartbeat. Real due-sends simply ride the next heartbeat as anonymous
+// members of the population; they no longer trigger their own broadcast.
 //
-// Stage 2 (deliverCovers): cover wakes whose time has arrived are delivered
-// contentlessly and removed. Failed deliveries are retained for the next pass.
+// This drain does three things, in order:
 //
-// With intake on but NO Sender configured, fanOutCover still runs and reclaims the
-// queued real jobs (so send_queue can never grow unbounded), but it skips the cover
-// broadcast (there is no transport to deliver), and deliverCovers is skipped so
-// s.sender is never dereferenced nil.
+//	scrubDueSends: consume the real wake jobs so send_queue stays bounded. A real job
+//	no longer decides whether a broadcast happens, so it is just dropped; its recipient
+//	is a registered push route and is woken by the next heartbeat like everyone else.
+//	This is also the fail-closed reclaim when no Sender is configured.
 //
-// Single-process: read, deliver, delete, with no claim step, which is correct for
-// the one background loop that calls this.
+//	fanOutHeartbeat (only when a heartbeat is due AND a Sender exists): schedule one
+//	cover wake per registered push route, each jittered inside CoverWindow.
+//
+//	deliverCovers (only with a Sender): deliver cover wakes whose time has arrived.
+//
+// With intake on but NO Sender configured, scrubDueSends still reclaims the queued real
+// jobs (so send_queue can never grow unbounded), but no heartbeat covers are emitted
+// (there is no transport to deliver) and deliverCovers is skipped so s.sender is never
+// dereferenced nil. A box with no keys wakes no one.
+//
+// Single-process: read, deliver, delete, with no claim step, which is correct for the
+// one background loop that calls this. The heartbeat cursor (heartbeatDue) is likewise
+// touched only by that single loop, so it needs no lock.
 func (s *Server) DrainSends(ctx context.Context, now int64) {
 	if !s.cfg.NotifyEnabled {
 		return
 	}
-	s.fanOutCover(ctx, now)
-	if s.sender != nil {
-		s.deliverCovers(ctx, now)
+	// Real due-sends are consumed but no longer trigger anything. Removing the old
+	// anyReal broadcast trigger is what makes a junk/unregistered token wake nobody
+	// ever: broadcasts are purely scheduled, so a probe cannot buy a broadcast at any
+	// price. This runs with or without a Sender, so the queue is always reclaimed.
+	s.scrubDueSends(ctx, now)
+	if s.sender == nil {
+		// Intake is on but no Web Push transport is configured, so a cover broadcast
+		// could never be delivered. Emit none and never dereference the nil sender; the
+		// queue was already reclaimed above.
+		return
 	}
+	// Scheduled decoy heartbeat: fire a population-wide cover broadcast on the fixed
+	// wall-clock cadence, independent of real activity, so its timing leaks nothing.
+	if s.heartbeatDue(now) {
+		s.fanOutHeartbeat(ctx, now)
+	}
+	s.deliverCovers(ctx, now)
 }
 
-// fanOutCover turns every due real wake into a population-wide cover broadcast.
-// If scheduling the broadcast fails, the real jobs are left queued so a later pass
-// retries; a real wake is dropped only once its covers are safely scheduled (or
-// there is no one to wake at all, which is itself a clean drop).
+// heartbeatDue reports whether a scheduled cover broadcast is due at now, advancing
+// the internal cursor when it is. The schedule is the fixed wall-clock grid of
+// CoverHeartbeat-sized slots measured from the epoch: a broadcast fires at most once
+// per slot boundary crossed, at instants that depend ONLY on the wall clock and the
+// configured cadence, never on when the process started or whether a real wake is
+// pending. That constancy is the whole point: an observer of the broadcast learns
+// nothing about who reported or when, because the same heartbeat fires in a silent
+// window as in a busy one.
 //
-// Each queued send carries the notify TOKEN HASH (handleNotify enqueues it without
-// looking it up, so the request path is constant-time). Here, off the request path,
-// we resolve it: a broadcast fires only if at least one due token maps to a real
-// registered route. Unknown tokens (probes, or a token whose device never
-// registered push) trigger no broadcast and are simply dropped, so the constant-time
-// intake cannot be turned into a cheap way to wake the whole population.
-func (s *Server) fanOutCover(ctx context.Context, now int64) {
+// The first drain after boot only seeds the cursor (it does not fire), so a restart
+// never emits an off-grid broadcast whose timing an observer could correlate with the
+// restart; the next broadcast still lands on the same grid boundary two identically
+// configured servers would use. A stalled loop that skips several slots fires once and
+// jumps to the current slot rather than replaying every missed beat, keeping the
+// broadcast bounded.
+//
+// A non-positive cadence disables the heartbeat (no broadcasts); withDefaults keeps the
+// production value positive, so this is only reachable by a test constructing Config
+// directly.
+func (s *Server) heartbeatDue(now int64) bool {
+	hb := s.cfg.CoverHeartbeat.Milliseconds()
+	if hb <= 0 {
+		return false
+	}
+	slot := now / hb
+	if !s.coverSlotSet {
+		s.coverSlotSet = true
+		s.lastCoverSlot = slot
+		return false
+	}
+	if slot != s.lastCoverSlot {
+		s.lastCoverSlot = slot
+		return true
+	}
+	return false
+}
+
+// scrubDueSends consumes every due real wake job. A real wake no longer fans out its
+// own broadcast (the cover broadcast is scheduled, see DrainSends), so its only
+// remaining job here is to be reclaimed, bounding send_queue. The recipient is a
+// registered push route and is woken by the next scheduled heartbeat as one anonymous
+// member of the population. A read error leaves the jobs queued for the next pass; a
+// per-row delete hiccup is logged, not fatal (deleteAll reclaims it later). The batch
+// cap bounds one pass so a backlog is worked down steadily.
+func (s *Server) scrubDueSends(ctx context.Context, now int64) {
 	real, err := s.st.DueSends(ctx, now, drainBatch)
 	if err != nil {
 		s.metrics.Error(metrics.ErrJanitor)
 		s.log.Error("due sends", "err", err)
 		return
 	}
-	if len(real) == 0 {
-		return
-	}
-	if s.sender == nil {
-		// Intake is on but no Web Push transport is configured, so a cover broadcast
-		// could never be delivered. The constant-time intake already ran uniformly on
-		// the request path; here, off it, we simply reclaim the queued jobs rather than
-		// let send_queue grow forever waiting for a sender.
-		s.deleteAll(ctx, real)
-		return
-	}
-	anyReal, err := s.anyResolves(ctx, real)
-	if err != nil {
-		// A transient read failure: leave the jobs queued and retry next pass.
-		s.metrics.Error(metrics.ErrStore)
-		s.log.Error("resolve notify token", "err", err)
-		return
-	}
-	if !anyReal {
-		// All due tokens are unknown: nothing to wake. Drop them without broadcasting.
-		s.deleteAll(ctx, real)
-		return
-	}
+	s.deleteAll(ctx, real)
+}
+
+// fanOutHeartbeat schedules one contentless cover wake per registered push route, each
+// at an independently jittered instant inside CoverWindow so the broadcast is a smear,
+// not a synchronized burst. Every cover is byte-identical: there is no real-vs-decoy
+// field, so a heartbeat cover is indistinguishable from the covers a real-triggered
+// broadcast used to produce. An empty population is a clean no-op (nobody to wake).
+//
+// A store error (reading the routes, or enqueuing a cover) is logged and ends the pass:
+// the missed routes simply catch the next scheduled heartbeat. This never crashes the
+// drain loop, and because the schedule is fixed the partial result carries no timing
+// signal about real activity.
+func (s *Server) fanOutHeartbeat(ctx context.Context, now int64) {
 	routes, err := s.st.DistinctPushRoutes(ctx)
 	if err != nil {
-		// Leave the real jobs queued; without the population we cannot fan out.
 		s.metrics.Error(metrics.ErrJanitor)
 		s.log.Error("cover routes", "err", err)
 		return
@@ -110,32 +158,11 @@ func (s *Server) fanOutCover(ctx context.Context, now int64) {
 			at += rand.Int64N(window + 1)
 		}
 		if err := s.st.EnqueueCover(ctx, route, at, now); err != nil {
-			// A partial fan-out: leave the real jobs queued so the next pass redoes
-			// the whole broadcast. Duplicate contentless wakes are harmless.
 			s.metrics.Error(metrics.ErrJanitor)
 			s.log.Error("enqueue cover", "err", err)
 			return
 		}
 	}
-	// The broadcast is scheduled (or there were no push routes, nobody to wake), so
-	// the real jobs have served their only purpose: triggering it. Drop them.
-	s.deleteAll(ctx, real)
-}
-
-// anyResolves reports whether any queued send's token hash maps to a registered
-// notify route. A read error is returned so the caller can retry rather than
-// silently treating a transient failure as "no real wake".
-func (s *Server) anyResolves(ctx context.Context, sends []store.Send) (bool, error) {
-	for _, snd := range sends {
-		_, found, err := s.st.GetNotifyRoute(ctx, snd.RoutingEndpointID)
-		if err != nil {
-			return false, err
-		}
-		if found {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 // deleteAll drops every queued send by id, logging (not failing) on a hiccup: a
