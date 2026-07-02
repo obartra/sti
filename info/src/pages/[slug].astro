@@ -1,5 +1,5 @@
 ---
-import type { GetStaticPaths } from "astro";
+import type { GetStaticPaths, InferGetStaticPropsType } from "astro";
 import { getCollection } from "astro:content";
 import Base from "../layouts/Base.astro";
 import Chip from "../components/Chip.astro";
@@ -8,32 +8,58 @@ import SharePage from "../components/SharePage.astro";
 import { LIBRARY as c } from "../data/library.ts";
 import { RESOURCES } from "../data/resources.ts";
 
-// One page per condition explainer, at the root (info.sti.care/gonorrhea). The
-// filename is the slug. On a phone everything stacks; at desktop the article is
-// the reading column and the practical pieces (how to test, the testing action,
-// share) sit in a sticky aside.
+// One page per condition explainer and per guide, all at the root
+// (info.sti.care/gonorrhea, info.sti.care/testing). The filename is the slug. On
+// a phone everything stacks; at desktop the article is the reading column and
+// the practical pieces (how to test, when to see a clinician, the testing
+// action, share) sit in a sticky aside.
 export const getStaticPaths = (async () => {
   const conditions = await getCollection("conditions");
-  return conditions.map((entry) => ({
-    params: { slug: entry.slug },
-    props: { entry },
-  }));
+  const guides = await getCollection("guides");
+
+  // Every slug across both collections and the reserved pages must be unique,
+  // so a clash can never ship silently (doc 34).
+  const seen = new Set(["uu"]);
+  for (const entry of [...conditions, ...guides]) {
+    if (seen.has(entry.slug)) {
+      throw new Error(`info route collision on /${entry.slug}`);
+    }
+    seen.add(entry.slug);
+  }
+
+  return [
+    ...conditions.map((entry) => ({
+      params: { slug: entry.slug },
+      props: { kind: "condition" as const, entry },
+    })),
+    ...guides.map((entry) => ({
+      params: { slug: entry.slug },
+      props: { kind: "guide" as const, entry },
+    })),
+  ];
 }) satisfies GetStaticPaths;
 
-const { entry } = Astro.props;
-const { Content } = await entry.render();
-const d = entry.data;
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+const props = Astro.props as Props;
+
+const cond = props.kind === "condition" ? props.entry : undefined;
+const guide = props.kind === "guide" ? props.entry : undefined;
+const { Content } = await props.entry.render();
+
+const pageTitle = cond?.data.name ?? guide?.data.title ?? "";
+const intro = cond?.data.intro ?? guide?.data.intro ?? "";
+const sources = cond?.data.sources ?? guide?.data.sources;
 ---
 
-<Base title={`${d.name} · STI basics`} description={d.intro} wide>
+<Base title={`${pageTitle} · STI basics`} description={intro} wide>
   <div class="info-section info-detail">
     <div class="info-detail__main">
       <div>
         <div class="info-titlerow">
-          <h1 class="info-title info-title--page">{d.name}</h1>
-          <Chip label={d.label} tone={d.tone} />
+          <h1 class="info-title info-title--page">{pageTitle}</h1>
+          {cond && <Chip label={cond.data.label} tone={cond.data.tone} />}
         </div>
-        <p class="info-lead info-lead--lg">{d.intro}</p>
+        <p class="info-lead info-lead--lg">{intro}</p>
       </div>
 
       <article class="sti-card sti-card--flat info-qa">
@@ -41,10 +67,10 @@ const d = entry.data;
       </article>
 
       {
-        d.sources && (
+        sources && (
           <div class="info-sources">
             <div class="info-sources__label">{c.sourcesLabel}</div>
-            {d.sources.map((s) => (
+            {sources.map((s) => (
               <a href={s.href} target="_blank" rel="noopener noreferrer">
                 {s.label}
               </a>
@@ -55,24 +81,32 @@ const d = entry.data;
     </div>
 
     <aside class="info-detail__aside">
-      <div class="sti-card sti-card--tint info-row info-row--top">
-        <span class="info-tile info-tile--accent info-tile--sm">
-          <Icon name="stethoscope" size={19} />
-        </span>
-        <div class="info-rowbody">
-          <div class="info-rowtitle">{c.howToTest}</div>
-          <div class="info-note">{d.test}</div>
-        </div>
-      </div>
-
-      <div class="sti-card sti-card--flat info-facts">
-        <div class="info-rowtitle">{c.labelsTitle}</div>
-        <Chip label={d.label} tone={d.tone} />
-        <div class="info-note">{c.labelNotes[d.tone]}</div>
-      </div>
+      {
+        cond && (
+          <div class="sti-card sti-card--tint info-row info-row--top">
+            <span class="info-tile info-tile--accent info-tile--sm">
+              <Icon name="stethoscope" size={19} />
+            </span>
+            <div class="info-rowbody">
+              <div class="info-rowtitle">{c.howToTest}</div>
+              <div class="info-note">{cond.data.test}</div>
+            </div>
+          </div>
+        )
+      }
 
       {
-        entry.slug === "hiv" && (
+        cond && (
+          <div class="sti-card sti-card--flat info-facts">
+            <div class="info-rowtitle">{c.labelsTitle}</div>
+            <Chip label={cond.data.label} tone={cond.data.tone} />
+            <div class="info-note">{c.labelNotes[cond.data.tone]}</div>
+          </div>
+        )
+      }
+
+      {
+        cond?.slug === "hiv" && (
           <a class="sti-card sti-card--tint info-row" href="/uu">
             <span class="info-tile info-tile--clear info-tile--sm">U=U</span>
             <span class="info-cardlink__label">{c.uuFromHiv}</span>

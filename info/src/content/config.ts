@@ -25,4 +25,23 @@ const conditions = defineCollection({
   }),
 });
 
-export const collections = { conditions };
+// The guides: practical how-to reading (getting tested, symptoms, telling a
+// partner). One markdown file per guide under content/guides/{id}.md; the
+// filename is the URL slug, flat at the root like the conditions. Frontmatter
+// carries the page title, the short nav label, the one-line card sub for the
+// index, the icon on its index card, the sort order, the intro, and the source
+// links. The body is plain markdown sections.
+const guides = defineCollection({
+  type: "content",
+  schema: z.object({
+    title: z.string(),
+    navLabel: z.string(),
+    tag: z.string(),
+    icon: z.enum(["stethoscope", "shield", "eye", "mail", "clock", "heart"]),
+    order: z.number(),
+    intro: z.string(),
+    sources,
+  }),
+});
+
+export const collections = { conditions, guides };

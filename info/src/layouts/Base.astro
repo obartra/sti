@@ -6,6 +6,7 @@
 // wide-screen layer. A slim header links back to the app; the footer crosses the
 // library and back to sti.care. Pages composed for wide screens pass `wide`;
 // without it the main column keeps the phone width everywhere.
+import { getCollection } from "astro:content";
 import "../../../passport/src/design/index.css";
 import "../styles/site.css";
 import "../styles/desktop.css";
@@ -23,6 +24,17 @@ const {
 } = Astro.props;
 
 const APP_URL = "https://sti.care";
+
+// The nav crosses the whole site: the library index, each guide (short label
+// from its frontmatter), and U=U.
+const guides = (await getCollection("guides")).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+const nav = [
+  SITE.nav[0],
+  ...guides.map((g) => ({ label: g.data.navLabel, href: `/${g.slug}` })),
+  SITE.nav[1],
+];
 ---
 
 <!doctype html>
@@ -44,7 +56,7 @@ const APP_URL = "https://sti.care";
           <span class="info-home__tag">{SITE.tag}</span>
         </a>
         <nav class="info-header__nav">
-          {SITE.nav.map((item) => <a href={item.href}>{item.label}</a>)}
+          {nav.map((item) => <a href={item.href}>{item.label}</a>)}
         </nav>
         <a class="info-toapp" href={APP_URL}>{SITE.backToApp}</a>
       </div>
@@ -59,7 +71,7 @@ const APP_URL = "https://sti.care";
           <span class="info-home__tag">{SITE.tag}</span>
         </div>
         <nav class="info-footer__links">
-          {SITE.nav.map((item) => <a href={item.href}>{item.label}</a>)}
+          {nav.map((item) => <a href={item.href}>{item.label}</a>)}
         </nav>
         <div class="info-footer__end">
           <div class="info-footer__tag">{SITE.tagline}</div>

@@ -15,6 +15,9 @@ import { SITE } from "../data/site.ts";
 const conditions = (await getCollection("conditions")).sort(
   (a, b) => a.data.order - b.data.order,
 );
+const guides = (await getCollection("guides")).sort(
+  (a, b) => a.data.order - b.data.order,
+);
 ---
 
 <Base title="STI basics" description={c.sub} wide>
@@ -91,6 +94,20 @@ const conditions = (await getCollection("conditions")).sort(
       </div>
       <Icon name="chevron" size={17} class="info-list__chev" />
     </a>
+    {
+      guides.map((g) => (
+        <a class="sti-card sti-card--tint info-row" href={`/${g.slug}`}>
+          <span class="info-tile info-tile--accent">
+            <Icon name={g.data.icon} size={19} />
+          </span>
+          <div class="info-cardlink__body">
+            <div class="info-cardtitle">{g.data.title}</div>
+            <div class="info-cardsub">{g.data.tag}</div>
+          </div>
+          <Icon name="chevron" size={17} class="info-list__chev" />
+        </a>
+      ))
+    }
   </section>
 
   <div class="info-band">
