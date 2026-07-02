@@ -100,15 +100,17 @@ export function GroupRequestsReview({
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={sectionLbl}>{C.requestsHeading}</div>
       {requests.length === 0 ? (
-        <div
+        <Card
+          variant="flat"
           style={{
+            padding: "12px 12px",
             fontSize: 12.5,
             color: "var(--text-subtle)",
             lineHeight: 1.5,
           }}
         >
           {C.requestsEmpty}
-        </div>
+        </Card>
       ) : (
         <Card
           variant="flat"
