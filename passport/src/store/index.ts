@@ -23,6 +23,13 @@ export {
   type PendingKnockStore,
   type PendingKnock,
 } from "./pendingKnockStore.ts";
+export {
+  createGroupJoinStore,
+  browserGroupJoinStore,
+  browserForgetGroupJoins,
+  type GroupJoinStore,
+  type PendingJoin,
+} from "./groupJoinStore.ts";
 export { serializePublicCard, parsePublicCard } from "./publicCard.ts";
 export { parseAliasLink, parseScannedLink } from "./aliasLink.ts";
 export {
@@ -100,13 +107,24 @@ export {
   revokeGroupInvite,
   acceptGroupInvite,
   rejectGroupInvite,
-  pollGroupLifecycle,
   removeGroupMember,
   readGroupRoster,
   type GroupInviteResult,
   type GroupRosterView,
   type RosterMemberView,
 } from "./groupMembershipOps.ts";
+export { pollGroupLifecycle } from "./groupIngestOps.ts";
+export {
+  requestToJoin,
+  reviewJoinRequests,
+  approveJoinRequest,
+  rejectJoinRequest,
+  redeemJoinRequests,
+  leaveGroup,
+  type RequestResult,
+  type PendingRequest,
+  type JoinRequesterDeps,
+} from "./groupJoinOps.ts";
 export {
   serializeAccountBlob,
   parseAccountBlob,

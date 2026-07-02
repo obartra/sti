@@ -18,6 +18,7 @@ import {
   browserForgetRequesterSecret,
   browserForgetGrantKeys,
   browserForgetPendingKnocks,
+  browserForgetGroupJoins,
 } from "../../store/index.ts";
 
 export interface OwnerActions {
@@ -107,6 +108,7 @@ export function useOwnerActions(
     browserForgetRequesterSecret();
     browserForgetGrantKeys();
     browserForgetPendingKnocks();
+    browserForgetGroupJoins();
   }, [controller, sessionRef, setSession]);
 
   const profile = useProfileActions(controller, sessionRef, setSession);

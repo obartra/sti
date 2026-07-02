@@ -59,6 +59,13 @@ export interface GroupMembershipAccounts {
     cardId: string,
   ): Promise<AccountBlob>;
   /**
+   * Drop an entire group record from the account (doc 33, slice 4b): the member side
+   * of leave. Filters by groupId, so a group already gone is a no-op (idempotent).
+   * The server-side steps (write the leave marker, revoke the group card) run a layer
+   * up (groupJoinOps); this just forgets the local record.
+   */
+  dropGroup(root: RootKey, groupId: string): Promise<AccountBlob>;
+  /**
    * Cache the shared key `Kg` (base64url) on a member's group record once a roster
    * poll has trial-unwrapped it, so later polls skip the trial.
    */
@@ -142,6 +149,11 @@ export function groupMembershipMethods(
           members: (g.members ?? []).filter((m) => m.cardId !== cardId),
         })),
       ),
+    dropGroup: (root, groupId) =>
+      modify(root, (blob) => ({
+        ...blob,
+        groups: (blob.groups ?? []).filter((g) => g.groupId !== groupId),
+      })),
     updateGroupKgCache: (root, groupId, kg) =>
       modify(root, (blob) =>
         withGroupUpdated(blob, groupId, (g) => ({ ...g, kg })),

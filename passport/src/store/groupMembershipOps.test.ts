@@ -5,13 +5,25 @@ import {
   revokeGroupInvite,
   acceptGroupInvite,
   rejectGroupInvite,
-  pollGroupLifecycle,
   removeGroupMember,
   readGroupRoster,
 } from "./groupMembershipOps.ts";
+import { pollGroupLifecycle } from "./groupIngestOps.ts";
+import {
+  requestToJoin,
+  reviewJoinRequests,
+  approveJoinRequest,
+  rejectJoinRequest,
+  redeemJoinRequests,
+  leaveGroup,
+  type JoinRequesterDeps,
+} from "./groupJoinOps.ts";
 import { createGroup } from "./groupOps.ts";
 import { parseGroupInvite, type GroupInvite } from "./groupInvite.ts";
 import { createAccountManager, type AccountManager } from "./account.ts";
+import { createGrantKeyStore } from "./grantKeyStore.ts";
+import { createGroupJoinStore } from "./groupJoinStore.ts";
+import type { StorageLike } from "../auth/deviceStore.ts";
 import {
   serializeGroupBlob,
   parseGroupBlobWithKg,
@@ -23,11 +35,16 @@ import type {
   GroupRecord,
   PendingGroupInvite,
 } from "./accountBlob.ts";
-import type { ApiClient, VanityRegisterResult } from "../api/client.ts";
+import type {
+  ApiClient,
+  PendingKnock,
+  VanityRegisterResult,
+} from "../api/client.ts";
 import type { OwnerSession } from "./session.ts";
 import { ALIAS_PAYLOAD_SIZE, GROUP_BLOB_SIZE } from "../api/contract.ts";
 import {
   base64urlToBytes,
+  bytesToBase64url,
   randomAliasId,
   type Bytes,
 } from "../crypto/index.ts";
@@ -42,13 +59,24 @@ function must<T>(v: T | null | undefined, label: string): T {
 
 // A stateful in-memory server: alias / inbox / group-blob / account stores over Maps,
 // each read returning a random decoy on a miss (existence-uniform, like the real
-// server). Two account managers over the same api sit at distinct key-derived account
-// ids, so the admin and the invitee are genuinely separate accounts.
-function fakeServer(): { api: ApiClient; groups: Map<string, Bytes> } {
+// server). It also carries the knock + vanity-name state the request path (slice 4b)
+// needs: knock records a pending entry per id, knockReview returns them, and
+// register/resolveVanityName maps a handle to its join pointer. `aliasTokens` records
+// the write token each alias PUT bound, so the join-pointer token bind is assertable.
+// Two account managers over the same api sit at distinct key-derived account ids, so
+// the admin and the requester/invitee are genuinely separate accounts.
+function fakeServer(): {
+  api: ApiClient;
+  groups: Map<string, Bytes>;
+  aliasTokens: Map<string, string>;
+} {
   const aliases = new Map<string, Bytes>();
+  const aliasTokens = new Map<string, string>();
   const inboxes = new Map<string, Bytes>();
   const groups = new Map<string, Bytes>();
   const accounts = new Map<string, Bytes>();
+  const knocks = new Map<string, PendingKnock[]>();
+  const vanity = new Map<string, string>();
   const unused = () => {
     throw new Error("not used in this test");
   };
@@ -56,8 +84,9 @@ function fakeServer(): { api: ApiClient; groups: Map<string, Bytes> } {
   const api: ApiClient = {
     getAlias: (id) =>
       Promise.resolve(aliases.get(id) ?? decoy(ALIAS_PAYLOAD_SIZE)),
-    putAlias: (id, payload) => {
+    putAlias: (id, payload, writeToken) => {
       aliases.set(id, payload);
+      aliasTokens.set(id, writeToken);
       return Promise.resolve();
     },
     getInbox: (id) =>
@@ -87,15 +116,28 @@ function fakeServer(): { api: ApiClient; groups: Map<string, Bytes> } {
     },
     notify: unused,
     republish: unused,
-    knock: unused,
+    knock: (id, hash, pubKey) => {
+      const list = knocks.get(id) ?? [];
+      list.push(
+        pubKey ? { requesterHash: hash, pubKey } : { requesterHash: hash },
+      );
+      knocks.set(id, list);
+      return Promise.resolve();
+    },
     knockCount: unused,
-    knockReview: unused,
+    knockReview: (id) =>
+      Promise.resolve({
+        count: (knocks.get(id) ?? []).length,
+        pending: knocks.get(id) ?? [],
+      }),
     registerPush: unused,
     getVapidPublicKey: unused,
-    registerVanityName: (): Promise<VanityRegisterResult> =>
-      Promise.resolve("registered"),
+    registerVanityName: (name, aliasId): Promise<VanityRegisterResult> => {
+      vanity.set(name, aliasId);
+      return Promise.resolve("registered");
+    },
     releaseVanityName: unused,
-    resolveVanityName: unused,
+    resolveVanityName: (name) => Promise.resolve(vanity.get(name) ?? null),
     reportVanityName: unused,
     submitFeedback: unused,
     getRecoveryEnvelope: unused,
@@ -103,7 +145,52 @@ function fakeServer(): { api: ApiClient; groups: Map<string, Bytes> } {
     deleteRecoveryEnvelope: unused,
     health: unused,
   };
-  return { api, groups };
+  return { api, groups, aliasTokens };
+}
+
+// An in-memory StorageLike for the device-local requester stores.
+function memoryStorage(): StorageLike {
+  const map = new Map<string, string>();
+  return {
+    getItem: (k) => map.get(k) ?? null,
+    setItem: (k, v) => void map.set(k, v),
+    removeItem: (k) => void map.delete(k),
+  };
+}
+
+// One requester device's local capabilities (a fresh requester secret + grant key
+// store + join store), the same primitives the viewer knock path uses.
+function requesterDeps(): JoinRequesterDeps {
+  return {
+    requesterSecret: bytesToBase64url(
+      crypto.getRandomValues(new Uint8Array(32)),
+    ),
+    grantKeys: createGrantKeyStore(memoryStorage()),
+    joinStore: createGroupJoinStore(memoryStorage()),
+  };
+}
+
+// Create a PUBLIC admin group and return the admin's manager, session, groupId, and
+// the join pointer its handle resolves to.
+async function adminWithPublicGroup(api: ApiClient): Promise<{
+  accounts: AccountManager;
+  session: OwnerSession;
+  groupId: string;
+  joinPointerId: string;
+}> {
+  const { accounts, session } = await freshSession(api, "robin");
+  const created = await createGroup(api, accounts, session, {
+    handle: "book_club",
+    visibility: "public",
+    meetingKind: "recurring",
+  });
+  const group = groupOf(created.session, created.groupId);
+  return {
+    accounts,
+    session: created.session,
+    groupId: created.groupId,
+    joinPointerId: must(group.joinPointerId, "joinPointerId"),
+  };
 }
 
 async function freshSession(
@@ -377,5 +464,157 @@ describe("group membership lifecycle (doc 33, slice 4a)", () => {
     );
     expect(pendingOf(polled, admin.groupId)).toHaveLength(0);
     expect(membersOf(polled, admin.groupId)).toHaveLength(0);
+  });
+});
+
+describe("group request lifecycle (doc 33, slice 4b)", () => {
+  it("createGroup binds a write token at the public join pointer (slice-3 touch-up)", async () => {
+    const server = fakeServer();
+    const admin = await adminWithPublicGroup(server.api);
+    const group = groupOf(admin.session, admin.groupId);
+    // The join pointer now has a bound write token, so knockReview there will not
+    // 403; the pointer's payload is a pure decoy (never a card).
+    expect(server.aliasTokens.get(admin.joinPointerId)).toBe(
+      must(group.joinWriteToken, "joinWriteToken"),
+    );
+  });
+
+  it("request -> approve -> redeem -> ingest adds the requester as a member", async () => {
+    const server = fakeServer();
+    const admin = await adminWithPublicGroup(server.api);
+    const deps = requesterDeps();
+
+    // REQUEST: resolve the handle, knock at the join pointer, record locally.
+    expect(await requestToJoin(server.api, deps, "book_club")).toBe(
+      "requested",
+    );
+    expect(deps.joinStore.listPending()).toHaveLength(1);
+
+    // REVIEW: the admin sees exactly one grantable request.
+    const requests = await reviewJoinRequests(
+      server.api,
+      deps.joinStore,
+      admin.session,
+      admin.groupId,
+    );
+    expect(requests).toHaveLength(1);
+
+    // APPROVE: records a pending invite and seals the grant to the requester.
+    const approved = await approveJoinRequest(
+      server.api,
+      admin.accounts,
+      admin.session,
+      { groupId: admin.groupId, request: must(requests[0], "request") },
+    );
+    expect(pendingOf(approved, admin.groupId)).toHaveLength(1);
+
+    // REDEEM (a separate requester account): opens the grant and runs the SAME
+    // accept back-half an invited member runs, then clears the pending join.
+    const requester = await freshSession(server.api, "sam");
+    const joined = await redeemJoinRequests(
+      server.api,
+      requester.accounts,
+      deps,
+      requester.session,
+    );
+    const memberGroup = groupOf(joined, admin.groupId);
+    expect(memberGroup.isAdmin).toBe(false);
+    expect(memberGroup.kg).toBeUndefined();
+    expect(deps.joinStore.listPending()).toHaveLength(0);
+
+    // INGEST (admin, reusing the 4a accept ingest): fills a slot + grows the roster.
+    const ingested = await pollGroupLifecycle(
+      server.api,
+      admin.accounts,
+      approved,
+    );
+    expect(membersOf(ingested, admin.groupId)).toHaveLength(1);
+    const obj = await parseGroupBlobWithKg(
+      must(server.groups.get(admin.groupId), "blob"),
+      kgOf(ingested, admin.groupId),
+    );
+    expect(must(obj, "obj").roster).toHaveLength(2);
+  });
+
+  it("requestToJoin fails closed to not-found for an unknown handle", async () => {
+    const server = fakeServer();
+    const deps = requesterDeps();
+    expect(await requestToJoin(server.api, deps, "no_such_group")).toBe(
+      "not-found",
+    );
+    expect(deps.joinStore.listPending()).toHaveLength(0);
+  });
+
+  it("reject hides the request from later reviews (device-local, no server write)", async () => {
+    const server = fakeServer();
+    const admin = await adminWithPublicGroup(server.api);
+    const deps = requesterDeps();
+    await requestToJoin(server.api, deps, "book_club");
+    const before = await reviewJoinRequests(
+      server.api,
+      deps.joinStore,
+      admin.session,
+      admin.groupId,
+    );
+    expect(before).toHaveLength(1);
+
+    rejectJoinRequest(deps.joinStore, admin.session, {
+      groupId: admin.groupId,
+      requesterHash: must(before[0], "request").requesterHash,
+    });
+    const after = await reviewJoinRequests(
+      server.api,
+      deps.joinStore,
+      admin.session,
+      admin.groupId,
+    );
+    expect(after).toHaveLength(0);
+  });
+
+  it("leave writes the marker + grays the card; the admin ingest drops the member (like remove)", async () => {
+    const server = fakeServer();
+    const admin = await adminWithGroup(server.api);
+    const invited = await inviteToGroup(admin.accounts, admin.session, {
+      groupId: admin.groupId,
+    });
+    const invite = inviteFrom(invited.url);
+    const member = await freshSession(server.api, "sam");
+    const accepted = await acceptGroupInvite(
+      server.api,
+      member.accounts,
+      member.session,
+      invite,
+    );
+    const ingested = await pollGroupLifecycle(
+      server.api,
+      admin.accounts,
+      invited.session,
+    );
+    expect(membersOf(ingested, admin.groupId)).toHaveLength(1);
+
+    // LEAVE (member): write the leave marker, gray our own card, drop the record.
+    const left = await leaveGroup(
+      server.api,
+      member.accounts,
+      accepted,
+      admin.groupId,
+    );
+    expect(
+      left.blob.groups?.find((g) => g.groupId === admin.groupId),
+    ).toBeUndefined();
+
+    // INGEST (admin): the leave drops the member + slot, back to the admin alone,
+    // byte-identical to a remove.
+    const dropped = await pollGroupLifecycle(
+      server.api,
+      admin.accounts,
+      ingested,
+    );
+    expect(membersOf(dropped, admin.groupId)).toHaveLength(0);
+    const obj = await parseGroupBlobWithKg(
+      must(server.groups.get(admin.groupId), "blob"),
+      kgOf(dropped, admin.groupId),
+    );
+    expect(must(obj, "obj").roster).toHaveLength(1);
   });
 });

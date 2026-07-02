@@ -264,6 +264,40 @@ function demoGroupMembership(
   };
 }
 
+// The shared-group REQUEST + LEAVE demo methods (doc 33, slice 4b). No server, so
+// requestToJoin finds nothing (`not-found`, faithful: the demo discovers no real
+// public group), review returns no requests, and approve/reject/redeem round-trip
+// inert; leave drops the group locally, faithful to the real member-side leave.
+// Split out to keep createDemoController within its length ceiling.
+function demoGroupJoin(
+  getBlob: () => AccountBlob,
+  setBlob: (b: AccountBlob) => void,
+  session: () => Promise<OwnerSession>,
+): Pick<
+  SessionController,
+  | "requestToJoin"
+  | "reviewJoinRequests"
+  | "approveJoinRequest"
+  | "rejectJoinRequest"
+  | "redeemJoinRequests"
+  | "leaveGroup"
+> {
+  return {
+    requestToJoin: () => Promise.resolve("not-found" as const),
+    reviewJoinRequests: () => Promise.resolve([]),
+    approveJoinRequest: (s) => Promise.resolve(s),
+    rejectJoinRequest: (s) => Promise.resolve(s),
+    redeemJoinRequests: (s) => Promise.resolve(s),
+    leaveGroup: async (_s, groupId) => {
+      setBlob({
+        ...getBlob(),
+        groups: (getBlob().groups ?? []).filter((g) => g.groupId !== groupId),
+      });
+      return session();
+    },
+  };
+}
+
 /**
  * The in-memory session controller. Every method mutates a local blob and returns
  * a session; none touch the network. `resumeFromStore` returns the seeded session,
@@ -395,6 +429,7 @@ export function createDemoController(): SessionController {
     ...demoRecovery(getBlob, setBlob, session),
     ...demoGroups(getBlob, setBlob, session),
     ...demoGroupMembership(getBlob, setBlob, session),
+    ...demoGroupJoin(getBlob, setBlob, session),
     forget: () => undefined,
   };
 }

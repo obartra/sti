@@ -15,12 +15,26 @@ import {
   revokeGroupInvite,
   acceptGroupInvite,
   rejectGroupInvite,
-  pollGroupLifecycle,
   removeGroupMember,
   readGroupRoster,
   type GroupInviteResult,
   type GroupRosterView,
 } from "./groupMembershipOps.ts";
+import { pollGroupLifecycle } from "./groupIngestOps.ts";
+import {
+  requestToJoin,
+  reviewJoinRequests,
+  approveJoinRequest,
+  rejectJoinRequest,
+  redeemJoinRequests,
+  leaveGroup,
+  type JoinRequesterDeps,
+  type RequestResult,
+  type PendingRequest,
+} from "./groupJoinOps.ts";
+import { browserRequesterSecret } from "./requesterStore.ts";
+import { browserGrantKeyStore } from "./grantKeyStore.ts";
+import { browserGroupJoinStore } from "./groupJoinStore.ts";
 
 export interface GroupMembershipController {
   /**
@@ -87,12 +101,74 @@ export interface GroupMembershipController {
     session: OwnerSession,
     groupId: string,
   ): Promise<GroupRosterView>;
+  /**
+   * Request to join a public group by handle (doc 33, slice 4b): knock at its join
+   * pointer and record the request locally so a return visit can redeem an approval.
+   * `not-found` when the handle does not resolve to a public group (uniform, no
+   * leak). Session is unused (the request is device-local) but taken for symmetry.
+   */
+  requestToJoin(session: OwnerSession, handle: string): Promise<RequestResult>;
+  /**
+   * The waiting join requests for a public group the owner admins: the grantable
+   * ones, with any the admin dismissed hidden. Binds the join-pointer capability
+   * first (the slice-3 touch-up/backfill). Empty for a non-admin/non-public group.
+   */
+  reviewJoinRequests(
+    session: OwnerSession,
+    groupId: string,
+  ): Promise<PendingRequest[]>;
+  /**
+   * Approve a join request by delivering an invite over the grant channel (mint the
+   * lifecycle inbox, record the pending invite, seal the invite to the requester);
+   * the accept is then ingested via pollGroupLifecycle. A no-op when the group is
+   * full or not an admin/public group.
+   */
+  approveJoinRequest(
+    session: OwnerSession,
+    groupId: string,
+    request: PendingRequest,
+  ): Promise<OwnerSession>;
+  /**
+   * Reject a join request: hide it from future reviews. No server write (a rejection
+   * signal would be a new oracle); the requester's knock self-expires. Unchanged
+   * session.
+   */
+  rejectJoinRequest(
+    session: OwnerSession,
+    groupId: string,
+    request: PendingRequest,
+  ): Promise<OwnerSession>;
+  /**
+   * Redeem any approved join requests this device made: poll each pending join's
+   * grant slot and, on a sealed invite, run the same accept an invited member runs.
+   * Idempotent and fail-closed. Returns the session with any newly joined groups.
+   */
+  redeemJoinRequests(session: OwnerSession): Promise<OwnerSession>;
+  /**
+   * Leave a group (member self): write the leave marker to the admin<->member
+   * channel, gray out our own group card, and drop the local record. The admin drops
+   * us from the roster on their next poll, indistinguishable from a remove. A no-op
+   * when the group is unknown or the owner is its admin.
+   */
+  leaveGroup(session: OwnerSession, groupId: string): Promise<OwnerSession>;
 }
 
-/** Build the group-membership controller methods (doc 33, slice 4a). */
+/**
+ * Build the group-membership controller methods (doc 33, slices 4a + 4b): the invite
+ * side, plus the request side and leave. The request path's device-local
+ * capabilities default to the browser-backed stores (volatile in-memory when
+ * localStorage is unavailable), the same ones the backend store's viewer knock path
+ * uses, so they read the same persisted requester secret + grant keys; a test can
+ * inject an in-memory `joinDeps` instead.
+ */
 export function groupMembershipControllerMethods(
   api: ApiClient,
   accounts: AccountManager,
+  joinDeps: JoinRequesterDeps = {
+    requesterSecret: browserRequesterSecret(),
+    grantKeys: browserGrantKeyStore(),
+    joinStore: browserGroupJoinStore(),
+  },
 ): GroupMembershipController {
   return {
     inviteToGroup: (session, groupId, opts) =>
@@ -111,5 +187,21 @@ export function groupMembershipControllerMethods(
       removeGroupMember(api, accounts, session, { groupId, cardId }),
     readGroupRoster: (session, groupId) =>
       readGroupRoster(api, accounts, session, groupId),
+    requestToJoin: (_session, handle) => requestToJoin(api, joinDeps, handle),
+    reviewJoinRequests: (session, groupId) =>
+      reviewJoinRequests(api, joinDeps.joinStore, session, groupId),
+    approveJoinRequest: (session, groupId, request) =>
+      approveJoinRequest(api, accounts, session, { groupId, request }),
+    rejectJoinRequest: (session, groupId, request) =>
+      Promise.resolve(
+        rejectJoinRequest(joinDeps.joinStore, session, {
+          groupId,
+          requesterHash: request.requesterHash,
+        }),
+      ),
+    redeemJoinRequests: (session) =>
+      redeemJoinRequests(api, accounts, joinDeps, session),
+    leaveGroup: (session, groupId) =>
+      leaveGroup(api, accounts, session, groupId),
   };
 }

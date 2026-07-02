@@ -5,7 +5,10 @@ import {
   parseGroupInvite,
   encodeLifecycleAccept,
   encodeLifecycleReject,
+  encodeLifecycleLeave,
   parseLifecyclePayload,
+  encodeJoinGrant,
+  parseJoinGrant,
   type GroupInvite,
 } from "./groupInvite.ts";
 import { mintInbox, writePing, pollInbox } from "./notifyInbox.ts";
@@ -134,6 +137,20 @@ describe("group lifecycle payload codec (doc 33)", () => {
     });
   });
 
+  it("round-trips a leave (doc 33, slice 4b)", () => {
+    expect(parseLifecyclePayload(encodeLifecycleLeave())).toEqual({
+      kind: "leave",
+    });
+  });
+
+  it("a wrong inbox key fails a leave closed to null", async () => {
+    const api = fakeInboxApi();
+    const inbox = mintInbox();
+    await writePing(api, inbox, encodeLifecycleLeave());
+    const wrong = { inboxId: inbox.inboxId, key: mintInbox().key };
+    expect(await pollInbox(api, wrong)).toBeNull();
+  });
+
   it("fails closed on garbage", () => {
     expect(
       parseLifecyclePayload(new TextEncoder().encode("not json")),
@@ -175,5 +192,22 @@ describe("group lifecycle payload codec (doc 33)", () => {
     // Poll with a different key: the AEAD open fails, so it reads as empty.
     const wrong = { inboxId: inbox.inboxId, key: mintInbox().key };
     expect(await pollInbox(api, wrong)).toBeNull();
+  });
+});
+
+describe("join-grant payload codec (doc 33, slice 4b)", () => {
+  it("round-trips an invite (the same fields the URL carries)", () => {
+    const inv = invite();
+    expect(parseJoinGrant(encodeJoinGrant(inv))).toEqual(inv);
+  });
+
+  it("fails closed on garbage or a tampered payload", () => {
+    expect(parseJoinGrant(new TextEncoder().encode("not json"))).toBeNull();
+    // A well-encoded but invalid shape (a non-id groupId) fails closed too.
+    expect(
+      parseJoinGrant(
+        new TextEncoder().encode(JSON.stringify({ groupId: "short" })),
+      ),
+    ).toBeNull();
   });
 });

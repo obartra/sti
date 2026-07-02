@@ -3,6 +3,7 @@ import type { OwnerSession, SessionController } from "../../store/index.ts";
 import { browserForgetGrantKeys } from "../../store/grantKeyStore.ts";
 import { browserForgetRequesterSecret } from "../../store/requesterStore.ts";
 import { browserForgetPendingKnocks } from "../../store/pendingKnockStore.ts";
+import { browserForgetGroupJoins } from "../../store/groupJoinStore.ts";
 import { routeFromLocation, type Nav } from "./useAppRouter.ts";
 
 // The owner session plus its "stay signed in" lifecycle (doc 24): a silent resume
@@ -89,6 +90,7 @@ export function useResumableSession(
     browserForgetRequesterSecret();
     browserForgetGrantKeys();
     browserForgetPendingKnocks();
+    browserForgetGroupJoins();
     setSession(null);
     nav.jump("a1-landing", "public");
   }, [controller, nav]);
