@@ -33,20 +33,17 @@ const conditions = (await getCollection("conditions")).sort(
 
   <a class="sti-card sti-card--tint info-row" href="/uu">
     <span class="info-tile info-tile--clear">U=U</span>
-    <span style="flex:1;min-width:0">
-      <span class="info-cardtitle" style="display:block">{c.uuCard.title}</span>
-      <span class="info-cardsub" style="display:block">{c.uuCard.sub}</span>
-    </span>
+    <div class="info-cardlink__body">
+      <div class="info-cardtitle">{c.uuCard.title}</div>
+      <div class="info-cardsub">{c.uuCard.sub}</div>
+    </div>
     <Icon name="chevron" size={17} class="info-list__chev" />
   </a>
 
-  <div
-    class="sti-card sti-card--flat info-stack"
-    style="border-color: var(--status-treat-base)"
-  >
-    <div class="info-row" style="justify-content:space-between">
-      <div class="info-row" style="gap:10px">
-        <span class="info-tile info-tile--treat" style="width:38px;height:38px">
+  <div class="sti-card sti-card--flat info-stack info-callout">
+    <div class="info-row info-row--between">
+      <div class="info-row info-row--snug">
+        <span class="info-tile info-tile--treat info-tile--sm">
           <Icon name="clock" size={19} />
         </span>
         <span class="info-cardtitle">{c.pep.title}</span>
@@ -64,7 +61,7 @@ const conditions = (await getCollection("conditions")).sort(
     </a>
   </div>
 
-  <div class="sti-card sti-card--flat info-stack" style="gap:12px">
+  <div class="sti-card sti-card--flat info-panel">
     <div>
       <div class="info-cardtitle">{c.tools.title}</div>
       <div class="info-cardsub">{c.tools.body}</div>
@@ -81,7 +78,7 @@ const conditions = (await getCollection("conditions")).sort(
     }
   </div>
 
-  <div class="sti-card sti-card--flat info-stack" style="gap:12px">
+  <div class="sti-card sti-card--flat info-panel">
     <div>
       <div class="info-cardtitle">{c.vax.title}</div>
       <div class="info-cardsub">{c.vax.body}</div>
@@ -106,7 +103,7 @@ const conditions = (await getCollection("conditions")).sort(
     </a>
   </div>
 
-  <div class="sti-card sti-card--flat info-stack" style="gap:12px">
+  <div class="sti-card sti-card--flat info-panel">
     <div class="info-note">{c.testing.disclaimer}</div>
     <a
       class="sti-btn sti-btn--primary sti-btn--lg sti-btn--block"
@@ -120,10 +117,10 @@ const conditions = (await getCollection("conditions")).sort(
     </a>
     <div class="info-subnote">{c.testing.findTestingSub}</div>
     <a
+      class="info-textlink"
       href={RESOURCES.clinic}
       target="_blank"
       rel="noopener noreferrer"
-      style="text-align:center;font-size:13px;font-weight:600;color:var(--text-accent);text-decoration:underline;text-underline-offset:3px"
     >
       {c.testing.official}
     </a>

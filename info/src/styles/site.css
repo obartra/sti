@@ -68,6 +68,14 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+/* explainer pages: a bigger title, a fuller lead */
+.info-title--page {
+  font-size: 27px;
+}
+.info-lead--lg {
+  font-size: 15px;
+  color: var(--text-body);
+}
 
 /* ------------------------------------------------------------------- chip --- */
 .info-chip {
@@ -164,6 +172,31 @@
   align-items: center;
   gap: 12px;
 }
+.info-row--top {
+  align-items: flex-start;
+}
+.info-row--between {
+  justify-content: space-between;
+}
+.info-row--snug {
+  gap: 10px;
+}
+.info-row__icon {
+  color: var(--text-accent);
+  flex: none;
+  margin-top: 1px;
+}
+/* a row's text block: small bold title over a note */
+.info-rowbody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.info-rowtitle {
+  font-size: 13.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
 .info-tile {
   flex: none;
   width: 44px;
@@ -187,9 +220,30 @@
   background: var(--status-treat-bg);
   color: var(--status-treat-base);
 }
+.info-tile--sm {
+  width: 38px;
+  height: 38px;
+  font-size: 12px;
+}
 .info-tile svg {
   width: 19px;
   height: 19px;
+}
+
+/* the body of a tappable link card (tile + title/sub + chevron) */
+.info-cardlink__body {
+  flex: 1;
+  min-width: 0;
+}
+.info-cardlink__label {
+  flex: 1;
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-strong);
+}
+.info-cardlink__go {
+  color: var(--text-accent);
+  flex: none;
 }
 
 /* the small caps pill used on the PEP card */
@@ -210,6 +264,19 @@
   font-size: 13.5px;
   color: var(--text-body);
   line-height: var(--leading-normal);
+}
+.info-finetext {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-body);
+}
+.info-textlink {
+  text-align: center;
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .info-subnote {
   font-size: 12.5px;
@@ -252,6 +319,24 @@
 .info-qa strong {
   color: var(--text-strong);
 }
+.info-qa ul {
+  margin: 6px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.info-qa li {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-body);
+}
+.info-qa a {
+  color: var(--text-accent);
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 
 /* ---------------------------------------------------------------- footer --- */
 .info-footer {
@@ -288,6 +373,16 @@
   flex-direction: column;
   gap: 10px;
 }
+/* a framing card's inner stack (title block, item rows, an optional CTA) */
+.info-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* the time-critical PEP callout keeps its warm border */
+.info-callout {
+  border-color: var(--status-treat-base);
+}
 .info-hero {
   border-radius: var(--radius-lg);
   padding: 22px;
@@ -318,4 +413,21 @@
   line-height: 1.6;
   color: var(--status-clear-fg);
   opacity: 0.9;
+}
+
+/* the U=U question-and-answer cards */
+.info-uu-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.info-uu-card__q {
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+.info-uu-card__a {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-body);
 }

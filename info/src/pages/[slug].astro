@@ -26,41 +26,32 @@ const d = entry.data;
 <Base title={`${d.name} · STI basics`} description={d.intro}>
   <div>
     <div class="info-titlerow">
-      <h1 class="info-title" style="font-size:27px">{d.name}</h1>
+      <h1 class="info-title info-title--page">{d.name}</h1>
       <Chip label={d.label} tone={d.tone} />
     </div>
-    <p class="info-lead" style="font-size:15px;color:var(--text-body)">{d.intro}</p>
+    <p class="info-lead info-lead--lg">{d.intro}</p>
   </div>
 
   <article class="sti-card sti-card--flat info-qa">
     <Content />
   </article>
 
-  <div class="sti-card sti-card--tint info-row" style="align-items:flex-start;gap:12px">
-    <span
-      class="info-tile info-tile--accent"
-      style="width:38px;height:38px;border-radius:var(--radius-sm)"
-    >
+  <div class="sti-card sti-card--tint info-row info-row--top">
+    <span class="info-tile info-tile--accent info-tile--sm">
       <Icon name="stethoscope" size={19} />
     </span>
-    <div>
-      <div style="font-size:13.5px;font-weight:700;color:var(--text-strong)">
-        {c.howToTest}
-      </div>
-      <div class="info-note" style="margin-top:2px">{d.test}</div>
+    <div class="info-rowbody">
+      <div class="info-rowtitle">{c.howToTest}</div>
+      <div class="info-note">{d.test}</div>
     </div>
   </div>
 
   {
     entry.slug === "hiv" && (
       <a class="sti-card sti-card--tint info-row" href="/uu">
-        <span class="info-tile info-tile--clear" style="width:38px;height:38px;font-size:12px">
-          U=U
-        </span>
-        <span style="flex:1;font-size:14px;font-weight:600;color:var(--text-strong)">
-          {c.uuFromHiv}
-        </span>
-        <Icon name="arrowRight" size={17} style="color:var(--text-accent);flex:none" />
+        <span class="info-tile info-tile--clear info-tile--sm">U=U</span>
+        <span class="info-cardlink__label">{c.uuFromHiv}</span>
+        <Icon name="arrowRight" size={17} class="info-cardlink__go" />
       </a>
     )
   }

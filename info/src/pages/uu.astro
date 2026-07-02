@@ -20,26 +20,19 @@ import { emph } from "../lib/emph.ts";
   <div class="info-stack">
     {
       u.qa.map((row) => (
-        <div class="sti-card" style="display:flex;flex-direction:column;gap:6px">
-          <div style="font-size:15px;font-weight:700;color:var(--text-strong)">
-            {row[0]}
-          </div>
-          <div
-            style="font-size:14px;line-height:1.6;color:var(--text-body)"
-            set:html={emph(row[1])}
-          />
+        <div class="sti-card info-uu-card">
+          <div class="info-uu-card__q">{row[0]}</div>
+          <div class="info-uu-card__a" set:html={emph(row[1])} />
         </div>
       ))
     }
   </div>
 
-  <div class="sti-card sti-card--tint info-row" style="gap:12px;align-items:flex-start">
-    <span style="color:var(--text-accent);flex:none;margin-top:1px">
+  <div class="sti-card sti-card--tint info-row info-row--top">
+    <span class="info-row__icon">
       <Icon name="lock" size={17} />
     </span>
-    <div style="font-size:13px;line-height:1.55;color:var(--text-body)">
-      {u.privacyNote}
-    </div>
+    <div class="info-finetext">{u.privacyNote}</div>
   </div>
 
   <SharePage label={c.shareLabel} copied={c.copied} />
