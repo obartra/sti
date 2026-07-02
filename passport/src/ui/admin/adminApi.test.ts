@@ -1,12 +1,15 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   actOnVanityName,
+  disableAccount,
   getAdminMetrics,
   listAdminAudit,
   listAdminFeedback,
   listAdminReports,
+  lookupRecord,
   pingAdmin,
   resolveFeedback,
+  revokeAlias,
   type FetchLike,
 } from "./adminApi.ts";
 
@@ -382,6 +385,127 @@ describe("resolveFeedback", () => {
     );
     const netDown = vi.fn<FetchLike>().mockRejectedValue(new Error("offline"));
     expect(await resolveFeedback("https://api.example", "t", 1, netDown)).toBe(
+      "error",
+    );
+  });
+});
+
+describe("lookupRecord", () => {
+  it("GETs the lookup path with the bearer and returns the metadata on 200", async () => {
+    const record = {
+      alias: { exists: true, sizeBytes: 2048, updatedAt: 5 },
+      account: { exists: false, sizeBytes: 0, updatedAt: 0 },
+      inbox: { exists: false, sizeBytes: 0, updatedAt: 0 },
+    };
+    const ok = vi.fn<FetchLike>().mockResolvedValue(jsonResp(200, record));
+    expect(await lookupRecord("https://api.example", "t", "a1b2", ok)).toEqual({
+      kind: "ok",
+      record,
+    });
+    expect(ok).toHaveBeenCalledWith(
+      "https://api.example/admin/lookup/a1b2",
+      expect.objectContaining({
+        method: "GET",
+        headers: { Authorization: "Bearer t" },
+      }),
+    );
+    // The id rides the path only; the bearer stays in the header.
+    expect(ok.mock.calls.every(([url]) => !url.includes("Bearer"))).toBe(true);
+  });
+
+  it("defaults a missing namespace to not-exists (never undefined in the UI)", async () => {
+    const partial = vi
+      .fn<FetchLike>()
+      .mockResolvedValue(jsonResp(200, { account: { exists: true } }));
+    expect(
+      await lookupRecord("https://api.example", "t", "x", partial),
+    ).toEqual({
+      kind: "ok",
+      record: {
+        alias: { exists: false, sizeBytes: 0, updatedAt: 0 },
+        account: { exists: true, sizeBytes: 0, updatedAt: 0 },
+        inbox: { exists: false, sizeBytes: 0, updatedAt: 0 },
+      },
+    });
+  });
+
+  it("maps 401 to unauthorized and other failures to error", async () => {
+    const un = vi.fn<FetchLike>().mockResolvedValue(resp(401));
+    expect((await lookupRecord("https://api.example", "t", "x", un)).kind).toBe(
+      "unauthorized",
+    );
+    const five = vi.fn<FetchLike>().mockResolvedValue(resp(500));
+    expect(
+      (await lookupRecord("https://api.example", "t", "x", five)).kind,
+    ).toBe("error");
+    const netDown = vi.fn<FetchLike>().mockRejectedValue(new Error("offline"));
+    expect(
+      (await lookupRecord("https://api.example", "t", "x", netDown)).kind,
+    ).toBe("error");
+    const badBody = vi
+      .fn<FetchLike>()
+      .mockResolvedValue(new Response("not json", { status: 200 }));
+    expect(
+      (await lookupRecord("https://api.example", "t", "x", badBody)).kind,
+    ).toBe("error");
+  });
+});
+
+describe("disableAccount", () => {
+  it("POSTs the disable path with the bearer and maps 204 to ok", async () => {
+    const f = vi.fn<FetchLike>().mockResolvedValue(resp(204));
+    expect(await disableAccount("https://api.example", "t", "acc1", f)).toBe(
+      "ok",
+    );
+    expect(f).toHaveBeenCalledWith(
+      "https://api.example/admin/account/acc1/disable",
+      expect.objectContaining({
+        method: "POST",
+        headers: { Authorization: "Bearer t" },
+      }),
+    );
+  });
+
+  it("maps 401 to unauthorized, other statuses and network errors to error", async () => {
+    const un = vi.fn<FetchLike>().mockResolvedValue(resp(401));
+    expect(await disableAccount("https://api.example", "t", "a", un)).toBe(
+      "unauthorized",
+    );
+    const five = vi.fn<FetchLike>().mockResolvedValue(resp(500));
+    expect(await disableAccount("https://api.example", "t", "a", five)).toBe(
+      "error",
+    );
+    const netDown = vi.fn<FetchLike>().mockRejectedValue(new Error("offline"));
+    expect(await disableAccount("https://api.example", "t", "a", netDown)).toBe(
+      "error",
+    );
+  });
+});
+
+describe("revokeAlias", () => {
+  it("POSTs the revoke path with the bearer and maps 204 to ok", async () => {
+    const f = vi.fn<FetchLike>().mockResolvedValue(resp(204));
+    expect(await revokeAlias("https://api.example", "t", "lnk1", f)).toBe("ok");
+    expect(f).toHaveBeenCalledWith(
+      "https://api.example/admin/alias/lnk1/revoke",
+      expect.objectContaining({
+        method: "POST",
+        headers: { Authorization: "Bearer t" },
+      }),
+    );
+  });
+
+  it("maps 401 to unauthorized, other statuses and network errors to error", async () => {
+    const un = vi.fn<FetchLike>().mockResolvedValue(resp(401));
+    expect(await revokeAlias("https://api.example", "t", "l", un)).toBe(
+      "unauthorized",
+    );
+    const five = vi.fn<FetchLike>().mockResolvedValue(resp(500));
+    expect(await revokeAlias("https://api.example", "t", "l", five)).toBe(
+      "error",
+    );
+    const netDown = vi.fn<FetchLike>().mockRejectedValue(new Error("offline"));
+    expect(await revokeAlias("https://api.example", "t", "l", netDown)).toBe(
       "error",
     );
   });

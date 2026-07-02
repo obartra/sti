@@ -7,6 +7,7 @@ import type { ReviewOps } from "./ReviewPanel.tsx";
 import type { AuditOps } from "./ActivityPanel.tsx";
 import type { MetricsOps } from "./MetricsPanel.tsx";
 import type { FeedbackOps } from "./FeedbackPanel.tsx";
+import type { ManageOps } from "./ManagePanel.tsx";
 
 afterEach(() => {
   sessionStorage.clear();
@@ -53,6 +54,23 @@ const emptyFeedback: FeedbackOps = {
   resolve: () => Promise.resolve("ok"),
 };
 
+// The manage panel is idle until an operator looks up an id, so its transport is
+// never called on mount; stub it anyway so the authed shell stays server-free. The
+// panel has its own dedicated tests.
+const emptyManage: ManageOps = {
+  lookup: () =>
+    Promise.resolve({
+      kind: "ok",
+      record: {
+        alias: { exists: false, sizeBytes: 0, updatedAt: 0 },
+        account: { exists: false, sizeBytes: 0, updatedAt: 0 },
+        inbox: { exists: false, sizeBytes: 0, updatedAt: 0 },
+      },
+    }),
+  disable: () => Promise.resolve("ok"),
+  revoke: () => Promise.resolve("ok"),
+};
+
 function renderPage(
   ping: (token: string) => Promise<AdminPingResult>,
   reviewOps: ReviewOps = emptyOps,
@@ -65,6 +83,7 @@ function renderPage(
       auditOps={emptyAudit}
       metricsOps={emptyMetrics}
       feedbackOps={emptyFeedback}
+      manageOps={emptyManage}
     />,
   );
 }
@@ -157,6 +176,23 @@ describe("AdminPage", () => {
     // token is preserved, and the page never stays on the checking spinner.
     expect(await screen.findByText(/couldn't reach/i)).toBeInTheDocument();
     expect(sessionStorage.getItem(STORAGE_KEY)).toBe("tok");
+  });
+
+  it("shows the full panel set once authed", async () => {
+    sessionStorage.setItem(STORAGE_KEY, "stored-token");
+    renderPage(() => Promise.resolve("ok" as const));
+
+    // The authed shell composes every operator panel, including the A3 management one.
+    expect(
+      await screen.findByText(/operator session active/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/service metrics/i)).toBeInTheDocument();
+    expect(screen.getByText(/reported names/i)).toBeInTheDocument();
+    // The Feedback panel, keyed off its unique sub (its bare title collides with a
+    // metrics stat card of the same name).
+    expect(screen.getByText(/something wrong\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/manage records/i)).toBeInTheDocument();
+    expect(screen.getByText(/recent activity/i)).toBeInTheDocument();
   });
 
   it("locks again, clearing the stored token", async () => {
