@@ -69,6 +69,12 @@ jobs:
         shard: [1, 2, 3]
     env:
       SHARD_TOTAL: 3
+      # Capture is the whole job (the diff itself is sub-second): 4 parallel
+      # shots on the 4-vcpu runner instead of the config's conservative 2.
+      # A blank shot under contention self-heals (flakynessRetries, then the
+      # isolation re-shoot in visual-regression.sh), and the baseline diff
+      # makes any capture problem loud, never silent.
+      LOST_PIXEL_CONCURRENCY: 4
     defaults:
       run:
         working-directory: passport
@@ -92,8 +98,8 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  # The info site's capture+diff: a small corpus (each built page at a phone and
-  # a desktop width), so one job with no shards. Same pinned image, same label
+  # The info site's capture+diff: a small corpus (each built page at its three
+  # gated widths), so one job with no shards. Same pinned image, same label
   # mechanics as the passport shards.
   info-visual:
     needs: changes
@@ -108,6 +114,9 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+    env:
+      # Same capture parallelism as the passport shards, same self-healing.
+      LOST_PIXEL_CONCURRENCY: 4
     defaults:
       run:
         working-directory: info
