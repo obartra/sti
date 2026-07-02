@@ -70,7 +70,7 @@ is where the richer aggregate views live.
 
 - A token gate: enter the bearer secret; on success, the page calls a cheap `GET /admin/ping` to
   validate before showing anything.
-- **v1 panel — Findable review (doc 17 §146):** the queue of reported vanity names not auto-actioned,
+- **v1 panel: Findable review (doc 17 §146):** the queue of reported vanity names not auto-actioned,
   each with the reported name, the report reason, and two one-click actions: **Take down** (revoke →
   24h lock) or **Dismiss**. Volume is shown but never auto-acts.
 - **Something-wrong panel ([doc 35](35-something-wrong-reports.md)):** the queue of reports filed
@@ -100,23 +100,23 @@ chrome and is never linked from the app.
 
 ## Endpoints (all bearer + flag gated, rate-limited, audited)
 
-- `GET /admin/ping` — 204 if the token is valid (page gate).
-- `GET /admin/reports` — pending vanity-name reports (name, reason, count, created_at). Opaque only.
-- `GET /admin/audit` — the most recent admin actions (action verb, opaque target, timestamp), newest
+- `GET /admin/ping`: 204 if the token is valid (page gate).
+- `GET /admin/reports`: pending vanity-name reports (name, reason, count, created_at). Opaque only.
+- `GET /admin/audit`: the most recent admin actions (action verb, opaque target, timestamp), newest
   first, capped. A read, so not itself audited. The read surface for the audit log the rest of the doc
   leans on for "reconstructable"; without it the log is reachable only by querying SQLite on the box.
   Opaque only (a fixed verb + an id/name + a time), never user content.
-- `POST /admin/vanity/{name}/takedown` — revoke the name's alias mapping → 24h lock (doc 17 lifecycle).
-- `POST /admin/vanity/{name}/dismiss` — clear the report(s) without action.
+- `POST /admin/vanity/{name}/takedown`: revoke the name's alias mapping → 24h lock (doc 17 lifecycle).
+- `POST /admin/vanity/{name}/dismiss`: clear the report(s) without action.
 - `GET /admin/feedback`: open "Something wrong?" reports (id, category, note, created_at), newest
   first, capped ([doc 35](35-something-wrong-reports.md)). A read, so not itself audited. Operator-readable
   by design (the note is text the person wrote), never encrypted user content.
 - `POST /admin/feedback/{id}/resolve`: mark a report handled so it leaves the queue. Audited.
-- `POST /admin/account/{id}/disable` — working-delete the account sync blob (aliases are revoked
+- `POST /admin/account/{id}/disable`: working-delete the account sync blob (aliases are revoked
   separately, not cascaded). Shipped.
-- `POST /admin/alias/{id}/revoke` — force-remove an alias row and release any vanity name pointing at
+- `POST /admin/alias/{id}/revoke`: force-remove an alias row and release any vanity name pointing at
   it, so the id reads back as a decoy. Shipped.
-- `GET /admin/lookup/{id}` — opaque metadata for a record (existence, ciphertext byte size, last
+- `GET /admin/lookup/{id}`: opaque metadata for a record (existence, ciphertext byte size, last
   written), never content. Shipped.
 - `GET /admin/metrics`: aggregate, identifier-free service counts for the metrics panel. No
   per-account or per-id figures; a read, so not itself audited. The current totals (accounts, aliases,
@@ -134,12 +134,12 @@ Every mutation writes an audit row and returns a uniform shape; none returns pla
 
 ## Build slices
 
-1. **A1 — Auth + flag + page gate:** `STI_ADMIN_ENABLED` + `STI_ADMIN_TOKEN` (boot length floor),
+1. **A1: Auth + flag + page gate:** `STI_ADMIN_ENABLED` + `STI_ADMIN_TOKEN` (boot length floor),
    constant-time bearer middleware, rate limit, audit-log table + writer, `GET /admin/ping`, and the
    `/admin` route with the token gate. Nothing actionable yet.
-2. **A2 — Findable review:** report store + `GET /admin/reports`, the takedown/dismiss endpoints
+2. **A2: Findable review:** report store + `GET /admin/reports`, the takedown/dismiss endpoints
    (consume doc 17's lifecycle), and the review panel. This is Findable's F4 reviewer step.
-3. **A3 — Account / alias management:** disable-account + revoke-alias + opaque lookup, all within the
+3. **A3: Account / alias management:** disable-account + revoke-alias + opaque lookup, all within the
    blind-store boundary (admin.go + admin_test.go), driven from the console's management panel. The
    endpoints are live and audited. Notes from the build: disable-account deletes only the sync blob (the blind store keeps no
    account→alias link, so aliases are revoked separately, not cascaded); and alias-revoke is two
@@ -147,7 +147,7 @@ Every mutation writes an audit row and returns a uniform shape; none returns pla
    second fails the name briefly maps to a dead id (a knock just fails) and re-running revoke,
    idempotent on both halves, completes it. The audit row is written before either step, so the attempt
    is always recorded.
-4. **A4 — Activity (audit read):** `GET /admin/audit` over the existing `RecentAudits` store reader,
+4. **A4: Activity (audit read):** `GET /admin/audit` over the existing `RecentAudits` store reader,
    plus a read-only Activity panel in the authed shell. Closes the loop the audit log opened in A1: the
    log was always written but had no read surface. A capped fetch with `before`/`limit` cursor
    pagination (newest-first; the panel's "Load older" walks back by row id, capped at 200 per page).
