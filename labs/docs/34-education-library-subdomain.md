@@ -1,6 +1,6 @@
 # 34 - Education library on a static subdomain (info.sti.care)
 
-## Status: BUILT (the library, its guides, and the desktop layout are live in `info/`; visual baselines and a clinician review pass remain follow-ups)
+## Status: BUILT (the library, its guides, the desktop layout, and the visual gate are live in `info/`; a clinician review pass remains a follow-up)
 
 The STI education library lives on its own static subdomain, **info.sti.care**, built
 from markdown with Astro in the top-level `info/` package. The app links out to it and
@@ -205,6 +205,13 @@ Two behaviors are the site's only client JavaScript:
   route by a small test in the app.
 - **Formatting.** The repo-root `prettier --check .` covers `info/`'s markdown,
   styles, and config.
+- **Visual baselines.** The same lost-pixel mechanism as the passport
+  (`info/lostpixel.config.cjs`, `info/scripts/visual-regression.sh`, the pinned
+  Docker image for byte-stable rendering): every built page is captured
+  full-page at a phone and a desktop width, the corpus is checked against
+  `dist/` so a page can never silently lose coverage, and the
+  `screenshot:update` label regenerates the info baselines in the same pass as
+  the passport's.
 
 ## Resolved decisions
 
@@ -225,7 +232,5 @@ Two behaviors are the site's only client JavaScript:
 
 ## Residual for later (not blockers)
 
-- Visual regression coverage for the info site (the app's lostpixel setup is
-  passport-specific).
 - A clinician review pass on the education copy; until it happens the site claims
   none.

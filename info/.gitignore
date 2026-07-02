@@ -1,5 +1,7 @@
 # build output
 dist/
+# lost-pixel scratch (current/diff shots); committed baselines live in visual-baselines/
+.lostpixel/
 # generated types + content cache (astro sync regenerates on build/check)
 .astro/
 src/env.d.ts
