@@ -200,6 +200,12 @@ function RowChart({ metrics }: { metrics: AdminMetrics }) {
             fill="var(--text-accent)"
             radius={[4, 4, 0, 0]}
             maxBarSize={56}
+            // Render the final bars synchronously, no grow-in animation. Recharts
+            // animates via requestAnimationFrame (react-smooth), which Playwright's
+            // animations:'disabled' does NOT freeze, so an animated series is
+            // captured at a timing-dependent frame and drifts the visual baseline.
+            // See the note on ReportsChart's Area for the full rationale.
+            isAnimationActive={false}
           />
         </BarChart>
       </ResponsiveContainer>
@@ -243,6 +249,14 @@ function ReportsChart({ trends }: { trends: AdminTrends }) {
             fill="var(--accent-soft)"
             strokeWidth={2}
             type="monotone"
+            // Deterministic capture for the visual-regression baseline. Recharts
+            // drives its enter animation with requestAnimationFrame (react-smooth),
+            // not CSS, so lost-pixel's Playwright animations:'disabled' cannot
+            // freeze it; the default area animation (1500ms) also outruns the
+            // capture's settle wait, so the screenshot lands on whatever frame the
+            // timing happened to reach and the baseline drifts run-to-run. Rendering
+            // the final curve synchronously removes the frame race entirely.
+            isAnimationActive={false}
           />
         </AreaChart>
       </ResponsiveContainer>
@@ -285,6 +299,8 @@ function LatencyChart({ trends }: { trends: AdminTrends }) {
             fill="var(--text-accent)"
             radius={[4, 4, 0, 0]}
             maxBarSize={56}
+            // Synchronous final render, no animation frame race (see ReportsChart).
+            isAnimationActive={false}
           />
         </BarChart>
       </ResponsiveContainer>
