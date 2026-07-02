@@ -3,6 +3,7 @@ import type { OwnerSession, SessionController } from "../../store/index.ts";
 import { useKnockReview } from "./useKnockReview.ts";
 import { usePartnerNudge } from "./usePartnerNudge.ts";
 import { useCatchup } from "./useCatchup.ts";
+import { useUniformPoll } from "./useUniformPoll.ts";
 
 /**
  * The owner's quiet inbox: the two owner-pull channels behind the bell, combined.
@@ -11,10 +12,15 @@ import { useCatchup } from "./useCatchup.ts";
  * both re-pull on `refreshInbox` (called when the inbox opens), so the screen has
  * one refresh, not two. A null session is empty across the board.
  *
- * It also re-pulls on reconnect (doc 22, "Slice 5 reconsidered"): a user with
- * intermittent internet catches up on a waiting partner-notify the moment they are
- * back online, without a periodic background poll. This reuses the foreground
- * owner-pull, so it adds no cadence the server could fingerprint.
+ * It re-pulls on reconnect (doc 22, "Slice 5 reconsidered"): a user with intermittent
+ * internet catches up on a waiting partner-notify the moment they are back online.
+ * That reconnect/foreground pull is an additional floor on top of the uniform poll.
+ *
+ * It also runs a UNIFORM scheduled poll (useUniformPoll): a fixed, jittered cadence
+ * that fires the same owner-pull whether or not a nudge is present and never backs off
+ * once one is found, so poll timing carries no notify signal. Together with the
+ * write-free recipient path (consumePartnerPing), a device's reads are byte- and
+ * timing-uniform whether or not it is the recipient.
  */
 export function useOwnerInbox(
   controller: SessionController,
@@ -46,6 +52,7 @@ export function useOwnerInbox(
   }, [refreshKnocks, refreshPartner]);
 
   useCatchup(session !== null, refreshInbox);
+  useUniformPoll(session !== null, refreshInbox);
 
   return {
     knockCount: knocks.knockCount,

@@ -9,11 +9,14 @@ import type { OwnerSession, SessionController } from "../../store/index.ts";
  * tested" row.
  *
  * The ping carries no who/when/what, so there is nothing to read past its
- * presence. Dismiss is session-scoped on purpose: the server is blind to a read,
- * so the inbox keeps returning the same ping, and without a nonce we cannot tell
- * a re-poll of the SAME ping from a genuinely new one. Hiding it for the session
- * (and on reload re-pulling) is the honest bound until per-ping read-state ships.
- * A null session (logged out) is empty.
+ * presence. Dismiss is session-scoped on purpose, and never writes to the server:
+ * dedup is device-local. The recipient poll path emits NO write (a server-visible
+ * read-marker would re-identify the recipient under cover-broadcast; see
+ * consumePartnerPing), so the inbox keeps returning the same ping. The per-ping
+ * nonce that the wake handler dedups on (consumedPings) is deliberately NOT surfaced
+ * here: this hook folds every inbox into ONE aggregate present/absent boolean with no
+ * per-ping attribution, so hiding it for the session (and re-pulling on reload) stays
+ * the honest bound. A null session (logged out) is empty.
  */
 export function usePartnerNudge(
   controller: SessionController,

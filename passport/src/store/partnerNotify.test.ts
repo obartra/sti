@@ -108,24 +108,51 @@ function fakeApi(poisonInboxId?: string): {
 }
 
 describe("partner-notify ping codec", () => {
-  it("round-trips a contentless partner-notify ping", () => {
+  it("round-trips a contentless partner-notify ping with its nonce", () => {
     const ping = parsePartnerPing(encodePartnerPing());
     expect(ping?.kind).toBe("partner-notify");
+    expect(typeof ping?.nonce).toBe("string");
     // The contentlessness promise lives here: the bytes on the wire carry ONLY a
-    // version and a fixed kind marker, never a who/when/what field. Pin the exact
-    // key set so adding any field (an id, a name, a timestamp, a condition) fails
-    // the build, not just a round-trip that would still pass with extra keys.
+    // version, a fixed kind marker, and an OPAQUE per-report nonce (n), never a
+    // who/when/what field. The nonce names a report event for device-local dedup,
+    // not a person. Pin the exact key set so adding any content field (an id, a
+    // name, a timestamp, a condition) fails the build.
     const onWire = JSON.parse(
       new TextDecoder().decode(encodePartnerPing()),
     ) as Record<string, unknown>;
-    expect(Object.keys(onWire).sort()).toEqual(["kind", "v"]);
+    expect(Object.keys(onWire).sort()).toEqual(["kind", "n", "v"]);
+  });
+
+  it("mints a fresh nonce per encode", () => {
+    const a = parsePartnerPing(encodePartnerPing());
+    const b = parsePartnerPing(encodePartnerPing());
+    expect(a?.nonce).toBeDefined();
+    expect(b?.nonce).toBeDefined();
+    expect(a?.nonce).not.toBe(b?.nonce);
   });
 
   it("rejects garbage and a wrong version/kind", () => {
     expect(parsePartnerPing(utf8ToBytes("not json"))).toBeNull();
     expect(parsePartnerPing(utf8ToBytes(JSON.stringify({ v: 99 })))).toBeNull();
     expect(
-      parsePartnerPing(utf8ToBytes(JSON.stringify({ v: 1, kind: "other" }))),
+      parsePartnerPing(utf8ToBytes(JSON.stringify({ v: 2, kind: "other" }))),
+    ).toBeNull();
+  });
+
+  it("fails closed on a missing or too-short nonce", () => {
+    // A well-formed shell with no nonce, and one with a nonce too short to be the
+    // fixed 16 bytes, both parse to null: a truncated ping never notifies.
+    expect(
+      parsePartnerPing(
+        utf8ToBytes(JSON.stringify({ v: 2, kind: "partner-notify" })),
+      ),
+    ).toBeNull();
+    expect(
+      parsePartnerPing(
+        utf8ToBytes(
+          JSON.stringify({ v: 2, kind: "partner-notify", n: "AAAA" }),
+        ),
+      ),
     ).toBeNull();
   });
 });
