@@ -70,14 +70,37 @@ Two Astro content collections, both authored as markdown:
   away") and the tone token that drives the chip color, the index sort order, the
   one-line "how to test", the intro, and the source links. The body is the
   question-and-answer copy.
-- **Guides** (`info/src/content/guides/{id}.md`): practical reading (getting tested
-  and what to expect, no symptoms is normal, how to tell a partner). Frontmatter
-  carries the page title, a short nav label, the one-line card sub and icon for the
-  index card, the sort order, the intro, and the source links. The body is plain
-  markdown sections.
+- **Guides** (`info/src/content/guides/{id}.md`): practical reading, from getting
+  tested through protection choices to the conversations around sex. Frontmatter
+  carries the page title, the topic section it lives in (ids come from
+  `info/src/data/sections.ts`, so a typo'd topic fails the build), the one-line
+  card sub and icon for the index card, the sort order within its topic, an
+  optional extra aside action (find PrEP, find free condoms) drawn from the shared
+  resource links, the intro, and the source links. The body is plain markdown
+  sections.
 
-Adding a condition or a guide is one new markdown file; the index cards, the header
-and footer nav, and the routes are all generated from the collections.
+Conditions can also carry **related** links in frontmatter; they render as quiet
+link cards in the page's aside (the HIV page's U=U and PrEP cards are this, not a
+special case).
+
+Adding a condition or a guide is one new markdown file; the index cards, the topic
+sections, and the routes are all generated from the collections.
+
+### Topic sections
+
+The index groups the guide cards into titled sections, defined in
+`info/src/data/sections.ts` (array order is display order): **Getting tested**,
+**Protection that works**, **Talking about it**, and **If you test positive** (which
+also holds the U=U card). A section with no guides stays hidden. The protection and
+vaccines guides carry the education the app's design docs say the product owes
+users (the honest condoms/PrEP/U=U efficacy comparison and the vaccination and
+screening ramp; see the education layer in
+[03-design](03-design.md)), and the living-with guide carries the de-stigmatized
+teaching for the chronic conditions the badge deliberately leaves off.
+
+The library deliberately does not cover anatomy, pleasure, identity, or
+contraception beyond condoms. That boundary is chosen, not forgotten; widening it
+is a product decision, not a missing file.
 
 The copy that is not a page lives in small data modules the voice lint scans:
 `info/src/data/library.ts` (index framing, shared explainer labels, the
@@ -102,13 +125,19 @@ app's desktop breakpoint (the 900px the desktop shell uses) and the landing's de
 grammar: 1120px max-width sections with 40px gutters, a sticky blurred header with
 the site nav, and a footer row of brand, nav, and the what-this-site-is note.
 
+The nav is the index, the topic sections (as index anchors), and U=U, so it stays
+the same size however many guides exist. Anchor jumps clear the sticky desktop
+header via scroll-margin on the section headings; the phone header is not sticky,
+so no offset applies there.
+
 - `info/src/styles/site.css` is the phone column; `desktop.css` is one
   `min-width: 900px` layer on top. Pages opt into the wide frame with a modifier on
   the main column; below the breakpoint nothing in the desktop sheet applies.
 - **Index**: a hero row (the copy beside the condition list, with a soft accent
-  glow), the PEP callout as a single row with its action on the right, the U=U and
-  guide cards two across, a full-bleed value band (prevention, vaccines and
-  screening, when to see a clinician), and a closing testing call to action.
+  glow), the PEP callout as a single row with its action on the right, the titled
+  topic sections with their guide cards two across, a full-bleed value band
+  (prevention, vaccines and screening, when to see a clinician; terms link into
+  the guides that own the depth), and a closing testing call to action.
 - **Explainers and guides**: the article is the reading column (16px type on a
   capped measure) and the practical pieces (how to test, what the label means, when
   to see a clinician, the testing action, share) sit in a sticky aside.
@@ -184,8 +213,10 @@ Two behaviors are the site's only client JavaScript:
 5. **In-app links into the library open a new tab**, so a cross-domain navigation
    never throws away app state or an in-progress flow.
 6. **Guides are their own collection**, not stretched condition entries: they carry
-   no status label or how-to-test line, and their frontmatter drives the nav and
-   index cards.
+   no status label or how-to-test line, and their frontmatter drives the index
+   cards and topic grouping.
+7. **The nav lists sections, not pages.** Guides join the nav by joining a topic;
+   the chrome never grows with the page count.
 
 ## Residual for later (not blockers)
 
