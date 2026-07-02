@@ -1,23 +1,26 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { ConsentLine } from "./ConsentLine.tsx";
 import { KeepSignedInToggle } from "./KeepSignedInToggle.tsx";
-import { Card, Button, Segmented } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
 import {
   Hand,
   Calendar,
-  Link,
   Globe,
   Lock,
   Users,
   ArrowRight,
 } from "../../design/icons.tsx";
 import { TopBack } from "./TopBack.tsx";
+import { cx } from "../../lib/cx.ts";
+import "./onboarding.css";
 
 // B3 first-run setup. Sets the freshness intro and the account's default reach
 // mode (doc 16): how the links you share let people reach your status. Direct
 // (hand someone a keyed link, instant) is the default; Gated (post a link, you
 // approve each knock) is the privacy-forward alternative; Findable (a memorable
-// name) is the third mode, not built yet, shown disabled so the roadmap is honest.
+// name) is the third mode, not built yet, shown as a pointer so the roadmap is
+// honest.
 const COPY = {
   title: "How your passport works",
   sub: "Two quick defaults. Change either later in settings.",
@@ -43,239 +46,113 @@ const COPY = {
   cta: "Enter my passport",
 } as const;
 
-// You-add-your-own-results intro card.
-function SelfCard() {
+// One explainer point: a hairline opens it, the icon stays naked accent.
+function Point({
+  icon,
+  title,
+  body,
+}: {
+  icon: ReactNode;
+  title: string;
+  body: string;
+}) {
   return (
-    <Card variant="tint" style={{ display: "flex", gap: 12 }}>
-      <span style={{ color: "var(--text-accent)", flex: "none", marginTop: 1 }}>
-        <Hand size={20} />
+    <div className="onb__point">
+      <span aria-hidden className="onb__point-icon">
+        {icon}
       </span>
       <div>
-        <div
-          style={{
-            fontSize: 15,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-          }}
-        >
-          {COPY.selfTitle}
-        </div>
-        <div
-          style={{
-            fontSize: 13.5,
-            color: "var(--text-body)",
-            lineHeight: 1.55,
-            marginTop: 2,
-          }}
-        >
-          {COPY.selfBody}
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-// The 90-day freshness window card.
-function FreshnessCard() {
-  return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-        }}
-      >
-        <div
-          style={{
-            fontSize: 15,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-          }}
-        >
-          {COPY.freshTitle}
-        </div>
-        <span
-          style={{
-            flex: "none",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            background: "var(--accent-soft)",
-            color: "var(--text-accent)",
-            borderRadius: "var(--radius-pill)",
-            padding: "5px 12px",
-            fontSize: 13,
-            fontWeight: 700,
-            whiteSpace: "nowrap",
-          }}
-        >
-          <Calendar size={14} /> 90 days
-        </span>
-      </div>
-      <div
-        style={{
-          fontSize: 13.5,
-          color: "var(--text-muted)",
-          lineHeight: 1.55,
-        }}
-      >
-        {COPY.freshBody}
-      </div>
-    </Card>
-  );
-}
-
-// The Findable mode (vanity name + request, doc 16/17). Informational, not a
-// selectable sharing mode: a name is claimed separately from Settings, so this row
-// just points there.
-function FindableRow() {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "flex-start",
-        gap: 8,
-        borderTop: "1px solid var(--border-card)",
-        paddingTop: 12,
-      }}
-    >
-      <span style={{ flex: "none", marginTop: 1, color: "var(--text-accent)" }}>
-        <Globe size={14} />
-      </span>
-      <div style={{ flex: 1 }}>
-        <div
-          style={{
-            fontSize: 13.5,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          {COPY.reachFindable}
-        </div>
-        <div
-          style={{
-            fontSize: 12.5,
-            color: "var(--text-muted)",
-            lineHeight: 1.5,
-            marginTop: 2,
-          }}
-        >
-          {COPY.reachFindableReadySub}
-        </div>
+        <div className="onb__point-title">{title}</div>
+        <div className="onb__point-body">{body}</div>
       </div>
     </div>
   );
 }
 
-// How-people-reach-your-status card: Direct (default) vs Gated, plus the
-// disabled Findable row. Maps to the account sharing mode: Direct = "public"
-// (the key rides the link, instant), Gated = "link" (no key, each viewer knocks).
-function ReachCard({
+// One reach mode as a quiet radio row: the mode name and what it means, both
+// visible so the two modes can be compared, selection reading through ink and
+// border weight.
+function ReachChoice({
+  title,
+  sub,
+  checked,
+  onPick,
+}: {
+  title: string;
+  sub: string;
+  checked: boolean;
+  onPick: () => void;
+}) {
+  return (
+    <label className={cx("onb__choice", checked && "onb__choice--on")}>
+      <input
+        type="radio"
+        name="reach-mode"
+        aria-label={title}
+        checked={checked}
+        onChange={onPick}
+      />
+      <span>
+        <span className="onb__choice-title">{title}</span>
+        <span className="onb__choice-sub">{sub}</span>
+      </span>
+    </label>
+  );
+}
+
+// The Findable mode (vanity name + request, doc 16/17). Informational, not a
+// selectable sharing mode: a name is claimed separately from Settings, so this
+// row just points there.
+function FindableRow() {
+  return (
+    <div className="onb__aside">
+      <span aria-hidden className="onb__aside-icon">
+        <Globe size={14} />
+      </span>
+      <div>
+        <div className="onb__aside-title">{COPY.reachFindable}</div>
+        <div className="onb__aside-body">{COPY.reachFindableReadySub}</div>
+      </div>
+    </div>
+  );
+}
+
+// How-people-reach-your-status section: Direct (default) vs Gated as radio rows,
+// plus the informational Findable row. Maps to the account sharing mode: Direct =
+// "public" (the key rides the link, instant), Gated = "link" (no key, each viewer
+// knocks).
+function ReachSection({
   sharing,
   onChange,
 }: {
   sharing: "public" | "link";
   onChange: (next: "public" | "link") => void;
 }) {
-  const direct = sharing === "public";
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div
-        style={{ fontSize: 15, fontWeight: 700, color: "var(--text-strong)" }}
-      >
-        {COPY.reachTitle}
-      </div>
-      <Segmented
-        aria-label={COPY.reachTitle}
-        value={sharing}
-        onChange={onChange}
-        options={[
-          { value: "public", label: COPY.reachDirect },
-          { value: "link", label: COPY.reachGated },
-        ]}
-      />
-      <div
-        style={{
-          fontSize: 13,
-          color: "var(--text-muted)",
-          lineHeight: 1.5,
-          display: "flex",
-          gap: 6,
-        }}
-      >
-        <span
-          style={{ flex: "none", marginTop: 1, color: "var(--text-accent)" }}
-        >
-          {direct ? <Link size={14} /> : <Hand size={14} />}
-        </span>
-        <span>{direct ? COPY.reachDirectSub : COPY.reachGatedSub}</span>
-      </div>
+    <div className="onb__reach">
+      <fieldset className="onb__choices">
+        <legend className="onb__legend">{COPY.reachTitle}</legend>
+        <ReachChoice
+          title={COPY.reachDirect}
+          sub={COPY.reachDirectSub}
+          checked={sharing === "public"}
+          onPick={() => onChange("public")}
+        />
+        <ReachChoice
+          title={COPY.reachGated}
+          sub={COPY.reachGatedSub}
+          checked={sharing === "link"}
+          onPick={() => onChange("link")}
+        />
+      </fieldset>
       <FindableRow />
-      <div
-        style={{
-          fontSize: 12,
-          color: "var(--text-subtle)",
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 6,
-          lineHeight: 1.45,
-        }}
-      >
-        <span style={{ flex: "none", marginTop: 1 }}>
+      <div className="onb__note">
+        <span aria-hidden className="onb__note-icon">
           <Lock size={12} />
         </span>
         {COPY.reachNote}
       </div>
-    </Card>
-  );
-}
-
-// Anonymous heads-up explainer card.
-function AnonCard() {
-  return (
-    <Card variant="flat" style={{ display: "flex", gap: 14 }}>
-      <span
-        style={{
-          flex: "none",
-          width: 40,
-          height: 40,
-          borderRadius: "var(--radius-sm)",
-          background: "var(--accent-soft)",
-          color: "var(--text-accent)",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Users size={20} />
-      </span>
-      <div style={{ flex: 1 }}>
-        <div
-          style={{
-            fontSize: 15,
-            fontWeight: 600,
-            color: "var(--text-strong)",
-          }}
-        >
-          {COPY.anonTitle}
-        </div>
-        <div
-          style={{
-            fontSize: 13,
-            color: "var(--text-muted)",
-            lineHeight: 1.5,
-            marginTop: 3,
-          }}
-        >
-          {COPY.anonBody}
-        </div>
-      </div>
-    </Card>
+    </div>
   );
 }
 
@@ -309,36 +186,29 @@ export function FirstRunSetup({
   // opens instantly. "Ask first" (Gated, "link") is the approve-each-viewer mode.
   const [sharing, setSharing] = useState<"public" | "link">("public");
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 18,
-        width: "100%",
-        maxWidth: 600,
-      }}
-    >
+    <div className="onb">
       <TopBack title="Step 3 of 3" onBack={onBack} />
       <div>
-        <h1
-          style={{
-            fontSize: 26,
-            fontWeight: 800,
-            letterSpacing: "-0.02em",
-            color: "var(--text-strong)",
-          }}
-        >
-          {COPY.title}
-        </h1>
-        <p style={{ fontSize: 15, color: "var(--text-body)", marginTop: 6 }}>
-          {COPY.sub}
-        </p>
+        <h1 className="onb__title">{COPY.title}</h1>
+        <p className="onb__sub">{COPY.sub}</p>
       </div>
 
-      <SelfCard />
-      <FreshnessCard />
-      <ReachCard sharing={sharing} onChange={setSharing} />
-      <AnonCard />
+      <Point
+        icon={<Hand size={20} />}
+        title={COPY.selfTitle}
+        body={COPY.selfBody}
+      />
+      <Point
+        icon={<Calendar size={20} />}
+        title={COPY.freshTitle}
+        body={COPY.freshBody}
+      />
+      <ReachSection sharing={sharing} onChange={setSharing} />
+      <Point
+        icon={<Users size={20} />}
+        title={COPY.anonTitle}
+        body={COPY.anonBody}
+      />
 
       <KeepSignedInToggle
         checked={keepSignedIn}
@@ -346,14 +216,7 @@ export function FirstRunSetup({
       />
 
       {error !== null && (
-        <div
-          role="alert"
-          style={{
-            fontSize: 13,
-            lineHeight: 1.5,
-            color: "var(--status-expired-fg)",
-          }}
-        >
+        <div role="alert" className="onb__error">
           {error}
         </div>
       )}

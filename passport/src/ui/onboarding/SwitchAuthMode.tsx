@@ -1,4 +1,5 @@
 import { COPY } from "./claimCopy.ts";
+import "./onboarding.css";
 
 // The one-tap switch between log in and sign up, shown at the bottom of each
 // variant so someone who opened the wrong one does not have to hunt: login shows
@@ -12,21 +13,8 @@ export function SwitchAuthMode({
 }) {
   if (!onSwitch) return null;
   return (
-    <div style={{ textAlign: "center", marginTop: 2 }}>
-      <button
-        type="button"
-        onClick={onSwitch}
-        style={{
-          padding: "6px 4px",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          font: "inherit",
-          fontSize: 14,
-          fontWeight: 700,
-          color: "var(--text-accent)",
-        }}
-      >
+    <div className="onb__switch">
+      <button type="button" onClick={onSwitch} className="onb__switch-btn">
         {isLogin ? COPY.switchToCreate : COPY.switchToLogin}
       </button>
     </div>

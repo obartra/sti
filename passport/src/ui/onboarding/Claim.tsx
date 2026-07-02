@@ -9,6 +9,7 @@ import { COPY } from "./claimCopy.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
 import type { SignUpRecovery } from "../../store/index.ts";
 import type { ClaimResult } from "../app/useOnboarding.ts";
+import "./onboarding.css";
 
 // B1 claim account. Passkey is the one MVP unlock path: no email, no phone, no
 // SSO. Each screen is a title plus its controls; the reach mode (Direct / Gated /
@@ -53,14 +54,7 @@ export interface ClaimProps {
 function ErrorLine({ error }: { error: string | null }) {
   if (error === null) return null;
   return (
-    <div
-      role="alert"
-      style={{
-        fontSize: 13,
-        lineHeight: 1.5,
-        color: "var(--status-expired-fg)",
-      }}
-    >
+    <div role="alert" className="onb__error">
       {error}
     </div>
   );
@@ -77,16 +71,7 @@ function ClaimHeader({
   return (
     <>
       <TopBack title="" onBack={onBack} />
-      <h1
-        style={{
-          fontSize: 27,
-          fontWeight: 800,
-          letterSpacing: "-0.02em",
-          color: "var(--text-strong)",
-        }}
-      >
-        {isLogin ? COPY.loginTitle : COPY.title}
-      </h1>
+      <h1 className="onb__title">{isLogin ? COPY.loginTitle : COPY.title}</h1>
     </>
   );
 }
@@ -151,15 +136,7 @@ export function Claim({
   onSwitchMode,
 }: ClaimProps) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 18,
-        width: "100%",
-        maxWidth: 600,
-      }}
-    >
+    <div className="onb">
       <ClaimHeader isLogin={isLogin} onBack={onBack} />
       {isLogin ? (
         <LoginBody

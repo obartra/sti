@@ -1,7 +1,9 @@
 import { useId, useState } from "react";
-import { Button, Card, Field, Input } from "../../design/components/index.ts";
+import { Button, Field, Input } from "../../design/components/index.ts";
 import { Chevron } from "../../design/icons.tsx";
 import { COPY } from "./claimCopy.ts";
+import { cx } from "../../lib/cx.ts";
+import "./onboarding.css";
 
 // Recovery-phrase entry: the high-entropy backstop for anyone with neither a
 // passkey nor a password on this device. Just the field and a log-in button.
@@ -16,10 +18,7 @@ function RecoverFlow({
   const phraseId = useId();
   const ok = phrase.trim().length > 0;
   return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 12 }}
-    >
+    <div className="onb__group">
       <Field label={COPY.recoverLabel} htmlFor={phraseId}>
         <Input
           id={phraseId}
@@ -38,7 +37,7 @@ function RecoverFlow({
       >
         {COPY.recoverCta}
       </Button>
-    </Card>
+    </div>
   );
 }
 
@@ -58,10 +57,7 @@ function RecoverPasswordFlow({
   const passwordId = useId();
   const ok = name.trim().length > 0 && password.length > 0;
   return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 12 }}
-    >
+    <div className="onb__group">
       <Field label={COPY.recoverPwNameLabel} htmlFor={nameId}>
         <Input
           id={nameId}
@@ -89,7 +85,7 @@ function RecoverPasswordFlow({
       >
         {COPY.recoverPwCta}
       </Button>
-    </Card>
+    </div>
   );
 }
 
@@ -108,44 +104,26 @@ export function OtherWaysToLogIn({
   const [open, setOpen] = useState(false);
   const regionId = useId();
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <div className="onb__disclosure">
       <button
         type="button"
         aria-expanded={open}
         aria-controls={regionId}
         onClick={() => setOpen((v) => !v)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-          padding: 0,
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          font: "inherit",
-          fontSize: 14,
-          fontWeight: 700,
-          color: "var(--text-body)",
-        }}
+        className="onb__disclose"
       >
         {COPY.otherWaysLabel}
         <span
-          style={{
-            display: "inline-flex",
-            color: "var(--text-subtle)",
-            transform: open ? "rotate(90deg)" : "none",
-            transition: "transform 120ms ease",
-          }}
+          className={cx(
+            "onb__disclose-icon",
+            open && "onb__disclose-icon--open",
+          )}
         >
           <Chevron size={18} />
         </span>
       </button>
       {open && (
-        <div
-          id={regionId}
-          style={{ display: "flex", flexDirection: "column", gap: 14 }}
-        >
+        <div id={regionId} className="onb__disclosure">
           <RecoverFlow busy={busy} onRecover={onRecover} />
           {onRecoverPassword && (
             <RecoverPasswordFlow

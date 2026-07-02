@@ -2,10 +2,13 @@ import { Button } from "../../design/components/index.ts";
 import { Eye, Copy, EyeOff, ArrowRight } from "../../design/icons.tsx";
 import { TopBack } from "./TopBack.tsx";
 import { COPY } from "./recovery.copy.ts";
+import { cx } from "../../lib/cx.ts";
+import "./onboarding.css";
 
 // The recovery token plus its tap-to-reveal cover. The phrase is a single
-// app-generated high-entropy token (not a word list), shown in a monospace
-// block so it copies cleanly.
+// app-generated high-entropy token (not a word list), presented as the document
+// it is: a hairline-bordered paper block in monospace, so it reads as a thing to
+// keep and copies cleanly.
 function PhraseToken({
   phrase,
   revealed,
@@ -16,50 +19,12 @@ function PhraseToken({
   onReveal: () => void;
 }) {
   return (
-    <div style={{ position: "relative" }}>
-      <div
-        style={{
-          background: "var(--surface-card)",
-          borderRadius: "var(--radius-lg)",
-          padding: 16,
-          minHeight: 72,
-          boxShadow: "var(--shadow-sm)",
-          filter: revealed ? "none" : "blur(6px)",
-          userSelect: revealed ? "auto" : "none",
-          transition: "filter var(--dur-base) var(--ease-gentle)",
-          fontFamily: "var(--font-mono)",
-          fontSize: 15,
-          fontWeight: 600,
-          lineHeight: 1.7,
-          letterSpacing: "0.02em",
-          color: "var(--text-strong)",
-          wordBreak: "break-all",
-        }}
-      >
+    <div className="onb__doc-wrap">
+      <div className={cx("onb__doc", !revealed && "onb__doc--covered")}>
         {phrase}
       </div>
       {!revealed && (
-        <button
-          type="button"
-          onClick={onReveal}
-          style={{
-            position: "absolute",
-            inset: 0,
-            appearance: "none",
-            border: "none",
-            cursor: "pointer",
-            background: "transparent",
-            borderRadius: "var(--radius-lg)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            color: "var(--text-accent)",
-            fontWeight: 700,
-            fontSize: 14,
-          }}
-        >
+        <button type="button" onClick={onReveal} className="onb__doc-cover">
           <Eye size={22} /> {COPY.revealHint}
         </button>
       )}
@@ -85,21 +50,10 @@ function PhraseSection({
 }) {
   return (
     <div>
-      <div
-        style={{
-          fontSize: 11,
-          fontWeight: 800,
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          color: "var(--text-subtle)",
-          marginBottom: 8,
-        }}
-      >
-        {COPY.phraseLabel}
-      </div>
+      <div className="e-eyebrow onb__doc-label">{COPY.phraseLabel}</div>
       <PhraseToken phrase={phrase} revealed={revealed} onReveal={onReveal} />
       {revealed && (
-        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+        <div className="onb__doc-actions">
           <Button
             variant="secondary"
             size="sm"
@@ -147,30 +101,11 @@ export function ShowPhase({
   onSaved: () => void;
 }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 18,
-        width: "100%",
-        maxWidth: 600,
-      }}
-    >
+    <div className="onb">
       <TopBack title={COPY.step} onBack={onBack} />
       <div>
-        <h1
-          style={{
-            fontSize: 26,
-            fontWeight: 800,
-            letterSpacing: "-0.02em",
-            color: "var(--text-strong)",
-          }}
-        >
-          {COPY.title}
-        </h1>
-        <p style={{ fontSize: 15, color: "var(--text-body)", marginTop: 6 }}>
-          {COPY.sub}
-        </p>
+        <h1 className="onb__title">{COPY.title}</h1>
+        <p className="onb__sub">{COPY.sub}</p>
       </div>
 
       <PhraseSection

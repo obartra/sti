@@ -1,4 +1,5 @@
 import { Switch } from "../../design/components/index.ts";
+import "./onboarding.css";
 
 // "Keep me signed in on this device" (doc 24): the opt-out for a shared device,
 // shown at sign-up and at login. Default ON upstream; renders nothing when no
@@ -12,13 +13,13 @@ export function KeepSignedInToggle({
 }) {
   if (!onChange) return null;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+    <div className="onb__keep">
       <Switch
         checked={checked}
         onChange={onChange}
         label="Keep me signed in on this device"
       />
-      <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-subtle)" }}>
+      <p className="onb__keep-note">
         Choose this only on a device that’s yours.
       </p>
     </div>
