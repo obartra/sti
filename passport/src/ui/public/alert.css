@@ -1,0 +1,192 @@
+/* The A3 exposure alert (doc 37): the most sensitive read in the app, so the
+   grammar is at its calmest. The heart sits naked in the accent (no tile),
+   the PEP block is the one urgent callout (3px status rule; the time window
+   is a derived-ink meta line, not a pill), resources are hairline action
+   rows, and the reassurances are quiet check lines. */
+
+.al {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.al__preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: var(--hairline);
+  border-bottom: var(--hairline);
+  padding: 10px 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-body);
+}
+
+.al__preview-icon {
+  color: var(--text-accent);
+  flex: none;
+}
+
+.al__preview-text {
+  flex: 1;
+}
+
+.al__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  padding-top: 8px;
+}
+
+.al__hero-heart {
+  display: inline-flex;
+  color: var(--accent);
+}
+
+.al__title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 27px;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  color: var(--text-strong);
+  text-wrap: balance;
+  margin: 0;
+}
+
+.al__sub {
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--text-body);
+  margin: 0;
+  max-width: 320px;
+}
+
+.al__testing {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.al__why {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 2px 6px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.al__why-icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--text-accent);
+}
+
+/* The PEP urgency block: the .e-card--urgent callout. */
+.al__pep {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.al__pep-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.al__pep-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.al__pep-clock {
+  display: inline-flex;
+  flex: none;
+  color: var(--status-treat-base);
+}
+
+.al__pep-window {
+  flex: none;
+  font-size: 11px;
+  font-weight: var(--weight-extrabold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--status-ink-treat);
+}
+
+.al__pep-body {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-body);
+}
+
+.al__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border-top: var(--hairline);
+  padding-top: 12px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-body);
+}
+
+.al__note--micro {
+  font-size: 12.5px;
+  line-height: 1.45;
+  align-items: center;
+}
+
+.al__note-icon {
+  color: var(--text-accent);
+  flex: none;
+  margin-top: 1px;
+}
+
+.al__section {
+  display: flex;
+  flex-direction: column;
+}
+
+.al__section-label {
+  padding-bottom: 4px;
+}
+
+.al__reassure {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-top: var(--hairline);
+  padding-top: 14px;
+}
+
+.al__reassure-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.al__reassure-check {
+  color: var(--status-clear-base);
+  flex: none;
+  margin-top: 1px;
+}
+
+.al__reassure-text {
+  font-size: 14px;
+  color: var(--text-body);
+  line-height: 1.5;
+}

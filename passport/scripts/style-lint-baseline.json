@@ -275,17 +275,6 @@
   "src/ui/onboarding/TopBack.tsx": {
     "styles": 4
   },
-  "src/ui/public/Alert.parts.tsx": {
-    "styles": 21,
-    "legacy": 3
-  },
-  "src/ui/public/Alert.resources.tsx": {
-    "styles": 24,
-    "legacy": 3
-  },
-  "src/ui/public/Alert.tsx": {
-    "styles": 1
-  },
   "src/ui/public/Landing.tsx": {
     "styles": 21,
     "hex": 1,
