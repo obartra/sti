@@ -46,8 +46,9 @@ info=false
 server=false
 while IFS= read -r f; do
   case "$f" in
-    # The info site imports the passport design tokens at build time.
-    passport/src/design/*) passport=true; info=true ;;
+    # The info site imports the passport design tokens (via the app's
+    # skip-fonts barrel in src/styles) at build time.
+    passport/src/design/* | passport/src/styles/*) passport=true; info=true ;;
     passport/*) passport=true ;;
     info/*) info=true ;;
     server/*) server=true ;;

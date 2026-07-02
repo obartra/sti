@@ -1,7 +1,32 @@
-/* The display serif: Source Serif 4 SemiBold, self-hosted, one latin woff2,
-   headings only. Body and UI stay Hanken Grotesk (a passport token). The
-   fallback face is Georgia metric-tuned with capsize-computed overrides so the
-   swap causes no visible reflow. */
+/* Self-hosted webfonts. The display serif: Source Serif 4 SemiBold, one latin
+   woff2, headings only. Body and UI stay Hanken Grotesk, self-hosted the same
+   way (the passport import is its skip-fonts barrel, so no Google Fonts ride
+   along). Every face gets a metric-tuned local fallback (capsize-computed
+   size-adjust and overrides) so the swap causes no visible reflow. */
+
+@font-face {
+  font-family: "Hanken Grotesk";
+  src: url("/fonts/hanken-grotesk-latin-wght-normal.woff2") format("woff2");
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+2018-201D, U+2026;
+}
+
+@font-face {
+  font-family: "Hanken Grotesk Fallback";
+  src: local("Arial");
+  size-adjust: 100.94%;
+  ascent-override: 99.07%;
+  descent-override: 30.02%;
+  line-gap-override: 0%;
+}
+
+:root {
+  --font-sans:
+    "Hanken Grotesk", "Hanken Grotesk Fallback", ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
 
 @font-face {
   font-family: "Source Serif 4";

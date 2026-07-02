@@ -1,6 +1,54 @@
-/* App-owned font loading. For now this still points at the vendored Google
-   Fonts import so the layered entry is a pure refactor; self-hosted files
-   replace it next (doc 37), which is why fonts.css exists apart from the
-   skip-fonts barrel. */
+/* Self-hosted webfonts (doc 37). The vendored design system loads Hanken
+   Grotesk from Google Fonts; a privacy-first product should not send every
+   visitor to a third party for type, so the skip-fonts barrel drops that
+   import and this file owns loading instead.
 
-@import "../design/tokens/fonts.css";
+   Hanken Grotesk ships as one variable-weight latin woff2 (covers the 400-800
+   the design system uses). Source Serif 4 SemiBold is the editorial display
+   face (doc 36), same file info.sti.care ships. Each face gets a metric-tuned
+   local fallback (capsize method: size-adjust = latin average character width
+   ratio, ascent/descent scaled by it) so the swap cannot reflow, and the
+   sans stack is re-declared with the fallback face inserted; this layer beats
+   the vendored token, which is exactly what the theme layer is for. */
+
+@font-face {
+  font-family: "Hanken Grotesk";
+  src: url("/fonts/hanken-grotesk-latin-wght-normal.woff2") format("woff2");
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+2018-201D, U+2026;
+}
+
+@font-face {
+  font-family: "Hanken Grotesk Fallback";
+  src: local("Arial");
+  size-adjust: 100.94%;
+  ascent-override: 99.07%;
+  descent-override: 30.02%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Source Serif 4";
+  src: url("/fonts/source-serif-4-latin-600-normal.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+2018-201D, U+2026;
+}
+
+@font-face {
+  font-family: "Source Serif 4 Fallback";
+  src: local("Georgia");
+  size-adjust: 109.02%;
+  ascent-override: 95.03%;
+  descent-override: 30.73%;
+  line-gap-override: 0%;
+}
+
+:root {
+  --font-sans:
+    "Hanken Grotesk", "Hanken Grotesk Fallback", ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
