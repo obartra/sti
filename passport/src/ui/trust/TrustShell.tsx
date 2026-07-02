@@ -1,10 +1,12 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Back } from "../../design/icons.tsx";
+import { cx } from "../../lib/cx.ts";
 import { useMinWidth } from "../desktop/Desktop.tsx";
 import { NavLink } from "../app/NavLink.tsx";
 import { pathForScreen } from "../app/useAppRouter.ts";
 import type { Screen } from "../app/routes.ts";
 import { TrustFooter, type TrustFooterProps } from "./TrustFooter.tsx";
+import "./trust-shell.css";
 
 // Shared shell for the public trust pages (promises, privacy, terms, share-link).
 //
@@ -54,22 +56,6 @@ const RAIL: {
   },
 ];
 
-function railLinkStyle(active: boolean): CSSProperties {
-  return {
-    display: "block",
-    textAlign: "left",
-    width: "100%",
-    padding: "9px 12px",
-    borderRadius: "var(--radius-md)",
-    fontSize: 14,
-    fontWeight: active ? 800 : 600,
-    color: active ? "var(--text-strong)" : "var(--text-subtle)",
-    background: active ? "var(--surface-tint)" : "transparent",
-    textDecoration: "none",
-    cursor: "pointer",
-  };
-}
-
 function RailLink({
   label,
   screen,
@@ -81,14 +67,12 @@ function RailLink({
   active: boolean;
   onNavigate?: (() => void) | undefined;
 }) {
+  const cls = cx("trust-rail__link", active && "trust-rail__link--active");
   // A real anchor when we can navigate; the current page (or a missing handler)
   // renders as a plain, non-link label so it is not a dead link to itself.
   if (onNavigate === undefined || active) {
     return (
-      <span
-        aria-current={active ? "page" : undefined}
-        style={railLinkStyle(active)}
-      >
+      <span aria-current={active ? "page" : undefined} className={cls}>
         {label}
       </span>
     );
@@ -97,7 +81,7 @@ function RailLink({
     <NavLink
       href={pathForScreen(screen)}
       onNavigate={onNavigate}
-      style={railLinkStyle(active)}
+      className={cls}
     >
       {label}
     </NavLink>
@@ -114,52 +98,18 @@ function Rail({
   footer: TrustFooterProps;
 }) {
   return (
-    <nav
-      aria-label="Trust pages"
-      style={{
-        position: "sticky",
-        top: 24,
-        alignSelf: "start",
-        display: "flex",
-        flexDirection: "column",
-        gap: 4,
-      }}
-    >
+    <nav aria-label="Trust pages" className="trust-rail">
       {onBack && (
         <button
           type="button"
           onClick={onBack}
           aria-label="Back"
-          style={{
-            appearance: "none",
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "9px 12px",
-            marginBottom: 6,
-            fontSize: 13.5,
-            fontWeight: 700,
-            color: "var(--text-subtle)",
-          }}
+          className="trust-rail__back"
         >
           <Back size={16} /> Back
         </button>
       )}
-      <span
-        style={{
-          padding: "0 12px 8px",
-          fontSize: 11,
-          fontWeight: 800,
-          letterSpacing: "0.06em",
-          textTransform: "uppercase",
-          color: "var(--text-subtle)",
-        }}
-      >
-        Trust center
-      </span>
+      <span className="e-eyebrow trust-rail__label">Trust center</span>
       {RAIL.map((item) => (
         <RailLink
           key={item.id}
@@ -184,24 +134,14 @@ export function TrustShell({
 
   if (wide) {
     return (
-      <div style={{ width: "100%", maxWidth: 1160, margin: "0 auto" }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "224px minmax(0, 1fr)",
-            gap: 48,
-            alignItems: "start",
-          }}
-        >
+      <div className="trust-wide">
+        <div className="trust-wide__grid">
           <Rail current={current} onBack={onBack} footer={footer} />
           <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 16,
-              width: "100%",
-              maxWidth: wideContent ? "100%" : 780,
-            }}
+            className={cx(
+              "trust-wide__content",
+              wideContent && "trust-wide__content--wide",
+            )}
           >
             {children}
             <TrustFooter {...footer} />
@@ -212,36 +152,14 @@ export function TrustShell({
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 16,
-        width: "100%",
-        maxWidth: wideContent ? 720 : 520,
-      }}
-    >
+    <div className={cx("trust-narrow", wideContent && "trust-narrow--wide")}>
       {onBack && (
-        <div style={{ alignSelf: "flex-start" }}>
+        <div className="trust-narrow__backrow">
           <button
             type="button"
             onClick={onBack}
             aria-label="Back"
-            style={{
-              appearance: "none",
-              border: "none",
-              background: "var(--surface-card)",
-              boxShadow: "var(--shadow-sm)",
-              width: 36,
-              height: 36,
-              borderRadius: "50%",
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "var(--text-body)",
-            }}
+            className="trust-narrow__back"
           >
             <Back size={20} />
           </button>

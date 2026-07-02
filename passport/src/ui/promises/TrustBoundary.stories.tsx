@@ -16,7 +16,7 @@ export const Default: Story = {
   args: { wide: false },
   decorators: [
     (Story) => (
-      <div style={{ width: 380 }}>
+      <div className="u-w-phone">
         <Story />
       </div>
     ),
@@ -28,7 +28,7 @@ export const Desktop: Story = {
   args: { wide: true },
   decorators: [
     (Story) => (
-      <div style={{ width: 980 }}>
+      <div className="u-w-wide">
         <Story />
       </div>
     ),

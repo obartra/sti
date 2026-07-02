@@ -1,0 +1,110 @@
+/* The trust-center shell (docs 23 + 37): a sticky left rail beside the reading
+   column on large screens, a single centered column below. Editorial grammar:
+   the rail's current page reads through ink and weight, never a tinted pill;
+   the mobile back control keeps its circular shape (a control) but trades the
+   shadow for a hairline. */
+
+.trust-wide {
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.trust-wide__grid {
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr);
+  gap: 48px;
+  align-items: start;
+}
+
+.trust-wide__content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 780px;
+}
+
+.trust-wide__content--wide {
+  max-width: 100%;
+}
+
+.trust-rail {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-left: var(--hairline);
+  padding-left: 4px;
+}
+
+.trust-rail__back {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  margin-bottom: 6px;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-subtle);
+}
+
+.trust-rail__label {
+  padding: 0 12px 8px;
+}
+
+.trust-rail__link {
+  display: block;
+  text-align: left;
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-subtle);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.trust-rail__link--active {
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  cursor: default;
+}
+
+.trust-narrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 520px;
+}
+
+.trust-narrow--wide {
+  max-width: 720px;
+}
+
+.trust-narrow__backrow {
+  align-self: flex-start;
+}
+
+.trust-narrow__back {
+  appearance: none;
+  border: var(--hairline-strong);
+  background: var(--surface-card);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-body);
+}
