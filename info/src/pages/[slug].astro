@@ -106,13 +106,12 @@ const sources = cond?.data.sources ?? guide?.data.sources;
       }
 
       {
-        cond?.slug === "hiv" && (
-          <a class="sti-card sti-card--tint info-row" href="/uu">
-            <span class="info-tile info-tile--clear info-tile--sm">U=U</span>
-            <span class="info-cardlink__label">{c.uuFromHiv}</span>
+        cond?.data.related?.map((r) => (
+          <a class="sti-card sti-card--tint info-row" href={r.href}>
+            <span class="info-cardlink__label">{r.label}</span>
             <Icon name="arrowRight" size={17} class="info-cardlink__go" />
           </a>
-        )
+        ))
       }
 
       <div class="sti-card sti-card--flat info-panel">

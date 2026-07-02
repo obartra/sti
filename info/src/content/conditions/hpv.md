@@ -8,6 +8,11 @@ intro: The most common infection from sex. Almost everyone gets it at some point
 sources:
   - label: U.S. CDC, About genital HPV infection
     href: https://www.cdc.gov/sti/about/about-genital-hpv-infection.html
+related:
+  - label: Living with HPV, and why it usually clears
+    href: /living-with
+  - label: The vaccine that blocks the harmful types
+    href: /vaccines
 ---
 
 ## Is it serious?

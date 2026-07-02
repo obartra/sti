@@ -27,7 +27,6 @@ export const LIBRARY = {
     title: "Undetectable = Untransmittable",
     sub: "A made-to-share card. Good news, no stigma.",
   },
-  uuFromHiv: "Undetectable? Share what U=U means",
   pep: {
     title: "PEP, emergency HIV prevention",
     body: "If you might have been exposed to HIV, PEP can still prevent it, but only if you start within 72 hours. You don't need an alert to ask for it; go now if it's been recent.",
@@ -66,10 +65,12 @@ export const LIBRARY = {
       {
         term: "HPV vaccine",
         sub: "Protects against the HPV types that cause most warts and, rarely, cancers. You can get it up to age 45.",
+        href: "/vaccines",
       },
       {
         term: "Cervical and anal screening",
         sub: "Routine checks catch changes early. Ask a clinic which screening is right for you.",
+        href: "/vaccines",
       },
     ] as readonly LibraryItem[],
     cta: "Find a clinic near me",
