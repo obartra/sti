@@ -23,6 +23,7 @@ import {
   type JoinRequesterDeps,
 } from "./groupJoinOps.ts";
 import { createGroup } from "./groupOps.ts";
+import { pseudonymFor } from "../lib/avatars.ts";
 import {
   parseGroupInvite,
   encodeLifecycleLeave,
@@ -292,7 +293,7 @@ describe("group membership lifecycle (doc 33, slice 4a)", () => {
       server.api,
       invitee.accounts,
       invitee.session,
-      invite,
+      { invite },
     );
     const memberGroup = groupOf(accepted, admin.groupId);
     expect(memberGroup.isAdmin).toBe(false);
@@ -341,6 +342,135 @@ describe("group membership lifecycle (doc 33, slice 4a)", () => {
     ).not.toBeNull();
   });
 
+  it("show-as-you: a member who joins as main shows their name on their card", async () => {
+    const server = fakeServer();
+    const admin = await adminWithGroup(server.api);
+    const invited = await inviteToGroup(admin.accounts, admin.session, {
+      groupId: admin.groupId,
+      label: "Sam",
+    });
+    const invite = inviteFrom(invited.url);
+
+    // ACCEPT as main: the chosen face is snapshotted onto the member record now,
+    // before any card is published (that waits for the first roster read + Kg).
+    const invitee = await freshSession(server.api, "sam");
+    const accepted = await acceptGroupInvite(
+      server.api,
+      invitee.accounts,
+      invitee.session,
+      { invite, identity: "main" },
+    );
+    const memberGroup = groupOf(accepted, admin.groupId);
+    expect(memberGroup.myHandle).toBe(invitee.session.blob.handle);
+    expect(memberGroup.myAvatar).toEqual(invitee.session.blob.avatar);
+
+    await pollGroupLifecycle(server.api, admin.accounts, invited.session);
+    // The first roster read publishes the member's own card under Kg; it must open
+    // to their account name, not the id-derived pseudonym.
+    const view = await readGroupRoster(
+      server.api,
+      invitee.accounts,
+      accepted,
+      admin.groupId,
+    );
+    const self = must(
+      view.members.find((m) => m.isSelf),
+      "self row",
+    );
+    expect(must(self.card, "self card").identity.handle).toBe("sam");
+  });
+
+  it("show-as-you: an anonymous joiner keeps the id-derived pseudonym on their card", async () => {
+    const server = fakeServer();
+    const admin = await adminWithGroup(server.api);
+    const invited = await inviteToGroup(admin.accounts, admin.session, {
+      groupId: admin.groupId,
+      label: "Sam",
+    });
+    const invite = inviteFrom(invited.url);
+
+    const invitee = await freshSession(server.api, "sam");
+    // No identity arg: the default is anonymous, so nothing is snapshotted.
+    const accepted = await acceptGroupInvite(
+      server.api,
+      invitee.accounts,
+      invitee.session,
+      { invite },
+    );
+    const memberGroup = groupOf(accepted, admin.groupId);
+    expect(memberGroup.myHandle).toBeUndefined();
+    expect(memberGroup.myAvatar).toBeUndefined();
+
+    await pollGroupLifecycle(server.api, admin.accounts, invited.session);
+    const view = await readGroupRoster(
+      server.api,
+      invitee.accounts,
+      accepted,
+      admin.groupId,
+    );
+    const self = must(
+      view.members.find((m) => m.isSelf),
+      "self row",
+    );
+    // The card's face is the pseudonym derived from the opaque card id, never "sam".
+    expect(must(self.card, "self card").identity.handle).toBe(
+      pseudonymFor(memberGroup.myCardId),
+    );
+  });
+
+  it("show-as-you: a key rotation keeps a revealed admin's face (does not revert to anonymous)", async () => {
+    const server = fakeServer();
+    // An admin who created the group showing their name.
+    const { accounts, session } = await freshSession(server.api, "robin");
+    const created = await createGroup(server.api, accounts, session, {
+      handle: "book_club",
+      visibility: "private",
+      meetingKind: "event",
+      identity: "main",
+    });
+    const admin = {
+      accounts,
+      session: created.session,
+      groupId: created.groupId,
+    };
+
+    // Bring in a member, then remove them: removal rotates Kg and republishes the
+    // admin's own card under the new key.
+    const invited = await inviteToGroup(admin.accounts, admin.session, {
+      groupId: admin.groupId,
+    });
+    const invite = inviteFrom(invited.url);
+    const invitee = await freshSession(server.api, "sam");
+    await acceptGroupInvite(server.api, invitee.accounts, invitee.session, {
+      invite,
+    });
+    const ingested = await pollGroupLifecycle(
+      server.api,
+      admin.accounts,
+      invited.session,
+    );
+    const memberCardId = must(
+      membersOf(ingested, admin.groupId)[0],
+      "the member",
+    ).cardId;
+    const removed = await removeGroupMember(
+      server.api,
+      admin.accounts,
+      ingested,
+      { groupId: admin.groupId, cardId: memberCardId },
+    );
+
+    // The admin's card, opened under the ROTATED key, still shows their name.
+    const adminGroup = groupOf(removed, admin.groupId);
+    const rotatedCard = await openGroupCard(
+      kgOf(removed, admin.groupId),
+      await server.api.getAlias(adminGroup.myCardId),
+    );
+    expect(must(rotatedCard, "rotated admin card").identity.handle).toBe(
+      "robin",
+    );
+  });
+
   it("revoke kills a pending accept: a later poll does not add the member", async () => {
     const server = fakeServer();
     const admin = await adminWithGroup(server.api);
@@ -355,12 +485,9 @@ describe("group membership lifecycle (doc 33, slice 4a)", () => {
 
     // The invitee accepts (writes to the inbox)...
     const invitee = await freshSession(server.api, "sam");
-    await acceptGroupInvite(
-      server.api,
-      invitee.accounts,
-      invitee.session,
+    await acceptGroupInvite(server.api, invitee.accounts, invitee.session, {
       invite,
-    );
+    });
     // ...but the admin revokes before ingesting: the inbox is overwritten and the
     // pending invite dropped.
     const revoked = await revokeGroupInvite(
@@ -388,12 +515,9 @@ describe("group membership lifecycle (doc 33, slice 4a)", () => {
     });
     const invite = inviteFrom(invited.url);
     const invitee = await freshSession(server.api, "sam");
-    await acceptGroupInvite(
-      server.api,
-      invitee.accounts,
-      invitee.session,
+    await acceptGroupInvite(server.api, invitee.accounts, invitee.session, {
       invite,
-    );
+    });
     const ingested = await pollGroupLifecycle(
       server.api,
       admin.accounts,
@@ -430,12 +554,9 @@ describe("group membership lifecycle (doc 33, slice 4a)", () => {
     });
     const invite = inviteFrom(invited.url);
     const invitee = await freshSession(server.api, "sam");
-    await acceptGroupInvite(
-      server.api,
-      invitee.accounts,
-      invitee.session,
+    await acceptGroupInvite(server.api, invitee.accounts, invitee.session, {
       invite,
-    );
+    });
 
     // Overwrite the server blob with a roster already at the cap.
     const Kg = kgOf(invited.session, admin.groupId);
@@ -607,7 +728,7 @@ describe("group request lifecycle (doc 33, slice 4b)", () => {
       server.api,
       member.accounts,
       member.session,
-      invite,
+      { invite },
     );
     const ingested = await pollGroupLifecycle(
       server.api,
@@ -656,7 +777,7 @@ describe("group leave hardening: member-minted leave channel (doc 33)", () => {
       server.api,
       member.accounts,
       member.session,
-      invite,
+      { invite },
     );
 
     // The member's own lifecycle channel is a fresh inbox it minted at accept, NOT the
@@ -689,12 +810,9 @@ describe("group leave hardening: member-minted leave channel (doc 33)", () => {
     });
     const invite = inviteFrom(invited.url);
     const member = await freshSession(server.api, "sam");
-    await acceptGroupInvite(
-      server.api,
-      member.accounts,
-      member.session,
+    await acceptGroupInvite(server.api, member.accounts, member.session, {
       invite,
-    );
+    });
     const ingested = await pollGroupLifecycle(
       server.api,
       admin.accounts,
@@ -745,12 +863,9 @@ async function setupWithMembers(
     });
     adminSession = invited.session;
     const m = await freshSession(api, handle);
-    const accepted = await acceptGroupInvite(
-      api,
-      m.accounts,
-      m.session,
-      inviteFrom(invited.url),
-    );
+    const accepted = await acceptGroupInvite(api, m.accounts, m.session, {
+      invite: inviteFrom(invited.url),
+    });
     members.push({
       accounts: m.accounts,
       session: accepted,
@@ -1159,7 +1274,7 @@ describe("group admin disband (doc 33, deleteGroup)", () => {
       server.api,
       member.accounts,
       member.session,
-      invite,
+      { invite },
     );
 
     // A member disbanding is a no-op (they leave, not disband): the record stays and

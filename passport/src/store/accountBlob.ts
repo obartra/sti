@@ -21,11 +21,12 @@ import {
 import { validId } from "../api/contract.ts";
 import { hasVanityNameShape } from "./vanityName.ts";
 import { isOwnerState, type OwnerState } from "../core/badge.ts";
+import { migrateAvatar, type AvatarConfig } from "../lib/avatars.ts";
 import {
-  isAvatarConfig,
-  migrateAvatar,
-  type AvatarConfig,
-} from "../lib/avatars.ts";
+  migrateAliasOverride,
+  migrateContactAvatar,
+  migrateGroupAvatar,
+} from "./accountBlobAvatar.ts";
 import { decodeVersioned, isValidHandle } from "./codec.ts";
 import type { InboxCapability, NotifyCapability } from "./notifyInbox.ts";
 import type { GroupVisibility, MeetingKind } from "./groupObject.ts";
@@ -90,6 +91,13 @@ import type { GroupVisibility, MeetingKind } from "./groupObject.ts";
 // kept: the blob is encrypted at rest under the account key, so it is the same
 // vault. Absent on a pre-groups account; the version guards the growth.
 //
+// v18 adds the member's optional shown face on their group card (`myHandle` +
+// `myAvatar` on GroupRecord, doc 33 "show as you"): a group card is anonymous
+// (id-derived) by default; a member who chose to appear as their main identity
+// snapshots their account handle + avatar here (not read live, so a later edit does
+// not change what the group already sees, doc 15). Both optional, so a pre-v18
+// record stays valid and anonymous.
+//
 // v17 grows the group record for the membership lifecycle (doc 33, slice 4a).
 // `groupWriteToken` and `kg` become OPTIONAL: only an admin holds the write token
 // (they rewrite the blob) and mints `Kg` at create, so a member's record has
@@ -101,7 +109,7 @@ import type { GroupVisibility, MeetingKind } from "./groupObject.ts";
 // their lifecycle inbox) and the `pendingInvites` not yet accepted. All the new
 // fields are optional, so a pre-v17 account (admin-only groups from slice 3) stays
 // valid and simply has none of them.
-const SCHEMA_VERSION = 17;
+const SCHEMA_VERSION = 18;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -262,6 +270,16 @@ export interface GroupRecord {
   readonly visibility: GroupVisibility;
   readonly meetingKind: MeetingKind;
   readonly isAdmin: boolean;
+  /**
+   * The member's OWN shown face on their group card (doc 33 "show as you"): absent
+   * means anonymous (id-derived, the default), set means they chose their main
+   * identity, snapshotted at create/accept (doc 15). Display values, never
+   * addresses; the server never sees them (they ride inside the card sealed under
+   * `Kg`). The avatar migrates on read like any stored avatar, so a bad/old-shape
+   * one falls back to id-derived rather than bricking the record (doc 19).
+   */
+  readonly myHandle?: string;
+  readonly myAvatar?: AvatarConfig;
   readonly joinPointerId?: string;
   readonly joinWriteToken?: string;
   /** Admin-only: the accepted roster, one secret per member. */
@@ -361,23 +379,6 @@ function hasValidAliasOverride(r: Record<string, unknown>): boolean {
     // invalidating the alias. Handle and expiry still fail closed.
     (r.expiresAt === undefined || isMsOrNull(r.expiresAt))
   );
-}
-
-// Drop an alias override avatar that is not a valid current config (old-shape or
-// corrupt), so the alias keeps every other field (handle, expiry, tokens) and just
-// falls back to the id-derived avatar. Cosmetic-only, lossy on purpose (doc 19).
-function migrateAliasOverride(a: AliasRecord): AliasRecord {
-  if (a.avatar === undefined || isAvatarConfig(a.avatar)) return a;
-  const copy = { ...a };
-  delete (copy as { avatar?: AvatarConfig }).avatar;
-  return copy;
-}
-
-// A per-contact link carries the owner's alias (it can hold an avatar override
-// when the owner revealed themselves), so its avatar migrates the same way.
-function migrateContactAvatar(c: ContactRecord): ContactRecord {
-  const alias = migrateAliasOverride(c.alias);
-  return alias === c.alias ? c : { ...c, alias };
 }
 
 function isAliasRecord(x: unknown): x is AliasRecord {
@@ -581,7 +582,11 @@ function hasGroupMeta(r: Record<string, unknown>): boolean {
     (r.meetingKind === "event" || r.meetingKind === "recurring") &&
     typeof r.isAdmin === "boolean" &&
     isOptionalIdField(r.joinPointerId) &&
-    isOptionalIdField(r.joinWriteToken)
+    isOptionalIdField(r.joinWriteToken) &&
+    // The shown-face override (doc 33): a well-shaped handle fails closed; the
+    // avatar is NOT validated here (migrated on read by migrateGroupAvatar below),
+    // so a bad/old-shape one is dropped rather than invalidating the whole record.
+    (r.myHandle === undefined || isValidHandle(r.myHandle))
   );
 }
 
@@ -732,7 +737,9 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
       ? { circles: o.circles as CircleRecord[] }
       : {}),
     ...(isFindableRegistration(o.findable) ? { findable: o.findable } : {}),
-    ...(Array.isArray(o.groups) ? { groups: o.groups as GroupRecord[] } : {}),
+    ...(Array.isArray(o.groups)
+      ? { groups: (o.groups as GroupRecord[]).map(migrateGroupAvatar) }
+      : {}),
     ...(hasVanityNameShape(o.recoveryName)
       ? { recoveryName: o.recoveryName }
       : {}),

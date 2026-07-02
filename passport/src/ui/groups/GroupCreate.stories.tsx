@@ -22,6 +22,19 @@ export const Default: Story = {
   },
 };
 
+// Owner has a name: the "show as you" choice appears (doc 33), defaulting to the
+// anonymous stand-in. Choosing "your name" is what reveals a recognizable face to
+// fellow members.
+export const WithNameChoice: Story = {
+  args: {
+    onCreate: (input) =>
+      Promise.resolve({ result: "registered", groupId: input.handle }),
+    onCreated: () => undefined,
+    onCheckName: () => Promise.resolve("free"),
+    hasName: true,
+  },
+};
+
 // A taken public name: onCheckName answers "taken", so the field flags it and the
 // CTA stays disabled.
 export const NameTaken: Story = {

@@ -59,22 +59,25 @@ if (onlyIds.length > 0) {
 // Real regressions (recolor, layout shift) are in the thousands of pixels.
 const PAGE_THRESHOLD = 50;
 
-// Chart stories (recharts area/bar in the admin metrics panel) need a wider
-// threshold. Their curved and diagonal edges (the monotone area spline, the
-// rounded bar corners) anti-alias against a sub-pixel-shifted layout: the
-// ResponsiveContainer width settles a hair differently under the sharded visual
-// run than under the full-suite baseline capture, so the two contexts differ by
-// a STABLE ~110px (0.01%) that the base threshold rejects. The shift is
-// imperceptible and two orders of magnitude below a real regression (recolor or
-// layout shift = thousands of px), so it is exactly the antialiasing noise the
-// absolute threshold exists to absorb; 50 was simply tuned before any chart
-// story existed. Scope the wider bound to the chart stories so every other
-// story keeps the tight 50-px gate. Disabling recharts' JS-driven animation
-// (see MetricsPanel) removes the separate mid-animation race; this covers the
-// residual edge antialiasing that remains once the render is settled.
+// Chart stories (recharts area/bar) need a wider threshold. Their curved and
+// diagonal edges (the monotone area spline, the rounded bar corners) anti-alias
+// against a sub-pixel-shifted layout: the ResponsiveContainer width settles a hair
+// differently under the sharded visual run than under the full-suite baseline
+// capture, so the two contexts differ by a STABLE ~110px (well under 0.01%) that
+// the base threshold rejects. The shift is imperceptible and two orders of
+// magnitude below a real regression (recolor or layout shift = thousands of px),
+// so it is exactly the antialiasing noise the absolute threshold exists to absorb;
+// 50 was simply tuned before any chart story existed. Scope the wider bound to the
+// chart-bearing stories so every other story keeps the tight 50-px gate. Disabling
+// recharts' JS-driven animation (see MetricsPanel) removes the separate
+// mid-animation race; this covers the residual edge antialiasing once settled.
+//
+// Two story trees render these charts: the MetricsPanel component stories AND the
+// full AdminPage console (its authed view embeds the MetricsPanel), so both match.
 const CHART_THRESHOLD = 300;
 const isChartStory = (story) =>
-  story.id.startsWith("passport-admin-metricspanel");
+  story.id.startsWith("passport-admin-metricspanel") ||
+  story.id.startsWith("passport-admin-adminpage");
 
 // Capture determinism comes from the runner itself: lost-pixel passes
 // Playwright's `animations: 'disabled'` to every screenshot, which settles

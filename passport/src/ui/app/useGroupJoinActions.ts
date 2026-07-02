@@ -1,5 +1,6 @@
 import { useCallback, type RefObject } from "react";
 import type {
+  AliasIdentity,
   GroupInvite,
   OwnerSession,
   PendingRequest,
@@ -31,7 +32,10 @@ export interface GroupJoinActions {
     request: PendingRequest,
   ) => Promise<void>;
   onRemoveGroupMember: (groupId: string, cardId: string) => Promise<void>;
-  onAcceptGroupInvite: (invite: GroupInvite) => Promise<void>;
+  onAcceptGroupInvite: (
+    invite: GroupInvite,
+    identity?: AliasIdentity,
+  ) => Promise<void>;
   onRejectGroupInvite: (invite: GroupInvite) => Promise<void>;
   onRequestToJoin: (handle: string) => Promise<RequestResult>;
 }
@@ -161,10 +165,14 @@ function useGroupJoinerActions({
   "onAcceptGroupInvite" | "onRejectGroupInvite" | "onRequestToJoin"
 > {
   const onAcceptGroupInvite = useCallback(
-    async (invite: GroupInvite) => {
+    async (invite: GroupInvite, identity?: AliasIdentity) => {
       const current = sessionRef.current;
       if (current === null) return;
-      const updated = await controller.acceptGroupInvite(current, invite);
+      const updated = await controller.acceptGroupInvite(
+        current,
+        invite,
+        identity,
+      );
       sessionRef.current = updated;
       setSession(updated);
     },

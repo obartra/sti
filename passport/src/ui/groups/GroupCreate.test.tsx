@@ -6,6 +6,7 @@ import type { CreateGroupResult } from "../../store/index.ts";
 
 function setup(
   result: CreateGroupResult,
+  hasName = false,
   check: () => Promise<"free" | "taken" | "error"> = () =>
     Promise.resolve("free"),
 ) {
@@ -18,6 +19,7 @@ function setup(
       onCreate={onCreate}
       onCreated={onCreated}
       onCheckName={check}
+      hasName={hasName}
     />,
   );
   return { onCreate, onCreated };
@@ -42,6 +44,7 @@ describe("GroupCreate", () => {
       handle: "thursday_run",
       visibility: "public",
       meetingKind: "recurring",
+      identity: "anonymous",
     });
   });
 
@@ -56,7 +59,27 @@ describe("GroupCreate", () => {
       handle: "fern_house",
       visibility: "private",
       meetingKind: "recurring",
+      identity: "anonymous",
     });
+  });
+
+  it("show-as-you: creates as main when the owner picks their name", async () => {
+    const user = userEvent.setup();
+    const { onCreate } = setup("created", true);
+    await user.click(screen.getByRole("tab", { name: "Invite only" }));
+    await user.type(screen.getByLabelText("Group name"), "fern_house");
+    await user.click(screen.getByRole("tab", { name: "Your name" }));
+    await user.click(screen.getByRole("button", { name: "Create a group" }));
+    await waitFor(() =>
+      expect(onCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ identity: "main" }),
+      ),
+    );
+  });
+
+  it("hides the show-as-you choice when the owner has no name", () => {
+    setup("created");
+    expect(screen.queryByText("How you show up")).not.toBeInTheDocument();
   });
 
   it("unavailable: keeps the form and shows the taken-name message", async () => {
@@ -81,7 +104,7 @@ describe("GroupCreate", () => {
 
   it("blocks submit while a public name reads taken", async () => {
     const user = userEvent.setup();
-    setup("registered", () => Promise.resolve("taken"));
+    setup("registered", false, () => Promise.resolve("taken"));
     await user.type(screen.getByLabelText("Group name"), "thursday_run");
     await screen.findByText("That name isn't available. Try another.");
     expect(

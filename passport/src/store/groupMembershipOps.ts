@@ -59,7 +59,8 @@ import {
   type InboxCapability,
   type NotifyCapability,
 } from "./notifyInbox.ts";
-import { publishGroupCard } from "./groupOps.ts";
+import { memberFace, ownCardPublish, publishGroupCard } from "./groupOps.ts";
+import type { AliasIdentity } from "./ownerCard.ts";
 import type { ResolvedView } from "../ui/public/PublicResolution.tsx";
 
 /** The session after an invite plus the link to hand the invitee. */
@@ -189,13 +190,19 @@ export async function revokeGroupInvite(
  * inbox INSIDE the accept, which writePing seals under the invite inbox key: it never
  * reaches the server in the clear and no bearer link carries its write token. That
  * minted inbox becomes our own `lifecycleInbox` (the channel leaveGroup writes to).
+ *
+ * `opts.identity` is the face we will appear under to fellow members (doc 33 "show
+ * as you"): `anonymous` (the default, id-derived) or `main` (our account identity).
+ * We snapshot it onto our record here so the card we publish on our first roster
+ * poll (syncMemberKey, once we hold `Kg`) shows the face we chose at join time.
  */
 export async function acceptGroupInvite(
   api: ApiClient,
   accounts: AccountManager,
   session: OwnerSession,
-  invite: GroupInvite,
+  opts: { invite: GroupInvite; identity?: AliasIdentity },
 ): Promise<OwnerSession> {
+  const { invite, identity = "anonymous" } = opts;
   const memberKey = await deriveGroupMemberKey(session.root, invite.groupId);
   const cardId = randomAliasId();
   const cardWriteToken = randomWriteToken();
@@ -205,6 +212,7 @@ export async function acceptGroupInvite(
     invite.lifecycleInbox,
     encodeLifecycleAccept(memberKey, cardId, leaveInbox),
   );
+  const face = memberFace(identity, session.blob);
   const group: GroupRecord = {
     groupId: invite.groupId,
     myCardId: cardId,
@@ -214,6 +222,8 @@ export async function acceptGroupInvite(
     visibility: invite.visibility,
     meetingKind: invite.meetingKind,
     isAdmin: false,
+    ...(face.handle !== undefined ? { myHandle: face.handle } : {}),
+    ...(face.avatar !== undefined ? { myAvatar: face.avatar } : {}),
   };
   const blob = await accounts.recordJoinedGroup(session.root, group);
   return { root: session.root, blob };
@@ -321,10 +331,9 @@ async function rotateGroupKey(
     dropCardId,
   );
   await api.putGroupBlob(group.groupId, nextBlob, writeToken);
-  await publishGroupCard(api, session.blob.state, newKg, {
-    cardId: group.myCardId,
-    cardWriteToken: group.myCardWriteToken,
-  });
+  // Republish the admin's own card under `Kg'`, keeping the face they chose (a
+  // rotation must not silently revert a revealed admin to anonymous).
+  await publishGroupCard(api, session.blob.state, newKg, ownCardPublish(group));
   await accounts.updateGroupKgCache(
     session.root,
     group.groupId,
@@ -433,10 +442,9 @@ async function syncMemberKey(
   ctx: { group: GroupRecord; Kg: GroupKey; obj: GroupObject },
 ): Promise<{ session: OwnerSession; Kg: GroupKey; obj: GroupObject }> {
   const { group, Kg, obj } = ctx;
-  await publishGroupCard(api, session.blob.state, Kg, {
-    cardId: group.myCardId,
-    cardWriteToken: group.myCardWriteToken,
-  });
+  // Publish our own card under the live key, showing the face we chose at join time
+  // (ownCardPublish reads the stored snapshot; absent, it stays anonymous).
+  await publishGroupCard(api, session.blob.state, Kg, ownCardPublish(group));
   const blob = await accounts.updateGroupKgCache(
     session.root,
     group.groupId,

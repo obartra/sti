@@ -7,8 +7,13 @@
 import { useState } from "react";
 import { Button, Card } from "../../design/components/index.ts";
 import { Lock, Users } from "../../design/icons.tsx";
-import type { GroupInvite, MeetingKind } from "../../store/index.ts";
+import type {
+  AliasIdentity,
+  GroupInvite,
+  MeetingKind,
+} from "../../store/index.ts";
 import { GROUPS_COPY as C, acceptTitle, disclosureFor } from "./groupsCopy.ts";
+import { GroupFaceChoice } from "./GroupFaceChoice.tsx";
 
 // The join-time disclosure card: the three honest lines, the middle one selected by
 // the group's meeting kind (doc 33). Mirrors the create form's disclosure.
@@ -55,14 +60,17 @@ function Shell({ children }: { children: React.ReactNode }) {
 export interface AcceptInviteProps {
   invite: GroupInvite;
   isLoggedIn: boolean;
-  /** Accept the invite (folds the session); resolves when recorded. */
-  onAccept: (invite: GroupInvite) => Promise<void>;
+  /** Accept the invite (folds the session); resolves when recorded. `identity` is
+   * the face the joiner appears under to members (doc 33 "show as you"). */
+  onAccept: (invite: GroupInvite, identity?: AliasIdentity) => Promise<void>;
   /** Decline the invite (tells the admin to drop it). */
   onReject: (invite: GroupInvite) => Promise<void>;
   /** After joining, open People to see the roster. */
   onJoined: () => void;
   /** Logged out: send them to make an account first. */
   onClaim: () => void;
+  /** Whether the joiner set a display name, so the "show as you" choice is offered. */
+  hasName?: boolean;
   onBack?: (() => void) | undefined;
 }
 
@@ -73,15 +81,17 @@ export function AcceptInvite({
   onReject,
   onJoined,
   onClaim,
+  hasName = false,
   onBack,
 }: AcceptInviteProps) {
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [identity, setIdentity] = useState<AliasIdentity>("anonymous");
 
   const join = () => {
     if (busy) return;
     setBusy(true);
-    void onAccept(invite)
+    void onAccept(invite, identity)
       .then(() => setDone(true))
       .catch(() => undefined)
       .finally(() => setBusy(false));
@@ -136,6 +146,11 @@ export function AcceptInvite({
       <JoinDisclosure meetingKind={invite.meetingKind} />
       {isLoggedIn ? (
         <>
+          <GroupFaceChoice
+            value={identity}
+            hasName={hasName}
+            onChange={setIdentity}
+          />
           <Button
             variant="primary"
             size="lg"
