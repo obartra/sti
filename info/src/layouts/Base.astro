@@ -6,9 +6,7 @@
 // wide-screen layer. A slim header links back to the app; the footer crosses the
 // library and back to sti.care. Pages composed for wide screens pass `wide`;
 // without it the main column keeps the phone width everywhere.
-import "../../../passport/src/design/index.css";
-import "../styles/site.css";
-import "../styles/desktop.css";
+import "../styles/global.css";
 import { SITE } from "../data/site.ts";
 import { SECTIONS } from "../data/sections.ts";
 
@@ -43,6 +41,13 @@ const nav = [
     <meta name="color-scheme" content="light" />
     <title>{title}</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="/fonts/source-serif-4-latin-600-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
   </head>
   <body>

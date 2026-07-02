@@ -1,0 +1,35 @@
+/* The tiny shared helpers (doc 36). Text styles that repeat across many
+   components live here so components do not each redeclare them. */
+
+/* Kicker line above sections and rails: quiet, uppercase, never teal. */
+.u-eyebrow {
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Micro copy: sources, disclaimers, subnotes. 13px floor; ink-500, never
+   ink-400 (contrast). */
+.u-micro {
+  font-size: 13px;
+  line-height: var(--leading-normal);
+  color: var(--text-muted);
+}
+
+.u-measure {
+  max-width: var(--measure);
+}
+
+.u-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
