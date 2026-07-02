@@ -95,6 +95,32 @@ async function walkGroupMembership(
   expect(
     await controller.removeGroupMember(unrevoked, groupId, "nobody"),
   ).not.toBeNull();
+  await walkGroupJoin(controller, unrevoked, groupId);
+}
+
+// The shared-group REQUEST + LEAVE surface (doc 33 slice 4b): request finds nothing
+// (the demo discovers no real public group), review returns no requests, and
+// approve/reject/redeem round-trip inert; leave drops the group from the local blob.
+// Split out to keep walkGroupMembership under the complexity ceiling.
+async function walkGroupJoin(
+  controller: SessionController,
+  session: OwnerSession,
+  groupId: string,
+): Promise<void> {
+  expect(await controller.requestToJoin(session, "book_club")).toBe(
+    "not-found",
+  );
+  expect(await controller.reviewJoinRequests(session, groupId)).toEqual([]);
+  const req = { requesterHash: "r", pubKey: "k" };
+  expect(
+    await controller.approveJoinRequest(session, groupId, req),
+  ).not.toBeNull();
+  expect(
+    await controller.rejectJoinRequest(session, groupId, req),
+  ).not.toBeNull();
+  expect(await controller.redeemJoinRequests(session)).not.toBeNull();
+  const left = await controller.leaveGroup(session, groupId);
+  expect(left.blob.groups?.find((g) => g.groupId === groupId)).toBeUndefined();
 }
 
 // Walk the whole SessionController surface in one realistic owner journey,

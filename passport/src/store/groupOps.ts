@@ -19,6 +19,7 @@
  */
 
 import type { ApiClient, VanityRegisterResult } from "../api/client.ts";
+import { ALIAS_PAYLOAD_SIZE } from "../api/contract.ts";
 import type { AccountManager } from "./account.ts";
 import type { AliasRecord, GroupRecord } from "./accountBlob.ts";
 import type { OwnerSession } from "./session.ts";
@@ -163,7 +164,14 @@ interface HandleClaim {
 // A public group claims its handle to a DEDICATED join pointer (not the group blob
 // id, so the public handle stays unlinkable from the blob). A private group has no
 // handle to claim. A non-registered outcome records no join pointer (the group is
-// valid, private-until-named) and carries the reason back.
+// valid, private-until-named) and carries the reason back. On a successful claim we
+// also BIND a write token at the pointer (doc 33, slice 4b): a pure decoy PUT under
+// joinWriteToken, so the server associates that capability with the pointer and a
+// later knockReview(joinPointerId, joinWriteToken) can review join requests instead
+// of 403ing. The pointer stays keyless and statusless: the decoy is never a card, so
+// a resolver who navigates to it sees gray-nothing (doc 33); this only binds the
+// capability. Best-effort: a bind failure still leaves a usable, claimed public
+// group (the backfill in reviewJoinRequests binds it on first review).
 async function claimGroupHandle(
   api: ApiClient,
   handle: string,
@@ -175,9 +183,15 @@ async function claimGroupHandle(
   const result = await api
     .registerVanityName(handle, joinPointerId, joinWriteToken)
     .catch((): VanityRegisterResult => "error");
-  return result === "registered"
-    ? { result, joinPointerId, joinWriteToken }
-    : { result };
+  if (result !== "registered") return { result };
+  await api
+    .putAlias(
+      joinPointerId,
+      crypto.getRandomValues(new Uint8Array(ALIAS_PAYLOAD_SIZE)),
+      joinWriteToken,
+    )
+    .catch(() => undefined);
+  return { result, joinPointerId, joinWriteToken };
 }
 
 /**

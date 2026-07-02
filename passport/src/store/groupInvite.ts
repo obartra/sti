@@ -66,16 +66,22 @@ function isInboxShape(x: unknown): x is InboxCapability {
   );
 }
 
-/** Build the invite URL: the whole invite base64url-encoded into the `#g=` fragment. */
-export function groupInviteUrl(invite: GroupInvite): string {
-  const payload = JSON.stringify({
+// The canonical JSON for an invite: the exact fields the URL fragment carries and
+// the same fields a join grant seals to a requester (doc 33, slice 4b), so the two
+// carriers stay in lockstep and both parse back through validateInvite.
+function inviteToJson(invite: GroupInvite): string {
+  return JSON.stringify({
     groupId: invite.groupId,
     lifecycleInbox: invite.lifecycleInbox,
     handle: invite.handle,
     visibility: invite.visibility,
     meetingKind: invite.meetingKind,
   });
-  return `${SHARE_ORIGIN}${GROUP_INVITE_PATH}#g=${bytesToBase64url(utf8ToBytes(payload))}`;
+}
+
+/** Build the invite URL: the whole invite base64url-encoded into the `#g=` fragment. */
+export function groupInviteUrl(invite: GroupInvite): string {
+  return `${SHARE_ORIGIN}${GROUP_INVITE_PATH}#g=${bytesToBase64url(utf8ToBytes(inviteToJson(invite)))}`;
 }
 
 // Strictly validate a decoded fragment as a well-formed invite, or null. Every
@@ -134,8 +140,22 @@ interface LifecycleReject {
   readonly kind: "reject";
 }
 
-/** The two lifecycle messages an invitee writes back through the inbox. */
-export type LifecyclePayload = LifecycleAccept | LifecycleReject;
+// A leave carries no data either (doc 33, slice 4b): a member writes it to the
+// admin<->member inbox they kept from accept, and the admin drops them from the
+// roster. It is byte-shape identical (through the sealed fixed-size inbox) to an
+// accept or reject, so the server cannot tell a leave from any other lifecycle
+// write; and to the rest of the group a leave and an admin remove look the same
+// (the roster simply shrinks), which is the indistinguishability doc 33 requires.
+interface LifecycleLeave {
+  readonly kind: "leave";
+}
+
+/** The lifecycle messages a member writes back through the inbox: an accept or
+ * reject on the way in, a leave on the way out. */
+export type LifecyclePayload =
+  | LifecycleAccept
+  | LifecycleReject
+  | LifecycleLeave;
 
 /** Encode an accept payload (plaintext bytes) to hand to writePing. */
 export function encodeLifecycleAccept(memberKey: Bytes, cardId: string): Bytes {
@@ -153,6 +173,11 @@ export function encodeLifecycleReject(): Bytes {
   return utf8ToBytes(JSON.stringify({ kind: "reject" }));
 }
 
+/** Encode a leave payload (plaintext bytes) to hand to writePing (doc 33, slice 4b). */
+export function encodeLifecycleLeave(): Bytes {
+  return utf8ToBytes(JSON.stringify({ kind: "leave" }));
+}
+
 /**
  * Parse a decrypted lifecycle payload, or null on any surprise (a decoy, a wrong
  * key that opened to garbage, a bad shape). Fails closed so the admin ingest treats
@@ -164,6 +189,7 @@ export function parseLifecyclePayload(bytes: Bytes): LifecyclePayload | null {
     if (typeof o !== "object" || o === null) return null;
     const r = o as Record<string, unknown>;
     if (r.kind === "reject") return { kind: "reject" };
+    if (r.kind === "leave") return { kind: "leave" };
     if (
       r.kind === "accept" &&
       typeof r.memberKey === "string" &&
@@ -174,6 +200,32 @@ export function parseLifecyclePayload(bytes: Bytes): LifecyclePayload | null {
       return { kind: "accept", memberKey: r.memberKey, cardId: r.cardId };
     }
     return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Encode an invite as the join-grant payload bytes (doc 33, slice 4b): the same
+ * fields the invite URL fragment carries, sealed to a requester's key on approve so
+ * they can run the SAME accept back-half an invited member runs. Carrying every
+ * field here (not just groupId + inbox) is what lets the requester reconstruct a
+ * full {@link GroupInvite} without having stored the group's meetingKind, which a
+ * requester never knew.
+ */
+export function encodeJoinGrant(invite: GroupInvite): Bytes {
+  return utf8ToBytes(inviteToJson(invite));
+}
+
+/**
+ * Parse a decrypted join-grant payload back into a {@link GroupInvite}, or null on
+ * any surprise (a decoy that opened to garbage, a wrong key, a bad shape). Reuses
+ * the invite validator, so it fails CLOSED exactly like parseGroupInvite: a payload
+ * that is not a well-formed invite is treated as "no grant for me", never acted on.
+ */
+export function parseJoinGrant(bytes: Bytes): GroupInvite | null {
+  try {
+    return validateInvite(JSON.parse(bytesToUtf8(bytes)));
   } catch {
     return null;
   }

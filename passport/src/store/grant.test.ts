@@ -1,6 +1,12 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { deriveGrantSlotId, grantAccess, redeemGrant } from "./grant.ts";
+import {
+  deriveGrantSlotId,
+  grantAccess,
+  redeemGrant,
+  sealGroupJoinGrant,
+  redeemJoinGrant,
+} from "./grant.ts";
 import { requesterHash } from "./knock.ts";
 import type { AliasRecord } from "./accountBlob.ts";
 import type { ApiClient, PendingKnock } from "../api/client.ts";
@@ -191,6 +197,67 @@ describe("grantAccess / redeemGrant round trip", () => {
     const alias = aliasRecord();
     await expect(
       grantAccess(api, alias, { requesterHash: "r" }),
+    ).rejects.toThrow();
+  });
+});
+
+describe("group join-grant round trip (doc 33, slice 4b)", () => {
+  it("the approved requester redeems exactly the sealed payload", async () => {
+    const api = fakeApi();
+    const join = { pointerId: randomAliasId(), writeToken: randomWriteToken() };
+    const secret = bytesToBase64url(crypto.getRandomValues(new Uint8Array(32)));
+    const kp = await generateGrantKeyPair();
+    const payload = utf8ToBytes("a-sealed-invite-payload");
+    const pending = {
+      requesterHash: await requesterHash(secret, join.pointerId),
+      pubKey: kp.publicKey,
+    };
+
+    // Before approval the slot is a decoy, so redeem is null (still pending).
+    expect(
+      await redeemJoinGrant(api, join.pointerId, secret, kp.privateKey),
+    ).toBeNull();
+
+    await sealGroupJoinGrant(api, join, pending, payload);
+
+    const opened = await redeemJoinGrant(
+      api,
+      join.pointerId,
+      secret,
+      kp.privateKey,
+    );
+    expect(opened).not.toBeNull();
+    expect(new TextDecoder().decode(opened ?? new Uint8Array())).toBe(
+      "a-sealed-invite-payload",
+    );
+  });
+
+  it("a different device's private key cannot redeem the join grant", async () => {
+    const api = fakeApi();
+    const join = { pointerId: randomAliasId(), writeToken: randomWriteToken() };
+    const secret = bytesToBase64url(crypto.getRandomValues(new Uint8Array(32)));
+    const kp = await generateGrantKeyPair();
+    await sealGroupJoinGrant(
+      api,
+      join,
+      {
+        requesterHash: await requesterHash(secret, join.pointerId),
+        pubKey: kp.publicKey,
+      },
+      utf8ToBytes("invite"),
+    );
+
+    const stranger = await generateGrantKeyPair();
+    expect(
+      await redeemJoinGrant(api, join.pointerId, secret, stranger.privateKey),
+    ).toBeNull();
+  });
+
+  it("throws if the request carried no key to seal to", async () => {
+    const api = fakeApi();
+    const join = { pointerId: randomAliasId(), writeToken: randomWriteToken() };
+    await expect(
+      sealGroupJoinGrant(api, join, { requesterHash: "r" }, utf8ToBytes("x")),
     ).rejects.toThrow();
   });
 });

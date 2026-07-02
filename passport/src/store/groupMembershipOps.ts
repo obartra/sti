@@ -3,11 +3,12 @@
  * the other owner ops (groupOps, findableOps) these are free functions over the api
  * + account manager, called by the session controller's thin method wrappers.
  *
- * This slice covers invite / accept / reject / revoke, the admin's ingest of an
- * acceptance (fill a slot, grow the roster), remove, and the member read/roster
- * poll. The request side (knock/grant), leave, and key rotation on remove are later
- * slices; a removed member keeps the old `Kg` for now (correct until rotation lands),
- * which is why each member's member key is retained (so `Kg` can be re-wrapped then).
+ * This file covers invite / accept / reject / revoke, remove, and the member read/
+ * roster poll. The admin's INGEST of an accept/reject/leave (fill a slot, grow or
+ * shrink the roster) lives in groupIngestOps (split out for length), and the request
+ * side + leave are groupJoinOps (slice 4b). Key rotation on remove is a later slice;
+ * a removed member keeps the old `Kg` for now (correct until rotation lands), which
+ * is why each member's member key is retained (so `Kg` can be re-wrapped then).
  *
  * The blind boundary holds throughout: the invite URL carries capabilities only in
  * its fragment (never to a server, exactly like the contact invite); the accept/
@@ -19,11 +20,7 @@
 import type { ApiClient } from "../api/client.ts";
 import { ALIAS_PAYLOAD_SIZE } from "../api/contract.ts";
 import type { AccountManager } from "./account.ts";
-import type {
-  GroupMemberSecret,
-  GroupRecord,
-  PendingGroupInvite,
-} from "./accountBlob.ts";
+import type { GroupRecord, PendingGroupInvite } from "./accountBlob.ts";
 import type { OwnerSession } from "./session.ts";
 import {
   base64urlToBytes,
@@ -34,29 +31,20 @@ import {
   type Bytes,
 } from "../crypto/index.ts";
 import { todayEpochDay } from "../core/clock.ts";
-import { openGroupCard, wrapGroupKey, type GroupKey } from "./groupCrypto.ts";
+import { openGroupCard, type GroupKey } from "./groupCrypto.ts";
 import {
-  addMemberSlot,
   dropMemberSlot,
   parseGroupBlobForMember,
   parseGroupBlobWithKg,
-  GROUP_MEMBER_CAP,
   type GroupObject,
 } from "./groupObject.ts";
 import {
   encodeLifecycleAccept,
   encodeLifecycleReject,
   groupInviteUrl,
-  parseLifecyclePayload,
   type GroupInvite,
-  type LifecycleAccept,
 } from "./groupInvite.ts";
-import {
-  mintInbox,
-  pollInbox,
-  writePing,
-  type InboxCapability,
-} from "./notifyInbox.ts";
+import { mintInbox, writePing, type InboxCapability } from "./notifyInbox.ts";
 import { publishGroupCard } from "./groupOps.ts";
 import type { ResolvedView } from "../ui/public/PublicResolution.tsx";
 
@@ -90,7 +78,8 @@ export interface GroupRosterView {
 }
 
 // The admin's own record for a group, or undefined when the owner is not its admin.
-function adminGroup(
+// Exported for the ingest ops (groupIngestOps), which resolve the same record.
+export function adminGroup(
   session: OwnerSession,
   groupId: string,
 ): GroupRecord | undefined {
@@ -100,7 +89,8 @@ function adminGroup(
 // Overwrite an inbox with fresh random bytes of the fixed size, so any prior payload
 // (a not-yet-ingested accept) can never be opened again. Byte-shape identical to a
 // normal sealed write, so it adds no oracle; the admin holds the write token.
-async function overwriteInbox(
+// Exported for the ingest ops (groupIngestOps), which reuse it on a reject.
+export async function overwriteInbox(
   api: ApiClient,
   inbox: InboxCapability,
 ): Promise<void> {
@@ -218,159 +208,6 @@ export async function rejectGroupInvite(
 ): Promise<OwnerSession> {
   await writePing(api, invite.lifecycleInbox, encodeLifecycleReject());
   return session;
-}
-
-// Every (groupId, inviteId) the admin currently has pending, as a flat snapshot
-// taken before ingest (each is re-resolved against the latest session inside the
-// loop, so a mutation from an earlier pair is seen by a later one).
-function pendingRefs(
-  session: OwnerSession,
-): { groupId: string; inviteId: string }[] {
-  const out: { groupId: string; inviteId: string }[] = [];
-  for (const g of session.blob.groups ?? []) {
-    if (!g.isAdmin) continue;
-    for (const p of g.pendingInvites ?? []) {
-      out.push({ groupId: g.groupId, inviteId: p.inviteId });
-    }
-  }
-  return out;
-}
-
-/**
- * ADMIN INGEST (poll every pending invite's lifecycle inbox). A null poll or a null
- * parse leaves the invite pending (indistinguishable from an empty/decoy inbox); an
- * accept fills a slot + grows the roster (idempotently); a reject drops the invite.
- */
-export async function pollGroupLifecycle(
-  api: ApiClient,
-  accounts: AccountManager,
-  session: OwnerSession,
-): Promise<OwnerSession> {
-  let current = session;
-  for (const ref of pendingRefs(session)) {
-    current = await ingestPending(api, accounts, current, ref);
-  }
-  return current;
-}
-
-// Poll and act on one pending invite. Fail-closed: an unreadable/decoy inbox or a
-// network blip leaves it pending for the next poll.
-async function ingestPending(
-  api: ApiClient,
-  accounts: AccountManager,
-  session: OwnerSession,
-  ref: { groupId: string; inviteId: string },
-): Promise<OwnerSession> {
-  const group = adminGroup(session, ref.groupId);
-  const invite = group?.pendingInvites?.find(
-    (p) => p.inviteId === ref.inviteId,
-  );
-  if (group === undefined || invite === undefined) return session;
-  try {
-    const raw = await pollInbox(api, invite.lifecycleInbox);
-    if (raw === null) return session;
-    const payload = parseLifecyclePayload(raw);
-    if (payload === null) return session;
-    if (payload.kind === "reject") {
-      return await rejectPending(api, accounts, session, { group, invite });
-    }
-    return await ingestAccept(api, accounts, session, {
-      group,
-      invite,
-      accept: payload,
-    });
-  } catch {
-    return session;
-  }
-}
-
-// A reject: overwrite the inbox and drop the pending invite.
-async function rejectPending(
-  api: ApiClient,
-  accounts: AccountManager,
-  session: OwnerSession,
-  ctx: { group: GroupRecord; invite: PendingGroupInvite },
-): Promise<OwnerSession> {
-  await overwriteInbox(api, ctx.invite.lifecycleInbox);
-  const blob = await accounts.dropPendingInvite(
-    session.root,
-    ctx.group.groupId,
-    ctx.invite.inviteId,
-  );
-  return { root: session.root, blob };
-}
-
-// An accept: add the member's slot to the blob (unless already there) and promote
-// the pending invite to a roster member. Idempotent: an already-ingested cardId is a
-// no-op; a blob that already has the slot (a prior partial run) skips the re-add and
-// just promotes. A full group leaves the invite pending (fail clean, no drop), so it
-// can be ingested once a removal frees a slot.
-async function ingestAccept(
-  api: ApiClient,
-  accounts: AccountManager,
-  session: OwnerSession,
-  ctx: {
-    group: GroupRecord;
-    invite: PendingGroupInvite;
-    accept: LifecycleAccept;
-  },
-): Promise<OwnerSession> {
-  const { group, invite, accept } = ctx;
-  if (group.members?.some((m) => m.cardId === accept.cardId)) return session;
-  if (group.kg === undefined || group.groupWriteToken === undefined) {
-    return session;
-  }
-  const Kg = base64urlToBytes(group.kg) as GroupKey;
-  const blob = await api.getGroupBlob(group.groupId);
-  const obj = await parseGroupBlobWithKg(blob, Kg);
-  if (obj === null) return session;
-  if (!obj.roster.some((r) => r.cardId === accept.cardId)) {
-    if (obj.roster.length >= GROUP_MEMBER_CAP) return session;
-    await addAcceptToBlob(api, {
-      groupId: group.groupId,
-      writeToken: group.groupWriteToken,
-      blob,
-      Kg,
-      accept,
-    });
-  }
-  const member: GroupMemberSecret = {
-    cardId: accept.cardId,
-    memberKey: accept.memberKey,
-    lifecycleInbox: invite.lifecycleInbox,
-  };
-  const next = await accounts.promoteInviteToMember(
-    session.root,
-    group.groupId,
-    invite.inviteId,
-    member,
-  );
-  return { root: session.root, blob: next };
-}
-
-// Wrap `Kg` to the accepting member's key, lay it into a free slot, and write the
-// grown blob back under the group write token.
-async function addAcceptToBlob(
-  api: ApiClient,
-  ctx: {
-    groupId: string;
-    writeToken: string;
-    blob: Bytes;
-    Kg: GroupKey;
-    accept: LifecycleAccept;
-  },
-): Promise<void> {
-  const wrapped = await wrapGroupKey(
-    ctx.Kg,
-    base64urlToBytes(ctx.accept.memberKey),
-  );
-  const nextBlob = await addMemberSlot(
-    ctx.blob,
-    ctx.Kg,
-    ctx.accept.cardId,
-    wrapped,
-  );
-  await api.putGroupBlob(ctx.groupId, nextBlob, ctx.writeToken);
 }
 
 /**

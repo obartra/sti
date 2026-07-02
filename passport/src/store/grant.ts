@@ -37,6 +37,7 @@ import {
   bytesToBase64url,
   sealToPublicKeySized,
   openFromPrivateKeySized,
+  type Bytes,
 } from "../crypto/index.ts";
 import type { AliasRecord } from "./accountBlob.ts";
 import { requesterHash } from "./knock.ts";
@@ -66,9 +67,11 @@ export function deriveGrantSlotId(
   );
 }
 
-// The grant slot's write token, derived from the alias's own write token (which
-// only the owner holds) so re-approving overwrites the slot in place instead of
-// hitting a 403 on a second PUT.
+// The grant slot's write token, derived from the owner's own write token (the alias
+// write token, or a group's join-pointer write token) so re-approving overwrites the
+// slot in place instead of hitting a 403 on a second PUT. Shared by grantAccess and
+// the group join-grant path (doc 33, slice 4b), which derives the same way off the
+// join pointer.
 function deriveGrantWriteToken(
   aliasWriteToken: string,
   requesterHashValue: string,
@@ -130,6 +133,67 @@ export async function redeemGrant(
   } catch {
     // The only failures here are crypto: a decoy (not yet granted) or a grant
     // sealed to someone else. Both mean "no key for me" -> null, never an error.
+    return null;
+  }
+}
+
+/**
+ * Group join-grant, owner side (doc 33, slice 4b): approving a request to join a
+ * public group is delivering an invite to the requester over the grant channel.
+ * This is {@link grantAccess} generalized: instead of sealing an alias read key at
+ * an alias, it seals an OPAQUE payload (a JSON invite, {@link encodeJoinGrant}) at
+ * the group's public JOIN POINTER, deriving the slot + write token off the pointer
+ * exactly as grantAccess does off an alias. The requester polls the slot and opens
+ * it with {@link redeemJoinGrant}. Throws if the pending request carried no key.
+ *
+ * The join pointer stays keyless and statusless (its own payload is a pure decoy):
+ * this rides its knock/grant capability, it does not turn the pointer into a card.
+ */
+export async function sealGroupJoinGrant(
+  api: ApiClient,
+  join: { pointerId: string; writeToken: string },
+  pending: PendingKnock,
+  payload: Bytes,
+): Promise<void> {
+  if (!pending.pubKey) {
+    throw new Error("join grant: requester sent no key to seal to");
+  }
+  const slotId = await deriveGrantSlotId(join.pointerId, pending.requesterHash);
+  const writeToken = await deriveGrantWriteToken(
+    join.writeToken,
+    pending.requesterHash,
+  );
+  const sealed = await sealToPublicKeySized(
+    payload,
+    pending.pubKey,
+    ALIAS_PAYLOAD_SIZE,
+  );
+  await api.putAlias(slotId, sealed, writeToken);
+}
+
+/**
+ * Group join-grant, requester side (doc 33, slice 4b): poll the grant slot at the
+ * public join pointer for `pointerId` and open it with the private key kept from the
+ * knock. Returns the opaque grant plaintext (a sealed invite, for {@link
+ * parseJoinGrant}) once the admin has approved, or null while still pending / if the
+ * slot is not sealed to this device, exactly like {@link redeemGrant}. The getAlias
+ * is OUTSIDE the try on purpose: a transport error must propagate, not read as
+ * "pending".
+ */
+export async function redeemJoinGrant(
+  api: ApiClient,
+  pointerId: string,
+  requesterSecret: string,
+  grantPrivateKey: string,
+): Promise<Bytes | null> {
+  const hash = await requesterHash(requesterSecret, pointerId);
+  const slotId = await deriveGrantSlotId(pointerId, hash);
+  const sealed = await api.getAlias(slotId);
+  try {
+    return await openFromPrivateKeySized(sealed, grantPrivateKey);
+  } catch {
+    // A decoy (not yet approved) or a grant sealed to someone else: no grant for
+    // this device -> null, never an error.
     return null;
   }
 }
