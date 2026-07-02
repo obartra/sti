@@ -1,101 +1,220 @@
-// Create a group: name it and pick which of your contacts are in it. A group is
-// just a private grouping of contacts you've already linked with; there is no
-// invite, no join, no roles. Everyone in it sees each other's color, at any size,
-// because being in the group is itself sharing that color (doc 31).
-import { useState } from "react";
+// Create a group (doc 33): name it, choose who can join and how often you meet,
+// and read the one honest thing up front, that joining is sharing your color with
+// everyone here and that a later positive tells everyone to test. On submit the
+// group is created; a public name that is taken keeps the form so the owner can try
+// another. Invite and join flows are a later slice; a fresh group starts with just
+// you.
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Avatar,
   Button,
   Card,
   Field,
   Input,
-  Switch,
+  Segmented,
 } from "../../design/components/index.ts";
-import { Lock } from "../../design/icons.tsx";
-import { avatarFor } from "../../lib/avatars.ts";
-import { sectionLbl } from "./shared.tsx";
-import type { CircleRecord, ContactRecord } from "../../store/accountBlob.ts";
+import { Lock, Users } from "../../design/icons.tsx";
+import {
+  normalizeVanityName,
+  vanityNameError,
+  type CreateGroupInput,
+  type CreateGroupResult,
+  type GroupVisibility,
+  type MeetingKind,
+  type VanityNameError,
+} from "../../store/index.ts";
+import { GROUPS_COPY as C, disclosureFor } from "./groupsCopy.ts";
 
-const COPY = {
-  createTitle: "Create a group",
-  editTitle: "Edit group",
-  nameLabel: "Name",
-  nameHint: "Keep it neutral. It shows on lock screens and notifications.",
-  namePlaceholder: "e.g. Thursday group",
-  pickLabel: "Members",
-  sharingNote:
-    "Everyone you add sees each other’s color, and they see yours. Being in the group is the sharing.",
-  noContacts: "Add connections first, then group them here.",
-  create: "Create group",
-  save: "Save changes",
-} as const;
+const NAME_ERROR: Record<VanityNameError, string> = {
+  "too-short": C.handleTooShort,
+  "too-long": C.handleTooLong,
+  "bad-chars": C.handleBadChars,
+  reserved: C.handleReserved,
+};
 
-interface PickRowProps {
-  contact: ContactRecord;
-  checked: boolean;
-  onToggle: () => void;
+type NameStatus = "idle" | "checking" | "free" | "taken" | "error";
+
+// Live, as-you-type availability for a public handle: format-check synchronously,
+// then a debounced non-claiming lookup, with a request counter so a fast typist
+// never sees a stale answer land. Mirrors the Findable name field.
+function useNameCheck(
+  normalized: string,
+  enabled: boolean,
+  check: (name: string) => Promise<"free" | "taken" | "error">,
+): NameStatus {
+  const [status, setStatus] = useState<NameStatus>("idle");
+  const reqId = useRef(0);
+  useEffect(() => {
+    if (!enabled || normalized === "" || vanityNameError(normalized) !== null) {
+      setStatus("idle");
+      return;
+    }
+    setStatus("checking");
+    const id = ++reqId.current;
+    const timer = setTimeout(() => {
+      void check(normalized).then((r) => {
+        if (id === reqId.current) setStatus(r);
+      });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [normalized, enabled, check]);
+  return status;
 }
 
-function PickRow({ contact, checked, onToggle }: PickRowProps) {
-  const name = contact.label.trim() === "" ? "Contact" : contact.label;
+// One two-option control plus the note under the chosen option, so the choice and
+// what it means read together (doc 21: outcome, not mechanism).
+function OptionRow<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+  note,
+}: {
+  label: string;
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+  note: string;
+}) {
+  return (
+    <Field label={label}>
+      <Segmented
+        options={options}
+        value={value}
+        onChange={onChange}
+        aria-label={label}
+      />
+      <div
+        style={{
+          fontSize: 12.5,
+          color: "var(--text-muted)",
+          lineHeight: 1.5,
+          marginTop: 8,
+        }}
+      >
+        {note}
+      </div>
+    </Field>
+  );
+}
+
+function StatusLine({
+  formatError,
+  status,
+  claimError,
+}: {
+  formatError: string | null;
+  status: NameStatus;
+  claimError: string | null;
+}) {
+  const taken = status === "taken" || status === "error";
+  const text =
+    claimError ??
+    formatError ??
+    (status === "taken"
+      ? C.handleTaken
+      : status === "checking"
+        ? C.handleChecking
+        : status === "free"
+          ? C.handleFree
+          : null);
+  if (text === null) return null;
+  const isError = claimError !== null || formatError !== null || taken;
   return (
     <div
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 11,
-        padding: "8px 8px",
+        fontSize: 12.5,
+        marginTop: -4,
+        color: isError ? "var(--status-expired-fg)" : "var(--text-muted)",
       }}
     >
-      <Avatar alt={name} src={avatarFor(contact.id)} size="sm" />
-      <span
-        style={{
-          flex: 1,
-          minWidth: 0,
-          fontSize: 14.5,
-          fontWeight: 600,
-          color: "var(--text-strong)",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {name}
-      </span>
-      <Switch checked={checked} onChange={onToggle} label={`Add ${name}`} />
+      {text}
     </div>
   );
 }
 
+// The join-time disclosure (doc 33): a calm Lock-style note. Says the three honest
+// things, with the event-vs-recurring line selected by the chosen meeting kind.
+function Disclosure({ meetingKind }: { meetingKind: MeetingKind }) {
+  return (
+    <Card variant="tint" style={{ display: "flex", gap: 12 }}>
+      <span style={{ color: "var(--text-accent)", flex: "none", marginTop: 1 }}>
+        <Lock size={17} />
+      </span>
+      <div
+        style={{
+          fontSize: 13,
+          lineHeight: 1.55,
+          color: "var(--text-body)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+        }}
+      >
+        <span>{C.membershipIsSharing}</span>
+        <span>{disclosureFor(meetingKind)}</span>
+        <span style={{ color: "var(--text-muted)" }}>{C.leaveIsEasy}</span>
+      </div>
+    </Card>
+  );
+}
+
 export interface GroupCreateProps {
-  contacts: ContactRecord[];
-  /** When present, the screen edits this group (prefilled) instead of creating. */
-  existing?: CircleRecord | undefined;
-  onCreate?: ((name: string, memberContactIds: string[]) => void) | undefined;
+  onCreate: (
+    input: CreateGroupInput,
+  ) => Promise<{ result: CreateGroupResult; groupId: string }>;
+  onCreated: (groupId: string) => void;
+  onCheckName: (name: string) => Promise<"free" | "taken" | "error">;
 }
 
 export function GroupCreate({
-  contacts,
-  existing,
   onCreate,
+  onCreated,
+  onCheckName,
 }: GroupCreateProps) {
-  const editing = existing !== undefined;
-  const [name, setName] = useState(existing?.name ?? "");
-  const [selected, setSelected] = useState<ReadonlySet<string>>(
-    () => new Set(existing?.memberContactIds ?? []),
-  );
-  const ok = name.trim().length >= 2;
+  const [handle, setHandle] = useState("");
+  const [visibility, setVisibility] = useState<GroupVisibility>("public");
+  const [meetingKind, setMeetingKind] = useState<MeetingKind>("recurring");
+  const [busy, setBusy] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
 
-  const toggle = (id: string) =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const normalized = normalizeVanityName(handle);
+  const bad = normalized === "" ? null : vanityNameError(normalized);
+  const formatError = bad === null ? null : NAME_ERROR[bad];
+  // Only a public handle is checked for availability; a private group's name is not
+  // claimed in the directory, so it is never "taken".
+  const status = useNameCheck(normalized, visibility === "public", onCheckName);
+
+  const submit = useCallback(
+    (e: React.SyntheticEvent) => {
+      e.preventDefault();
+      if (normalized === "" || bad !== null || busy) return;
+      setClaimError(null);
+      setBusy(true);
+      void onCreate({ handle: normalized, visibility, meetingKind })
+        .then(({ result, groupId }) => {
+          if (result === "created" || result === "registered") {
+            onCreated(groupId);
+          } else if (result === "unavailable") {
+            setClaimError(C.handleTaken);
+          } else {
+            setClaimError(C.createError);
+          }
+        })
+        .catch(() => setClaimError(C.genericError))
+        .finally(() => setBusy(false));
+    },
+    [normalized, bad, busy, visibility, meetingKind, onCreate, onCreated],
+  );
+
+  const blockSubmit =
+    busy ||
+    normalized === "" ||
+    bad !== null ||
+    (visibility === "public" && (status === "taken" || status === "checking"));
 
   return (
-    <div
+    <form
+      onSubmit={submit}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -112,70 +231,67 @@ export function GroupCreate({
           color: "var(--text-strong)",
         }}
       >
-        {editing ? COPY.editTitle : COPY.createTitle}
+        {C.createTitle}
       </h1>
 
-      <Field label={COPY.nameLabel} hint={COPY.nameHint}>
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={COPY.namePlaceholder}
-        />
-      </Field>
-
       <div>
-        <div style={{ ...sectionLbl, marginBottom: 8 }}>{COPY.pickLabel}</div>
-        {contacts.length === 0 ? (
-          <Card variant="flat">
-            <div
-              style={{
-                fontSize: 13.5,
-                lineHeight: 1.55,
-                color: "var(--text-muted)",
-              }}
-            >
-              {COPY.noContacts}
-            </div>
-          </Card>
-        ) : (
-          <Card
-            variant="flat"
-            style={{ padding: 6, display: "flex", flexDirection: "column" }}
-          >
-            {contacts.map((c) => (
-              <PickRow
-                key={c.id}
-                contact={c}
-                checked={selected.has(c.id)}
-                onToggle={() => toggle(c.id)}
-              />
-            ))}
-          </Card>
-        )}
+        <Field label={C.handleLabel} hint={C.handleHint} htmlFor="group-handle">
+          <Input
+            id="group-handle"
+            value={handle}
+            error={formatError !== null || status === "taken"}
+            disabled={busy}
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            placeholder="e.g. thursday_run"
+            onChange={(ev) => {
+              setHandle(ev.target.value);
+              setClaimError(null);
+            }}
+          />
+        </Field>
+        <StatusLine
+          formatError={formatError}
+          status={visibility === "public" ? status : "idle"}
+          claimError={claimError}
+        />
       </div>
 
-      <Card variant="flat" style={{ display: "flex", gap: 12 }}>
-        <span
-          style={{ color: "var(--text-accent)", flex: "none", marginTop: 1 }}
-        >
-          <Lock size={17} />
-        </span>
-        <div
-          style={{ fontSize: 13, lineHeight: 1.55, color: "var(--text-body)" }}
-        >
-          {COPY.sharingNote}
-        </div>
-      </Card>
+      <OptionRow
+        label={C.visLabel}
+        options={[
+          { value: "public", label: C.visPublicOpt },
+          { value: "private", label: C.visPrivateOpt },
+        ]}
+        value={visibility}
+        onChange={setVisibility}
+        note={visibility === "public" ? C.visPublicNote : C.visPrivateNote}
+      />
+
+      <OptionRow
+        label={C.kindLabel}
+        options={[
+          { value: "event", label: C.kindEventOpt },
+          { value: "recurring", label: C.kindRecurringOpt },
+        ]}
+        value={meetingKind}
+        onChange={setMeetingKind}
+        note={meetingKind === "event" ? C.kindEventNote : C.kindRecurringNote}
+      />
+
+      <Disclosure meetingKind={meetingKind} />
 
       <Button
+        type="submit"
         variant="primary"
         size="lg"
         block
-        disabled={!ok}
-        onClick={() => onCreate?.(name.trim(), [...selected])}
+        icon={<Users size={18} />}
+        disabled={blockSubmit}
       >
-        {editing ? COPY.save : COPY.create}
+        {C.createCta}
       </Button>
-    </div>
+    </form>
   );
 }

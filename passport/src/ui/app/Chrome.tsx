@@ -74,10 +74,11 @@ export interface ChromeProps {
   onTryDemo: ScreenCtx["onTryDemo"];
   onAcceptContactInvite: ScreenCtx["onAcceptContactInvite"];
   onIngestContactReturn: ScreenCtx["onIngestContactReturn"];
-  circles: ScreenCtx["circles"];
-  onCreateCircle: ScreenCtx["onCreateCircle"];
-  onUpdateCircle: ScreenCtx["onUpdateCircle"];
-  onRemoveCircle: ScreenCtx["onRemoveCircle"];
+  groups: ScreenCtx["groups"];
+  onCreateGroup: ScreenCtx["onCreateGroup"];
+  onReadGroupRoster: ScreenCtx["onReadGroupRoster"];
+  onLeaveGroup: ScreenCtx["onLeaveGroup"];
+  onDeleteGroup: ScreenCtx["onDeleteGroup"];
   vanityName: ScreenCtx["vanityName"];
   onRegisterVanityName: ScreenCtx["onRegisterVanityName"];
   onCheckVanityName: ScreenCtx["onCheckVanityName"];
@@ -206,10 +207,11 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     onTryDemo: props.onTryDemo,
     onAcceptContactInvite: props.onAcceptContactInvite,
     onIngestContactReturn: props.onIngestContactReturn,
-    circles: props.circles,
-    onCreateCircle: props.onCreateCircle,
-    onUpdateCircle: props.onUpdateCircle,
-    onRemoveCircle: props.onRemoveCircle,
+    groups: props.groups,
+    onCreateGroup: props.onCreateGroup,
+    onReadGroupRoster: props.onReadGroupRoster,
+    onLeaveGroup: props.onLeaveGroup,
+    onDeleteGroup: props.onDeleteGroup,
     vanityName: props.vanityName,
     onRegisterVanityName: props.onRegisterVanityName,
     onCheckVanityName: props.onCheckVanityName,

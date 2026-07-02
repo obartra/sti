@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { GroupCreate } from "./GroupCreate.tsx";
-import type { ContactRecord } from "../../store/accountBlob.ts";
 
-// Create a circle: name it and pick from your existing contacts. The primary CTA
-// is disabled until a name is entered. With no contacts, a prompt to link first.
+// Create a group (doc 33): a name with live availability, a who-can-join choice, a
+// how-often choice, and the join-time disclosure. The disclosure line switches with
+// the meeting kind. The primary CTA is disabled until a valid, free name is entered.
 const meta: Meta<typeof GroupCreate> = {
   title: "Passport/Groups/Create",
   component: GroupCreate,
@@ -11,25 +11,23 @@ const meta: Meta<typeof GroupCreate> = {
 export default meta;
 type Story = StoryObj<typeof GroupCreate>;
 
-function contact(id: string, label: string): ContactRecord {
-  return {
-    id,
-    label,
-    createdDay: 1,
-    expiresAt: null,
-    alias: { id, writeToken: "w", key: "k", isPublic: false },
-  };
-}
+// Default: a free-name form. onCreate reports a claimed public group; onCheckName
+// answers "free" so a typed name reads available.
+export const Default: Story = {
+  args: {
+    onCreate: (input) =>
+      Promise.resolve({ result: "registered", groupId: input.handle }),
+    onCreated: () => undefined,
+    onCheckName: () => Promise.resolve("free"),
+  },
+};
 
-const contacts: ContactRecord[] = [
-  contact("a", "sam"),
-  contact("b", "ari"),
-  contact("c", "leo"),
-  contact("d", "kit"),
-];
-
-// Default: the form with a few contacts to pick from.
-export const Default: Story = { args: { contacts } };
-
-// No contacts yet: a prompt to link with people first.
-export const NoContacts: Story = { args: { contacts: [] } };
+// A taken public name: onCheckName answers "taken", so the field flags it and the
+// CTA stays disabled.
+export const NameTaken: Story = {
+  args: {
+    onCreate: () => Promise.resolve({ result: "unavailable", groupId: "" }),
+    onCreated: () => undefined,
+    onCheckName: () => Promise.resolve("taken"),
+  },
+};

@@ -1,60 +1,91 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { GroupCreate } from "./GroupCreate.tsx";
-import type { ContactRecord } from "../../store/accountBlob.ts";
+import type { CreateGroupResult } from "../../store/index.ts";
 
-function contact(id: string, label: string): ContactRecord {
-  return {
-    id,
-    label,
-    createdDay: 1,
-    expiresAt: null,
-    alias: { id, writeToken: "w", key: "k", isPublic: false },
-  };
+function setup(
+  result: CreateGroupResult,
+  check: () => Promise<"free" | "taken" | "error"> = () =>
+    Promise.resolve("free"),
+) {
+  const onCreate = vi
+    .fn()
+    .mockResolvedValue({ result, groupId: "new-group-id" });
+  const onCreated = vi.fn();
+  render(
+    <GroupCreate
+      onCreate={onCreate}
+      onCreated={onCreated}
+      onCheckName={check}
+    />,
+  );
+  return { onCreate, onCreated };
 }
 
-const contacts = [contact("a", "sam"), contact("b", "ari")];
-
 describe("GroupCreate", () => {
-  it("creates: name + ticked contacts, CTA disabled until a name", async () => {
-    const user = userEvent.setup();
-    const onCreate = vi.fn();
-    render(<GroupCreate contacts={contacts} onCreate={onCreate} />);
-
-    expect(screen.getByText("Create a group")).toBeInTheDocument();
-    const cta = screen.getByRole("button", { name: "Create group" });
-    expect(cta).toBeDisabled();
-
-    await user.type(screen.getByPlaceholderText(/Thursday group/), "Crew");
-    await user.click(screen.getByRole("checkbox", { name: /Add sam/ }));
-    expect(cta).toBeEnabled();
-    await user.click(cta);
-
-    expect(onCreate).toHaveBeenCalledWith("Crew", ["a"]);
+  it("disables the CTA until a valid name is entered", () => {
+    setup("registered");
+    expect(
+      screen.getByRole("button", { name: "Create a group" }),
+    ).toBeDisabled();
   });
 
-  it("edits: prefills name + members, saves the changed set", async () => {
+  it("registered: creates a public group and navigates with the new id", async () => {
     const user = userEvent.setup();
-    const onCreate = vi.fn();
-    render(
-      <GroupCreate
-        contacts={contacts}
-        existing={{ id: "c1", name: "Thursday crew", memberContactIds: ["a"] }}
-        onCreate={onCreate}
-      />,
-    );
+    const { onCreate, onCreated } = setup("registered");
+    await user.type(screen.getByLabelText("Group name"), "thursday_run");
+    await screen.findByText("That name is free.");
+    await user.click(screen.getByRole("button", { name: "Create a group" }));
+    await waitFor(() => expect(onCreated).toHaveBeenCalledWith("new-group-id"));
+    expect(onCreate).toHaveBeenCalledWith({
+      handle: "thursday_run",
+      visibility: "public",
+      meetingKind: "recurring",
+    });
+  });
 
-    // Edit mode: prefilled name, sam already a member, the CTA says Save.
-    expect(screen.getByText("Edit group")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Thursday crew")).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: /Add sam/ })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: /Add ari/ })).not.toBeChecked();
+  it("created: a private group navigates with no availability gate", async () => {
+    const user = userEvent.setup();
+    const { onCreate, onCreated } = setup("created");
+    await user.click(screen.getByRole("tab", { name: "Invite only" }));
+    await user.type(screen.getByLabelText("Group name"), "fern_house");
+    await user.click(screen.getByRole("button", { name: "Create a group" }));
+    await waitFor(() => expect(onCreated).toHaveBeenCalledWith("new-group-id"));
+    expect(onCreate).toHaveBeenCalledWith({
+      handle: "fern_house",
+      visibility: "private",
+      meetingKind: "recurring",
+    });
+  });
 
-    // Add ari, then save: the full member set is reported.
-    await user.click(screen.getByRole("checkbox", { name: /Add ari/ }));
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
+  it("unavailable: keeps the form and shows the taken-name message", async () => {
+    const user = userEvent.setup();
+    const { onCreated } = setup("unavailable");
+    await user.type(screen.getByLabelText("Group name"), "thursday_run");
+    await screen.findByText("That name is free.");
+    await user.click(screen.getByRole("button", { name: "Create a group" }));
+    await screen.findByText("That name isn't available. Try another.");
+    expect(onCreated).not.toHaveBeenCalled();
+  });
 
-    expect(onCreate).toHaveBeenCalledWith("Thursday crew", ["a", "b"]);
+  it("error: keeps the form and shows the create error", async () => {
+    const user = userEvent.setup();
+    const { onCreated } = setup("error");
+    await user.type(screen.getByLabelText("Group name"), "thursday_run");
+    await screen.findByText("That name is free.");
+    await user.click(screen.getByRole("button", { name: "Create a group" }));
+    await screen.findByText("Couldn't create the group. Try again.");
+    expect(onCreated).not.toHaveBeenCalled();
+  });
+
+  it("blocks submit while a public name reads taken", async () => {
+    const user = userEvent.setup();
+    setup("registered", () => Promise.resolve("taken"));
+    await user.type(screen.getByLabelText("Group name"), "thursday_run");
+    await screen.findByText("That name isn't available. Try another.");
+    expect(
+      screen.getByRole("button", { name: "Create a group" }),
+    ).toBeDisabled();
   });
 });

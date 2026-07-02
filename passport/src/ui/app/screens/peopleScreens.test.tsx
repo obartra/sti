@@ -15,7 +15,7 @@ describe("peopleScreens People page", () => {
       faves: new Set<string>(),
       onToggleFave: vi.fn(),
       onRevokeContact: vi.fn(),
-      circles: [],
+      groups: [],
     } as unknown as ScreenCtx;
 
     render(<>{peopleRenderers.people?.(ctx)}</>);

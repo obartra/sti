@@ -1,28 +1,44 @@
-// Groups list: the owner's private groups, each a named grouping of contacts.
-// A group shows a roster of each member's color, at any size (doc 31).
+// Groups list (doc 33): the shared groups the owner is in. Each row names the
+// group, tags whether it is an event or recurring and public or invite only, and
+// shows a human member count. A create CTA sits up top; an empty state invites the
+// first group. This is both the /groups screen and the People slot between starred
+// and the contact list (doc 31).
 import { Button, Card } from "../../design/components/index.ts";
+import { Plus, Chevron, Lock, Users } from "../../design/icons.tsx";
+import type { GroupRecord } from "../../store/index.ts";
 import {
-  Plus,
-  Chevron,
-  Lock,
-  Circles as CirclesIcon,
-} from "../../design/icons.tsx";
-import type { CircleRecord } from "../../store/accountBlob.ts";
+  GROUPS_COPY as C,
+  memberCount,
+  meetingChip,
+  visibilityChip,
+} from "./groupsCopy.ts";
 
-const COPY = {
-  title: "Groups",
-  create: "Create",
-  sub: "Private groups. Everyone in a group sees each other’s color, so you can look out for each other.",
-  empty:
-    "No groups yet. Create one for a household, a friend group, or an event.",
-  members: "members",
-} as const;
-
-interface EmptyStateProps {
-  onCreate?: (() => void) | undefined;
+// The reader plus everyone else the record knows about. An admin's `members` is
+// the roster minus themselves, so add one; a member record has no roster and reads
+// as "just you" here (the detail screen shows the real roster on open).
+function countOf(group: GroupRecord): number {
+  return (group.members?.length ?? 0) + 1;
 }
 
-function EmptyState({ onCreate }: EmptyStateProps) {
+function Chip({ children }: { children: string }) {
+  return (
+    <span
+      style={{
+        fontSize: 11.5,
+        fontWeight: 600,
+        color: "var(--text-muted)",
+        background: "var(--neutral-100)",
+        borderRadius: "var(--radius-pill)",
+        padding: "2px 9px",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function EmptyState({ onCreate }: { onCreate?: (() => void) | undefined }) {
   return (
     <Card
       variant="flat"
@@ -47,17 +63,17 @@ function EmptyState({ onCreate }: EmptyStateProps) {
           justifyContent: "center",
         }}
       >
-        <CirclesIcon size={28} />
+        <Users size={28} />
       </span>
       <div
         style={{
           fontSize: 14,
           color: "var(--text-muted)",
           lineHeight: 1.55,
-          maxWidth: 260,
+          maxWidth: 280,
         }}
       >
-        {COPY.empty}
+        {C.empty}
       </div>
       <Button
         variant="secondary"
@@ -65,23 +81,24 @@ function EmptyState({ onCreate }: EmptyStateProps) {
         icon={<Plus size={16} />}
         onClick={onCreate}
       >
-        {COPY.create}
+        {C.create}
       </Button>
     </Card>
   );
 }
 
-interface GroupRowProps {
-  circle: CircleRecord;
+function GroupRow({
+  group,
+  onOpenGroup,
+}: {
+  group: GroupRecord;
   onOpenGroup?: ((id: string) => void) | undefined;
-}
-
-function GroupRow({ circle, onOpenGroup }: GroupRowProps) {
+}) {
   return (
     <Card
       pad="sm"
       variant="interactive"
-      onClick={() => onOpenGroup?.(circle.id)}
+      onClick={() => onOpenGroup?.(group.groupId)}
       style={{
         display: "flex",
         alignItems: "center",
@@ -102,7 +119,7 @@ function GroupRow({ circle, onOpenGroup }: GroupRowProps) {
           justifyContent: "center",
         }}
       >
-        <CirclesIcon size={21} />
+        <Users size={21} />
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
@@ -116,16 +133,21 @@ function GroupRow({ circle, onOpenGroup }: GroupRowProps) {
             minWidth: 0,
           }}
         >
-          {circle.name}
+          {group.handle}
         </div>
         <div
           style={{
-            fontSize: 12.5,
-            color: "var(--text-muted)",
-            marginTop: 3,
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            marginTop: 5,
           }}
         >
-          {circle.memberContactIds.length} {COPY.members}
+          <Chip>{meetingChip(group.meetingKind)}</Chip>
+          <Chip>{visibilityChip(group.visibility)}</Chip>
+          <span style={{ fontSize: 12, color: "var(--text-subtle)" }}>
+            {memberCount(countOf(group))}
+          </span>
         </div>
       </div>
       <Chevron
@@ -137,16 +159,12 @@ function GroupRow({ circle, onOpenGroup }: GroupRowProps) {
 }
 
 export interface GroupsListProps {
-  circles: CircleRecord[];
+  groups: GroupRecord[];
   onCreate?: (() => void) | undefined;
   onOpenGroup?: ((id: string) => void) | undefined;
 }
 
-export function GroupsList({
-  circles,
-  onCreate,
-  onOpenGroup,
-}: GroupsListProps) {
+export function GroupsList({ groups, onCreate, onOpenGroup }: GroupsListProps) {
   return (
     <div
       style={{
@@ -172,7 +190,7 @@ export function GroupsList({
             color: "var(--text-strong)",
           }}
         >
-          {COPY.title}
+          {C.title}
         </h1>
         <Button
           variant="primary"
@@ -180,7 +198,7 @@ export function GroupsList({
           icon={<Plus size={16} />}
           onClick={onCreate}
         >
-          {COPY.create}
+          {C.create}
         </Button>
       </div>
       <p
@@ -191,10 +209,10 @@ export function GroupsList({
           margin: 0,
         }}
       >
-        {COPY.sub}
+        {C.listSub}
       </p>
 
-      {circles.length === 0 ? (
+      {groups.length === 0 ? (
         <EmptyState onCreate={onCreate} />
       ) : (
         <div
@@ -204,8 +222,8 @@ export function GroupsList({
             gap: 10,
           }}
         >
-          {circles.map((c) => (
-            <GroupRow key={c.id} circle={c} onOpenGroup={onOpenGroup} />
+          {groups.map((g) => (
+            <GroupRow key={g.groupId} group={g} onOpenGroup={onOpenGroup} />
           ))}
         </div>
       )}
@@ -219,8 +237,7 @@ export function GroupsList({
         <div
           style={{ fontSize: 13, lineHeight: 1.55, color: "var(--text-body)" }}
         >
-          Groups only ever show each person&rsquo;s overall color. Nobody sees
-          results or conditions.
+          {C.privacyNote}
         </div>
       </Card>
     </div>

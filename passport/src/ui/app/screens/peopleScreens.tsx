@@ -11,14 +11,7 @@ export const peopleRenderers: ScreenRenderers = {
   // and groups are the prominent surfaces; groups thread into Connect between starred
   // and the contact list (doc 31). Managing the links you hand out lives in the Links
   // tab.
-  people: ({
-    nav,
-    contacts,
-    faves,
-    onToggleFave,
-    onRevokeContact,
-    circles,
-  }) => (
+  people: ({ nav, contacts, faves, onToggleFave, onRevokeContact, groups }) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
       <Connect
         contacts={contacts}
@@ -29,7 +22,7 @@ export const peopleRenderers: ScreenRenderers = {
         onScan={() => nav.go("scan")}
         groupsSlot={
           <GroupsList
-            circles={circles}
+            groups={groups}
             onCreate={() => nav.go("group-create")}
             onOpenGroup={(id) => nav.go("group-detail", { id })}
           />

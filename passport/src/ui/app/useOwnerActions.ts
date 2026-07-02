@@ -3,8 +3,11 @@ import type {
   AliasIdentity,
   ContactInvite,
   ContactLinkResult,
+  CreateGroupInput,
+  CreateGroupResult,
   OwnerProfile,
   OwnerSession,
+  RosterMemberView,
   SessionController,
 } from "../../store/index.ts";
 import type { VanityRegisterResult } from "../../api/client.ts";
@@ -52,16 +55,18 @@ export interface OwnerActions {
   ) => Promise<ContactLinkResult>;
   /** Ingest a return invite, completing the matching pending contact (no-op if none). */
   onIngestContactReturn: (ret: ContactInvite) => void;
-  /** Create a circle from a name + chosen contact ids; resolves the new circle id. */
-  onCreateCircle: (name: string, memberContactIds: string[]) => Promise<string>;
-  /** Rename a circle and/or change its members (same id). */
-  onUpdateCircle: (
-    id: string,
-    name: string,
-    memberContactIds: string[],
-  ) => void;
-  /** Delete one circle by id (a local grouping; contacts untouched). */
-  onRemoveCircle: (id: string) => void;
+  /** Create a shared group (doc 33); resolves the outcome + new group id so the
+   * form can navigate on success, or show a taken-name message. Folds the session. */
+  onCreateGroup: (
+    input: CreateGroupInput,
+  ) => Promise<{ result: CreateGroupResult; groupId: string }>;
+  /** Read a group's roster on open; folds the returned session (a member's first
+   * read caches the shared key and publishes their own card). */
+  onReadGroupRoster: (groupId: string) => Promise<RosterMemberView[]>;
+  /** Leave a group (member self-exit); folds the session. */
+  onLeaveGroup: (groupId: string) => void;
+  /** Disband a group the owner admins (teardown for everyone); folds the session. */
+  onDeleteGroup: (groupId: string) => void;
   /** Claim a public findable name; resolves with the outcome (the form shows it). */
   onRegisterVanityName: (name: string) => Promise<VanityRegisterResult>;
   /** Check if a findable name is free as the owner types (no claim). */
@@ -186,7 +191,7 @@ export function useOwnerActions(
     [controller, sessionRef, setSession],
   );
 
-  const circle = useCircleActions(controller, sessionRef, setSession);
+  const group = useGroupActions(controller, sessionRef, setSession);
   const findable = useFindableActions(controller, sessionRef, setSession);
   const recovery = useRecoveryActions(controller, sessionRef, setSession);
 
@@ -198,7 +203,7 @@ export function useOwnerActions(
     onIngestContactReturn,
     ...contact,
     ...profile,
-    ...circle,
+    ...group,
     ...findable,
     ...recovery,
   };
@@ -372,36 +377,57 @@ function useProfileActions(
   return { onSetAvatar, onSetName };
 }
 
-// The circle mutations (create / rename+remember-members / delete), split out so
-// useOwnerActions stays within its length ceiling. Same fold-result-into-session
-// shape as the rest.
-function useCircleActions(
+// The shared-group mutations (doc 33: create / read roster / leave / disband),
+// split out so useOwnerActions stays within its length ceiling. Same read-ref,
+// run-controller, fold-result-into-session shape as the rest. createGroup and
+// readGroupRoster resolve a value the caller needs (the outcome + id, and the
+// roster), so they surface it; leave and disband are fire-and-fold.
+function useGroupActions(
   controller: SessionController,
   sessionRef: RefObject<OwnerSession | null>,
   setSession: (s: OwnerSession | null) => void,
-): Pick<OwnerActions, "onCreateCircle" | "onUpdateCircle" | "onRemoveCircle"> {
-  const onCreateCircle = useCallback(
-    async (name: string, memberContactIds: string[]) => {
+): Pick<
+  OwnerActions,
+  "onCreateGroup" | "onReadGroupRoster" | "onLeaveGroup" | "onDeleteGroup"
+> {
+  const onCreateGroup = useCallback(
+    async (input: CreateGroupInput) => {
       const current = sessionRef.current;
       if (current === null) throw new Error("not signed in");
-      const { session, circleId } = await controller.createCircle(
+      const { session, groupId, result } = await controller.createGroup(
         current,
-        name,
-        memberContactIds,
+        input,
       );
       sessionRef.current = session;
       setSession(session);
-      return circleId;
+      return { result, groupId };
     },
     [controller, sessionRef, setSession],
   );
 
-  const onUpdateCircle = useCallback(
-    (id: string, name: string, memberContactIds: string[]) => {
+  const onReadGroupRoster = useCallback(
+    async (groupId: string) => {
+      const current = sessionRef.current;
+      if (current === null) return [];
+      // readGroupRoster folds the session (a member's first read caches the shared
+      // key and publishes their own card, a persistence side effect we must keep).
+      const { session, members } = await controller.readGroupRoster(
+        current,
+        groupId,
+      );
+      sessionRef.current = session;
+      setSession(session);
+      return members;
+    },
+    [controller, sessionRef, setSession],
+  );
+
+  const onLeaveGroup = useCallback(
+    (groupId: string) => {
       const current = sessionRef.current;
       if (current === null) return;
       void controller
-        .updateCircle(current, id, name, memberContactIds)
+        .leaveGroup(current, groupId)
         .then((updated) => {
           sessionRef.current = updated;
           setSession(updated);
@@ -411,12 +437,12 @@ function useCircleActions(
     [controller, sessionRef, setSession],
   );
 
-  const onRemoveCircle = useCallback(
-    (id: string) => {
+  const onDeleteGroup = useCallback(
+    (groupId: string) => {
       const current = sessionRef.current;
       if (current === null) return;
       void controller
-        .removeCircle(current, id)
+        .deleteGroup(current, groupId)
         .then((updated) => {
           sessionRef.current = updated;
           setSession(updated);
@@ -426,5 +452,5 @@ function useCircleActions(
     [controller, sessionRef, setSession],
   );
 
-  return { onCreateCircle, onUpdateCircle, onRemoveCircle };
+  return { onCreateGroup, onReadGroupRoster, onLeaveGroup, onDeleteGroup };
 }

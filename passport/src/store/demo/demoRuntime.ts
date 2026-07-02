@@ -22,8 +22,8 @@ import {
   type GroupRecord,
   type PendingGroupInvite,
 } from "../accountBlob.ts";
+import { demoGroup, demoInbox, demoRoster } from "./demoGroupSeed.ts";
 import { groupInviteUrl } from "../groupInvite.ts";
-import type { InboxCapability } from "../notifyInbox.ts";
 import type { OwnerState } from "../../core/badge.ts";
 import {
   importRootKey,
@@ -72,8 +72,9 @@ function demoContact(label: string, agoDays: number): ContactRecord {
   };
 }
 
-/** A freshly seeded demo account: handle, a blue badge, and a couple of contacts
- * so every tab has something real to look at. Rebuilt on each demo entry. */
+/** A freshly seeded demo account: handle, a blue badge, a couple of contacts, and
+ * one group, so every tab has something real to look at. Rebuilt on each demo
+ * entry. */
 function demoBlob(): AccountBlob {
   return {
     handle: DEMO_HANDLE,
@@ -82,6 +83,7 @@ function demoBlob(): AccountBlob {
     state: demoBlueState(),
     avatar: DEFAULT_AVATAR,
     sharingMode: "link",
+    groups: [demoGroup()],
   };
 }
 
@@ -177,20 +179,11 @@ function demoGroups(
   };
 }
 
-// A throwaway inbox capability for the demo (no server, so it is never polled).
-function demoInbox(): InboxCapability {
-  return {
-    inboxId: randomAliasId(),
-    writeToken: randomWriteToken(),
-    key: randomAliasId(),
-  };
-}
-
 // The shared-group membership demo methods (doc 33, slice 4a). No server, so invite/
 // revoke/remove mutate the local group record faithfully and the cross-party paths
-// (accept/reject/poll) resolve inert, and a roster read returns an empty roster (the
-// demo has no other members to open). Split out to keep createDemoController within
-// its length ceiling.
+// (accept/reject/poll) resolve inert; a roster read returns the seeded group's real
+// roster (see demoRoster), a calm mix of blue and one gray/absent member. Split out
+// to keep createDemoController within its length ceiling.
 function demoGroupMembership(
   getBlob: () => AccountBlob,
   setBlob: (b: AccountBlob) => void,
@@ -256,11 +249,14 @@ function demoGroupMembership(
       }));
       return session();
     },
-    readGroupRoster: async () => ({
-      session: await session(),
-      obj: null,
-      members: [],
-    }),
+    readGroupRoster: async (_s, groupId) => {
+      const group = (getBlob().groups ?? []).find((g) => g.groupId === groupId);
+      return {
+        session: await session(),
+        obj: null,
+        members: group ? demoRoster(group, DEMO_PEER_CARD) : [],
+      };
+    },
   };
 }
 
