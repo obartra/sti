@@ -37,12 +37,6 @@
     "styles": 13,
     "legacy": 2
   },
-  "src/ui/app/CanvasWrap.tsx": {
-    "styles": 5
-  },
-  "src/ui/app/Chrome.tsx": {
-    "styles": 2
-  },
   "src/ui/app/NavLink.tsx": {
     "styles": 1
   },
@@ -50,9 +44,6 @@
     "styles": 1
   },
   "src/ui/app/screens/peopleScreens.tsx": {
-    "styles": 1
-  },
-  "src/ui/app/VersionStamp.tsx": {
     "styles": 1
   },
   "src/ui/badge-card.tsx": {
@@ -387,17 +378,6 @@
   },
   "src/ui/share/ShareSheet.url.tsx": {
     "styles": 9
-  },
-  "src/ui/shell/AppShell.stories.tsx": {
-    "styles": 1,
-    "legacy": 2
-  },
-  "src/ui/shell/AppShell.tsx": {
-    "styles": 2
-  },
-  "src/ui/shell/KnockDot.tsx": {
-    "styles": 1,
-    "hex": 2
   },
   "src/ui/trust/Feedback.tsx": {
     "styles": 19,

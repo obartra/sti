@@ -1,4 +1,80 @@
-/* App-level layout vocabulary: the frame and grid classes the editorial
-   layouts compose (doc 37). Shared by the app and Storybook; the app-only
-   document frame lives in document.css. Populated as screens migrate; empty
-   until then so the layered entry is a pure refactor. */
+/* App-level layout vocabulary (doc 37): the frames the chrome composes. The
+   app-only document frame lives in document.css. Grid vocabulary joins as
+   screens migrate. */
+
+/* A full-viewport scroll surface: mobile sub-screens and the public canvas. */
+.l-surface {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  background: var(--surface-app);
+}
+
+.l-surface--column {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The mobile sub-screen body under the back bar. */
+.l-sub-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2px 20px 28px;
+}
+
+/* The centered canvas for logged-out public and onboarding screens: an
+   optional wordmark header (desktop trees only) over a centered column. */
+.l-canvas-header {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 22px 32px;
+  display: flex;
+}
+
+.l-canvas-header--full {
+  max-width: 1160px;
+}
+
+.l-canvas-brand {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+}
+
+.l-canvas-brand img {
+  height: 30px;
+}
+
+.l-canvas-main {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.l-canvas-main--desktop {
+  padding: 8px 20px 48px;
+}
+
+.l-canvas-main--wide {
+  max-width: 760px;
+}
+
+.l-canvas-main--full {
+  max-width: 1160px;
+}
+
+/* The discreet build stamp on main pages. */
+.l-stamp {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-subtle);
+  font-family: var(--font-mono);
+  padding: 14px 0 6px;
+  letter-spacing: 0.02em;
+}

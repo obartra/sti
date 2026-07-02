@@ -1,8 +1,8 @@
-/* App chrome, reproduced from the prototype's shell.jsx bars but driven by
-   layout instead of a phone frame: a flex column with fixed top/tab bars and a
-   scrolling content area. The design-tool phone frame and scene-launcher panel
-   are intentionally gone. Centered column on wider screens per the DS
-   (content max-width ~440px); the >=992px desktop layout is a separate layer. */
+/* The mobile app chrome (doc 37): a flex column with fixed top/tab bars and a
+   scrolling content area, on the editorial grammar. The page is the surface:
+   both bars sit on the warm app background and separate from content with a
+   hairline, never a card fill. Centered column on wider screens; the >=900px
+   desktop layout is a separate tree. */
 .app-shell {
   display: flex;
   flex-direction: column;
@@ -22,12 +22,34 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 16px 10px;
+  padding: 8px 16px 10px;
   flex: none;
+  border-bottom: var(--hairline);
+}
+.app-topbar__brand {
+  height: 30px;
 }
 .app-topbar__actions {
   display: flex;
   gap: 2px;
+}
+
+.app-bell {
+  position: relative;
+  display: inline-flex;
+}
+
+/* The quiet knock indicator (doc 02): a small accent dot on the bell, no
+   count. Sits inside the .app-bell relative wrapper. */
+.app-knock-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 1.5px solid var(--surface-app);
 }
 
 .app-backbar {
@@ -39,7 +61,7 @@
 }
 .app-backbar__title {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   color: var(--text-strong);
 }
 
@@ -47,8 +69,8 @@
   display: flex;
   padding: 8px 10px 12px;
   flex: none;
-  background: var(--surface-card);
-  border-top: 1px solid var(--divider);
+  background: var(--surface-app);
+  border-top: var(--hairline);
 }
 .app-tab {
   appearance: none;
@@ -68,8 +90,8 @@
 }
 .app-tab__label {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 .app-tab--active .app-tab__label {
-  font-weight: 700;
+  font-weight: var(--weight-bold);
 }

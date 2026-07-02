@@ -1,6 +1,8 @@
-/* The persistent demo banner (doc 27): a thin accent bar pinned to the top of every
-   demo screen, so the demo is unmistakable at a glance and even in a screenshot.
-   A distinct accent tint (not the warm not-backed-up pill), tokens only. */
+/* The persistent demo banner (doc 27): a thin bar pinned to the top of every
+   demo screen, so the demo is unmistakable at a glance and even in a
+   screenshot. Editorial (doc 37): teal is never a surface, so the bar is the
+   card white with a strong hairline and teal text; the leave affordance is a
+   quiet bordered control, not a pill. Tokens only. */
 .demo-banner {
   position: fixed;
   top: 0;
@@ -13,9 +15,9 @@
   gap: var(--space-3);
   padding: calc(env(safe-area-inset-top, 0px) + var(--space-2)) var(--space-4)
     var(--space-2);
-  background: var(--accent-soft);
+  background: var(--surface-card);
   color: var(--text-accent);
-  border-bottom: 1px solid var(--border-card);
+  border-bottom: var(--hairline-strong);
   font-size: 0.8rem;
   font-weight: 700;
 }
@@ -26,7 +28,7 @@
   border: 1px solid currentColor;
   background: transparent;
   color: inherit;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-xs);
   padding: 2px var(--space-3);
   font-size: 0.75rem;
   font-weight: 700;
