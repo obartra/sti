@@ -1,0 +1,124 @@
+/* Desktop layer for info.sti.care, on top of site.css. One breakpoint, the same
+   900px the app's desktop shell uses. Below it nothing here applies and the pages
+   render as the phone column in site.css. Pages opt in with the info-page--wide
+   modifier on <main>; the frame, header, and footer widen for everyone.
+
+   Values that only exist at desktop (the 1120px frame, the 40px gutters, the
+   clamped display type) are local to this sheet, the same way the app's desktop
+   landing hardcodes its own. Everything else references the shared tokens. */
+
+@media (min-width: 900px) {
+  :root {
+    --info-max: 1120px;
+    --info-pad-x: 40px;
+  }
+
+  /* ---------------------------------------------------------------- frame --- */
+  /* A wide page is a stack of self-framed sections instead of a phone column. */
+  .info-page--wide {
+    max-width: none;
+    padding: 0 0 var(--space-10);
+    gap: var(--space-8);
+  }
+  .info-page--wide > .info-section {
+    width: 100%;
+    max-width: var(--info-max);
+    margin: 0 auto;
+    padding: 0 var(--info-pad-x);
+  }
+  /* A band bleeds its background across the viewport, framing its content. */
+  .info-page--wide > .info-band {
+    width: 100%;
+    background: var(--surface-card);
+    border-top: 1px solid var(--divider);
+    border-bottom: 1px solid var(--divider);
+  }
+  .info-page--wide > .info-band > .info-band__inner {
+    width: 100%;
+    max-width: var(--info-max);
+    margin: 0 auto;
+    padding: 48px var(--info-pad-x);
+  }
+  .info-desktop {
+    display: block;
+  }
+
+  /* --------------------------------------------------------------- header --- */
+  .info-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    max-width: none;
+    padding: 0;
+    background: color-mix(in srgb, var(--surface-app), transparent 8%);
+    backdrop-filter: saturate(1.2) blur(8px);
+    -webkit-backdrop-filter: saturate(1.2) blur(8px);
+    border-bottom: 1px solid var(--divider);
+  }
+  .info-header__inner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    width: 100%;
+    max-width: var(--info-max);
+    margin: 0 auto;
+    padding: 14px var(--info-pad-x);
+  }
+  .info-header__nav {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    margin-left: auto;
+  }
+  .info-header__nav a {
+    font-size: 13.5px;
+    font-weight: var(--weight-semibold);
+    color: var(--text-body);
+    transition: color var(--dur-fast) var(--ease-gentle);
+  }
+  .info-header__nav a:hover {
+    color: var(--text-strong);
+  }
+  /* The way back to the app reads as a quiet bordered button at desktop. */
+  .info-toapp {
+    padding: 8px 14px;
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-pill);
+    background: var(--surface-card);
+    font-size: 13px;
+    transition: border-color var(--dur-fast) var(--ease-gentle);
+  }
+  .info-toapp:hover {
+    border-color: var(--text-subtle);
+  }
+
+  /* --------------------------------------------------------------- footer --- */
+  .info-footer {
+    max-width: none;
+    padding: 0;
+    border-top: 1px solid var(--divider);
+  }
+  .info-footer__inner {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-6);
+    width: 100%;
+    max-width: var(--info-max);
+    margin: 0 auto;
+    padding: var(--space-7) var(--info-pad-x) var(--space-8);
+  }
+  .info-footer__brand {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 7px;
+  }
+  .info-footer__links {
+    justify-content: flex-start;
+    gap: 22px;
+  }
+  .info-footer__tag {
+    text-align: right;
+    max-width: 420px;
+  }
+}

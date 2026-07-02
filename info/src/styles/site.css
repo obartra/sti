@@ -13,6 +13,30 @@
   gap: var(--space-4);
 }
 
+/* Page sections: on a phone they are transparent stacks inside the page column,
+   matching the page's own gap; the desktop sheet turns them into framed rows and
+   full-bleed bands. */
+.info-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.info-band {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.info-band__inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+/* Desktop-only elements (the header nav, hero extras); the desktop sheet reveals
+   them. */
+.info-desktop {
+  display: none;
+}
+
 /* ----------------------------------------------------------------- header --- */
 .info-header {
   max-width: 640px;
@@ -23,6 +47,14 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
+}
+/* On a phone the header's inner wrapper and nav do not exist visually; the
+   desktop sheet turns them into the sticky chrome row. */
+.info-header__inner {
+  display: contents;
+}
+.info-header__nav {
+  display: none;
 }
 /* The brand, top-left, links to the info home (the library index), not the app. */
 .info-home {
@@ -349,6 +381,14 @@
   align-items: center;
   gap: 8px;
   border-top: 1px solid var(--divider);
+}
+/* Same trick as the header: the inner wrapper and brand column only take shape
+   on the desktop sheet. */
+.info-footer__inner {
+  display: contents;
+}
+.info-footer__brand {
+  display: none;
 }
 .info-footer__links {
   display: flex;
