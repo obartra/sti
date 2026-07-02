@@ -248,6 +248,88 @@
     width: auto;
   }
 
+  /* ------------------------------------------------------- explainer pages --- */
+  .info-detail {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 56px;
+    align-items: start;
+    padding-top: 36px;
+  }
+  .info-detail__main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+  .info-detail .info-title--page {
+    font-size: clamp(30px, 3vw, 40px);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .info-detail .info-lead--lg {
+    font-size: 17px;
+    line-height: 1.6;
+    max-width: 62ch;
+  }
+  /* The article is the reading column: book-size type on a comfortable measure. */
+  .info-detail .info-qa {
+    padding: var(--space-7);
+  }
+  .info-detail .info-qa h2 {
+    font-size: 18px;
+  }
+  .info-detail .info-qa p,
+  .info-detail .info-qa li {
+    font-size: 16px;
+    line-height: 1.65;
+    max-width: 68ch;
+  }
+  .info-detail__aside {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    position: sticky;
+    top: 84px;
+  }
+  .info-aside-cta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* ------------------------------------------------------------------ U=U --- */
+  .info-page--wide .info-hero {
+    padding: 44px 48px;
+    margin-top: 20px;
+  }
+  .info-page--wide .info-hero__title {
+    font-size: clamp(30px, 3vw, 40px);
+  }
+  .info-page--wide .info-hero__intro {
+    font-size: 16.5px;
+    max-width: 62ch;
+  }
+  .info-qa-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  .info-qa-grid .info-uu-card {
+    padding: var(--space-6);
+  }
+  .info-qa-grid .info-uu-card__q {
+    font-size: 16px;
+  }
+  .info-qa-grid .info-uu-card__a {
+    font-size: 15px;
+  }
+  .info-uu-foot {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 20px;
+    align-items: center;
+  }
+
   /* --------------------------------------------------------------- footer --- */
   .info-footer {
     max-width: none;

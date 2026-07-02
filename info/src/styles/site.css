@@ -428,6 +428,14 @@
 .info-cta__action {
   display: contents;
 }
+/* Explainer pages: the reading column and its aside are pass-throughs on a
+   phone; the desktop sheet turns them into a two-column spread with the aside
+   pinned while the article scrolls. */
+.info-detail__main,
+.info-detail__aside,
+.info-aside-cta {
+  display: contents;
+}
 .info-hero {
   border-radius: var(--radius-lg);
   padding: 22px;

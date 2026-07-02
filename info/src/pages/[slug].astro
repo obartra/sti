@@ -9,7 +9,9 @@ import { LIBRARY as c } from "../data/library.ts";
 import { RESOURCES } from "../data/resources.ts";
 
 // One page per condition explainer, at the root (info.sti.care/gonorrhea). The
-// filename is the slug. Ported from the app's Detail.
+// filename is the slug. On a phone everything stacks; at desktop the article is
+// the reading column and the practical pieces (how to test, the testing action,
+// share) sit in a sticky aside.
 export const getStaticPaths = (async () => {
   const conditions = await getCollection("conditions");
   return conditions.map((entry) => ({
@@ -23,52 +25,62 @@ const { Content } = await entry.render();
 const d = entry.data;
 ---
 
-<Base title={`${d.name} · STI basics`} description={d.intro}>
-  <div>
-    <div class="info-titlerow">
-      <h1 class="info-title info-title--page">{d.name}</h1>
-      <Chip label={d.label} tone={d.tone} />
+<Base title={`${d.name} · STI basics`} description={d.intro} wide>
+  <div class="info-section info-detail">
+    <div class="info-detail__main">
+      <div>
+        <div class="info-titlerow">
+          <h1 class="info-title info-title--page">{d.name}</h1>
+          <Chip label={d.label} tone={d.tone} />
+        </div>
+        <p class="info-lead info-lead--lg">{d.intro}</p>
+      </div>
+
+      <article class="sti-card sti-card--flat info-qa">
+        <Content />
+      </article>
     </div>
-    <p class="info-lead info-lead--lg">{d.intro}</p>
+
+    <aside class="info-detail__aside">
+      <div class="sti-card sti-card--tint info-row info-row--top">
+        <span class="info-tile info-tile--accent info-tile--sm">
+          <Icon name="stethoscope" size={19} />
+        </span>
+        <div class="info-rowbody">
+          <div class="info-rowtitle">{c.howToTest}</div>
+          <div class="info-note">{d.test}</div>
+        </div>
+      </div>
+
+      {
+        entry.slug === "hiv" && (
+          <a class="sti-card sti-card--tint info-row" href="/uu">
+            <span class="info-tile info-tile--clear info-tile--sm">U=U</span>
+            <span class="info-cardlink__label">{c.uuFromHiv}</span>
+            <Icon name="arrowRight" size={17} class="info-cardlink__go" />
+          </a>
+        )
+      }
+
+      <div class="info-aside-cta">
+        <a
+          class="sti-btn sti-btn--primary sti-btn--lg sti-btn--block"
+          href={RESOURCES.clinic}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span class="sti-btn__icon"><Icon name="mapPin" size={18} /></span>{
+            c.testing.findTesting
+          }
+        </a>
+        <div class="info-subnote">{c.testing.findTestingSub}</div>
+      </div>
+
+      <SharePage label={c.shareLabel} copied={c.copied} />
+    </aside>
   </div>
 
-  <article class="sti-card sti-card--flat info-qa">
-    <Content />
-  </article>
-
-  <div class="sti-card sti-card--tint info-row info-row--top">
-    <span class="info-tile info-tile--accent info-tile--sm">
-      <Icon name="stethoscope" size={19} />
-    </span>
-    <div class="info-rowbody">
-      <div class="info-rowtitle">{c.howToTest}</div>
-      <div class="info-note">{d.test}</div>
-    </div>
-  </div>
-
-  {
-    entry.slug === "hiv" && (
-      <a class="sti-card sti-card--tint info-row" href="/uu">
-        <span class="info-tile info-tile--clear info-tile--sm">U=U</span>
-        <span class="info-cardlink__label">{c.uuFromHiv}</span>
-        <Icon name="arrowRight" size={17} class="info-cardlink__go" />
-      </a>
-    )
-  }
-
-  <a
-    class="sti-btn sti-btn--primary sti-btn--lg sti-btn--block"
-    href={RESOURCES.clinic}
-    target="_blank"
-    rel="noopener noreferrer"
-  >
-    <span class="sti-btn__icon"><Icon name="mapPin" size={18} /></span>{
-      c.testing.findTesting
-    }
-  </a>
-  <div class="info-subnote">{c.testing.findTestingSub}</div>
-
-  <SharePage label={c.shareLabel} copied={c.copied} />
-
-  <div class="info-disclaimer">{c.footer}</div>
+  <section class="info-section">
+    <div class="info-disclaimer">{c.footer}</div>
+  </section>
 </Base>
