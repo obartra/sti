@@ -210,6 +210,78 @@ export async function getAdminMetrics(
   }
 }
 
+// --- Aggregate trends (doc 20 metrics panel) --------------------------------
+
+const ADMIN_TRENDS_PATH = "/admin/trends";
+
+/** Default trends window (days); mirrors the server's clamp default. */
+const TRENDS_DAYS = 30;
+
+/** One daily bucket of the reports-per-day series (mirrors the server's DayCount).
+ * `day` is an epoch-day (days since the Unix epoch, UTC); `count` is opaque rows. */
+interface DayCount {
+  day: number;
+  count: number;
+}
+
+/** One bar of the review-latency histogram (mirrors the server's LatencyBucket): how
+ * many still-open reports have waited less than `underMs`. `underMs` 0 is the
+ * trailing "older" overflow bucket. */
+interface LatencyBucket {
+  underMs: number;
+  count: number;
+}
+
+/** Aggregate per-day trends + review latency (mirrors the server's
+ * AdminTrendsResponse). Every field is a count of opaque rows in a day or a latency
+ * bucket, never a per-account or per-id figure (doc 12 / doc 20). */
+export interface AdminTrends {
+  reportsPerDay: DayCount[];
+  reviewLatency: LatencyBucket[];
+}
+
+export type AdminTrendsResult =
+  | { kind: "ok"; trends: AdminTrends }
+  | { kind: "unauthorized" }
+  | { kind: "error" };
+
+/**
+ * Fetch the aggregate trend series for the metrics panel. `days` is the recent window
+ * (the server clamps it). Same error shape as the other reads: 401 surfaces distinctly
+ * so the page can re-lock; any other non-200, a network failure, or a malformed body is
+ * a generic error. Missing series default to empty so a partial body never renders NaN.
+ */
+export async function getAdminTrends(
+  apiBase: string,
+  token: string,
+  days = TRENDS_DAYS,
+  fetchImpl: FetchLike = (input, init) => globalThis.fetch(input, init),
+): Promise<AdminTrendsResult> {
+  let res: Response;
+  try {
+    res = await fetchImpl(`${apiBase}${ADMIN_TRENDS_PATH}?days=${days}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    return { kind: "error" };
+  }
+  if (res.status === 401) return { kind: "unauthorized" };
+  if (res.status !== 200) return { kind: "error" };
+  try {
+    const body = (await res.json()) as Partial<AdminTrends>;
+    return {
+      kind: "ok",
+      trends: {
+        reportsPerDay: body.reportsPerDay ?? [],
+        reviewLatency: body.reviewLatency ?? [],
+      },
+    };
+  } catch {
+    return { kind: "error" };
+  }
+}
+
 export type AdminAction = "takedown" | "dismiss";
 export type AdminActionResult = "ok" | "unauthorized" | "error";
 

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   ResponsiveContainer,
@@ -8,18 +10,27 @@ import {
   YAxis,
 } from "recharts";
 import { Button, Card } from "../../design/components/index.ts";
-import type { AdminMetrics, AdminMetricsResult } from "./adminApi.ts";
+import type {
+  AdminMetrics,
+  AdminMetricsResult,
+  AdminTrends,
+  AdminTrendsResult,
+} from "./adminApi.ts";
 
-// The A5 metrics panel (doc 20): a read-only dashboard of aggregate, identifier-free
-// service totals. Number cards for the current counts, plus a bar chart of the row
-// counts. Every figure is a count of opaque rows or a system size, never a
+// The metrics panel (doc 20): a read-only dashboard of aggregate, identifier-free
+// service telemetry. Number cards and a bar chart for the current totals, plus two
+// trend charts below: reports filed per day, and how long open reports have waited.
+// Every figure is a count of opaque rows, a system size, or a time bucket, never a
 // per-account or per-id value (doc 12), so it stays within the blind-store boundary.
-// Per-day trend lines come once the server exposes the time series.
+// The totals load first (one cheap query); the heavier trends are fetched separately
+// so a slow or failed trends read never blanks the at-a-glance totals.
 
 // The transport the panel needs, injected so tests and Storybook drive it without a
-// server (and so AdminPage can bind it to its apiBase + token).
+// server (and so AdminPage can bind it to its apiBase + token). `getTrends` is the
+// separate, opt-in trends read; a totals-only render never waits on it.
 export interface MetricsOps {
   get: (token: string) => Promise<AdminMetricsResult>;
+  getTrends: (token: string) => Promise<AdminTrendsResult>;
 }
 
 const COPY = {
@@ -29,6 +40,10 @@ const COPY = {
   loadError: "Couldn't load metrics. Check your connection and try again.",
   retry: "Retry",
   chartTitle: "Stored rows",
+  reportsTitle: "Reports filed per day",
+  latencyTitle: "How long open reports have waited",
+  trendsLoading: "Loading trends…",
+  trendsError: "Couldn't load trends.",
 } as const;
 
 type Status = "loading" | "ready" | "loadError";
@@ -51,6 +66,46 @@ export function humanBytes(n: number): string {
 // A compact integer (1,234) so big totals stay readable on the number cards.
 function humanCount(n: number): string {
   return n.toLocaleString("en-US");
+}
+
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+
+// An epoch-day (days since the Unix epoch, UTC) to a short "Jun 25" label for the
+// per-day chart's x-axis. UTC so the bucket boundary matches the server's.
+function dayLabel(epochDay: number): string {
+  return new Date(epochDay * DAY_MS).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+// A latency bucket's upper bound (ms) to a short "< 6h" / "< 3d" label. The 0 bound is
+// the trailing overflow, shown as "older".
+function latencyLabel(underMs: number): string {
+  if (underMs === 0) return "older";
+  if (underMs < DAY_MS) return `< ${Math.round(underMs / HOUR_MS)}h`;
+  return `< ${Math.round(underMs / DAY_MS)}d`;
+}
+
+// A shared uppercase caption above each chart, so the trend charts read the same as
+// the row chart's heading.
+function ChartLabel({ text }: { text: string }) {
+  return (
+    <div
+      style={{
+        fontSize: 11.5,
+        fontWeight: 600,
+        letterSpacing: "0.04em",
+        textTransform: "uppercase",
+        color: "var(--text-subtle)",
+        marginBottom: 8,
+      }}
+    >
+      {text}
+    </div>
+  );
 }
 
 function StatCard({ label, value }: { label: string; value: string }) {
@@ -120,18 +175,7 @@ function RowChart({ metrics }: { metrics: AdminMetrics }) {
   ];
   return (
     <div>
-      <div
-        style={{
-          fontSize: 11.5,
-          fontWeight: 600,
-          letterSpacing: "0.04em",
-          textTransform: "uppercase",
-          color: "var(--text-subtle)",
-          marginBottom: 8,
-        }}
-      >
-        {COPY.chartTitle}
-      </div>
+      <ChartLabel text={COPY.chartTitle} />
       <ResponsiveContainer width="100%" height={180}>
         <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
           <XAxis
@@ -163,6 +207,91 @@ function RowChart({ metrics }: { metrics: AdminMetrics }) {
   );
 }
 
+// An area chart of reports filed per day over the recent window. Daily counts of
+// opaque report rows, never a per-name or per-account series, so it stays
+// identifier-free like the totals above. An empty window renders a bare axis.
+function ReportsChart({ trends }: { trends: AdminTrends }) {
+  const data = trends.reportsPerDay.map((d) => ({
+    label: dayLabel(d.day),
+    count: d.count,
+  }));
+  return (
+    <div>
+      <ChartLabel text={COPY.reportsTitle} />
+      <ResponsiveContainer width="100%" height={180}>
+        <AreaChart
+          data={data}
+          margin={{ top: 4, right: 8, bottom: 0, left: 0 }}
+        >
+          <XAxis
+            dataKey="label"
+            tick={{ fontSize: 12, fill: "var(--text-muted)" }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            allowDecimals={false}
+            width={36}
+            tick={{ fontSize: 12, fill: "var(--text-muted)" }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <Tooltip formatter={(v) => [humanCount(Number(v ?? 0)), "Reports"]} />
+          <Area
+            dataKey="count"
+            stroke="var(--text-accent)"
+            fill="var(--accent-soft)"
+            strokeWidth={2}
+            type="monotone"
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// A bar chart of the review-latency histogram: how many open reports have waited in
+// each time band. A bucketed count of opaque rows, never a per-report wait keyed to a
+// name or id, so it fingerprints no one.
+function LatencyChart({ trends }: { trends: AdminTrends }) {
+  const data = trends.reviewLatency.map((b) => ({
+    label: latencyLabel(b.underMs),
+    count: b.count,
+  }));
+  return (
+    <div>
+      <ChartLabel text={COPY.latencyTitle} />
+      <ResponsiveContainer width="100%" height={180}>
+        <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+          <XAxis
+            dataKey="label"
+            tick={{ fontSize: 12, fill: "var(--text-muted)" }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            allowDecimals={false}
+            width={36}
+            tick={{ fontSize: 12, fill: "var(--text-muted)" }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <Tooltip
+            cursor={{ fill: "var(--accent-soft)" }}
+            formatter={(v) => [humanCount(Number(v ?? 0)), "Reports"]}
+          />
+          <Bar
+            dataKey="count"
+            fill="var(--text-accent)"
+            radius={[4, 4, 0, 0]}
+            maxBarSize={56}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 export function MetricsPanel({
   token,
   ops,
@@ -174,6 +303,8 @@ export function MetricsPanel({
 }) {
   const [status, setStatus] = useState<Status>("loading");
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
+  const [trendStatus, setTrendStatus] = useState<Status>("loading");
+  const [trends, setTrends] = useState<AdminTrends | null>(null);
 
   const load = useCallback(() => {
     setStatus("loading");
@@ -192,9 +323,30 @@ export function MetricsPanel({
       .catch(() => setStatus("loadError"));
   }, [ops, token, onUnauthorized]);
 
+  // Trends load separately from the totals: it is the heavier aggregation, so a slow
+  // or failed read shows its own small notice below the totals rather than blanking
+  // the whole panel. A 401 re-locks the page like any other admin call.
+  const loadTrends = useCallback(() => {
+    setTrendStatus("loading");
+    void ops
+      .getTrends(token)
+      .then((r) => {
+        if (r.kind === "ok") {
+          setTrends(r.trends);
+          setTrendStatus("ready");
+        } else if (r.kind === "unauthorized") {
+          onUnauthorized();
+        } else {
+          setTrendStatus("loadError");
+        }
+      })
+      .catch(() => setTrendStatus("loadError"));
+  }, [ops, token, onUnauthorized]);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadTrends();
+  }, [load, loadTrends]);
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -230,6 +382,30 @@ export function MetricsPanel({
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <StatGrid metrics={metrics} />
           <RowChart metrics={metrics} />
+        </div>
+      )}
+
+      {trendStatus === "loading" && (
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+          {COPY.trendsLoading}
+        </div>
+      )}
+
+      {trendStatus === "loadError" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontSize: 13, color: "var(--status-expired-fg)" }}>
+            {COPY.trendsError}
+          </div>
+          <Button variant="secondary" size="sm" onClick={loadTrends}>
+            {COPY.retry}
+          </Button>
+        </div>
+      )}
+
+      {trendStatus === "ready" && trends !== null && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <ReportsChart trends={trends} />
+          <LatencyChart trends={trends} />
         </div>
       )}
     </Card>

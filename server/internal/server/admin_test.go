@@ -20,6 +20,15 @@ import (
 
 const testAdminToken = "test-admin-secret-0123456789abcdef" // >= boot floor, but server.New imposes none
 
+// keysOf returns the keys of a decoded-JSON map, for a readable assertion message.
+func keysOf[V any](m map[string]V) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
+}
+
 // newTestAdminSrv builds a *Server with the operator surface enabled, plus its
 // store. Tests that only need the handler use newTestAdminServer; this variant
 // hands back the Server so a test can swap a seam (e.g. the audit appender).
@@ -318,6 +327,159 @@ func TestAdminMetrics(t *testing.T) {
 	// The read is telemetry, not an action: it writes no audit row.
 	if entries, err := st.RecentAudits(ctx, 0, 10); err != nil || len(entries) != 0 {
 		t.Fatalf("metrics read should not audit: entries=%d err=%v", len(entries), err)
+	}
+}
+
+// The trends endpoint (doc 20 metrics panel): an authed read returns aggregate,
+// identifier-free per-day report counts and a review-latency histogram over the
+// seeded rows; an unauthed read is the uniform 401; the `days` window is clamped; the
+// response carries NO per-id / per-account field; and the read is never audited.
+func TestAdminTrends(t *testing.T) {
+	// A frozen clock so the day buckets and the latency window are deterministic.
+	const now = int64(1_700_000_000_000) // a fixed epoch-ms "now"
+	const dayMs = int64(24 * 60 * 60 * 1000)
+	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	srv := New(st, Config{
+		DecoySecret:  make([]byte, 32),
+		AdminEnabled: true,
+		AdminToken:   testAdminToken,
+		AdminBurst:   1000,
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)), func() int64 { return now })
+	h := srv.Handler()
+	ctx := context.Background()
+
+	get := func(query string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest("GET", contract.PathAdminTrends+query, nil)
+		req.Header.Set("Authorization", "Bearer "+testAdminToken)
+		return do(h, req)
+	}
+
+	// An unauthed read is rejected like every admin endpoint, never reaching the data.
+	if rec := do(h, httptest.NewRequest("GET", contract.PathAdminTrends, nil)); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("trends no auth: %d, want 401", rec.Code)
+	}
+
+	// Seed reports across days for reports-per-day, plus two ACTIVE reported names
+	// whose first-reported time places them in known latency buckets:
+	//   robin: reported 2h ago  -> the "< 6h" bucket
+	//   alice: reported 2d ago  -> the "< 3d" bucket
+	if _, err := st.ClaimVanityName(ctx, "robin", strings.Repeat("a", 43), now-dayMs); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.ClaimVanityName(ctx, "alice", strings.Repeat("b", 43), now-dayMs); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.AddVanityReport(ctx, "robin", contract.ReportAbuse, now-2*60*60*1000); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.AddVanityReport(ctx, "alice", contract.ReportSpam, now-2*dayMs); err != nil {
+		t.Fatal(err)
+	}
+
+	var resp contract.AdminTrendsResponse
+	rec := get("?days=30")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("trends: %d", rec.Code)
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+
+	// Two reports filed on two different days, so two daily buckets of count 1 each.
+	total := 0
+	for _, d := range resp.ReportsPerDay {
+		total += d.Count
+	}
+	if total != 2 {
+		t.Fatalf("reportsPerDay total = %d, want 2 (%+v)", total, resp.ReportsPerDay)
+	}
+
+	// Latency histogram: robin (2h) in the < 6h bucket, alice (2d) in the < 3d bucket.
+	latency := map[int64]int{}
+	for _, b := range resp.ReviewLatency {
+		latency[b.UnderMs] = b.Count
+	}
+	if latency[6*60*60*1000] != 1 {
+		t.Fatalf("< 6h bucket = %d, want 1 (%+v)", latency[6*60*60*1000], resp.ReviewLatency)
+	}
+	if latency[3*dayMs] != 1 {
+		t.Fatalf("< 3d bucket = %d, want 1 (%+v)", latency[3*dayMs], resp.ReviewLatency)
+	}
+
+	// The read is telemetry, not an action: it writes no audit row.
+	if entries, err := st.RecentAudits(ctx, 0, 10); err != nil || len(entries) != 0 {
+		t.Fatalf("trends read should not audit: entries=%d err=%v", len(entries), err)
+	}
+
+	// Aggregate-only: the body has exactly the two series keys, and a day entry has only
+	// {day, count} (no per-account / per-id / name field could leak through the shape).
+	var shape map[string]json.RawMessage
+	if err := json.Unmarshal(rec.Body.Bytes(), &shape); err != nil {
+		t.Fatal(err)
+	}
+	if len(shape) != 2 || shape["reportsPerDay"] == nil || shape["reviewLatency"] == nil {
+		t.Fatalf("trends body keys = %v, want exactly reportsPerDay + reviewLatency", keysOf(shape))
+	}
+	var dayEntries []map[string]json.RawMessage
+	if err := json.Unmarshal(shape["reportsPerDay"], &dayEntries); err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range dayEntries {
+		for k := range e {
+			if k != "day" && k != "count" {
+				t.Fatalf("reportsPerDay entry has unexpected field %q (want only day/count)", k)
+			}
+		}
+	}
+}
+
+// The `days` window is clamped to [1, 90]: a huge value scans no more than 90 days
+// back, so a report older than the cap is excluded even when the caller asks for more.
+func TestAdminTrendsDaysClamped(t *testing.T) {
+	const now = int64(1_700_000_000_000)
+	const dayMs = int64(24 * 60 * 60 * 1000)
+	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	srv := New(st, Config{
+		DecoySecret:  make([]byte, 32),
+		AdminEnabled: true,
+		AdminToken:   testAdminToken,
+		AdminBurst:   1000,
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)), func() int64 { return now })
+	h := srv.Handler()
+	ctx := context.Background()
+
+	// One report inside the 90-day cap (89d) and one outside it (100d).
+	if err := st.AddVanityReport(ctx, "robin", contract.ReportAbuse, now-89*dayMs); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.AddVanityReport(ctx, "robin", contract.ReportAbuse, now-100*dayMs); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest("GET", contract.PathAdminTrends+"?days=100000", nil)
+	req.Header.Set("Authorization", "Bearer "+testAdminToken)
+	rec := do(h, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("trends clamped: %d", rec.Code)
+	}
+	var resp contract.AdminTrendsResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	total := 0
+	for _, d := range resp.ReportsPerDay {
+		total += d.Count
+	}
+	if total != 1 {
+		t.Fatalf("clamped window counted %d reports, want 1 (the 100d report is past the 90d cap)", total)
 	}
 }
 

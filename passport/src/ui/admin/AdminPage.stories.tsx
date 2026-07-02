@@ -5,6 +5,7 @@ import type {
   AdminFeedback,
   AdminMetrics,
   AdminPingResult,
+  AdminTrends,
 } from "./adminApi.ts";
 import type { ReviewOps } from "./ReviewPanel.tsx";
 import type { AuditOps } from "./ActivityPanel.tsx";
@@ -42,8 +43,12 @@ const auditOps = (entries: AdminAuditEntry[]): AuditOps => ({
   list: () => Promise.resolve({ kind: "ok", entries }),
 });
 
-const metricsOps = (metrics: AdminMetrics): MetricsOps => ({
+const metricsOps = (
+  metrics: AdminMetrics,
+  trends: AdminTrends,
+): MetricsOps => ({
   get: () => Promise.resolve({ kind: "ok", metrics }),
+  getTrends: () => Promise.resolve({ kind: "ok", trends }),
 });
 
 const feedbackOps = (feedback: AdminFeedback[]): FeedbackOps => ({
@@ -60,6 +65,28 @@ const SAMPLE_METRICS: AdminMetrics = {
   pendingReports: 2,
   pendingFeedback: 1,
 };
+
+// A week of per-day report counts (epoch-days, UTC) and a latency histogram, so the
+// trend charts have deterministic baseline content. Aggregate only: daily counts and
+// time buckets, never a per-name or per-account figure.
+const DAY_MS = 24 * 60 * 60 * 1000;
+const baseDay = Math.floor(Date.UTC(2026, 5, 25) / DAY_MS);
+const SAMPLE_TRENDS: AdminTrends = {
+  reportsPerDay: [0, 2, 1, 4, 3, 5, 2].map((count, i) => ({
+    day: baseDay - 6 + i,
+    count,
+  })),
+  reviewLatency: [
+    { underMs: 60 * 60 * 1000, count: 3 },
+    { underMs: 6 * 60 * 60 * 1000, count: 5 },
+    { underMs: DAY_MS, count: 2 },
+    { underMs: 3 * DAY_MS, count: 1 },
+    { underMs: 7 * DAY_MS, count: 0 },
+    { underMs: 0, count: 0 },
+  ],
+};
+
+const EMPTY_TRENDS: AdminTrends = { reportsPerDay: [], reviewLatency: [] };
 
 // Fixed UTC instants so the feedback panel's timestamps are deterministic.
 const SAMPLE_FEEDBACK: AdminFeedback[] = [
@@ -121,7 +148,7 @@ export const AuthedWithReports: Story = {
       { name: "free_money", reason: "spam", count: 1, createdAt: 2 },
     ]),
     auditOps: auditOps(SAMPLE_AUDIT),
-    metricsOps: metricsOps(SAMPLE_METRICS),
+    metricsOps: metricsOps(SAMPLE_METRICS, SAMPLE_TRENDS),
     feedbackOps: feedbackOps(SAMPLE_FEEDBACK),
   },
   decorators: [seedToken],
@@ -133,15 +160,18 @@ export const AuthedEmpty: Story = {
     ping: always("ok"),
     reviewOps: reviewOps([]),
     auditOps: auditOps([]),
-    metricsOps: metricsOps({
-      accounts: 0,
-      aliases: 0,
-      knocks: 0,
-      sendQueueDepth: 0,
-      dbSizeBytes: 0,
-      pendingReports: 0,
-      pendingFeedback: 0,
-    }),
+    metricsOps: metricsOps(
+      {
+        accounts: 0,
+        aliases: 0,
+        knocks: 0,
+        sendQueueDepth: 0,
+        dbSizeBytes: 0,
+        pendingReports: 0,
+        pendingFeedback: 0,
+      },
+      EMPTY_TRENDS,
+    ),
     feedbackOps: feedbackOps([]),
   },
   decorators: [seedToken],
