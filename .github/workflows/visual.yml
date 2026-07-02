@@ -28,16 +28,37 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.event_name != 'workflow_dispatch' }}
 
 jobs:
+  # Per-area gating on pull requests (same script and fail-open rules as
+  # ci.yml): the passport shards skip on an info-only PR and vice versa.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      passport: ${{ steps.areas.outputs.passport }}
+      info: ${{ steps.areas.outputs.info }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - id: areas
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash .github/scripts/changed-areas.sh
+
   # The expensive capture+diff, fanned out: each shard shoots a deterministic
   # 1/N slice of the story corpus in parallel. Shards are self-contained (each
   # builds storybook) so they all start at once with no serial build step. Bump
   # SHARD_TOTAL and the matrix list together to add shards.
   visual-shard:
+    needs: changes
     if: |
-      github.event_name == 'push' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' &&
-        !contains(github.event.pull_request.labels.*.name, 'screenshot:update'))
+      !cancelled() &&
+      (needs.changes.result != 'success' || needs.changes.outputs.passport == 'true') &&
+      (github.event_name == 'push' ||
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'pull_request' &&
+          !contains(github.event.pull_request.labels.*.name, 'screenshot:update')))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -75,11 +96,14 @@ jobs:
   # a desktop width), so one job with no shards. Same pinned image, same label
   # mechanics as the passport shards.
   info-visual:
+    needs: changes
     if: |
-      github.event_name == 'push' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' &&
-        !contains(github.event.pull_request.labels.*.name, 'screenshot:update'))
+      !cancelled() &&
+      (needs.changes.result != 'success' || needs.changes.outputs.info == 'true') &&
+      (github.event_name == 'push' ||
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'pull_request' &&
+          !contains(github.event.pull_request.labels.*.name, 'screenshot:update')))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -107,12 +131,14 @@ jobs:
           retention-days: 14
 
   # Aggregate gate: keeps the required status check named "visual" stable while
-  # the work fans out above. Passes only when every shard and the info job
-  # passed; on the screenshot:update path it is skipped, exactly like them.
+  # the work fans out above. Passes when every shard and the info job passed or
+  # was skipped by the area gating (a skip for an untouched area is a pass; a
+  # failure or cancellation never is). On the screenshot:update path it is
+  # skipped, exactly like them.
   visual:
     needs: [visual-shard, info-visual]
     if: |
-      always() && (
+      !cancelled() && (
         github.event_name == 'push' ||
         github.event_name == 'workflow_dispatch' ||
         (github.event_name == 'pull_request' &&
@@ -120,12 +146,13 @@ jobs:
       )
     runs-on: ubuntu-latest
     steps:
-      - name: Require every shard and the info job to pass
+      - name: Require every shard and the info job to pass or be area-skipped
         run: |
+          ok() { test "$1" = "success" || test "$1" = "skipped"; }
           shards='${{ needs.visual-shard.result }}'
           info='${{ needs.info-visual.result }}'
           echo "visual-shard result: ${shards}; info-visual result: ${info}"
-          test "${shards}" = "success" && test "${info}" = "success"
+          ok "${shards}" && ok "${info}"
 
   update:
     # Only on the label being ADDED (not on every push while it is present), so the

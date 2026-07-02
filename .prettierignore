@@ -22,3 +22,6 @@ labs/docs
 
 # Design system, kept verbatim in sync with the source zip.
 passport/src/design
+
+# Vitest html reporter output (written by test:cov locally and in CI).
+passport/html
