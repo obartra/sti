@@ -48,7 +48,7 @@ const emptyMetrics: MetricsOps = {
   getTrends: () =>
     Promise.resolve({
       kind: "ok",
-      trends: { reportsPerDay: [], reviewLatency: [] },
+      trends: { reportsPerDay: [], signupsPerDay: [], reviewLatency: [] },
     }),
 };
 

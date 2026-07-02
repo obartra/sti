@@ -380,6 +380,19 @@ func TestAdminTrends(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Two accounts created (sign-ups) today, so one daily bucket of count 2. A later
+	// write to the same id must NOT re-count (only the first INSERT is a sign-up).
+	acctC, acctD := strings.Repeat("c", 43), strings.Repeat("d", 43)
+	if _, _, _, err := st.PutAccount(ctx, acctC, []byte("x"), "", 0, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := st.PutAccount(ctx, acctD, []byte("y"), "", 0, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := st.PutAccount(ctx, acctC, []byte("x2"), "", 0, now); err != nil {
+		t.Fatal(err) // an update, not a sign-up
+	}
+
 	var resp contract.AdminTrendsResponse
 	rec := get("?days=30")
 	if rec.Code != http.StatusOK {
@@ -396,6 +409,16 @@ func TestAdminTrends(t *testing.T) {
 	}
 	if total != 2 {
 		t.Fatalf("reportsPerDay total = %d, want 2 (%+v)", total, resp.ReportsPerDay)
+	}
+
+	// Two accounts created today (the update to acctC did not re-count), so the
+	// signups tally totals 2 across its daily buckets.
+	signups := 0
+	for _, d := range resp.SignupsPerDay {
+		signups += d.Count
+	}
+	if signups != 2 {
+		t.Fatalf("signupsPerDay total = %d, want 2 (%+v)", signups, resp.SignupsPerDay)
 	}
 
 	// Latency histogram: robin (2h) in the < 6h bucket, alice (2d) in the < 3d bucket.
@@ -415,23 +438,27 @@ func TestAdminTrends(t *testing.T) {
 		t.Fatalf("trends read should not audit: entries=%d err=%v", len(entries), err)
 	}
 
-	// Aggregate-only: the body has exactly the two series keys, and a day entry has only
-	// {day, count} (no per-account / per-id / name field could leak through the shape).
+	// Aggregate-only: the body has exactly the three series keys, and every day entry
+	// has only {day, count} (no per-account / per-id / name / creation-time field could
+	// leak through the shape).
 	var shape map[string]json.RawMessage
 	if err := json.Unmarshal(rec.Body.Bytes(), &shape); err != nil {
 		t.Fatal(err)
 	}
-	if len(shape) != 2 || shape["reportsPerDay"] == nil || shape["reviewLatency"] == nil {
-		t.Fatalf("trends body keys = %v, want exactly reportsPerDay + reviewLatency", keysOf(shape))
+	if len(shape) != 3 || shape["reportsPerDay"] == nil ||
+		shape["signupsPerDay"] == nil || shape["reviewLatency"] == nil {
+		t.Fatalf("trends body keys = %v, want reportsPerDay + signupsPerDay + reviewLatency", keysOf(shape))
 	}
-	var dayEntries []map[string]json.RawMessage
-	if err := json.Unmarshal(shape["reportsPerDay"], &dayEntries); err != nil {
-		t.Fatal(err)
-	}
-	for _, e := range dayEntries {
-		for k := range e {
-			if k != "day" && k != "count" {
-				t.Fatalf("reportsPerDay entry has unexpected field %q (want only day/count)", k)
+	for _, key := range []string{"reportsPerDay", "signupsPerDay"} {
+		var dayEntries []map[string]json.RawMessage
+		if err := json.Unmarshal(shape[key], &dayEntries); err != nil {
+			t.Fatal(err)
+		}
+		for _, e := range dayEntries {
+			for k := range e {
+				if k != "day" && k != "count" {
+					t.Fatalf("%s entry has unexpected field %q (want only day/count)", key, k)
+				}
 			}
 		}
 	}

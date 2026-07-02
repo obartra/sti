@@ -119,9 +119,12 @@ chrome and is never linked from the app.
 - `GET /admin/lookup/{id}`: opaque metadata for a record (existence, ciphertext byte size, last
   written), never content. Shipped.
 - `GET /admin/metrics`: aggregate, identifier-free service counts for the metrics panel. No
-  per-account or per-id figures; a read, so not itself audited. The current totals (accounts, aliases,
-  live knocks, send-queue depth, database size, and the report-queue size) are shipped; the per-day
-  trends and review-latency series are still to come.
+  per-account or per-id figures; a read, so not itself audited. The current totals: accounts, aliases,
+  live knocks, send-queue depth, database size, and the report-queue size.
+- `GET /admin/trends`: aggregate, identifier-free time series over a recent window (`days`, capped):
+  accounts created per day, reports filed per day, and the review-latency histogram. Daily sign-ups
+  come from a purely aggregate daily tally bumped once when an account is first created, so the server
+  keeps no per-account creation time. No per-account or per-id figures; a read, so not itself audited.
 
 Every mutation writes an audit row and returns a uniform shape; none returns plaintext content.
 

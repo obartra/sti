@@ -214,8 +214,9 @@ export async function getAdminMetrics(
 
 const ADMIN_TRENDS_PATH = "/admin/trends";
 
-/** Default trends window (days); mirrors the server's clamp default. */
-const TRENDS_DAYS = 30;
+/** Default trends window (days). 90 (the server's clamp max) so the accounts- and
+ * reports-per-day charts show a full quarter of history on one consistent axis. */
+const TRENDS_DAYS = 90;
 
 /** One daily bucket of the reports-per-day series (mirrors the server's DayCount).
  * `day` is an epoch-day (days since the Unix epoch, UTC); `count` is opaque rows. */
@@ -233,10 +234,12 @@ interface LatencyBucket {
 }
 
 /** Aggregate per-day trends + review latency (mirrors the server's
- * AdminTrendsResponse). Every field is a count of opaque rows in a day or a latency
- * bucket, never a per-account or per-id figure (doc 12 / doc 20). */
+ * AdminTrendsResponse). Every field is a per-day count of opaque rows (reports filed,
+ * or accounts created) or a latency bucket, never a per-account or per-id figure and
+ * never a per-account creation time (doc 12 / doc 20). */
 export interface AdminTrends {
   reportsPerDay: DayCount[];
+  signupsPerDay: DayCount[];
   reviewLatency: LatencyBucket[];
 }
 
@@ -274,6 +277,7 @@ export async function getAdminTrends(
       kind: "ok",
       trends: {
         reportsPerDay: body.reportsPerDay ?? [],
+        signupsPerDay: body.signupsPerDay ?? [],
         reviewLatency: body.reviewLatency ?? [],
       },
     };

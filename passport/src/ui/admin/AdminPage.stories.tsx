@@ -76,6 +76,10 @@ const SAMPLE_TRENDS: AdminTrends = {
     day: baseDay - 6 + i,
     count,
   })),
+  signupsPerDay: [3, 5, 4, 8, 6, 9, 7].map((count, i) => ({
+    day: baseDay - 6 + i,
+    count,
+  })),
   reviewLatency: [
     { underMs: 60 * 60 * 1000, count: 3 },
     { underMs: 6 * 60 * 60 * 1000, count: 5 },
@@ -86,7 +90,11 @@ const SAMPLE_TRENDS: AdminTrends = {
   ],
 };
 
-const EMPTY_TRENDS: AdminTrends = { reportsPerDay: [], reviewLatency: [] };
+const EMPTY_TRENDS: AdminTrends = {
+  reportsPerDay: [],
+  signupsPerDay: [],
+  reviewLatency: [],
+};
 
 // Fixed UTC instants so the feedback panel's timestamps are deterministic.
 const SAMPLE_FEEDBACK: AdminFeedback[] = [

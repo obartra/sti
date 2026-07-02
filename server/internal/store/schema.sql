@@ -31,6 +31,15 @@ CREATE TABLE IF NOT EXISTS account (
                                             -- window (data minimization; disclosed in Privacy)
 ) WITHOUT ROWID;
 
+-- Sign-ups per day (doc 20 admin trend): a purely aggregate daily tally, bumped once
+-- when an account is first created. It stores NO per-account creation time, so it adds
+-- no per-record data (data minimization preserved); the operator only ever sees how
+-- many accounts were created on each UTC day. Never keyed to an account id.
+CREATE TABLE IF NOT EXISTS signups_per_day (
+    day   INTEGER PRIMARY KEY,   -- floor(created_at_ms / 86400000), UTC epoch day
+    count INTEGER NOT NULL
+) WITHOUT ROWID;
+
 CREATE TABLE IF NOT EXISTS notify_route (
     token_hash          TEXT PRIMARY KEY,  -- hash(notify_token), exchanged phone-to-phone
     routing_endpoint_id TEXT NOT NULL

@@ -352,6 +352,16 @@ func (s *Store) PutAccount(ctx context.Context, id string, ciphertext []byte, wr
 			id, ciphertext, now, writeAuth, now); err != nil {
 			return 0, false, false, err
 		}
+		// A first write is a sign-up: bump the aggregate daily counter (doc 20
+		// admin trend) in the SAME transaction, so the tally can never drift from
+		// the account inserts. Stores only a per-UTC-day count, never this
+		// account's id or its exact creation time (data minimization).
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO signups_per_day (day, count) VALUES (?, 1)
+			 ON CONFLICT(day) DO UPDATE SET count = count + 1`,
+			now/dayMs); err != nil {
+			return 0, false, false, err
+		}
 		version = 1
 	case err != nil:
 		return 0, false, false, err
@@ -1503,6 +1513,7 @@ type LatencyBucket struct {
 // Trends is the aggregate time-series snapshot behind GET /admin/trends.
 type Trends struct {
 	ReportsPerDay []DayCount
+	SignupsPerDay []DayCount
 	ReviewLatency []LatencyBucket
 }
 
@@ -1534,6 +1545,28 @@ func (s *Store) TrendCounts(ctx context.Context, sinceMs, now int64) (Trends, er
 		tr.ReportsPerDay = append(tr.ReportsPerDay, d)
 	}
 	if err := rows.Err(); err != nil {
+		return Trends{}, err
+	}
+
+	// Sign-ups per day (doc 20 admin trend): the aggregate daily tally, already
+	// bucketed by UTC epoch day when the account was created, so it is read straight
+	// out for the window (day >= sinceMs/dayMs). A per-day count of opaque accounts,
+	// never an account id or a per-account creation time.
+	srows, err := s.db.QueryContext(ctx,
+		`SELECT day, count FROM signups_per_day WHERE day >= ? ORDER BY day`,
+		sinceMs/dayMs)
+	if err != nil {
+		return Trends{}, err
+	}
+	defer srows.Close()
+	for srows.Next() {
+		var d DayCount
+		if err := srows.Scan(&d.Day, &d.Count); err != nil {
+			return Trends{}, err
+		}
+		tr.SignupsPerDay = append(tr.SignupsPerDay, d)
+	}
+	if err := srows.Err(); err != nil {
 		return Trends{}, err
 	}
 

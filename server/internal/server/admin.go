@@ -264,10 +264,11 @@ func (s *Server) handleAdminMetrics(w http.ResponseWriter, r *http.Request) {
 
 // handleAdminTrends answers GET /admin/trends: aggregate, identifier-free time series
 // for the metrics panel's trend charts (doc 20). A read, so it is not audited. Every
-// figure is a count of opaque report rows in a day or a latency bucket, never a
-// per-account or per-id value and never a distribution that could fingerprint one
-// account (doc 12). Kept separate from /admin/metrics so the always-loaded totals
-// stay one cheap query and this heavier GROUP BY runs only when the trends view mounts.
+// figure is a per-day count of opaque rows (reports filed, or accounts created) or a
+// latency bucket, never a per-account or per-id value, never a per-account creation
+// time, and never a distribution that could fingerprint one account (doc 12). Kept
+// separate from /admin/metrics so the always-loaded totals stay one cheap query and
+// this heavier aggregation runs only when the trends view mounts.
 func (s *Server) handleAdminTrends(w http.ResponseWriter, r *http.Request) {
 	days := trendsDays(r)
 	now := s.now()
@@ -281,12 +282,17 @@ func (s *Server) handleAdminTrends(w http.ResponseWriter, r *http.Request) {
 	for i, d := range tr.ReportsPerDay {
 		reports[i] = contract.DayCount{Day: d.Day, Count: d.Count}
 	}
+	signups := make([]contract.DayCount, len(tr.SignupsPerDay))
+	for i, d := range tr.SignupsPerDay {
+		signups[i] = contract.DayCount{Day: d.Day, Count: d.Count}
+	}
 	latency := make([]contract.LatencyBucket, len(tr.ReviewLatency))
 	for i, b := range tr.ReviewLatency {
 		latency[i] = contract.LatencyBucket{UnderMs: b.UnderMs, Count: b.Count}
 	}
 	s.writeJSON(w, http.StatusOK, contract.AdminTrendsResponse{
 		ReportsPerDay: reports,
+		SignupsPerDay: signups,
 		ReviewLatency: latency,
 	})
 }
