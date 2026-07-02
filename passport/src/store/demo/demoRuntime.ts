@@ -19,6 +19,7 @@ import {
   MAX_CONTACT_LABEL,
   type AccountBlob,
   type ContactRecord,
+  type GroupRecord,
 } from "../accountBlob.ts";
 import type { OwnerState } from "../../core/badge.ts";
 import {
@@ -132,6 +133,47 @@ function demoRecovery(
   };
 }
 
+// The shared-group demo method (doc 33). No server, so it mints local ids, records
+// the group in the local blob, and reports "registered" for a public handle (the
+// happy path) or "created" for a private one, faithful to the real create flow.
+// Split out to keep createDemoController within its length ceiling.
+function demoGroups(
+  getBlob: () => AccountBlob,
+  setBlob: (b: AccountBlob) => void,
+  session: () => Promise<OwnerSession>,
+): Pick<SessionController, "createGroup"> {
+  return {
+    createGroup: async (_s, input) => {
+      const groupId = randomAliasId();
+      const isPublic = input.visibility === "public";
+      const group: GroupRecord = {
+        groupId,
+        groupWriteToken: randomWriteToken(),
+        kg: randomAliasId(),
+        myCardId: randomAliasId(),
+        myCardWriteToken: randomWriteToken(),
+        handle: normalizeVanityName(input.handle),
+        visibility: input.visibility,
+        meetingKind: input.meetingKind,
+        isAdmin: true,
+        ...(isPublic
+          ? {
+              joinPointerId: randomAliasId(),
+              joinWriteToken: randomWriteToken(),
+            }
+          : {}),
+      };
+      setBlob({ ...getBlob(), groups: [...(getBlob().groups ?? []), group] });
+      return {
+        session: await session(),
+        groupId,
+        handle: group.handle,
+        result: isPublic ? ("registered" as const) : ("created" as const),
+      };
+    },
+  };
+}
+
 /**
  * The in-memory session controller. Every method mutates a local blob and returns
  * a session; none touch the network. `resumeFromStore` returns the seeded session,
@@ -146,6 +188,8 @@ export function createDemoController(): SessionController {
     root: await rootPromise,
     blob,
   });
+  const getBlob = () => blob;
+  const setBlob = (b: AccountBlob) => void (blob = b);
 
   return {
     signUp: async (handle, recovery) => {
@@ -258,11 +302,8 @@ export function createDemoController(): SessionController {
       Promise.resolve({ session: s, result: "unavailable" as const }),
     checkVanityName: () => Promise.resolve("taken" as const),
     releaseVanityName: (s) => Promise.resolve(s),
-    ...demoRecovery(
-      () => blob,
-      (b) => void (blob = b),
-      session,
-    ),
+    ...demoRecovery(getBlob, setBlob, session),
+    ...demoGroups(getBlob, setBlob, session),
     forget: () => undefined,
   };
 }

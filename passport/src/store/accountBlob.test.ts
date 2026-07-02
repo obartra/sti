@@ -243,6 +243,43 @@ describe("account blob codec", () => {
     );
   });
 
+  it("round-trips v16 shared groups (public + private) (doc 33)", () => {
+    const withGroups: AccountBlob = {
+      ...blob,
+      groups: [
+        {
+          groupId: "G".repeat(43),
+          groupWriteToken: "H".repeat(43),
+          kg: "I".repeat(43),
+          myCardId: "J".repeat(43),
+          myCardWriteToken: "K".repeat(43),
+          handle: "book_club",
+          visibility: "public",
+          meetingKind: "recurring",
+          isAdmin: true,
+          joinPointerId: "L".repeat(43),
+          joinWriteToken: "M".repeat(43),
+        },
+        {
+          groupId: "N".repeat(43),
+          groupWriteToken: "O".repeat(43),
+          kg: "P".repeat(43),
+          myCardId: "Q".repeat(43),
+          myCardWriteToken: "R".repeat(43),
+          handle: "party_2026",
+          visibility: "private",
+          meetingKind: "event",
+          isAdmin: true,
+        },
+      ],
+    };
+    expect(parseAccountBlob(serializeAccountBlob(withGroups))).toEqual(
+      withGroups,
+    );
+    // A blob written without groups stays valid and absent.
+    expect(parseAccountBlob(serializeAccountBlob(blob)).groups).toBeUndefined();
+  });
+
   it("round-trips a v14 stored recovery phrase (doc 32)", () => {
     // A well-formed 43-char app phrase (base64url, no padding).
     const phrase = "abcdefghijklmnopqrstuvwxyz0123456789-_ABCDE";
@@ -298,7 +335,7 @@ describe("account blob codec", () => {
     avatar: A,
   };
   reject("a non-object", 7);
-  reject("an unknown version", { ...base, v: 16, sharingMode: "link" });
+  reject("an unknown version", { ...base, v: 17, sharingMode: "link" });
   reject("a prior version (v6 is no longer accepted)", {
     v: 6,
     handle: "x",
@@ -329,7 +366,7 @@ describe("account blob codec", () => {
   // A real current-version wire so these reach the findable validator (not the
   // version gate, which `base`'s v7 trips first).
   const vCurrent = {
-    v: 15,
+    v: 16,
     handle: "x",
     aliases: [],
     contacts: [],
@@ -440,6 +477,44 @@ describe("account blob codec", () => {
     sharingMode: "link",
     circles: [{ id: ID, name: "x", memberContactIds: ["short"] }],
   });
+  // A group record: every capability id-shaped, handle well-shaped, visibility and
+  // meetingKind in their sets. These reach the group validator via vCurrent.
+  const groupOk = {
+    groupId: ID,
+    groupWriteToken: ID,
+    kg: ID,
+    myCardId: ID,
+    myCardWriteToken: ID,
+    handle: "book_club",
+    visibility: "public" as const,
+    meetingKind: "recurring" as const,
+    isAdmin: true,
+  };
+  reject("a group with a malformed groupId", {
+    ...vCurrent,
+    groups: [{ ...groupOk, groupId: "short" }],
+  });
+  reject("a group with a malformed kg", {
+    ...vCurrent,
+    groups: [{ ...groupOk, kg: "short" }],
+  });
+  reject("a group with a bad-shaped handle", {
+    ...vCurrent,
+    groups: [{ ...groupOk, handle: "AB" }],
+  });
+  reject("a group with an invalid visibility", {
+    ...vCurrent,
+    groups: [{ ...groupOk, visibility: "secret" }],
+  });
+  reject("a group with an invalid meetingKind", {
+    ...vCurrent,
+    groups: [{ ...groupOk, meetingKind: "sometimes" }],
+  });
+  reject("a group with a malformed joinPointerId", {
+    ...vCurrent,
+    groups: [{ ...groupOk, joinPointerId: "short" }],
+  });
+  reject("a non-array groups", { ...vCurrent, groups: {} });
 });
 
 describe("avatar migration on read (doc 19)", () => {

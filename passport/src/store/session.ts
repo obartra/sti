@@ -76,6 +76,11 @@ import {
   type VanityRegisterOutcome,
 } from "./findableOps.ts";
 import {
+  createGroup,
+  type CreateGroupInput,
+  type GroupCreated,
+} from "./groupOps.ts";
+import {
   recoveryControllerMethods,
   type SetRecoveryPasswordInput,
   type SetRecoveryPasswordResult,
@@ -358,6 +363,19 @@ export interface SessionController {
    * no name is claimed. Returns the updated session.
    */
   releaseVanityName(session: OwnerSession): Promise<OwnerSession>;
+  /**
+   * Create a shared group (doc 33): mint the group key, publish the creator's own
+   * group card sealed under it, write the group blob, and, for a public group,
+   * claim the handle to a dedicated join pointer. In v1 the creator is the sole
+   * admin and the only member. `input.handle` must be a valid vanity-shaped handle
+   * (rejected before any network call). Returns the updated session, the group id,
+   * and the outcome (whether a public handle was actually claimed); a group is
+   * created even when a public handle could not be claimed.
+   */
+  createGroup(
+    session: OwnerSession,
+    input: CreateGroupInput,
+  ): Promise<GroupCreated>;
   /**
    * Turn the optional password factor on, or change it (doc 32). Wraps the account
    * root under `password` and stores the envelope at the owner-chosen recovery
@@ -669,14 +687,14 @@ export function createSessionController(deps: SessionDeps): SessionController {
       // A non-claiming public resolve: an id back means the name is taken, null
       // means it is free. The caller has already normalized + format-checked.
       try {
-        const id = await api.resolveVanityName(name);
-        return id === null ? "free" : "taken";
+        return (await api.resolveVanityName(name)) === null ? "free" : "taken";
       } catch {
         return "error";
       }
     },
 
     releaseVanityName: (session) => releaseVanityName(api, accounts, session),
+    createGroup: (s, input) => createGroup(api, accounts, s, input),
 
     ...recoveryControllerMethods(api, accounts),
 
