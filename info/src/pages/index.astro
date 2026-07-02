@@ -6,6 +6,7 @@ import Icon from "../components/Icon.astro";
 import { LIBRARY as c } from "../data/library.ts";
 import { RESOURCES } from "../data/resources.ts";
 import { SITE } from "../data/site.ts";
+import { SECTIONS } from "../data/sections.ts";
 
 // The library index. On a phone: the tappable condition list, the U=U card, and
 // the prevention / vaccine / testing framing, stacked. At desktop the same content
@@ -18,6 +19,7 @@ const conditions = (await getCollection("conditions")).sort(
 const guides = (await getCollection("guides")).sort(
   (a, b) => a.data.order - b.data.order,
 );
+const bySection = (id: string) => guides.filter((g) => g.data.topic === id);
 ---
 
 <Base title="STI basics" description={c.sub} wide>
@@ -85,30 +87,43 @@ const guides = (await getCollection("guides")).sort(
     </div>
   </section>
 
-  <section class="info-section info-grid2">
-    <a class="sti-card sti-card--tint info-row" href="/uu">
-      <span class="info-tile info-tile--clear">U=U</span>
-      <div class="info-cardlink__body">
-        <div class="info-cardtitle">{c.uuCard.title}</div>
-        <div class="info-cardsub">{c.uuCard.sub}</div>
-      </div>
-      <Icon name="chevron" size={17} class="info-list__chev" />
-    </a>
-    {
-      guides.map((g) => (
-        <a class="sti-card sti-card--tint info-row" href={`/${g.slug}`}>
-          <span class="info-tile info-tile--accent">
-            <Icon name={g.data.icon} size={19} />
-          </span>
-          <div class="info-cardlink__body">
-            <div class="info-cardtitle">{g.data.title}</div>
-            <div class="info-cardsub">{g.data.tag}</div>
-          </div>
-          <Icon name="chevron" size={17} class="info-list__chev" />
-        </a>
-      ))
-    }
-  </section>
+  {
+    SECTIONS.filter(
+      (section) =>
+        section.id === "positive" || bySection(section.id).length > 0,
+    ).map((section) => (
+      <section class="info-section">
+        <div class="info-secthead" id={section.id}>
+          <h2 class="info-secthead__title">{section.title}</h2>
+          <p class="info-secthead__sub">{section.sub}</p>
+        </div>
+        <div class="info-grid2">
+          {section.id === "positive" && (
+            <a class="sti-card sti-card--tint info-row" href="/uu">
+              <span class="info-tile info-tile--clear">U=U</span>
+              <div class="info-cardlink__body">
+                <div class="info-cardtitle">{c.uuCard.title}</div>
+                <div class="info-cardsub">{c.uuCard.sub}</div>
+              </div>
+              <Icon name="chevron" size={17} class="info-list__chev" />
+            </a>
+          )}
+          {bySection(section.id).map((g) => (
+            <a class="sti-card sti-card--tint info-row" href={`/${g.slug}`}>
+              <span class="info-tile info-tile--accent">
+                <Icon name={g.data.icon} size={19} />
+              </span>
+              <div class="info-cardlink__body">
+                <div class="info-cardtitle">{g.data.title}</div>
+                <div class="info-cardsub">{g.data.tag}</div>
+              </div>
+              <Icon name="chevron" size={17} class="info-list__chev" />
+            </a>
+          ))}
+        </div>
+      </section>
+    ))
+  }
 
   <div class="info-band">
     <div class="info-band__inner info-valueband">
@@ -122,7 +137,13 @@ const guides = (await getCollection("guides")).sort(
             <div class="info-item">
               <span class="info-item__icon"><Icon name="shield" size={16} /></span>
               <div>
-                <strong>{row[0]}</strong>, {row[1]}
+                {row.href ? (
+                  <a href={row.href}>
+                    <strong>{row.term}</strong>
+                  </a>
+                ) : (
+                  <strong>{row.term}</strong>
+                )}, {row.sub}
               </div>
             </div>
           ))
@@ -139,7 +160,13 @@ const guides = (await getCollection("guides")).sort(
             <div class="info-item">
               <span class="info-item__icon"><Icon name="stethoscope" size={16} /></span>
               <div>
-                <strong>{row[0]}</strong>, {row[1]}
+                {row.href ? (
+                  <a href={row.href}>
+                    <strong>{row.term}</strong>
+                  </a>
+                ) : (
+                  <strong>{row.term}</strong>
+                )}, {row.sub}
               </div>
             </div>
           ))
@@ -164,7 +191,7 @@ const guides = (await getCollection("guides")).sort(
             <div class="info-item">
               <span class="info-item__icon"><Icon name="check" size={16} /></span>
               <div>
-                <strong>{row[0]}</strong>, {row[1]}
+                <strong>{row.term}</strong>, {row.sub}
               </div>
             </div>
           ))

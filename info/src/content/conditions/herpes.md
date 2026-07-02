@@ -8,6 +8,9 @@ intro: A very common virus. It can cause sores on the mouth, dick, or pussy. Mos
 sources:
   - label: U.S. CDC, About genital herpes
     href: https://www.cdc.gov/herpes/about/index.html
+related:
+  - label: Just diagnosed? It is common and manageable
+    href: /living-with
 ---
 
 ## Is it serious?

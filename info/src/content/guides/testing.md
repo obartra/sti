@@ -1,8 +1,8 @@
 ---
 title: Getting tested, what to expect
-navLabel: Getting tested
 tag: The whole visit, start to finish. It is quicker than you think.
 icon: stethoscope
+topic: getting-tested
 order: 1
 intro: A standard STI check is fast, often free, and nothing to dread. Here is the whole visit, start to finish.
 sources:
@@ -30,4 +30,4 @@ Rapid tests give an answer in minutes. Lab tests usually take a few days, and th
 
 ## If a result is positive
 
-Most STIs are curable, and the rest are treatable. Treatment often starts the same day. Tell recent partners so they can get tested too. The clinic can help with that without naming you.
+Most STIs are curable, and the rest are treatable. Treatment often starts the same day. [Tell recent partners](/tell-a-partner) so they can get tested too, and the clinic can help with that without naming you. If the result is herpes or HPV, [it is more common and more manageable than it feels](/living-with).

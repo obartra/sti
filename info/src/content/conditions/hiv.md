@@ -8,6 +8,11 @@ intro: A virus that weakens the body's defense against sickness.
 sources:
   - label: U.S. CDC, About HIV
     href: https://www.cdc.gov/hiv/about/index.html
+related:
+  - label: Undetectable? Share what U=U means
+    href: /uu
+  - label: PrEP prevents HIV, and it is often free
+    href: /prep
 ---
 
 ## Would I know if I had it?

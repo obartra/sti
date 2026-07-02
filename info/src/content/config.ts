@@ -1,4 +1,5 @@
 import { defineCollection, z } from "astro:content";
+import { SECTION_IDS } from "../data/sections.ts";
 
 // Outbound source links rendered as the quiet "sources" block on a page. Always
 // public health agencies ("based on", never "reviewed by").
@@ -22,23 +23,40 @@ const conditions = defineCollection({
     test: z.string(),
     intro: z.string(),
     sources,
+    related: z
+      .array(z.object({ label: z.string(), href: z.string() }))
+      .optional(),
   }),
 });
 
-// The guides: practical how-to reading (getting tested, symptoms, telling a
-// partner). One markdown file per guide under content/guides/{id}.md; the
-// filename is the URL slug, flat at the root like the conditions. Frontmatter
-// carries the page title, the short nav label, the one-line card sub for the
-// index, the icon on its index card, the sort order, the intro, and the source
-// links. The body is plain markdown sections.
+// The guides: practical how-to reading (getting tested, symptoms, protection,
+// the conversations). One markdown file per guide under content/guides/{id}.md;
+// the filename is the URL slug, flat at the root like the conditions.
+// Frontmatter carries the page title, the topic section it lives in (ids from
+// data/sections.ts), the one-line card sub for the index, the icon on its index
+// card, the sort order within its topic, an optional extra aside action, the
+// intro, and the source links. The body is plain markdown sections.
 const guides = defineCollection({
   type: "content",
   schema: z.object({
     title: z.string(),
-    navLabel: z.string(),
+    topic: z.enum(SECTION_IDS),
     tag: z.string(),
-    icon: z.enum(["stethoscope", "shield", "eye", "mail", "clock", "heart"]),
+    icon: z.enum([
+      "stethoscope",
+      "shield",
+      "eye",
+      "mail",
+      "clock",
+      "heart",
+      "circles",
+      "shieldPlus",
+      "care",
+      "users",
+      "calendar",
+    ]),
     order: z.number(),
+    cta: z.enum(["prep", "condoms"]).optional(),
     intro: z.string(),
     sources,
   }),
