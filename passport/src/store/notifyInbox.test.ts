@@ -59,6 +59,9 @@ function fakeApi(): ApiClient {
     getRecoveryEnvelope: unused,
     putRecoveryEnvelope: unused,
     deleteRecoveryEnvelope: unused,
+    getGroupBlob: unused,
+    putGroupBlob: unused,
+    deleteGroupBlob: unused,
     health: unused,
   };
 }

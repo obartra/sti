@@ -55,6 +55,9 @@ describe("knock", () => {
       getRecoveryEnvelope: unused,
       putRecoveryEnvelope: unused,
       deleteRecoveryEnvelope: unused,
+      getGroupBlob: unused,
+      putGroupBlob: unused,
+      deleteGroupBlob: unused,
       health: unused,
       knock: (id, hash) => {
         seen = { id, hash };

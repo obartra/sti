@@ -62,6 +62,9 @@ function stubApi(getAlias: ApiClient["getAlias"]): ApiClient {
     getRecoveryEnvelope: unused,
     putRecoveryEnvelope: unused,
     deleteRecoveryEnvelope: unused,
+    getGroupBlob: unused,
+    putGroupBlob: unused,
+    deleteGroupBlob: unused,
     health: unused,
   };
 }
@@ -156,6 +159,9 @@ describe("backend store knock", () => {
       getRecoveryEnvelope: unused,
       putRecoveryEnvelope: unused,
       deleteRecoveryEnvelope: unused,
+      getGroupBlob: unused,
+      putGroupBlob: unused,
+      deleteGroupBlob: unused,
       health: unused,
       knock: (id, hash, pubKey) => {
         calls.push({ id, requesterHash: hash, pubKey });
@@ -208,6 +214,9 @@ describe("backend store knock", () => {
       getRecoveryEnvelope: unused,
       putRecoveryEnvelope: unused,
       deleteRecoveryEnvelope: unused,
+      getGroupBlob: unused,
+      putGroupBlob: unused,
+      deleteGroupBlob: unused,
       health: unused,
     };
     const store = createBackendStore(
@@ -305,6 +314,9 @@ describe("backend store reportVanityName", () => {
       getRecoveryEnvelope: unused,
       putRecoveryEnvelope: unused,
       deleteRecoveryEnvelope: unused,
+      getGroupBlob: unused,
+      putGroupBlob: unused,
+      deleteGroupBlob: unused,
       health: unused,
     };
   }

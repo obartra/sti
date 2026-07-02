@@ -6,6 +6,7 @@ import { describe, it, expect } from "vitest";
 import { createApiClient, ApiError, type FetchLike } from "./client.ts";
 import {
   ALIAS_PAYLOAD_SIZE,
+  GROUP_BLOB_SIZE,
   HEADER_VERSION,
   HEADER_WRITE_TOKEN,
   RECOVERY_ENVELOPE_SIZE,
@@ -463,5 +464,75 @@ describe("recovery envelope", () => {
     await expect(api.getRecoveryEnvelope("meow")).rejects.toMatchObject({
       kind: "rateLimited",
     });
+  });
+});
+
+describe("group blob", () => {
+  const blob = () => new Uint8Array(GROUP_BLOB_SIZE).fill(9);
+
+  it("fetches the fixed-size body from the group id", async () => {
+    const m = mockFetch(() => new Response(blob(), { status: 200 }));
+    const api = createApiClient(BASE, m.fetch);
+    const body = await api.getGroupBlob(GOOD_ID);
+    expect(body).toHaveLength(GROUP_BLOB_SIZE);
+    expect(m.last().url).toBe(BASE + "/g/" + GOOD_ID);
+    expect(m.last().init?.method).toBe("GET");
+  });
+
+  it("rejects a malformed group id before any network call", async () => {
+    const m = mockFetch(() => new Response(blob(), { status: 200 }));
+    const api = createApiClient(BASE, m.fetch);
+    await expect(api.getGroupBlob("too-short")).rejects.toMatchObject({
+      kind: "badRequest",
+    });
+  });
+
+  it("rejects a wrong-size fetched body as a protocol error", async () => {
+    const api = createApiClient(BASE, () =>
+      Promise.resolve(new Response(new Uint8Array(10), { status: 200 })),
+    );
+    await expect(api.getGroupBlob(GOOD_ID)).rejects.toMatchObject({
+      kind: "protocol",
+    });
+  });
+
+  it("puts the blob with the write token and the fixed size", async () => {
+    const m = mockFetch(() => new Response(null, { status: 204 }));
+    const api = createApiClient(BASE, m.fetch);
+    await expect(
+      api.putGroupBlob(GOOD_ID, blob(), "admin-token"),
+    ).resolves.toBeUndefined();
+    const { url, init } = m.last();
+    expect(url).toBe(BASE + "/g/" + GOOD_ID);
+    expect(init?.method).toBe("PUT");
+    expect((init?.headers as Record<string, string>)[HEADER_WRITE_TOKEN]).toBe(
+      "admin-token",
+    );
+  });
+
+  it("refuses to put a wrong-size blob before the wire", async () => {
+    const m = mockFetch(() => new Response(null, { status: 204 }));
+    const api = createApiClient(BASE, m.fetch);
+    await expect(
+      api.putGroupBlob(GOOD_ID, new Uint8Array(5), "t"),
+    ).rejects.toMatchObject({ kind: "protocol" });
+  });
+
+  it("maps a wrong-token put (403) to the forbidden error", async () => {
+    const api = createApiClient(BASE, () =>
+      Promise.resolve(new Response(null, { status: 403 })),
+    );
+    await expect(
+      api.putGroupBlob(GOOD_ID, blob(), "not-owner"),
+    ).rejects.toMatchObject({ kind: "forbidden" });
+  });
+
+  it("deletes with the write token", async () => {
+    const m = mockFetch(() => new Response(null, { status: 204 }));
+    const api = createApiClient(BASE, m.fetch);
+    await expect(
+      api.deleteGroupBlob(GOOD_ID, "admin-token"),
+    ).resolves.toBeUndefined();
+    expect(m.last().init?.method).toBe("DELETE");
   });
 });

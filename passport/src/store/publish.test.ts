@@ -56,6 +56,9 @@ function recordingApi(): { api: ApiClient; puts: PutCall[] } {
       getRecoveryEnvelope: unused,
       putRecoveryEnvelope: unused,
       deleteRecoveryEnvelope: unused,
+      getGroupBlob: unused,
+      putGroupBlob: unused,
+      deleteGroupBlob: unused,
       health: unused,
       putAlias: (id, payload, writeToken, expiresAt) => {
         puts.push({ id, payload, writeToken, expiresAt });
