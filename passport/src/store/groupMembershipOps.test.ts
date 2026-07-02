@@ -19,7 +19,12 @@ import {
   type JoinRequesterDeps,
 } from "./groupJoinOps.ts";
 import { createGroup } from "./groupOps.ts";
-import { parseGroupInvite, type GroupInvite } from "./groupInvite.ts";
+import {
+  parseGroupInvite,
+  encodeLifecycleLeave,
+  type GroupInvite,
+} from "./groupInvite.ts";
+import { writePing } from "./notifyInbox.ts";
 import { createAccountManager, type AccountManager } from "./account.ts";
 import { createGrantKeyStore } from "./grantKeyStore.ts";
 import { createGroupJoinStore } from "./groupJoinStore.ts";
@@ -618,6 +623,78 @@ describe("group request lifecycle (doc 33, slice 4b)", () => {
       kgOf(dropped, admin.groupId),
     );
     expect(must(obj, "obj").roster).toHaveLength(1);
+  });
+});
+
+describe("group leave hardening: member-minted leave channel (doc 33)", () => {
+  it("the member's leave channel is a fresh inbox, not the invite inbox", async () => {
+    const server = fakeServer();
+    const admin = await adminWithGroup(server.api);
+    const invited = await inviteToGroup(admin.accounts, admin.session, {
+      groupId: admin.groupId,
+    });
+    const invite = inviteFrom(invited.url);
+    const member = await freshSession(server.api, "sam");
+    const accepted = await acceptGroupInvite(
+      server.api,
+      member.accounts,
+      member.session,
+      invite,
+    );
+
+    // The member's own lifecycle channel is a fresh inbox it minted at accept, NOT the
+    // invite inbox whose write token rode in the shareable link.
+    const memberInbox = must(
+      groupOf(accepted, admin.groupId).lifecycleInbox,
+      "member lifecycleInbox",
+    );
+    expect(memberInbox.inboxId).not.toBe(invite.lifecycleInbox.inboxId);
+
+    // After ingest the admin stores that SAME member-minted inbox as the member's
+    // leave channel, again distinct from the invite inbox.
+    const ingested = await pollGroupLifecycle(
+      server.api,
+      admin.accounts,
+      invited.session,
+    );
+    const secret = must(membersOf(ingested, admin.groupId)[0], "member");
+    expect(secret.lifecycleInbox.inboxId).toBe(memberInbox.inboxId);
+    expect(secret.lifecycleInbox.inboxId).not.toBe(
+      invite.lifecycleInbox.inboxId,
+    );
+  });
+
+  it("a leave written to the INVITE inbox no longer evicts the member", async () => {
+    const server = fakeServer();
+    const admin = await adminWithGroup(server.api);
+    const invited = await inviteToGroup(admin.accounts, admin.session, {
+      groupId: admin.groupId,
+    });
+    const invite = inviteFrom(invited.url);
+    const member = await freshSession(server.api, "sam");
+    await acceptGroupInvite(
+      server.api,
+      member.accounts,
+      member.session,
+      invite,
+    );
+    const ingested = await pollGroupLifecycle(
+      server.api,
+      admin.accounts,
+      invited.session,
+    );
+    expect(membersOf(ingested, admin.groupId)).toHaveLength(1);
+
+    // An old holder of the invite LINK writes a leave to the invite inbox (whose write
+    // token traveled in the link). The admin polls the member-minted leave channel,
+    // not this one, so the member stays: the griefing vector is closed.
+    await writePing(server.api, invite.lifecycleInbox, encodeLifecycleLeave());
+    const polled = await pollGroupLifecycle(
+      server.api,
+      admin.accounts,
+      ingested,
+    );
+    expect(membersOf(polled, admin.groupId)).toHaveLength(1);
   });
 });
 

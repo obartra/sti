@@ -171,10 +171,18 @@ export async function revokeGroupInvite(
 /**
  * ACCEPT (invitee): derive our member key (safe to hand the admin: HKDF is one-way
  * and the admin already holds `Kg`), mint a fresh card id + write token, seal + write
- * the accept to the lifecycle inbox, and record a local member-side group record. We
- * do NOT publish a card yet (we have no `Kg`); the next roster poll does that once
- * the admin has added our slot. The card write token is NEVER shared, so only we can
+ * the accept to the INVITE inbox, and record a local member-side group record. We do
+ * NOT publish a card yet (we have no `Kg`); the next roster poll does that once the
+ * admin has added our slot. The card write token is NEVER shared, so only we can
  * overwrite our card.
+ *
+ * The ongoing LEAVE channel is a fresh inbox we mint here, NOT the invite inbox. The
+ * invite inbox's write token rode in the shareable invite link, so anyone who ever
+ * held that link could write to it; if leave rode there too, an old link-holder could
+ * later write `{kind:"leave"}` and get us evicted. So we hand the admin our own leave
+ * inbox INSIDE the accept, which writePing seals under the invite inbox key: it never
+ * reaches the server in the clear and no bearer link carries its write token. That
+ * minted inbox becomes our own `lifecycleInbox` (the channel leaveGroup writes to).
  */
 export async function acceptGroupInvite(
   api: ApiClient,
@@ -185,16 +193,17 @@ export async function acceptGroupInvite(
   const memberKey = await deriveGroupMemberKey(session.root, invite.groupId);
   const cardId = randomAliasId();
   const cardWriteToken = randomWriteToken();
+  const leaveInbox = mintInbox();
   await writePing(
     api,
     invite.lifecycleInbox,
-    encodeLifecycleAccept(memberKey, cardId),
+    encodeLifecycleAccept(memberKey, cardId, leaveInbox),
   );
   const group: GroupRecord = {
     groupId: invite.groupId,
     myCardId: cardId,
     myCardWriteToken: cardWriteToken,
-    lifecycleInbox: invite.lifecycleInbox,
+    lifecycleInbox: leaveInbox,
     handle: invite.handle,
     visibility: invite.visibility,
     meetingKind: invite.meetingKind,

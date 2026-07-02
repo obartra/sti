@@ -122,19 +122,48 @@ describe("group invite URL codec (doc 33)", () => {
 });
 
 describe("group lifecycle payload codec (doc 33)", () => {
-  it("round-trips an accept and a reject (pure)", () => {
+  it("round-trips an accept (with the leave inbox) and a reject (pure)", () => {
     const memberKey = crypto.getRandomValues(new Uint8Array(32));
     const cardId = randomAliasId();
+    const leaveInbox = mintInbox();
     expect(
-      parseLifecyclePayload(encodeLifecycleAccept(memberKey, cardId)),
+      parseLifecyclePayload(
+        encodeLifecycleAccept(memberKey, cardId, leaveInbox),
+      ),
     ).toEqual({
       kind: "accept",
       memberKey: bytesToBase64url(memberKey),
       cardId,
+      leaveInbox,
     });
     expect(parseLifecyclePayload(encodeLifecycleReject())).toEqual({
       kind: "reject",
     });
+  });
+
+  it("an accept missing its leave inbox fails closed to null", () => {
+    const memberKey = crypto.getRandomValues(new Uint8Array(32));
+    const cardId = randomAliasId();
+    // A truncated accept (memberKey + cardId but no leaveInbox) must not half-ingest:
+    // parse fails closed so the admin treats it as still-pending.
+    const truncated = new TextEncoder().encode(
+      JSON.stringify({
+        kind: "accept",
+        memberKey: bytesToBase64url(memberKey),
+        cardId,
+      }),
+    );
+    expect(parseLifecyclePayload(truncated)).toBeNull();
+    // A malformed leaveInbox (not an inbox shape) fails closed too.
+    const malformed = new TextEncoder().encode(
+      JSON.stringify({
+        kind: "accept",
+        memberKey: bytesToBase64url(memberKey),
+        cardId,
+        leaveInbox: { inboxId: "short" },
+      }),
+    );
+    expect(parseLifecyclePayload(malformed)).toBeNull();
   });
 
   it("round-trips a leave (doc 33, slice 4b)", () => {
@@ -174,7 +203,12 @@ describe("group lifecycle payload codec (doc 33)", () => {
     const inbox = mintInbox();
     const memberKey = crypto.getRandomValues(new Uint8Array(32));
     const cardId = randomAliasId();
-    await writePing(api, inbox, encodeLifecycleAccept(memberKey, cardId));
+    const leaveInbox = mintInbox();
+    await writePing(
+      api,
+      inbox,
+      encodeLifecycleAccept(memberKey, cardId, leaveInbox),
+    );
 
     const raw = await pollInbox(api, inbox);
     if (raw === null) throw new Error("expected a ping");
@@ -182,6 +216,7 @@ describe("group lifecycle payload codec (doc 33)", () => {
       kind: "accept",
       memberKey: bytesToBase64url(memberKey),
       cardId,
+      leaveInbox,
     });
   });
 

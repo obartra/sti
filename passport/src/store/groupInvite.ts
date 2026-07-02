@@ -13,8 +13,9 @@
  *
  * The lifecycle payload is the small message the invitee seals under the inbox key
  * and writes into the lifecycle inbox: an ACCEPT (their freshly derived member key,
- * so the admin can wrap `Kg` to them, plus the card id they will publish under) or a
- * REJECT. Here it is only plaintext<->object; the seal/open is the inbox layer
+ * so the admin can wrap `Kg` to them, the card id they will publish under, and a fresh
+ * leave inbox they mint as the ongoing admin<->member channel) or a REJECT. Here it is
+ * only plaintext<->object; the seal/open is the inbox layer
  * (writePing/pollInbox), so a wrong key fails closed there to the uniform null.
  * Every parse fails CLOSED to null on any surprise, like every other codec here.
  */
@@ -124,15 +125,25 @@ export function parseGroupInvite(
 
 /**
  * An accept: the invitee's derived member key (base64url) so the admin can wrap `Kg`
- * to a slot, and the card id the invitee will publish their group card under. The
+ * to a slot, the card id the invitee will publish their group card under, and a fresh
+ * `leaveInbox` the invitee mints for itself as the ongoing admin<->member channel. The
  * member key is safe to hand the admin (HKDF is one-way and the admin already holds
  * `Kg`); the invitee's card WRITE token is never in here, so only they can overwrite
  * their card.
+ *
+ * Why the invitee mints `leaveInbox` here instead of reusing the invite inbox: the
+ * invite inbox's write token traveled in the shareable invite LINK, so anyone who ever
+ * held that link could write to it. The accept handshake is fine to carry there (it is
+ * one-shot), but the LEAVE channel must be one only the invitee and the admin hold, or
+ * an old link-holder could later write `{kind:"leave"}` and evict the member. So the
+ * invitee mints its own inbox and delivers it here, SEALED under the invite inbox key
+ * (writePing), so no bearer link ever carries the leave-channel write token.
  */
 export interface LifecycleAccept {
   readonly kind: "accept";
   readonly memberKey: string;
   readonly cardId: string;
+  readonly leaveInbox: InboxCapability;
 }
 
 // A reject carries no data: it just tells the admin to drop the pending invite.
@@ -157,13 +168,20 @@ export type LifecyclePayload =
   | LifecycleReject
   | LifecycleLeave;
 
-/** Encode an accept payload (plaintext bytes) to hand to writePing. */
-export function encodeLifecycleAccept(memberKey: Bytes, cardId: string): Bytes {
+/** Encode an accept payload (plaintext bytes) to hand to writePing. Carries the
+ * invitee-minted `leaveInbox` (the ongoing leave channel) so it reaches the admin only
+ * sealed under the invite inbox key, never in a bearer link. */
+export function encodeLifecycleAccept(
+  memberKey: Bytes,
+  cardId: string,
+  leaveInbox: InboxCapability,
+): Bytes {
   return utf8ToBytes(
     JSON.stringify({
       kind: "accept",
       memberKey: bytesToBase64url(memberKey),
       cardId,
+      leaveInbox,
     }),
   );
 }
@@ -195,9 +213,15 @@ export function parseLifecyclePayload(bytes: Bytes): LifecyclePayload | null {
       typeof r.memberKey === "string" &&
       validId(r.memberKey) &&
       typeof r.cardId === "string" &&
-      validId(r.cardId)
+      validId(r.cardId) &&
+      isInboxShape(r.leaveInbox)
     ) {
-      return { kind: "accept", memberKey: r.memberKey, cardId: r.cardId };
+      return {
+        kind: "accept",
+        memberKey: r.memberKey,
+        cardId: r.cardId,
+        leaveInbox: r.leaveInbox,
+      };
     }
     return null;
   } catch {
