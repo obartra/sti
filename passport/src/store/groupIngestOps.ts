@@ -202,10 +202,15 @@ async function ingestAccept(
       accept,
     });
   }
+  // Poll the member's OWN leave channel (the inbox they minted and delivered inside
+  // the sealed accept), never the invite inbox. Only the member and we hold this one's
+  // write token, so no old invite-link holder can write a `leave` and evict them. The
+  // invite inbox is finished now (its consumed accept carries no leave power), so it is
+  // simply left; the pending invite it belonged to is dropped by the promote below.
   const member: GroupMemberSecret = {
     cardId: accept.cardId,
     memberKey: accept.memberKey,
-    lifecycleInbox: invite.lifecycleInbox,
+    lifecycleInbox: accept.leaveInbox,
   };
   const next = await accounts.promoteInviteToMember(
     session.root,
