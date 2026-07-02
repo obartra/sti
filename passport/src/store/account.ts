@@ -33,6 +33,7 @@ import {
   type ContactRecord,
   type CircleRecord,
   type FindableRegistration,
+  type GroupRecord,
   type SharingMode,
 } from "./accountBlob.ts";
 import { normalizeCircleMembers } from "./circles.ts";
@@ -149,6 +150,13 @@ export interface AccountManager {
     alias: AliasRecord,
     findable: FindableRegistration,
   ): Promise<AccountBlob>;
+  /**
+   * Append (or upsert by groupId) a shared group into the account (doc 33), in one
+   * atomic blob write. Mirrors recordFindable: the server-side create (mint Kg,
+   * publish the card, put the blob, claim the handle) runs a layer up (groupOps);
+   * this just persists the resulting record so a fresh device can read the group.
+   */
+  recordGroup(root: RootKey, group: GroupRecord): Promise<AccountBlob>;
   /**
    * Record (or clear, when null) the owner's recovery locator (doc 32): the name
    * their password-recovery envelope is stored under. Pure persistence; minting or
@@ -271,6 +279,13 @@ function withRecoveryName(
   delete (next as { recoveryName?: string }).recoveryName;
   delete (next as { passwordSetAt?: number }).passwordSetAt;
   return next;
+}
+
+// Append a shared group, upserting by groupId so a lost-response retry does not
+// record the same group twice (which would orphan a group write token).
+function withGroupAppended(blob: AccountBlob, group: GroupRecord): AccountBlob {
+  const others = (blob.groups ?? []).filter((g) => g.groupId !== group.groupId);
+  return { ...blob, groups: [...others, group] };
 }
 
 // Upsert the dedicated findable alias AND set the registration in one step, so a
@@ -506,6 +521,10 @@ export function createAccountManager(
 
     removeCircle(root, circleId) {
       return modify(root, (blob) => withCircleRemoved(blob, circleId));
+    },
+
+    recordGroup(root, group) {
+      return modify(root, (blob) => withGroupAppended(blob, group));
     },
 
     async deleteAccount(root) {

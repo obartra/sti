@@ -194,6 +194,22 @@ export async function deriveAccountWriteToken(root: RootKey): Promise<string> {
 }
 
 /**
+ * The creator's (and later each member's) per-group wrapping key (doc 33): a
+ * 32-byte key derived from the root, domain-separated by `groupId` so a distinct
+ * key backs every group the owner is in. It is what wraps `Kg` for this member in
+ * the group blob, and what trial-unwraps their entry back out; it never leaves the
+ * device. HKDF from the root (not a random key) so any device that recovers the
+ * root re-derives the same member key with no extra stored secret. Slice 4 decides
+ * how INVITED members' keys are derived; this is the creator's own.
+ */
+export function deriveGroupMemberKey(
+  root: RootKey,
+  groupId: string,
+): Promise<Bytes> {
+  return hkdfFromKey(root, "sti.care/group-member/v1/" + groupId, 32);
+}
+
+/**
  * A 32-byte wrapping key from a passkey's PRF output. The PRF result is a
  * high-entropy authenticator secret; HKDF domain-separates it. This wraps
  * (encrypts) the account root for convenient local re-unlock, so the passkey

@@ -159,6 +159,28 @@ async function walkController(controller: SessionController): Promise<void> {
   expect(vanity.result).toBe("unavailable");
   expect(await controller.releaseVanityName(dropped)).not.toBeNull();
 
+  // Shared groups (doc 33): create records a group in the local blob and reports
+  // the create outcome (a public handle "registered", a private one "created").
+  const pubGroup = await controller.createGroup(dropped, {
+    handle: "book_club",
+    visibility: "public",
+    meetingKind: "recurring",
+  });
+  expect(pubGroup.result).toBe("registered");
+  expect(pubGroup.session.blob.groups?.map((g) => g.groupId)).toContain(
+    pubGroup.groupId,
+  );
+  const privGroup = await controller.createGroup(pubGroup.session, {
+    handle: "party_2026",
+    visibility: "private",
+    meetingKind: "event",
+  });
+  expect(privGroup.result).toBe("created");
+  expect(
+    privGroup.session.blob.groups?.find((g) => g.groupId === privGroup.groupId)
+      ?.joinPointerId,
+  ).toBeUndefined();
+
   // Passkey gate (doc 32): the demo enrolls no passkey, so the phrase re-view
   // gate reports none enrolled and a verify resolves false.
   expect(controller.passkeyEnrolled()).toBe(false);

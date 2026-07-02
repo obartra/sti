@@ -52,6 +52,7 @@ export type {
   ContactRecord,
   CircleRecord,
   FindableRegistration,
+  GroupRecord,
   StatusAlias,
   SharingMode,
 } from "./accountBlob.ts";
@@ -70,6 +71,23 @@ export {
   type GroupKey,
   type MemberKey,
 } from "./groupCrypto.ts";
+export {
+  serializeGroupBlob,
+  parseGroupBlobForMember,
+  parseGroupBlobWithKg,
+  isGroupVisibility,
+  isMeetingKind,
+  type GroupObject,
+  type RosterEntry,
+  type GroupVisibility,
+  type MeetingKind,
+} from "./groupObject.ts";
+export {
+  createGroup,
+  type CreateGroupInput,
+  type CreateGroupResult,
+  type GroupCreated,
+} from "./groupOps.ts";
 export {
   serializeAccountBlob,
   parseAccountBlob,

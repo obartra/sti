@@ -77,6 +77,7 @@ function stubController(
     registerVanityName: unused,
     checkVanityName: unused,
     releaseVanityName: unused,
+    createGroup: unused,
     setRecoveryPassword: unused,
     disableRecoveryPassword: unused,
     passkeyEnrolled: unused,

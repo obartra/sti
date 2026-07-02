@@ -28,6 +28,7 @@ import {
 } from "../lib/avatars.ts";
 import { decodeVersioned, isValidHandle } from "./codec.ts";
 import type { NotifyCapability } from "./notifyInbox.ts";
+import type { GroupVisibility, MeetingKind } from "./groupObject.ts";
 
 // v9 adds the optional per-alias display override (`handle` + `avatar` on
 // AliasRecord, doc 15): a card's face is derived deterministically from the alias
@@ -81,7 +82,14 @@ import type { NotifyCapability } from "./notifyInbox.ts";
 // its password before this field existed, in which case the nudge treats it as "not
 // yet due" and never nags immediately. A non-secret timing value, never derived from
 // the password.
-const SCHEMA_VERSION = 15;
+//
+// v16 adds the optional `groups` (doc 33): the shared groups the owner is in, each
+// with the capabilities a device needs to read and (as admin) rewrite the group,
+// including the shared group key `Kg` and the group blob's write token. Storing `Kg`
+// and the write tokens here is consistent with how alias write tokens are already
+// kept: the blob is encrypted at rest under the account key, so it is the same
+// vault. Absent on a pre-groups account; the version guards the growth.
+const SCHEMA_VERSION = 16;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -186,6 +194,31 @@ export interface FindableRegistration {
   readonly aliasId: string;
 }
 
+/**
+ * A shared group the owner is in (doc 33), with everything a device needs to read
+ * it and, as admin, rewrite it. `kg` is the base64url of the shared group key `Kg`
+ * (the capability that opens every member's card and the group core); `groupId` +
+ * `groupWriteToken` address and gate the group blob; `myCardId` +
+ * `myCardWriteToken` are where the owner publishes their own group card (sealed
+ * under `Kg`). `joinPointerId` + `joinWriteToken` are the dedicated public-handle
+ * join pointer, present only when the handle was actually claimed (a public group);
+ * slice 4 uses the pointer as the request inbox. `isAdmin` is true for the creator
+ * (the sole admin in v1).
+ */
+export interface GroupRecord {
+  readonly groupId: string;
+  readonly groupWriteToken: string;
+  readonly kg: string;
+  readonly myCardId: string;
+  readonly myCardWriteToken: string;
+  readonly handle: string;
+  readonly visibility: GroupVisibility;
+  readonly meetingKind: MeetingKind;
+  readonly isAdmin: boolean;
+  readonly joinPointerId?: string;
+  readonly joinWriteToken?: string;
+}
+
 /** The account-level sharing default: a public profile, or link-only (private). */
 export type SharingMode = "public" | "link";
 
@@ -222,6 +255,13 @@ export interface AccountBlob {
    * alias is also present in `aliases`.
    */
   readonly findable?: FindableRegistration;
+  /**
+   * The shared groups the owner is in (doc 33). Optional so pre-v16 construction
+   * sites stay valid; absent means no groups. Each record holds the group key and
+   * the write tokens, kept inside this already-encrypted blob (never sent to the
+   * server except as opaque ciphertext).
+   */
+  readonly groups?: GroupRecord[];
   /**
    * The recovery locator that names this account's password-recovery envelope (doc
    * 32): the non-secret, owner-chosen name the envelope is stored under. Absent when
@@ -409,6 +449,54 @@ function isOptionalFindable(x: unknown): boolean {
   return x === undefined || isFindableRegistration(x);
 }
 
+// An id-shaped base64url token, or (when optional) absent.
+function isIdField(x: unknown): x is string {
+  return typeof x === "string" && validId(x);
+}
+function isOptionalIdField(x: unknown): boolean {
+  return x === undefined || isIdField(x);
+}
+
+// The group's capability tokens: the blob id + write token, `kg` (the base64url of
+// the 32-byte group key, so a 43-char id shape), and the owner's card id + token.
+function hasGroupCapabilities(r: Record<string, unknown>): boolean {
+  return (
+    isIdField(r.groupId) &&
+    isIdField(r.groupWriteToken) &&
+    isIdField(r.kg) &&
+    isIdField(r.myCardId) &&
+    isIdField(r.myCardWriteToken)
+  );
+}
+
+// The group's non-capability fields: a well-SHAPED handle (charset only, not the
+// mutable reserved/blocked sets, so a later blocklist growth never bricks a stored
+// group, mirroring the findable name), the visibility + meetingKind enums, the
+// admin flag, and the optional join-pointer tokens (present only for a claimed
+// public handle).
+function hasGroupMeta(r: Record<string, unknown>): boolean {
+  return (
+    hasVanityNameShape(r.handle) &&
+    (r.visibility === "public" || r.visibility === "private") &&
+    (r.meetingKind === "event" || r.meetingKind === "recurring") &&
+    typeof r.isAdmin === "boolean" &&
+    isOptionalIdField(r.joinPointerId) &&
+    isOptionalIdField(r.joinWriteToken)
+  );
+}
+
+// A group record (doc 33).
+function isGroupRecord(x: unknown): x is GroupRecord {
+  if (typeof x !== "object" || x === null) return false;
+  const r = x as Record<string, unknown>;
+  return hasGroupCapabilities(r) && hasGroupMeta(r);
+}
+
+// groups is optional on the account (absent until the owner creates or joins one).
+function isOptionalGroups(x: unknown): boolean {
+  return x === undefined || (Array.isArray(x) && x.every(isGroupRecord));
+}
+
 // The recovery locator (doc 32): shape-only, since it names a private envelope, not
 // a public directory entry, so the mutable reserved/blocked sets never apply. Absent
 // when no password factor is set.
@@ -451,6 +539,7 @@ export function serializeAccountBlob(blob: AccountBlob): Bytes {
       : {}),
     ...(blob.circles !== undefined ? { circles: blob.circles } : {}),
     ...(blob.findable !== undefined ? { findable: blob.findable } : {}),
+    ...(blob.groups !== undefined ? { groups: blob.groups } : {}),
     ...(blob.recoveryName !== undefined
       ? { recoveryName: blob.recoveryName }
       : {}),
@@ -497,6 +586,9 @@ function assertValidOptionalFields(o: Record<string, unknown>): void {
   if (!isOptionalFindable(o.findable)) {
     throw new Error("account blob: invalid findable");
   }
+  if (!isOptionalGroups(o.groups)) {
+    throw new Error("account blob: invalid groups");
+  }
   if (!isOptionalRecoveryName(o.recoveryName)) {
     throw new Error("account blob: invalid recoveryName");
   }
@@ -533,6 +625,7 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
       ? { circles: o.circles as CircleRecord[] }
       : {}),
     ...(isFindableRegistration(o.findable) ? { findable: o.findable } : {}),
+    ...(Array.isArray(o.groups) ? { groups: o.groups as GroupRecord[] } : {}),
     ...(hasVanityNameShape(o.recoveryName)
       ? { recoveryName: o.recoveryName }
       : {}),
