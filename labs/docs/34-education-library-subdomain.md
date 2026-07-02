@@ -201,8 +201,8 @@ Two behaviors are the site's only client JavaScript:
   Docker image for byte-stable rendering): every built page is captured
   full-page at a phone and a desktop width, the corpus is checked against
   `dist/` so a page can never silently lose coverage, and the
-  `screenshot:update` label regenerates the info baselines in the same pass as
-  the passport's.
+  `screenshot:update` label regenerates the info baselines in the same workflow
+  run as the passport's.
 
 ## Resolved decisions
 
