@@ -286,39 +286,10 @@
   "src/ui/public/Alert.tsx": {
     "styles": 1
   },
-  "src/ui/public/Exposed.tsx": {
-    "styles": 8,
-    "legacy": 6
-  },
   "src/ui/public/Landing.tsx": {
     "styles": 21,
     "hex": 1,
     "legacy": 1
-  },
-  "src/ui/public/PublicResolution.accept.tsx": {
-    "styles": 15,
-    "legacy": 4
-  },
-  "src/ui/public/PublicResolution.explainer.tsx": {
-    "styles": 8,
-    "legacy": 1
-  },
-  "src/ui/public/PublicResolution.parts.tsx": {
-    "styles": 22,
-    "legacy": 4
-  },
-  "src/ui/public/PublicResolution.tsx": {
-    "styles": 2
-  },
-  "src/ui/public/Requests.tsx": {
-    "styles": 11,
-    "legacy": 2
-  },
-  "src/ui/public/SelfPreview.stories.tsx": {
-    "styles": 1
-  },
-  "src/ui/public/SelfPreview.tsx": {
-    "styles": 6
   },
   "src/ui/pwa/installScreenshots.stories.tsx": {
     "styles": 2,

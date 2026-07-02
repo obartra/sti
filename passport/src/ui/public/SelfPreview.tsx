@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { cx } from "../../lib/cx.ts";
 import { PublicResolution } from "./PublicResolution.tsx";
 import type { ResolvedView } from "./PublicResolution.tsx";
 import {
@@ -9,6 +10,7 @@ import {
 import { pseudonymFor } from "../../lib/avatars.ts";
 import { todayEpochDay } from "../../core/clock.ts";
 import type { OwnerState } from "../../core/badge.ts";
+import "./self-preview.css";
 
 /* The self-preview ("what others see"), per-alias (doc 15). A viewer always opens
    one specific link, so "what others see" is per alias: the owner picks which of
@@ -88,19 +90,9 @@ function AliasPicker({
   noneYet: boolean;
 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div
-        style={{
-          fontSize: 11,
-          fontWeight: 800,
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          color: "var(--text-subtle)",
-        }}
-      >
-        Previewing
-      </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+    <div className="spv">
+      <div className="spv__label">Previewing</div>
+      <div className="spv__chips">
         {options.map((o, i) => {
           const active = i === selected;
           return (
@@ -109,47 +101,16 @@ function AliasPicker({
               type="button"
               onClick={() => onSelect(i)}
               aria-pressed={active}
-              style={{
-                appearance: "none",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "baseline",
-                gap: 6,
-                padding: "7px 12px",
-                borderRadius: "var(--radius-pill)",
-                border: active
-                  ? "1px solid var(--text-accent)"
-                  : "1px solid var(--border-card)",
-                background: active
-                  ? "var(--accent-soft)"
-                  : "var(--surface-card)",
-                color: "var(--text-strong)",
-                fontSize: 13,
-                fontWeight: 700,
-              }}
+              className={cx("spv__chip", active && "spv__chip--active")}
             >
               @{o.handle}
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: "var(--text-subtle)",
-                }}
-              >
-                {KIND_TAG[o.kind]}
-              </span>
+              <span className="spv__chip-tag">{KIND_TAG[o.kind]}</span>
             </button>
           );
         })}
       </div>
       {noneYet && (
-        <div
-          style={{
-            fontSize: 12,
-            color: "var(--text-subtle)",
-            lineHeight: 1.45,
-          }}
-        >
+        <div className="spv__none">
           You haven’t made a link yet. This is the anonymous face a new link
           would show.
         </div>

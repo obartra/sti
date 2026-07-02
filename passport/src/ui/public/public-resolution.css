@@ -1,0 +1,224 @@
+/* The public resolution surfaces (docs 29 + 37): the anxious-reader template.
+   The resolved card is the one object on the page; everything around it is
+   quiet hairline structure. The request-access prompt is the page's single
+   action callout; the sent state reads calm, not celebratory. */
+
+.pres__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border-top: var(--hairline);
+  padding-top: 12px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-body);
+}
+
+.pres__note-icon {
+  color: var(--text-accent);
+  flex: none;
+  margin-top: 1px;
+}
+
+.pres__note strong {
+  color: var(--text-strong);
+}
+
+/* The knock prompt: the one action callout on the page (.e-card composes). */
+.pres__knock-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pres__knock-icon {
+  display: inline-flex;
+  color: var(--text-accent);
+  flex: none;
+}
+
+.pres__knock-title {
+  font-size: 15.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.pres__knock-body {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.pres__knock {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* The sent state: centered and calm, a hairline-circled check, no fill. */
+.pres__sent {
+  border-top: var(--hairline);
+  padding: 22px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.pres__sent-mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  flex: none;
+  border: var(--hairline-strong);
+  background: var(--surface-card);
+  color: var(--text-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pres__sent-title {
+  font-size: 17px;
+  font-weight: var(--weight-extrabold);
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: var(--text-strong);
+  max-width: 280px;
+}
+
+.pres__sent-body {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  max-width: 290px;
+}
+
+.pres__footnote {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--text-subtle);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.pres__footnote-icon {
+  flex: none;
+  margin-top: 2px;
+}
+
+.pres__cold {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Success notes (linked / return-link ready): quiet hairline blocks. */
+.pres__done {
+  border-top: var(--hairline);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pres__done-title {
+  font-size: 13px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.pres__mono {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-strong);
+  word-break: break-all;
+}
+
+/* The "What does this mean?" disclosure (doc 06): a teal link affordance
+   opening a hairline glossary block, never a card. */
+.pres__explainer-tap {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  font-size: 13.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-accent);
+}
+
+.pres__explainer-chev {
+  flex: none;
+  transition: transform var(--dur-fast) var(--ease-gentle);
+}
+
+.pres__explainer-chev--open {
+  transform: rotate(180deg);
+}
+
+.pres__explainer {
+  margin-top: 10px;
+  border-top: var(--hairline);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pres__explainer-title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 16px;
+  color: var(--text-strong);
+}
+
+.pres__explainer-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pres__explainer-term {
+  font-size: 13.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.pres__explainer-def {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-body);
+}
+
+.pres__explainer-close {
+  align-self: flex-start;
+}
+
+.pres {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.pres__report-name {
+  background: none;
+  border: none;
+  padding: 0;
+  align-self: center;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text-subtle);
+  text-decoration: underline;
+  cursor: pointer;
+}

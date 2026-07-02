@@ -1,0 +1,55 @@
+/* The anonymous /exposed page (doc 37, IA: the anxious-reader template):
+   serif title, calm lead, reassurance as plain text, next steps as hairline
+   action rows, the anonymity note in micro ink. No cards, no tints. */
+
+.exposed {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.exposed__title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 26px;
+  line-height: 1.15;
+  color: var(--text-strong);
+  margin: 0;
+}
+
+.exposed__lead {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-body);
+  margin: 8px 0 0;
+}
+
+.exposed__reassure {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-body);
+  border-top: var(--hairline);
+  padding-top: 14px;
+  margin: 0;
+}
+
+.exposed__rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.exposed__anon {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--text-subtle);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.exposed__anon-icon {
+  flex: none;
+  margin-top: 2px;
+}

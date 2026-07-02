@@ -1,0 +1,61 @@
+/* The viewer's own request list (doc 37): hairline rows instead of cards, the
+   state word carrying the weight, dates and the remove affordance in quiet
+   ink. Calm by design: waiting and ready read with equal composure. */
+
+.req__intro {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.req__empty {
+  margin: 0;
+  border-top: var(--hairline);
+  padding-top: 14px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.req__row {
+  border-top: var(--hairline);
+  padding: 14px 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.req__row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.req__state {
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+.req__state--ready {
+  color: var(--text-strong);
+}
+
+.req__when {
+  font-size: 12.5px;
+  color: var(--text-subtle);
+}
+
+.req__forget {
+  align-self: flex-start;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text-subtle);
+  text-decoration: underline;
+}
