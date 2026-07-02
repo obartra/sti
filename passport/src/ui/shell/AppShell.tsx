@@ -12,10 +12,8 @@ import {
   type IconProps,
 } from "../../design/icons.tsx";
 import type { Tab } from "../app/routes.ts";
+import { cx } from "../../lib/cx.ts";
 import "./app-shell.css";
-
-const cx = (...parts: (string | false | undefined)[]) =>
-  parts.filter(Boolean).join(" ");
 
 export type TabId = Tab;
 
@@ -45,7 +43,7 @@ export function AppTopBar({
       <img
         src="/assets/logo/logo-wordmark.svg"
         alt="sti.care"
-        style={{ height: 30 }}
+        className="app-topbar__brand"
       />
       <div className="app-topbar__actions">
         {showAdd && (
@@ -59,7 +57,7 @@ export function AppTopBar({
           }
           onClick={onBell}
         >
-          <span style={{ position: "relative", display: "inline-flex" }}>
+          <span className="app-bell">
             <Bell size={20} />
             {hasKnocks && <KnockDot />}
           </span>

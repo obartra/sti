@@ -15,8 +15,8 @@
   padding: var(--space-2) var(--space-4);
   background: var(--warm-100);
   color: var(--ink-500);
-  border: 1px solid var(--warm-200);
-  border-radius: var(--radius-pill);
+  border: var(--hairline);
+  border-radius: var(--radius-xs);
   box-shadow: var(--shadow-sm);
   font-size: 0.8rem;
   text-align: center;

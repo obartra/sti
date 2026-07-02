@@ -1,7 +1,6 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { AppShell, BackBar, type TabId } from "./AppShell.tsx";
-import { Card } from "../../design/components/index.ts";
 
 const meta: Meta<typeof AppShell> = {
   title: "Passport/App shell",
@@ -16,7 +15,7 @@ export const Default: Story = {
     const [tab, setTab] = useState<TabId>("home");
     return (
       <AppShell tab={tab} onTab={setTab}>
-        <Card>Content for the {tab} tab goes here.</Card>
+        <p className="e-lead">Content for the {tab} tab goes here.</p>
       </AppShell>
     );
   },
@@ -28,9 +27,7 @@ export const SubScreenWithBackBar: Story = {
     return (
       <AppShell tab={tab} onTab={setTab} showAdd={false}>
         <BackBar title="Care" />
-        <Card style={{ marginTop: "var(--space-4)" }}>
-          A sub-screen rendered under the back bar.
-        </Card>
+        <p className="e-lead">A sub-screen rendered under the back bar.</p>
       </AppShell>
     );
   },

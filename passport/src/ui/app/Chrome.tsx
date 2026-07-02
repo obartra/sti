@@ -97,19 +97,9 @@ export interface ChromeProps extends GroupJoinActions {
 
 function MobileSub({ nav, children }: { nav: Nav; children: ReactNode }) {
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        display: "flex",
-        flexDirection: "column",
-        background: "var(--surface-app)",
-      }}
-    >
+    <div className="l-surface l-surface--column">
       <BackBar onBack={nav.back} />
-      <main style={{ flex: 1, overflowY: "auto", padding: "2px 20px 28px" }}>
-        {children}
-      </main>
+      <main className="l-sub-main">{children}</main>
     </div>
   );
 }
