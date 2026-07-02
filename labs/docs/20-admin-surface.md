@@ -91,8 +91,9 @@ is where the richer aggregate views live.
   ("accounts with > N links"), never anything that correlates accounts. Counts of opaque rows, not
   facts about people.
 - **Built to grow:** the page is a shell with panels, so account disable, alias revoke, and metadata
-  lookup by id can drop in as additional panels without re-architecting. Their endpoints are live now;
-  the console panels are not built yet, so today an operator drives those three by hand with the bearer.
+  lookup by id drop in as additional panels without re-architecting. The management panel now ships
+  those three in the console (lookup renders opaque metadata only; disable and revoke each take a
+  deliberate second confirming click, since they act on a raw operator-typed id with no queue context).
 
 The page renders nothing and calls nothing until a valid token is present; it carries no user-facing
 chrome and is never linked from the app.
@@ -138,10 +139,9 @@ Every mutation writes an audit row and returns a uniform shape; none returns pla
    `/admin` route with the token gate. Nothing actionable yet.
 2. **A2 — Findable review:** report store + `GET /admin/reports`, the takedown/dismiss endpoints
    (consume doc 17's lifecycle), and the review panel. This is Findable's F4 reviewer step.
-3. **A3 — Account / alias management (endpoints shipped):** disable-account + revoke-alias + opaque
-   lookup, all within the blind-store boundary (admin.go + admin_test.go). The endpoints are live and
-   audited; the console panels are not built yet, so an operator invokes these three by hand with the
-   bearer. Notes from the build: disable-account deletes only the sync blob (the blind store keeps no
+3. **A3 — Account / alias management:** disable-account + revoke-alias + opaque lookup, all within the
+   blind-store boundary (admin.go + admin_test.go), driven from the console's management panel. The
+   endpoints are live and audited. Notes from the build: disable-account deletes only the sync blob (the blind store keeps no
    account→alias link, so aliases are revoked separately, not cascaded); and alias-revoke is two
    non-atomic steps (delete the alias row, then release any vanity name pointing at it), so if the
    second fails the name briefly maps to a dead id (a knock just fails) and re-running revoke,

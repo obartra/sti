@@ -43,8 +43,9 @@ const COPY = {
 
 // Format an epoch-ms instant as a fixed UTC string ("2026-06-25 14:30 UTC"). UTC
 // keeps it deterministic regardless of the viewer's (or the visual runner's)
-// timezone, and absolute time is what an operator audit wants.
-function formatUtc(ms: number): string {
+// timezone, and absolute time is what an operator audit wants. Exported so the
+// Manage panel dates a looked-up record's last-written time the same way.
+export function formatUtc(ms: number): string {
   const iso = new Date(ms).toISOString(); // 2026-06-25T14:30:00.000Z
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 }

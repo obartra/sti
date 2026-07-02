@@ -34,8 +34,9 @@ const COPY = {
 type Status = "loading" | "ready" | "loadError";
 
 // Bytes to a short human size (B / KB / MB / GB), so the database-size card reads
-// at a glance rather than as a raw byte count.
-function humanBytes(n: number): string {
+// at a glance rather than as a raw byte count. Exported so the Manage panel renders
+// a looked-up record's ciphertext size the same way.
+export function humanBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   const units = ["KB", "MB", "GB", "TB"];
   let v = n / 1024;

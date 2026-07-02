@@ -314,3 +314,123 @@ export async function resolveFeedback(
   if (res.status === 401) return "unauthorized";
   return "error";
 }
+
+// --- Account / alias management (A3, doc 20) --------------------------------
+
+/** Opaque metadata for one stored record (mirrors the server's AdminRecordInfo):
+ * whether it exists, its ciphertext byte size, and when it was last written. Never
+ * any content, ever, so it stays within the blind-store boundary. */
+export interface AdminRecordInfo {
+  exists: boolean;
+  sizeBytes: number;
+  updatedAt: number;
+}
+
+/** A record lookup's result (mirrors the server's AdminLookupResponse): opaque
+ * metadata for the id across the namespaces it could belong to. At most one is
+ * present; a missing record reads back as all three not-exists. */
+export interface AdminLookup {
+  alias: AdminRecordInfo;
+  account: AdminRecordInfo;
+  inbox: AdminRecordInfo;
+}
+
+export type AdminLookupResult =
+  | { kind: "ok"; record: AdminLookup }
+  | { kind: "unauthorized" }
+  | { kind: "error" };
+
+const EMPTY_INFO: AdminRecordInfo = {
+  exists: false,
+  sizeBytes: 0,
+  updatedAt: 0,
+};
+
+/**
+ * Look up opaque metadata for an id (exists / byte size / last-written) across the
+ * alias, account, and inbox namespaces. Same error shape as the other reads: 401
+ * surfaces distinctly so the page can re-lock; any other non-200, a network failure,
+ * or a malformed body is a generic error. A missing namespace defaults to
+ * not-exists so a partial body never renders undefined. Returns metadata only,
+ * never content (there is none: the store holds only ciphertext).
+ */
+export async function lookupRecord(
+  apiBase: string,
+  token: string,
+  id: string,
+  fetchImpl: FetchLike = (input, init) => globalThis.fetch(input, init),
+): Promise<AdminLookupResult> {
+  let res: Response;
+  try {
+    res = await fetchImpl(`${apiBase}/admin/lookup/${encodeURIComponent(id)}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    return { kind: "error" };
+  }
+  if (res.status === 401) return { kind: "unauthorized" };
+  if (res.status !== 200) return { kind: "error" };
+  try {
+    const body = (await res.json()) as Partial<AdminLookup>;
+    return {
+      kind: "ok",
+      record: {
+        alias: { ...EMPTY_INFO, ...body.alias },
+        account: { ...EMPTY_INFO, ...body.account },
+        inbox: { ...EMPTY_INFO, ...body.inbox },
+      },
+    };
+  } catch {
+    return { kind: "error" };
+  }
+}
+
+/**
+ * Disable an account: a working-delete of its sync blob. 204 = done; 401 re-locks;
+ * anything else is a generic error. Idempotent on the server, so a re-run is safe.
+ */
+export async function disableAccount(
+  apiBase: string,
+  token: string,
+  id: string,
+  fetchImpl: FetchLike = (input, init) => globalThis.fetch(input, init),
+): Promise<AdminActionResult> {
+  let res: Response;
+  try {
+    res = await fetchImpl(
+      `${apiBase}/admin/account/${encodeURIComponent(id)}/disable`,
+      { method: "POST", headers: { Authorization: `Bearer ${token}` } },
+    );
+  } catch {
+    return "error";
+  }
+  if (res.status === 204) return "ok";
+  if (res.status === 401) return "unauthorized";
+  return "error";
+}
+
+/**
+ * Revoke a link: force-remove the alias row (it then reads back as a decoy) and
+ * release any vanity name it holds into the 24h lock. 204 = done; 401 re-locks;
+ * anything else is a generic error. Idempotent on the server, so a re-run is safe.
+ */
+export async function revokeAlias(
+  apiBase: string,
+  token: string,
+  id: string,
+  fetchImpl: FetchLike = (input, init) => globalThis.fetch(input, init),
+): Promise<AdminActionResult> {
+  let res: Response;
+  try {
+    res = await fetchImpl(
+      `${apiBase}/admin/alias/${encodeURIComponent(id)}/revoke`,
+      { method: "POST", headers: { Authorization: `Bearer ${token}` } },
+    );
+  } catch {
+    return "error";
+  }
+  if (res.status === 204) return "ok";
+  if (res.status === 401) return "unauthorized";
+  return "error";
+}

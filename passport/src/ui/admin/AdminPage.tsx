@@ -4,12 +4,15 @@ import { Lock, ShieldCheck } from "../../design/icons.tsx";
 import { useMinWidth } from "../desktop/Desktop.tsx";
 import {
   actOnVanityName,
+  disableAccount,
   getAdminMetrics,
   listAdminAudit,
   listAdminFeedback,
   listAdminReports,
+  lookupRecord,
   pingAdmin,
   resolveFeedback,
+  revokeAlias,
   type AdminPingResult,
 } from "./adminApi.ts";
 import {
@@ -21,6 +24,7 @@ import { ReviewPanel, type ReviewOps } from "./ReviewPanel.tsx";
 import { ActivityPanel, type AuditOps } from "./ActivityPanel.tsx";
 import { MetricsPanel, type MetricsOps } from "./MetricsPanel.tsx";
 import { FeedbackPanel, type FeedbackOps } from "./FeedbackPanel.tsx";
+import { ManagePanel, type ManageOps } from "./ManagePanel.tsx";
 
 // The operator surface (doc 20): a dedicated, gated /admin page, isolated from the
 // user flows and never linked from the app. It renders nothing actionable until a
@@ -73,6 +77,11 @@ export interface AdminPageProps {
    * endpoints bound to apiBase; injectable so tests and Storybook drive it.
    */
   feedbackOps?: FeedbackOps;
+  /**
+   * Account / alias management transport (A3). Defaults to the real lookup / disable
+   * / revoke endpoints bound to apiBase; injectable so tests and Storybook drive it.
+   */
+  manageOps?: ManageOps;
 }
 
 // Build the panel transports: each defaults to the real admin endpoints bound to
@@ -85,14 +94,16 @@ function useAdminTransports(
     auditOps?: AuditOps | undefined;
     metricsOps?: MetricsOps | undefined;
     feedbackOps?: FeedbackOps | undefined;
+    manageOps?: ManageOps | undefined;
   },
 ): {
   ops: ReviewOps;
   audit: AuditOps;
   metrics: MetricsOps;
   feedback: FeedbackOps;
+  manage: ManageOps;
 } {
-  const { reviewOps, auditOps, metricsOps, feedbackOps } = over;
+  const { reviewOps, auditOps, metricsOps, feedbackOps, manageOps } = over;
   const ops = useMemo<ReviewOps>(
     () =>
       reviewOps ?? {
@@ -119,7 +130,16 @@ function useAdminTransports(
       },
     [feedbackOps, apiBase],
   );
-  return { ops, audit, metrics, feedback };
+  const manage = useMemo<ManageOps>(
+    () =>
+      manageOps ?? {
+        lookup: (t, id) => lookupRecord(apiBase, t, id),
+        disable: (t, id) => disableAccount(apiBase, t, id),
+        revoke: (t, id) => revokeAlias(apiBase, t, id),
+      },
+    [manageOps, apiBase],
+  );
+  return { ops, audit, metrics, feedback, manage };
 }
 
 // The token-gate state machine, split out so AdminPage stays within its length
@@ -215,17 +235,22 @@ export function AdminPage({
   auditOps,
   metricsOps,
   feedbackOps,
+  manageOps,
 }: AdminPageProps) {
   const validate = useCallback(
     (token: string) => (ping ? ping(token) : pingAdmin(apiBase, token)),
     [ping, apiBase],
   );
-  const { ops, audit, metrics, feedback } = useAdminTransports(apiBase, {
-    reviewOps,
-    auditOps,
-    metricsOps,
-    feedbackOps,
-  });
+  const { ops, audit, metrics, feedback, manage } = useAdminTransports(
+    apiBase,
+    {
+      reviewOps,
+      auditOps,
+      metricsOps,
+      feedbackOps,
+      manageOps,
+    },
+  );
   const { phase, token, setToken, error, onSubmit, lock, expire } =
     useAdminGate(validate);
 
@@ -260,6 +285,7 @@ export function AdminPage({
             auditOps={audit}
             metricsOps={metrics}
             feedbackOps={feedback}
+            manageOps={manage}
             onLock={lock}
             onExpire={expire}
           />
@@ -351,6 +377,7 @@ function AuthedShell({
   auditOps,
   metricsOps,
   feedbackOps,
+  manageOps,
   onLock,
   onExpire,
 }: {
@@ -359,6 +386,7 @@ function AuthedShell({
   auditOps: AuditOps;
   metricsOps: MetricsOps;
   feedbackOps: FeedbackOps;
+  manageOps: ManageOps;
   onLock: () => void;
   onExpire: () => void;
 }) {
@@ -404,6 +432,7 @@ function AuthedShell({
           ops={feedbackOps}
           onUnauthorized={onExpire}
         />
+        <ManagePanel token={token} ops={manageOps} onUnauthorized={onExpire} />
         <ActivityPanel token={token} ops={auditOps} onUnauthorized={onExpire} />
       </div>
     </>
