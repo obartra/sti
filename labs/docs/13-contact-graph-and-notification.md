@@ -85,13 +85,19 @@ From the [Decisions log](02-decisions.md) and [Design](03-design.md):
      written; indistinguishable from not-yet-reviewed). Revoke later = the existing alias revoke.
    This is more surface than an out-of-band grant, but it is fully blind and is the chosen UX.
 
-2. **Decorrelation cover-wake: full broadcast in v1 (DECIDED).** When any real wake is due, the
-   server fires a contentless wake to **every currently-registered push endpoint** inside a
-   jittered window, so the woken set is the whole population rather than the recipients. Each woken
-   client then polls its own blind notify-inbox (existence-uniform, see below); only a real
-   recipient decrypts a ping, everyone else gets a decoy. With no user base yet a full broadcast is
-   trivially cheap and maximally private; a sampled cover set is a later refinement if scale ever
-   demands it. **This is the gate that lets notify/push turn on.**
+2. **Decorrelation cover-wake: scheduled full broadcast (DECIDED).** The server fires a contentless
+   wake to **every currently-registered push endpoint** on a fixed wall-clock cadence (a coarse
+   heartbeat, each endpoint jittered across a short window), whether or not any real wake is
+   pending. A real wake never fires its own broadcast; it rides the next heartbeat as one anonymous
+   member of the population. This matters beyond hiding WHICH device a wake is for: because the
+   schedule is constant, the broadcast's very existence and timing carry no information about
+   whether anyone reported, so an observer of the push provider cannot reconstruct a report-event
+   timeline (a conditional-on-real broadcast would have leaked exactly that). It also makes the
+   anti-probe property total: a junk token triggers zero broadcasts, since broadcasts are purely
+   scheduled. Each woken client then polls its own blind notify-inbox (existence-uniform, see
+   below); only a real recipient decrypts a ping, everyone else gets a decoy. With no user base yet
+   a full broadcast is trivially cheap and maximally private; a sampled cover set is a later
+   refinement if scale ever demands it. **This is the gate that lets notify/push turn on.**
 
 3. **Notify-inbox as a blind channel (DECIDED, new server surface).** Today the server has
    `notify_route` + `send_queue` + `push_endpoint`, but a contentless wake alone cannot tell a
@@ -193,9 +199,11 @@ mutual link; deferred until A is solid.
    encrypted ping to that contact's `theirNotify` inbox, and POSTs `hash(routingToken)` to the
    server so it queues a wake. The ping is encrypted to the contact; the server sees only opaque
    inbox writes and opaque routing hashes.
-4. **Send cycle (server-side, never surfaced).** The existing jittered `send_queue` drain fires the
-   wakes. **With decorrelation on, the drain ALSO cover-wakes the whole push population**, so the
-   real recipients are hidden in the broadcast.
+4. **Send cycle (server-side, never surfaced).** The `send_queue` drain consumes each due wake but
+   never delivers it directly. The recipient is woken by the next **scheduled cover heartbeat**,
+   which broadcasts to the whole push population on a fixed cadence (decision 2), so real
+   recipients are hidden in the broadcast AND the broadcast's timing is independent of when anyone
+   reported.
 5. **Recipient.** Woken (real or cover), the client polls EACH contact's `myInbox` (one inbox per
    contact, so a nudge from any of them is found): a real ping decrypts
    to "a recent contact suggests getting tested, here is where to test + PEP info"; a decoy or empty

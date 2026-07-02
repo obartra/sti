@@ -34,10 +34,17 @@ var landingHTML []byte
 // Config tunes the server. DecoySecret is required (>= 32 bytes); everything else
 // has sane defaults.
 type Config struct {
-	DecoySecret     []byte
-	KnockTTL        time.Duration // default 4 days
-	SendMaxJitter   time.Duration // default 2 min; spreads wake timing
-	CoverWindow     time.Duration // spreads the cover broadcast (doc 13 §2); set from STI_COVER_WINDOW, 0 = no spread
+	DecoySecret   []byte
+	KnockTTL      time.Duration // default 4 days
+	SendMaxJitter time.Duration // default 2 min; spreads wake timing
+	CoverWindow   time.Duration // spreads the cover broadcast (doc 13 §2); set from STI_COVER_WINDOW, 0 = no spread
+	// CoverHeartbeat is the fixed wall-clock cadence of the scheduled cover broadcast
+	// (doc 13 §2): the drain fires a population-wide contentless wake once per interval
+	// REGARDLESS of whether any real wake is pending, so the broadcast's timing carries
+	// no signal about real activity. Real due-sends ride the next heartbeat rather than
+	// triggering their own. Set from STI_COVER_HEARTBEAT; withDefaults keeps it positive
+	// (default 6h). A non-positive value disables the heartbeat (no broadcasts).
+	CoverHeartbeat  time.Duration
 	RepublishWindow time.Duration // spreads a republish batch (doc 11); set from STI_REPUBLISH_WINDOW, 0 = apply now
 	MaxInflight     int           // global concurrency cap; default 256
 	SensitiveWait   time.Duration // max wait for a slot on /a, /knock; default 5s
@@ -129,6 +136,13 @@ func (c *Config) withDefaults() {
 	// CoverWindow is deliberately NOT defaulted here: 0 is a valid "fan out with no
 	// spread" used by tests for a deterministic single-pass broadcast. Production
 	// sets it from STI_COVER_WINDOW (main.go), which falls back to 2 min.
+	if c.CoverHeartbeat == 0 {
+		// Default the scheduled cover broadcast ON (doc 13 §2): the whole point is to
+		// broadcast on a fixed cadence regardless of real activity, so an unset value
+		// falls back to a coarse 6h heartbeat rather than disabling it. A test that
+		// wants no heartbeat sets a negative value explicitly.
+		c.CoverHeartbeat = 6 * time.Hour
+	}
 	if c.MaxInflight == 0 {
 		c.MaxInflight = 256
 	}
@@ -214,6 +228,11 @@ type Server struct {
 	metrics      *metrics.Metrics // blind aggregate self-telemetry (loopback only)
 	sender       Sender           // contentless Web Push delivery; nil disables it
 	auditor      auditAppender    // narrow audit-append seam; defaults to st
+	// Scheduled cover-broadcast cursor (doc 13 §2): the epoch-grid slot the last
+	// heartbeat fired in, and whether it has been seeded. Touched only by the single
+	// background drain loop (DrainSends -> heartbeatDue), so it needs no lock.
+	lastCoverSlot int64
+	coverSlotSet  bool
 }
 
 // auditAppender is the one store method the admin audit path depends on. It is a

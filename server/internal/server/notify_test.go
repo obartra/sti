@@ -17,6 +17,11 @@ import (
 
 const farFuture = int64(1) << 62
 
+// testHeartbeat is the scheduled cover-broadcast cadence the drain tests run at. A
+// drain one full heartbeat after the seeding drain crosses exactly one epoch-grid slot
+// boundary, so it fires exactly one scheduled broadcast (see seedThenFire).
+const testHeartbeat = time.Hour
+
 // mockSender records every wake it is asked to deliver and can be made to fail.
 type mockSender struct {
 	mu   sync.Mutex
@@ -45,8 +50,25 @@ func (m *mockSender) setErr(err error) {
 
 func newDrainServer(t *testing.T, enabled bool, sender Sender, coverWindow time.Duration) *Server {
 	t.Helper()
-	srv, _ := newServer(t, Config{NotifyEnabled: enabled, Sender: sender, CoverWindow: coverWindow}, nil)
+	srv, _ := newServer(t, Config{
+		NotifyEnabled:  enabled,
+		Sender:         sender,
+		CoverWindow:    coverWindow,
+		CoverHeartbeat: testHeartbeat,
+	}, nil)
 	return srv
+}
+
+// seedThenFire drives the scheduled cover broadcast exactly once: a seeding drain at
+// t=0 (which sets the heartbeat cursor but fires nothing) followed by a drain one full
+// heartbeat later (which crosses one grid boundary and fires one broadcast). With
+// CoverWindow 0 the covers are due immediately, so the fire pass also delivers them.
+// Any real jobs enqueued due at or before t=0 are consumed by the seed pass; their
+// recipients still ride the heartbeat because they are registered push routes.
+func seedThenFire(s *Server) {
+	ctx := context.Background()
+	s.DrainSends(ctx, 0)                            // seed the schedule cursor, no broadcast
+	s.DrainSends(ctx, testHeartbeat.Milliseconds()) // cross one grid boundary -> broadcast
 }
 
 func ok(t *testing.T, err error) {
@@ -72,9 +94,9 @@ func coverDepth(t *testing.T, s *Server) int {
 
 // registerRoute mirrors handlePushRegister: a real device that enables push both
 // registers a subscription (push_endpoint, the broadcast target) AND maps its notify
-// token hash to that endpoint (notify_route, identity), so the token a notify
-// enqueues resolves to a real route in the drain. The cover tests enqueue `route` as
-// the notify token, so both rows must exist for it to count as a real wake.
+// token hash to that endpoint (notify_route, identity). The subscription alone is what
+// puts the route in the cover-broadcast population; the notify_route mapping is only
+// used by the intake path, not the scheduled broadcast.
 func registerRoute(t *testing.T, s *Server, route string) {
 	t.Helper()
 	ctx := context.Background()
@@ -83,124 +105,175 @@ func registerRoute(t *testing.T, s *Server, route string) {
 	ok(t, s.st.PutNotifyRoute(ctx, route, route))
 }
 
-// With CoverWindow 0 a real wake fans out and delivers to the whole push
-// population in a single pass: the recipient is woken only as one anonymous member
-// of the broadcast, and the real job is consumed.
-func TestCoverWakeBroadcastsToWholePopulation(t *testing.T) {
-	ctx := context.Background()
+// The core new property (doc 13 §2): the cover broadcast fires on a fixed wall-clock
+// cadence REGARDLESS of whether any real wake is pending. With ZERO reals queued, a
+// scheduled heartbeat still wakes the whole push population, so a broadcast's existence
+// carries no signal that anyone reported.
+func TestHeartbeatBroadcastsWithNoRealWakes(t *testing.T) {
 	ms := &mockSender{}
 	s := newDrainServer(t, true, ms, 0)
-	for _, r := range []string{"route-1", "route-2", "route-3"} {
+	routes := []string{"route-1", "route-2", "route-3"}
+	for _, r := range routes {
 		registerRoute(t, s, r)
 	}
-	// A real wake aimed at only ONE recipient.
-	ok(t, s.st.EnqueueSend(ctx, "route-1", 100, 100))
+	// No real wake is enqueued at all: the broadcast is purely scheduled.
+	seedThenFire(s)
 
-	s.DrainSends(ctx, 200)
-
-	if ms.count() != 3 {
-		t.Fatalf("cover broadcast should wake all 3 routes, got %d", ms.count())
-	}
-	if d := sendDepth(t, s); d != 0 {
-		t.Fatalf("real job not consumed: %d remain", d)
+	if ms.count() != len(routes) {
+		t.Fatalf("scheduled heartbeat should wake all %d routes with zero reals pending, got %d", len(routes), ms.count())
 	}
 	if d := coverDepth(t, s); d != 0 {
 		t.Fatalf("covers not cleared: %d remain", d)
 	}
 }
 
-// A non-positive CoverWindow (only reachable by constructing Config directly; the
-// boot path clamps it with max(..., 0)) must not panic rand.Int64N when fanning out
-// covers. This pins the guard that mirrors the republish jitter, so the two sibling
-// jitter paths stay consistent and a future unclamped caller cannot crash the
-// janitor goroutine.
-func TestCoverWakeNonPositiveWindowDoesNotPanic(t *testing.T) {
+// A wake coming due BETWEEN heartbeats triggers no broadcast on its own: broadcasts are
+// purely scheduled. This is the anti-probe property strengthened, a junk token now buys
+// ZERO broadcasts at any price, and even a real token does not fire an out-of-schedule
+// broadcast (which would re-introduce the timing correlation). The due jobs are still
+// consumed so the queue stays bounded; they simply ride the next scheduled heartbeat.
+func TestWakeBetweenHeartbeatsTriggersNoBroadcast(t *testing.T) {
 	ctx := context.Background()
+	ms := &mockSender{}
+	s := newDrainServer(t, true, ms, 0)
+	for _, r := range []string{"route-1", "route-2"} {
+		registerRoute(t, s, r)
+	}
+	s.DrainSends(ctx, 0) // seed the schedule; nothing fires
+
+	// A junk token AND a real token come due within the same heartbeat slot.
+	ok(t, s.st.EnqueueSend(ctx, "probe", 1, 1))
+	ok(t, s.st.EnqueueSend(ctx, "route-1", 1, 1))
+	s.DrainSends(ctx, 2) // still the seed's heartbeat slot: no boundary crossed
+
+	if ms.count() != 0 {
+		t.Fatalf("a wake between heartbeats must not broadcast, got %d", ms.count())
+	}
+	if d := sendDepth(t, s); d != 0 {
+		t.Fatalf("due sends should be scrubbed even without a broadcast, depth %d", d)
+	}
+	if d := coverDepth(t, s); d != 0 {
+		t.Fatalf("no covers should exist between heartbeats, depth %d", d)
+	}
+}
+
+// A real wake rides the scheduled heartbeat: the recipient is woken as one anonymous
+// member of the population-wide broadcast, exactly once, never on a separate direct
+// path. There is no marker (an extra delivery, a different route) a delivery observer
+// could use to single the recipient out, and the real job is consumed, not delivered
+// twice.
+func TestRealWakeRidesHeartbeat(t *testing.T) {
+	ctx := context.Background()
+	ms := &mockSender{}
+	s := newDrainServer(t, true, ms, 0)
+	population := []string{"route-1", "route-2", "route-3", "route-4"}
+	for _, r := range population {
+		registerRoute(t, s, r)
+	}
+	const recipient = "route-2"
+	ok(t, s.st.EnqueueSend(ctx, recipient, 0, 0))
+
+	seedThenFire(s)
+
+	delivered := map[string]int{}
+	ms.mu.Lock()
+	for _, tg := range ms.sent {
+		// PushTarget.Endpoint is "https://push/" + route (see registerRoute).
+		delivered[strings.TrimPrefix(tg.Endpoint, "https://push/")]++
+	}
+	ms.mu.Unlock()
+
+	if len(delivered) != len(population) {
+		t.Fatalf("delivered set %v is not the full population %v", delivered, population)
+	}
+	for _, r := range population {
+		if delivered[r] != 1 {
+			t.Fatalf("route %q delivered %d times, want exactly 1 (indistinguishable from cover)", r, delivered[r])
+		}
+	}
+	if delivered[recipient] != 1 {
+		t.Fatalf("real recipient %q woken %d times, want exactly 1", recipient, delivered[recipient])
+	}
+	// Total deliveries equal the population, not population+1: no extra direct send.
+	if got := ms.count(); got != len(population) {
+		t.Fatalf("total deliveries = %d, want %d (no extra direct send to the recipient)", got, len(population))
+	}
+	if d := sendDepth(t, s) + coverDepth(t, s); d != 0 {
+		t.Fatalf("queues not drained: %d remain", d)
+	}
+}
+
+// Several real wakes coming due before a heartbeat collapse to the SINGLE scheduled
+// broadcast, never one per recipient: the anti-amplification property. Three reals
+// among three routes wake the three routes once each (3 deliveries), not nine.
+func TestManyRealWakesRideOneScheduledBroadcast(t *testing.T) {
+	ctx := context.Background()
+	ms := &mockSender{}
+	s := newDrainServer(t, true, ms, 0)
+	routes := []string{"route-1", "route-2", "route-3"}
+	for _, r := range routes {
+		registerRoute(t, s, r)
+	}
+	ok(t, s.st.EnqueueSend(ctx, "route-1", 0, 0))
+	ok(t, s.st.EnqueueSend(ctx, "route-2", 0, 0))
+	ok(t, s.st.EnqueueSend(ctx, "route-3", 0, 0))
+
+	seedThenFire(s)
+
+	if ms.count() != len(routes) {
+		t.Fatalf("many reals must ride ONE broadcast (%d), not amplify to %d: got %d", len(routes), len(routes)*len(routes), ms.count())
+	}
+	if d := sendDepth(t, s) + coverDepth(t, s); d != 0 {
+		t.Fatalf("queues not drained: %d remain", d)
+	}
+}
+
+// A non-positive CoverWindow (only reachable by constructing Config directly; the boot
+// path clamps it with max(..., 0)) must not panic rand.Int64N when the heartbeat fans
+// out covers. This pins the guard that mirrors the republish jitter.
+func TestHeartbeatNonPositiveWindowDoesNotPanic(t *testing.T) {
 	ms := &mockSender{}
 	s := newDrainServer(t, true, ms, -1*time.Millisecond)
 	registerRoute(t, s, "route-1")
-	ok(t, s.st.EnqueueSend(ctx, "route-1", 100, 100))
 
-	s.DrainSends(ctx, 200) // must not panic on the negative window
+	seedThenFire(s) // must not panic on the negative window
 
 	if ms.count() != 1 {
 		t.Fatalf("want 1 delivery to the single route, got %d", ms.count())
 	}
 }
 
-// The real recipient is woken exactly once (via the broadcast), never also
-// directly: the real job is dropped, not delivered.
-func TestCoverWakeDoesNotDoubleWakeRecipient(t *testing.T) {
-	ctx := context.Background()
-	ms := &mockSender{}
-	s := newDrainServer(t, true, ms, 0)
-	registerRoute(t, s, "route-1")
-	ok(t, s.st.EnqueueSend(ctx, "route-1", 100, 100))
-
-	s.DrainSends(ctx, 200)
-
-	if ms.count() != 1 {
-		t.Fatalf("recipient should be woken once, got %d", ms.count())
-	}
-	if d := sendDepth(t, s) + coverDepth(t, s); d != 0 {
-		t.Fatalf("queues not drained: %d remain", d)
-	}
-}
-
-// Several real wakes coming due in one pass collapse to a SINGLE broadcast, not
-// one per recipient: the anti-amplification property at the drain layer. Two real
-// wakes among three routes wake the three routes once each (3 deliveries), not six.
-func TestCoverWakeManyRealJobsCollapseToOneBroadcast(t *testing.T) {
-	ctx := context.Background()
-	ms := &mockSender{}
-	s := newDrainServer(t, true, ms, 0)
-	for _, r := range []string{"route-1", "route-2", "route-3"} {
-		registerRoute(t, s, r)
-	}
-	ok(t, s.st.EnqueueSend(ctx, "route-1", 100, 100))
-	ok(t, s.st.EnqueueSend(ctx, "route-2", 100, 100))
-
-	s.DrainSends(ctx, 200)
-
-	if ms.count() != 3 {
-		t.Fatalf("two real wakes must fan out one broadcast (3), not per-job (6): got %d", ms.count())
-	}
-	if d := sendDepth(t, s) + coverDepth(t, s); d != 0 {
-		t.Fatalf("queues not drained: %d remain", d)
-	}
-}
-
-// A push population larger than one drain batch is still woken in full: the
-// per-pass delivery ceiling spreads the broadcast across passes but loses no one.
-func TestCoverWakePopulationLargerThanBatchEventuallyAllWoken(t *testing.T) {
+// A push population larger than one drain batch is still woken in full: the per-pass
+// delivery ceiling spreads the broadcast across passes but loses no one. The heartbeat
+// fires once (fanning out the whole population); later passes in the same slot deliver
+// the remainder without re-firing.
+func TestHeartbeatPopulationLargerThanBatchEventuallyAllWoken(t *testing.T) {
 	ctx := context.Background()
 	ms := &mockSender{}
 	s := newDrainServer(t, true, ms, 0)
 	const population = drainBatch + 44 // one full batch plus a remainder
-	seen := map[string]bool{}
 	for i := 0; i < population; i++ {
-		route := "route-" + strconv.Itoa(i)
-		registerRoute(t, s, route)
-		seen[route] = true
+		registerRoute(t, s, "route-"+strconv.Itoa(i))
 	}
-	// A single real wake fans out to the whole population.
-	ok(t, s.st.EnqueueSend(ctx, "route-0", 100, 100))
-
-	// Pass 0 fans out the whole population and delivers the first batch; later
-	// passes deliver the remainder. A handful of passes is ample for one batch
-	// plus a remainder, and is deterministic since window 0 makes every cover due.
+	fireAt := testHeartbeat.Milliseconds()
+	s.DrainSends(ctx, 0)      // seed
+	s.DrainSends(ctx, fireAt) // fire: fan out the whole population, deliver the first batch
+	// Later passes in the SAME heartbeat slot deliver the remainder; no re-fire.
 	for pass := 0; pass < 5; pass++ {
-		s.DrainSends(ctx, 200)
+		s.DrainSends(ctx, fireAt)
 	}
 
 	if ms.count() != population {
 		t.Fatalf("every route in the population must be woken: want %d, got %d", population, ms.count())
 	}
-	if d := sendDepth(t, s) + coverDepth(t, s); d != 0 {
-		t.Fatalf("queues not fully drained: %d remain", d)
+	if d := coverDepth(t, s); d != 0 {
+		t.Fatalf("covers not fully drained: %d remain", d)
 	}
 }
 
+// While the notify gate is OFF the drain is inert: nothing is delivered and the send
+// queue is left untouched (handleNotify enqueues nothing while off, so in production it
+// stays empty; a directly-enqueued row is not even scrubbed).
 func TestCoverWakeGatedOffIsInert(t *testing.T) {
 	ctx := context.Background()
 	ms := &mockSender{}
@@ -208,7 +281,7 @@ func TestCoverWakeGatedOffIsInert(t *testing.T) {
 	registerRoute(t, s, "route-1")
 	ok(t, s.st.EnqueueSend(ctx, "route-1", 100, 100))
 
-	s.DrainSends(ctx, 200)
+	seedThenFire(s)
 
 	if ms.count() != 0 {
 		t.Fatalf("delivered while gated off: %d", ms.count())
@@ -221,26 +294,24 @@ func TestCoverWakeGatedOffIsInert(t *testing.T) {
 	}
 }
 
-// A non-zero window defers the broadcast: pass 1 consumes the real job and
-// schedules covers across the window; a pass at the window's end delivers all of
-// them. Asserting on eventual completeness keeps the test free of jitter flakiness.
-func TestCoverWakeDefersAcrossWindowThenDelivers(t *testing.T) {
+// A non-zero window defers the broadcast: the fire pass schedules covers across the
+// window; a pass at the window's end delivers all of them. Asserting on eventual
+// completeness keeps the test free of jitter flakiness.
+func TestHeartbeatDefersAcrossWindowThenDelivers(t *testing.T) {
 	ctx := context.Background()
 	ms := &mockSender{}
 	const window = 2 * time.Minute
 	s := newDrainServer(t, true, ms, window)
 	registerRoute(t, s, "route-1")
 	registerRoute(t, s, "route-2")
-	ok(t, s.st.EnqueueSend(ctx, "route-1", 100, 100))
 
-	// Pass 1 at t=200: the real job is consumed and the population is scheduled.
-	s.DrainSends(ctx, 200)
-	if d := sendDepth(t, s); d != 0 {
-		t.Fatalf("real job should be consumed once scheduled, depth %d", d)
-	}
+	fireAt := testHeartbeat.Milliseconds()
+	s.DrainSends(ctx, 0)      // seed
+	s.DrainSends(ctx, fireAt) // fire: schedule the population across the window
+	// The window (2 min) is far shorter than the heartbeat (1 h), so this stays in the
+	// same slot and does not re-fire; it just delivers every scheduled cover.
+	s.DrainSends(ctx, fireAt+window.Milliseconds())
 
-	// Pass 2 at the window's end: every scheduled cover is now due and delivered.
-	s.DrainSends(ctx, 200+window.Milliseconds())
 	if ms.count() != 2 {
 		t.Fatalf("whole population should eventually wake, got %d", ms.count())
 	}
@@ -249,65 +320,62 @@ func TestCoverWakeDefersAcrossWindowThenDelivers(t *testing.T) {
 	}
 }
 
-// A cover whose delivery fails is retained and retried on a later pass; nothing is
-// lost on a transient push outage.
-func TestCoverWakeRetainsCoverOnDeliveryFailure(t *testing.T) {
+// A cover whose delivery fails is retained and retried on a later pass; nothing is lost
+// on a transient push outage.
+func TestHeartbeatRetainsCoverOnDeliveryFailure(t *testing.T) {
 	ctx := context.Background()
 	ms := &mockSender{err: errors.New("push gateway down")}
 	s := newDrainServer(t, true, ms, 0)
 	registerRoute(t, s, "route-1")
-	ok(t, s.st.EnqueueSend(ctx, "route-1", 100, 100))
 
-	s.DrainSends(ctx, 200)
+	fireAt := testHeartbeat.Milliseconds()
+	s.DrainSends(ctx, 0)
+	s.DrainSends(ctx, fireAt)
 	if ms.count() != 1 {
 		t.Fatalf("want 1 delivery attempt, got %d", ms.count())
 	}
 	if d := coverDepth(t, s); d != 1 {
 		t.Fatalf("failed cover must be retained for retry, depth %d", d)
 	}
-	if d := sendDepth(t, s); d != 0 {
-		t.Fatalf("real job is already consumed, depth %d", d)
-	}
 
-	// The gateway recovers; the retained cover delivers and clears.
+	// The gateway recovers; a later pass in the same slot delivers the retained cover.
 	ms.setErr(nil)
-	s.DrainSends(ctx, 300)
+	s.DrainSends(ctx, fireAt+1)
 	if d := coverDepth(t, s); d != 0 {
 		t.Fatalf("recovered cover should clear, depth %d", d)
 	}
 }
 
-// A real wake with no push population is a clean drop: nobody to wake, no covers,
-// no leftover job.
-func TestCoverWakeNoPopulationDropsRealSend(t *testing.T) {
+// A heartbeat with no push population wakes nobody, and a real wake with no population
+// is a clean drop: scrubbed, no covers, no leftover job.
+func TestHeartbeatNoPopulationWakesNobody(t *testing.T) {
 	ctx := context.Background()
 	ms := &mockSender{}
 	s := newDrainServer(t, true, ms, 0)
-	ok(t, s.st.EnqueueSend(ctx, "orphan-route", 100, 100))
+	ok(t, s.st.EnqueueSend(ctx, "orphan-route", 0, 0)) // a real wake, but nobody registered
 
-	s.DrainSends(ctx, 200)
+	seedThenFire(s)
 
 	if ms.count() != 0 {
-		t.Fatalf("nothing to deliver, got %d", ms.count())
+		t.Fatalf("no push population, nobody to wake, got %d", ms.count())
 	}
 	if d := sendDepth(t, s) + coverDepth(t, s); d != 0 {
 		t.Fatalf("a wake with no population should drop cleanly: %d remain", d)
 	}
 }
 
-// With intake ON but NO Sender configured (a box without VAPID keys), the drain
-// must still reclaim queued real wakes, resolving nothing and delivering nothing,
-// so send_queue can never grow unbounded while it waits for keys. It must also not
-// fan out covers there is no transport to deliver, and must not panic dereferencing
-// the nil sender.
+// With intake ON but NO Sender configured (a box without VAPID keys), the drain must
+// still reclaim queued real wakes so send_queue can never grow unbounded, and must NOT
+// fan out covers there is no transport to deliver, even across a heartbeat boundary. It
+// must also not panic dereferencing the nil sender.
 func TestDrainReclaimsSendsWithNoSender(t *testing.T) {
 	ctx := context.Background()
 	s := newDrainServer(t, true, nil, 0) // enabled, but no Sender
 	registerRoute(t, s, "route-1")
-	ok(t, s.st.EnqueueSend(ctx, "route-1", 100, 100)) // a real, resolvable wake
-	ok(t, s.st.EnqueueSend(ctx, "probe", 100, 100))   // an unknown token
+	ok(t, s.st.EnqueueSend(ctx, "route-1", 0, 0)) // a real, resolvable wake
+	ok(t, s.st.EnqueueSend(ctx, "probe", 0, 0))   // an unknown token
 
-	s.DrainSends(ctx, 200)
+	seedThenFire(s)
 
 	if d := sendDepth(t, s); d != 0 {
 		t.Fatalf("send queue must drain with no sender, depth %d", d)
@@ -317,17 +385,16 @@ func TestDrainReclaimsSendsWithNoSender(t *testing.T) {
 	}
 }
 
-// A push service reporting a subscription gone (404/410 -> ErrSubscriptionGone)
-// prunes that endpoint and clears the cover, rather than retaining it for a retry
-// that could only fail again and keeping a dead route in every future broadcast.
-func TestCoverWakePrunesGoneSubscription(t *testing.T) {
+// A push service reporting a subscription gone (404/410 -> ErrSubscriptionGone) prunes
+// that endpoint and clears the cover, rather than retaining it for a retry that could
+// only fail again and keeping a dead route in every future broadcast.
+func TestHeartbeatPrunesGoneSubscription(t *testing.T) {
 	ctx := context.Background()
 	ms := &mockSender{err: ErrSubscriptionGone}
 	s := newDrainServer(t, true, ms, 0)
 	registerRoute(t, s, "route-1")
-	ok(t, s.st.EnqueueSend(ctx, "route-1", 100, 100))
 
-	s.DrainSends(ctx, 200)
+	seedThenFire(s)
 
 	if ms.count() != 1 {
 		t.Fatalf("want 1 delivery attempt, got %d", ms.count())
@@ -342,74 +409,15 @@ func TestCoverWakePrunesGoneSubscription(t *testing.T) {
 	}
 }
 
-// The real recipient is indistinguishable from cover (doc 13 §2): after a real
-// wake drains, the recipient's push route is delivered as one anonymous member of
-// the population-wide cover broadcast. It appears in the delivered set exactly
-// once, never twice and never via a separate path, and the delivered set is the
-// FULL registered population. There is no marker (a distinct send count, an extra
-// delivery, a different route) that a delivery observer could use to single out the
-// real recipient. (Wall-clock jitter timing across CoverWindow is reasoning-only,
-// not asserted here; window 0 collapses the broadcast into one pass so the set is
-// checkable.)
-func TestRealWakeIndistinguishableFromCover(t *testing.T) {
-	ctx := context.Background()
-	ms := &mockSender{}
-	s := newDrainServer(t, true, ms, 0)
-	population := []string{"route-1", "route-2", "route-3", "route-4"}
-	for _, r := range population {
-		registerRoute(t, s, r)
-	}
-	const realRecipient = "route-2"
-	ok(t, s.st.EnqueueSend(ctx, realRecipient, 100, 100))
-
-	s.DrainSends(ctx, 200)
-
-	// The delivered set is exactly the full registered population: the real
-	// recipient is in it, and so is everyone else, so the recipient is hidden.
-	delivered := map[string]int{}
-	ms.mu.Lock()
-	for _, t := range ms.sent {
-		// PushTarget.Endpoint is "https://push/" + route (see registerRoute).
-		delivered[strings.TrimPrefix(t.Endpoint, "https://push/")]++
-	}
-	ms.mu.Unlock()
-
-	if len(delivered) != len(population) {
-		t.Fatalf("delivered set %v is not the full population %v", delivered, population)
-	}
-	for _, r := range population {
-		switch delivered[r] {
-		case 1:
-			// good: exactly one wake, like every other member
-		case 0:
-			t.Fatalf("route %q never delivered; the cover set is not the full population", r)
-		default:
-			t.Fatalf("route %q delivered %d times; the real recipient (or any route) must not be woken twice", r, delivered[r])
-		}
-	}
-	// Spell out the recipient invariant explicitly: present, exactly once, no extra path.
-	if delivered[realRecipient] != 1 {
-		t.Fatalf("real recipient %q delivered %d times, want exactly 1 (indistinguishable from cover)",
-			realRecipient, delivered[realRecipient])
-	}
-	// The real job is consumed (dropped), so it is NOT also delivered on a distinct
-	// direct path. Total deliveries equal the population, not population+1.
-	if got := ms.count(); got != len(population) {
-		t.Fatalf("total deliveries = %d, want %d (no extra direct send to the real recipient)", got, len(population))
-	}
-	if d := sendDepth(t, s) + coverDepth(t, s); d != 0 {
-		t.Fatalf("queues not drained: %d remain", d)
-	}
-}
-
 func notifyReq(tokenHash string) *http.Request {
 	return httptest.NewRequest("POST", contract.PathNotify,
 		strings.NewReader(`{"tokenHash":"`+tokenHash+`"}`))
 }
 
-// Registering a push subscription must also make the device reachable: a notify
-// for the same hash then resolves a route and enqueues a send. Without the route
-// population in handlePushRegister, a registered subscription is never woken.
+// Registering a push subscription must also make the device reachable: a notify for the
+// same hash then enqueues a send (the intake path is constant-time and never looks the
+// route up). Without the route population in handlePushRegister a registered
+// subscription would never be woken.
 func TestPushRegisterMakesNotifyReach(t *testing.T) {
 	on := newDrainServer(t, true, &mockSender{}, 0)
 	body := `{"routingEndpointId":"H","subscription":` +
@@ -426,10 +434,10 @@ func TestPushRegisterMakesNotifyReach(t *testing.T) {
 	}
 }
 
-// The global push-register cap sheds a distributed flood of subscriptions across
-// ALL callers: with a tiny global budget but a generous per-IP one, registrations
-// from distinct IPs share the one bucket, so the (burst+1)th is a 429 regardless of
-// who sends it. This bounds inflation of the notify cover-broadcast population.
+// The global push-register cap sheds a distributed flood of subscriptions across ALL
+// callers: with a tiny global budget but a generous per-IP one, registrations from
+// distinct IPs share the one bucket, so the (burst+1)th is a 429 regardless of who
+// sends it. This bounds inflation of the notify cover-broadcast population.
 func TestPushRegisterGlobalRateLimit(t *testing.T) {
 	srv, _ := newServer(t, Config{
 		IPRatePerSec:             1000, // generous, so the per-IP cap never trips first
@@ -482,10 +490,12 @@ func TestNotifyEnqueueIsGated(t *testing.T) {
 }
 
 // Constant-time intake (doc 10 §F): a notify for a REGISTERED token and one for an
-// UNKNOWN token do identical work, each enqueuing exactly one send. The request
-// never looks the route up, so its timing carries no existence oracle on the notify
-// routes. (Wall-clock equality can't be asserted in a unit test; pinning identical
-// DB work is the mechanism that makes the timing uniform.)
+// UNKNOWN token do identical work, each enqueuing exactly one send. The request never
+// looks the route up, so its timing carries no existence oracle on the notify routes.
+// (Wall-clock equality can't be asserted in a unit test; pinning identical DB work is
+// the mechanism that makes the timing uniform.) The drain then broadcasts on a fixed
+// schedule regardless of which of these tokens is real, so neither one leaks by its
+// effect on the broadcast either.
 func TestNotifyIntakeIsConstantTime(t *testing.T) {
 	s := newDrainServer(t, true, &mockSender{}, 0)
 	registerRoute(t, s, "known-token") // a real, resolvable route
@@ -496,43 +506,9 @@ func TestNotifyIntakeIsConstantTime(t *testing.T) {
 	if rec := do(s.Handler(), notifyReq("totally-unknown-token")); rec.Code != 202 {
 		t.Fatalf("notify (unknown): want 202, got %d", rec.Code)
 	}
-	// Both enqueued one send each: the request did the same work regardless of
-	// whether the token resolves to a route.
+	// Both enqueued one send each: the request did the same work regardless of whether
+	// the token resolves to a route.
 	if d := sendDepth(t, s); d != 2 {
 		t.Fatalf("known and unknown should each enqueue one send, depth %d", d)
-	}
-}
-
-// Anti-amplification: because intake is constant-time (it enqueues every token,
-// resolved or not), the drain must NOT broadcast for an unknown token, or a probe
-// could cheaply wake the whole push population. A drain over only unknown tokens
-// fires no covers and drops the rows; once a real token is also due, one broadcast
-// fires.
-func TestNotifyUnknownTokenWakesNobody(t *testing.T) {
-	ctx := context.Background()
-	ms := &mockSender{}
-	s := newDrainServer(t, true, ms, 0)
-	for _, r := range []string{"route-1", "route-2"} {
-		registerRoute(t, s, r)
-	}
-
-	// Two unknown tokens come due: no route resolves, so no one is woken and the
-	// rows are dropped.
-	ok(t, s.st.EnqueueSend(ctx, "probe-a", 100, 100))
-	ok(t, s.st.EnqueueSend(ctx, "probe-b", 100, 100))
-	s.DrainSends(ctx, 200)
-	if ms.count() != 0 {
-		t.Fatalf("unknown tokens must wake nobody, got %d", ms.count())
-	}
-	if d := sendDepth(t, s) + coverDepth(t, s); d != 0 {
-		t.Fatalf("unknown-token sends should be dropped: %d remain", d)
-	}
-
-	// Now a real token is due alongside another probe: exactly one broadcast fires.
-	ok(t, s.st.EnqueueSend(ctx, "route-1", 300, 300))
-	ok(t, s.st.EnqueueSend(ctx, "probe-c", 300, 300))
-	s.DrainSends(ctx, 400)
-	if ms.count() != 2 {
-		t.Fatalf("a real token must broadcast to both routes once, got %d", ms.count())
 	}
 }
