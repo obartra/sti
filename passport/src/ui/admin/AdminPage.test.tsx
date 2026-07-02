@@ -6,6 +6,7 @@ import type { AdminPingResult } from "./adminApi.ts";
 import type { ReviewOps } from "./ReviewPanel.tsx";
 import type { AuditOps } from "./ActivityPanel.tsx";
 import type { MetricsOps } from "./MetricsPanel.tsx";
+import type { HealthOps } from "./HealthPanel.tsx";
 import type { FeedbackOps } from "./FeedbackPanel.tsx";
 import type { ManageOps } from "./ManagePanel.tsx";
 
@@ -52,6 +53,23 @@ const emptyMetrics: MetricsOps = {
     }),
 };
 
+// The health panel loads on mount too; stub it so the authed shell stays
+// server-free. The panel has its own dedicated tests.
+const emptyHealth: HealthOps = {
+  get: () =>
+    Promise.resolve({
+      kind: "ok",
+      health: {
+        errors: [],
+        sendQueueDepth: 0,
+        sendQueueOldestAgeSeconds: 0,
+        janitorAgeSeconds: -1,
+        inflightCurrent: 0,
+        inflightMax: 0,
+      },
+    }),
+};
+
 // The feedback panel also loads on mount; stub it so the authed shell stays
 // server-free. The panel has its own dedicated tests.
 const emptyFeedback: FeedbackOps = {
@@ -87,6 +105,7 @@ function renderPage(
       reviewOps={reviewOps}
       auditOps={emptyAudit}
       metricsOps={emptyMetrics}
+      healthOps={emptyHealth}
       feedbackOps={emptyFeedback}
       manageOps={emptyManage}
     />,
@@ -191,6 +210,7 @@ describe("AdminPage", () => {
     expect(
       await screen.findByText(/operator session active/i),
     ).toBeInTheDocument();
+    expect(screen.getByText(/service health/i)).toBeInTheDocument();
     expect(screen.getByText(/service metrics/i)).toBeInTheDocument();
     expect(screen.getByText(/reported names/i)).toBeInTheDocument();
     // The Feedback panel, keyed off its unique sub (its bare title collides with a

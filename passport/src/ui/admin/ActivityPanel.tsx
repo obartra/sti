@@ -56,10 +56,14 @@ export function ActivityPanel({
   token,
   ops,
   onUnauthorized,
+  refreshSignal = 0,
 }: {
   token: string;
   ops: AuditOps;
   onUnauthorized: () => void;
+  // Bumped by the shell's "Refresh" control to re-read (alongside this panel's own
+  // Refresh button, which reloads just the activity tail).
+  refreshSignal?: number;
 }) {
   const [status, setStatus] = useState<Status>("loading");
   const [entries, setEntries] = useState<AdminAuditEntry[]>([]);
@@ -108,21 +112,22 @@ export function ActivityPanel({
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshSignal]);
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
         <div style={{ flex: 1 }}>
-          <div
+          <h2
             style={{
+              margin: 0,
               fontSize: 15,
               fontWeight: 800,
               color: "var(--text-strong)",
             }}
           >
             {COPY.title}
-          </div>
+          </h2>
           <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
             {COPY.sub}
           </div>

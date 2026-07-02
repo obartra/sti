@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Card, Field, Input } from "../../design/components/index.ts";
-import { Lock, ShieldCheck } from "../../design/icons.tsx";
-import { useMinWidth } from "../desktop/Desktop.tsx";
+import { Lock } from "../../design/icons.tsx";
 import {
   actOnVanityName,
   disableAccount,
+  getAdminHealth,
   getAdminMetrics,
   getAdminTrends,
   listAdminAudit,
@@ -21,11 +21,13 @@ import {
   readAdminToken,
   saveAdminToken,
 } from "./adminToken.ts";
-import { ReviewPanel, type ReviewOps } from "./ReviewPanel.tsx";
-import { ActivityPanel, type AuditOps } from "./ActivityPanel.tsx";
-import { MetricsPanel, type MetricsOps } from "./MetricsPanel.tsx";
-import { FeedbackPanel, type FeedbackOps } from "./FeedbackPanel.tsx";
-import { ManagePanel, type ManageOps } from "./ManagePanel.tsx";
+import { AuthedShell } from "./AuthedShell.tsx";
+import type { ReviewOps } from "./ReviewPanel.tsx";
+import type { AuditOps } from "./ActivityPanel.tsx";
+import type { MetricsOps } from "./MetricsPanel.tsx";
+import type { HealthOps } from "./HealthPanel.tsx";
+import type { FeedbackOps } from "./FeedbackPanel.tsx";
+import type { ManageOps } from "./ManagePanel.tsx";
 
 // The operator surface (doc 20): a dedicated, gated /admin page, isolated from the
 // user flows and never linked from the app. It renders nothing actionable until a
@@ -39,9 +41,6 @@ const COPY = {
   tokenLabel: "Operator token",
   unlock: "Unlock",
   checking: "Checking the token…",
-  authedTitle: "Admin",
-  authedSub: "Operator session active.",
-  lockAgain: "Lock",
   errBadToken: "That token was not accepted.",
   errUnreachable:
     "Couldn't reach the admin service. Check your connection and try again.",
@@ -74,6 +73,11 @@ export interface AdminPageProps {
    */
   metricsOps?: MetricsOps;
   /**
+   * Service-health transport (doc 20). Defaults to the real health endpoint bound to
+   * apiBase; injectable so tests and Storybook drive the panel without a server.
+   */
+  healthOps?: HealthOps;
+  /**
    * "Something wrong?" review transport (doc 35). Defaults to the real feedback
    * endpoints bound to apiBase; injectable so tests and Storybook drive it.
    */
@@ -94,6 +98,7 @@ function useAdminTransports(
     reviewOps?: ReviewOps | undefined;
     auditOps?: AuditOps | undefined;
     metricsOps?: MetricsOps | undefined;
+    healthOps?: HealthOps | undefined;
     feedbackOps?: FeedbackOps | undefined;
     manageOps?: ManageOps | undefined;
   },
@@ -101,10 +106,12 @@ function useAdminTransports(
   ops: ReviewOps;
   audit: AuditOps;
   metrics: MetricsOps;
+  health: HealthOps;
   feedback: FeedbackOps;
   manage: ManageOps;
 } {
-  const { reviewOps, auditOps, metricsOps, feedbackOps, manageOps } = over;
+  const { reviewOps, auditOps, metricsOps, healthOps, feedbackOps, manageOps } =
+    over;
   const ops = useMemo<ReviewOps>(
     () =>
       reviewOps ?? {
@@ -127,6 +134,10 @@ function useAdminTransports(
       },
     [metricsOps, apiBase],
   );
+  const health = useMemo<HealthOps>(
+    () => healthOps ?? { get: (t) => getAdminHealth(apiBase, t) },
+    [healthOps, apiBase],
+  );
   const feedback = useMemo<FeedbackOps>(
     () =>
       feedbackOps ?? {
@@ -144,7 +155,7 @@ function useAdminTransports(
       },
     [manageOps, apiBase],
   );
-  return { ops, audit, metrics, feedback, manage };
+  return { ops, audit, metrics, health, feedback, manage };
 }
 
 // The token-gate state machine, split out so AdminPage stays within its length
@@ -239,6 +250,7 @@ export function AdminPage({
   reviewOps,
   auditOps,
   metricsOps,
+  healthOps,
   feedbackOps,
   manageOps,
 }: AdminPageProps) {
@@ -246,12 +258,13 @@ export function AdminPage({
     (token: string) => (ping ? ping(token) : pingAdmin(apiBase, token)),
     [ping, apiBase],
   );
-  const { ops, audit, metrics, feedback, manage } = useAdminTransports(
+  const { ops, audit, metrics, health, feedback, manage } = useAdminTransports(
     apiBase,
     {
       reviewOps,
       auditOps,
       metricsOps,
+      healthOps,
       feedbackOps,
       manageOps,
     },
@@ -289,6 +302,7 @@ export function AdminPage({
             ops={ops}
             auditOps={audit}
             metricsOps={metrics}
+            healthOps={health}
             feedbackOps={feedback}
             manageOps={manage}
             onLock={lock}
@@ -373,73 +387,5 @@ function LockGate({
         </Button>
       </form>
     </Card>
-  );
-}
-
-function AuthedShell({
-  token,
-  ops,
-  auditOps,
-  metricsOps,
-  feedbackOps,
-  manageOps,
-  onLock,
-  onExpire,
-}: {
-  token: string;
-  ops: ReviewOps;
-  auditOps: AuditOps;
-  metricsOps: MetricsOps;
-  feedbackOps: FeedbackOps;
-  manageOps: ManageOps;
-  onLock: () => void;
-  onExpire: () => void;
-}) {
-  const twoCol = useMinWidth(900);
-  return (
-    <>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ color: "var(--text-accent)", flex: "none" }}>
-          <ShieldCheck size={20} />
-        </span>
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              fontSize: 18,
-              fontWeight: 800,
-              color: "var(--text-strong)",
-            }}
-          >
-            {COPY.authedTitle}
-          </div>
-          <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-            {COPY.authedSub}
-          </div>
-        </div>
-        <Button variant="ghost" size="sm" onClick={onLock}>
-          {COPY.lockAgain}
-        </Button>
-      </div>
-      {/* The metrics dashboard spans the full width above the review/activity row:
-          it is the at-a-glance health read, the panels below are the work queues. */}
-      <MetricsPanel token={token} ops={metricsOps} onUnauthorized={onExpire} />
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: twoCol ? "minmax(0, 1fr) minmax(0, 1fr)" : "1fr",
-          gap: 16,
-          alignItems: "start",
-        }}
-      >
-        <ReviewPanel token={token} ops={ops} onUnauthorized={onExpire} />
-        <FeedbackPanel
-          token={token}
-          ops={feedbackOps}
-          onUnauthorized={onExpire}
-        />
-        <ManagePanel token={token} ops={manageOps} onUnauthorized={onExpire} />
-        <ActivityPanel token={token} ops={auditOps} onUnauthorized={onExpire} />
-      </div>
-    </>
   );
 }

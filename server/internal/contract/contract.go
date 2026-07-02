@@ -104,6 +104,7 @@ const (
 	PathAdminReports  = "/admin/reports"  // GET: the vanity-name review queue (doc 17/20)
 	PathAdminAudit    = "/admin/audit"    // GET: recent admin actions, newest first (doc 20 A4)
 	PathAdminMetrics  = "/admin/metrics"  // GET: aggregate, identifier-free service totals (doc 20 A5)
+	PathAdminHealth   = "/admin/health"   // GET: aggregate operational-health signals (doc 20)
 	PathAdminTrends   = "/admin/trends"   // GET: aggregate per-day trends + review latency (doc 20)
 	PathAdminFeedback = "/admin/feedback" // GET: the "Something wrong?" review queue (doc 35)
 )
@@ -347,6 +348,33 @@ type AdminMetricsResponse struct {
 	DBSizeBytes     int64 `json:"dbSizeBytes"`     // logical database size
 	PendingReports  int   `json:"pendingReports"`  // names awaiting review in the queue
 	PendingFeedback int   `json:"pendingFeedback"` // "Something wrong?" reports awaiting review
+}
+
+// AdminErrorCount is one subsystem's internal-error total in the health snapshot
+// (GET /admin/health): a fixed subsystem name and a running count, never an error
+// message or a value.
+type AdminErrorCount struct {
+	Type  string `json:"type"`
+	Count int64  `json:"count"`
+}
+
+// AdminHealthResponse is GET /admin/health's body (doc 20): the aggregate,
+// identifier-free operational-health signals the operator console surfaces, so a
+// backing-up send queue, a stalled background loop, or a rise in internal errors is
+// visible at a glance instead of only by reading /metrics on the box. errors is the
+// internal-error count per subsystem; sendQueueDepth and sendQueueOldestAgeSeconds
+// show a draining-vs-stuck queue; janitorAgeSeconds is how long since the background
+// loop last ticked (-1 if it has never run); inflight is the current concurrency
+// against its configured cap. Every field is a count, an age, or a system size, never
+// a per-account or per-id figure, so it stays within the blind-store boundary (doc
+// 12). A read, so it is not itself audited.
+type AdminHealthResponse struct {
+	Errors                    []AdminErrorCount `json:"errors"`
+	SendQueueDepth            int64             `json:"sendQueueDepth"`
+	SendQueueOldestAgeSeconds int64             `json:"sendQueueOldestAgeSeconds"`
+	JanitorAgeSeconds         int64             `json:"janitorAgeSeconds"`
+	InflightCurrent           int64             `json:"inflightCurrent"`
+	InflightMax               int64             `json:"inflightMax"`
 }
 
 // DayCount is one daily bucket of a trend series (GET /admin/trends): an epoch-day

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Card, Field, Input } from "../../design/components/index.ts";
+import { PanelHeading } from "./panelChrome.tsx";
 import { formatUtc } from "./ActivityPanel.tsx";
 import { humanBytes } from "./MetricsPanel.tsx";
 import type {
@@ -277,16 +278,7 @@ export function ManagePanel({
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div>
-        <div
-          style={{ fontSize: 15, fontWeight: 800, color: "var(--text-strong)" }}
-        >
-          {COPY.title}
-        </div>
-        <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-          {COPY.sub}
-        </div>
-      </div>
+      <PanelHeading title={COPY.title} sub={COPY.sub} />
 
       <form
         onSubmit={onSubmit}

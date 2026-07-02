@@ -3,6 +3,7 @@ import { AdminPage } from "./AdminPage.tsx";
 import type {
   AdminAuditEntry,
   AdminFeedback,
+  AdminHealth,
   AdminMetrics,
   AdminPingResult,
   AdminTrends,
@@ -10,6 +11,7 @@ import type {
 import type { ReviewOps } from "./ReviewPanel.tsx";
 import type { AuditOps } from "./ActivityPanel.tsx";
 import type { MetricsOps } from "./MetricsPanel.tsx";
+import type { HealthOps } from "./HealthPanel.tsx";
 import type { FeedbackOps } from "./FeedbackPanel.tsx";
 
 // The operator surface (doc 20): a dedicated, gated /admin page isolated from the
@@ -49,6 +51,10 @@ const metricsOps = (
 ): MetricsOps => ({
   get: () => Promise.resolve({ kind: "ok", metrics }),
   getTrends: () => Promise.resolve({ kind: "ok", trends }),
+});
+
+const healthOps = (health: AdminHealth): HealthOps => ({
+  get: () => Promise.resolve({ kind: "ok", health }),
 });
 
 const feedbackOps = (feedback: AdminFeedback[]): FeedbackOps => ({
@@ -94,6 +100,37 @@ const EMPTY_TRENDS: AdminTrends = {
   reportsPerDay: [],
   signupsPerDay: [],
   reviewLatency: [],
+};
+
+// A "needs a look" snapshot: a couple of logged errors and a small send-queue
+// backlog, so the health chip renders amber with a breakdown. Aggregate only.
+const SAMPLE_HEALTH: AdminHealth = {
+  errors: [
+    { type: "store", count: 2 },
+    { type: "enqueue", count: 0 },
+    { type: "janitor", count: 0 },
+    { type: "decode", count: 1 },
+  ],
+  sendQueueDepth: 3,
+  sendQueueOldestAgeSeconds: 42,
+  janitorAgeSeconds: 12,
+  inflightCurrent: 1,
+  inflightMax: 64,
+};
+
+// The all-clear snapshot: nothing logged, an empty queue, a fresh heartbeat.
+const CLEAR_HEALTH: AdminHealth = {
+  errors: [
+    { type: "store", count: 0 },
+    { type: "enqueue", count: 0 },
+    { type: "janitor", count: 0 },
+    { type: "decode", count: 0 },
+  ],
+  sendQueueDepth: 0,
+  sendQueueOldestAgeSeconds: 0,
+  janitorAgeSeconds: 8,
+  inflightCurrent: 0,
+  inflightMax: 64,
 };
 
 // Fixed UTC instants so the feedback panel's timestamps are deterministic.
@@ -157,6 +194,7 @@ export const AuthedWithReports: Story = {
     ]),
     auditOps: auditOps(SAMPLE_AUDIT),
     metricsOps: metricsOps(SAMPLE_METRICS, SAMPLE_TRENDS),
+    healthOps: healthOps(SAMPLE_HEALTH),
     feedbackOps: feedbackOps(SAMPLE_FEEDBACK),
   },
   decorators: [seedToken],
@@ -180,6 +218,7 @@ export const AuthedEmpty: Story = {
       },
       EMPTY_TRENDS,
     ),
+    healthOps: healthOps(CLEAR_HEALTH),
     feedbackOps: feedbackOps([]),
   },
   decorators: [seedToken],

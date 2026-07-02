@@ -90,6 +90,16 @@ is where the richer aggregate views live.
   rules: never a per-account or per-id figure, never a distribution that fingerprints one account
   ("accounts with > N links"), never anything that correlates accounts. Counts of opaque rows, not
   facts about people.
+- **Health panel:** a read-only, at-a-glance read of how the box is running right now, sitting at the
+  top of the console. A single status chip ("all clear" / "needs a look") summarizes it; tiles below
+  break it down: internal-error counts by subsystem, the send-queue depth and the oldest queued send's
+  age (a stuck drain grows this), the background-loop heartbeat age, and current concurrency. This is
+  the same blind telemetry the loopback `/metrics` endpoint already exposes, surfaced on the page so a
+  stuck queue or a rise in errors is visible without reading `/metrics` on the server. Same hard rules
+  as the metrics panel: a count, an age, or a system size, never a per-account or per-id figure.
+- **Refresh + panel counts:** the shell carries a single **Refresh** control that re-reads every
+  auto-loading panel at once, so an operator can pull fresh numbers without reloading the tab; each
+  work queue shows its backlog as a count on its own heading, so a number appears in exactly one place.
 - **Built to grow:** the page is a shell with panels, so account disable, alias revoke, and metadata
   lookup by id drop in as additional panels without re-architecting. The management panel now ships
   those three in the console (lookup renders opaque metadata only; disable and revoke each take a
@@ -125,6 +135,11 @@ chrome and is never linked from the app.
   accounts created per day, reports filed per day, and the review-latency histogram. Daily sign-ups
   come from a purely aggregate daily tally bumped once when an account is first created, so the server
   keeps no per-account creation time. No per-account or per-id figures; a read, so not itself audited.
+- `GET /admin/health`: aggregate, identifier-free operational-health signals for the health panel:
+  internal-error counts by subsystem, the send-queue depth and the oldest queued send's age, the
+  background-loop heartbeat age (-1 if it has never run), and current concurrency against its cap. The
+  same blind telemetry `/metrics` exposes, read straight from the in-process counters plus one store
+  sample. No per-account or per-id figures; a read, so not itself audited.
 
 Every mutation writes an audit row and returns a uniform shape; none returns plaintext content.
 

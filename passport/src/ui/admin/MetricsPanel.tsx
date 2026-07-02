@@ -18,11 +18,14 @@ import type {
 } from "./adminApi.ts";
 
 // The metrics panel (doc 20): a read-only dashboard of aggregate, identifier-free
-// service telemetry. Number cards and a bar chart for the current totals, plus three
-// trend charts below: reports filed per day, accounts created per day, and how long
-// open reports have waited. Every figure is a count of opaque rows, a system size, or
-// a time bucket, never a per-account or per-id value or a per-account creation time
-// (doc 12), so it stays within the blind-store boundary.
+// service telemetry. Number cards for the current totals (what the store holds), plus
+// three trend charts below: reports filed per day, accounts created per day, and how
+// long open reports have waited. Every figure is a count of opaque rows, a system size,
+// or a time bucket, never a per-account or per-id value or a per-account creation time
+// (doc 12), so it stays within the blind-store boundary. The live operational signals
+// (send-queue backlog, errors, the background-loop heartbeat) live in the Service
+// health panel, and the review/feedback backlog shows as a count on each queue panel,
+// so nothing here is duplicated.
 // The totals load first (one cheap query); the heavier trends are fetched separately
 // so a slow or failed trends read never blanks the at-a-glance totals.
 
@@ -40,7 +43,6 @@ const COPY = {
   loading: "Loading metrics…",
   loadError: "Couldn't load metrics. Check your connection and try again.",
   retry: "Retry",
-  chartTitle: "Stored rows",
   reportsTitle: "Reports filed per day",
   signupsTitle: "Accounts created per day",
   latencyTitle: "How long open reports have waited",
@@ -141,14 +143,15 @@ function StatCard({ label, value }: { label: string; value: string }) {
   );
 }
 
+// The stored-totals cards: what the store currently holds. The operational backlog
+// (send queue) and the review/feedback queues are deliberately NOT here; they live in
+// the Service health panel and as counts on their own queue panels, so a number is
+// shown in exactly one place.
 function StatGrid({ metrics }: { metrics: AdminMetrics }) {
   const cards: { label: string; value: string }[] = [
     { label: "Accounts", value: humanCount(metrics.accounts) },
     { label: "Live links", value: humanCount(metrics.aliases) },
     { label: "Live knocks", value: humanCount(metrics.knocks) },
-    { label: "Review queue", value: humanCount(metrics.pendingReports) },
-    { label: "Feedback", value: humanCount(metrics.pendingFeedback) },
-    { label: "Send queue", value: humanCount(metrics.sendQueueDepth) },
     { label: "Database", value: humanBytes(metrics.dbSizeBytes) },
   ];
   return (
@@ -162,55 +165,6 @@ function StatGrid({ metrics }: { metrics: AdminMetrics }) {
       {cards.map((c) => (
         <StatCard key={c.label} label={c.label} value={c.value} />
       ))}
-    </div>
-  );
-}
-
-// A bar chart of the row counts the store holds. Counts only (opaque rows), never a
-// per-account distribution, so it stays identifier-free like the cards above.
-function RowChart({ metrics }: { metrics: AdminMetrics }) {
-  const data = [
-    { name: "Accounts", count: metrics.accounts },
-    { name: "Links", count: metrics.aliases },
-    { name: "Knocks", count: metrics.knocks },
-    { name: "Reports", count: metrics.pendingReports },
-  ];
-  return (
-    <div>
-      <ChartLabel text={COPY.chartTitle} />
-      <ResponsiveContainer width="100%" height={180}>
-        <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-          <XAxis
-            dataKey="name"
-            tick={{ fontSize: 12, fill: "var(--text-muted)" }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            allowDecimals={false}
-            width={36}
-            tick={{ fontSize: 12, fill: "var(--text-muted)" }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <Tooltip
-            cursor={{ fill: "var(--accent-soft)" }}
-            formatter={(v) => [humanCount(Number(v ?? 0)), "Rows"]}
-          />
-          <Bar
-            dataKey="count"
-            fill="var(--text-accent)"
-            radius={[4, 4, 0, 0]}
-            maxBarSize={56}
-            // Render the final bars synchronously, no grow-in animation. Recharts
-            // animates via requestAnimationFrame (react-smooth), which Playwright's
-            // animations:'disabled' does NOT freeze, so an animated series is
-            // captured at a timing-dependent frame and drifts the visual baseline.
-            // See the note on ReportsChart's Area for the full rationale.
-            isAnimationActive={false}
-          />
-        </BarChart>
-      </ResponsiveContainer>
     </div>
   );
 }
@@ -318,10 +272,13 @@ export function MetricsPanel({
   token,
   ops,
   onUnauthorized,
+  refreshSignal = 0,
 }: {
   token: string;
   ops: MetricsOps;
   onUnauthorized: () => void;
+  // Bumped by the shell's "Refresh" control to re-read without a remount.
+  refreshSignal?: number;
 }) {
   const [status, setStatus] = useState<Status>("loading");
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
@@ -368,16 +325,21 @@ export function MetricsPanel({
   useEffect(() => {
     load();
     loadTrends();
-  }, [load, loadTrends]);
+  }, [load, loadTrends, refreshSignal]);
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div>
-        <div
-          style={{ fontSize: 15, fontWeight: 800, color: "var(--text-strong)" }}
+        <h2
+          style={{
+            margin: 0,
+            fontSize: 15,
+            fontWeight: 800,
+            color: "var(--text-strong)",
+          }}
         >
           {COPY.title}
-        </div>
+        </h2>
         <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
           {COPY.sub}
         </div>
@@ -400,12 +362,7 @@ export function MetricsPanel({
         </div>
       )}
 
-      {status === "ready" && metrics !== null && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <StatGrid metrics={metrics} />
-          <RowChart metrics={metrics} />
-        </div>
-      )}
+      {status === "ready" && metrics !== null && <StatGrid metrics={metrics} />}
 
       {trendStatus === "loading" && (
         <div style={{ fontSize: 13, color: "var(--text-muted)" }}>

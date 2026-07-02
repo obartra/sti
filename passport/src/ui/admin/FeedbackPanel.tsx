@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button, Card } from "../../design/components/index.ts";
+import { PanelHeading } from "./panelChrome.tsx";
 import type {
   AdminActionResult,
   AdminFeedback,
@@ -45,10 +46,13 @@ export function FeedbackPanel({
   token,
   ops,
   onUnauthorized,
+  refreshSignal = 0,
 }: {
   token: string;
   ops: FeedbackOps;
   onUnauthorized: () => void;
+  // Bumped by the shell's "Refresh" control to re-read without a remount.
+  refreshSignal?: number;
 }) {
   const [status, setStatus] = useState<Status>("loading");
   const [reports, setReports] = useState<AdminFeedback[]>([]);
@@ -75,7 +79,7 @@ export function FeedbackPanel({
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshSignal]);
 
   const resolve = useCallback(
     (id: number) => {
@@ -99,16 +103,11 @@ export function FeedbackPanel({
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div>
-        <div
-          style={{ fontSize: 15, fontWeight: 800, color: "var(--text-strong)" }}
-        >
-          {COPY.title}
-        </div>
-        <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-          {COPY.sub}
-        </div>
-      </div>
+      <PanelHeading
+        title={COPY.title}
+        sub={COPY.sub}
+        count={status === "ready" ? reports.length : undefined}
+      />
 
       {status === "loading" && (
         <div style={{ fontSize: 13, color: "var(--text-muted)" }}>

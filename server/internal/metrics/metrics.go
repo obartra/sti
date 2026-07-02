@@ -301,6 +301,41 @@ func (m *Metrics) Error(t ErrorType) {
 	}
 }
 
+// ErrorCount pairs a fixed subsystem error-type with its running total, for the
+// admin health snapshot. Type is the subsystem name, never a message or a value.
+type ErrorCount struct {
+	Type  string
+	Count int64
+}
+
+// Health is a point-in-time read of the operational-health signals the admin console
+// surfaces (doc 20): the internal-error counters by subsystem, the background-loop
+// heartbeat, and the current concurrency against its cap. Aggregate and
+// identifier-free, the same blind telemetry the loopback /metrics endpoint already
+// exposes; it names no subject.
+type Health struct {
+	Errors             []ErrorCount
+	JanitorLastRunUnix int64 // unix seconds of the last background-loop tick, 0 if never
+	InflightCurrent    int64
+	InflightMax        int64
+}
+
+// Health snapshots the health signals for the admin console. It only reads aggregate
+// counters and gauges the registry already holds (in the fixed error-type order), so
+// it adds no new telemetry and can never mint a per-subject series.
+func (m *Metrics) Health() Health {
+	errs := make([]ErrorCount, len(allErrorTypes))
+	for i, et := range allErrorTypes {
+		errs[i] = ErrorCount{Type: string(et), Count: m.errors[et].get()}
+	}
+	return Health{
+		Errors:             errs,
+		JanitorLastRunUnix: m.janitorLastRun.get(),
+		InflightCurrent:    m.inflightCur.get(),
+		InflightMax:        m.inflightMax.get(),
+	}
+}
+
 // IncInflight / DecInflight track concurrency and the running high-water mark.
 func (m *Metrics) IncInflight() {
 	cur := m.inflightCur.Add(1)
