@@ -3,35 +3,49 @@
  * carries as opaque fixed-size bytes. One blob describes a whole group, sealed so
  * only members can read it, and is written by an admin and polled by members.
  *
+ * The hard constraint (doc 33 decision 1) is that the group blob adds NO oracle
+ * the alias store does not already have. An alias payload is pure fixed-size AEAD
+ * ciphertext: indistinguishable from random, so a real payload and the server's
+ * decoy-on-miss are byte-shape identical and its true plaintext length is hidden
+ * inside the AEAD (sealToSize). The group blob must hold the same property, which
+ * rules out ANY cleartext framing (a version byte, a length, a member count): all
+ * of those would betray a real blob from a decoy AND leak the group's size to the
+ * server. So the whole blob is random-looking bytes, and its layout is FIXED and
+ * positional rather than length-prefixed.
+ *
  * The blob has two parts, split for one reason: a member who is only just joining
  * holds their own member key but NOT `Kg` yet, so the thing that hands them `Kg`
  * cannot itself be sealed under `Kg`.
  *
- * - `wrappedKeys`: one `wrapGroupKey(Kg, memberKey_i)` per member, each openable
- *   with ONLY that member's key. A member finds theirs by trial-unwrapping every
- *   entry with their own key (unwrapGroupKey rejects a wrong key, so we catch and
- *   continue). N is tens, so N trial-decrypts is cheap. Slice 4 adds members by
- *   appending an entry here; the format is built for that from the start.
- * - `core`: the group object (handle, roster, admin flag, ...) sealed UNDER `Kg`
- *   with the variable-length AEAD. Once a member has `Kg` they open this directly.
+ * - Member slots: a FIXED number (`GROUP_MEMBER_CAP`) of fixed-width slots. Each
+ *   real member's slot is `wrapGroupKey(Kg, memberKey_i)` (openable with ONLY that
+ *   member's key); every unused slot is random bytes. A real wrap and a random
+ *   fill are both indistinguishable from random, so the slot region reveals
+ *   neither how many members there are nor which slots are live. A member finds
+ *   theirs by trial-unwrapping the slots with their own key (unwrapGroupKey rejects
+ *   a wrong key, so we catch and continue). The cap is tens, so the trial is cheap.
+ *   Slice 4 adds a member by filling a free slot; the format is built for that.
+ * - Core: the group object (handle, roster, admin flag, ...) sealed UNDER `Kg`
+ *   with the FIXED-size AEAD (sealToSize), so its length hides the roster size the
+ *   same way an alias payload hides its card. Once a member has `Kg` they open it.
  *
  * On the wire the whole thing is ONE fixed-size (GROUP_BLOB_SIZE) payload:
  *
- *   [version:u8][payloadLen:u32][payload][random padding to GROUP_BLOB_SIZE]
- *   payload = [count:u16][ (len:u16, bytes) per wrappedKey ][ (len:u32, bytes) core ]
+ *   [ GROUP_MEMBER_CAP slots * WRAP_WIDTH bytes ][ core: CORE_SIZE bytes ]
  *
- * The padding is random (crypto.getRandomValues), never zero-fill, so a group blob
- * is byte-shape identical to any other and its true size leaks nothing (no zero-run
- * oracle). Every parse fails CLOSED to `null` on any surprise (bad version, wrong
- * key, tamper, malformed), exactly like openGroupCard / backendStore.resolveAlias:
- * a group is never half-rendered under a key that cannot open it.
+ * There is no on-wire version byte (it would break uniformity); the format is
+ * versioned INSIDE the sealed core instead, so a bad version fails closed after
+ * decryption. Every parse fails CLOSED to `null` on any surprise (wrong key,
+ * tamper, wrong size, bad version), exactly like openGroupCard /
+ * backendStore.resolveAlias: a group is never half-rendered under a key that
+ * cannot open it, and a decoy (random bytes on a miss) simply opens to nothing.
  */
 
 import { GROUP_BLOB_SIZE, validId } from "../api/contract.ts";
 import {
   importAesKey,
-  seal,
-  open,
+  sealToSize,
+  openSized,
   utf8ToBytes,
   bytesToUtf8,
   type Bytes,
@@ -66,7 +80,7 @@ export interface RosterEntry {
 }
 
 /**
- * The group object sealed in `core`. Everything a member needs to read the group
+ * The group object sealed in the core. Everything a member needs to read the group
  * once they hold `Kg`: its address, its scope, who the admin is, and every
  * member's card id. `adminCardId` names which roster entry is the admin; in v1 it
  * is the creator's own card id (the sole admin).
@@ -79,24 +93,25 @@ export interface GroupObject {
   readonly roster: readonly RosterEntry[];
 }
 
-// The blob version and the fixed prefix widths. The version byte lets a later
-// slice change the layout without mis-parsing an old blob; a mismatch fails closed.
-const GROUP_BLOB_VERSION = 1;
-const VERSION_BYTES = 1;
-const PAYLOAD_LEN_BYTES = 4;
-const FRAME_PREFIX = VERSION_BYTES + PAYLOAD_LEN_BYTES; // [version:u8][payloadLen:u32]
-const COUNT_BYTES = 2; // [count:u16]
-const WRAPPED_LEN_BYTES = 2; // [len:u16] per wrapped key
-const CORE_LEN_BYTES = 4; // [len:u32] for the core
-const U16_MAX = 0xffff;
-const U32_MAX = 0xffffffff;
+// The fixed slot geometry. WRAP_WIDTH is the exact length wrapGroupKey produces
+// for a 32-byte Kg (iv 12 + ciphertext 32 + gcm tag 16); we assert real wraps
+// match it so a crypto change fails loudly instead of silently corrupting slots.
+// GROUP_MEMBER_CAP is a hard cap (a soft cap of tens is the design target, doc
+// 33): a group cannot exceed it because every member needs a slot. The core takes
+// whatever the slots do not, sealed to a fixed size so the roster length is hidden.
+const WRAP_WIDTH = 12 + 32 + 16; // 60
+const GROUP_MEMBER_CAP = 64;
+const MEMBER_SECTION = GROUP_MEMBER_CAP * WRAP_WIDTH; // 3840
+const CORE_SIZE = GROUP_BLOB_SIZE - MEMBER_SECTION; // 12544
 
-// The group object is a small versioned-by-the-blob JSON. Reuses the same
-// TextEncoder path the other codecs use; the outer blob version guards its shape,
-// so it carries no separate version tag of its own.
+// The group object is a small JSON versioned INSIDE the sealed core (never on the
+// wire, which must stay uniform). A mismatch on parse fails closed.
+const GROUP_OBJECT_VERSION = 1;
+
 function serializeGroupObject(obj: GroupObject): Bytes {
   return utf8ToBytes(
     JSON.stringify({
+      v: GROUP_OBJECT_VERSION,
       handle: obj.handle,
       visibility: obj.visibility,
       meetingKind: obj.meetingKind,
@@ -112,6 +127,26 @@ function isRosterEntry(x: unknown): x is RosterEntry {
   return typeof r.cardId === "string" && validId(r.cardId);
 }
 
+// Strictly validate a decoded object as a well-formed group object of the expected
+// version. A type predicate so the caller can construct without re-checking; every
+// false path is a fail-closed null upstream. Handle is shape-only (charset, not the
+// mutable reserved/blocked sets) so a later blocklist growth never bricks a stored
+// group, mirroring the findable name.
+function isGroupObjectShape(
+  o: Record<string, unknown>,
+): o is Record<string, unknown> & GroupObject & { v: number } {
+  return (
+    o.v === GROUP_OBJECT_VERSION &&
+    hasVanityNameShape(o.handle) &&
+    isGroupVisibility(o.visibility) &&
+    isMeetingKind(o.meetingKind) &&
+    typeof o.adminCardId === "string" &&
+    validId(o.adminCardId) &&
+    Array.isArray(o.roster) &&
+    o.roster.every(isRosterEntry)
+  );
+}
+
 // Parse + strictly validate the group object, throwing on any surprise so the
 // callers below map it to the uniform null.
 function parseGroupObject(bytes: Bytes): GroupObject {
@@ -120,21 +155,7 @@ function parseGroupObject(bytes: Bytes): GroupObject {
     throw new Error("group object: not an object");
   }
   const o = raw as Record<string, unknown>;
-  if (!hasVanityNameShape(o.handle)) {
-    throw new Error("group object: invalid handle");
-  }
-  if (!isGroupVisibility(o.visibility)) {
-    throw new Error("group object: invalid visibility");
-  }
-  if (!isMeetingKind(o.meetingKind)) {
-    throw new Error("group object: invalid meetingKind");
-  }
-  if (typeof o.adminCardId !== "string" || !validId(o.adminCardId)) {
-    throw new Error("group object: invalid adminCardId");
-  }
-  if (!Array.isArray(o.roster) || !o.roster.every(isRosterEntry)) {
-    throw new Error("group object: invalid roster");
-  }
+  if (!isGroupObjectShape(o)) throw new Error("group object: invalid");
   return {
     handle: o.handle,
     visibility: o.visibility,
@@ -144,150 +165,75 @@ function parseGroupObject(bytes: Bytes): GroupObject {
   };
 }
 
-// Validate the framed parts fit their length fields (throws), so an over-capacity
-// group (too many members, too large a core) fails loudly here rather than
-// silently truncating.
-function assertFramable(wrappedKeys: readonly Bytes[], coreLen: number): void {
-  if (wrappedKeys.length > U16_MAX) {
-    throw new Error("serializeGroupBlob: too many members");
-  }
-  if (coreLen > U32_MAX) throw new Error("serializeGroupBlob: core too large");
-  if (wrappedKeys.some((wk) => wk.length > U16_MAX)) {
-    throw new Error("serializeGroupBlob: wrapped key too large");
-  }
-}
-
-// Build the framed payload `[count:u16][ (len:u16, bytes)* ][ (len:u32, core) ]`.
-function framedPayload(wrappedKeys: readonly Bytes[], core: Bytes): Bytes {
-  assertFramable(wrappedKeys, core.length);
-  const len =
-    wrappedKeys.reduce(
-      (n, wk) => n + WRAPPED_LEN_BYTES + wk.length,
-      COUNT_BYTES,
-    ) +
-    CORE_LEN_BYTES +
-    core.length;
-  const out = new Uint8Array(len);
-  const view = new DataView(out.buffer);
-  // Write one big-endian length-prefixed chunk `[len:widthBytes][bytes]` at `off`,
-  // returning the offset just past it (u16 for wrapped keys, u32 for the core).
-  const writeChunk = (off: number, bytes: Bytes, widthBytes: 2 | 4): number => {
-    if (widthBytes === 2) view.setUint16(off, bytes.length, false);
-    else view.setUint32(off, bytes.length, false);
-    out.set(bytes, off + widthBytes);
-    return off + widthBytes + bytes.length;
-  };
-  view.setUint16(0, wrappedKeys.length, false);
-  let off = COUNT_BYTES;
-  for (const wk of wrappedKeys) off = writeChunk(off, wk, WRAPPED_LEN_BYTES);
-  writeChunk(off, core, CORE_LEN_BYTES);
-  return out;
-}
-
 /**
- * Build the fixed-size group blob: seal `obj` under `Kg` for the core, frame it
- * with the per-member `wrappedKeys`, and pad the rest to GROUP_BLOB_SIZE with
- * random bytes. Throws if the framed payload would overflow the blob.
+ * Build the fixed-size group blob: seal `obj` under `Kg` into the fixed-size core,
+ * lay the per-member `wrappedKeys` into the first slots, and leave every other
+ * slot as the random bytes the whole buffer starts as. The result is
+ * GROUP_BLOB_SIZE of random-looking bytes with no cleartext framing, so it is
+ * byte-shape identical to the server's decoy-on-miss (existence-uniform) and
+ * reveals neither the member count nor the roster size. Throws if there are more
+ * wrapped keys than slots, or if a wrapped key is not the expected width.
  */
 export async function serializeGroupBlob(
   Kg: GroupKey,
   obj: GroupObject,
   wrappedKeys: readonly Bytes[],
 ): Promise<Bytes> {
-  const core = await seal(await importAesKey(Kg), serializeGroupObject(obj));
-  const payload = framedPayload(wrappedKeys, core);
-  if (FRAME_PREFIX + payload.length > GROUP_BLOB_SIZE) {
-    throw new Error("serializeGroupBlob: payload overflows the blob");
+  if (wrappedKeys.length > GROUP_MEMBER_CAP) {
+    throw new Error("serializeGroupBlob: more members than slots");
   }
-  // Fill the ENTIRE blob with random bytes first, then overwrite the framed prefix
-  // + payload; the trailing region stays random, so the padding carries no zero-run
-  // that would betray the real payload's length.
+  if (wrappedKeys.some((wk) => wk.length !== WRAP_WIDTH)) {
+    throw new Error("serializeGroupBlob: wrapped key wrong width");
+  }
+  // Start from random so every unused slot (and the whole buffer) is random-looking.
   const out = crypto.getRandomValues(new Uint8Array(GROUP_BLOB_SIZE));
-  const view = new DataView(out.buffer);
-  out[0] = GROUP_BLOB_VERSION;
-  view.setUint32(VERSION_BYTES, payload.length, false);
-  out.set(payload, FRAME_PREFIX);
+  wrappedKeys.forEach((wk, i) => out.set(wk, i * WRAP_WIDTH));
+  const core = await sealToSize(
+    await importAesKey(Kg),
+    serializeGroupObject(obj),
+    CORE_SIZE,
+  );
+  out.set(core, MEMBER_SECTION);
   return out;
 }
 
-// The framed parts of a blob: every wrapped key and the sealed core. Throws on any
-// structural surprise (short buffer, bad version, a length that runs past the
-// declared payload), so the public parsers below can uniformly fail closed.
-interface GroupFraming {
-  readonly wrappedKeys: Bytes[];
-  readonly core: Bytes;
-}
-
-// Read `span.count` u16 length-prefixed wrapped keys from `span.start`, returning
-// the keys and the offset just past them; a length that runs past `span.end`
-// throws (fail closed).
-function readWrappedKeys(
-  view: DataView,
-  blob: Bytes,
-  span: { start: number; count: number; end: number },
-): { keys: Bytes[]; off: number } {
-  const keys: Bytes[] = [];
-  let off = span.start;
-  for (let i = 0; i < span.count; i++) {
-    if (off + WRAPPED_LEN_BYTES > span.end) {
-      throw new Error("group blob: short len");
-    }
-    const len = view.getUint16(off, false);
-    off += WRAPPED_LEN_BYTES;
-    if (off + len > span.end) throw new Error("group blob: wrapped overflows");
-    keys.push(blob.slice(off, off + len));
-    off += len;
+// The two fixed regions of a well-sized blob. Throws if the blob is not exactly
+// GROUP_BLOB_SIZE, so a short or oversized buffer fails closed like everything else.
+function regions(blob: Bytes): { slots: Bytes[]; core: Bytes } {
+  if (blob.length !== GROUP_BLOB_SIZE) {
+    throw new Error("group blob: wrong size");
   }
-  return { keys, off };
-}
-
-function parseFraming(blob: Bytes): GroupFraming {
-  if (blob.length < FRAME_PREFIX) throw new Error("group blob: too short");
-  if (blob[0] !== GROUP_BLOB_VERSION)
-    throw new Error("group blob: bad version");
-  const view = new DataView(blob.buffer, blob.byteOffset, blob.byteLength);
-  const end = FRAME_PREFIX + view.getUint32(VERSION_BYTES, false);
-  if (end > blob.length) throw new Error("group blob: payload overflows");
-  if (FRAME_PREFIX + COUNT_BYTES > end) throw new Error("group blob: no count");
-  const count = view.getUint16(FRAME_PREFIX, false);
-  const { keys, off } = readWrappedKeys(view, blob, {
-    start: FRAME_PREFIX + COUNT_BYTES,
-    count,
-    end,
-  });
-  if (off + CORE_LEN_BYTES > end) throw new Error("group blob: no core len");
-  const coreLen = view.getUint32(off, false);
-  const coreStart = off + CORE_LEN_BYTES;
-  if (coreStart + coreLen > end) throw new Error("group blob: core overflows");
-  return {
-    wrappedKeys: keys,
-    core: blob.slice(coreStart, coreStart + coreLen),
-  };
+  const slots: Bytes[] = [];
+  for (let i = 0; i < GROUP_MEMBER_CAP; i++) {
+    slots.push(blob.subarray(i * WRAP_WIDTH, (i + 1) * WRAP_WIDTH));
+  }
+  return { slots, core: blob.subarray(MEMBER_SECTION) };
 }
 
 /**
  * A joining member's path: they hold their member key but not `Kg`. Trial-unwrap
- * every entry with `memberKey` (first success is `Kg`), then open + parse the core
- * under it. Returns `{ Kg, obj }`, or `null` if none of the entries were addressed
- * to this member or anything is malformed (fail closed).
+ * every slot with `memberKey` (first success is `Kg`), then open + parse the core
+ * under it. Returns `{ Kg, obj }`, or `null` if no slot was addressed to this
+ * member or anything is malformed (fail closed). A decoy (random bytes on a miss)
+ * lands here too and returns `null`, so existence stays undetectable.
  */
 export async function parseGroupBlobForMember(
   blob: Bytes,
   memberKey: MemberKey,
 ): Promise<{ Kg: GroupKey; obj: GroupObject } | null> {
   try {
-    const { wrappedKeys, core } = parseFraming(blob);
+    const { slots, core } = regions(blob);
     let Kg: GroupKey | null = null;
-    for (const wk of wrappedKeys) {
+    for (const slot of slots) {
       try {
-        Kg = await unwrapGroupKey(wk, memberKey);
-        break; // ours; the rest are for other members
+        Kg = await unwrapGroupKey(slot, memberKey);
+        break; // ours; the rest are other members' or random fill
       } catch {
         // Not addressed to this member (GCM rejected); keep trying.
       }
     }
     if (Kg === null) return null;
-    const obj = parseGroupObject(await open(await importAesKey(Kg), core));
+    const obj = parseGroupObject(await openSized(await importAesKey(Kg), core));
     return { Kg, obj };
   } catch {
     return null;
@@ -295,17 +241,17 @@ export async function parseGroupBlobForMember(
 }
 
 /**
- * The common local path: a member/admin who already holds `Kg` skips the
- * wrappedKeys entirely and opens the core directly. Returns the group object, or
- * `null` on a wrong `Kg`, tamper, or malformed blob (fail closed).
+ * The common local path: a member/admin who already holds `Kg` skips the member
+ * slots and opens the core directly. Returns the group object, or `null` on a
+ * wrong `Kg`, tamper, wrong size, or malformed core (fail closed).
  */
 export async function parseGroupBlobWithKg(
   blob: Bytes,
   Kg: GroupKey,
 ): Promise<GroupObject | null> {
   try {
-    const { core } = parseFraming(blob);
-    return parseGroupObject(await open(await importAesKey(Kg), core));
+    const { core } = regions(blob);
+    return parseGroupObject(await openSized(await importAesKey(Kg), core));
   } catch {
     return null;
   }

@@ -70,25 +70,33 @@ describe("group blob codec (doc 33)", () => {
     const blob = await serializeGroupBlob(Kg, obj, [
       await wrapGroupKey(Kg, mk),
     ]);
-    // Flip the last byte of the framed payload (the core's GCM tag region), so both
-    // the member path and the Kg-holder path see the corruption.
-    const view = new DataView(blob.buffer);
-    const payloadLen = view.getUint32(1, false);
-    const idx = 5 + payloadLen - 1;
+    // Flip the last byte (inside the core's GCM region), so both the member path
+    // and the Kg-holder path see the corruption and fail closed.
+    const view = new DataView(blob.buffer, blob.byteOffset, blob.byteLength);
+    const idx = blob.length - 1;
     view.setUint8(idx, view.getUint8(idx) ^ 0xff);
     expect(await parseGroupBlobForMember(blob, mk)).toBeNull();
     expect(await parseGroupBlobWithKg(blob, Kg)).toBeNull();
   });
 
-  it("fails closed to null on a bad version", async () => {
+  it("fails closed to null on a wrong-size blob", async () => {
     const Kg = mintGroupKey();
     const mk = memberKey();
-    const blob = await serializeGroupBlob(Kg, obj, [
+    const full = await serializeGroupBlob(Kg, obj, [
       await wrapGroupKey(Kg, mk),
     ]);
-    blob[0] = 0xff; // an unknown blob version
-    expect(await parseGroupBlobForMember(blob, mk)).toBeNull();
-    expect(await parseGroupBlobWithKg(blob, Kg)).toBeNull();
+    const short = full.subarray(0, full.length - 1);
+    expect(await parseGroupBlobForMember(short, mk)).toBeNull();
+    expect(await parseGroupBlobWithKg(short, Kg)).toBeNull();
+  });
+
+  // Existence-uniformity: the server returns random decoy bytes on a miss (slice
+  // 2). A decoy is the same size and shape as a real blob and simply opens to
+  // nothing, so a reader cannot tell "no such group" from "not my group".
+  it("treats a random decoy as an unopenable non-group", async () => {
+    const decoy = crypto.getRandomValues(new Uint8Array(GROUP_BLOB_SIZE));
+    expect(await parseGroupBlobForMember(decoy, memberKey())).toBeNull();
+    expect(await parseGroupBlobWithKg(decoy, mintGroupKey())).toBeNull();
   });
 
   // Proves the format is slice-4-ready: a two-entry wrappedKeys array resolves for
