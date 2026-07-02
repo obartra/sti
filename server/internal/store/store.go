@@ -1453,3 +1453,130 @@ func (s *Store) Stats(ctx context.Context) (Stats, error) {
 	}
 	return st, nil
 }
+
+// --- Aggregate trends (doc 20 metrics panel) --------------------------------
+//
+// Per-day and latency aggregates behind GET /admin/trends. Like Stats, every value
+// is a count of opaque rows or a time bucket: the day series counts report rows per
+// UTC calendar day and the latency series buckets how long queued reports have
+// waited, so the result fingerprints no one (never a per-account or per-report
+// figure, never a distribution that could single out one account). Kept OUT of Stats
+// (its own endpoint) so the always-loaded totals stay one cheap query and this
+// heavier GROUP BY only runs when the trends view mounts.
+//
+// Both series read the SAME surviving vanity_report rows. A report is DELETED when
+// the operator takes it down or dismisses it (ClearVanityReports), a deliberate
+// data-minimization choice, so NO resolved-report history is retained to compute a
+// classic resolved-latency from. What is honestly computable from retained data is
+// the CURRENT queue: how many reports came in on each recent day, and how long the
+// still-open ones have waited. Both stay aggregate-only.
+
+// dayMs is one UTC calendar day in milliseconds, the divisor that floors a
+// created_at (epoch ms) to an epoch-day bucket.
+const dayMs = 24 * 60 * 60 * 1000
+
+// latencyBucketBoundsMs are the fixed upper bounds (ms) of the review-latency
+// histogram: a queued report lands in the first bucket whose bound it is under, else
+// the trailing "older" overflow. Fixed so the chart's x-axis is stable across reads.
+var latencyBucketBoundsMs = []int64{
+	1 * 60 * 60 * 1000, // < 1 hour
+	6 * 60 * 60 * 1000, // < 6 hours
+	1 * dayMs,          // < 1 day
+	3 * dayMs,          // < 3 days
+	7 * dayMs,          // < 7 days
+}
+
+// DayCount is one daily bucket: an epoch-day (floor(created_at_ms / dayMs), UTC) and
+// how many rows fall in it.
+type DayCount struct {
+	Day   int64
+	Count int
+}
+
+// LatencyBucket is one bar of the review-latency histogram: how many still-open
+// reports have waited less than UnderMs (0 = the trailing "older" overflow).
+type LatencyBucket struct {
+	UnderMs int64
+	Count   int
+}
+
+// Trends is the aggregate time-series snapshot behind GET /admin/trends.
+type Trends struct {
+	ReportsPerDay []DayCount
+	ReviewLatency []LatencyBucket
+}
+
+// TrendCounts samples the trend aggregates in one pass: reports filed per UTC day
+// since sinceMs, and the review-latency histogram of the still-open queue as of now.
+// Timestamps are epoch ms (the store's convention). It returns only bucketed counts;
+// no per-report row or name ever leaves this method (the latency scan reads each
+// active name's first-reported time solely to increment a bucket).
+func (s *Store) TrendCounts(ctx context.Context, sinceMs, now int64) (Trends, error) {
+	var tr Trends
+
+	// Reports filed per day: report rows in the window, bucketed by UTC calendar day.
+	// Integer division floors created_at (ms) to an epoch-day. Counts opaque rows only.
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT created_at / ? AS day, COUNT(*) AS cnt
+		   FROM vanity_report
+		  WHERE created_at >= ?
+		  GROUP BY day
+		  ORDER BY day`, dayMs, sinceMs)
+	if err != nil {
+		return Trends{}, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var d DayCount
+		if err := rows.Scan(&d.Day, &d.Count); err != nil {
+			return Trends{}, err
+		}
+		tr.ReportsPerDay = append(tr.ReportsPerDay, d)
+	}
+	if err := rows.Err(); err != nil {
+		return Trends{}, err
+	}
+
+	// Review latency: how long the still-open reports have waited. Per active reported
+	// name (the same predicate PendingVanityReports uses) take its first-reported time
+	// and bucket now-first into the fixed histogram. The per-name time is consumed into
+	// a bucket count here and never returned, so the series stays aggregate: a bar is
+	// "N queued reports have waited < T", never which name or for exactly how long.
+	lat, err := s.db.QueryContext(ctx,
+		`SELECT MIN(created_at) AS first_at
+		   FROM vanity_report r1
+		  WHERE EXISTS (
+		      SELECT 1 FROM vanity_name v WHERE v.name = r1.name AND v.alias_id != ''
+		  )
+		  GROUP BY name`)
+	if err != nil {
+		return Trends{}, err
+	}
+	defer lat.Close()
+	counts := make([]int, len(latencyBucketBoundsMs)+1) // +1 for the "older" overflow
+	for lat.Next() {
+		var firstAt int64
+		if err := lat.Scan(&firstAt); err != nil {
+			return Trends{}, err
+		}
+		waited := now - firstAt
+		idx := len(latencyBucketBoundsMs) // default: the overflow bucket
+		for i, bound := range latencyBucketBoundsMs {
+			if waited < bound {
+				idx = i
+				break
+			}
+		}
+		counts[idx]++
+	}
+	if err := lat.Err(); err != nil {
+		return Trends{}, err
+	}
+	// Always emit every bucket (including empty ones) so the chart's x-axis is stable.
+	tr.ReviewLatency = make([]LatencyBucket, 0, len(counts))
+	for i, bound := range latencyBucketBoundsMs {
+		tr.ReviewLatency = append(tr.ReviewLatency, LatencyBucket{UnderMs: bound, Count: counts[i]})
+	}
+	tr.ReviewLatency = append(tr.ReviewLatency, LatencyBucket{UnderMs: 0, Count: counts[len(latencyBucketBoundsMs)]})
+	return tr, nil
+}

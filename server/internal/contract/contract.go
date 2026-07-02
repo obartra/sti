@@ -104,6 +104,7 @@ const (
 	PathAdminReports  = "/admin/reports"  // GET: the vanity-name review queue (doc 17/20)
 	PathAdminAudit    = "/admin/audit"    // GET: recent admin actions, newest first (doc 20 A4)
 	PathAdminMetrics  = "/admin/metrics"  // GET: aggregate, identifier-free service totals (doc 20 A5)
+	PathAdminTrends   = "/admin/trends"   // GET: aggregate per-day trends + review latency (doc 20)
 	PathAdminFeedback = "/admin/feedback" // GET: the "Something wrong?" review queue (doc 35)
 )
 
@@ -346,6 +347,37 @@ type AdminMetricsResponse struct {
 	DBSizeBytes     int64 `json:"dbSizeBytes"`     // logical database size
 	PendingReports  int   `json:"pendingReports"`  // names awaiting review in the queue
 	PendingFeedback int   `json:"pendingFeedback"` // "Something wrong?" reports awaiting review
+}
+
+// DayCount is one daily bucket of a trend series (GET /admin/trends): an epoch-day
+// (days since the Unix epoch, UTC) and how many opaque rows fall in it. The day is a
+// bucket, never a per-row timestamp, and the count names no subject.
+type DayCount struct {
+	Day   int64 `json:"day"`
+	Count int   `json:"count"`
+}
+
+// LatencyBucket is one bar of the review-latency histogram (GET /admin/trends): how
+// many still-open reports have waited less than UnderMs. UnderMs is 0 for the
+// trailing "older" overflow bucket. A bucketed count of opaque rows, never a
+// per-report wait keyed to a name or id.
+type LatencyBucket struct {
+	UnderMs int64 `json:"underMs"`
+	Count   int   `json:"count"`
+}
+
+// AdminTrendsResponse is GET /admin/trends' body (doc 20 metrics panel): aggregate,
+// identifier-free time series for the trend charts. reportsPerDay is the count of
+// reports filed on each recent day; reviewLatency buckets how long the still-open
+// reports have waited. Both read only retained, opaque report rows: a daily count or
+// a latency bucket, never a per-account or per-id figure and never a distribution
+// that could fingerprint one account, so it stays within the blind-store boundary
+// (doc 12). A read, so it is not itself audited. Kept SEPARATE from AdminMetricsResponse
+// so the always-loaded totals stay one cheap query and this heavier aggregation is
+// fetched only when the trends view mounts.
+type AdminTrendsResponse struct {
+	ReportsPerDay []DayCount      `json:"reportsPerDay"`
+	ReviewLatency []LatencyBucket `json:"reviewLatency"`
 }
 
 // AdminRecordInfo is opaque metadata about one stored record (doc 20 A3): whether

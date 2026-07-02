@@ -3,6 +3,7 @@ import {
   actOnVanityName,
   disableAccount,
   getAdminMetrics,
+  getAdminTrends,
   listAdminAudit,
   listAdminFeedback,
   listAdminReports,
@@ -178,6 +179,63 @@ describe("getAdminMetrics", () => {
       .mockResolvedValue(new Response("not json", { status: 200 }));
     expect(
       (await getAdminMetrics("https://api.example", "t", badBody)).kind,
+    ).toBe("error");
+  });
+});
+
+describe("getAdminTrends", () => {
+  it("returns the trends on 200 and requests the window in the URL", async () => {
+    const trends = {
+      reportsPerDay: [{ day: 20630, count: 4 }],
+      reviewLatency: [{ underMs: 3600000, count: 2 }],
+    };
+    const ok = vi.fn<FetchLike>().mockResolvedValue(jsonResp(200, trends));
+    expect(await getAdminTrends("https://api.example", "t", 30, ok)).toEqual({
+      kind: "ok",
+      trends,
+    });
+    expect(ok).toHaveBeenCalledWith(
+      "https://api.example/admin/trends?days=30",
+      expect.objectContaining({
+        method: "GET",
+        headers: { Authorization: "Bearer t" },
+      }),
+    );
+
+    // A partial body fills the absent series with an empty array (never undefined).
+    const partial = vi
+      .fn<FetchLike>()
+      .mockResolvedValue(
+        jsonResp(200, { reportsPerDay: [{ day: 1, count: 1 }] }),
+      );
+    expect(
+      await getAdminTrends("https://api.example", "t", 7, partial),
+    ).toEqual({
+      kind: "ok",
+      trends: { reportsPerDay: [{ day: 1, count: 1 }], reviewLatency: [] },
+    });
+  });
+
+  it("maps 401 to unauthorized and other failures to error", async () => {
+    const codes: [number, "unauthorized" | "error"][] = [
+      [401, "unauthorized"],
+      [503, "error"],
+    ];
+    for (const [status, kind] of codes) {
+      const f = vi.fn<FetchLike>().mockResolvedValue(jsonResp(status, {}));
+      expect(
+        (await getAdminTrends("https://api.example", "t", 30, f)).kind,
+      ).toBe(kind);
+    }
+    const netDown = vi.fn<FetchLike>().mockRejectedValue(new Error("offline"));
+    expect(
+      (await getAdminTrends("https://api.example", "t", 30, netDown)).kind,
+    ).toBe("error");
+    const badBody = vi
+      .fn<FetchLike>()
+      .mockResolvedValue(new Response("not json", { status: 200 }));
+    expect(
+      (await getAdminTrends("https://api.example", "t", 30, badBody)).kind,
     ).toBe("error");
   });
 });

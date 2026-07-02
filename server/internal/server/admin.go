@@ -43,6 +43,31 @@ const (
 	adminAuditLimit = 200
 )
 
+// adminTrendsDays is the default trends window; adminTrendsMaxDays caps a
+// caller-supplied `days` so a single request can't scan an unbounded history (doc 20).
+const (
+	adminTrendsDays    = 30
+	adminTrendsMaxDays = 90
+)
+
+// trendsDays parses GET /admin/trends' `days` window, defaulting to adminTrendsDays
+// and clamping to [1, adminTrendsMaxDays]. A malformed or non-positive value falls
+// back to the default rather than erroring, like auditQuery, so a bad value degrades
+// to the default window instead of a 400.
+func trendsDays(r *http.Request) int {
+	days := adminTrendsDays
+	if n, err := strconv.Atoi(r.URL.Query().Get("days")); err == nil && n > 0 {
+		days = n
+	}
+	if days < 1 {
+		days = 1
+	}
+	if days > adminTrendsMaxDays {
+		days = adminTrendsMaxDays
+	}
+	return days
+}
+
 // auditQuery parses the GET /admin/audit pagination params: `before` (a row-id
 // cursor, default 0 = newest) and `limit` (default adminAuditPage, clamped to
 // [1, adminAuditLimit]). Malformed values fall back to the defaults rather than
@@ -77,6 +102,10 @@ func (s *Server) registerAdminRoutes() {
 	s.mux.HandleFunc("GET "+contract.PathAdminAudit, s.requireAdmin(s.handleAdminAudit))
 	// Aggregate service metrics (doc 20 A5): identifier-free totals for the dashboard.
 	s.mux.HandleFunc("GET "+contract.PathAdminMetrics, s.requireAdmin(s.handleAdminMetrics))
+	// Aggregate trends (doc 20 metrics panel): identifier-free per-day counts + review
+	// latency. Separate from /admin/metrics so the totals stay cheap and this heavier
+	// aggregation is opt-in when the trends view mounts.
+	s.mux.HandleFunc("GET "+contract.PathAdminTrends, s.requireAdmin(s.handleAdminTrends))
 	s.mux.HandleFunc("POST /admin/vanity/{name}/takedown", s.requireAdmin(s.handleVanityTakedown))
 	s.mux.HandleFunc("POST /admin/vanity/{name}/dismiss", s.requireAdmin(s.handleVanityDismiss))
 	// "Something wrong?" review (doc 35): the report queue and a one-click resolve.
@@ -230,6 +259,35 @@ func (s *Server) handleAdminMetrics(w http.ResponseWriter, r *http.Request) {
 		DBSizeBytes:     st.DBSizeBytes,
 		PendingReports:  len(reports),
 		PendingFeedback: pendingFeedback,
+	})
+}
+
+// handleAdminTrends answers GET /admin/trends: aggregate, identifier-free time series
+// for the metrics panel's trend charts (doc 20). A read, so it is not audited. Every
+// figure is a count of opaque report rows in a day or a latency bucket, never a
+// per-account or per-id value and never a distribution that could fingerprint one
+// account (doc 12). Kept separate from /admin/metrics so the always-loaded totals
+// stay one cheap query and this heavier GROUP BY runs only when the trends view mounts.
+func (s *Server) handleAdminTrends(w http.ResponseWriter, r *http.Request) {
+	days := trendsDays(r)
+	now := s.now()
+	sinceMs := now - int64(days)*24*60*60*1000 // window start, epoch ms
+	tr, err := s.st.TrendCounts(r.Context(), sinceMs, now)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	reports := make([]contract.DayCount, len(tr.ReportsPerDay))
+	for i, d := range tr.ReportsPerDay {
+		reports[i] = contract.DayCount{Day: d.Day, Count: d.Count}
+	}
+	latency := make([]contract.LatencyBucket, len(tr.ReviewLatency))
+	for i, b := range tr.ReviewLatency {
+		latency[i] = contract.LatencyBucket{UnderMs: b.UnderMs, Count: b.Count}
+	}
+	s.writeJSON(w, http.StatusOK, contract.AdminTrendsResponse{
+		ReportsPerDay: reports,
+		ReviewLatency: latency,
 	})
 }
 

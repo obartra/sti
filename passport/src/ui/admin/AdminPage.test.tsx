@@ -45,6 +45,11 @@ const emptyMetrics: MetricsOps = {
         pendingFeedback: 0,
       },
     }),
+  getTrends: () =>
+    Promise.resolve({
+      kind: "ok",
+      trends: { reportsPerDay: [], reviewLatency: [] },
+    }),
 };
 
 // The feedback panel also loads on mount; stub it so the authed shell stays

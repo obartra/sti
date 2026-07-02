@@ -6,6 +6,7 @@ import {
   actOnVanityName,
   disableAccount,
   getAdminMetrics,
+  getAdminTrends,
   listAdminAudit,
   listAdminFeedback,
   listAdminReports,
@@ -119,7 +120,11 @@ function useAdminTransports(
     [auditOps, apiBase],
   );
   const metrics = useMemo<MetricsOps>(
-    () => metricsOps ?? { get: (t) => getAdminMetrics(apiBase, t) },
+    () =>
+      metricsOps ?? {
+        get: (t) => getAdminMetrics(apiBase, t),
+        getTrends: (t) => getAdminTrends(apiBase, t),
+      },
     [metricsOps, apiBase],
   );
   const feedback = useMemo<FeedbackOps>(
