@@ -17,6 +17,15 @@ describe("Care PEP finder", () => {
     expect(onFindPep).toHaveBeenCalledOnce();
   });
 
+  it("offers the testing guide row in learn and talk", async () => {
+    const user = userEvent.setup();
+    const onLearnTesting = vi.fn();
+    render(<Care onLearnTesting={onLearnTesting} />);
+
+    await user.click(screen.getByText("Getting tested, what to expect"));
+    expect(onLearnTesting).toHaveBeenCalledOnce();
+  });
+
   it("leads the resource finders with PEP (most time-critical first)", () => {
     render(<Care />);
     const pep = screen.getByText("PEP, if it has been under 72 hours");

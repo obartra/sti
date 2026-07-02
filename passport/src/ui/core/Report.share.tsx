@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Copy, Check, Flame, Hand, Heart } from "../../design/icons.tsx";
 import { copyText } from "../../lib/clipboard.ts";
+import { infoUrl } from "../../lib/info.ts";
 
 // After a positive is saved, an OPTIONAL way to give a heads-up to someone who
 // isn't on sti.care (linked contacts are handled automatically and silently, so
@@ -160,6 +161,22 @@ export function ShareHeadsUp() {
           {tone.message}
         </div>
       </div>
+
+      <a
+        href={infoUrl("/tell-a-partner")}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          alignSelf: "flex-start",
+          fontSize: 12.5,
+          fontWeight: 600,
+          color: "var(--text-accent)",
+          textDecoration: "underline",
+          textUnderlineOffset: 3,
+        }}
+      >
+        See how to tell a partner
+      </a>
     </div>
   );
 }

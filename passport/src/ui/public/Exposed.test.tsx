@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { Exposed } from "./Exposed.tsx";
 import { RESOURCES } from "../../lib/resources.ts";
+import { infoUrl } from "../../lib/info.ts";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -17,6 +18,21 @@ describe("Exposed", () => {
     );
     expect(open).toHaveBeenCalledWith(
       RESOURCES.clinic,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  });
+
+  it("opens the info site's testing guide from the what-to-expect row", async () => {
+    const user = userEvent.setup();
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    render(<Exposed />);
+
+    await user.click(
+      screen.getByRole("button", { name: /Getting tested, what to expect/i }),
+    );
+    expect(open).toHaveBeenCalledWith(
+      infoUrl("/testing"),
       "_blank",
       "noopener,noreferrer",
     );

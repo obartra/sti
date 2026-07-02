@@ -4,9 +4,11 @@ import {
   Clock,
   Shield,
   Chevron,
+  Info,
   Lock,
 } from "../../design/icons.tsx";
 import { RESOURCES, openResource } from "../../lib/resources.ts";
+import { infoUrl } from "../../lib/info.ts";
 import { CREATE_ACCOUNT_CTA } from "../../copy/canonical.ts";
 
 // The public page the off-app heads-up text links to (sti.care/exposed). Fully
@@ -80,6 +82,13 @@ export function Exposed({ onClaim }: ExposedProps) {
           sub="CDC test finder"
           trail={chevron}
           onClick={() => openResource(RESOURCES.clinic)}
+        />
+        <Row
+          lead={<Info size={20} />}
+          title="Getting tested, what to expect"
+          sub="The whole visit, start to finish"
+          trail={chevron}
+          onClick={() => openResource(infoUrl("/testing"))}
         />
         <Row
           lead={<Clock size={20} />}

@@ -67,6 +67,8 @@ The footer carries:
 - **Our promises** -> `promises`
 - **Privacy** -> `privacy-policy`
 - **Terms** -> `terms`
+- **STI basics** -> the education library at info.sti.care (external, in a new
+  tab; the library itself is [doc 34](34-education-library-subdomain.md))
 
 Plus a one-line, voice-compliant tagline (no meta, no jargon), for example
 "Encrypted on your phone. We can't read it." The footer is quiet: small type,
