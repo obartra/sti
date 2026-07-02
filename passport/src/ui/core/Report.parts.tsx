@@ -295,7 +295,7 @@ export function reportOutcome(s: ReportState): ReportOutcome {
   };
 }
 
-export function useReportState(): ReportState {
+export function useReportState(today?: number): ReportState {
   const c = COPY;
   const [vals, setVals] = useState<Record<string, string>>({});
   const [siteVals, setSiteVals] = useState<
@@ -303,8 +303,11 @@ export function useReportState(): ReportState {
   >({});
   const [onPassport, setOnPassport] = useState(true);
   // Default the test date to today (the common case: entering results you just
-  // got). Read once at mount via the clock edge; the owner can back-date it.
-  const [panelDay, setPanelDay] = useState<number>(() => todayEpochDay());
+  // got). Read once at mount via the clock edge unless the caller pins the day
+  // (stories/tests); the owner can back-date it.
+  const [panelDay, setPanelDay] = useState<number>(
+    () => today ?? todayEpochDay(),
+  );
   const val = (id: string) => vals[id] ?? c.notTested;
   const set = (id: string, v: string) => setVals((p) => ({ ...p, [id]: v }));
   const siteVal = (id: string, sk: string) => siteVals[id]?.[sk] ?? c.notTested;
