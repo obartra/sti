@@ -1,35 +1,25 @@
 ---
-// The shared page frame for info.sti.care. Imports the app's design tokens and
-// component classes directly from the passport package (one source of truth for the
-// palette, type, and primitives, never a duplicated theme), then the small
-// site-specific stylesheets on top: site.css is the phone column, desktop.css the
-// wide-screen layer. A slim header links back to the app; the footer crosses the
-// library and back to sti.care. Pages composed for wide screens pass `wide`;
-// without it the main column keeps the phone width everywhere.
+// The shared page frame for info.sti.care. One layered stylesheet entry
+// (styles/global.css) carries the passport tokens, the editorial theme, and,
+// during the migration, the legacy sheets. Chrome is the flat editorial header
+// and footer. Pages built on the editorial system pass `editorial`; pages not
+// yet migrated keep the legacy phone-column main (and its `wide` modifier).
 import "../styles/global.css";
-import { SITE } from "../data/site.ts";
-import { SECTIONS } from "../data/sections.ts";
+import SiteHeader from "../components/SiteHeader.astro";
+import SiteFooter from "../components/SiteFooter.astro";
 
 interface Props {
   title: string;
   description?: string;
+  editorial?: boolean;
   wide?: boolean;
 }
 const {
   title,
   description = "Plain, judgment-free answers about sexual health, testing, and prevention.",
+  editorial = false,
   wide = false,
 } = Astro.props;
-
-const APP_URL = "https://sti.care";
-
-// The nav crosses the whole site: the library index, the topic sections (as
-// index anchors, so the nav stays the same size as guides are added), and U=U.
-const nav = [
-  SITE.nav[0],
-  ...SECTIONS.map((s) => ({ label: s.navLabel, href: `/#${s.id}` })),
-  SITE.nav[1],
-];
 ---
 
 <!doctype html>
@@ -51,35 +41,14 @@ const nav = [
     <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
   </head>
   <body>
-    <header class="info-header">
-      <div class="info-header__inner">
-        <a class="info-home" href="/">
-          <span class="info-home__brand">{SITE.brand}</span>
-          <span class="info-home__tag">{SITE.tag}</span>
-        </a>
-        <nav class="info-header__nav">
-          {nav.map((item) => <a href={item.href}>{item.label}</a>)}
-        </nav>
-        <a class="info-toapp" href={APP_URL}>{SITE.backToApp}</a>
-      </div>
-    </header>
-    <main class:list={["info-page", { "info-page--wide": wide }]}>
+    <SiteHeader />
+    <main
+      class:list={editorial
+        ? ["l-page"]
+        : ["info-page", { "info-page--wide": wide }]}
+    >
       <slot />
     </main>
-    <footer class="info-footer">
-      <div class="info-footer__inner">
-        <div class="info-footer__brand">
-          <span class="info-home__brand">{SITE.brand}</span>
-          <span class="info-home__tag">{SITE.tag}</span>
-        </div>
-        <nav class="info-footer__links">
-          {nav.map((item) => <a href={item.href}>{item.label}</a>)}
-        </nav>
-        <div class="info-footer__end">
-          <div class="info-footer__tag">{SITE.tagline}</div>
-          <div class="info-footer__note">{SITE.note}</div>
-        </div>
-      </div>
-    </footer>
+    <SiteFooter />
   </body>
 </html>

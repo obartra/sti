@@ -1,0 +1,111 @@
+---
+// The site footer: hairline top; stacked and centered on a phone, three zones
+// at desktop (brand and tagline, the section nav, the what-this-site-is note).
+import { SITE } from "../data/site.ts";
+import { SECTIONS } from "../data/sections.ts";
+
+const nav = [
+  SITE.nav[0],
+  ...SECTIONS.map((s) => ({ label: s.navLabel, href: `/#${s.id}` })),
+  SITE.nav[1],
+];
+---
+
+<footer class="ftr">
+  <div class="ftr__inner l-frame">
+    <div class="ftr__brandcol">
+      <a class="ftr__home" href="/">
+        <span class="ftr__brand">{SITE.brand}</span>
+        <span class="ftr__tag">{SITE.tag}</span>
+      </a>
+      <p class="ftr__tagline">{SITE.tagline}</p>
+    </div>
+    <nav class="ftr__nav" aria-label="Site">
+      {nav.map((item) => <a href={item.href}>{item.label}</a>)}
+    </nav>
+    <p class="ftr__note u-micro">{SITE.note}</p>
+  </div>
+</footer>
+
+<style>
+  .ftr {
+    border-top: var(--hairline);
+    margin-top: var(--rhythm-section);
+  }
+  .ftr__inner {
+    padding-top: var(--space-7);
+    padding-bottom: var(--space-8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+    text-align: center;
+  }
+  .ftr__home {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 7px;
+    text-decoration: none;
+  }
+  .ftr__brand {
+    font-size: var(--text-base);
+    font-weight: var(--weight-extrabold);
+    letter-spacing: var(--tracking-snug);
+    color: var(--text-strong);
+  }
+  .ftr__tag {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-accent);
+  }
+  .ftr__tagline {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: var(--space-2) 0 0;
+  }
+  .ftr__nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 18px;
+  }
+  .ftr__nav a {
+    font-size: 13px;
+    font-weight: var(--weight-semibold);
+    color: var(--text-body);
+    text-decoration: none;
+  }
+  .ftr__nav a:hover {
+    color: var(--text-strong);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .ftr__note {
+    max-width: 44ch;
+  }
+
+  @media (min-width: 900px) {
+    .ftr__inner {
+      flex-direction: row;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--space-6);
+      text-align: left;
+    }
+    .ftr__brandcol {
+      flex: none;
+    }
+    .ftr__nav {
+      justify-content: flex-start;
+      gap: 8px 22px;
+      padding-top: 3px;
+    }
+    .ftr__note {
+      text-align: right;
+      max-width: 380px;
+      margin: 0;
+      padding-top: 3px;
+    }
+  }
+</style>

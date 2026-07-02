@@ -1,0 +1,68 @@
+---
+// The condition lookup: a quiet hairline table of name / status label / arrow.
+// The index's core object; no card wrapper, no tint.
+import type { CollectionEntry } from "astro:content";
+import Icon from "./Icon.astro";
+import StatusLabel from "./StatusLabel.astro";
+
+interface Props {
+  conditions: CollectionEntry<"conditions">[];
+  eyebrow: string;
+}
+const { conditions, eyebrow } = Astro.props;
+---
+
+<nav class="ctable" aria-label={eyebrow}>
+  <p class="u-eyebrow ctable__head">{eyebrow}</p>
+  <ul class="ctable__list">
+    {
+      conditions.map((cond) => (
+        <li class="ctable__item">
+          <a class="ctable__row" href={`/${cond.slug}`}>
+            <span class="ctable__name">{cond.data.name}</span>
+            <StatusLabel label={cond.data.label} tone={cond.data.tone} />
+            <span class="ctable__go">
+              <Icon name="chevron" size={16} />
+            </span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>
+
+<style>
+  .ctable__head {
+    padding-bottom: var(--space-3);
+  }
+  .ctable__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .ctable__item {
+    border-top: var(--hairline);
+  }
+  .ctable__row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 52px;
+    padding: 0 var(--space-2);
+    text-decoration: none;
+    transition: background var(--dur-fast) var(--ease-gentle);
+  }
+  .ctable__row:hover {
+    background: var(--warm-100);
+  }
+  .ctable__name {
+    flex: 1;
+    font-size: 16px;
+    font-weight: var(--weight-semibold);
+    color: var(--text-strong);
+  }
+  .ctable__go {
+    display: inline-flex;
+    color: var(--ink-400);
+  }
+</style>

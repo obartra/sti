@@ -1,0 +1,59 @@
+---
+// A guide link as a quiet editorial row: title, one-line tag, arrow. Replaces
+// the tinted link cards. Rows sit in container-query grids, so the same row is
+// one-across on a phone and two-across in a wide zone.
+import Icon from "./Icon.astro";
+
+interface Props {
+  href: string;
+  title: string;
+  tag: string;
+}
+const { href, title, tag } = Astro.props;
+---
+
+<a class="grow" href={href}>
+  <span class="grow__body">
+    <span class="grow__title">{title}</span>
+    <span class="grow__tag">{tag}</span>
+  </span>
+  <span class="grow__go"><Icon name="arrowRight" size={16} /></span>
+</a>
+
+<style>
+  .grow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    border-top: var(--hairline);
+    padding: var(--space-4) var(--space-2);
+    text-decoration: none;
+    transition: background var(--dur-fast) var(--ease-gentle);
+  }
+  .grow:hover {
+    background: var(--warm-100);
+  }
+  .grow__body {
+    flex: 1;
+    min-width: 0;
+  }
+  .grow__title {
+    display: block;
+    font-size: 15.5px;
+    font-weight: var(--weight-semibold);
+    color: var(--text-strong);
+    line-height: var(--leading-snug);
+  }
+  .grow__tag {
+    display: block;
+    font-size: 13.5px;
+    line-height: var(--leading-normal);
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .grow__go {
+    display: inline-flex;
+    color: var(--ink-400);
+    flex: none;
+  }
+</style>

@@ -22,6 +22,19 @@
   max-width: var(--measure);
 }
 
+/* Composed onto a .sti-btn in full-width flow contexts: the fixed-height
+   primitive clips long labels on tiny screens, so let the label wrap and the
+   button grow instead. Scoped page styles may still set width at desktop. */
+.u-btn-fluid {
+  width: 100%;
+  height: auto;
+  min-height: 52px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  white-space: normal;
+  text-align: center;
+}
+
 .u-sr-only {
   position: absolute;
   width: 1px;

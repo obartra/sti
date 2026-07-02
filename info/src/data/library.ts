@@ -11,6 +11,7 @@ export const LIBRARY = {
   title: "STI basics",
   sub: "Learn and share what to do. No judgment. One page each.",
   eyebrow: "Free STI guides",
+  conditionsLabel: "Conditions",
   sourcesLabel: "Sources",
   labelsTitle: "What the label means",
   labelNotes: {

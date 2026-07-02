@@ -1,0 +1,52 @@
+---
+// The status label (Curable / Treatable / Usually goes away): a quiet uppercase
+// word with the heart glyph, no background. Replaces the old pill chip. The
+// word carries the AA-safe derived ink; the icon keeps the raw status color,
+// so the word-plus-icon rule for grayscale and color-blind reading holds.
+import Icon from "./Icon.astro";
+
+interface Props {
+  label: string;
+  tone: "clear" | "treat" | "none";
+}
+const { label, tone } = Astro.props;
+---
+
+<span class={`statuslabel statuslabel--${tone}`}>
+  <span class="statuslabel__icon"><Icon name="heart" size={12} /></span>
+  {label}
+</span>
+
+<style>
+  .statuslabel {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .statuslabel__icon {
+    display: inline-flex;
+  }
+  .statuslabel--clear {
+    color: var(--status-ink-clear);
+  }
+  .statuslabel--clear .statuslabel__icon {
+    color: var(--status-clear-base);
+  }
+  .statuslabel--treat {
+    color: var(--status-ink-treat);
+  }
+  .statuslabel--treat .statuslabel__icon {
+    color: var(--status-treat-base);
+  }
+  .statuslabel--none {
+    color: var(--status-ink-none);
+  }
+  .statuslabel--none .statuslabel__icon {
+    color: var(--status-none-base);
+  }
+</style>

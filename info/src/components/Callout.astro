@@ -1,0 +1,25 @@
+---
+// The white card, deliberately scarce: `urgent` (the PEP callout, with a warm
+// left rule) and `action` (call-to-action blocks). These are the only two
+// card surfaces in the editorial skin; everything else sits flat on the page.
+interface Props {
+  variant: "urgent" | "action";
+}
+const { variant } = Astro.props;
+---
+
+<div class={`callout callout--${variant}`}>
+  <slot />
+</div>
+
+<style>
+  .callout {
+    background: var(--white);
+    border: var(--hairline-strong);
+    border-radius: var(--radius-xs);
+    padding: var(--space-5);
+  }
+  .callout--urgent {
+    border-left: 3px solid var(--status-treat-base);
+  }
+</style>
