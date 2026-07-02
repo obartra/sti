@@ -1,0 +1,154 @@
+/* The A1 logged-out landing (doc 37, IA A1): the claim in the serif display
+   voice, the sample badge card as the hero object, one filled action, and the
+   value points as hairline sections instead of tinted tiles in a card. */
+
+.land {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding-bottom: 8px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.land__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 2px;
+}
+
+.land__brand {
+  height: 28px;
+}
+
+/* The way-back banner for a viewer with pending requests: a bordered control
+   (keeps its radius), accent ink on the card surface, never a tinted fill. */
+.land__requests {
+  appearance: none;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: var(--hairline-strong);
+  background: var(--surface-card);
+  color: var(--text-accent);
+  font: inherit;
+}
+
+.land__requests-label {
+  flex: 1;
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+}
+
+.land__requests-icon {
+  flex: none;
+}
+
+.land__hero {
+  margin-top: 2px;
+}
+
+.land__eyebrow {
+  margin-bottom: 10px;
+}
+
+.land__title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: clamp(32px, 9vw, 38px);
+  letter-spacing: -0.015em;
+  line-height: 1.08;
+  color: var(--text-strong);
+  text-wrap: balance;
+  margin: 0;
+}
+
+.land__sub {
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--text-body);
+  margin: 12px 0 0;
+}
+
+.land__sample {
+  position: relative;
+}
+
+.land__sample-tag {
+  position: absolute;
+  top: -9px;
+  left: 14px;
+  background: var(--ink-900);
+  color: var(--white);
+  font-size: 10.5px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: var(--radius-xs);
+}
+
+.land__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.land__promises {
+  align-self: center;
+  margin-top: -8px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: var(--weight-bold);
+  color: var(--text-accent);
+}
+
+.land__points {
+  display: flex;
+  flex-direction: column;
+}
+
+.land__point {
+  display: flex;
+  gap: 13px;
+  border-top: var(--hairline);
+  padding: 14px 0;
+}
+
+.land__point-icon {
+  flex: none;
+  display: inline-flex;
+  color: var(--text-accent);
+  margin-top: 1px;
+}
+
+.land__point-title {
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.land__point-body {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
+.land__footnote {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--text-subtle);
+  font-size: 12.5px;
+}
