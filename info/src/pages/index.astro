@@ -137,7 +137,13 @@ const bySection = (id: string) => guides.filter((g) => g.data.topic === id);
             <div class="info-item">
               <span class="info-item__icon"><Icon name="shield" size={16} /></span>
               <div>
-                <strong>{row[0]}</strong>, {row[1]}
+                {row.href ? (
+                  <a href={row.href}>
+                    <strong>{row.term}</strong>
+                  </a>
+                ) : (
+                  <strong>{row.term}</strong>
+                )}, {row.sub}
               </div>
             </div>
           ))
@@ -154,7 +160,13 @@ const bySection = (id: string) => guides.filter((g) => g.data.topic === id);
             <div class="info-item">
               <span class="info-item__icon"><Icon name="stethoscope" size={16} /></span>
               <div>
-                <strong>{row[0]}</strong>, {row[1]}
+                {row.href ? (
+                  <a href={row.href}>
+                    <strong>{row.term}</strong>
+                  </a>
+                ) : (
+                  <strong>{row.term}</strong>
+                )}, {row.sub}
               </div>
             </div>
           ))
@@ -179,7 +191,7 @@ const bySection = (id: string) => guides.filter((g) => g.data.topic === id);
             <div class="info-item">
               <span class="info-item__icon"><Icon name="check" size={16} /></span>
               <div>
-                <strong>{row[0]}</strong>, {row[1]}
+                <strong>{row.term}</strong>, {row.sub}
               </div>
             </div>
           ))

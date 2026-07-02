@@ -125,7 +125,7 @@ const sources = cond?.data.sources ?? guide?.data.sources;
             <div class="info-item">
               <span class="info-item__icon"><Icon name="check" size={16} /></span>
               <div>
-                <strong>{row[0]}</strong>, {row[1]}
+                <strong>{row.term}</strong>, {row.sub}
               </div>
             </div>
           ))
@@ -133,6 +133,21 @@ const sources = cond?.data.sources ?? guide?.data.sources;
       </div>
 
       <div class="info-aside-cta">
+        {
+          guide?.data.cta && (
+            <a
+              class="sti-btn sti-btn--secondary sti-btn--md sti-btn--block"
+              href={RESOURCES[guide.data.cta]}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span class="sti-btn__icon">
+                <Icon name="mapPin" size={16} />
+              </span>
+              {c.guideCtas[guide.data.cta]}
+            </a>
+          )
+        }
         <a
           class="sti-btn sti-btn--primary sti-btn--lg sti-btn--block"
           href={RESOURCES.clinic}

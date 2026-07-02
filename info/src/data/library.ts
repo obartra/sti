@@ -3,6 +3,10 @@
 // condition explainers themselves are markdown under content/conditions. Shared
 // labels used by the explainer pages live here too, so all library copy has one
 // home the voice lint can scan.
+// A framing card's item row: a bold term, a one-line sub, and optionally the
+// guide the term links into.
+export type LibraryItem = { term: string; sub: string; href?: string };
+
 export const LIBRARY = {
   title: "STI basics",
   sub: "Learn and share what to do. No judgment. One page each.",
@@ -30,56 +34,63 @@ export const LIBRARY = {
     chip: "72-hour window",
     cta: "Find PEP near me",
   },
+  guideCtas: {
+    prep: "Find PrEP near me",
+    condoms: "Find free condoms near me",
+  },
   tools: {
     title: "Ways to lower HIV risk",
     body: "These are different tools, not a ranking, many people use more than one.",
     items: [
-      [
-        "Condoms",
-        "Lower the chance of HIV and many other STIs, and prevent pregnancy.",
-      ],
-      [
-        "PrEP",
-        "A daily pill (or a shot) that prevents HIV when taken as prescribed. HIV-only.",
-      ],
-      [
-        "U=U",
-        "Someone living with HIV who's undetectable on treatment can't pass it on through sex.",
-      ],
-    ],
+      {
+        term: "Condoms",
+        sub: "Lower the chance of HIV and many other STIs, and prevent pregnancy.",
+        href: "/condoms",
+      },
+      {
+        term: "PrEP",
+        sub: "A daily pill (or a shot) that prevents HIV when taken as prescribed. HIV-only.",
+        href: "/prep",
+      },
+      {
+        term: "U=U",
+        sub: "Someone living with HIV who's undetectable on treatment can't pass it on through sex.",
+        href: "/uu",
+      },
+    ] as readonly LibraryItem[],
   },
   vax: {
     title: "Vaccines and screening",
     body: "Free or low-cost at many clinics, and good for everyone, whatever your status.",
     items: [
-      [
-        "HPV vaccine",
-        "Protects against the HPV types that cause most warts and, rarely, cancers. You can get it up to age 45.",
-      ],
-      [
-        "Cervical and anal screening",
-        "Routine checks catch changes early. Ask a clinic which screening is right for you.",
-      ],
-    ],
+      {
+        term: "HPV vaccine",
+        sub: "Protects against the HPV types that cause most warts and, rarely, cancers. You can get it up to age 45.",
+      },
+      {
+        term: "Cervical and anal screening",
+        sub: "Routine checks catch changes early. Ask a clinic which screening is right for you.",
+      },
+    ] as readonly LibraryItem[],
     cta: "Find a clinic near me",
   },
   clinician: {
     title: "When to see a clinician",
     body: "Clinics handle this every day. No lecture, no judgment.",
     items: [
-      [
-        "You have symptoms",
-        "Sores, discharge, or burning. Most are easy to treat.",
-      ],
-      [
-        "A partner tested positive",
-        "Get tested too, even if you feel fine. Many STIs show no signs.",
-      ],
-      [
-        "You may have been exposed to HIV",
-        "Ask about PEP right away. It works best within 72 hours.",
-      ],
-    ],
+      {
+        term: "You have symptoms",
+        sub: "Sores, discharge, or burning. Most are easy to treat.",
+      },
+      {
+        term: "A partner tested positive",
+        sub: "Get tested too, even if you feel fine. Many STIs show no signs.",
+      },
+      {
+        term: "You may have been exposed to HIV",
+        sub: "Ask about PEP right away. It works best within 72 hours.",
+      },
+    ] as readonly LibraryItem[],
   },
   testing: {
     disclaimer:
