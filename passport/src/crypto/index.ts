@@ -35,6 +35,7 @@ export {
   deriveAccountKey,
   deriveAccountWriteToken,
   deriveGroupMemberKey,
+  deriveGroupNotify,
   wrapKeyFromPrf,
   sha256Base64url,
 } from "./keys.ts";

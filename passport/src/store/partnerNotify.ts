@@ -116,7 +116,10 @@ function routingHash(routingToken: string): Promise<string> {
 // Write one ping to a contact's inbox, then ask for a wake. Returns false only if
 // the ping write fails (the contact is not notified); the wake is fire-and-forget,
 // since the recipient finds a delivered ping on its next uniform poll regardless.
-async function sendPing(
+// Exported so the merged positive fan-out (notifyOps) reuses the EXACT same write +
+// wake for group-derived inboxes, keeping a group ping byte- and behavior-identical
+// to a pairwise one.
+export async function sendPing(
   api: ApiClient,
   cap: NotifyCapability,
   ping: Bytes,

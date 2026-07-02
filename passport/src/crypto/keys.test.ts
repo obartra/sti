@@ -10,10 +10,12 @@ import {
   deriveAccountId,
   deriveAccountKey,
   deriveAccountWriteToken,
+  deriveGroupNotify,
   wrapKeyFromPrf,
 } from "./keys.ts";
 import { importAesKey, seal, open } from "./payload.ts";
 import { utf8ToBytes, bytesToUtf8 } from "./encoding.ts";
+import { mintGroupKey } from "../store/groupCrypto.ts";
 
 describe("random ids", () => {
   it("alias ids are 43-char base64url and unique", () => {
@@ -146,5 +148,47 @@ describe("root key + account derivation", () => {
     );
     const ct = await seal(right, utf8ToBytes("device blob"));
     await expect(open(wrong, ct)).rejects.toThrow();
+  });
+});
+
+// The group-notify channel (doc 33, slice 6) derives PURELY from the shared group key
+// Kg + a co-member's public cardId, so every member can reach every co-member without
+// a pairwise link. The whole no-new-oracle guarantee rests on the four labels being
+// independent HKDF outputs (the wire ids never equal the key that seals the ping), so
+// pin that here exactly like the account id/key/write-token independence above.
+describe("deriveGroupNotify (doc 33, slice 6)", () => {
+  const ID_RE = /^[A-Za-z0-9_-]{43}$/;
+
+  it("is deterministic for the same Kg + cardId", async () => {
+    const Kg = mintGroupKey();
+    const cardId = randomAliasId();
+    const a = await deriveGroupNotify(Kg, cardId);
+    const b = await deriveGroupNotify(Kg, cardId);
+    expect(a).toEqual(b); // recoverable by both reporter and recipient
+  });
+
+  it("all four tokens are distinct 43-char base64url ids", async () => {
+    const cap = await deriveGroupNotify(mintGroupKey(), randomAliasId());
+    const tokens = [cap.inboxId, cap.writeToken, cap.key, cap.routingToken];
+    for (const t of tokens) expect(t).toMatch(ID_RE);
+    // Independent labels: the on-wire ids must never equal the sealing key.
+    expect(new Set(tokens).size).toBe(4);
+  });
+
+  it("a different cardId yields a different channel under the same Kg", async () => {
+    const Kg = mintGroupKey();
+    const a = await deriveGroupNotify(Kg, randomAliasId());
+    const b = await deriveGroupNotify(Kg, randomAliasId());
+    expect(a.inboxId).not.toBe(b.inboxId);
+    expect(a.key).not.toBe(b.key);
+  });
+
+  it("a different Kg yields a different channel for the same cardId", async () => {
+    const cardId = randomAliasId();
+    const a = await deriveGroupNotify(mintGroupKey(), cardId);
+    const b = await deriveGroupNotify(mintGroupKey(), cardId);
+    // A rotation (fresh Kg) kills the old channel and mints a new one.
+    expect(a.inboxId).not.toBe(b.inboxId);
+    expect(a.key).not.toBe(b.key);
   });
 });
