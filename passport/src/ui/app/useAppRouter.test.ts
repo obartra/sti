@@ -6,6 +6,35 @@ import {
   useAppRouter,
 } from "./useAppRouter.ts";
 import { groupOf } from "./routes.ts";
+import { groupInviteUrl, type GroupInvite } from "../../store/groupInvite.ts";
+
+describe("routeFromLocation: group invite links (doc 33)", () => {
+  const TOK = "A".repeat(43);
+  const invite: GroupInvite = {
+    groupId: TOK,
+    lifecycleInbox: { inboxId: TOK, writeToken: TOK, key: TOK },
+    handle: "thursday_run",
+    visibility: "private",
+    meetingKind: "event",
+  };
+
+  it("dispatches /g#g=<...> to the public group-invite screen with the parsed invite", () => {
+    const url = new URL(groupInviteUrl(invite));
+    window.history.replaceState(null, "", url.pathname + url.hash);
+    const r = routeFromLocation();
+    expect(r?.screen).toBe("group-invite");
+    expect(r?.group).toBe("public");
+    expect(r?.data?.invite?.handle).toBe("thursday_run");
+    expect(r?.data?.invite?.meetingKind).toBe("event");
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("ignores a /g path with no g= fragment", () => {
+    window.history.replaceState(null, "", "/g");
+    expect(routeFromLocation()?.screen).not.toBe("group-invite");
+    window.history.replaceState(null, "", "/");
+  });
+});
 
 describe("routeFromLocation: shared alias links", () => {
   const ID = "tW0gEbDrF_r7_70h-NRAYsSTDUQ8_SLbJdohXqFGYog";

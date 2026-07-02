@@ -6,8 +6,14 @@
  */
 
 import type { ResolvedView } from "../../ui/public/PublicResolution.tsx";
-import type { GroupMemberSecret, GroupRecord } from "../accountBlob.ts";
+import type {
+  GroupMemberSecret,
+  GroupRecord,
+  PendingGroupInvite,
+} from "../accountBlob.ts";
 import type { RosterMemberView } from "../groupMembershipOps.ts";
+import type { PendingRequest } from "../groupJoinOps.ts";
+import { todayEpochDay } from "../../core/clock.ts";
 import { randomAliasId, randomWriteToken } from "../../crypto/keys.ts";
 
 // A throwaway inbox capability for the demo (no server, so it is never polled).
@@ -24,6 +30,58 @@ function demoMemberSecret(): GroupMemberSecret {
     cardId: randomAliasId(),
     memberKey: randomAliasId(),
     lifecycleInbox: demoInbox(),
+  };
+}
+
+// One invite the seeded admin sent but that is not accepted yet, so the invite-share
+// panel shows a "invited, not joined yet" row with a working cancel in the demo.
+function demoPendingInvite(): PendingGroupInvite {
+  return {
+    inviteId: randomAliasId(),
+    lifecycleInbox: demoInbox(),
+    createdDay: todayEpochDay(),
+    label: "Sam",
+  };
+}
+
+// One waiting join request for a public admin group, so the requests-review panel has
+// a contentless "someone asked to join" row to act on in the demo.
+function demoJoinRequest(): PendingRequest {
+  return { requesterHash: randomAliasId(), pubKey: randomAliasId() };
+}
+
+/**
+ * A device-local demo store of waiting join requests per public admin group (doc 33,
+ * slice 7b): `review` seeds one request on first read so the requests-review panel has
+ * content, and `drop` clears a row on approve/reject, faithful to the real path (an
+ * approval delivers an invite; a reject hides the request). No server, all in-memory.
+ */
+export function demoJoinRequestStore(): {
+  review: (group: GroupRecord | undefined) => PendingRequest[];
+  drop: (groupId: string, requesterHash: string) => void;
+} {
+  const byGroup = new Map<string, PendingRequest[]>();
+  return {
+    review: (group) => {
+      if (
+        group === undefined ||
+        !group.isAdmin ||
+        group.visibility !== "public"
+      ) {
+        return [];
+      }
+      if (!byGroup.has(group.groupId)) {
+        byGroup.set(group.groupId, [demoJoinRequest()]);
+      }
+      return byGroup.get(group.groupId) ?? [];
+    },
+    drop: (groupId, requesterHash) =>
+      byGroup.set(
+        groupId,
+        (byGroup.get(groupId) ?? []).filter(
+          (r) => r.requesterHash !== requesterHash,
+        ),
+      ),
   };
 }
 
@@ -44,6 +102,7 @@ export function demoGroup(): GroupRecord {
     joinPointerId: randomAliasId(),
     joinWriteToken: randomWriteToken(),
     members: [demoMemberSecret(), demoMemberSecret(), demoMemberSecret()],
+    pendingInvites: [demoPendingInvite()],
   };
 }
 

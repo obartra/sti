@@ -5,7 +5,8 @@
 // and the contact list (doc 31).
 import { Button, Card } from "../../design/components/index.ts";
 import { Plus, Chevron, Lock, Users } from "../../design/icons.tsx";
-import type { GroupRecord } from "../../store/index.ts";
+import type { GroupRecord, RequestResult } from "../../store/index.ts";
+import { RequestToJoin } from "./RequestToJoin.tsx";
 import {
   GROUPS_COPY as C,
   memberCount,
@@ -162,9 +163,16 @@ export interface GroupsListProps {
   groups: GroupRecord[];
   onCreate?: (() => void) | undefined;
   onOpenGroup?: ((id: string) => void) | undefined;
+  /** Ask to join a public group by name (doc 33, slice 7b). Absent when logged out. */
+  onRequestToJoin?: ((handle: string) => Promise<RequestResult>) | undefined;
 }
 
-export function GroupsList({ groups, onCreate, onOpenGroup }: GroupsListProps) {
+export function GroupsList({
+  groups,
+  onCreate,
+  onOpenGroup,
+  onRequestToJoin,
+}: GroupsListProps) {
   return (
     <div
       style={{
@@ -227,6 +235,8 @@ export function GroupsList({ groups, onCreate, onOpenGroup }: GroupsListProps) {
           ))}
         </div>
       )}
+
+      {onRequestToJoin && <RequestToJoin onRequest={onRequestToJoin} />}
 
       <Card variant="tint" style={{ display: "flex", gap: 12 }}>
         <span

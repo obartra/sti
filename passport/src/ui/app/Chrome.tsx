@@ -16,11 +16,12 @@ import type {
 } from "../../store/index.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
 import type { ScreenCtx } from "./screens/context.ts";
+import type { GroupJoinActions } from "./useGroupJoinActions.ts";
 import type { OnboardingActions } from "./useOnboarding.ts";
 import type { ReportOutcome } from "../../core/report.ts";
 import type { OwnerState } from "../../core/badge.ts";
 
-export interface ChromeProps {
+export interface ChromeProps extends GroupJoinActions {
   route: Route;
   nav: Nav;
   owner: OwnerView;
@@ -79,6 +80,7 @@ export interface ChromeProps {
   onReadGroupRoster: ScreenCtx["onReadGroupRoster"];
   onLeaveGroup: ScreenCtx["onLeaveGroup"];
   onDeleteGroup: ScreenCtx["onDeleteGroup"];
+  onGroupCatchup: ScreenCtx["onGroupCatchup"];
   vanityName: ScreenCtx["vanityName"];
   onRegisterVanityName: ScreenCtx["onRegisterVanityName"];
   onCheckVanityName: ScreenCtx["onCheckVanityName"];
@@ -212,6 +214,16 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     onReadGroupRoster: props.onReadGroupRoster,
     onLeaveGroup: props.onLeaveGroup,
     onDeleteGroup: props.onDeleteGroup,
+    onInviteToGroup: props.onInviteToGroup,
+    onRevokeGroupInvite: props.onRevokeGroupInvite,
+    onReviewJoinRequests: props.onReviewJoinRequests,
+    onApproveJoinRequest: props.onApproveJoinRequest,
+    onRejectJoinRequest: props.onRejectJoinRequest,
+    onRemoveGroupMember: props.onRemoveGroupMember,
+    onAcceptGroupInvite: props.onAcceptGroupInvite,
+    onRejectGroupInvite: props.onRejectGroupInvite,
+    onRequestToJoin: props.onRequestToJoin,
+    onGroupCatchup: props.onGroupCatchup,
     vanityName: props.vanityName,
     onRegisterVanityName: props.onRegisterVanityName,
     onCheckVanityName: props.onCheckVanityName,

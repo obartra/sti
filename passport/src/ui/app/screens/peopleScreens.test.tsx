@@ -16,6 +16,7 @@ describe("peopleScreens People page", () => {
       onToggleFave: vi.fn(),
       onRevokeContact: vi.fn(),
       groups: [],
+      onGroupCatchup: vi.fn().mockResolvedValue(undefined),
     } as unknown as ScreenCtx;
 
     render(<>{peopleRenderers.people?.(ctx)}</>);

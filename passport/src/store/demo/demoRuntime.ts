@@ -22,7 +22,12 @@ import {
   type GroupRecord,
   type PendingGroupInvite,
 } from "../accountBlob.ts";
-import { demoGroup, demoInbox, demoRoster } from "./demoGroupSeed.ts";
+import {
+  demoGroup,
+  demoInbox,
+  demoJoinRequestStore,
+  demoRoster,
+} from "./demoGroupSeed.ts";
 import { groupInviteUrl } from "../groupInvite.ts";
 import type { OwnerState } from "../../core/badge.ts";
 import {
@@ -286,11 +291,25 @@ function demoGroupJoin(
       ...getBlob(),
       groups: (getBlob().groups ?? []).filter((g) => g.groupId !== groupId),
     });
+  // Device-local waiting join requests per public admin group (see demoGroupSeed):
+  // review seeds a contentless row on first read; approve/reject clear it.
+  const joinRequests = demoJoinRequestStore();
   return {
     requestToJoin: () => Promise.resolve("not-found" as const),
-    reviewJoinRequests: () => Promise.resolve([]),
-    approveJoinRequest: (s) => Promise.resolve(s),
-    rejectJoinRequest: (s) => Promise.resolve(s),
+    reviewJoinRequests: (_s, groupId) =>
+      Promise.resolve(
+        joinRequests.review(
+          (getBlob().groups ?? []).find((g) => g.groupId === groupId),
+        ),
+      ),
+    approveJoinRequest: (s, groupId, request) => {
+      joinRequests.drop(groupId, request.requesterHash);
+      return Promise.resolve(s);
+    },
+    rejectJoinRequest: (s, groupId, request) => {
+      joinRequests.drop(groupId, request.requesterHash);
+      return Promise.resolve(s);
+    },
     redeemJoinRequests: (s) => Promise.resolve(s),
     leaveGroup: async (_s, groupId) => {
       dropGroup(groupId);

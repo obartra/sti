@@ -1,7 +1,7 @@
 import { Connect } from "../../connect/Connect.tsx";
-import { GroupsList } from "../../groups/GroupsList.tsx";
 import { PrivacySection } from "../../connect/parts.tsx";
 import { QrScanner } from "../../connect/QrScanner.tsx";
+import { GroupsSlot } from "./groupScreens.tsx";
 import { todayEpochDay } from "../../../core/clock.ts";
 import type { ScreenRenderers } from "./context.ts";
 
@@ -10,23 +10,18 @@ export const peopleRenderers: ScreenRenderers = {
   // list (secondary, collapsed), and the "how this stays private" card last. Starred
   // and groups are the prominent surfaces; groups thread into Connect between starred
   // and the contact list (doc 31). Managing the links you hand out lives in the Links
-  // tab.
-  people: ({ nav, contacts, faves, onToggleFave, onRevokeContact, groups }) => (
+  // tab. The groups slot carries the "join a group by name" entry and runs the group
+  // catch-up on mount (doc 33, slice 7b).
+  people: (ctx) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
       <Connect
-        contacts={contacts}
+        contacts={ctx.contacts}
         nowDay={todayEpochDay()}
-        faves={faves}
-        onToggleFave={onToggleFave}
-        onRemoveContact={onRevokeContact}
-        onScan={() => nav.go("scan")}
-        groupsSlot={
-          <GroupsList
-            groups={groups}
-            onCreate={() => nav.go("group-create")}
-            onOpenGroup={(id) => nav.go("group-detail", { id })}
-          />
-        }
+        faves={ctx.faves}
+        onToggleFave={ctx.onToggleFave}
+        onRemoveContact={ctx.onRevokeContact}
+        onScan={() => ctx.nav.go("scan")}
+        groupsSlot={<GroupsSlot ctx={ctx} />}
       />
       {/* info content last, out of the way */}
       <PrivacySection />
