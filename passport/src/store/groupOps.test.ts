@@ -181,6 +181,65 @@ describe("createGroup", () => {
     );
   });
 
+  it("show-as-you: publishes the creator's card under their account face and snapshots it", async () => {
+    const { api, putAlias } = fakeApi();
+    const { accounts, session } = await freshSession(api);
+
+    const { session: next, groupId } = await createGroup(
+      api,
+      accounts,
+      session,
+      {
+        handle: "book_club",
+        visibility: "private",
+        meetingKind: "event",
+        identity: "main",
+      },
+    );
+
+    const group = next.blob.groups?.find((g) => g.groupId === groupId);
+    if (group === undefined) throw new Error("expected a recorded group");
+    // The chosen face is snapshotted onto the record so every later republish (a
+    // rotation, another device's read) shows the same face, not a live re-read.
+    expect(group.myHandle).toBe(session.blob.handle);
+    expect(group.myAvatar).toEqual(session.blob.avatar);
+    // The published card opens to the account identity + avatar, NOT the id-derived
+    // pseudonym the anonymous default would use.
+    const Kg = base64urlToBytes(group.kg ?? "") as GroupKey;
+    const put = putAlias.find((p) => p.id === group.myCardId);
+    if (put === undefined) throw new Error("expected the card PUT");
+    const card = await openGroupCard(Kg, put.payload);
+    expect(card).toEqual(
+      deriveOwnerCard(
+        session.blob.state,
+        session.blob.handle ?? "",
+        todayEpochDay(),
+        session.blob.avatar,
+      ),
+    );
+  });
+
+  it("defaults to an anonymous face when no identity is chosen", async () => {
+    const { api } = fakeApi();
+    const { accounts, session } = await freshSession(api);
+
+    const { session: next, groupId } = await createGroup(
+      api,
+      accounts,
+      session,
+      {
+        handle: "book_club",
+        visibility: "private",
+        meetingKind: "event",
+      },
+    );
+
+    const group = next.blob.groups?.find((g) => g.groupId === groupId);
+    // No face stored: the card stays id-derived (the default asserted above).
+    expect(group?.myHandle).toBeUndefined();
+    expect(group?.myAvatar).toBeUndefined();
+  });
+
   it("keeps a usable group even when the public handle is unavailable", async () => {
     const { api, putGroupBlob } = fakeApi({ registerResult: "unavailable" });
     const { accounts, session } = await freshSession(api);

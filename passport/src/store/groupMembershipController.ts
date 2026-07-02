@@ -10,6 +10,7 @@ import type { ApiClient } from "../api/client.ts";
 import type { AccountManager } from "./account.ts";
 import type { OwnerSession } from "./session.ts";
 import type { GroupInvite } from "./groupInvite.ts";
+import type { AliasIdentity } from "./ownerCard.ts";
 import {
   inviteToGroup,
   revokeGroupInvite,
@@ -67,6 +68,7 @@ export interface GroupMembershipController {
   acceptGroupInvite(
     session: OwnerSession,
     invite: GroupInvite,
+    identity?: AliasIdentity,
   ): Promise<OwnerSession>;
   /** Reject a group invite: tell the admin to drop it; the session is unchanged. */
   rejectGroupInvite(
@@ -189,8 +191,8 @@ export function groupMembershipControllerMethods(
       }),
     revokeGroupInvite: (session, groupId, inviteId) =>
       revokeGroupInvite(api, accounts, session, { groupId, inviteId }),
-    acceptGroupInvite: (session, invite) =>
-      acceptGroupInvite(api, accounts, session, invite),
+    acceptGroupInvite: (session, invite, identity = "anonymous") =>
+      acceptGroupInvite(api, accounts, session, { invite, identity }),
     rejectGroupInvite: (session, invite) =>
       rejectGroupInvite(api, session, invite),
     pollGroupLifecycle: (session) => pollGroupLifecycle(api, accounts, session),

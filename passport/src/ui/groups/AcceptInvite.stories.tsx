@@ -44,6 +44,17 @@ export const Event: Story = {
   args: { invite: invite("party_2026", "event"), isLoggedIn: true, ...actions },
 };
 
+// Owner has a name: the "show as you" choice appears above Join (doc 33). It
+// defaults to the anonymous stand-in; picking "your name" reveals a face to members.
+export const WithNameChoice: Story = {
+  args: {
+    invite: invite("thursday_run", "recurring"),
+    isLoggedIn: true,
+    hasName: true,
+    ...actions,
+  },
+};
+
 // Logged out: make an account before joining.
 export const LoggedOut: Story = {
   args: {

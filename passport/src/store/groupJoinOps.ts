@@ -271,12 +271,9 @@ async function redeemOnePending(
     if (sealed === null) return session;
     const invite = parseJoinGrant(sealed);
     if (invite === null) return session;
-    const next = await acceptGroupInvite(
-      ctx.api,
-      ctx.accounts,
-      session,
+    const next = await acceptGroupInvite(ctx.api, ctx.accounts, session, {
       invite,
-    );
+    });
     ctx.deps.joinStore.removePending(pointerId);
     return next;
   } catch {

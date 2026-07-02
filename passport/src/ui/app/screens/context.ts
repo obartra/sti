@@ -114,6 +114,10 @@ export interface ScreenCtx extends GroupJoinActions {
   ) => Promise<ContactLinkResult>;
   /** Ingest a return invite a contact sent back, completing the pending link. */
   onIngestContactReturn: (ret: ContactInvite) => void;
+  /** Whether the owner set a display name, so the group "show as you" choice is
+   * offered (doc 33); with no name there is nothing to show. Optional so non-app ctx
+   * builders (demo, stories) may omit it (treated as no name). */
+  ownerHasName?: boolean;
   /** The shared groups the owner is in (doc 33); empty logged out. */
   groups: GroupRecord[];
   /** Create a shared group; resolves the outcome + new group id (doc 33). */

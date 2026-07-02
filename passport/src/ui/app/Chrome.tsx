@@ -209,6 +209,7 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     onTryDemo: props.onTryDemo,
     onAcceptContactInvite: props.onAcceptContactInvite,
     onIngestContactReturn: props.onIngestContactReturn,
+    ownerHasName: (props.owner.handle ?? "").length > 0,
     groups: props.groups,
     onCreateGroup: props.onCreateGroup,
     onReadGroupRoster: props.onReadGroupRoster,

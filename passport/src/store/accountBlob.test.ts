@@ -346,6 +346,61 @@ describe("account blob codec", () => {
     expect(parseAccountBlob(serializeAccountBlob(asMember))).toEqual(asMember);
   });
 
+  it("round-trips a v18 group shown face (myHandle + myAvatar) (doc 33)", () => {
+    const shown: AccountBlob = {
+      ...blob,
+      groups: [
+        {
+          groupId: "G".repeat(43),
+          groupWriteToken: "W".repeat(43),
+          kg: "K".repeat(43),
+          myCardId: "J".repeat(43),
+          myCardWriteToken: "L".repeat(43),
+          handle: "book_club",
+          visibility: "private",
+          meetingKind: "event",
+          isAdmin: true,
+          myHandle: "robin",
+          myAvatar: DEFAULT_AVATAR,
+        },
+      ],
+    };
+    expect(parseAccountBlob(serializeAccountBlob(shown))).toEqual(shown);
+  });
+
+  it("drops a bad group shown-face avatar on read, keeping the rest (doc 19)", () => {
+    // A group record whose myAvatar is an old/corrupt shape: parse must drop just
+    // the avatar (fall back to id-derived), never invalidate the whole account.
+    const wire = {
+      v: 18,
+      handle: "robin",
+      aliases: [],
+      contacts: [],
+      state: INITIAL_OWNER_STATE,
+      avatar: DEFAULT_AVATAR,
+      sharingMode: "link",
+      groups: [
+        {
+          groupId: "G".repeat(43),
+          groupWriteToken: "W".repeat(43),
+          kg: "K".repeat(43),
+          myCardId: "J".repeat(43),
+          myCardWriteToken: "L".repeat(43),
+          handle: "book_club",
+          visibility: "private",
+          meetingKind: "event",
+          isAdmin: true,
+          myHandle: "robin",
+          myAvatar: { not: "a valid avatar" },
+        },
+      ],
+    };
+    const parsed = parseAccountBlob(utf8ToBytes(JSON.stringify(wire)));
+    const group = parsed.groups?.[0];
+    expect(group?.myHandle).toBe("robin");
+    expect(group?.myAvatar).toBeUndefined();
+  });
+
   it("round-trips a v14 stored recovery phrase (doc 32)", () => {
     // A well-formed 43-char app phrase (base64url, no padding).
     const phrase = "abcdefghijklmnopqrstuvwxyz0123456789-_ABCDE";
@@ -401,7 +456,7 @@ describe("account blob codec", () => {
     avatar: A,
   };
   reject("a non-object", 7);
-  reject("an unknown version", { ...base, v: 18, sharingMode: "link" });
+  reject("an unknown version", { ...base, v: 19, sharingMode: "link" });
   reject("a prior version (v6 is no longer accepted)", {
     v: 6,
     handle: "x",
@@ -432,7 +487,7 @@ describe("account blob codec", () => {
   // A real current-version wire so these reach the findable validator (not the
   // version gate, which `base`'s v7 trips first).
   const vCurrent = {
-    v: 17,
+    v: 18,
     handle: "x",
     aliases: [],
     contacts: [],

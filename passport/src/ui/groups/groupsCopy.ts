@@ -43,6 +43,15 @@ export const GROUPS_COPY = {
   kindRecurringOpt: "Recurring",
   kindRecurringNote: "A group that meets again and again.",
 
+  // ── How you show up (doc 33 "show as you") ───────────────────────────────────
+  faceLabel: "How you show up",
+  faceAnonymousOpt: "A stand-in name",
+  faceMainOpt: "Your name",
+  faceAnonymousNote:
+    "Members see a random stand-in name and picture, never your real one.",
+  faceMainNote:
+    "Members see your name and picture. They can recognize you and connect it to your other shares.",
+
   // The join-time disclosure (doc 33): the honest framing, said up front.
   membershipIsSharing:
     "Joining means everyone here can see your status color, and you can see theirs.",

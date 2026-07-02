@@ -30,11 +30,12 @@ export function GroupsSlot({ ctx }: { ctx: ScreenCtx }) {
 // through the folded owner actions.
 export const groupRenderers: ScreenRenderers = {
   groups: (ctx) => <GroupsSlot ctx={ctx} />,
-  "group-create": ({ nav, onCreateGroup, onCheckVanityName }) => (
+  "group-create": ({ nav, onCreateGroup, onCheckVanityName, ownerHasName }) => (
     <GroupCreate
       onCreate={onCreateGroup}
       onCreated={(id) => nav.go("group-detail", { id })}
       onCheckName={onCheckVanityName}
+      hasName={ownerHasName ?? false}
     />
   ),
   "group-detail": (ctx) => {
@@ -81,6 +82,7 @@ export const groupRenderers: ScreenRenderers = {
         onReject={ctx.onRejectGroupInvite}
         onJoined={() => ctx.nav.jump("people")}
         onClaim={() => ctx.nav.go("b1-claim")}
+        hasName={ctx.ownerHasName ?? false}
         onBack={ctx.nav.back}
       />
     );

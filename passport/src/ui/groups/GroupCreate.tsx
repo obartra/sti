@@ -16,6 +16,7 @@ import { Lock, Users } from "../../design/icons.tsx";
 import {
   normalizeVanityName,
   vanityNameError,
+  type AliasIdentity,
   type CreateGroupInput,
   type CreateGroupResult,
   type GroupVisibility,
@@ -23,6 +24,7 @@ import {
   type VanityNameError,
 } from "../../store/index.ts";
 import { GROUPS_COPY as C, disclosureFor } from "./groupsCopy.ts";
+import { GroupFaceChoice } from "./GroupFaceChoice.tsx";
 
 const NAME_ERROR: Record<VanityNameError, string> = {
   "too-short": C.handleTooShort,
@@ -158,22 +160,89 @@ function Disclosure({ meetingKind }: { meetingKind: MeetingKind }) {
   );
 }
 
+// Route a create outcome to the next step: open the new group, or surface why the
+// public handle could not be claimed (the group still exists either way). Split out
+// so the submit handler and GroupCreate stay within their ceilings.
+function applyCreateResult(
+  res: { result: CreateGroupResult; groupId: string },
+  onCreated: (groupId: string) => void,
+  fail: (message: string) => void,
+): void {
+  if (res.result === "created" || res.result === "registered") {
+    onCreated(res.groupId);
+  } else if (res.result === "unavailable") {
+    fail(C.handleTaken);
+  } else {
+    fail(C.createError);
+  }
+}
+
+// The group-name input and its live availability line. Split out so GroupCreate
+// stays within its length/complexity ceilings; the error and status-visibility
+// decisions live here rather than inline in the form.
+function NameField({
+  handle,
+  busy,
+  formatError,
+  status,
+  claimError,
+  showStatus,
+  onChange,
+}: {
+  handle: string;
+  busy: boolean;
+  formatError: string | null;
+  status: NameStatus;
+  claimError: string | null;
+  // Only a public group checks availability; a private name is never "taken".
+  showStatus: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <Field label={C.handleLabel} hint={C.handleHint} htmlFor="group-handle">
+        <Input
+          id="group-handle"
+          value={handle}
+          error={formatError !== null || status === "taken"}
+          disabled={busy}
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          placeholder="e.g. thursday_run"
+          onChange={(ev) => onChange(ev.target.value)}
+        />
+      </Field>
+      <StatusLine
+        formatError={formatError}
+        status={showStatus ? status : "idle"}
+        claimError={claimError}
+      />
+    </div>
+  );
+}
+
 export interface GroupCreateProps {
   onCreate: (
     input: CreateGroupInput,
   ) => Promise<{ result: CreateGroupResult; groupId: string }>;
   onCreated: (groupId: string) => void;
   onCheckName: (name: string) => Promise<"free" | "taken" | "error">;
+  /** Whether the owner set a display name, so the "show as you" choice is offered
+   * (with no name there is nothing to show and the group stays anonymous). */
+  hasName?: boolean;
 }
 
 export function GroupCreate({
   onCreate,
   onCreated,
   onCheckName,
+  hasName = false,
 }: GroupCreateProps) {
   const [handle, setHandle] = useState("");
   const [visibility, setVisibility] = useState<GroupVisibility>("public");
   const [meetingKind, setMeetingKind] = useState<MeetingKind>("recurring");
+  const [identity, setIdentity] = useState<AliasIdentity>("anonymous");
   const [busy, setBusy] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
 
@@ -190,20 +259,21 @@ export function GroupCreate({
       if (normalized === "" || bad !== null || busy) return;
       setClaimError(null);
       setBusy(true);
-      void onCreate({ handle: normalized, visibility, meetingKind })
-        .then(({ result, groupId }) => {
-          if (result === "created" || result === "registered") {
-            onCreated(groupId);
-          } else if (result === "unavailable") {
-            setClaimError(C.handleTaken);
-          } else {
-            setClaimError(C.createError);
-          }
-        })
+      void onCreate({ handle: normalized, visibility, meetingKind, identity })
+        .then((res) => applyCreateResult(res, onCreated, setClaimError))
         .catch(() => setClaimError(C.genericError))
         .finally(() => setBusy(false));
     },
-    [normalized, bad, busy, visibility, meetingKind, onCreate, onCreated],
+    [
+      normalized,
+      bad,
+      busy,
+      visibility,
+      meetingKind,
+      identity,
+      onCreate,
+      onCreated,
+    ],
   );
 
   const blockSubmit =
@@ -234,29 +304,18 @@ export function GroupCreate({
         {C.createTitle}
       </h1>
 
-      <div>
-        <Field label={C.handleLabel} hint={C.handleHint} htmlFor="group-handle">
-          <Input
-            id="group-handle"
-            value={handle}
-            error={formatError !== null || status === "taken"}
-            disabled={busy}
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            placeholder="e.g. thursday_run"
-            onChange={(ev) => {
-              setHandle(ev.target.value);
-              setClaimError(null);
-            }}
-          />
-        </Field>
-        <StatusLine
-          formatError={formatError}
-          status={visibility === "public" ? status : "idle"}
-          claimError={claimError}
-        />
-      </div>
+      <NameField
+        handle={handle}
+        busy={busy}
+        formatError={formatError}
+        status={status}
+        claimError={claimError}
+        showStatus={visibility === "public"}
+        onChange={(v) => {
+          setHandle(v);
+          setClaimError(null);
+        }}
+      />
 
       <OptionRow
         label={C.visLabel}
@@ -278,6 +337,12 @@ export function GroupCreate({
         value={meetingKind}
         onChange={setMeetingKind}
         note={meetingKind === "event" ? C.kindEventNote : C.kindRecurringNote}
+      />
+
+      <GroupFaceChoice
+        value={identity}
+        hasName={hasName}
+        onChange={setIdentity}
       />
 
       <Disclosure meetingKind={meetingKind} />

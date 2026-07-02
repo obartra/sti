@@ -40,9 +40,30 @@ describe("AcceptInvite", () => {
       screen.getByText(/If someone at this event tests positive/),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Join" }));
-    expect(onAccept).toHaveBeenCalledWith(invite("event"));
+    // With no name, the face choice is hidden and the default is anonymous.
+    expect(screen.queryByText("How you show up")).not.toBeInTheDocument();
+    expect(onAccept).toHaveBeenCalledWith(invite("event"), "anonymous");
     // On success the "you're in" state shows.
     expect(await screen.findByText("You're in.")).toBeInTheDocument();
+  });
+
+  it("show-as-you: joins as main when the owner picks their name", async () => {
+    const user = userEvent.setup();
+    const onAccept = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AcceptInvite
+        {...noop}
+        invite={invite("recurring")}
+        isLoggedIn
+        hasName
+        onAccept={onAccept}
+      />,
+    );
+    // The choice is offered because the owner has a name.
+    expect(screen.getByText("How you show up")).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Your name" }));
+    await user.click(screen.getByRole("button", { name: "Join" }));
+    expect(onAccept).toHaveBeenCalledWith(invite("recurring"), "main");
   });
 
   it("shows the recurring disclosure", () => {
