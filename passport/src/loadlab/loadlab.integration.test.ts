@@ -495,12 +495,19 @@ describe("load & usage lab: behavior gates against a real blind store", () => {
   });
 
   behaviorIt("push-registration-stored", async () => {
+    // A real Web Push subscription: a valid uncompressed P-256 point (p256dh) and a
+    // 16-byte auth secret (RFC 8291). The server rejects malformed keys (a bad point
+    // can never be encrypted to), so this stored-fixture case uses valid ones.
     await expect(
       api.registerPush({
         routingEndpointId: randomAliasId(),
         subscription: {
           endpoint: "https://push.example/endpoint",
-          keys: { p256dh: "p256dh-key", auth: "auth-secret" },
+          keys: {
+            p256dh:
+              "BGm0rU5SPokQEVwxTaQfBeyX2Gj0n-tPLVzoWFROImd_DkFPpezF97jzdZG0Yze9__PQ_H2ygthzqYA52nAqFIY",
+            auth: "WwiDwd4Q1kIqbzFu20fMDw",
+          },
         },
       }),
     ).resolves.toBeUndefined(); // 204, stored without error
