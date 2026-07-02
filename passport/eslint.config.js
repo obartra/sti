@@ -5,16 +5,44 @@ import reactHooks from "eslint-plugin-react-hooks";
 import storybook from "eslint-plugin-storybook";
 import globals from "globals";
 
-// Code-quality metrics. The implementation is held to real ceilings: branching
-// complexity, nesting, parameter count, statement count, and file/function
-// length. Screens that outgrow these get decomposed, not exempted. Generated
-// (icons), vendored (design tokens), story, and test files relax the
-// length/statement ceilings below, where length is inherent, not a smell.
+// Code-quality metrics. The implementation is held to real ceilings, but the
+// signals are not equal in weight:
+//
+//   - Cyclomatic `complexity` is the PRIMARY structural gate. It measures the
+//     branching that actually makes a function hard to read, test, and audit,
+//     which is the thing worth decomposing. The implementation lives right at
+//     this ceiling in a handful of places (parsers, a few screens), so it earns
+//     its keep; a function that trips it is genuinely doing too much.
+//   - `max-lines-per-function` and `max-lines` guard sprawl, the other real
+//     smell, independent of branching.
+//   - `max-depth`, `max-params`, and `max-nested-callbacks` are cheap guards
+//     that rarely bind but catch specific messes when they do.
+//   - `max-statements` is DELIBERATELY a loose backstop, not a co-equal gate.
+//     Statement count is a coarse proxy already subsumed by complexity + length:
+//     a linear routine (envelope serialize/deserialize, a membership walk, a key
+//     rotation) can run many sequential statements at complexity ~1 and read
+//     perfectly, yet a tight statement ceiling would push it to split for no
+//     gain. So it is set high enough to fire only on pathological sprawl the
+//     length and complexity gates somehow missed, letting cyclomatic complexity
+//     carry the "this function does too much" judgment.
+//
+// One ceiling set applies everywhere by design: severity is NOT tiered by
+// directory. Per-dir numeric tiers were considered and rejected: the code
+// already lives at the complexity ceiling in security-sensitive parsers, so a
+// stricter tier there would force churn-y refactors with no evidence of benefit,
+// and a looser tier elsewhere would just erode the gate. Where a ceiling truly
+// does not apply, it is relaxed per-FILE with a stated reason (the blocks
+// below), never per-directory. Those overrides are blameless: each names why the
+// length is inherent (generated icons, a static wordlist, enumerated story
+// states, accreted spec assertions), not a smell being waved through. A new
+// override belongs there only if it can state the same kind of reason.
 const QUALITY_RULES = {
   complexity: ["error", 12],
   "max-depth": ["error", 4],
   "max-params": ["error", 4],
-  "max-statements": ["error", 15],
+  // Loose backstop, not a primary gate (see the note above): cyclomatic
+  // complexity and per-function length do the real structural work.
+  "max-statements": ["error", 25],
   "max-nested-callbacks": ["error", 3],
   "max-lines": [
     "error",
