@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Connect } from "./Connect.tsx";
 import { GroupsList } from "../groups/GroupsList.tsx";
-import type { CircleRecord, ContactRecord } from "../../store/accountBlob.ts";
+import type { ContactRecord, GroupRecord } from "../../store/accountBlob.ts";
 
 // People (connections): reached only by scan or shared link. No directory, no
 // @-search. A connection IS a contact, shown by your private label and newest
@@ -90,9 +90,41 @@ export const FewLinkups: Story = {
   },
 };
 
-const circles: CircleRecord[] = [
-  { id: "c1", name: "Thursday crew", memberContactIds: ["a", "b", "c"] },
-  { id: "c2", name: "Fern house", memberContactIds: ["a", "b"] },
+function group(
+  groupId: string,
+  handle: string,
+  extra: Partial<GroupRecord>,
+): GroupRecord {
+  return {
+    groupId,
+    groupWriteToken: "w",
+    kg: "k",
+    myCardId: `${groupId}-card`,
+    myCardWriteToken: "w",
+    handle,
+    visibility: "public",
+    meetingKind: "recurring",
+    isAdmin: true,
+    ...extra,
+  };
+}
+
+const groups: GroupRecord[] = [
+  group("g1", "thursday_run", {
+    members: [
+      {
+        cardId: "m1",
+        memberKey: "k",
+        lifecycleInbox: { inboxId: "i", writeToken: "w", key: "k" },
+      },
+      {
+        cardId: "m2",
+        memberKey: "k",
+        lifecycleInbox: { inboxId: "i", writeToken: "w", key: "k" },
+      },
+    ],
+  }),
+  group("g2", "fern_house", { visibility: "private", meetingKind: "event" }),
 ];
 
 // The People-tab composition: groups thread in between starred and the full
@@ -105,6 +137,6 @@ export const WithGroups: Story = {
     faves: new Set(["a".padEnd(43, "0"), "c".padEnd(43, "0")]),
     onToggleFave: noop,
     onRemoveContact: noop,
-    groupsSlot: <GroupsList circles={circles} />,
+    groupsSlot: <GroupsList groups={groups} />,
   },
 };

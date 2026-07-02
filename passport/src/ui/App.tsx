@@ -326,7 +326,7 @@ export function App({
         onForgetRequest={forgetRequest}
         isLoggedIn={session !== null}
         onTryDemo={demo.onTry}
-        circles={session ? (session.blob.circles ?? []) : []}
+        groups={session ? (session.blob.groups ?? []) : []}
         vanityName={findableName(session)}
         {...recoveryProps(session, controller)}
         push={push}

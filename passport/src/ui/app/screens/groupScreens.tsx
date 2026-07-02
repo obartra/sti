@@ -3,50 +3,40 @@ import { GroupCreate } from "../../groups/GroupCreate.tsx";
 import { GroupDetail } from "../../groups/GroupDetail.tsx";
 import type { ScreenRenderers } from "./context.ts";
 
+// The shared-group screens (doc 33): the list, the create form, and the roster
+// detail. All three read the group model from the session blob and drive the
+// controller through the folded owner actions. The route ids (groups /
+// group-create / group-detail) are reused from the earlier local-only grouping.
 export const groupRenderers: ScreenRenderers = {
-  groups: ({ nav, circles }) => (
+  groups: ({ nav, groups }) => (
     <GroupsList
-      circles={circles}
+      groups={groups}
       onCreate={() => nav.go("group-create")}
       onOpenGroup={(id) => nav.go("group-detail", { id })}
     />
   ),
-  "group-create": ({
+  "group-create": ({ nav, onCreateGroup, onCheckVanityName }) => (
+    <GroupCreate
+      onCreate={onCreateGroup}
+      onCreated={(id) => nav.go("group-detail", { id })}
+      onCheckName={onCheckVanityName}
+    />
+  ),
+  "group-detail": ({
     nav,
     data,
-    circles,
-    contacts,
-    onCreateCircle,
-    onUpdateCircle,
+    groups,
+    onReadGroupRoster,
+    onLeaveGroup,
+    onDeleteGroup,
   }) => {
-    // The same screen creates or edits: a route id means "edit this circle".
-    const existing = data?.id
-      ? circles.find((c) => c.id === data.id)
-      : undefined;
-    return (
-      <GroupCreate
-        contacts={contacts}
-        existing={existing}
-        onCreate={(name, memberContactIds) => {
-          if (existing) {
-            onUpdateCircle(existing.id, name, memberContactIds);
-            nav.go("group-detail", { id: existing.id });
-          } else {
-            void onCreateCircle(name, memberContactIds).then((id) => {
-              nav.go("group-detail", { id });
-            });
-          }
-        }}
-      />
-    );
-  },
-  "group-detail": ({ nav, data, circles, contacts, store, onRemoveCircle }) => {
-    const circle = circles.find((c) => c.id === data?.id);
-    if (circle === undefined) {
-      // The circle was deleted (or a stale deep link): fall back to the list.
+    const group = groups.find((g) => g.groupId === data?.id);
+    if (group === undefined) {
+      // The group is gone (disbanded, left, or a stale deep link): fall back to the
+      // list rather than a dead screen.
       return (
         <GroupsList
-          circles={circles}
+          groups={groups}
           onCreate={() => nav.go("group-create")}
           onOpenGroup={(id) => nav.go("group-detail", { id })}
         />
@@ -54,12 +44,14 @@ export const groupRenderers: ScreenRenderers = {
     }
     return (
       <GroupDetail
-        circle={circle}
-        contacts={contacts}
-        resolveAlias={(link) => store.resolveAlias(link)}
-        onEdit={() => nav.go("group-create", { id: circle.id })}
-        onDelete={() => {
-          onRemoveCircle(circle.id);
+        group={group}
+        onReadRoster={onReadGroupRoster}
+        onLeave={() => {
+          onLeaveGroup(group.groupId);
+          nav.go("people");
+        }}
+        onDisband={() => {
+          onDeleteGroup(group.groupId);
           nav.go("people");
         }}
       />

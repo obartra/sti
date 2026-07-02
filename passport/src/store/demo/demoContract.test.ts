@@ -81,7 +81,10 @@ async function walkGroupMembership(
   ).not.toBeNull();
   expect(await controller.pollGroupLifecycle(invited.session)).not.toBeNull();
   const roster = await controller.readGroupRoster(invited.session, groupId);
-  expect(roster.members).toEqual([]);
+  // A freshly created group's roster is just the creator (you); the seeded demo
+  // group (demoGroupSeed) is where a fuller mixed-color roster shows.
+  expect(roster.members).toHaveLength(1);
+  expect(roster.members[0]?.isSelf).toBe(true);
   const firstPend = pend[0];
   if (firstPend === undefined) throw new Error("expected a pending invite");
   const unrevoked = await controller.revokeGroupInvite(

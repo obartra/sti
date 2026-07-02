@@ -4,13 +4,16 @@ import type { RouteData, Screen } from "../routes.ts";
 import type {
   AliasIdentity,
   AliasRecord,
-  CircleRecord,
   ContactInvite,
   ContactLinkResult,
   ContactRecord,
+  CreateGroupInput,
+  CreateGroupResult,
+  GroupRecord,
   OwnerView,
   PassportStore,
   PendingKnock,
+  RosterMemberView,
 } from "../../../store/index.ts";
 import type { VanityRegisterResult } from "../../../api/client.ts";
 import type {
@@ -110,18 +113,18 @@ export interface ScreenCtx {
   ) => Promise<ContactLinkResult>;
   /** Ingest a return invite a contact sent back, completing the pending link. */
   onIngestContactReturn: (ret: ContactInvite) => void;
-  /** The owner's circles (private contact groupings); empty logged out. */
-  circles: CircleRecord[];
-  /** Create a circle from a name + chosen contact ids; resolves the new circle id. */
-  onCreateCircle: (name: string, memberContactIds: string[]) => Promise<string>;
-  /** Rename a circle and/or change its members (same id). */
-  onUpdateCircle: (
-    id: string,
-    name: string,
-    memberContactIds: string[],
-  ) => void;
-  /** Delete one circle by id (a local grouping; contacts are untouched). */
-  onRemoveCircle: (id: string) => void;
+  /** The shared groups the owner is in (doc 33); empty logged out. */
+  groups: GroupRecord[];
+  /** Create a shared group; resolves the outcome + new group id (doc 33). */
+  onCreateGroup: (
+    input: CreateGroupInput,
+  ) => Promise<{ result: CreateGroupResult; groupId: string }>;
+  /** Read a group's roster on open (folds the returned session). */
+  onReadGroupRoster: (groupId: string) => Promise<RosterMemberView[]>;
+  /** Leave a group (member self-exit). */
+  onLeaveGroup: (groupId: string) => void;
+  /** Disband a group the owner admins (teardown for everyone). */
+  onDeleteGroup: (groupId: string) => void;
   /** The owner's claimed findable name, or null (logged out, or none claimed). */
   vanityName: string | null;
   /** Claim a public findable name; resolves with the outcome (doc 17, gated). */

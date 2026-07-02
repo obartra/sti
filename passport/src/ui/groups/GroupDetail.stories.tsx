@@ -1,12 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { GroupDetail } from "./GroupDetail.tsx";
-import type { CircleRecord, ContactRecord } from "../../store/accountBlob.ts";
-import type { PassportStore } from "../../store/index.ts";
-import type { ResolvedView } from "../public/PublicResolution.tsx";
+import type { GroupRecord, RosterMemberView } from "../../store/index.ts";
 
-// Group detail: a header, the member roster (shown at any size, no hide floor),
-// and a delete control. Meaningful states: a larger resolved roster (mixed
-// blue/gray) and a small group, which now shows its roster just the same.
+// Group detail (doc 33): the calm roster of everyone's status color, plus the one
+// way out. Meaningful states: the admin view (disband) with a mixed roster that
+// includes a gray/absent member, and the member view (leave).
 const meta: Meta<typeof GroupDetail> = {
   title: "Passport/Groups/Detail",
   component: GroupDetail,
@@ -14,50 +12,73 @@ const meta: Meta<typeof GroupDetail> = {
 export default meta;
 type Story = StoryObj<typeof GroupDetail>;
 
-function contact(id: string, label: string, blue: boolean): ContactRecord {
+function group(extra: Partial<GroupRecord>): GroupRecord {
   return {
-    id,
-    label,
-    createdDay: 1,
-    expiresAt: null,
-    alias: { id, writeToken: "w", key: "k", isPublic: false },
-    ...(blue ? { theirStatusAlias: { id: `s-${id}`, key: "k" } } : {}),
+    groupId: "g1",
+    groupWriteToken: "w",
+    kg: "k",
+    myCardId: "self-card",
+    myCardWriteToken: "w",
+    handle: "thursday_run",
+    visibility: "public",
+    meetingKind: "recurring",
+    isAdmin: true,
+    ...extra,
   };
 }
 
-const contacts: ContactRecord[] = [
-  contact("a", "sam", true),
-  contact("b", "ari", true),
-  contact("c", "leo", false),
-  contact("d", "kit", true),
-  contact("e", "noa", false),
-  contact("f", "jules", true),
-  contact("g", "theo", false),
+function row(
+  cardId: string,
+  handle: string | null,
+  opts: { isAdmin: boolean; isSelf: boolean },
+): RosterMemberView {
+  return {
+    cardId,
+    card:
+      handle === null
+        ? null
+        : {
+            state: "blue",
+            labels: ["hiv"],
+            route: "hiv",
+            identity: { handle },
+          },
+    isAdmin: opts.isAdmin,
+    isSelf: opts.isSelf,
+  };
+}
+
+// A mixed roster: the reader (self + admin), two blue members, and one gray/absent
+// member who has not shared a color here yet.
+const roster: RosterMemberView[] = [
+  row("self-card", "you", { isAdmin: true, isSelf: true }),
+  row("m1", "sam", { isAdmin: false, isSelf: false }),
+  row("m2", "ari", { isAdmin: false, isSelf: false }),
+  row("m3", null, { isAdmin: false, isSelf: false }),
 ];
 
-// A resolver that reads blue for any contact carrying a status alias (id "s-*").
-const resolveAlias: PassportStore["resolveAlias"] = ({ id }) => {
-  const view: ResolvedView = { state: "blue", identity: { handle: "x" } };
-  return Promise.resolve(id.startsWith("s-") ? view : null);
-};
-
-const big: CircleRecord = {
-  id: "c1",
-  name: "Thursday crew",
-  memberContactIds: ["a", "b", "c", "d", "e", "f", "g"],
-};
-
-// A larger group: the roster shows each member's blue/gray color.
-export const WithRoster: Story = {
-  args: { circle: big, contacts, resolveAlias },
-};
-
-// A small group shows its roster too: being in the group is itself sharing your
-// color (doc 31), so there is no minimum size that hides it.
-export const SmallGroup: Story = {
+// Admin view: the disband control shows.
+export const AdminWithRoster: Story = {
   args: {
-    circle: { id: "c2", name: "Fern house", memberContactIds: ["a", "b", "c"] },
-    contacts,
-    resolveAlias,
+    group: group({}),
+    onReadRoster: () => Promise.resolve(roster),
+    onLeave: () => undefined,
+    onDisband: () => undefined,
+  },
+};
+
+// Member view: a non-admin sees the leave control (not disband). The reader's own
+// row is not the admin here.
+export const MemberView: Story = {
+  args: {
+    group: group({ isAdmin: false }),
+    onReadRoster: () =>
+      Promise.resolve([
+        row("admin-card", "sam", { isAdmin: true, isSelf: false }),
+        row("self-card", "you", { isAdmin: false, isSelf: true }),
+        row("m2", "ari", { isAdmin: false, isSelf: false }),
+      ]),
+    onLeave: () => undefined,
+    onDisband: () => undefined,
   },
 };

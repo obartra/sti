@@ -1,0 +1,108 @@
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, it, expect, vi } from "vitest";
+import { GroupDetail } from "./GroupDetail.tsx";
+import type { GroupRecord, RosterMemberView } from "../../store/index.ts";
+
+function group(extra: Partial<GroupRecord>): GroupRecord {
+  return {
+    groupId: "g1",
+    groupWriteToken: "w",
+    kg: "k",
+    myCardId: "self-card",
+    myCardWriteToken: "w",
+    handle: "thursday_run",
+    visibility: "public",
+    meetingKind: "recurring",
+    isAdmin: true,
+    ...extra,
+  };
+}
+
+function row(
+  cardId: string,
+  handle: string | null,
+  opts: { isAdmin: boolean; isSelf: boolean },
+): RosterMemberView {
+  return {
+    cardId,
+    card: handle === null ? null : { state: "blue", identity: { handle } },
+    isAdmin: opts.isAdmin,
+    isSelf: opts.isSelf,
+  };
+}
+
+const roster: RosterMemberView[] = [
+  row("self-card", "you", { isAdmin: true, isSelf: true }),
+  row("m1", "sam", { isAdmin: false, isSelf: false }),
+  row("m2", null, { isAdmin: false, isSelf: false }), // gray/absent
+];
+
+describe("GroupDetail", () => {
+  it("reads the roster on open and shows blue members plus the gray/absent note", async () => {
+    const onReadRoster = vi.fn().mockResolvedValue(roster);
+    render(
+      <GroupDetail
+        group={group({})}
+        onReadRoster={onReadRoster}
+        onLeave={vi.fn()}
+        onDisband={vi.fn()}
+      />,
+    );
+    expect(onReadRoster).toHaveBeenCalledWith("g1");
+    expect(await screen.findByText("sam")).toBeInTheDocument();
+    // The null-card member renders the honest absent note (a gray dot), never a color.
+    expect(
+      screen.getByText(/gray dot means they haven't shared/),
+    ).toBeInTheDocument();
+  });
+
+  it("admin: shows disband (not leave), and confirm fires the controller", async () => {
+    const user = userEvent.setup();
+    const onDisband = vi.fn();
+    render(
+      <GroupDetail
+        group={group({ isAdmin: true })}
+        onReadRoster={() => Promise.resolve(roster)}
+        onLeave={vi.fn()}
+        onDisband={onDisband}
+      />,
+    );
+    await screen.findByText("sam");
+    expect(
+      screen.queryByRole("button", { name: "Leave group" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Disband group" }));
+    await screen.findByText("Disband this group?");
+    await user.click(screen.getByRole("button", { name: "Disband" }));
+    expect(onDisband).toHaveBeenCalled();
+  });
+
+  it("member: shows leave (not disband), and confirm fires the controller", async () => {
+    const user = userEvent.setup();
+    const onLeave = vi.fn();
+    render(
+      <GroupDetail
+        group={group({ isAdmin: false })}
+        onReadRoster={() =>
+          Promise.resolve([
+            row("admin-card", "sam", { isAdmin: true, isSelf: false }),
+            row("self-card", "you", { isAdmin: false, isSelf: true }),
+          ])
+        }
+        onLeave={onLeave}
+        onDisband={vi.fn()}
+      />,
+    );
+    await screen.findByText("sam");
+    expect(
+      screen.queryByRole("button", { name: "Disband group" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Leave group" }));
+    await screen.findByText("Leave this group?");
+    await user.click(screen.getByRole("button", { name: "Leave" }));
+    await waitFor(() => expect(onLeave).toHaveBeenCalled());
+  });
+});
