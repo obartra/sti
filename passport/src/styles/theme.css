@@ -1,5 +1,45 @@
-/* Editorial theme tokens (doc 37). Everything the editorial language adds on
-   top of the vendored tokens lives here: the serif stack, the type scale,
-   hairlines, rhythm, and the derived AA status inks. Populated by the
-   editorial-primitives change; kept as the single home for app-level tokens
-   so the style lint can ban raw values everywhere else. */
+/* Editorial theme tokens (doc 37), layered over the vendored passport tokens
+   and beating them by layer order, never by editing them. The same vocabulary
+   info.sti.care runs (doc 36): the serif scale, hairlines, the frame, rhythm,
+   and status inks derived to pass WCAG AA as small text on the warm
+   background. This is the only app file where raw color values may appear
+   (the style lint enforces it); today none are needed, every value derives
+   from a token. */
+
+:root {
+  /* ---------------------------------------------------------------- type --- */
+  --font-serif:
+    "Source Serif 4", "Source Serif 4 Fallback", Georgia, "Times New Roman",
+    serif;
+  /* The display voice is the serif from here on (consumed by the .e-* heading
+     classes; the vendored token pointed at the sans). */
+  --font-display: var(--font-serif);
+  /* Clamps interpolate 320px -> 1120px viewports. */
+  --type-display: clamp(32px, 2.8vw + 23px, 54px);
+  --type-title: clamp(27px, 1.7vw + 21px, 40px); /* screen titles           */
+  --type-section: clamp(21px, 0.9vw + 18px, 28px); /* section titles        */
+  --type-lead: clamp(16px, 0.4vw + 15px, 18px);
+  --measure: 66ch;
+
+  /* ------------------------------------------------------------ surfaces --- */
+  --hairline: 1px solid var(--warm-200);
+  --hairline-strong: 1px solid var(--ink-200);
+
+  /* --------------------------------------------------------------- frame --- */
+  --frame-max: 1120px;
+  --frame-pad: clamp(16px, 5vw, 40px);
+  --grid-gap: clamp(16px, 2.5vw, 32px);
+
+  /* -------------------------------------------------------------- rhythm --- */
+  --rhythm-section: clamp(48px, 5vw + 32px, 88px);
+  --rhythm-block: var(--space-6);
+
+  /* ------------------------------------------------- derived status inks --- */
+  /* The status base colors fail AA as small text on warm-50, so the label
+     word takes an ink mixed toward ink-900 (measured on info: clear 5.4:1,
+     treat 5.7:1, none 4.9:1). The icon keeps the raw base color; the word
+     carries the meaning, so grayscale and color-blind reading is unchanged. */
+  --status-ink-clear: color-mix(in srgb, var(--clear-600) 85%, var(--ink-900));
+  --status-ink-treat: color-mix(in srgb, var(--treat-600) 60%, var(--ink-900));
+  --status-ink-none: var(--neutral-600);
+}

@@ -1,3 +1,164 @@
-/* Editorial component classes (doc 37): the .e-* grammar that replaces the
-   card/pill vocabulary screen by screen. Populated by the editorial-primitives
-   change; empty until then so the layered entry is a pure refactor. */
+/* The editorial component classes (doc 37): the .e-* grammar that replaces the
+   card/pill vocabulary screen by screen. Same rules as info.sti.care (doc 36):
+   serif display over the shared sans, hairlines instead of boxes, quiet
+   AA-derived status words, white cards reserved for the two callout kinds,
+   and the artifact treatment reserved for the badge card. Every class here
+   renders on the Editorial/Styleguide story, which is the review artifact and
+   the visual-regression target for the whole system. */
+
+/* ------------------------------------------------------------------ type --- */
+.e-display {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-display);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  color: var(--text-strong);
+  margin: 0;
+}
+
+.e-title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-title);
+  line-height: 1.12;
+  color: var(--text-strong);
+  margin: 0;
+}
+
+.e-section {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-section);
+  line-height: 1.2;
+  color: var(--text-strong);
+  margin: 0;
+}
+
+.e-lead {
+  font-size: var(--type-lead);
+  line-height: 1.6;
+  color: var(--text-body);
+  max-width: var(--measure);
+  margin: 0;
+}
+
+.e-eyebrow {
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.e-micro {
+  font-size: 13px;
+  line-height: var(--leading-normal);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* -------------------------------------------------------------- surfaces --- */
+/* One rule per boundary: a hairline opens a section; boxes do not. */
+.e-rule {
+  border: 0;
+  border-top: var(--hairline);
+  margin: 0;
+}
+
+/* The two sanctioned white callouts (doc 36): urgent carries a 3px status
+   left rule; action holds a CTA. Both flat: 1px ink border, small radius,
+   no shadow. */
+.e-card {
+  background: var(--surface-card);
+  border: var(--hairline-strong);
+  border-radius: var(--radius-xs);
+  padding: var(--space-5);
+}
+
+.e-card--urgent {
+  border-left: 3px solid var(--status-treat-base);
+}
+
+/* The artifact exception: the badge card (and only it) keeps object-ness.
+   Hairline border, restrained shadow, generous radius; never a glow. */
+.e-artifact {
+  background: var(--surface-card);
+  border: var(--hairline-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ------------------------------------------------------------------ rows --- */
+/* The dense hairline list row (info's condition/guide rows): touchable but
+   quiet, a rule per row, never a card per row. */
+.e-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 52px;
+  padding: var(--space-3) 0;
+  border-top: var(--hairline);
+}
+
+.e-row__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.e-row__title {
+  display: block;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--text-strong);
+}
+
+.e-row__sub {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+/* ---------------------------------------------------------------- status --- */
+/* The status word: uppercase, derived AA ink, heart glyph in the raw status
+   color beside it. Word plus icon is mandatory so status reads in grayscale
+   and for color-blind users. Never a pill, never color alone. */
+.e-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.e-status__icon {
+  display: inline-flex;
+}
+
+.e-status--clear {
+  color: var(--status-ink-clear);
+}
+
+.e-status--clear .e-status__icon {
+  color: var(--status-clear-base);
+}
+
+.e-status--treat {
+  color: var(--status-ink-treat);
+}
+
+.e-status--treat .e-status__icon {
+  color: var(--status-treat-base);
+}
+
+.e-status--none {
+  color: var(--status-ink-none);
+}
+
+.e-status--none .e-status__icon {
+  color: var(--status-none-base);
+}
