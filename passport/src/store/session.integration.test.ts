@@ -277,8 +277,10 @@ describe("owner session against a live blind store", () => {
     // Before the report, the contact's inbox is an existence-uniform decoy.
     expect(await pollInbox(api, theirNotify)).toBeNull();
 
+    // The merged fan-out (doc 33 slice 6) reports per INBOX, so a pinged contact
+    // shows up as its notify inbox id, not its contact id.
     const result = await ctl.notifyContactsOfPositive(linked);
-    expect(result.sent).toEqual([contact.id]);
+    expect(result.sent).toEqual([theirNotify.inboxId]);
 
     // The contact's inbox now holds a contentless partner-notify ping.
     const ping = await pollInbox(api, theirNotify);

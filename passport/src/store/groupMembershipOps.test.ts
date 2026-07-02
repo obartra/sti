@@ -7,7 +7,10 @@ import {
   rejectGroupInvite,
   removeGroupMember,
   readGroupRoster,
+  groupNotifyTargets,
 } from "./groupMembershipOps.ts";
+import { notifyPositive, pollPartnerNudge } from "./notifyOps.ts";
+import { parsePartnerPing } from "./partnerNotify.ts";
 import { pollGroupLifecycle } from "./groupIngestOps.ts";
 import {
   requestToJoin,
@@ -24,7 +27,7 @@ import {
   encodeLifecycleLeave,
   type GroupInvite,
 } from "./groupInvite.ts";
-import { writePing } from "./notifyInbox.ts";
+import { writePing, pollInbox } from "./notifyInbox.ts";
 import { createAccountManager, type AccountManager } from "./account.ts";
 import { createGrantKeyStore } from "./grantKeyStore.ts";
 import { createGroupJoinStore } from "./groupJoinStore.ts";
@@ -37,6 +40,7 @@ import {
 } from "./groupObject.ts";
 import { openGroupCard, wrapGroupKey, type GroupKey } from "./groupCrypto.ts";
 import type {
+  ContactRecord,
   GroupMemberSecret,
   GroupRecord,
   PendingGroupInvite,
@@ -52,7 +56,9 @@ import {
   base64urlToBytes,
   bytesToBase64url,
   deriveGroupMemberKey,
+  deriveGroupNotify,
   randomAliasId,
+  randomWriteToken,
   type Bytes,
 } from "../crypto/index.ts";
 
@@ -896,5 +902,165 @@ describe("group key rotation on remove/leave (doc 33, slice 5)", () => {
     expect(await parseGroupBlobForMember(blob, samKey)).toBeNull();
     const obj = await parseGroupBlobWithKg(blob, kgOf(polled, g.groupId));
     expect(must(obj, "obj").roster).toHaveLength(1);
+  });
+});
+
+describe("group notify scoping (doc 33, slice 6)", () => {
+  it("a positive fans out a decodable ping to each OTHER member, never to the reporter", async () => {
+    const server = fakeServer();
+    const g = await setupWithMembers(server.api, ["sam", "kim"]);
+    const Kg = kgOf(g.session, g.groupId);
+    const sam = must(g.members[0], "sam");
+    const kim = must(g.members[1], "kim");
+    const adminCardId = groupOf(g.session, g.groupId).myCardId;
+
+    // The admin reports a positive: the fan-out opens the group and pings co-members.
+    await notifyPositive(server.api, g.accounts, g.session);
+
+    // Each other member's derived inbox holds the SAME contentless PartnerPing the
+    // pairwise path produces, openable with that member's OWN derived channel key.
+    for (const cardId of [sam.cardId, kim.cardId]) {
+      const cap = await deriveGroupNotify(Kg, cardId);
+      const bytes = must(await pollInbox(server.api, cap), "ping bytes");
+      expect(must(parsePartnerPing(bytes), "ping").kind).toBe("partner-notify");
+    }
+
+    // The reporter does NOT ping itself: its own derived inbox is a decoy (opens to
+    // nothing), exactly like an untouched inbox.
+    const selfCap = await deriveGroupNotify(Kg, adminCardId);
+    expect(await pollInbox(server.api, selfCap)).toBeNull();
+  });
+
+  it("dedups by inboxId: a co-member who is also a pairwise contact is pinged once", async () => {
+    const server = fakeServer();
+    const g = await setupWithMembers(server.api, ["sam", "kim"]);
+    const Kg = kgOf(g.session, g.groupId);
+    const sam = must(g.members[0], "sam");
+    const kim = must(g.members[1], "kim");
+
+    // A pairwise contact whose notify channel is EXACTLY sam's group-notify channel
+    // (the same person reachable two ways): the merged burst must write it once.
+    const shared = await deriveGroupNotify(Kg, sam.cardId);
+    const contact: ContactRecord = {
+      id: randomAliasId(),
+      label: "sam",
+      createdDay: 0,
+      expiresAt: null,
+      alias: {
+        id: randomAliasId(),
+        writeToken: randomWriteToken(),
+        key: randomAliasId(),
+        isPublic: false,
+      },
+      theirNotify: shared,
+    };
+    const session: OwnerSession = {
+      root: g.session.root,
+      blob: { ...g.session.blob, contacts: [contact] },
+    };
+
+    // Count writes per inbox by wrapping putInbox.
+    const writes: string[] = [];
+    const countingApi: ApiClient = {
+      ...server.api,
+      putInbox: (id, payload, token) => {
+        writes.push(id);
+        return server.api.putInbox(id, payload, token);
+      },
+    };
+
+    await notifyPositive(countingApi, g.accounts, session);
+
+    // Sam's shared inbox is written exactly once (deduped), and kim once too.
+    expect(writes.filter((id) => id === shared.inboxId)).toHaveLength(1);
+    const kimCap = await deriveGroupNotify(Kg, kim.cardId);
+    expect(writes.filter((id) => id === kimCap.inboxId)).toHaveLength(1);
+  });
+
+  it("pollPartnerNudge returns true (aggregate, no group attribution) after a co-member reports", async () => {
+    const server = fakeServer();
+    const g = await setupWithMembers(server.api, ["sam"]);
+    const sam = must(g.members[0], "sam");
+
+    // The member syncs so it holds Kg and can derive its own group-notify inbox.
+    const synced = await readGroupRoster(
+      server.api,
+      sam.accounts,
+      sam.session,
+      g.groupId,
+    );
+    expect(await pollPartnerNudge(server.api, synced.session)).toBe(false);
+
+    // The admin reports; the member now sees the single aggregate nudge.
+    await notifyPositive(server.api, g.accounts, g.session);
+    expect(await pollPartnerNudge(server.api, synced.session)).toBe(true);
+  });
+
+  it("after a Kg rotation the fan-out uses the NEW channels: the new kg sees it, the old is dead", async () => {
+    const server = fakeServer();
+    const g = await setupWithMembers(server.api, ["sam", "kim"]);
+    const sam = must(g.members[0], "sam");
+    const kim = must(g.members[1], "kim");
+
+    // Kim syncs on the OLD key first.
+    const kimOld = await readGroupRoster(
+      server.api,
+      kim.accounts,
+      kim.session,
+      g.groupId,
+    );
+
+    // The admin removes sam, rotating to Kg', then reports: the fan-out opens under
+    // the fresh Kg' and pings the NEW channels only.
+    const removed = await removeGroupMember(server.api, g.accounts, g.session, {
+      groupId: g.groupId,
+      cardId: sam.cardId,
+    });
+    await notifyPositive(server.api, g.accounts, removed);
+
+    // Kim re-syncs to Kg' and sees the nudge; the stale session still on the old Kg
+    // polls a dead channel and sees nothing.
+    const kimNew = await readGroupRoster(
+      server.api,
+      kim.accounts,
+      kimOld.session,
+      g.groupId,
+    );
+    expect(await pollPartnerNudge(server.api, kimNew.session)).toBe(true);
+    expect(await pollPartnerNudge(server.api, kimOld.session)).toBe(false);
+  });
+
+  it("a removed reporter cannot open the group and pings no one", async () => {
+    const server = fakeServer();
+    const g = await setupWithMembers(server.api, ["sam"]);
+    const sam = must(g.members[0], "sam");
+    // Sam syncs (caches Kg), then the admin removes them (rotating Kg').
+    const synced = await readGroupRoster(
+      server.api,
+      sam.accounts,
+      sam.session,
+      g.groupId,
+    );
+    await removeGroupMember(server.api, g.accounts, g.session, {
+      groupId: g.groupId,
+      cardId: sam.cardId,
+    });
+
+    // groupNotifyTargets fails closed for the locked-out reporter (no targets), and
+    // notifyPositive therefore sends nothing (sam has no pairwise contacts either).
+    const { targets } = await groupNotifyTargets(
+      server.api,
+      sam.accounts,
+      synced.session,
+      g.groupId,
+    );
+    expect(targets).toHaveLength(0);
+    const result = await notifyPositive(
+      server.api,
+      sam.accounts,
+      synced.session,
+    );
+    expect(result.sent).toHaveLength(0);
+    expect(result.failed).toHaveLength(0);
   });
 });

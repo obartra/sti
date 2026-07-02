@@ -28,6 +28,7 @@ import {
   base64urlToBytes,
   bytesToBase64url,
   deriveGroupMemberKey,
+  deriveGroupNotify,
   randomAliasId,
   randomWriteToken,
   type Bytes,
@@ -52,7 +53,12 @@ import {
   groupInviteUrl,
   type GroupInvite,
 } from "./groupInvite.ts";
-import { mintInbox, writePing, type InboxCapability } from "./notifyInbox.ts";
+import {
+  mintInbox,
+  writePing,
+  type InboxCapability,
+  type NotifyCapability,
+} from "./notifyInbox.ts";
 import { publishGroupCard } from "./groupOps.ts";
 import type { ResolvedView } from "../ui/public/PublicResolution.tsx";
 
@@ -353,6 +359,38 @@ export async function readGroupRoster(
   if (opened === null) return { session, obj: null, members: [] };
   const members = await readRosterCards(api, opened.Kg, opened.obj, group);
   return { session: opened.session, obj: opened.obj, members };
+}
+
+/**
+ * The group notify targets (doc 33, slice 6): open the group as this reader (fetching
+ * the blob fresh and recovering/caching the CURRENT `Kg`, syncing past a rotation),
+ * then derive the group-notify channel of every OTHER member in the current roster.
+ * These are what a reporter's positive fans out to, as ordinary contentless pings.
+ * Both event and recurring groups notify the current roster minus self (there is no
+ * membership-history log and the shipped pairwise notify is un-windowed, so the scope
+ * is not branched on `meetingKind` here). Fails CLOSED to no targets when the reader
+ * cannot open the group (e.g. removed), so a locked-out reporter pings no one. The
+ * session is returned because opening may cache `Kg`, a persistence side effect the
+ * caller keeps.
+ */
+export async function groupNotifyTargets(
+  api: ApiClient,
+  accounts: AccountManager,
+  session: OwnerSession,
+  groupId: string,
+): Promise<{ session: OwnerSession; targets: NotifyCapability[] }> {
+  const group = session.blob.groups?.find((g) => g.groupId === groupId);
+  if (group === undefined) return { session, targets: [] };
+  const blob = await api.getGroupBlob(groupId).catch(() => null);
+  if (blob === null) return { session, targets: [] };
+  const opened = await openForReader(api, accounts, session, { group, blob });
+  if (opened === null) return { session, targets: [] };
+  const targets = await Promise.all(
+    opened.obj.roster
+      .filter((entry) => entry.cardId !== group.myCardId)
+      .map((entry) => deriveGroupNotify(opened.Kg, entry.cardId)),
+  );
+  return { session: opened.session, targets };
 }
 
 // Resolve `Kg` + the group object for a reader (doc 33). Fast path: a Kg-holder (the

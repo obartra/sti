@@ -52,7 +52,7 @@ import {
 } from "./circleOps.ts";
 import type { ContactInvite } from "./contactInvite.ts";
 import type { NotifyLockResult } from "./partnerNotify.ts";
-import { notifyLinkedContacts, pollPartnerNudge } from "./notifyOps.ts";
+import { notifyPositive, pollPartnerNudge } from "./notifyOps.ts";
 import { gatherKnocks, grantPending } from "./knockOps.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { revokeAlias } from "./publish.ts";
@@ -310,11 +310,13 @@ export interface SessionController extends GroupMembershipController {
     ret: ContactInvite,
   ): Promise<OwnerSession>;
   /**
-   * Silently notify every linked contact that a positive was reported (doc 13):
-   * write one contentless ping to each contact's inbox and queue a wake. The
-   * reporter chooses nothing and this is never surfaced at the report moment; it
-   * just happens. Returns the per-contact outcome (the caller ignores it). A no-op
-   * for contacts with no notify capability yet.
+   * Silently notify everyone a reported positive implies was exposed: every linked
+   * contact (doc 13) AND every co-member of every group the owner is in (doc 33),
+   * as one merged batch of contentless pings, each with a queued wake. Group pings
+   * are never attributed to the group or the reporter, and a co-member who is also a
+   * pairwise contact is pinged once. The reporter chooses nothing and this is never
+   * surfaced at the report moment; it just happens. Returns the per-inbox outcome
+   * (the caller ignores it). A no-op for contacts/groups not yet notifiable.
    */
   notifyContactsOfPositive(session: OwnerSession): Promise<NotifyLockResult>;
   /**
@@ -672,7 +674,8 @@ export function createSessionController(deps: SessionDeps): SessionController {
       return ingestContactReturn(accounts, session, ret);
     },
 
-    notifyContactsOfPositive: (session) => notifyLinkedContacts(api, session),
+    notifyContactsOfPositive: (session) =>
+      notifyPositive(api, accounts, session),
 
     hasPartnerNudge: (session) => pollPartnerNudge(api, session),
 

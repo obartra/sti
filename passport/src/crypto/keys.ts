@@ -19,6 +19,8 @@
  */
 
 import { bytesToBase64url, type Bytes } from "./encoding.ts";
+import type { GroupKey } from "../store/groupCrypto.ts";
+import type { NotifyCapability } from "../store/notifyInbox.ts";
 
 const ID_BYTES = 32; // 256-bit, encodes to the contract's fixed 43-char id
 const PBKDF2_ITERATIONS = 600_000; // OWASP 2023 floor for PBKDF2-HMAC-SHA256
@@ -207,6 +209,50 @@ export function deriveGroupMemberKey(
   groupId: string,
 ): Promise<Bytes> {
   return hkdfFromKey(root, "sti.care/group-member/v1/" + groupId, 32);
+}
+
+/**
+ * Derive a co-member's group-notify channel (doc 33, slice 6) purely from the
+ * shared group key `Kg` and that member's public roster `cardId`. When a member
+ * reports a positive, the app writes an ordinary contentless partner-notify ping
+ * (doc 13) to every co-member's derived inbox, so the group scopes the notify
+ * without ever being named. Recipients poll their OWN derived inbox for the same
+ * group. The four labels below are domain-separated exactly like deriveAccountId vs
+ * deriveAccountKey vs deriveAccountWriteToken: the wire ids (inbox, routing token)
+ * are independent HKDF outputs from the key that seals the ping and never leaves the
+ * device, so the server cannot tell a group of these pings apart from unrelated
+ * pairwise ones.
+ *
+ * Why every member can derive every co-member's channel: `Kg` + the public roster
+ * are exactly what every member already holds, and the privacy boundary in doc 33 is
+ * the server plus everyone OUTSIDE the group, never member-from-member (members see
+ * each other by design). Deriving from `Kg` + `cardId` (not a per-member secret) is
+ * what lets a reporter reach co-members it has no pairwise link with.
+ *
+ * Accepted residual (in-group only): because the channel derives purely from `Kg` +
+ * the public roster, ANY member can also WRITE to (and overwrite) ANY co-member's
+ * group-notify inbox, so a hostile co-member could clobber a pending, not-yet-polled
+ * ping. This is intrinsic to a `Kg`-derived channel, sits inside doc 33's
+ * member-from-member trust boundary (a member who wants to grief already sees the
+ * whole roster and can leave), and is bounded because removal rotates `Kg`, which
+ * kills every channel the departed member could derive.
+ */
+export async function deriveGroupNotify(
+  Kg: GroupKey,
+  cardId: string,
+): Promise<NotifyCapability> {
+  const [inboxId, writeToken, key, routingToken] = await Promise.all([
+    hkdfFromBytes(Kg, "sti.care/group-notify/inbox/v1/" + cardId, ID_BYTES),
+    hkdfFromBytes(Kg, "sti.care/group-notify/write/v1/" + cardId, ID_BYTES),
+    hkdfFromBytes(Kg, "sti.care/group-notify/key/v1/" + cardId, ID_BYTES),
+    hkdfFromBytes(Kg, "sti.care/group-notify/route/v1/" + cardId, ID_BYTES),
+  ]);
+  return {
+    inboxId: bytesToBase64url(inboxId),
+    writeToken: bytesToBase64url(writeToken),
+    key: bytesToBase64url(key),
+    routingToken: bytesToBase64url(routingToken),
+  };
 }
 
 /**
