@@ -1,9 +1,8 @@
 ---
 // The shared page frame for info.sti.care. One layered stylesheet entry
-// (styles/global.css) carries the passport tokens, the editorial theme, and,
-// during the migration, the legacy sheets. Chrome is the flat editorial header
-// and footer. Pages built on the editorial system pass `editorial`; pages not
-// yet migrated keep the legacy phone-column main (and its `wide` modifier).
+// (styles/global.css) carries the passport tokens and the editorial theme
+// (doc 36). Chrome is the flat editorial header and footer; pages compose the
+// layout system's frames, grids, and zones themselves.
 import "../styles/global.css";
 import SiteHeader from "../components/SiteHeader.astro";
 import SiteFooter from "../components/SiteFooter.astro";
@@ -11,14 +10,10 @@ import SiteFooter from "../components/SiteFooter.astro";
 interface Props {
   title: string;
   description?: string;
-  editorial?: boolean;
-  wide?: boolean;
 }
 const {
   title,
   description = "Plain, judgment-free answers about sexual health, testing, and prevention.",
-  editorial = false,
-  wide = false,
 } = Astro.props;
 ---
 
@@ -42,11 +37,7 @@ const {
   </head>
   <body>
     <SiteHeader />
-    <main
-      class:list={editorial
-        ? ["l-page"]
-        : ["info-page", { "info-page--wide": wide }]}
-    >
+    <main class="l-page">
       <slot />
     </main>
     <SiteFooter />

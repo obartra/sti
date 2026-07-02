@@ -3,8 +3,6 @@
 
      passport   the app's design tokens and primitives, imported verbatim and
                 READ-ONLY (that directory is synced from the design source)
-     legacy     the pre-editorial sheets, kept only while the migration runs;
-                deleted when the last page moves over
      theme      info-level tokens layered over the passport ones (the serif,
                 the editorial scale, hairlines, frame, derived status inks)
      layout     the frame, the 12-column grid, container-query zones
@@ -16,11 +14,9 @@
    these by design: component-local decisions are final. Global files never
    style component internals. */
 
-@layer passport, legacy, theme, layout, components, utilities;
+@layer passport, theme, layout, components, utilities;
 
 @import "../../../passport/src/design/index.css" layer(passport);
-@import "./site.css" layer(legacy);
-@import "./desktop.css" layer(legacy);
 @import "./fonts.css" layer(theme);
 @import "./theme.css" layer(theme);
 @import "./layout.css" layer(layout);

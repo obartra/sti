@@ -10,7 +10,8 @@
     "preview": "astro preview",
     "check": "astro check",
     "lint:voice": "node scripts/voice-lint.mjs",
-    "test": "npm run check && npm run lint:voice",
+    "lint:styles": "node scripts/style-lint.mjs",
+    "test": "npm run check && npm run lint:voice && npm run lint:styles",
     "test:visual": "./scripts/visual-regression.sh",
     "test:visual:update": "./scripts/visual-regression.sh --update"
   },

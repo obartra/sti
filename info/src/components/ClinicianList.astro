@@ -1,0 +1,63 @@
+---
+// The when-to-see-a-clinician block in its quiet article form: eyebrow, one
+// reassuring line, and the three plain reasons.
+import Icon from "./Icon.astro";
+import { LIBRARY as c } from "../data/library.ts";
+---
+
+<section class="clin">
+  <h2 class="u-eyebrow">{c.clinician.title}</h2>
+  <p class="clin__sub">{c.clinician.body}</p>
+  <ul class="clin__items">
+    {
+      c.clinician.items.map((row) => (
+        <li class="clin__item">
+          <span class="clin__icon">
+            <Icon name="check" size={16} />
+          </span>
+          <span>
+            <strong class="clin__term">{row.term}</strong>, {row.sub}
+          </span>
+        </li>
+      ))
+    }
+  </ul>
+</section>
+
+<style>
+  .clin {
+    border-top: var(--hairline);
+    padding-top: var(--space-4);
+  }
+  .clin__sub {
+    font-size: 14px;
+    line-height: var(--leading-normal);
+    color: var(--text-muted);
+    margin: var(--space-2) 0 0;
+  }
+  .clin__items {
+    list-style: none;
+    margin: var(--space-3) 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .clin__item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 14px;
+    line-height: var(--leading-normal);
+    color: var(--text-body);
+  }
+  .clin__icon {
+    display: inline-flex;
+    flex: none;
+    margin-top: 2px;
+    color: var(--text-muted);
+  }
+  .clin__term {
+    color: var(--text-strong);
+  }
+</style>
