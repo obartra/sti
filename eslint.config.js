@@ -25,4 +25,15 @@ export default [
       globals: { ...globals.node },
     },
   },
+  {
+    // CJS tooling (the info site's lost-pixel config). Runs under node; its
+    // beforeScreenshot callback executes inside the captured page, hence the
+    // browser globals.
+    files: ["**/*.cjs"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "commonjs",
+      globals: { ...globals.node, ...globals.browser },
+    },
+  },
 ];

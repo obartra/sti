@@ -10,7 +10,9 @@
     "preview": "astro preview",
     "check": "astro check",
     "lint:voice": "node scripts/voice-lint.mjs",
-    "test": "npm run check && npm run lint:voice"
+    "test": "npm run check && npm run lint:voice",
+    "test:visual": "./scripts/visual-regression.sh",
+    "test:visual:update": "./scripts/visual-regression.sh --update"
   },
   "dependencies": {
     "astro": "^4.16.18"

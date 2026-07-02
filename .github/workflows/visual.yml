@@ -13,7 +13,7 @@ name: Visual regression
 on:
   push:
     branches: [main]
-    paths: ["passport/**", ".github/workflows/visual.yml"]
+    paths: ["passport/**", "info/**", ".github/workflows/visual.yml"]
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
   workflow_dispatch:
@@ -71,11 +71,46 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # The info site's capture+diff: a small corpus (each built page at a phone and
+  # a desktop width), so one job with no shards. Same pinned image, same label
+  # mechanics as the passport shards.
+  info-visual:
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+        !contains(github.event.pull_request.labels.*.name, 'screenshot:update'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: info
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: ./.github/actions/setup-node
+        with:
+          cache-dependency-path: info/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:visual
+      - name: Upload diff artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: visual-regression-diff-info
+          path: |
+            info/.lostpixel/current/
+            info/.lostpixel/difference/
+          if-no-files-found: ignore
+          retention-days: 14
+
   # Aggregate gate: keeps the required status check named "visual" stable while
-  # the work fans out above. Passes only when every shard passed; on the
-  # screenshot:update path it is skipped, exactly like the shards.
+  # the work fans out above. Passes only when every shard and the info job
+  # passed; on the screenshot:update path it is skipped, exactly like them.
   visual:
-    needs: visual-shard
+    needs: [visual-shard, info-visual]
     if: |
       always() && (
         github.event_name == 'push' ||
@@ -85,11 +120,12 @@ jobs:
       )
     runs-on: ubuntu-latest
     steps:
-      - name: Require every shard to pass
+      - name: Require every shard and the info job to pass
         run: |
-          result='${{ needs.visual-shard.result }}'
-          echo "visual-shard result: ${result}"
-          test "${result}" = "success"
+          shards='${{ needs.visual-shard.result }}'
+          info='${{ needs.info-visual.result }}'
+          echo "visual-shard result: ${shards}; info-visual result: ${info}"
+          test "${shards}" = "success" && test "${info}" = "success"
 
   update:
     # Only on the label being ADDED (not on every push while it is present), so the
@@ -131,6 +167,14 @@ jobs:
       - run: npm ci
       - run: npm run build-storybook
       - run: npm run test:visual:update
+      # The info site's baselines regenerate in the same pass so one label click
+      # covers both surfaces; unchanged pixels produce no diff to commit.
+      - run: npm ci
+        working-directory: info
+      - run: npm run build
+        working-directory: info
+      - run: npm run test:visual:update
+        working-directory: info
       - name: Commit + push updated baselines
         env:
           REASON: ${{ github.event.inputs.reason || 'screenshot:update label triggered regeneration' }}
@@ -150,7 +194,7 @@ jobs:
           if [ -n "${PR}" ]; then
             gh pr edit "${PR}" --remove-label "screenshot:update" || true
           fi
-          git add -A visual-baselines/
+          git add -A visual-baselines/ ../info/visual-baselines/
           if git diff --staged --quiet; then
             echo "No baseline changes."
             exit 0
