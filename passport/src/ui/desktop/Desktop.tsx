@@ -94,22 +94,13 @@ export function DesktopShell({
   wide: wideProp,
   children,
 }: DesktopShellProps) {
-  const colW = roomy ? 860 : 600;
   const headerTitle = title ?? NAV_ITEMS.find((n) => n.id === tab)?.label ?? "";
   const autoWide = useMinWidth(1400);
   const wide = wideProp ?? autoWide;
   const showRail = wide && !sub;
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        display: "flex",
-        background: "var(--surface-app)",
-        color: "var(--text-body)",
-      }}
-    >
+    <div className="desk-shell">
       <Sidebar
         tab={tab}
         onTab={onTab}
@@ -119,16 +110,7 @@ export function DesktopShell({
         avatarSrc={avatarSrc}
       />
 
-      <div
-        style={{
-          flex: 1,
-          minWidth: 0,
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          position: "relative",
-        }}
-      >
+      <div className="desk-shell__body">
         <Header
           sub={sub}
           headerTitle={headerTitle}
@@ -138,7 +120,7 @@ export function DesktopShell({
           onBell={onBell}
         />
         <MainContent
-          colW={colW}
+          roomy={roomy}
           showRail={showRail}
           onShare={onShare}
           onViewAs={onViewAs}

@@ -157,9 +157,6 @@
     "styles": 19,
     "legacy": 2
   },
-  "src/ui/desktop/Desktop.tsx": {
-    "styles": 2
-  },
   "src/ui/desktop/DesktopFooter.tsx": {
     "styles": 10
   },
@@ -169,10 +166,6 @@
   "src/ui/desktop/DesktopLandingParts.tsx": {
     "styles": 29,
     "hex": 1,
-    "legacy": 1
-  },
-  "src/ui/desktop/DesktopShellParts.tsx": {
-    "styles": 27,
     "legacy": 1
   },
   "src/ui/findable/BioMock.stories.tsx": {

@@ -1,11 +1,7 @@
 import type { ReactNode } from "react";
-import {
-  Button,
-  IconButton,
-  Card,
-  Avatar,
-} from "../../design/components/index.ts";
+import { Button, IconButton, Avatar } from "../../design/components/index.ts";
 import { avatarFor } from "../../lib/avatars.ts";
+import { cx } from "../../lib/cx.ts";
 import { Matrix } from "../../lib/qr.tsx";
 import {
   Passport,
@@ -20,10 +16,11 @@ import {
   type IconProps,
 } from "../../design/icons.tsx";
 import type { Tab } from "../app/routes.ts";
+import "./desktop-shell.css";
 
 /* Chrome pieces for the desktop app shell (sidebar, header, share rail, content
    area), split out of Desktop.tsx so each file stays under the length ceiling.
-   Faithful port of the design's app/desktop.jsx; output is unchanged. */
+   Styled by desktop-shell.css on the editorial grammar (doc 37). */
 
 export type DesktopTab = Tab;
 
@@ -70,26 +67,7 @@ function NavItem({
       type="button"
       onClick={onClick}
       aria-current={active}
-      className="sti-desknav"
-      style={{
-        appearance: "none",
-        border: "none",
-        cursor: "pointer",
-        width: "100%",
-        textAlign: "left",
-        display: "flex",
-        alignItems: "center",
-        gap: 13,
-        padding: "11px 13px",
-        borderRadius: "var(--radius-md)",
-        font: "inherit",
-        fontSize: 15,
-        fontWeight: active ? 700 : 600,
-        color: active ? "var(--text-accent)" : "var(--text-body)",
-        background: active ? "var(--accent-soft)" : "transparent",
-        transition:
-          "background var(--dur-fast) var(--ease-gentle), color var(--dur-fast) var(--ease-gentle)",
-      }}
+      className={cx("desk-nav-item", active && "desk-nav-item--active")}
     >
       <Ico size={22} />
       <span>{label}</span>
@@ -108,50 +86,16 @@ function OwnerChip({
   onViewAs?: (() => void) | undefined;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onViewAs}
-      style={{
-        appearance: "none",
-        cursor: "pointer",
-        width: "100%",
-        textAlign: "left",
-        marginTop: 8,
-        display: "flex",
-        alignItems: "center",
-        gap: 11,
-        padding: "10px 12px",
-        borderRadius: "var(--radius-md)",
-        border: "1px solid var(--divider)",
-        background: "var(--surface-app)",
-      }}
-    >
+    <button type="button" onClick={onViewAs} className="desk-owner">
       <Avatar
         src={avatarSrc ?? (handle ? avatarFor(handle) : undefined)}
         size="sm"
       />
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span
-          style={{
-            display: "block",
-            fontSize: 14,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-          }}
-        >
-          {handle ? `@${handle}` : ""}
-        </span>
-        <span
-          style={{
-            display: "block",
-            fontSize: 12,
-            color: "var(--text-subtle)",
-          }}
-        >
-          {COPY.home.viewAs}
-        </span>
+      <span className="desk-owner__body">
+        <span className="desk-owner__handle">{handle ? `@${handle}` : ""}</span>
+        <span className="desk-owner__hint">{COPY.home.viewAs}</span>
       </span>
-      <Eye size={16} style={{ color: "var(--text-subtle)", flex: "none" }} />
+      <Eye size={16} className="desk-owner__eye" />
     </button>
   );
 }
@@ -173,28 +117,12 @@ export function Sidebar({
   avatarSrc?: string | undefined;
 }) {
   return (
-    <aside
-      style={{
-        width: 264,
-        flex: "none",
-        height: "100%",
-        boxSizing: "border-box",
-        background: "var(--surface-card)",
-        borderRight: "1px solid var(--divider)",
-        display: "flex",
-        flexDirection: "column",
-        padding: "22px 16px 16px",
-      }}
-    >
-      <div style={{ padding: "0 8px 18px" }}>
-        <img
-          src="/assets/logo/logo-wordmark.svg"
-          alt="sti.care"
-          style={{ height: 30 }}
-        />
+    <aside className="desk-side">
+      <div className="desk-side__brand">
+        <img src="/assets/logo/logo-wordmark.svg" alt="sti.care" />
       </div>
 
-      <nav style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <nav className="desk-side__nav">
         {NAV_ITEMS.map((it) => (
           <NavItem
             key={it.id}
@@ -206,7 +134,7 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div style={{ marginTop: 16 }}>
+      <div className="desk-side__report">
         <Button
           variant="secondary"
           size="md"
@@ -218,7 +146,7 @@ export function Sidebar({
         </Button>
       </div>
 
-      <div style={{ flex: 1 }} />
+      <div className="desk-side__spacer" />
 
       <OwnerChip handle={handle} avatarSrc={avatarSrc} onViewAs={onViewAs} />
     </aside>
@@ -242,63 +170,17 @@ export function Header({
   onBell?: (() => void) | undefined;
 }) {
   return (
-    <header
-      style={{
-        flex: "none",
-        height: 66,
-        boxSizing: "border-box",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "0 32px",
-        borderBottom: "1px solid var(--divider)",
-        background: "color-mix(in srgb, var(--surface-app), transparent 12%)",
-        backdropFilter: "saturate(1.2) blur(8px)",
-        WebkitBackdropFilter: "saturate(1.2) blur(8px)",
-        position: "sticky",
-        top: 0,
-        zIndex: 5,
-      }}
-    >
-      <div
-        style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}
-      >
+    <header className="desk-header">
+      <div className="desk-header__lead">
         {sub ? (
-          <button
-            type="button"
-            onClick={onBack}
-            style={{
-              appearance: "none",
-              border: "none",
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 7,
-              background: "transparent",
-              color: "var(--text-body)",
-              font: "inherit",
-              fontSize: 14.5,
-              fontWeight: 600,
-              padding: "8px 6px",
-            }}
-          >
+          <button type="button" onClick={onBack} className="desk-header__back">
             <Back size={20} /> Back
           </button>
         ) : (
-          <span
-            style={{
-              fontSize: 13,
-              fontWeight: 700,
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-              color: "var(--text-subtle)",
-            }}
-          >
-            {headerTitle}
-          </span>
+          <span className="desk-header__title">{headerTitle}</span>
         )}
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div className="desk-header__actions">
         <IconButton aria-label="Notifications" onClick={onBell}>
           <Bell size={20} />
         </IconButton>
@@ -326,39 +208,14 @@ function ShareRail({
   onViewAs?: (() => void) | undefined;
 }) {
   return (
-    <aside style={{ width: 300, flex: "none" }}>
-      <div style={{ position: "sticky", top: 0 }}>
-        <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div
-            style={{
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              color: "var(--text-subtle)",
-            }}
-          >
-            Your passport
-          </div>
-          <div
-            style={{
-              alignSelf: "center",
-              background: "var(--surface-app)",
-              borderRadius: "var(--radius-md)",
-              padding: 16,
-              boxShadow: "var(--shadow-sm)",
-            }}
-          >
+    <aside className="desk-rail">
+      <div className="desk-rail__sticky">
+        <div className="e-card desk-rail__card">
+          <div className="desk-rail__label">Your passport</div>
+          <div className="desk-rail__qr">
             <Matrix size={156} seed="a7f3k9q2" color="var(--ink-900)" />
           </div>
-          <div
-            style={{
-              fontSize: 13,
-              color: "var(--text-muted)",
-              lineHeight: 1.5,
-              textAlign: "center",
-            }}
-          >
+          <div className="desk-rail__sub">
             One status, ready to share. Never the details.
           </div>
           <Button
@@ -379,7 +236,7 @@ function ShareRail({
           >
             {COPY.home.viewAs}
           </Button>
-        </Card>
+        </div>
       </div>
     </aside>
   );
@@ -387,37 +244,40 @@ function ShareRail({
 
 // ── Main content area ───────────────────────────────────────────────────────
 export function MainContent({
-  colW,
+  roomy,
   showRail,
   onShare,
   onViewAs,
   children,
 }: {
-  colW: number;
+  roomy: boolean;
   showRail: boolean;
   onShare?: (() => void) | undefined;
   onViewAs?: (() => void) | undefined;
   children?: ReactNode;
 }) {
   return (
-    <main style={{ flex: 1, overflowY: "auto", padding: "36px 32px 64px" }}>
+    <main className="desk-main">
       {showRail ? (
         <div
-          style={{
-            display: "flex",
-            gap: 44,
-            maxWidth: colW + 344,
-            margin: "0 auto",
-            alignItems: "flex-start",
-          }}
+          className={cx("desk-main__wide", roomy && "desk-main__wide--roomy")}
         >
-          <div style={{ flex: "1 1 0", minWidth: 0, maxWidth: colW }}>
+          <div
+            className={cx("desk-main__col", roomy && "desk-main__col--roomy")}
+          >
             {children}
           </div>
           <ShareRail onShare={onShare} onViewAs={onViewAs} />
         </div>
       ) : (
-        <div style={{ maxWidth: colW, margin: "0 auto" }}>{children}</div>
+        <div
+          className={cx(
+            "desk-main__center",
+            roomy && "desk-main__center--roomy",
+          )}
+        >
+          {children}
+        </div>
       )}
     </main>
   );
