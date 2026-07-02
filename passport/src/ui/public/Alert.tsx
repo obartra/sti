@@ -41,15 +41,7 @@ export function Alert({
   onBack,
 }: AlertProps) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 20,
-        width: "100%",
-        maxWidth: 600,
-      }}
-    >
+    <div className="al">
       {preview && <PreviewBanner onBack={onBack} />}
       <AlertHero />
       <TestingAction onFindTesting={onFindTesting} />

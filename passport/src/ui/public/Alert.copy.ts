@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { PARTNER_NOTIFY_PROMPT } from "../../copy/canonical.ts";
 
 export const C = {
@@ -38,28 +37,3 @@ export const PARTNERS = {
   previewBanner: "Previewing what they’ll receive",
   backToReview: "Back to review",
 } as const;
-
-export const finderBtn: CSSProperties = {
-  appearance: "none",
-  border: "none",
-  background: "transparent",
-  cursor: "pointer",
-  width: "100%",
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-  padding: "10px 8px",
-  borderRadius: "var(--radius-md)",
-  textAlign: "left",
-};
-export const finderTile: CSSProperties = {
-  flex: "none",
-  width: 38,
-  height: 38,
-  borderRadius: "var(--radius-sm)",
-  background: "var(--accent-soft)",
-  color: "var(--text-accent)",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
