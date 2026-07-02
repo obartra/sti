@@ -6,6 +6,9 @@
 export const LIBRARY = {
   title: "STI basics",
   sub: "Learn and share what to do. No judgment. One page each.",
+  eyebrow: "Free STI guides",
+  siteNote:
+    "Plain guides from the team behind sti.care. Based on U.S. CDC guidance, not medical advice.",
   shareLabel: "Share this page",
   copied: "Link copied",
   howToTest: "How to test for it",
@@ -54,6 +57,24 @@ export const LIBRARY = {
       ],
     ],
     cta: "Find a clinic near me",
+  },
+  clinician: {
+    title: "When to see a clinician",
+    body: "Clinics handle this every day. No lecture, no judgment.",
+    items: [
+      [
+        "You have symptoms",
+        "Sores, discharge, or burning. Most are easy to treat.",
+      ],
+      [
+        "A partner tested positive",
+        "Get tested too, even if you feel fine. Many STIs show no signs.",
+      ],
+      [
+        "You may have been exposed to HIV",
+        "Ask about PEP right away. It works best within 72 hours.",
+      ],
+    ],
   },
   testing: {
     disclaimer:

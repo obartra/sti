@@ -19,6 +19,7 @@
     max-width: none;
     padding: 0 0 var(--space-10);
     gap: var(--space-8);
+    overflow-x: clip;
   }
   .info-page--wide > .info-section {
     width: 100%;
@@ -90,6 +91,161 @@
   }
   .info-toapp:hover {
     border-color: var(--text-subtle);
+  }
+
+  /* ---------------------------------------------------------------- index --- */
+  /* The hero row: copy on the left, the condition list on the right, with a soft
+     accent glow behind, matching the app landing's hero grammar. */
+  .info-lede {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 72px;
+    align-items: center;
+    padding-top: 44px;
+  }
+  .info-lede::before {
+    content: "";
+    position: absolute;
+    top: -240px;
+    right: -140px;
+    width: 620px;
+    height: 620px;
+    background: radial-gradient(
+      closest-side,
+      color-mix(in srgb, var(--accent), transparent 82%),
+      transparent
+    );
+    pointer-events: none;
+  }
+  .info-lede__copy,
+  .info-lede__side {
+    position: relative;
+  }
+  .info-eyebrow {
+    font-size: 13px;
+    font-weight: var(--weight-extrabold);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-accent);
+    margin-bottom: 18px;
+  }
+  .info-lede .info-title {
+    font-size: clamp(36px, 3.6vw, 52px);
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    text-wrap: balance;
+  }
+  .info-lede .info-lead {
+    font-size: 18px;
+    line-height: 1.6;
+    margin-top: 14px;
+    max-width: 460px;
+  }
+  .info-lede__extra {
+    margin-top: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+  .info-lede__cta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .info-lede__note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-subtle);
+    font-size: 13.5px;
+  }
+  .info-lede__note svg {
+    flex: none;
+  }
+
+  /* The PEP callout composes as one row: copy left, action right. */
+  .info-callout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 48px;
+    row-gap: 10px;
+    align-items: center;
+    padding: 20px 24px;
+  }
+  .info-callout > .info-row--between {
+    justify-content: flex-start;
+    gap: 12px;
+  }
+  .info-callout .info-note {
+    max-width: 72ch;
+  }
+  .info-callout__cta {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+  .info-callout .sti-btn--block {
+    width: auto;
+  }
+
+  /* Link cards (U=U, the guides) sit two across. */
+  .info-grid2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  /* The value band's cards become plain columns on the band surface. */
+  .info-valueband {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 44px;
+    align-items: start;
+  }
+  .info-valueband > .sti-card {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    border-radius: 0;
+  }
+  .info-valueband .info-cardtitle {
+    font-size: 17px;
+  }
+  .info-valueband .info-cardsub {
+    font-size: 14px;
+    margin-top: 4px;
+  }
+  .info-valueband .info-item {
+    font-size: 14px;
+  }
+
+  /* The closing call to action: copy left, the testing action right. */
+  .info-cta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px 56px;
+    padding: 32px 36px;
+    background: var(--surface-tint);
+    border: none;
+  }
+  .info-cta .info-note {
+    font-size: 16.5px;
+    line-height: 1.6;
+    max-width: 56ch;
+  }
+  .info-cta__action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .info-cta__action .sti-btn--block {
+    width: auto;
   }
 
   /* --------------------------------------------------------------- footer --- */

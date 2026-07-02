@@ -423,6 +423,11 @@
 .info-callout {
   border-color: var(--status-treat-base);
 }
+/* The closing call to action's button stack; a plain pass-through on a phone,
+   the desktop sheet makes it the card's right column. */
+.info-cta__action {
+  display: contents;
+}
 .info-hero {
   border-radius: var(--radius-lg);
   padding: 22px;
