@@ -24,8 +24,11 @@ export const LIBRARY = {
   shareLabel: "Share this page",
   copied: "Link copied",
   howToTest: "How to test for it",
+  // The contextual line under an article/index. The "not medical advice, based on
+  // CDC guidance" compliance note lives once in the site footer (SITE.note), right
+  // below this, so this keeps only the part the footer does not already say.
   footer:
-    "This is general info, not medical advice. A clinic or doctor can tell you what is right for you. Based on U.S. CDC guidance.",
+    "This is general info. A clinic or doctor can tell you what is right for you.",
   uuCard: {
     title: "Undetectable = Untransmittable",
     sub: "A made-to-share card. Good news, no stigma.",

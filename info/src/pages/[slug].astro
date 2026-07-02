@@ -152,7 +152,9 @@ const guideCta = guide?.data.cta
 
 <style>
   .det {
-    padding-top: var(--space-6);
+    /* Clear breathing room under the header, so the title is not pegged to it
+       and the top balances the generous space above the footer. */
+    padding-top: var(--space-8);
     row-gap: 0;
   }
   .det__titlerow {
@@ -216,7 +218,7 @@ const guideCta = guide?.data.cta
 
   @media (min-width: 900px) {
     .det {
-      padding-top: var(--space-8);
+      padding-top: var(--space-10);
     }
     .det__head {
       grid-column: 1 / 9;
