@@ -127,3 +127,20 @@ export async function releaseVanityName(
   const blob = await accounts.setFindable(session.root, null);
   return { root: session.root, blob };
 }
+
+/**
+ * A non-claiming public resolve of a findable name (doc 17): an id back means the
+ * name is taken, null means free, and an error means the lookup could not run. The
+ * caller has already normalized + format-checked; reserved/blocked names are caught
+ * locally / at register, so this only answers "taken". A pure read, no session.
+ */
+export async function checkVanityName(
+  api: ApiClient,
+  name: string,
+): Promise<"free" | "taken" | "error"> {
+  try {
+    return (await api.resolveVanityName(name)) === null ? "free" : "taken";
+  } catch {
+    return "error";
+  }
+}

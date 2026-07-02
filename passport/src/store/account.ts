@@ -37,6 +37,11 @@ import {
   type SharingMode,
 } from "./accountBlob.ts";
 import { normalizeCircleMembers } from "./circles.ts";
+import {
+  groupMembershipMethods,
+  withGroupAppended,
+  type GroupMembershipAccounts,
+} from "./accountGroups.ts";
 
 /** The owner's presentation profile: avatar plus the account sharing default. */
 export interface OwnerProfile {
@@ -77,7 +82,7 @@ export interface RecoveredAccount {
   readonly blob: AccountBlob;
 }
 
-export interface AccountManager {
+export interface AccountManager extends GroupMembershipAccounts {
   /**
    * Mint a new account: generate the recovery phrase, save an empty blob. When
    * `recovery` is given, also wrap the fresh root under that password and store the
@@ -281,13 +286,6 @@ function withRecoveryName(
   return next;
 }
 
-// Append a shared group, upserting by groupId so a lost-response retry does not
-// record the same group twice (which would orphan a group write token).
-function withGroupAppended(blob: AccountBlob, group: GroupRecord): AccountBlob {
-  const others = (blob.groups ?? []).filter((g) => g.groupId !== group.groupId);
-  return { ...blob, groups: [...others, group] };
-}
-
 // Upsert the dedicated findable alias AND set the registration in one step, so a
 // claim's two facts land in a single blob write (no alias-without-registration gap).
 function withFindableAlias(
@@ -365,7 +363,8 @@ async function republishLiveLinks(
 }
 
 // A load-modify-save over the synced blob (the closure createAccountManager builds).
-type BlobModify = (
+// Exported so the split-out mutation factories (accountGroups) share the exact type.
+export type BlobModify = (
   root: RootKey,
   fn: (blob: AccountBlob) => AccountBlob,
 ) => Promise<AccountBlob>;
@@ -625,5 +624,7 @@ export function createAccountManager(
     },
 
     ...findableMethods(modify),
+
+    ...groupMembershipMethods(modify),
   };
 }

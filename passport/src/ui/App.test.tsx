@@ -196,6 +196,14 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
     checkVanityName: () => Promise.reject(new Error("not used in this test")),
     releaseVanityName: () => Promise.reject(new Error("not used in this test")),
     createGroup: () => Promise.reject(new Error("not used in this test")),
+    inviteToGroup: () => Promise.reject(new Error("not used in this test")),
+    revokeGroupInvite: () => Promise.reject(new Error("not used in this test")),
+    acceptGroupInvite: () => Promise.reject(new Error("not used in this test")),
+    rejectGroupInvite: () => Promise.reject(new Error("not used in this test")),
+    pollGroupLifecycle: () =>
+      Promise.reject(new Error("not used in this test")),
+    removeGroupMember: () => Promise.reject(new Error("not used in this test")),
+    readGroupRoster: () => Promise.reject(new Error("not used in this test")),
     setRecoveryPassword: () =>
       Promise.reject(new Error("not used in this test")),
     disableRecoveryPassword: () =>

@@ -20,7 +20,10 @@ import {
   type AccountBlob,
   type ContactRecord,
   type GroupRecord,
+  type PendingGroupInvite,
 } from "../accountBlob.ts";
+import { groupInviteUrl } from "../groupInvite.ts";
+import type { InboxCapability } from "../notifyInbox.ts";
 import type { OwnerState } from "../../core/badge.ts";
 import {
   importRootKey,
@@ -174,6 +177,93 @@ function demoGroups(
   };
 }
 
+// A throwaway inbox capability for the demo (no server, so it is never polled).
+function demoInbox(): InboxCapability {
+  return {
+    inboxId: randomAliasId(),
+    writeToken: randomWriteToken(),
+    key: randomAliasId(),
+  };
+}
+
+// The shared-group membership demo methods (doc 33, slice 4a). No server, so invite/
+// revoke/remove mutate the local group record faithfully and the cross-party paths
+// (accept/reject/poll) resolve inert, and a roster read returns an empty roster (the
+// demo has no other members to open). Split out to keep createDemoController within
+// its length ceiling.
+function demoGroupMembership(
+  getBlob: () => AccountBlob,
+  setBlob: (b: AccountBlob) => void,
+  session: () => Promise<OwnerSession>,
+): Pick<
+  SessionController,
+  | "inviteToGroup"
+  | "revokeGroupInvite"
+  | "acceptGroupInvite"
+  | "rejectGroupInvite"
+  | "pollGroupLifecycle"
+  | "removeGroupMember"
+  | "readGroupRoster"
+> {
+  const updateGroup = (groupId: string, fn: (g: GroupRecord) => GroupRecord) =>
+    setBlob({
+      ...getBlob(),
+      groups: (getBlob().groups ?? []).map((g) =>
+        g.groupId === groupId ? fn(g) : g,
+      ),
+    });
+  return {
+    inviteToGroup: async (_s, groupId, opts) => {
+      const lifecycleInbox = demoInbox();
+      const invite: PendingGroupInvite = {
+        inviteId: randomAliasId(),
+        lifecycleInbox,
+        createdDay: todayEpochDay(),
+        ...(opts?.label !== undefined ? { label: opts.label } : {}),
+      };
+      updateGroup(groupId, (g) => ({
+        ...g,
+        pendingInvites: [...(g.pendingInvites ?? []), invite],
+      }));
+      const g = (getBlob().groups ?? []).find((x) => x.groupId === groupId);
+      const url = g
+        ? groupInviteUrl({
+            groupId,
+            lifecycleInbox,
+            handle: g.handle,
+            visibility: g.visibility,
+            meetingKind: g.meetingKind,
+          })
+        : demoUrl();
+      return { session: await session(), url };
+    },
+    revokeGroupInvite: async (_s, groupId, inviteId) => {
+      updateGroup(groupId, (g) => ({
+        ...g,
+        pendingInvites: (g.pendingInvites ?? []).filter(
+          (p) => p.inviteId !== inviteId,
+        ),
+      }));
+      return session();
+    },
+    acceptGroupInvite: () => session(),
+    rejectGroupInvite: () => session(),
+    pollGroupLifecycle: () => session(),
+    removeGroupMember: async (_s, groupId, cardId) => {
+      updateGroup(groupId, (g) => ({
+        ...g,
+        members: (g.members ?? []).filter((m) => m.cardId !== cardId),
+      }));
+      return session();
+    },
+    readGroupRoster: async () => ({
+      session: await session(),
+      obj: null,
+      members: [],
+    }),
+  };
+}
+
 /**
  * The in-memory session controller. Every method mutates a local blob and returns
  * a session; none touch the network. `resumeFromStore` returns the seeded session,
@@ -304,6 +394,7 @@ export function createDemoController(): SessionController {
     releaseVanityName: (s) => Promise.resolve(s),
     ...demoRecovery(getBlob, setBlob, session),
     ...demoGroups(getBlob, setBlob, session),
+    ...demoGroupMembership(getBlob, setBlob, session),
     forget: () => undefined,
   };
 }

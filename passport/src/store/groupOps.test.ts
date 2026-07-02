@@ -170,7 +170,7 @@ describe("createGroup", () => {
     expect(put.writeToken).toBe(group.myCardWriteToken);
     // The published bytes open under Kg to the owner's current card, with the
     // anonymous (id-derived) face keyed to the card id.
-    const Kg = base64urlToBytes(group.kg) as GroupKey;
+    const Kg = base64urlToBytes(group.kg ?? "") as GroupKey;
     const card = await openGroupCard(Kg, put.payload);
     expect(card).toEqual(
       deriveOwnerCard(
