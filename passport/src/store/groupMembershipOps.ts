@@ -6,9 +6,11 @@
  * This file covers invite / accept / reject / revoke, remove, and the member read/
  * roster poll. The admin's INGEST of an accept/reject/leave (fill a slot, grow or
  * shrink the roster) lives in groupIngestOps (split out for length), and the request
- * side + leave are groupJoinOps (slice 4b). Key rotation on remove is a later slice;
- * a removed member keeps the old `Kg` for now (correct until rotation lands), which
- * is why each member's member key is retained (so `Kg` can be re-wrapped then).
+ * side + leave are groupJoinOps (slice 4b). Remove (and a leave, via the ingest that
+ * reuses it) ROTATES the group key (doc 33, slice 5): the admin mints a fresh `Kg'`,
+ * re-wraps it to the surviving members (using each retained member key), and re-seals
+ * the core, so the departed member's copy of the old `Kg` opens nothing new. Every
+ * remaining member recovers `Kg'` and republishes on their next read.
  *
  * The blind boundary holds throughout: the invite URL carries capabilities only in
  * its fragment (never to a server, exactly like the contact invite); the accept/
@@ -29,13 +31,19 @@ import {
   randomAliasId,
   randomWriteToken,
   type Bytes,
+  type RootKey,
 } from "../crypto/index.ts";
 import { todayEpochDay } from "../core/clock.ts";
-import { openGroupCard, type GroupKey } from "./groupCrypto.ts";
 import {
-  dropMemberSlot,
+  mintGroupKey,
+  openGroupCard,
+  wrapGroupKey,
+  type GroupKey,
+} from "./groupCrypto.ts";
+import {
   parseGroupBlobForMember,
   parseGroupBlobWithKg,
+  serializeGroupBlob,
   type GroupObject,
 } from "./groupObject.ts";
 import {
@@ -211,11 +219,14 @@ export async function rejectGroupInvite(
 }
 
 /**
- * REMOVE (admin): drop the member's slot + roster entry from the blob and drop the
- * roster secret locally. No `Kg` rotation (slice 5), so the removed member keeps the
- * copy of `Kg` they already hold; the roster change (they are no longer listed) is
- * what everyone else sees, indistinguishable from a leave. A no-op when the cardId is
- * not a current member.
+ * REMOVE (admin, doc 33 slice 5): removal means NO FUTURE READS, so it rotates the
+ * key. The removed member keeps the old `Kg` they already hold (you cannot un-give a
+ * key), so simply dropping their slot would still let them open every remaining
+ * member's card. Instead the admin mints a fresh `Kg'`, re-wraps it to every SURVIVING
+ * member, and re-seals the group core under `Kg'`; the old key now opens nothing new.
+ * The roster change (they are no longer listed) is what everyone else sees,
+ * indistinguishable from a leave. A no-op when the cardId is not a current member.
+ * `ingestMemberLeave` calls this, so a leave rotates identically (no duplicate path).
  */
 export async function removeGroupMember(
   api: ApiClient,
@@ -229,14 +240,85 @@ export async function removeGroupMember(
     return session;
   }
   if (!group.members?.some((m) => m.cardId === opts.cardId)) return session;
-  const Kg = base64urlToBytes(group.kg) as GroupKey;
+  return rotateGroupKey(api, accounts, session, {
+    group,
+    dropCardId: opts.cardId,
+  });
+}
+
+// Re-seal the group under a fresh `Kg'` for the surviving membership (doc 33). The
+// surviving set is the admin itself (its slot re-wrapped from its own derived member
+// key, since `members` never lists the admin) plus every member except the dropped
+// one. Roster and wrapped keys are rebuilt in the SAME surviving order (admin first),
+// so roster[i] and wrappedKeys[i] line up; a reader trial-unwraps regardless of order,
+// so this is for clarity, not correctness. `Kg'` is minted fresh, NEVER derived from
+// the old key, so the departed member's copy grants no foothold on the new one.
+async function rebuildRotatedBlob(
+  root: RootKey,
+  group: GroupRecord,
+  obj: GroupObject,
+  dropCardId: string,
+): Promise<{ newKg: GroupKey; nextBlob: Bytes }> {
+  const newKg = mintGroupKey();
+  const adminMemberKey = await deriveGroupMemberKey(root, group.groupId);
+  const survivors = (group.members ?? []).filter(
+    (m) => m.cardId !== dropCardId,
+  );
+  const roster = [
+    { cardId: group.myCardId },
+    ...survivors.map((m) => ({ cardId: m.cardId })),
+  ];
+  const wrappedKeys = await Promise.all([
+    wrapGroupKey(newKg, adminMemberKey),
+    ...survivors.map((m) => wrapGroupKey(newKg, base64urlToBytes(m.memberKey))),
+  ]);
+  const nextBlob = await serializeGroupBlob(
+    newKg,
+    { ...obj, roster },
+    wrappedKeys,
+  );
+  return { newKg, nextBlob };
+}
+
+// Mint `Kg'`, re-seal the blob to the surviving membership, write it, then bring the
+// admin's own state onto the new key: republish its card under `Kg'` (so its color is
+// not gray after a rotation) and cache `Kg'` locally while dropping the removed member.
+// Fails closed on an unreadable blob (never rotates onto a key it cannot verify). The
+// remaining members catch up on their next read (openForReader recovers `Kg'`).
+async function rotateGroupKey(
+  api: ApiClient,
+  accounts: AccountManager,
+  session: OwnerSession,
+  ctx: { group: GroupRecord; dropCardId: string },
+): Promise<OwnerSession> {
+  const { group, dropCardId } = ctx;
+  const kgB64 = group.kg;
+  const writeToken = group.groupWriteToken;
+  if (kgB64 === undefined || writeToken === undefined) return session;
+  const oldKg = base64urlToBytes(kgB64) as GroupKey;
   const blob = await api.getGroupBlob(group.groupId);
-  const nextBlob = await dropMemberSlot(blob, Kg, opts.cardId);
-  await api.putGroupBlob(group.groupId, nextBlob, group.groupWriteToken);
+  const obj = await parseGroupBlobWithKg(blob, oldKg);
+  if (obj === null) return session;
+  const { newKg, nextBlob } = await rebuildRotatedBlob(
+    session.root,
+    group,
+    obj,
+    dropCardId,
+  );
+  await api.putGroupBlob(group.groupId, nextBlob, writeToken);
+  await publishGroupCard(api, session.blob.state, newKg, {
+    cardId: group.myCardId,
+    cardWriteToken: group.myCardWriteToken,
+  });
+  await accounts.updateGroupKgCache(
+    session.root,
+    group.groupId,
+    bytesToBase64url(newKg),
+  );
   const next = await accounts.dropGroupMember(
     session.root,
     group.groupId,
-    opts.cardId,
+    dropCardId,
   );
   return { root: session.root, blob: next };
 }
@@ -264,9 +346,14 @@ export async function readGroupRoster(
   return { session: opened.session, obj: opened.obj, members };
 }
 
-// Resolve `Kg` + the group object for a reader: a Kg-holder (admin, or a member who
-// already cached it) opens the core directly; a member without it trial-unwraps. On a
-// member's first success, cache Kg + publish their card. Null when unopenable.
+// Resolve `Kg` + the group object for a reader (doc 33). Fast path: a Kg-holder (the
+// admin, or a member who already synced) opens the core directly with the cached key.
+// If that cached key no longer opens the core, a rotation happened out from under it
+// (removal minted a fresh `Kg'`), so fall through to trial-unwrap and recover the
+// current key from our own slot. A member with no cached key yet (first read) also
+// trial-unwraps. Either recovery syncs onto the new key. Both the cached key failing
+// AND trial-unwrap failing means our slot is gone: we were removed, so null (the
+// removed member is correctly locked out to an empty roster).
 async function openForReader(
   api: ApiClient,
   accounts: AccountManager,
@@ -277,17 +364,22 @@ async function openForReader(
   if (group.kg !== undefined) {
     const Kg = base64urlToBytes(group.kg) as GroupKey;
     const obj = await parseGroupBlobWithKg(blob, Kg);
-    return obj === null ? null : { session, Kg, obj };
+    if (obj !== null) return { session, Kg, obj };
+    // Cached Kg no longer opens the core: fall through to recover the rotated key.
   }
   const memberKey = await deriveGroupMemberKey(session.root, group.groupId);
   const found = await parseGroupBlobForMember(blob, memberKey);
   if (found === null) return null;
-  return firstMemberRead(api, accounts, session, { group, ...found });
+  return syncMemberKey(api, accounts, session, { group, ...found });
 }
 
-// A member's first successful read: publish their group card under the freshly
-// recovered `Kg`, cache `Kg` on their record, and return the updated session.
-async function firstMemberRead(
+// A member syncing onto a freshly recovered `Kg` (doc 33): their first successful
+// read, or a read after a rotation replaced the key their cache held. Both are the
+// same act, "I hold a new `Kg`": publish their group card under it (so their color is
+// correct under the live key, not gray) and cache it on their record so later reads
+// take the fast path. Reaching here means the recovered key differs from any cached
+// one (a cached key that still opened the core returned on the fast path above).
+async function syncMemberKey(
   api: ApiClient,
   accounts: AccountManager,
   session: OwnerSession,
