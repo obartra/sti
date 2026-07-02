@@ -20,6 +20,10 @@ const sampleTrends: AdminTrends = {
     { day: Math.floor(Date.UTC(2026, 5, 24) / DAY_MS), count: 2 },
     { day: Math.floor(Date.UTC(2026, 5, 25) / DAY_MS), count: 5 },
   ],
+  signupsPerDay: [
+    { day: Math.floor(Date.UTC(2026, 5, 24) / DAY_MS), count: 6 },
+    { day: Math.floor(Date.UTC(2026, 5, 25) / DAY_MS), count: 9 },
+  ],
   reviewLatency: [
     { underMs: 60 * 60 * 1000, count: 1 },
     { underMs: 6 * 60 * 60 * 1000, count: 2 },

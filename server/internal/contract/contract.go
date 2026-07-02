@@ -368,15 +368,17 @@ type LatencyBucket struct {
 
 // AdminTrendsResponse is GET /admin/trends' body (doc 20 metrics panel): aggregate,
 // identifier-free time series for the trend charts. reportsPerDay is the count of
-// reports filed on each recent day; reviewLatency buckets how long the still-open
-// reports have waited. Both read only retained, opaque report rows: a daily count or
-// a latency bucket, never a per-account or per-id figure and never a distribution
-// that could fingerprint one account, so it stays within the blind-store boundary
-// (doc 12). A read, so it is not itself audited. Kept SEPARATE from AdminMetricsResponse
-// so the always-loaded totals stay one cheap query and this heavier aggregation is
-// fetched only when the trends view mounts.
+// reports filed on each recent day; signupsPerDay is the count of accounts created on
+// each recent day (a purely aggregate daily tally, never a per-account creation time);
+// reviewLatency buckets how long the still-open reports have waited. All read only
+// per-day counts or a latency bucket, never a per-account or per-id figure and never a
+// distribution that could fingerprint one account, so it stays within the blind-store
+// boundary (doc 12). A read, so it is not itself audited. Kept SEPARATE from
+// AdminMetricsResponse so the always-loaded totals stay one cheap query and this
+// heavier aggregation is fetched only when the trends view mounts.
 type AdminTrendsResponse struct {
 	ReportsPerDay []DayCount      `json:"reportsPerDay"`
+	SignupsPerDay []DayCount      `json:"signupsPerDay"`
 	ReviewLatency []LatencyBucket `json:"reviewLatency"`
 }
 

@@ -187,6 +187,7 @@ describe("getAdminTrends", () => {
   it("returns the trends on 200 and requests the window in the URL", async () => {
     const trends = {
       reportsPerDay: [{ day: 20630, count: 4 }],
+      signupsPerDay: [{ day: 20630, count: 9 }],
       reviewLatency: [{ underMs: 3600000, count: 2 }],
     };
     const ok = vi.fn<FetchLike>().mockResolvedValue(jsonResp(200, trends));
@@ -212,7 +213,11 @@ describe("getAdminTrends", () => {
       await getAdminTrends("https://api.example", "t", 7, partial),
     ).toEqual({
       kind: "ok",
-      trends: { reportsPerDay: [{ day: 1, count: 1 }], reviewLatency: [] },
+      trends: {
+        reportsPerDay: [{ day: 1, count: 1 }],
+        signupsPerDay: [],
+        reviewLatency: [],
+      },
     });
   });
 

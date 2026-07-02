@@ -18,10 +18,11 @@ import type {
 } from "./adminApi.ts";
 
 // The metrics panel (doc 20): a read-only dashboard of aggregate, identifier-free
-// service telemetry. Number cards and a bar chart for the current totals, plus two
-// trend charts below: reports filed per day, and how long open reports have waited.
-// Every figure is a count of opaque rows, a system size, or a time bucket, never a
-// per-account or per-id value (doc 12), so it stays within the blind-store boundary.
+// service telemetry. Number cards and a bar chart for the current totals, plus three
+// trend charts below: reports filed per day, accounts created per day, and how long
+// open reports have waited. Every figure is a count of opaque rows, a system size, or
+// a time bucket, never a per-account or per-id value or a per-account creation time
+// (doc 12), so it stays within the blind-store boundary.
 // The totals load first (one cheap query); the heavier trends are fetched separately
 // so a slow or failed trends read never blanks the at-a-glance totals.
 
@@ -41,6 +42,7 @@ const COPY = {
   retry: "Retry",
   chartTitle: "Stored rows",
   reportsTitle: "Reports filed per day",
+  signupsTitle: "Accounts created per day",
   latencyTitle: "How long open reports have waited",
   trendsLoading: "Loading trends…",
   trendsError: "Couldn't load trends.",
@@ -213,17 +215,23 @@ function RowChart({ metrics }: { metrics: AdminMetrics }) {
   );
 }
 
-// An area chart of reports filed per day over the recent window. Daily counts of
-// opaque report rows, never a per-name or per-account series, so it stays
-// identifier-free like the totals above. An empty window renders a bare axis.
-function ReportsChart({ trends }: { trends: AdminTrends }) {
-  const data = trends.reportsPerDay.map((d) => ({
-    label: dayLabel(d.day),
-    count: d.count,
-  }));
+// An area chart of one per-day count series over the recent window: reports filed, or
+// accounts created. Daily counts of opaque rows, never a per-name/per-account series
+// or a per-account creation time, so it stays identifier-free like the totals above.
+// An empty window renders a bare axis. `unit` names the series in the tooltip.
+function DailyAreaChart({
+  title,
+  series,
+  unit,
+}: {
+  title: string;
+  series: AdminTrends["reportsPerDay"];
+  unit: string;
+}) {
+  const data = series.map((d) => ({ label: dayLabel(d.day), count: d.count }));
   return (
     <div>
-      <ChartLabel text={COPY.reportsTitle} />
+      <ChartLabel text={title} />
       <ResponsiveContainer width="100%" height={180}>
         <AreaChart
           data={data}
@@ -242,20 +250,18 @@ function ReportsChart({ trends }: { trends: AdminTrends }) {
             axisLine={false}
             tickLine={false}
           />
-          <Tooltip formatter={(v) => [humanCount(Number(v ?? 0)), "Reports"]} />
+          <Tooltip formatter={(v) => [humanCount(Number(v ?? 0)), unit]} />
           <Area
             dataKey="count"
             stroke="var(--text-accent)"
             fill="var(--accent-soft)"
             strokeWidth={2}
             type="monotone"
-            // Deterministic capture for the visual-regression baseline. Recharts
-            // drives its enter animation with requestAnimationFrame (react-smooth),
-            // not CSS, so lost-pixel's Playwright animations:'disabled' cannot
-            // freeze it; the default area animation (1500ms) also outruns the
-            // capture's settle wait, so the screenshot lands on whatever frame the
-            // timing happened to reach and the baseline drifts run-to-run. Rendering
-            // the final curve synchronously removes the frame race entirely.
+            // Deterministic capture for the visual-regression baseline. Recharts drives
+            // its enter animation with requestAnimationFrame (react-smooth), not CSS, so
+            // lost-pixel's Playwright animations:'disabled' cannot freeze it and the
+            // default 1500ms area animation outruns the capture's settle wait, drifting
+            // the baseline run-to-run. Rendering the final curve synchronously fixes it.
             isAnimationActive={false}
           />
         </AreaChart>
@@ -420,7 +426,16 @@ export function MetricsPanel({
 
       {trendStatus === "ready" && trends !== null && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <ReportsChart trends={trends} />
+          <DailyAreaChart
+            title={COPY.reportsTitle}
+            series={trends.reportsPerDay}
+            unit="Reports"
+          />
+          <DailyAreaChart
+            title={COPY.signupsTitle}
+            series={trends.signupsPerDay}
+            unit="Accounts"
+          />
           <LatencyChart trends={trends} />
         </div>
       )}
