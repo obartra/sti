@@ -37,6 +37,27 @@
   display: none;
 }
 
+/* A topic section's heading on the index; the id is the nav's anchor target. */
+.info-secthead__title {
+  font-size: 16px;
+  font-weight: var(--weight-extrabold);
+  letter-spacing: var(--tracking-snug);
+  color: var(--text-strong);
+  margin: 0;
+}
+.info-secthead__sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: var(--leading-normal);
+  margin: 2px 0 0;
+}
+/* The section's cards; a phone column here, a two-across grid at desktop. */
+.info-grid2 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
 /* ----------------------------------------------------------------- header --- */
 .info-header {
   max-width: 640px;

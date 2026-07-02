@@ -1,8 +1,8 @@
 ---
 title: No symptoms is normal
-navLabel: Symptoms
 tag: Most STIs show no signs. Testing is how you know.
 icon: eye
+topic: getting-tested
 order: 2
 intro: Feeling fine tells you almost nothing. Most STIs cause no symptoms for months or years, and a test is the only way to know.
 sources:

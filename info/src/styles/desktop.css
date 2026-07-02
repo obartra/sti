@@ -196,6 +196,20 @@
     align-items: stretch;
   }
 
+  /* Topic section headings; scroll-margin keeps an anchor jump clear of the
+     sticky header (which only exists at desktop). */
+  .info-secthead {
+    scroll-margin-top: 84px;
+  }
+  .info-secthead__title {
+    font-size: 22px;
+    letter-spacing: -0.01em;
+  }
+  .info-secthead__sub {
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
   /* The value band's cards become plain columns on the band surface. */
   .info-valueband {
     display: grid;

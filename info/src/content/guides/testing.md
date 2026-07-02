@@ -1,8 +1,8 @@
 ---
 title: Getting tested, what to expect
-navLabel: Getting tested
 tag: The whole visit, start to finish. It is quicker than you think.
 icon: stethoscope
+topic: getting-tested
 order: 1
 intro: A standard STI check is fast, often free, and nothing to dread. Here is the whole visit, start to finish.
 sources:

@@ -1,9 +1,9 @@
 ---
 title: How to tell a partner
-navLabel: Tell a partner
 tag: A short, plain message does the job.
 icon: mail
-order: 3
+topic: talking
+order: 2
 intro: Telling partners you tested positive is a kindness, not a confession. It gets people treated and it stops the spread.
 sources:
   - label: U.S. CDC, About STIs
