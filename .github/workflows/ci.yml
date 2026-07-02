@@ -8,11 +8,38 @@ on:
 permissions:
   contents: read
 
+# A superseded push needs no full validation; main always runs to completion.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 # Every job runs `make <target>` rather than inlining commands; the Makefile is
 # the single source of truth (see `make help`). Steps that remain inline are
 # environment setup (toolchains, deps, browsers), not gate commands.
+#
+# On pull requests the heavy jobs are gated per-area by the `changes` job:
+# a docs-only PR runs only `check`, an info-only PR skips the passport and
+# server gates, and so on. Skipped required checks count as satisfied, and
+# the detection script fails open, so a gating bug can only waste minutes,
+# never skip a real gate. `check` itself always runs: it lints and formats
+# the whole repo, so every file can affect it.
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      passport: ${{ steps.areas.outputs.passport }}
+      info: ${{ steps.areas.outputs.info }}
+      server: ${{ steps.areas.outputs.server }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - id: areas
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash .github/scripts/changed-areas.sh
+
   check:
     runs-on: ubuntu-latest
     steps:
@@ -25,6 +52,10 @@ jobs:
       - run: make check-root
 
   passport:
+    needs: changes
+    if: |
+      !cancelled() &&
+      (needs.changes.result != 'success' || needs.changes.outputs.passport == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -34,10 +65,9 @@ jobs:
       - run: npm ci
         working-directory: passport
       - run: make check-web
-      # Browsable report of the spec/Gherkin scenarios (and every unit test),
-      # uploaded so reviewers can open it from the run's Artifacts.
-      - run: npm run test:report
-        working-directory: passport
+      # Browsable report of the spec/Gherkin scenarios (and every unit test):
+      # check-web's coverage run also writes the html reporter output, uploaded
+      # so reviewers can open it from the run's Artifacts.
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -48,6 +78,10 @@ jobs:
   info:
     # The static education library (info.sti.care, doc 34): astro type + content
     # check, the voice/jargon lint over the copy, and a production build.
+    needs: changes
+    if: |
+      !cancelled() &&
+      (needs.changes.result != 'success' || needs.changes.outputs.info == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -62,6 +96,12 @@ jobs:
     # The frontend api client against a real instance of the Go blind store:
     # publish -> resolve -> decrypt must round-trip. Needs both Node and Go, so
     # it is its own job; the test builds and boots the server itself.
+    needs: changes
+    if: |
+      !cancelled() &&
+      (needs.changes.result != 'success' ||
+        needs.changes.outputs.passport == 'true' ||
+        needs.changes.outputs.server == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -77,6 +117,12 @@ jobs:
     # The real app driven by a browser against a throwaway server: build + preview
     # the frontend, boot the Go store, seed a real card, and run the public
     # resolution journeys. Needs Node, Go, and a Playwright browser.
+    needs: changes
+    if: |
+      !cancelled() &&
+      (needs.changes.result != 'success' ||
+        needs.changes.outputs.passport == 'true' ||
+        needs.changes.outputs.server == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -91,6 +137,10 @@ jobs:
       - run: make test-e2e
 
   server:
+    needs: changes
+    if: |
+      !cancelled() &&
+      (needs.changes.result != 'success' || needs.changes.outputs.server == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
