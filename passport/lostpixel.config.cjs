@@ -59,19 +59,15 @@ if (onlyIds.length > 0) {
 // Real regressions (recolor, layout shift) are in the thousands of pixels.
 const PAGE_THRESHOLD = 50;
 
-// Emulate prefers-reduced-motion. The app's own design system honours it
-// (src/design/tokens/base.css collapses animations/transitions to ~0ms), so
-// captures are deterministic AND they exercise the real a11y behaviour rather
-// than a capture-only override.
-const emulateReducedMotion = async (page) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
-};
-
+// Capture determinism comes from the runner itself: lost-pixel passes
+// Playwright's `animations: 'disabled'` to every screenshot, which settles
+// finite animations and cancels infinite ones before the shot. (A per-page
+// beforeScreenshot hook is not part of lost-pixel's page schema and would be
+// silently stripped; only the top-level hook runs. Do not rely on one here.)
 const pages = stories.map((story) => ({
   path: `iframe.html?viewMode=story&id=${story.id}`,
   name: story.id,
   threshold: PAGE_THRESHOLD,
-  beforeScreenshot: emulateReducedMotion,
 }));
 
 // scripts/visual-regression.sh sets this: Linux uses --network host so
