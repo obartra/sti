@@ -2,9 +2,12 @@ package server
 
 import (
 	"context"
+	"crypto/ecdh"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
 
@@ -12,10 +15,43 @@ import (
 )
 
 // ErrSubscriptionGone marks a permanently dead Web Push subscription: the push
-// service returned 404 (unknown) or 410 (gone), so the endpoint will never accept
-// another wake. The drain prunes such targets rather than retaining the cover and
-// retrying forever (which would also keep a dead route in every cover broadcast).
+// service returned 404 (unknown) or 410 (gone), OR the subscription's keys are
+// malformed so the RFC 8291 payload can never be encrypted to it. Either way the
+// endpoint will never accept another wake, so the drain prunes such targets rather
+// than retaining the cover and retrying forever (which would also keep a dead route
+// in every cover broadcast, and, for a bad key, log a "push send" error every tick).
 var ErrSubscriptionGone = errors.New("web push: subscription gone")
+
+// decodePushKey base64url-decodes one subscription key, mirroring webpush-go's own
+// decoder (strip padding; RawStd when it carries +/ characters, else RawURL) so a
+// key the library would accept is never rejected here.
+func decodePushKey(key string) ([]byte, error) {
+	key = strings.TrimRight(key, "=")
+	if strings.ContainsAny(key, "+/") {
+		return base64.RawStdEncoding.DecodeString(key)
+	}
+	return base64.RawURLEncoding.DecodeString(key)
+}
+
+// validPushKeys reports whether a subscription's p256dh decodes to a valid P-256
+// public point and auth to a 16-byte secret (RFC 8291). A subscription that fails
+// this can never be encrypted to, so it is permanently undeliverable: the register
+// path rejects it up front, and Send classifies it as ErrSubscriptionGone so the
+// drain prunes it instead of retrying the crypto forever. `ecdh.P256().NewPublicKey`
+// validates the point is on the curve, which is exactly the check whose failure
+// ("Public key is not a valid point on the curve") the webpush library raised on a
+// junk-key subscription that had been retried every janitor tick.
+func validPushKeys(p256dh, auth string) bool {
+	p, err := decodePushKey(p256dh)
+	if err != nil {
+		return false
+	}
+	if _, err := ecdh.P256().NewPublicKey(p); err != nil {
+		return false
+	}
+	a, err := decodePushKey(auth)
+	return err == nil && len(a) == 16
+}
 
 // WebPushSender is the concrete Sender: it delivers a contentless wake over the
 // Web Push protocol (RFC 8291 payload encryption, RFC 8292 VAPID auth) via the
@@ -68,6 +104,13 @@ func NewWebPushSender(publicKey, privateKey, subject string) *WebPushSender {
 // drain prunes the dead target instead of retrying it forever. Any other non-2xx
 // is a plain error, which the drain retains and retries.
 func (w *WebPushSender) Send(ctx context.Context, t store.PushTarget) error {
+	// A malformed key is permanently undeliverable, exactly like a 404/410: surface
+	// it as gone so the drain prunes the target instead of failing the encryption on
+	// every janitor tick forever. This is caught before the network call, so a junk
+	// subscription costs nothing and cannot flood the error counter.
+	if !validPushKeys(t.P256dh, t.Auth) {
+		return fmt.Errorf("%w (invalid subscription keys)", ErrSubscriptionGone)
+	}
 	sub := &webpush.Subscription{
 		Endpoint: t.Endpoint,
 		Keys:     webpush.Keys{P256dh: t.P256dh, Auth: t.Auth},

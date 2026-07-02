@@ -1015,6 +1015,14 @@ func (s *Server) handlePushRegister(w http.ResponseWriter, r *http.Request) {
 		P256dh:   req.Subscription.Keys.P256dh,
 		Auth:     req.Subscription.Keys.Auth,
 	}
+	// Reject a subscription whose keys are not a valid P-256 point + 16-byte auth
+	// (RFC 8291): it could never be encrypted to, so storing it would only feed the
+	// cover broadcast a target that fails every delivery. Keeps junk out of the store
+	// so the sender never has to prune it later.
+	if !validPushKeys(t.P256dh, t.Auth) {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "")
+		return
+	}
 	if err := s.st.RegisterPush(r.Context(), req.RoutingEndpointID, t, s.now()); err != nil {
 		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
 		return

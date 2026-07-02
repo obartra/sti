@@ -5,6 +5,7 @@ import (
 	"crypto/ecdh"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -104,5 +105,59 @@ func TestWebPushSenderErrorsOnNon2xx(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected an error on a 410 response")
+	}
+}
+
+// offCurvePoint is 65 bytes in uncompressed form (0x04 prefix) whose coordinates are
+// not on P-256, so ecdh rejects it. This is the shape of the junk p256dh that flooded
+// the janitor with "Public key is not a valid point on the curve" every tick.
+func offCurvePoint() []byte {
+	b := make([]byte, 65)
+	b[0] = 0x04
+	return b
+}
+
+func TestValidPushKeys(t *testing.T) {
+	good, auth := testSubKeys(t)
+	badPoint := base64.RawURLEncoding.EncodeToString(offCurvePoint())
+	shortAuth := base64.RawURLEncoding.EncodeToString(make([]byte, 8))
+	cases := []struct {
+		name         string
+		p256dh, auth string
+		want         bool
+	}{
+		{"valid", good, auth, true},
+		{"p256dh not on curve", badPoint, auth, false},
+		{"p256dh not base64", "!!! not base64 !!!", auth, false},
+		{"p256dh empty", "", auth, false},
+		{"auth wrong length", good, shortAuth, false},
+		{"auth not base64", good, "@@@@", false},
+		{"auth empty", good, "", false},
+	}
+	for _, c := range cases {
+		if got := validPushKeys(c.p256dh, c.auth); got != c.want {
+			t.Errorf("%s: validPushKeys = %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+// A malformed key must classify as ErrSubscriptionGone BEFORE any network call, so
+// the drain prunes the target instead of retrying the crypto every janitor tick
+// forever (the production "push send" flood). The endpoint is never contacted.
+func TestWebPushSenderPrunesMalformedKey(t *testing.T) {
+	priv, pub, err := webpush.GenerateVAPIDKeys()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, auth := testSubKeys(t)
+	sender := NewWebPushSender(pub, priv, "mailto:ops@sti.care")
+
+	got := sender.Send(context.Background(), store.PushTarget{
+		Endpoint: "https://push.example.invalid/never-reached",
+		P256dh:   base64.RawURLEncoding.EncodeToString(offCurvePoint()),
+		Auth:     auth,
+	})
+	if !errors.Is(got, ErrSubscriptionGone) {
+		t.Fatalf("Send with a malformed key = %v, want ErrSubscriptionGone", got)
 	}
 }

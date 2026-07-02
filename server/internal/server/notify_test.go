@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -14,6 +15,17 @@ import (
 	"sti.care/api/internal/contract"
 	"sti.care/api/internal/store"
 )
+
+// pushRegisterBody builds a push-register request body carrying a VALID p256dh +
+// auth (the register handler now rejects malformed keys, RFC 8291), so tests that
+// exercise routing or rate-limiting are not tripped by the key validation.
+func pushRegisterBody(t *testing.T) string {
+	t.Helper()
+	p256dh, auth := testSubKeys(t)
+	return fmt.Sprintf(`{"routingEndpointId":"H","subscription":`+
+		`{"endpoint":"https://push.example/x","keys":{"p256dh":%q,"auth":%q}}}`,
+		p256dh, auth)
+}
 
 const farFuture = int64(1) << 62
 
@@ -420,9 +432,7 @@ func notifyReq(tokenHash string) *http.Request {
 // subscription would never be woken.
 func TestPushRegisterMakesNotifyReach(t *testing.T) {
 	on := newDrainServer(t, true, &mockSender{}, 0)
-	body := `{"routingEndpointId":"H","subscription":` +
-		`{"endpoint":"https://push.example/x","keys":{"p256dh":"p","auth":"a"}}}`
-	reg := httptest.NewRequest("POST", contract.PathPushRegister, strings.NewReader(body))
+	reg := httptest.NewRequest("POST", contract.PathPushRegister, strings.NewReader(pushRegisterBody(t)))
 	if rec := do(on.Handler(), reg); rec.Code != 204 {
 		t.Fatalf("push register: want 204, got %d", rec.Code)
 	}
@@ -447,9 +457,8 @@ func TestPushRegisterGlobalRateLimit(t *testing.T) {
 	}, func() int64 { return 1000 })
 	h := srv.Handler()
 
+	body := pushRegisterBody(t)
 	reg := func(ip string) int {
-		body := `{"routingEndpointId":"H","subscription":` +
-			`{"endpoint":"https://push.example/x","keys":{"p256dh":"p","auth":"a"}}}`
 		req := httptest.NewRequest("POST", contract.PathPushRegister, strings.NewReader(body))
 		req.Header.Set("X-Real-IP", ip) // a DIFFERENT IP each call
 		return do(h, req).Code
