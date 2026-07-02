@@ -62,6 +62,15 @@ export {
 } from "./contactInvite.ts";
 export { normalizeCircleMembers } from "./circles.ts";
 export {
+  mintGroupKey,
+  sealGroupCard,
+  openGroupCard,
+  wrapGroupKey,
+  unwrapGroupKey,
+  type GroupKey,
+  type MemberKey,
+} from "./groupCrypto.ts";
+export {
   serializeAccountBlob,
   parseAccountBlob,
   isSharingMode,
