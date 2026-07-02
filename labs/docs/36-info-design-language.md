@@ -1,12 +1,12 @@
 # 36 - The editorial design language (info.sti.care)
 
-## Status: BUILT (the info site runs on it; adopting it in the passport app is the stated intent, not yet scheduled)
+## Status: BUILT (the info site runs on it; the app-side adoption is underway, owned by [37-app-editorial-adoption](37-app-editorial-adoption.md))
 
 The info site's visual language and style architecture. Same tokens as the app,
 different grammar: where the app is a product of cards and controls, the library
 is a publication. This doc owns the rules; the live rendering of every piece is
-the unlisted `/styleguide` page on the site itself. When the app adopts this
-direction, this doc is the source; what is info-only is marked.
+the unlisted `/styleguide` page on the site itself. Doc 37 owns carrying the
+language to the app and the other surfaces; what is info-only is marked.
 
 ## Why an editorial skin
 

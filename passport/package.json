@@ -17,6 +17,7 @@
     "loadlab": "tsx src/loadlab/cli.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "lint:styles": "node scripts/style-lint.mjs",
     "knip": "knip",
     "typecheck": "tsc --noEmit",
     "storybook": "storybook dev -p 6006 --no-open",

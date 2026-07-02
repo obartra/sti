@@ -61,8 +61,9 @@ check-root: ## Root: inclusive-language + prettier + eslint + node tests
 inclusive-language: ## Fail on exclusionary terms via woke (config in .woke.yml)
 	go run github.com/get-woke/woke@$(WOKE_VERSION) --exit-1-on-failure
 
-check-web: ## Passport: lint + typecheck + unused-code (knip) + unit tests
+check-web: ## Passport: lint + style lint + typecheck + unused-code (knip) + unit tests
 	cd passport && npm run lint
+	cd passport && npm run lint:styles
 	cd passport && npm run typecheck
 	cd passport && npm run knip
 	cd passport && npm run test:cov

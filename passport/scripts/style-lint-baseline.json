@@ -1,0 +1,449 @@
+{
+  "src/lib/avatars.stories.tsx": {
+    "styles": 4
+  },
+  "src/lib/qr.stories.tsx": {
+    "styles": 1,
+    "hex": 2
+  },
+  "src/lib/qr.test.ts": {
+    "hex": 1
+  },
+  "src/lib/qr.tsx": {
+    "styles": 1,
+    "hex": 13
+  },
+  "src/ui/admin/ActivityPanel.tsx": {
+    "styles": 15,
+    "legacy": 2
+  },
+  "src/ui/admin/AdminPage.tsx": {
+    "styles": 14,
+    "legacy": 1
+  },
+  "src/ui/admin/FeedbackPanel.tsx": {
+    "styles": 14,
+    "legacy": 2
+  },
+  "src/ui/admin/ManagePanel.tsx": {
+    "styles": 19,
+    "legacy": 2
+  },
+  "src/ui/admin/MetricsPanel.tsx": {
+    "styles": 16,
+    "legacy": 2
+  },
+  "src/ui/admin/ReviewPanel.tsx": {
+    "styles": 13,
+    "legacy": 2
+  },
+  "src/ui/app/CanvasWrap.tsx": {
+    "styles": 5
+  },
+  "src/ui/app/Chrome.tsx": {
+    "styles": 2
+  },
+  "src/ui/app/NavLink.tsx": {
+    "styles": 1
+  },
+  "src/ui/app/screens/linksScreens.tsx": {
+    "styles": 1
+  },
+  "src/ui/app/screens/peopleScreens.tsx": {
+    "styles": 1
+  },
+  "src/ui/app/VersionStamp.tsx": {
+    "styles": 1
+  },
+  "src/ui/badge-card.tsx": {
+    "styles": 15,
+    "hex": 2
+  },
+  "src/ui/connect/Connect.tsx": {
+    "styles": 5
+  },
+  "src/ui/connect/ContactLinks.parts.tsx": {
+    "styles": 3,
+    "legacy": 1
+  },
+  "src/ui/connect/ContactLinks.tsx": {
+    "styles": 15,
+    "legacy": 2
+  },
+  "src/ui/connect/parts.tsx": {
+    "styles": 21,
+    "legacy": 2
+  },
+  "src/ui/connect/QrScanner.tsx": {
+    "styles": 8,
+    "hex": 3
+  },
+  "src/ui/connect/recent.tsx": {
+    "styles": 12,
+    "legacy": 2
+  },
+  "src/ui/core/Care.tsx": {
+    "styles": 20,
+    "hex": 4,
+    "legacy": 10
+  },
+  "src/ui/core/ContinuityNudgeCard.stories.tsx": {
+    "styles": 1
+  },
+  "src/ui/core/ContinuityNudgeCard.tsx": {
+    "styles": 7,
+    "legacy": 1
+  },
+  "src/ui/core/Home.actions.tsx": {
+    "styles": 2
+  },
+  "src/ui/core/Home.mirror.tsx": {
+    "styles": 4,
+    "legacy": 1
+  },
+  "src/ui/core/Home.pause.tsx": {
+    "styles": 12,
+    "legacy": 1
+  },
+  "src/ui/core/Home.standing.tsx": {
+    "styles": 14,
+    "legacy": 3
+  },
+  "src/ui/core/Home.tsx": {
+    "styles": 3
+  },
+  "src/ui/core/Notifications.tsx": {
+    "styles": 5,
+    "legacy": 3
+  },
+  "src/ui/core/Privacy.about.tsx": {
+    "styles": 11
+  },
+  "src/ui/core/Privacy.aliases.tsx": {
+    "styles": 10,
+    "legacy": 2
+  },
+  "src/ui/core/Privacy.danger.tsx": {
+    "styles": 8,
+    "legacy": 1
+  },
+  "src/ui/core/Privacy.install.tsx": {
+    "styles": 5
+  },
+  "src/ui/core/Privacy.name.tsx": {
+    "styles": 3,
+    "legacy": 1
+  },
+  "src/ui/core/Privacy.parts.tsx": {
+    "styles": 4
+  },
+  "src/ui/core/Privacy.sections.tsx": {
+    "styles": 36,
+    "legacy": 5
+  },
+  "src/ui/core/Privacy.tsx": {
+    "styles": 4
+  },
+  "src/ui/core/Report.cards.tsx": {
+    "styles": 8,
+    "legacy": 1
+  },
+  "src/ui/core/Report.infection.tsx": {
+    "styles": 17,
+    "legacy": 2
+  },
+  "src/ui/core/Report.parts.tsx": {
+    "styles": 2
+  },
+  "src/ui/core/Report.route.tsx": {
+    "styles": 18,
+    "legacy": 2
+  },
+  "src/ui/core/Report.share.tsx": {
+    "styles": 9
+  },
+  "src/ui/core/Report.tsx": {
+    "styles": 19,
+    "legacy": 2
+  },
+  "src/ui/desktop/Desktop.tsx": {
+    "styles": 2
+  },
+  "src/ui/desktop/DesktopFooter.tsx": {
+    "styles": 10
+  },
+  "src/ui/desktop/DesktopLanding.tsx": {
+    "styles": 1
+  },
+  "src/ui/desktop/DesktopLandingParts.tsx": {
+    "styles": 29,
+    "hex": 1,
+    "legacy": 1
+  },
+  "src/ui/desktop/DesktopShellParts.tsx": {
+    "styles": 27,
+    "legacy": 1
+  },
+  "src/ui/findable/BioMock.stories.tsx": {
+    "styles": 1
+  },
+  "src/ui/findable/BioMock.tsx": {
+    "styles": 16
+  },
+  "src/ui/findable/FindableName.tsx": {
+    "styles": 21,
+    "legacy": 2
+  },
+  "src/ui/findable/FindableResolve.tsx": {
+    "styles": 8,
+    "legacy": 1
+  },
+  "src/ui/findable/ReportName.tsx": {
+    "styles": 19,
+    "legacy": 2
+  },
+  "src/ui/findable/ShareLinkGuide.stories.tsx": {
+    "styles": 1
+  },
+  "src/ui/findable/ShareLinkGuide.tsx": {
+    "styles": 22,
+    "legacy": 2
+  },
+  "src/ui/findable/ShareLinkPage.stories.tsx": {
+    "styles": 1
+  },
+  "src/ui/findable/ShareLinkPage.tsx": {
+    "styles": 4
+  },
+  "src/ui/groups/AcceptInvite.tsx": {
+    "styles": 10,
+    "legacy": 2
+  },
+  "src/ui/groups/GroupCreate.tsx": {
+    "styles": 8,
+    "legacy": 2
+  },
+  "src/ui/groups/GroupDetail.admin.tsx": {
+    "styles": 7
+  },
+  "src/ui/groups/GroupDetail.tsx": {
+    "styles": 18,
+    "legacy": 2
+  },
+  "src/ui/groups/GroupFaceChoice.tsx": {
+    "styles": 1,
+    "legacy": 1
+  },
+  "src/ui/groups/GroupInviteShare.tsx": {
+    "styles": 7,
+    "legacy": 1
+  },
+  "src/ui/groups/GroupRequestsReview.tsx": {
+    "styles": 6,
+    "legacy": 2
+  },
+  "src/ui/groups/GroupsList.tsx": {
+    "styles": 19,
+    "legacy": 3
+  },
+  "src/ui/groups/RequestToJoin.tsx": {
+    "styles": 5,
+    "legacy": 2
+  },
+  "src/ui/onboarding/AvatarBuilder.tsx": {
+    "styles": 9,
+    "legacy": 1
+  },
+  "src/ui/onboarding/AvatarCard.tsx": {
+    "styles": 1,
+    "legacy": 2
+  },
+  "src/ui/onboarding/AvatarEdit.tsx": {
+    "styles": 4
+  },
+  "src/ui/onboarding/Claim.tsx": {
+    "styles": 3
+  },
+  "src/ui/onboarding/ClaimCreateFlow.tsx": {
+    "styles": 8,
+    "legacy": 1
+  },
+  "src/ui/onboarding/ConsentLine.tsx": {
+    "styles": 3
+  },
+  "src/ui/onboarding/FirstRunSetup.tsx": {
+    "styles": 29,
+    "legacy": 5
+  },
+  "src/ui/onboarding/KeepSignedInToggle.tsx": {
+    "styles": 2
+  },
+  "src/ui/onboarding/OtherWaysToLogIn.tsx": {
+    "styles": 6,
+    "legacy": 2
+  },
+  "src/ui/onboarding/recoveryShow.tsx": {
+    "styles": 8
+  },
+  "src/ui/onboarding/SwitchAuthMode.tsx": {
+    "styles": 2
+  },
+  "src/ui/onboarding/TopBack.tsx": {
+    "styles": 4
+  },
+  "src/ui/promises/Promises.stories.tsx": {
+    "styles": 2
+  },
+  "src/ui/promises/Promises.tsx": {
+    "styles": 23,
+    "legacy": 2
+  },
+  "src/ui/promises/TrustBoundary.stories.tsx": {
+    "styles": 2
+  },
+  "src/ui/promises/TrustBoundary.tsx": {
+    "styles": 11,
+    "legacy": 1
+  },
+  "src/ui/public/Alert.parts.tsx": {
+    "styles": 21,
+    "legacy": 3
+  },
+  "src/ui/public/Alert.resources.tsx": {
+    "styles": 24,
+    "legacy": 3
+  },
+  "src/ui/public/Alert.tsx": {
+    "styles": 1
+  },
+  "src/ui/public/Exposed.tsx": {
+    "styles": 8,
+    "legacy": 6
+  },
+  "src/ui/public/Landing.tsx": {
+    "styles": 21,
+    "hex": 1,
+    "legacy": 1
+  },
+  "src/ui/public/PublicResolution.accept.tsx": {
+    "styles": 15,
+    "legacy": 4
+  },
+  "src/ui/public/PublicResolution.explainer.tsx": {
+    "styles": 8,
+    "legacy": 1
+  },
+  "src/ui/public/PublicResolution.parts.tsx": {
+    "styles": 22,
+    "legacy": 4
+  },
+  "src/ui/public/PublicResolution.tsx": {
+    "styles": 2
+  },
+  "src/ui/public/Requests.tsx": {
+    "styles": 11,
+    "legacy": 2
+  },
+  "src/ui/public/SelfPreview.stories.tsx": {
+    "styles": 1
+  },
+  "src/ui/public/SelfPreview.tsx": {
+    "styles": 6
+  },
+  "src/ui/pwa/installScreenshots.stories.tsx": {
+    "styles": 2,
+    "hex": 1
+  },
+  "src/ui/settings/RecoveryPassword.stories.tsx": {
+    "styles": 1
+  },
+  "src/ui/settings/RecoveryPassword.tsx": {
+    "styles": 13,
+    "legacy": 2
+  },
+  "src/ui/settings/RecoveryPhrase.stories.tsx": {
+    "styles": 1
+  },
+  "src/ui/settings/RecoveryPhrase.tsx": {
+    "styles": 15,
+    "legacy": 2
+  },
+  "src/ui/share/ShareSheet.identity.tsx": {
+    "styles": 10
+  },
+  "src/ui/share/ShareSheet.lifetime.tsx": {
+    "styles": 2,
+    "legacy": 1
+  },
+  "src/ui/share/ShareSheet.parts.tsx": {
+    "styles": 7,
+    "hex": 2
+  },
+  "src/ui/share/ShareSheet.stories.tsx": {
+    "styles": 1
+  },
+  "src/ui/share/ShareSheet.tsx": {
+    "styles": 8
+  },
+  "src/ui/share/ShareSheet.url.tsx": {
+    "styles": 9
+  },
+  "src/ui/shell/AppShell.stories.tsx": {
+    "styles": 1,
+    "legacy": 2
+  },
+  "src/ui/shell/AppShell.tsx": {
+    "styles": 2
+  },
+  "src/ui/shell/KnockDot.tsx": {
+    "styles": 1,
+    "hex": 2
+  },
+  "src/ui/trust/Feedback.tsx": {
+    "styles": 19,
+    "legacy": 2
+  },
+  "src/ui/trust/LegalPage.stories.tsx": {
+    "styles": 4
+  },
+  "src/ui/trust/LegalPage.tsx": {
+    "styles": 15,
+    "legacy": 2
+  },
+  "src/ui/trust/TrustFooter.tsx": {
+    "styles": 10
+  },
+  "src/ui/trust/TrustShell.tsx": {
+    "styles": 11
+  },
+  "src/ui/wallet/apple-pass.tsx": {
+    "styles": 19,
+    "hex": 5
+  },
+  "src/ui/wallet/controls.tsx": {
+    "styles": 27,
+    "hex": 9,
+    "legacy": 1
+  },
+  "src/ui/wallet/google-pass.tsx": {
+    "styles": 19,
+    "hex": 3
+  },
+  "src/ui/wallet/screen-parts.tsx": {
+    "styles": 21,
+    "hex": 2,
+    "legacy": 2
+  },
+  "src/ui/wallet/share-card.tsx": {
+    "styles": 14,
+    "hex": 1
+  },
+  "src/ui/wallet/shared.tsx": {
+    "styles": 8,
+    "hex": 3
+  },
+  "src/ui/wallet/Wallet.tsx": {
+    "styles": 2,
+    "legacy": 1
+  }
+}
