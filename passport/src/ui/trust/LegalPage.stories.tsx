@@ -19,7 +19,7 @@ export const Privacy: Story = {
   args: { doc: PRIVACY_POLICY, wide: true },
   decorators: [
     (Story) => (
-      <div style={{ width: 980 }}>
+      <div className="u-w-wide">
         <Story />
       </div>
     ),
@@ -30,7 +30,7 @@ export const Terms: Story = {
   args: { doc: TERMS, wide: true },
   decorators: [
     (Story) => (
-      <div style={{ width: 980 }}>
+      <div className="u-w-wide">
         <Story />
       </div>
     ),
@@ -42,7 +42,7 @@ export const PrivacyMobile: Story = {
   args: { doc: PRIVACY_POLICY, wide: false },
   decorators: [
     (Story) => (
-      <div style={{ width: 380 }}>
+      <div className="u-w-phone">
         <Story />
       </div>
     ),
@@ -53,7 +53,7 @@ export const TermsMobile: Story = {
   args: { doc: TERMS, wide: false },
   decorators: [
     (Story) => (
-      <div style={{ width: 380 }}>
+      <div className="u-w-phone">
         <Story />
       </div>
     ),

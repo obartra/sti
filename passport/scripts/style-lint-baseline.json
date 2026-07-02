@@ -275,20 +275,6 @@
   "src/ui/onboarding/TopBack.tsx": {
     "styles": 4
   },
-  "src/ui/promises/Promises.stories.tsx": {
-    "styles": 2
-  },
-  "src/ui/promises/Promises.tsx": {
-    "styles": 23,
-    "legacy": 2
-  },
-  "src/ui/promises/TrustBoundary.stories.tsx": {
-    "styles": 2
-  },
-  "src/ui/promises/TrustBoundary.tsx": {
-    "styles": 11,
-    "legacy": 1
-  },
   "src/ui/public/Alert.parts.tsx": {
     "styles": 21,
     "legacy": 3
@@ -371,23 +357,6 @@
   },
   "src/ui/share/ShareSheet.url.tsx": {
     "styles": 9
-  },
-  "src/ui/trust/Feedback.tsx": {
-    "styles": 19,
-    "legacy": 2
-  },
-  "src/ui/trust/LegalPage.stories.tsx": {
-    "styles": 4
-  },
-  "src/ui/trust/LegalPage.tsx": {
-    "styles": 15,
-    "legacy": 2
-  },
-  "src/ui/trust/TrustFooter.tsx": {
-    "styles": 10
-  },
-  "src/ui/trust/TrustShell.tsx": {
-    "styles": 11
   },
   "src/ui/wallet/apple-pass.tsx": {
     "styles": 19,

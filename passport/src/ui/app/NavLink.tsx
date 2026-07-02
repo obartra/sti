@@ -10,13 +10,16 @@ export function NavLink({
   href,
   onNavigate,
   style,
+  className,
   ariaCurrent,
   ariaLabel,
   children,
 }: {
   href: string;
   onNavigate: () => void;
+  /** Prefer className; style remains for callers not yet migrated (doc 37). */
   style?: CSSProperties;
+  className?: string | undefined;
   ariaCurrent?: "page" | undefined;
   ariaLabel?: string | undefined;
   children: ReactNode;
@@ -43,6 +46,7 @@ export function NavLink({
       onClick={onClick}
       aria-current={ariaCurrent}
       aria-label={ariaLabel}
+      className={className}
       style={style}
     >
       {children}

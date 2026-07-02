@@ -1,0 +1,101 @@
+/* The legal documents (privacy policy, terms) on the publication grammar
+   (docs 23 + 37): a serif title, hairline-ruled sections instead of cards, and
+   the layered notice expressed through type, not tinted boxes: the plain-words
+   summary reads bigger and darker beside the smaller, quieter binding text,
+   so the two registers are distinguishable at a glance and the binding text
+   is never hidden. */
+
+.legal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.legal__head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 22px;
+}
+
+.legal__lead {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-body);
+}
+
+.legal__note {
+  margin: 4px 0 0;
+  max-width: var(--measure);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-body);
+}
+
+.legal__section {
+  border-top: var(--hairline);
+  padding: 20px 0 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.legal__heading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 19px;
+  line-height: 1.25;
+  color: var(--text-strong);
+}
+
+/* The plain-words summary: the louder register. */
+.legal__summary {
+  margin: 0;
+  font-size: 15px;
+  font-weight: var(--weight-medium);
+  line-height: 1.55;
+  color: var(--text-strong);
+  max-width: var(--measure);
+}
+
+/* The binding text: intact, visible, quieter. */
+.legal__binding {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--text-muted);
+}
+
+.legal__binding p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.legal__binding ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.legal__binding li {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.legal__cols {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.legal__cols-summary {
+  position: sticky;
+  top: 24px;
+}

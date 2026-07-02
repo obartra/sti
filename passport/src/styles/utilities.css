@@ -1,3 +1,13 @@
 /* Tiny single-purpose helpers, composed onto elements (the app's analog of
    info/src/styles/utilities.css). Highest layer, so a utility always wins
    over theme, layout, and components. */
+
+/* Deterministic story-capture widths: a phone-ish column and a wide column.
+   Stories pin their layout with these instead of inline widths. */
+.u-w-phone {
+  width: 380px;
+}
+
+.u-w-wide {
+  width: 980px;
+}

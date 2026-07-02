@@ -1,7 +1,9 @@
 import { useCallback, useState } from "react";
-import { Button, Card, Field } from "../../design/components/index.ts";
+import { Button, Field } from "../../design/components/index.ts";
 import { Help, Check } from "../../design/icons.tsx";
+import { cx } from "../../lib/cx.ts";
 import { type FeedbackReason, FEEDBACK_BODY_MAX } from "../../api/client.ts";
+import "./feedback.css";
 
 // The "Something wrong?" form (doc 35). It replaced a mailto so a report lands in
 // the operator queue instead of an inbox. A person picks a fixed category and can add
@@ -65,12 +67,9 @@ export function Feedback({ submit, onClose }: FeedbackProps) {
   if (sent) return <FeedbackDone onClose={onClose} />;
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="fb">
       <Header />
-      <form
-        onSubmit={send}
-        style={{ display: "flex", flexDirection: "column", gap: 12 }}
-      >
+      <form onSubmit={send} className="fb__form">
         <ReasonPicker reason={reason} onPick={setReason} disabled={busy} />
         <Field
           label={COPY.noteLabel}
@@ -85,28 +84,11 @@ export function Feedback({ submit, onClose }: FeedbackProps) {
             maxLength={FEEDBACK_BODY_MAX}
             rows={3}
             placeholder={COPY.notePlaceholder}
-            style={{
-              width: "100%",
-              boxSizing: "border-box",
-              resize: "vertical",
-              minHeight: 72,
-              padding: "9px 11px",
-              borderRadius: "var(--radius-sm)",
-              border: "1px solid var(--border-card)",
-              background: "var(--surface-input, transparent)",
-              color: "var(--text-body)",
-              font: "inherit",
-              fontSize: 13.5,
-              lineHeight: 1.45,
-            }}
+            className="fb__note"
           />
         </Field>
-        {error !== null && (
-          <div style={{ fontSize: 12.5, color: "var(--status-expired-fg)" }}>
-            {error}
-          </div>
-        )}
-        <div style={{ display: "flex", gap: 8 }}>
+        {error !== null && <div className="fb__error">{error}</div>}
+        <div className="fb__actions">
           <Button
             type="submit"
             variant="primary"
@@ -123,27 +105,19 @@ export function Feedback({ submit, onClose }: FeedbackProps) {
           )}
         </div>
       </form>
-    </Card>
+    </div>
   );
 }
 
 function Header() {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <span style={{ color: "var(--text-accent)", flex: "none" }}>
+    <div className="fb__head">
+      <span className="fb__head-icon">
         <Help size={18} />
       </span>
-      <div style={{ flex: 1 }}>
-        <div
-          style={{ fontSize: 15, fontWeight: 800, color: "var(--text-strong)" }}
-        >
-          {COPY.title}
-        </div>
-        <div
-          style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.45 }}
-        >
-          {COPY.lead}
-        </div>
+      <div className="fb__head-body">
+        <div className="fb__title">{COPY.title}</div>
+        <div className="fb__lead">{COPY.lead}</div>
       </div>
     </div>
   );
@@ -159,43 +133,12 @@ function ReasonPicker({
   disabled: boolean;
 }) {
   return (
-    <fieldset
-      style={{
-        border: "none",
-        margin: 0,
-        padding: 0,
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-      }}
-    >
-      <legend
-        style={{
-          fontSize: 13.5,
-          fontWeight: 700,
-          color: "var(--text-strong)",
-          padding: 0,
-          marginBottom: 2,
-        }}
-      >
-        {COPY.legend}
-      </legend>
+    <fieldset className="fb__reasons">
+      <legend className="fb__legend">{COPY.legend}</legend>
       {REASONS.map(({ code, label }) => (
         <label
           key={code}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "9px 11px",
-            borderRadius: "var(--radius-sm)",
-            cursor: "pointer",
-            border:
-              reason === code
-                ? "1.5px solid var(--text-accent)"
-                : "1px solid var(--border-card)",
-            background: reason === code ? "var(--accent-soft)" : "transparent",
-          }}
+          className={cx("fb__reason", reason === code && "fb__reason--on")}
         >
           <input
             type="radio"
@@ -205,9 +148,7 @@ function ReasonPicker({
             disabled={disabled}
             onChange={() => onPick(code)}
           />
-          <span style={{ fontSize: 13.5, color: "var(--text-body)" }}>
-            {label}
-          </span>
+          <span className="fb__reason-label">{label}</span>
         </label>
       ))}
     </fieldset>
@@ -216,25 +157,17 @@ function ReasonPicker({
 
 function FeedbackDone({ onClose }: { onClose?: (() => void) | undefined }) {
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ color: "var(--text-accent)", flex: "none" }}>
+    <div className="fb">
+      <div className="fb__head">
+        <span className="fb__head-icon">
           <Check size={20} />
         </span>
-        <div
-          style={{ fontSize: 16, fontWeight: 800, color: "var(--text-strong)" }}
-        >
-          {COPY.doneTitle}
-        </div>
+        <div className="fb__done-title">{COPY.doneTitle}</div>
       </div>
-      <div
-        style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}
-      >
-        {COPY.doneBody}
-      </div>
+      <div className="fb__done-body">{COPY.doneBody}</div>
       <Button variant="secondary" size="md" block onClick={onClose}>
         {COPY.done}
       </Button>
-    </Card>
+    </div>
   );
 }
