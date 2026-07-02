@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
-import { Button, Card } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
+import { StatusLabel } from "../editorial/StatusLabel.tsx";
+import "./admin.css";
 import type { AdminHealth, AdminHealthResult } from "./adminApi.ts";
 
-// The health panel (doc 20): a read-only, at-a-glance view of the box's operational
-// health, so a backing-up send queue, a stalled background loop, or a rise in internal
-// errors is visible on the page instead of only by reading /metrics on the server.
-// Every figure is a count, an age, or a system size, never a per-account or per-id
-// value (doc 12), so it stays within the blind-store boundary. It sits at the top of
-// the console as the first thing an operator reads: a single status chip summarizes it,
-// the tiles below break it down.
+// The health panel (doc 20): a read-only, at-a-glance view of how the box is running
+// right now, at the top of the console. A single status word (StatusLabel) summarizes
+// it, the figures below break it down (errors, send queue, background-loop heartbeat,
+// concurrency). Every figure is a count, an age, or a system size, never a per-account
+// or per-id value (doc 12), so it stays within the blind-store boundary.
 
 // The transport the panel needs, injected so tests and Storybook drive it without a
 // server (and so AdminPage can bind it to its apiBase + token).
@@ -22,7 +22,6 @@ const COPY = {
   loading: "Loading health…",
   loadError: "Couldn't load health. Check your connection and try again.",
   retry: "Retry",
-  refresh: "Refresh",
   statusOk: "All clear",
   statusWarn: "Needs a look",
   statusUnknown: "Health unknown",
@@ -41,7 +40,7 @@ const COPY = {
 // past these. The loop threshold clears a slow janitor interval (STI_JANITOR_INTERVAL
 // defaults to 1 min but is operator-configurable) with wide margin, so a healthy box
 // on a longer tick never flickers amber; the metrics-scrape alert catches a real
-// stall in real time regardless, this chip is the at-a-glance echo.
+// stall in real time regardless, this word is the at-a-glance echo.
 const QUEUE_STUCK_SECONDS = 300;
 const LOOP_STALE_SECONDS = 900;
 
@@ -72,9 +71,9 @@ export function healthStatus(h: AdminHealth | null): HealthStatus {
   return { tone: "ok", label: COPY.statusOk };
 }
 
-// Status tone to the design's status tokens: clear (green) for all-clear, treat
+// Status tone to the editorial StatusLabel tone: clear (green) for all-clear, treat
 // (amber) for needs-a-look, none (grey) for an unknown/failed read.
-const TONE_TOKEN: Record<HealthTone, string> = {
+const STATUS_TONE: Record<HealthTone, "clear" | "treat" | "none"> = {
   ok: "clear",
   warn: "treat",
   unknown: "none",
@@ -98,38 +97,7 @@ const ERROR_LABEL: Record<string, string> = {
   decode: "Decode",
 };
 
-function StatusChip({ status }: { status: HealthStatus }) {
-  const token = TONE_TOKEN[status.tone];
-  return (
-    <span
-      style={{
-        alignSelf: "flex-start",
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        fontSize: 12.5,
-        fontWeight: 700,
-        padding: "4px 10px",
-        borderRadius: 999,
-        color: `var(--status-${token}-fg)`,
-        background: `var(--status-${token}-bg)`,
-      }}
-    >
-      <span
-        aria-hidden="true"
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: 999,
-          background: `var(--status-${token}-fg)`,
-        }}
-      />
-      {status.label}
-    </span>
-  );
-}
-
-function HealthTile({
+function Figure({
   label,
   value,
   note,
@@ -141,35 +109,11 @@ function HealthTile({
   warn?: boolean;
 }) {
   return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 4 }}
-    >
-      <div
-        style={{
-          fontSize: 20,
-          fontWeight: 800,
-          color: warn ? "var(--status-treat-fg)" : "var(--text-strong)",
-          fontVariantNumeric: "tabular-nums",
-        }}
-      >
-        {value}
-      </div>
-      <div
-        style={{
-          fontSize: 11.5,
-          fontWeight: 600,
-          letterSpacing: "0.04em",
-          textTransform: "uppercase",
-          color: "var(--text-subtle)",
-        }}
-      >
-        {label}
-      </div>
-      {note !== undefined && (
-        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{note}</div>
-      )}
-    </Card>
+    <div className={warn ? "adm-figure adm-figure--warn" : "adm-figure"}>
+      <div className="adm-figure__value">{value}</div>
+      <div className="adm-figure__label">{label}</div>
+      {note !== undefined && <div className="adm-figure__note">{note}</div>}
+    </div>
   );
 }
 
@@ -179,13 +123,13 @@ function ErrorBreakdown({ health }: { health: AdminHealth }) {
   const nonzero = health.errors.filter((e) => e.count > 0);
   if (nonzero.length === 0) {
     return (
-      <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
+      <div className="adm-note">
         {COPY.errorsLabel}: {COPY.noErrors}.
       </div>
     );
   }
   return (
-    <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
+    <div className="adm-note">
       {COPY.errorsLabel}:{" "}
       {nonzero
         .map((e) => `${ERROR_LABEL[e.type] ?? e.type} ${e.count}`)
@@ -194,7 +138,7 @@ function ErrorBreakdown({ health }: { health: AdminHealth }) {
   );
 }
 
-function HealthGrid({ health }: { health: AdminHealth }) {
+function HealthFigures({ health }: { health: AdminHealth }) {
   const errs = totalErrors(health);
   const queueNote =
     health.sendQueueDepth > 0
@@ -205,30 +149,24 @@ function HealthGrid({ health }: { health: AdminHealth }) {
       ? COPY.neverRan
       : humanAge(health.janitorAgeSeconds);
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-        gap: 10,
-      }}
-    >
-      <HealthTile
+    <div className="adm-figures">
+      <Figure
         label={COPY.errorsLabel}
         value={errs.toLocaleString("en-US")}
         warn={errs > 0}
       />
-      <HealthTile
+      <Figure
         label={COPY.queueLabel}
         value={health.sendQueueDepth.toLocaleString("en-US")}
         note={queueNote}
         warn={health.sendQueueOldestAgeSeconds > QUEUE_STUCK_SECONDS}
       />
-      <HealthTile
+      <Figure
         label={COPY.loopLabel}
         value={loopValue}
         warn={health.janitorAgeSeconds > LOOP_STALE_SECONDS}
       />
-      <HealthTile
+      <Figure
         label={COPY.inflightLabel}
         value={`${health.inflightCurrent} / ${health.inflightMax}`}
       />
@@ -274,38 +212,24 @@ export function HealthPanel({
     load();
   }, [load, refreshSignal]);
 
+  const st = healthStatus(health);
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-        <div style={{ flex: 1 }}>
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 15,
-              fontWeight: 800,
-              color: "var(--text-strong)",
-            }}
-          >
-            {COPY.title}
-          </h2>
-          <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-            {COPY.sub}
-          </div>
+    <section className="adm-panel">
+      <div className="adm-panel__head">
+        <div className="adm-panel__headings">
+          <h2 className="adm-panel__title">{COPY.title}</h2>
+          <div className="adm-panel__sub">{COPY.sub}</div>
         </div>
-        {status === "ready" && <StatusChip status={healthStatus(health)} />}
+        {status === "ready" && (
+          <StatusLabel label={st.label} tone={STATUS_TONE[st.tone]} />
+        )}
       </div>
 
-      {status === "loading" && (
-        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          {COPY.loading}
-        </div>
-      )}
+      {status === "loading" && <div className="adm-note">{COPY.loading}</div>}
 
       {status === "loadError" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 13, color: "var(--status-expired-fg)" }}>
-            {COPY.loadError}
-          </div>
+        <div className="adm-retry">
+          <div className="adm-error">{COPY.loadError}</div>
           <Button variant="secondary" size="sm" onClick={load}>
             {COPY.retry}
           </Button>
@@ -313,11 +237,11 @@ export function HealthPanel({
       )}
 
       {status === "ready" && health !== null && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <HealthGrid health={health} />
+        <>
+          <HealthFigures health={health} />
           <ErrorBreakdown health={health} />
-        </div>
+        </>
       )}
-    </Card>
+    </section>
   );
 }

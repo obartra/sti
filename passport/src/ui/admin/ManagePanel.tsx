@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Card, Field, Input } from "../../design/components/index.ts";
+import { Button, Field, Input } from "../../design/components/index.ts";
 import { PanelHeading } from "./panelChrome.tsx";
 import { formatUtc } from "./ActivityPanel.tsx";
 import { humanBytes } from "./MetricsPanel.tsx";
+import "./admin.css";
 import type {
   AdminActionResult,
   AdminLookup,
@@ -57,32 +58,17 @@ type Status = "idle" | "loading" | "ready" | "loadError";
 // holds none to show.
 function RecordCard({ label, info }: { label: string; info: AdminRecordInfo }) {
   return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 4 }}
-    >
-      <div
-        style={{
-          fontSize: 11.5,
-          fontWeight: 600,
-          letterSpacing: "0.04em",
-          textTransform: "uppercase",
-          color: "var(--text-subtle)",
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{ fontSize: 15, fontWeight: 800, color: "var(--text-strong)" }}
-      >
+    <div className="adm-figure">
+      <div className="adm-figure__value">
         {info.exists ? COPY.present : COPY.empty}
       </div>
+      <div className="adm-figure__label">{label}</div>
       {info.exists && (
-        <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
+        <div className="adm-figure__note">
           {humanBytes(info.sizeBytes)} · {formatUtc(info.updatedAt)}
         </div>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -157,35 +143,17 @@ function FoundRecord({
   onRevoke: () => void;
 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div
-        style={{
-          fontFamily: "var(--font-mono, ui-monospace, monospace)",
-          fontSize: 13,
-          fontWeight: 700,
-          color: "var(--text-strong)",
-          wordBreak: "break-all",
-        }}
-      >
-        {target}
-      </div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-          gap: 10,
-        }}
-      >
+    <div className="adm-record">
+      <div className="adm-item__name">{target}</div>
+      <div className="adm-record__grid">
         <RecordCard label="Link" info={record.alias} />
         <RecordCard label="Account" info={record.account} />
         <RecordCard label="Inbox" info={record.inbox} />
       </div>
       {actError !== null && (
-        <div style={{ fontSize: 12.5, color: "var(--status-expired-fg)" }}>
-          {actError}
-        </div>
+        <div className="adm-error adm-error--inline">{actError}</div>
       )}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      <div className="adm-record__row">
         <ConfirmButton
           idle={COPY.disable}
           confirm={COPY.disableConfirm}
@@ -277,25 +245,20 @@ export function ManagePanel({
   );
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <section className="adm-panel">
       <PanelHeading title={COPY.title} sub={COPY.sub} />
 
-      <form
-        onSubmit={onSubmit}
-        style={{ display: "flex", alignItems: "flex-end", gap: 8 }}
-      >
-        <div style={{ flex: 1 }}>
-          <Field label={COPY.idLabel} htmlFor="manage-id">
-            <Input
-              id="manage-id"
-              autoComplete="off"
-              spellCheck={false}
-              value={id}
-              disabled={status === "loading"}
-              onChange={(e) => setId(e.target.value)}
-            />
-          </Field>
-        </div>
+      <form onSubmit={onSubmit} className="adm-gate__form">
+        <Field label={COPY.idLabel} htmlFor="manage-id">
+          <Input
+            id="manage-id"
+            autoComplete="off"
+            spellCheck={false}
+            value={id}
+            disabled={status === "loading"}
+            onChange={(e) => setId(e.target.value)}
+          />
+        </Field>
         <Button
           type="submit"
           variant="secondary"
@@ -316,7 +279,7 @@ export function ManagePanel({
         onDisable={() => act(ops.disable)}
         onRevoke={() => act(ops.revoke)}
       />
-    </Card>
+    </section>
   );
 }
 
@@ -343,25 +306,15 @@ function ResultView({
   onRevoke: () => void;
 }) {
   if (status === "idle") {
-    return (
-      <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-        {COPY.idle}
-      </div>
-    );
+    return <div className="adm-note">{COPY.idle}</div>;
   }
   if (status === "loading") {
-    return (
-      <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-        {COPY.loading}
-      </div>
-    );
+    return <div className="adm-note">{COPY.loading}</div>;
   }
   if (status === "loadError") {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ fontSize: 13, color: "var(--status-expired-fg)" }}>
-          {COPY.loadError}
-        </div>
+      <div className="adm-retry">
+        <div className="adm-error">{COPY.loadError}</div>
         <Button variant="secondary" size="sm" onClick={onRetry}>
           {COPY.retry}
         </Button>
@@ -369,11 +322,7 @@ function ResultView({
     );
   }
   if (record === null || !recordFound(record)) {
-    return (
-      <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-        {COPY.notFound}
-      </div>
-    );
+    return <div className="adm-note">{COPY.notFound}</div>;
   }
   return (
     <FoundRecord

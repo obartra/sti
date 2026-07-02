@@ -13,30 +13,6 @@
     "styles": 1,
     "hex": 13
   },
-  "src/ui/admin/ActivityPanel.tsx": {
-    "styles": 15,
-    "legacy": 2
-  },
-  "src/ui/admin/AdminPage.tsx": {
-    "styles": 14,
-    "legacy": 1
-  },
-  "src/ui/admin/FeedbackPanel.tsx": {
-    "styles": 14,
-    "legacy": 2
-  },
-  "src/ui/admin/ManagePanel.tsx": {
-    "styles": 19,
-    "legacy": 2
-  },
-  "src/ui/admin/MetricsPanel.tsx": {
-    "styles": 16,
-    "legacy": 2
-  },
-  "src/ui/admin/ReviewPanel.tsx": {
-    "styles": 13,
-    "legacy": 2
-  },
   "src/ui/app/NavLink.tsx": {
     "styles": 1
   },

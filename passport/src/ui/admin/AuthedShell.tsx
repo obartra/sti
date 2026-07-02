@@ -1,17 +1,19 @@
 import { useCallback, useState } from "react";
 import { Button } from "../../design/components/index.ts";
 import { Refresh, ShieldCheck } from "../../design/icons.tsx";
-import { useMinWidth } from "../desktop/Desktop.tsx";
 import { ReviewPanel, type ReviewOps } from "./ReviewPanel.tsx";
 import { ActivityPanel, type AuditOps } from "./ActivityPanel.tsx";
 import { MetricsPanel, type MetricsOps } from "./MetricsPanel.tsx";
 import { HealthPanel, type HealthOps } from "./HealthPanel.tsx";
 import { FeedbackPanel, type FeedbackOps } from "./FeedbackPanel.tsx";
 import { ManagePanel, type ManageOps } from "./ManagePanel.tsx";
+import "./admin.css";
 
-// The authed operator console (doc 20): the panel shell shown once the token gate in
-// AdminPage validates a bearer. Split out of AdminPage so each stays within its length
-// ceiling; AdminPage owns the gate, this owns the composed panels.
+// The authed operator console (doc 20) in the editorial grammar (doc 37): a
+// hairline-ruled column of panels shown once the token gate in AdminPage validates a
+// bearer. Split out of AdminPage so each stays within its length ceiling; AdminPage
+// owns the gate, this owns the composed panels. The queues split to two columns via a
+// container query on the console, not a JS breakpoint.
 
 const COPY = {
   authedTitle: "Admin",
@@ -41,7 +43,6 @@ export function AuthedShell({
   onLock: () => void;
   onExpire: () => void;
 }) {
-  const twoCol = useMinWidth(900);
   // One shared refresh signal: bumping it re-reads every auto-loading panel in place
   // (no remount), so an operator can pull fresh numbers across the console at once
   // instead of reloading the tab or retrying each panel. The Manage tool is idle
@@ -49,37 +50,26 @@ export function AuthedShell({
   const [refreshSignal, setRefreshSignal] = useState(0);
   const refreshAll = useCallback(() => setRefreshSignal((n) => n + 1), []);
   return (
-    <>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ color: "var(--text-accent)", flex: "none" }}>
+    <div className="adm">
+      <div className="adm-head">
+        <span className="adm-head__mark">
           <ShieldCheck size={20} />
         </span>
-        <div style={{ flex: 1 }}>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 18,
-              fontWeight: 800,
-              color: "var(--text-strong)",
-            }}
-          >
-            {COPY.authedTitle}
-          </h1>
-          <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-            {COPY.authedSub}
-          </div>
+        <div className="adm-head__body">
+          <h1 className="adm-head__title">{COPY.authedTitle}</h1>
+          <div className="adm-head__sub">{COPY.authedSub}</div>
         </div>
-        <Button variant="ghost" size="sm" onClick={refreshAll}>
-          <span
-            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-          >
-            <Refresh size={15} />
-            {COPY.refreshAll}
-          </span>
-        </Button>
-        <Button variant="ghost" size="sm" onClick={onLock}>
-          {COPY.lockAgain}
-        </Button>
+        <div className="adm-head__actions">
+          <Button variant="ghost" size="sm" onClick={refreshAll}>
+            <span className="adm-btn-icon">
+              <Refresh size={15} />
+              {COPY.refreshAll}
+            </span>
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onLock}>
+            {COPY.lockAgain}
+          </Button>
+        </div>
       </div>
       {/* Health first (how the box is running right now), then the stored totals and
           trends, then the work queues, then the management tool and the audit log:
@@ -96,14 +86,7 @@ export function AuthedShell({
         onUnauthorized={onExpire}
         refreshSignal={refreshSignal}
       />
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: twoCol ? "minmax(0, 1fr) minmax(0, 1fr)" : "1fr",
-          gap: 16,
-          alignItems: "start",
-        }}
-      >
+      <div className="adm-queues">
         <ReviewPanel
           token={token}
           ops={ops}
@@ -126,6 +109,6 @@ export function AuthedShell({
         onUnauthorized={onExpire}
         refreshSignal={refreshSignal}
       />
-    </>
+    </div>
   );
 }

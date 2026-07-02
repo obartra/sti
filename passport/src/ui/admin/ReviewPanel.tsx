@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { Button, Card } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
 import { PanelHeading } from "./panelChrome.tsx";
+import "./admin.css";
 import type {
   AdminAction,
   AdminActionResult,
@@ -109,24 +110,18 @@ export function ReviewPanel({
   );
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <section className="adm-panel">
       <PanelHeading
         title={COPY.title}
         sub={COPY.sub}
         count={status === "ready" ? reports.length : undefined}
       />
 
-      {status === "loading" && (
-        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          {COPY.loading}
-        </div>
-      )}
+      {status === "loading" && <div className="adm-note">{COPY.loading}</div>}
 
       {status === "loadError" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 13, color: "var(--status-expired-fg)" }}>
-            {COPY.loadError}
-          </div>
+        <div className="adm-retry">
+          <div className="adm-error">{COPY.loadError}</div>
           <Button variant="secondary" size="sm" onClick={load}>
             {COPY.retry}
           </Button>
@@ -134,17 +129,13 @@ export function ReviewPanel({
       )}
 
       {status === "ready" && reports.length === 0 && (
-        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          {COPY.empty}
-        </div>
+        <div className="adm-note">{COPY.empty}</div>
       )}
 
       {status === "ready" && reports.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="adm-list">
           {actError !== null && (
-            <div style={{ fontSize: 12.5, color: "var(--status-expired-fg)" }}>
-              {actError}
-            </div>
+            <div className="adm-error adm-error--inline">{actError}</div>
           )}
           {reports.map((r) => (
             <ReportRow
@@ -156,7 +147,7 @@ export function ReviewPanel({
           ))}
         </div>
       )}
-    </Card>
+    </section>
   );
 }
 
@@ -170,30 +161,15 @@ function ReportRow({
   onAct: (name: string, action: AdminAction) => void;
 }) {
   return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 10 }}
-    >
+    <div className="adm-item">
       <div>
-        <div
-          style={{
-            fontFamily: "var(--font-mono, ui-monospace, monospace)",
-            fontSize: 15,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-            wordBreak: "break-all",
-          }}
-        >
-          {report.name}
-        </div>
-        <div
-          style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}
-        >
+        <div className="adm-item__name">{report.name}</div>
+        <div className="adm-item__meta">
           {reportCount(report.count)} ·{" "}
           {REASON_LABELS[report.reason] ?? "Other"}
         </div>
       </div>
-      <div style={{ display: "flex", gap: 8 }}>
+      <div className="adm-item__actions">
         <Button
           variant="danger"
           size="sm"
@@ -211,6 +187,6 @@ function ReportRow({
           {COPY.dismiss}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }

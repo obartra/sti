@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Card, Field, Input } from "../../design/components/index.ts";
+import { Button, Field, Input } from "../../design/components/index.ts";
 import { Lock } from "../../design/icons.tsx";
+import "./admin.css";
 import {
   actOnVanityName,
   disableAccount,
@@ -273,29 +274,16 @@ export function AdminPage({
     useAdminGate(validate);
 
   // Admin bypasses the app's Chrome (it is an isolated takeover), so it owns its
-  // own centered page frame rather than inheriting the consumer shell's.
+  // own centered page frame rather than inheriting the consumer shell's. The authed
+  // console spreads its panels across the desktop width; the lock gate stays a
+  // compact, centered sign-in.
+  const innerClass =
+    phase === "authed"
+      ? "adm-page__inner adm-page__inner--authed"
+      : "adm-page__inner";
   return (
-    <div
-      style={{
-        minHeight: "100dvh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "flex-start",
-        padding: "48px 20px",
-        boxSizing: "border-box",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 16,
-          width: "100%",
-          // The authed console spreads its panels across the desktop width; the
-          // lock gate stays a compact, centered sign-in card.
-          maxWidth: phase === "authed" ? 1080 : 420,
-        }}
-      >
+    <div className="adm-page">
+      <div className={innerClass}>
         {phase === "authed" ? (
           <AuthedShell
             token={token}
@@ -336,30 +324,17 @@ function LockGate({
   error: string | null;
 }) {
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ color: "var(--text-accent)", flex: "none" }}>
+    <div className="adm-gate">
+      <div className="adm-gate__head">
+        <span className="adm-gate__mark">
           <Lock size={18} />
         </span>
         <div>
-          <div
-            style={{
-              fontSize: 16,
-              fontWeight: 800,
-              color: "var(--text-strong)",
-            }}
-          >
-            {COPY.lockTitle}
-          </div>
-          <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-            {COPY.lockSub}
-          </div>
+          <div className="adm-gate__title">{COPY.lockTitle}</div>
+          <div className="adm-gate__sub">{COPY.lockSub}</div>
         </div>
       </div>
-      <form
-        onSubmit={onSubmit}
-        style={{ display: "flex", flexDirection: "column", gap: 12 }}
-      >
+      <form onSubmit={onSubmit} className="adm-gate__form">
         <Field
           label={COPY.tokenLabel}
           htmlFor="admin-token"
@@ -386,6 +361,6 @@ function LockGate({
           {busy ? COPY.checking : COPY.unlock}
         </Button>
       </form>
-    </Card>
+    </div>
   );
 }

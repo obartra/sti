@@ -9,7 +9,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Button, Card } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
+import { PanelHeading } from "./panelChrome.tsx";
+import "./admin.css";
 import type {
   AdminMetrics,
   AdminMetricsResult,
@@ -93,57 +95,22 @@ function latencyLabel(underMs: number): string {
   return `< ${Math.round(underMs / DAY_MS)}d`;
 }
 
-// A shared uppercase caption above each chart, so the trend charts read the same as
-// the row chart's heading.
+// A shared uppercase caption above each chart, in the editorial eyebrow style.
 function ChartLabel({ text }: { text: string }) {
+  return <div className="e-eyebrow">{text}</div>;
+}
+
+// One stored-totals figure: a serif number over an eyebrow label, no box.
+function StatFigure({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      style={{
-        fontSize: 11.5,
-        fontWeight: 600,
-        letterSpacing: "0.04em",
-        textTransform: "uppercase",
-        color: "var(--text-subtle)",
-        marginBottom: 8,
-      }}
-    >
-      {text}
+    <div className="adm-figure">
+      <div className="adm-figure__value">{value}</div>
+      <div className="adm-figure__label">{label}</div>
     </div>
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 4 }}
-    >
-      <div
-        style={{
-          fontSize: 22,
-          fontWeight: 800,
-          color: "var(--text-strong)",
-          fontVariantNumeric: "tabular-nums",
-        }}
-      >
-        {value}
-      </div>
-      <div
-        style={{
-          fontSize: 11.5,
-          fontWeight: 600,
-          letterSpacing: "0.04em",
-          textTransform: "uppercase",
-          color: "var(--text-subtle)",
-        }}
-      >
-        {label}
-      </div>
-    </Card>
-  );
-}
-
-// The stored-totals cards: what the store currently holds. The operational backlog
+// The stored-totals figures: what the store currently holds. The operational backlog
 // (send queue) and the review/feedback queues are deliberately NOT here; they live in
 // the Service health panel and as counts on their own queue panels, so a number is
 // shown in exactly one place.
@@ -155,15 +122,9 @@ function StatGrid({ metrics }: { metrics: AdminMetrics }) {
     { label: "Database", value: humanBytes(metrics.dbSizeBytes) },
   ];
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-        gap: 10,
-      }}
-    >
+    <div className="adm-figures">
       {cards.map((c) => (
-        <StatCard key={c.label} label={c.label} value={c.value} />
+        <StatFigure key={c.label} label={c.label} value={c.value} />
       ))}
     </div>
   );
@@ -184,7 +145,7 @@ function DailyAreaChart({
 }) {
   const data = series.map((d) => ({ label: dayLabel(d.day), count: d.count }));
   return (
-    <div>
+    <div className="adm-chart">
       <ChartLabel text={title} />
       <ResponsiveContainer width="100%" height={180}>
         <AreaChart
@@ -233,7 +194,7 @@ function LatencyChart({ trends }: { trends: AdminTrends }) {
     count: b.count,
   }));
   return (
-    <div>
+    <div className="adm-chart">
       <ChartLabel text={COPY.latencyTitle} />
       <ResponsiveContainer width="100%" height={180}>
         <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
@@ -328,34 +289,14 @@ export function MetricsPanel({
   }, [load, loadTrends, refreshSignal]);
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div>
-        <h2
-          style={{
-            margin: 0,
-            fontSize: 15,
-            fontWeight: 800,
-            color: "var(--text-strong)",
-          }}
-        >
-          {COPY.title}
-        </h2>
-        <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-          {COPY.sub}
-        </div>
-      </div>
+    <section className="adm-panel">
+      <PanelHeading title={COPY.title} sub={COPY.sub} />
 
-      {status === "loading" && (
-        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          {COPY.loading}
-        </div>
-      )}
+      {status === "loading" && <div className="adm-note">{COPY.loading}</div>}
 
       {status === "loadError" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 13, color: "var(--status-expired-fg)" }}>
-            {COPY.loadError}
-          </div>
+        <div className="adm-retry">
+          <div className="adm-error">{COPY.loadError}</div>
           <Button variant="secondary" size="sm" onClick={load}>
             {COPY.retry}
           </Button>
@@ -365,16 +306,12 @@ export function MetricsPanel({
       {status === "ready" && metrics !== null && <StatGrid metrics={metrics} />}
 
       {trendStatus === "loading" && (
-        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          {COPY.trendsLoading}
-        </div>
+        <div className="adm-note">{COPY.trendsLoading}</div>
       )}
 
       {trendStatus === "loadError" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 13, color: "var(--status-expired-fg)" }}>
-            {COPY.trendsError}
-          </div>
+        <div className="adm-retry">
+          <div className="adm-error">{COPY.trendsError}</div>
           <Button variant="secondary" size="sm" onClick={loadTrends}>
             {COPY.retry}
           </Button>
@@ -382,7 +319,7 @@ export function MetricsPanel({
       )}
 
       {trendStatus === "ready" && trends !== null && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div className="adm-charts">
           <DailyAreaChart
             title={COPY.reportsTitle}
             series={trends.reportsPerDay}
@@ -396,6 +333,6 @@ export function MetricsPanel({
           <LatencyChart trends={trends} />
         </div>
       )}
-    </Card>
+    </section>
   );
 }
