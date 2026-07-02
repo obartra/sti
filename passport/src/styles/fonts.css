@@ -1,0 +1,6 @@
+/* App-owned font loading. For now this still points at the vendored Google
+   Fonts import so the layered entry is a pure refactor; self-hosted files
+   replace it next (doc 37), which is why fonts.css exists apart from the
+   skip-fonts barrel. */
+
+@import "../design/tokens/fonts.css";

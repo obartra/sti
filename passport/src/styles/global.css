@@ -1,0 +1,16 @@
+/* The app's single style entry (main.tsx; Storybook uses storybook.css, which
+   is this minus the document frame). Declares the cascade-layer order for the
+   editorial architecture (doc 37): the vendored design system loads lowest,
+   app-owned layers sit above it, and component-adjacent CSS files stay
+   unlayered, which beats every layer, so a component always wins over
+   globals. Mirrors info/src/styles/global.css. */
+
+@layer passport, theme, layout, components, utilities;
+
+@import "./passport.css" layer(passport);
+@import "./fonts.css" layer(theme);
+@import "./theme.css" layer(theme);
+@import "./document.css" layer(layout);
+@import "./layout.css" layer(layout);
+@import "./components.css" layer(components);
+@import "./utilities.css" layer(utilities);

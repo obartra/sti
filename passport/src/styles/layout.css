@@ -1,0 +1,4 @@
+/* App-level layout vocabulary: the frame and grid classes the editorial
+   layouts compose (doc 37). Shared by the app and Storybook; the app-only
+   document frame lives in document.css. Populated as screens migrate; empty
+   until then so the layered entry is a pure refactor. */
