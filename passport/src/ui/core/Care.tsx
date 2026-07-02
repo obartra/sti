@@ -50,6 +50,8 @@ const COPY = {
   learn: {
     title: "STI basics",
     sub: "Learn and share what to do. No judgment. One page each.",
+    testingTitle: "Getting tested, what to expect",
+    testingSub: "The whole visit, start to finish. Quicker than you think.",
     official: "Or see the official CDC testing list",
     footer:
       "This is general info, not medical advice. A clinic or doctor can tell you what is right for you. Based on U.S. CDC guidance.",
@@ -91,6 +93,7 @@ export interface CareProps {
   onFindPep?: (() => void) | undefined;
   onFindPrep?: (() => void) | undefined;
   onLearn?: (() => void) | undefined;
+  onLearnTesting?: (() => void) | undefined;
 }
 
 function GetTestedCard({
@@ -226,7 +229,13 @@ function HeymistrCard({
   );
 }
 
-function LearnRows({ onLearn }: { onLearn?: (() => void) | undefined }) {
+function LearnRows({
+  onLearn,
+  onLearnTesting,
+}: {
+  onLearn?: (() => void) | undefined;
+  onLearnTesting?: (() => void) | undefined;
+}) {
   const c = COPY.care;
   const chevron = <Chevron size={18} />;
   const learnIcons: ReactNode[] = [
@@ -244,6 +253,13 @@ function LearnRows({ onLearn }: { onLearn?: (() => void) | undefined }) {
         sub={COPY.learn.sub}
         trail={chevron}
         onClick={onLearn}
+      />
+      <Row
+        lead={<Stethoscope size={20} />}
+        title={COPY.learn.testingTitle}
+        sub={COPY.learn.testingSub}
+        trail={chevron}
+        onClick={onLearnTesting}
       />
       {c.rows.map((row, i) => {
         const isTalk = row[0] === "Talk to someone";
@@ -300,6 +316,7 @@ export function Care({
   onFindPep,
   onFindPrep,
   onLearn,
+  onLearnTesting,
 }: CareProps) {
   const c = COPY.care;
   const chevron = <Chevron size={18} />;
@@ -360,7 +377,7 @@ export function Care({
       </Card>
 
       <div style={sectionLbl}>{c.learn}</div>
-      <LearnRows onLearn={onLearn} />
+      <LearnRows onLearn={onLearn} onLearnTesting={onLearnTesting} />
 
       <div
         style={{

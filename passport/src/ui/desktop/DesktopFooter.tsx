@@ -2,11 +2,13 @@ import type { CSSProperties } from "react";
 import { NavLink } from "../app/NavLink.tsx";
 import { pathForScreen } from "../app/useAppRouter.ts";
 import { TRUST_FOOTER } from "../trust/trustCopy.ts";
+import { infoUrl } from "../../lib/info.ts";
 
-// The desktop marketing-landing footer (doc 23): logo, the trust links, and the
-// medical disclaimer. Split out of DesktopLandingParts so that file stays under
-// the line ceiling. The trust links are real anchors (NavLink): a genuine href that
-// reads as a link, with a plain click routed through the SPA.
+// The desktop marketing-landing footer (doc 23): logo, the trust links, the
+// education library, and the medical disclaimer. Split out of DesktopLandingParts
+// so that file stays under the line ceiling. The trust links are real anchors
+// (NavLink): a genuine href that reads as a link, with a plain click routed
+// through the SPA. The library link leaves for info.sti.care, like TrustFooter's.
 
 const SECTION_MAX: CSSProperties = { maxWidth: 1120, margin: "0 auto" };
 
@@ -86,6 +88,14 @@ export function LandingFooter({
               {TRUST_FOOTER.shareLink}
             </NavLink>
           )}
+          <a
+            href={infoUrl("/")}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={footerLink}
+          >
+            {TRUST_FOOTER.library}
+          </a>
         </nav>
         <div
           style={{

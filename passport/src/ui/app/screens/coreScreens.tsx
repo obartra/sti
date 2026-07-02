@@ -122,6 +122,7 @@ export const coreRenderers: ScreenRenderers = {
     <Care
       badge={owner.badge}
       onLearn={() => openResource(infoUrl("/"))}
+      onLearnTesting={() => openResource(infoUrl("/testing"))}
       onFindClinic={() => openResource(RESOURCES.clinic)}
       onLearnOfficial={() => openResource(RESOURCES.clinic)}
       onFindCondoms={() => openResource(RESOURCES.condoms)}

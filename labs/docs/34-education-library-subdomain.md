@@ -42,14 +42,19 @@ throws at build time on any duplicate, so a clash can never ship silently.
 The in-app education screens are gone; the app renders real outbound anchors to
 info.sti.care instead:
 
-- The landing's "verify" link (the logged-out path into the library).
-- The Care hub's "Learn" action.
-- The report flow's link into a specific condition explainer.
+- The landing's "verify" link (the logged-out path into the library) and the
+  trust footer's "STI basics" link, on both the mobile and desktop landing.
+- The Care hub's "Learn and talk" rows: the library index and the
+  getting-tested guide.
+- The report flow's link into a specific condition explainer, and the report
+  share step's link to the tell-a-partner guide.
+- The public `/exposed` page's what-to-expect row into the testing guide.
 
-The report-flow and Care-hub links sit inside the signed-in app, so they open the info
-site in a **new tab** rather than navigating the app's tab away from itself. The
-landing link is a plain navigation. The app pins these links to real info routes with
-a small routing test.
+Links inside the signed-in app and on `/exposed` open the info site in a **new
+tab** rather than navigating the app's tab away from itself; the landing links
+are plain navigations. A test in the app reads the info content collections and
+fails if any deep-linked slug stops existing, so a repointed link can never
+dangle silently.
 
 ## Architecture
 
