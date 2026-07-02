@@ -1,14 +1,4 @@
-/* App-level layout: the document frame the SPA mounts into. Absorbed from the
-   former src/app.css; frame and grid vocabulary for the editorial layouts
-   joins it as screens migrate (doc 37). */
-
-html,
-body,
-#root {
-  height: 100%;
-}
-
-body {
-  margin: 0;
-  background: var(--surface-app);
-}
+/* App-level layout vocabulary: the frame and grid classes the editorial
+   layouts compose (doc 37). Shared by the app and Storybook; the app-only
+   document frame lives in document.css. Populated as screens migrate; empty
+   until then so the layered entry is a pure refactor. */

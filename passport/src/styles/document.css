@@ -1,0 +1,16 @@
+/* The app's document frame (absorbed from the former src/app.css): the SPA
+   mounts into #root and the shells size against it. App-only on purpose:
+   Storybook renders stories on its own canvas, and forcing html/body to 100%
+   there changes full-page capture heights and overlay layout, so its entry
+   (storybook.css) skips this file. */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--surface-app);
+}

@@ -26,3 +26,10 @@ describe("the skip-fonts barrel", () => {
     expect(app).toEqual(vendored);
   });
 });
+
+describe("the storybook entry", () => {
+  it("imports exactly the app entry's files minus document.css", () => {
+    const app = read("./global.css").filter((p) => p !== "./document.css");
+    expect(read("./storybook.css")).toEqual(app);
+  });
+});
