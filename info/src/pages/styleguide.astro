@@ -1,0 +1,379 @@
+---
+import { getCollection } from "astro:content";
+import Base from "../layouts/Base.astro";
+import Icon from "../components/Icon.astro";
+import Callout from "../components/Callout.astro";
+import ClinicianList from "../components/ClinicianList.astro";
+import ConditionTable from "../components/ConditionTable.astro";
+import FactsStrip from "../components/FactsStrip.astro";
+import GuideRow from "../components/GuideRow.astro";
+import SectionHead from "../components/SectionHead.astro";
+import SourceList from "../components/SourceList.astro";
+import SharePage from "../components/SharePage.astro";
+import StatusLabel from "../components/StatusLabel.astro";
+import { LIBRARY as c } from "../data/library.ts";
+import { RESOURCES } from "../data/resources.ts";
+
+// The wrapping style guide (doc 36): every component and text style of the
+// editorial skin on one page, rendered by the real CSS. Unlisted and noindexed,
+// but shipped, so the visual gate covers the whole system in one dense target.
+// Demo copy reuses the real library strings; nothing here invents voice.
+const conditions = (await getCollection("conditions")).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+const guides = (await getCollection("guides")).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+const hiv = conditions.find((x) => x.slug === "hiv");
+const rowGuides = guides.slice(0, 4);
+---
+
+<Base title="Style guide · STI basics" noindex>
+  <div class="l-frame sg">
+    <header class="sg__head">
+      <p class="u-eyebrow">Doc 36</p>
+      <h1 class="sg__title">The editorial skin</h1>
+      <p class="sg__lead">
+        Every text style and component of info.sti.care, rendered by the real
+        CSS. This page is unlisted; it exists for design review and as the
+        densest visual-regression target.
+      </p>
+    </header>
+
+    <SectionHead number="01" title="Type" sub="Serif for display, sans for everything else." />
+    <div class="sg__block">
+      <p class="sg__spec sg-display">Display, serif 600</p>
+      <p class="sg__spec sg-title">Article title, serif 600</p>
+      <p class="sg__spec sg-section">Section title, serif 600</p>
+      <p class="sg__spec sg-q">Prose question, serif 600 at 20px</p>
+      <p class="sg__spec sg-lead">
+        Lead paragraph, sans on the clamped lead size.
+      </p>
+      <p class="sg__spec sg-body">
+        Body prose, sans 16px on a 1.65 line and a 66ch measure. Links look
+        <a href="/">like this</a>.
+      </p>
+      <p class="u-eyebrow">Eyebrow, sans 700 uppercase</p>
+      <p class="u-micro">Micro copy, 13px floor, ink-500 and never lighter.</p>
+    </div>
+
+    <SectionHead number="02" title="Color" sub="Ink-forward text, teal only for actions, status inks derived to pass AA." />
+    <div class="sg__block">
+      <ul class="sg__swatches">
+        <li><span class="sg__swatch sg-c-bg"></span>surface, warm-50</li>
+        <li><span class="sg__swatch sg-c-ink9"></span>headings, ink-900</li>
+        <li><span class="sg__swatch sg-c-ink7"></span>body, ink-700</li>
+        <li><span class="sg__swatch sg-c-ink5"></span>meta, ink-500</li>
+        <li><span class="sg__swatch sg-c-teal"></span>actions, teal</li>
+        <li><span class="sg__swatch sg-c-clear"></span>status ink, clear</li>
+        <li><span class="sg__swatch sg-c-treat"></span>status ink, treat</li>
+      </ul>
+      <p class="u-micro sg__note">
+        Status inks are color-mix derivations of the passport status colors,
+        measured at 4.9 to 6.2 to 1 on the warm background.
+      </p>
+    </div>
+
+    <SectionHead number="03" title="Status labels" sub="Word plus icon, no background; readable in grayscale." />
+    <div class="sg__block sg__inline">
+      <StatusLabel label="Curable" tone="clear" />
+      <StatusLabel label="Treatable" tone="treat" />
+      <StatusLabel label="Usually goes away" tone="none" />
+    </div>
+
+    <SectionHead number="04" title="Buttons" sub="Passport primitives, used as-is; fluid variant wraps long labels on tiny screens." />
+    <div class="sg__block sg__inline">
+      <a class="sti-btn sti-btn--primary sti-btn--lg" href="/">
+        <span class="sti-btn__icon"><Icon name="mapPin" size={18} /></span>{
+          c.testing.findTesting
+        }
+      </a>
+      <a class="sti-btn sti-btn--secondary sti-btn--md" href="/">
+        <span class="sti-btn__icon"><Icon name="mapPin" size={16} /></span>{
+          c.pep.cta
+        }
+      </a>
+      <div class="sg__narrow">
+        <a class="sti-btn sti-btn--primary sti-btn--lg u-btn-fluid" href="/">
+          <span class="sti-btn__icon"><Icon name="mapPin" size={18} /></span>{
+            c.testing.findTesting
+          }
+        </a>
+      </div>
+    </div>
+
+    <SectionHead number="05" title="Condition table" sub="The index's core object: hairline rows, no card." />
+    <div class="sg__block l-zone">
+      <ConditionTable conditions={conditions} eyebrow={c.conditionsLabel} />
+    </div>
+
+    <SectionHead number="06" title="Guide rows" sub="Drag the handle: the grid answers to its zone, not the viewport." />
+    <div class="sg__block sg__resizable l-zone">
+      <div class="sg__rowgrid">
+        {
+          rowGuides.map((g) => (
+            <GuideRow href={`/${g.slug}`} title={g.data.title} tag={g.data.tag} />
+          ))
+        }
+      </div>
+    </div>
+
+    <SectionHead number="07" title="Callouts" sub="The only two card surfaces: urgent and action." />
+    <div class="sg__block sg__stack">
+      <Callout variant="urgent">
+        <p class="sg__callouttitle">
+          {c.pep.title}
+          <span class="sg__calloutmeta">{c.pep.chip}</span>
+        </p>
+        <p class="sg__calloutbody">{c.pep.body}</p>
+      </Callout>
+      <Callout variant="action">
+        <div class="sg__stack--sm">
+          <a class="sti-btn sti-btn--primary sti-btn--lg u-btn-fluid" href="/">
+            <span class="sti-btn__icon"><Icon name="mapPin" size={18} /></span>{
+              c.testing.findTesting
+            }
+          </a>
+          <p class="u-micro sg__center">{c.testing.findTestingSub}</p>
+        </div>
+      </Callout>
+    </div>
+
+    <SectionHead number="08" title="Facts strip" sub="Condition metadata as hairline columns." />
+    {
+      hiv && (
+        <div class="sg__block l-zone">
+          <FactsStrip
+            test={hiv.data.test}
+            label={hiv.data.label}
+            tone={hiv.data.tone}
+            related={hiv.data.related}
+          />
+        </div>
+      )
+    }
+
+    <SectionHead number="09" title="Supportive blocks" sub="Clinician list, sources, share." />
+    <div class="sg__block sg__stack">
+      <ClinicianList />
+      <SourceList
+        label={c.sourcesLabel}
+        sources={[{ label: "U.S. CDC, About STIs", href: RESOURCES.clinic }]}
+      />
+      <div class="sg__narrow">
+        <SharePage label={c.shareLabel} copied={c.copied} />
+      </div>
+    </div>
+
+    <SectionHead number="10" title="Prose" sub="The markdown article body." />
+    <div class="sg__block prose">
+      <h2>A question, in serif</h2>
+      <p>
+        Body copy at 16px on a 1.65 line. <strong>Strong text</strong> takes
+        the heading ink, and <a href="/">links</a> underline in teal.
+      </p>
+      <ul>
+        <li>List items keep the same size and rhythm.</li>
+        <li>They sit on a short gap, never floating.</li>
+      </ul>
+      <h2>The next question</h2>
+      <p>Every question opens with a hairline, never a card.</p>
+    </div>
+
+    <SectionHead number="11" title="Grid" sub="Twelve columns at the 900px chrome breakpoint." />
+    <div class="sg__block sg__grid l-grid">
+      {Array.from({ length: 12 }).map(() => <span class="sg__cell"></span>)}
+    </div>
+  </div>
+</Base>
+
+<style>
+  .sg {
+    padding-top: var(--space-7);
+  }
+  .sg__title {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: var(--type-title);
+    line-height: 1.12;
+    color: var(--text-strong);
+    margin: var(--space-3) 0 0;
+  }
+  .sg__lead {
+    font-size: var(--type-lead);
+    line-height: 1.6;
+    color: var(--text-body);
+    margin: var(--space-4) 0 0;
+    max-width: var(--measure);
+  }
+  .sg :global(.sechead) {
+    margin-top: var(--rhythm-section);
+  }
+  .sg__block {
+    margin-top: var(--space-6);
+  }
+  .sg__spec {
+    margin: 0 0 var(--space-4);
+    color: var(--text-strong);
+  }
+  .sg-display {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: var(--type-display);
+    line-height: 1.08;
+    letter-spacing: -0.015em;
+  }
+  .sg-title {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: var(--type-title);
+    line-height: 1.12;
+  }
+  .sg-section {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: var(--type-section);
+    line-height: 1.2;
+  }
+  .sg-q {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: var(--type-q);
+    line-height: 1.3;
+  }
+  .sg-lead {
+    font-size: var(--type-lead);
+    line-height: 1.6;
+    color: var(--text-body);
+  }
+  .sg-body {
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--text-body);
+    max-width: var(--measure);
+  }
+  .sg-body a {
+    color: var(--text-accent);
+    font-weight: var(--weight-semibold);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .sg__swatches {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    font-size: 13px;
+    color: var(--text-body);
+  }
+  .sg__swatches li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sg__swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: var(--radius-xs);
+    border: var(--hairline-strong);
+  }
+  .sg-c-bg {
+    background: var(--warm-50);
+  }
+  .sg-c-ink9 {
+    background: var(--ink-900);
+  }
+  .sg-c-ink7 {
+    background: var(--ink-700);
+  }
+  .sg-c-ink5 {
+    background: var(--ink-500);
+  }
+  .sg-c-teal {
+    background: var(--accent);
+  }
+  .sg-c-clear {
+    background: var(--status-ink-clear);
+  }
+  .sg-c-treat {
+    background: var(--status-ink-treat);
+  }
+  .sg__note {
+    margin-top: var(--space-3);
+  }
+  .sg__inline {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+  }
+  .sg__narrow {
+    width: min(100%, 240px);
+  }
+  .sg__resizable {
+    resize: horizontal;
+    overflow: auto;
+    border: var(--hairline-strong);
+    border-radius: var(--radius-xs);
+    padding: var(--space-3);
+    min-width: 260px;
+    max-width: 100%;
+  }
+  .sg__rowgrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    column-gap: var(--grid-gap);
+  }
+  @container (min-width: 560px) {
+    .sg__rowgrid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  .sg__stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+  .sg__stack--sm {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .sg__center {
+    text-align: center;
+    margin: 0;
+  }
+  .sg__callouttitle {
+    font-size: 16px;
+    font-weight: var(--weight-bold);
+    color: var(--text-strong);
+    margin: 0;
+  }
+  .sg__calloutmeta {
+    display: inline-block;
+    margin-left: 10px;
+    font-size: 12px;
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--status-ink-treat);
+  }
+  .sg__calloutbody {
+    font-size: 14px;
+    line-height: var(--leading-normal);
+    color: var(--text-body);
+    margin: var(--space-2) 0 0;
+  }
+  .sg__grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--grid-gap);
+  }
+  .sg__cell {
+    height: 48px;
+    background: var(--warm-100);
+    border: var(--hairline);
+  }
+</style>

@@ -10,10 +10,13 @@ import SiteFooter from "../components/SiteFooter.astro";
 interface Props {
   title: string;
   description?: string;
+  /** Unlisted pages (the style guide) ask crawlers to stay out. */
+  noindex?: boolean;
 }
 const {
   title,
   description = "Plain, judgment-free answers about sexual health, testing, and prevention.",
+  noindex = false,
 } = Astro.props;
 ---
 
@@ -24,6 +27,7 @@ const {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="color-scheme" content="light" />
+    {noindex && <meta name="robots" content="noindex" />}
     <title>{title}</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link
