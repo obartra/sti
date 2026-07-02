@@ -108,10 +108,17 @@ func main() {
 	// the default rather than disabling the heartbeat: the broadcast is meant to be
 	// always-on, so the conservative fallback keeps it firing.
 	coverHeartbeat := max(envDuration("STI_COVER_HEARTBEAT", 6*time.Hour), 0)
-	// Window over which a republish batch's alias overwrites are spread (doc 11), so
-	// an owner's shared cards do not all change at the same instant. Default 3 min;
-	// the status update is delayed by at most this, which is fine for a badge refresh.
-	republishWindow := max(envDuration("STI_REPUBLISH_WINDOW", 3*time.Minute), 0)
+	// Window over which a republish batch's alias overwrites are spread (doc 18), so
+	// an owner's shared cards do not all change at the same instant. The apply
+	// granularity is the janitor tick (STI_JANITOR_INTERVAL, default 1 min): two of an
+	// owner's ops jittered into the same tick apply in the same drain pass, i.e. the
+	// same observable instant, which re-correlates them. So the window must span many
+	// ticks to keep that same-tick collision rare: at the default 1 min tick, 20 min is
+	// ~20 slots, so a given pair collides ~1/20. The cost is only staleness (a
+	// just-changed public card can look stale to an existing link-holder for up to the
+	// window); a positive result still reaches partners immediately over the separate
+	// notify ping, so the badge-refresh delay is acceptable. Tunable via the env var.
+	republishWindow := max(envDuration("STI_REPUBLISH_WINDOW", 20*time.Minute), 0)
 
 	// Operator surface (doc 20). OFF by default so production ships dark. Turning it
 	// on requires BOTH the flag AND a non-trivial bearer secret: if the flag is set
