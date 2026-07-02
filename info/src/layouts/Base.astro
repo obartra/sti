@@ -61,7 +61,10 @@ const APP_URL = "https://sti.care";
         <nav class="info-footer__links">
           {SITE.nav.map((item) => <a href={item.href}>{item.label}</a>)}
         </nav>
-        <div class="info-footer__tag">{SITE.tagline}</div>
+        <div class="info-footer__end">
+          <div class="info-footer__tag">{SITE.tagline}</div>
+          <div class="info-footer__note">{SITE.note}</div>
+        </div>
       </div>
     </footer>
   </body>

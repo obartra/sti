@@ -5,6 +5,7 @@ import Chip from "../components/Chip.astro";
 import Icon from "../components/Icon.astro";
 import { LIBRARY as c } from "../data/library.ts";
 import { RESOURCES } from "../data/resources.ts";
+import { SITE } from "../data/site.ts";
 
 // The library index. On a phone: the tappable condition list, the U=U card, and
 // the prevention / vaccine / testing framing, stacked. At desktop the same content
@@ -39,7 +40,7 @@ const conditions = (await getCollection("conditions")).sort(
         </div>
         <div class="info-lede__note">
           <Icon name="stethoscope" size={15} />
-          {c.siteNote}
+          {SITE.note}
         </div>
       </div>
     </div>

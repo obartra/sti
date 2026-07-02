@@ -5,6 +5,9 @@ tone: treat
 order: 4
 test: A fast finger-prick or swab. Many tests are free and give results in minutes.
 intro: A virus that weakens the body's defense against sickness.
+sources:
+  - label: U.S. CDC, About HIV
+    href: https://www.cdc.gov/hiv/about/index.html
 ---
 
 ## Would I know if I had it?

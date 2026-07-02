@@ -323,6 +323,39 @@
   padding: 0 8px;
 }
 
+/* the quiet end-of-article source links (public health agencies) */
+.info-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.info-sources--center {
+  align-items: center;
+}
+.info-sources__label {
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.info-sources a {
+  font-size: 12.5px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* the aside's what-the-label-means card */
+.info-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
 /* --------------------------------------------------- prose (Q&A markdown) --- */
 .info-qa {
   display: flex;
@@ -382,12 +415,18 @@
   gap: 8px;
   border-top: 1px solid var(--divider);
 }
-/* Same trick as the header: the inner wrapper and brand column only take shape
-   on the desktop sheet. */
+/* Same trick as the header: the inner wrapper, brand column, and site note only
+   take shape on the desktop sheet. */
 .info-footer__inner {
   display: contents;
 }
 .info-footer__brand {
+  display: none;
+}
+.info-footer__end {
+  display: contents;
+}
+.info-footer__note {
   display: none;
 }
 .info-footer__links {

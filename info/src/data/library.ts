@@ -7,8 +7,13 @@ export const LIBRARY = {
   title: "STI basics",
   sub: "Learn and share what to do. No judgment. One page each.",
   eyebrow: "Free STI guides",
-  siteNote:
-    "Plain guides from the team behind sti.care. Based on U.S. CDC guidance, not medical advice.",
+  sourcesLabel: "Sources",
+  labelsTitle: "What the label means",
+  labelNotes: {
+    clear: "Medicine clears it completely.",
+    treat: "Medicine keeps it in check for the long run.",
+    none: "Most of the time it clears on its own. A vaccine blocks the types that cause harm.",
+  },
   shareLabel: "Share this page",
   copied: "Link copied",
   howToTest: "How to test for it",

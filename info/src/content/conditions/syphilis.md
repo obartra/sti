@@ -5,6 +5,9 @@ tone: clear
 order: 3
 test: A blood test. Part of a full STI check.
 intro: An infection from sex. It's curable, and it can get worse if it's not treated.
+sources:
+  - label: U.S. CDC, About syphilis
+    href: https://www.cdc.gov/syphilis/about/index.html
 ---
 
 ## Would I know if I had it?

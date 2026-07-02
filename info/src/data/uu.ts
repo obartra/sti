@@ -29,4 +29,14 @@ export const UU = {
     "This card is education anyone can share. Your own passport never shows U=U; an undetectable result simply reads as up to date.",
   disclaimer:
     "U=U is backed by large studies and public health agencies, including the U.S. CDC.",
+  sources: [
+    {
+      label: "U.S. CDC, HIV treatment",
+      href: "https://www.cdc.gov/stophivtogether/hiv-treatment/index.html",
+    },
+    {
+      label: "U.S. CDC, Undetectable = untransmittable",
+      href: "https://www.cdc.gov/global-hiv-tb/php/our-approach/undetectable-untransmittable.html",
+    },
+  ],
 } as const;

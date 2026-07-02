@@ -10,4 +10,5 @@ export const SITE = {
     { label: "U=U", href: "/uu" },
   ],
   tagline: "Plain answers. No judgment.",
+  note: "Plain guides from the team behind sti.care. Based on U.S. CDC guidance, not medical advice.",
 } as const;

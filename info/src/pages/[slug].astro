@@ -39,6 +39,19 @@ const d = entry.data;
       <article class="sti-card sti-card--flat info-qa">
         <Content />
       </article>
+
+      {
+        d.sources && (
+          <div class="info-sources">
+            <div class="info-sources__label">{c.sourcesLabel}</div>
+            {d.sources.map((s) => (
+              <a href={s.href} target="_blank" rel="noopener noreferrer">
+                {s.label}
+              </a>
+            ))}
+          </div>
+        )
+      }
     </div>
 
     <aside class="info-detail__aside">
@@ -52,6 +65,12 @@ const d = entry.data;
         </div>
       </div>
 
+      <div class="sti-card sti-card--flat info-facts">
+        <div class="info-rowtitle">{c.labelsTitle}</div>
+        <Chip label={d.label} tone={d.tone} />
+        <div class="info-note">{c.labelNotes[d.tone]}</div>
+      </div>
+
       {
         entry.slug === "hiv" && (
           <a class="sti-card sti-card--tint info-row" href="/uu">
@@ -61,6 +80,23 @@ const d = entry.data;
           </a>
         )
       }
+
+      <div class="sti-card sti-card--flat info-panel">
+        <div>
+          <div class="info-cardtitle">{c.clinician.title}</div>
+          <div class="info-cardsub">{c.clinician.body}</div>
+        </div>
+        {
+          c.clinician.items.map((row) => (
+            <div class="info-item">
+              <span class="info-item__icon"><Icon name="check" size={16} /></span>
+              <div>
+                <strong>{row[0]}</strong>, {row[1]}
+              </div>
+            </div>
+          ))
+        }
+      </div>
 
       <div class="info-aside-cta">
         <a

@@ -5,6 +5,9 @@ tone: clear
 order: 1
 test: A quick swab or a pee test. Often part of a standard panel.
 intro: A common infection you can get from sex. It can be in the throat, dick, pussy, or ass.
+sources:
+  - label: U.S. CDC, About gonorrhea
+    href: https://www.cdc.gov/gonorrhea/about/index.html
 ---
 
 ## Would I know if I had it?

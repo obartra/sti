@@ -45,6 +45,16 @@ import { emph } from "../lib/emph.ts";
   </section>
 
   <section class="info-section">
+    <div class="info-sources info-sources--center">
+      <div class="info-sources__label">{c.sourcesLabel}</div>
+      {
+        u.sources.map((s) => (
+          <a href={s.href} target="_blank" rel="noopener noreferrer">
+            {s.label}
+          </a>
+        ))
+      }
+    </div>
     <div class="info-disclaimer">{u.disclaimer}</div>
   </section>
 </Base>
