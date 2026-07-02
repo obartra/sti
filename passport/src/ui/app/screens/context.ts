@@ -21,6 +21,7 @@ import type {
   SetRecoveryPasswordOutcome,
 } from "../../../store/recoveryOps.ts";
 import type { OnboardingActions } from "../useOnboarding.ts";
+import type { GroupJoinActions } from "../useGroupJoinActions.ts";
 import type { PushControls } from "../usePush.ts";
 import type { ReportOutcome } from "../../../core/report.ts";
 import type { OwnerState } from "../../../core/badge.ts";
@@ -30,7 +31,7 @@ import type { AvatarConfig } from "../../../lib/avatars.ts";
 // owner state + its setter (for settings), the onboarding/login actions, the
 // report-result action, the share-sheet opener, the backend boundary, and the
 // current route's payload.
-export interface ScreenCtx {
+export interface ScreenCtx extends GroupJoinActions {
   nav: Nav;
   owner: OwnerView;
   /** The owner's raw badge inputs, for settings screens to read and edit. */
@@ -125,6 +126,9 @@ export interface ScreenCtx {
   onLeaveGroup: (groupId: string) => void;
   /** Disband a group the owner admins (teardown for everyone). */
   onDeleteGroup: (groupId: string) => void;
+  /** Shared-group catch-up (doc 33): ingest arrived accepts/leaves and pick up
+   * approvals, folding the session. Triggered on People / group-detail mount. */
+  onGroupCatchup: () => Promise<void>;
   /** The owner's claimed findable name, or null (logged out, or none claimed). */
   vanityName: string | null;
   /** Claim a public findable name; resolves with the outcome (doc 17, gated). */

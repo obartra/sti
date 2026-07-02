@@ -10,7 +10,7 @@ import { useFaves } from "./app/useFaves.ts";
 import { usePendingRequests } from "./app/usePendingRequests.ts";
 import { usePush } from "./app/usePush.ts";
 import { useOwnerActions } from "./app/useOwnerActions.ts";
-import { useExpirySweep } from "./app/useExpirySweep.ts";
+import { useAppBackground } from "./app/useAppBackground.ts";
 import { useOwnerStateActions } from "./app/useOwnerStateActions.ts";
 import { OWNER } from "./app/fixtures.ts";
 import { Chrome } from "./app/Chrome.tsx";
@@ -176,6 +176,23 @@ const NO_DEMO: DemoControls = {
   onExit: () => undefined,
 };
 
+// The two persistent banners above the chrome: the demo-mode marker (doc 28) and the
+// not-backed-up marker (doc 22). Bundled so App's render stays within its size cap.
+function Banners({
+  demo,
+  backupPending,
+}: {
+  demo: DemoControls;
+  backupPending: boolean;
+}) {
+  return (
+    <>
+      <DemoBanner active={demo.mode} onExit={demo.onExit} />
+      <NotBackedUp pending={backupPending} demo={demo.mode} />
+    </>
+  );
+}
+
 // The wired app: a route + history model (useAppRouter), responsive chrome, and
 // the owner session. Logged out, it shows the public landing + onboarding;
 // onboarding (or passkey login) mints/loads a real account, and the app screens
@@ -253,9 +270,12 @@ export function App({
     refreshInbox,
   } = useOwnerInbox(controller, session);
 
-  // Enforce link expiry while the app stays open (doc 16): a no-op unless a link
-  // has actually passed its expiry, then it revokes the dead links in the session.
-  useExpirySweep(controller, sessionRef, setSession, session !== null);
+  // Background upkeep for a logged-in owner (doc 16 link-expiry sweep + doc 33 group
+  // catch-up). groupRefresh is triggered on People / group-detail mount too.
+  const groupRefresh = useAppBackground(controller, sessionRef, setSession, {
+    session,
+    demoMode: demo.mode,
+  });
 
   // Starred contacts (device-local; see useFaves). Unrelated to the session.
   const { faves, toggleFave } = useFaves();
@@ -282,8 +302,7 @@ export function App({
 
   return (
     <>
-      <DemoBanner active={demo.mode} onExit={demo.onExit} />
-      <NotBackedUp pending={backupPending} demo={demo.mode} />
+      <Banners demo={demo} backupPending={backupPending} />
       <Chrome
         route={renderedRoute(route, session !== null, demo.mode)}
         nav={nav}
@@ -327,6 +346,7 @@ export function App({
         isLoggedIn={session !== null}
         onTryDemo={demo.onTry}
         groups={session ? (session.blob.groups ?? []) : []}
+        onGroupCatchup={groupRefresh}
         vanityName={findableName(session)}
         {...recoveryProps(session, controller)}
         push={push}

@@ -9,6 +9,7 @@ import {
 import { applyPendingUpdate } from "../../pwa/swUpdate.ts";
 import { parseAliasLink, aliasIdFromPath } from "../../store/aliasLink.ts";
 import { parseContactInvite } from "../../store/contactInvite.ts";
+import { parseGroupInvite } from "../../store/groupInvite.ts";
 import { normalizeVanityName } from "../../store/vanityName.ts";
 
 export interface Nav {
@@ -190,6 +191,12 @@ function parameterizedRoute(pathname: string, hash: string): Route | null {
   if (name !== null) {
     return { screen: "u-resolve", group: "public", data: { name } };
   }
+  // A group invite link is `/g#g=...` (doc 33): the whole invite rides the fragment,
+  // so it is parsed here alongside the alias/contact links, never sent to the server.
+  const invite = parseGroupInvite(pathname, hash);
+  if (invite !== null) {
+    return { screen: "group-invite", group: "public", data: { invite } };
+  }
   return aliasRoute(pathname, hash);
 }
 
@@ -222,6 +229,9 @@ export function routeFromLocation(): Route | null {
 function ownsUrl(route: Route): boolean {
   if (route.screen === "exposed") return true;
   if (route.screen === "u-resolve") return true;
+  // A `/g#g=...` group invite carries its whole payload in the fragment; rewriting
+  // the URL would drop it, so the invite screen owns its URL (doc 33).
+  if (route.screen === "group-invite") return true;
   return route.screen === "a2-public" && route.data?.id != null;
 }
 

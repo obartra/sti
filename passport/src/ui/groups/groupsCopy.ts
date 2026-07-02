@@ -75,9 +75,55 @@ export const GROUPS_COPY = {
   disbandConfirmBody: "The group is deleted for everyone. No one is told why.",
   disbandConfirm: "Disband",
 
+  // ── Admin: invite (doc 33, slice 7b) ─────────────────────────────────────────
+  inviteHeading: "Invite people",
+  inviteCta: "Create an invite link",
+  inviteShareNote:
+    "Send this link to someone you want in. They join by opening it.",
+  pendingHeading: "Invited, not joined yet",
+  revokeCta: "Cancel invite",
+
+  // ── Admin: requests to join (public groups) ──────────────────────────────────
+  requestsHeading: "Requests to join",
+  requestsEmpty: "No one is waiting to join right now.",
+  requestRow: "Someone asked to join.",
+  approveCta: "Let them in",
+  rejectCta: "Not now",
+
+  // ── Admin: remove a member ───────────────────────────────────────────────────
+  memberMenu: "Member options",
+  removeCta: "Remove from group",
+  removeConfirmTitle: "Remove this person?",
+  removeConfirmBody:
+    "They stop seeing the group, and it stops seeing them. They won't be told why.",
+  removeConfirm: "Remove",
+
+  // ── Accept an invite (invitee) ───────────────────────────────────────────────
+  acceptCta: "Join",
+  acceptRejectCta: "No thanks",
+  acceptedTitle: "You're in.",
+  acceptedBody: "Open People to see who's here.",
+  acceptNeedAccount:
+    "You need an account to join. Make one, then open this link again.",
+  acceptClaimCta: "Create an account",
+
+  // ── Request to join by name (member) ─────────────────────────────────────────
+  requestTitle: "Join a group by name",
+  requestLabel: "Group name",
+  requestCta: "Ask to join",
+  requestedTitle: "We asked for you.",
+  requestedBody: "You'll be in once an admin says yes.",
+  requestNotFound:
+    "No public group by that name. Check the spelling and try again.",
+
   // ── Shared ──────────────────────────────────────────────────────────────────
   cancel: "Cancel",
 } as const;
+
+// The accept-invite heading, naming the group being joined (doc 33, slice 7b).
+export function acceptTitle(handle: string): string {
+  return `Join ${handle}?`;
+}
 
 // A human member count for a row: "just you" alone, else "N people". `n` counts
 // the reader plus everyone else the record knows about.

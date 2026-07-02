@@ -1,7 +1,7 @@
 // The screen graph, ported from the prototype's main.jsx (screen ids, groups,
 // and the bottom-tab set). Every navigable screen has an id here.
 
-import type { NotifyCapability } from "../../store/index.ts";
+import type { GroupInvite, NotifyCapability } from "../../store/index.ts";
 
 const ALL_SCREENS = [
   "a1-landing",
@@ -25,6 +25,7 @@ const ALL_SCREENS = [
   "groups",
   "group-create",
   "group-detail",
+  "group-invite",
   "report",
   "report-saved",
   "privacy",
@@ -58,6 +59,8 @@ export interface RouteData {
   preview?: boolean;
   // The vanity name being resolved (u-resolve, Findable doc 17).
   name?: string;
+  // A parsed group invite from a `/g#g=...` link (group-invite, doc 33).
+  invite?: GroupInvite;
 }
 
 export interface Route {
@@ -80,6 +83,9 @@ const PUBLIC: readonly Screen[] = [
   "share-link",
   // The "Something wrong?" form (doc 35), reachable logged out from the footer.
   "feedback",
+  // A group invite link (doc 33): a logged-out person can open it, read the
+  // join-time disclosure, and is pointed to make an account before joining.
+  "group-invite",
 ];
 const ONBOARD: readonly Screen[] = ["b1-claim", "b2-recovery", "b3-setup"];
 

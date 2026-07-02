@@ -8,7 +8,16 @@
 import { useEffect, useState } from "react";
 import { Button, Card } from "../../design/components/index.ts";
 import { Medallion } from "../badge-card.tsx";
-import type { GroupRecord, RosterMemberView } from "../../store/index.ts";
+import type {
+  GroupRecord,
+  PendingRequest,
+  RosterMemberView,
+} from "../../store/index.ts";
+import {
+  AdminControls,
+  RemoveControl,
+  type AdminControlsProps,
+} from "./GroupDetail.admin.tsx";
 import { GROUPS_COPY as C, meetingChip, visibilityChip } from "./groupsCopy.ts";
 
 type RosterState = "loading" | { members: RosterMemberView[] };
@@ -45,7 +54,13 @@ function MemberTag({ member }: { member: RosterMemberView }) {
   );
 }
 
-function MemberRow({ member }: { member: RosterMemberView }) {
+function MemberRow({
+  member,
+  onRemove,
+}: {
+  member: RosterMemberView;
+  onRemove?: (() => void) | undefined;
+}) {
   // The app's real two-state status medallion; a member with no live card reads
   // gray (honest absent), never a wrong color.
   const state = member.card?.state === "blue" ? "blue" : "gray";
@@ -77,11 +92,18 @@ function MemberRow({ member }: { member: RosterMemberView }) {
         )}
       </div>
       <MemberTag member={member} />
+      {onRemove && <RemoveControl onRemove={onRemove} />}
     </div>
   );
 }
 
-function Roster({ members }: { members: RosterMemberView[] }) {
+function Roster({
+  members,
+  onRemoveMember,
+}: {
+  members: RosterMemberView[];
+  onRemoveMember?: ((cardId: string) => void) | undefined;
+}) {
   const hasAbsent = members.some((m) => m.card === null);
   return (
     <div>
@@ -91,7 +113,15 @@ function Roster({ members }: { members: RosterMemberView[] }) {
         style={{ padding: 6, display: "flex", flexDirection: "column" }}
       >
         {members.map((m) => (
-          <MemberRow key={m.cardId} member={m} />
+          <MemberRow
+            key={m.cardId}
+            member={m}
+            onRemove={
+              onRemoveMember && !m.isSelf
+                ? () => onRemoveMember(m.cardId)
+                : undefined
+            }
+          />
         ))}
       </Card>
       {hasAbsent && (
@@ -188,26 +218,83 @@ export interface GroupDetailProps {
   onLeave: () => void;
   /** Admin teardown: disband the group for everyone, then navigate away. */
   onDisband: () => void;
+  /** Admin ingest of arrived accepts/leaves, run before the roster read so a fresh
+   * join shows on open (doc 33, slice 7b). Best-effort; absent when not wired. */
+  onPollLifecycle?: (() => Promise<void>) | undefined;
+  /** Admin: create an invite link for this group. */
+  onCreateInvite?: ((groupId: string) => Promise<string>) | undefined;
+  /** Admin: cancel a not-yet-accepted invite. */
+  onRevokeInvite?: ((groupId: string, inviteId: string) => void) | undefined;
+  /** Admin (public groups): read the waiting join requests. */
+  onReviewRequests?:
+    | ((groupId: string) => Promise<PendingRequest[]>)
+    | undefined;
+  /** Admin (public groups): approve one join request. */
+  onApproveRequest?:
+    | ((groupId: string, request: PendingRequest) => Promise<void>)
+    | undefined;
+  /** Admin (public groups): reject one join request. */
+  onRejectRequest?:
+    | ((groupId: string, request: PendingRequest) => Promise<void>)
+    | undefined;
+  /** Admin: remove a member (rotates the key); the roster is re-read after. */
+  onRemoveMember?:
+    | ((groupId: string, cardId: string) => Promise<void>)
+    | undefined;
 }
 
-export function GroupDetail({
-  group,
-  onReadRoster,
-  onLeave,
-  onDisband,
-}: GroupDetailProps) {
+// The admin-controls bundle for this detail, or null when the reader is not an admin
+// or the handlers are not wired (a member view). Kept out of the component so its
+// gating does not inflate GroupDetail's complexity.
+function adminControlsFor(props: GroupDetailProps): AdminControlsProps | null {
+  const { group } = props;
+  if (
+    !group.isAdmin ||
+    props.onCreateInvite === undefined ||
+    props.onRevokeInvite === undefined ||
+    props.onReviewRequests === undefined ||
+    props.onApproveRequest === undefined ||
+    props.onRejectRequest === undefined
+  ) {
+    return null;
+  }
+  return {
+    group,
+    onCreateInvite: props.onCreateInvite,
+    onRevokeInvite: props.onRevokeInvite,
+    onReviewRequests: props.onReviewRequests,
+    onApproveRequest: props.onApproveRequest,
+    onRejectRequest: props.onRejectRequest,
+  };
+}
+
+export function GroupDetail(props: GroupDetailProps) {
+  const { group, onReadRoster, onLeave, onDisband } = props;
   const [roster, setRoster] = useState<RosterState>("loading");
+  const admin = adminControlsFor(props);
 
   useEffect(() => {
     let live = true;
     setRoster("loading");
-    void onReadRoster(group.groupId)
-      .then((members) => {
-        if (live) setRoster({ members });
-      })
-      .catch(() => {
-        if (live) setRoster({ members: [] });
-      });
+    const read = () =>
+      onReadRoster(group.groupId)
+        .then((members) => {
+          if (live) setRoster({ members });
+        })
+        .catch(() => {
+          if (live) setRoster({ members: [] });
+        });
+    // Poll for arrived accepts/leaves first (admin), so a just-joined member shows on
+    // open, then read; with no poll wired, read straight away (kept synchronous so a
+    // member view reads on mount). The poll is best-effort and never blocks the read.
+    if (props.onPollLifecycle) {
+      void props
+        .onPollLifecycle()
+        .catch(() => undefined)
+        .then(read);
+    } else {
+      void read();
+    }
     return () => {
       live = false;
     };
@@ -216,6 +303,18 @@ export function GroupDetail({
     // every parent render; the effect always calls the latest closure anyway.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group.groupId]);
+
+  // Remove a member, then re-read (the key rotated, so cards must be re-opened).
+  const removeMember =
+    props.onRemoveMember && group.isAdmin
+      ? (cardId: string) => {
+          void props
+            .onRemoveMember?.(group.groupId, cardId)
+            .then(() => onReadRoster(group.groupId))
+            .then((members) => setRoster({ members }))
+            .catch(() => undefined);
+        }
+      : undefined;
 
   return (
     <div
@@ -262,10 +361,14 @@ export function GroupDetail({
         {C.membershipIsSharing}
       </div>
 
-      {roster === "loading" ? null : <Roster members={roster.members} />}
+      {roster === "loading" ? null : (
+        <Roster members={roster.members} onRemoveMember={removeMember} />
+      )}
 
-      {/* SEAM (doc 33, slice 7b): admin invite / join-request review / remove-member
-          controls land here for an admin. Slice 7a is the member happy path only. */}
+      {/* Admin controls (doc 33, slice 7b): invite link + pending invites, and, for a
+          public group, the contentless join-request review. Removal lives per roster
+          row above. All admin-only; the parent wires the handlers only for an admin. */}
+      {admin !== null && <AdminControls {...admin} />}
 
       {group.isAdmin ? (
         <DangerAction

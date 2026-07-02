@@ -79,6 +79,34 @@ describe("GroupDetail", () => {
     expect(onDisband).toHaveBeenCalled();
   });
 
+  it("admin: removes a member through the confirm, then re-reads the roster", async () => {
+    const user = userEvent.setup();
+    const onReadRoster = vi.fn().mockResolvedValue(roster);
+    const onRemoveMember = vi.fn().mockResolvedValue(undefined);
+    render(
+      <GroupDetail
+        group={group({ isAdmin: true })}
+        onReadRoster={onReadRoster}
+        onLeave={vi.fn()}
+        onDisband={vi.fn()}
+        onRemoveMember={onRemoveMember}
+      />,
+    );
+    await screen.findByText("sam");
+    // The reader's own row has no remove control; the member row "sam" does.
+    const menus = screen.getAllByRole("button", { name: "Member options" });
+    expect(menus).toHaveLength(2); // sam + the gray/absent member (not self)
+    const [samMenu] = menus;
+    if (samMenu === undefined) throw new Error("expected a member menu");
+    await user.click(samMenu);
+    await user.click(screen.getByRole("button", { name: "Remove from group" }));
+    await screen.findByText("Remove this person?");
+    await user.click(screen.getByRole("button", { name: "Remove" }));
+    expect(onRemoveMember).toHaveBeenCalledWith("g1", "m1");
+    // The key rotated, so the roster is re-read after the remove resolves.
+    await waitFor(() => expect(onReadRoster).toHaveBeenCalledTimes(2));
+  });
+
   it("member: shows leave (not disband), and confirm fires the controller", async () => {
     const user = userEvent.setup();
     const onLeave = vi.fn();

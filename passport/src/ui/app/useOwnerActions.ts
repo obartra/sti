@@ -23,8 +23,12 @@ import {
   browserForgetPendingKnocks,
   browserForgetGroupJoins,
 } from "../../store/index.ts";
+import {
+  useGroupJoinActions,
+  type GroupJoinActions,
+} from "./useGroupJoinActions.ts";
 
-export interface OwnerActions {
+export interface OwnerActions extends GroupJoinActions {
   /** Permanently delete the account and log out (clamps to the landing). */
   onDeleteAccount: () => void;
   /** Persist a new account-wide avatar (keeps the current sharing mode). */
@@ -192,6 +196,7 @@ export function useOwnerActions(
   );
 
   const group = useGroupActions(controller, sessionRef, setSession);
+  const groupJoin = useGroupJoinActions(controller, sessionRef, setSession);
   const findable = useFindableActions(controller, sessionRef, setSession);
   const recovery = useRecoveryActions(controller, sessionRef, setSession);
 
@@ -204,6 +209,7 @@ export function useOwnerActions(
     ...contact,
     ...profile,
     ...group,
+    ...groupJoin,
     ...findable,
     ...recovery,
   };
