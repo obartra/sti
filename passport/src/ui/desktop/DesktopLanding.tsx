@@ -36,15 +36,7 @@ export function DesktopLanding({
   onShareLink,
 }: DesktopLandingProps) {
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        overflowY: "auto",
-        background: "var(--surface-app)",
-        color: "var(--text-body)",
-      }}
-    >
+    <div className="dland">
       <LandingHeader
         onClaim={onClaim}
         onLogin={onLogin}

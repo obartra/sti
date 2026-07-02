@@ -157,17 +157,6 @@
     "styles": 19,
     "legacy": 2
   },
-  "src/ui/desktop/DesktopFooter.tsx": {
-    "styles": 10
-  },
-  "src/ui/desktop/DesktopLanding.tsx": {
-    "styles": 1
-  },
-  "src/ui/desktop/DesktopLandingParts.tsx": {
-    "styles": 29,
-    "hex": 1,
-    "legacy": 1
-  },
   "src/ui/findable/BioMock.stories.tsx": {
     "styles": 1
   },
@@ -274,11 +263,6 @@
   },
   "src/ui/onboarding/TopBack.tsx": {
     "styles": 4
-  },
-  "src/ui/public/Landing.tsx": {
-    "styles": 21,
-    "hex": 1,
-    "legacy": 1
   },
   "src/ui/pwa/installScreenshots.stories.tsx": {
     "styles": 2,

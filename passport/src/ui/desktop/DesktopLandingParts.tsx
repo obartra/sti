@@ -1,5 +1,5 @@
-import type { CSSProperties, ReactNode } from "react";
-import { Button, Card } from "../../design/components/index.ts";
+import type { ReactNode } from "react";
+import { Button } from "../../design/components/index.ts";
 import { BadgeCard } from "../badge-card.tsx";
 import {
   Bell,
@@ -8,12 +8,11 @@ import {
   ArrowRight,
 } from "../../design/icons.tsx";
 import { LANDING } from "./desktop-landing.copy.ts";
+import "./desktop-landing.css";
 
 /* Section components for the A1 desktop marketing landing. Split out of
-   DesktopLanding.tsx so each file stays under the length ceiling. Faithful port
-   of the design's app/desktop.jsx Landing; output is unchanged. */
-
-const SECTION_MAX: CSSProperties = { maxWidth: 1120, margin: "0 auto" };
+   DesktopLanding.tsx so each file stays under the length ceiling. Styled by
+   desktop-landing.css on the editorial grammar (doc 37). */
 
 export interface LandingHandlers {
   onClaim?: (() => void) | undefined;
@@ -27,8 +26,8 @@ export interface LandingHandlers {
   onRequests?: (() => void) | undefined;
 }
 
-// ── Value band card ─────────────────────────────────────────────────────────
-function ValueCard({
+// ── Value column ────────────────────────────────────────────────────────────
+function ValueColumn({
   icon,
   title,
   body,
@@ -38,37 +37,12 @@ function ValueCard({
   body: string;
 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <span
-        style={{
-          width: 48,
-          height: 48,
-          borderRadius: "var(--radius-md)",
-          flex: "none",
-          background: "var(--accent-soft)",
-          color: "var(--text-accent)",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
+    <div className="dland__value">
+      <span aria-hidden className="dland__value-icon">
         {icon}
       </span>
-      <div
-        style={{
-          fontSize: 18,
-          fontWeight: 700,
-          color: "var(--text-strong)",
-          letterSpacing: "-0.01em",
-        }}
-      >
-        {title}
-      </div>
-      <div
-        style={{ fontSize: 15, lineHeight: 1.6, color: "var(--text-muted)" }}
-      >
-        {body}
-      </div>
+      <div className="dland__value-title">{title}</div>
+      <div className="dland__value-body">{body}</div>
     </div>
   );
 }
@@ -82,46 +56,17 @@ export function LandingHeader({
   onRequests,
 }: LandingHandlers) {
   return (
-    <header
-      style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 5,
-        background: "color-mix(in srgb, var(--surface-app), transparent 8%)",
-        backdropFilter: "saturate(1.2) blur(8px)",
-        WebkitBackdropFilter: "saturate(1.2) blur(8px)",
-        borderBottom: "1px solid var(--divider)",
-      }}
-    >
-      <div
-        style={{
-          ...SECTION_MAX,
-          padding: "16px 40px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
+    <header className="dland__header">
+      <div className="dland__frame dland__header-row">
         <button
           type="button"
           onClick={onHome}
           aria-label="sti.care home"
-          style={{
-            appearance: "none",
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            padding: 0,
-            display: "inline-flex",
-          }}
+          className="dland__brand"
         >
-          <img
-            src="/assets/logo/logo-wordmark.svg"
-            alt="sti.care"
-            style={{ height: 32 }}
-          />
+          <img src="/assets/logo/logo-wordmark.svg" alt="sti.care" />
         </button>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="dland__header-actions">
           {pendingCount && onRequests ? (
             <Button variant="ghost" size="md" onClick={onRequests}>
               Links you asked to see
@@ -143,45 +88,10 @@ export function LandingHeader({
 function HeroCopy({ onClaim, onSample }: LandingHandlers) {
   return (
     <div>
-      <div
-        style={{
-          fontSize: 13,
-          fontWeight: 800,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: "var(--text-accent)",
-          marginBottom: 18,
-        }}
-      >
-        {LANDING.eyebrow}
-      </div>
-      <h1
-        style={{
-          fontSize: "clamp(44px, 4.6vw, 64px)",
-          fontWeight: 800,
-          letterSpacing: "-0.03em",
-          lineHeight: 1.04,
-          color: "var(--text-strong)",
-          margin: 0,
-          textWrap: "balance",
-        }}
-      >
-        {LANDING.title}
-      </h1>
-      <p
-        style={{
-          fontSize: 19,
-          lineHeight: 1.6,
-          color: "var(--text-body)",
-          margin: "22px 0 0",
-          maxWidth: 480,
-        }}
-      >
-        {LANDING.sub}
-      </p>
-      <div
-        style={{ display: "flex", gap: 12, marginTop: 32, flexWrap: "wrap" }}
-      >
+      <div className="e-eyebrow dland__eyebrow">{LANDING.eyebrow}</div>
+      <h1 className="dland__title">{LANDING.title}</h1>
+      <p className="dland__sub">{LANDING.sub}</p>
+      <div className="dland__cta-row">
         <Button variant="primary" size="lg" onClick={onClaim}>
           {LANDING.claim} <ArrowRight size={18} />
         </Button>
@@ -189,16 +99,7 @@ function HeroCopy({ onClaim, onSample }: LandingHandlers) {
           {LANDING.sample}
         </Button>
       </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          marginTop: 26,
-          color: "var(--text-subtle)",
-          fontSize: 13.5,
-        }}
-      >
+      <div className="dland__privacy">
         <Lock size={15} /> Privacy-first · never names a condition · never a
         verdict
       </div>
@@ -209,47 +110,15 @@ function HeroCopy({ onClaim, onSample }: LandingHandlers) {
 // ── Hero sample-card column ──────────────────────────────────────────────────
 function HeroSample() {
   return (
-    <div
-      style={{
-        position: "relative",
-        display: "flex",
-        justifyContent: "center",
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          inset: "-6% -4%",
-          background:
-            "radial-gradient(closest-side, color-mix(in srgb, var(--accent), transparent 80%), transparent)",
-          borderRadius: "50%",
-          pointerEvents: "none",
-        }}
-      />
-      <div style={{ position: "relative", width: 380, maxWidth: "100%" }}>
+    <div className="dland__sample">
+      <div className="dland__sample-frame">
         <BadgeCard
           state="blue"
           labels={["hiv", "condoms_always"]}
           identity={{ handle: "sam" }}
           width="100%"
         />
-        <span
-          style={{
-            position: "absolute",
-            top: -10,
-            left: 18,
-            background: "var(--ink-900)",
-            color: "#fff",
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
-            padding: "4px 10px",
-            borderRadius: "var(--radius-pill)",
-          }}
-        >
-          Sample
-        </span>
+        <span className="dland__sample-tag">Sample</span>
       </div>
     </div>
   );
@@ -258,42 +127,8 @@ function HeroSample() {
 // ── Hero section ─────────────────────────────────────────────────────────────
 export function Hero({ onClaim, onSample }: LandingHandlers) {
   return (
-    <section style={{ position: "relative", overflow: "hidden" }}>
-      <div
-        style={{
-          position: "absolute",
-          top: -160,
-          right: -80,
-          width: 620,
-          height: 620,
-          background:
-            "radial-gradient(closest-side, color-mix(in srgb, var(--accent), transparent 82%), transparent)",
-          pointerEvents: "none",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: -220,
-          left: -120,
-          width: 520,
-          height: 520,
-          background:
-            "radial-gradient(closest-side, color-mix(in srgb, var(--accent), transparent 88%), transparent)",
-          pointerEvents: "none",
-        }}
-      />
-      <div
-        style={{
-          ...SECTION_MAX,
-          position: "relative",
-          padding: "84px 40px 72px",
-          display: "grid",
-          gridTemplateColumns: "1.05fr 0.95fr",
-          gap: 72,
-          alignItems: "center",
-        }}
-      >
+    <section>
+      <div className="dland__frame dland__hero">
         <HeroCopy onClaim={onClaim} onSample={onSample} />
         <HeroSample />
       </div>
@@ -310,26 +145,12 @@ const VALUE_ICONS: ((p: { size?: number }) => ReactNode)[] = [
 
 export function ValueBand() {
   return (
-    <section
-      style={{
-        background: "var(--surface-card)",
-        borderTop: "1px solid var(--divider)",
-        borderBottom: "1px solid var(--divider)",
-      }}
-    >
-      <div
-        style={{
-          ...SECTION_MAX,
-          padding: "64px 40px",
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: 44,
-        }}
-      >
+    <section className="dland__band">
+      <div className="dland__frame dland__band-grid">
         {LANDING.points.map((p, i) => {
           const Ico = VALUE_ICONS[i] ?? LinkIcon;
           return (
-            <ValueCard
+            <ValueColumn
               key={p[0]}
               icon={<Ico size={22} />}
               title={p[0]}
@@ -342,41 +163,14 @@ export function ValueBand() {
   );
 }
 
-// ── Closing CTA ──────────────────────────────────────────────────────────────
+// ── Closing invitation ───────────────────────────────────────────────────────
 export function ClosingCTA({ onClaim }: LandingHandlers) {
   return (
-    <section style={{ ...SECTION_MAX, padding: "72px 40px" }}>
-      <Card
-        variant="tint"
-        pad="lg"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 32,
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ maxWidth: 560 }}>
-          <h2
-            style={{
-              fontSize: 28,
-              fontWeight: 800,
-              letterSpacing: "-0.02em",
-              color: "var(--text-strong)",
-              margin: 0,
-            }}
-          >
-            Your status, your call.
-          </h2>
-          <p
-            style={{
-              fontSize: 16,
-              lineHeight: 1.6,
-              color: "var(--text-body)",
-              margin: "10px 0 0",
-            }}
-          >
+    <section className="dland__frame dland__closing">
+      <div className="e-card dland__closing-card">
+        <div className="dland__closing-copy">
+          <h2 className="dland__closing-title">Your status, your call.</h2>
+          <p className="dland__closing-sub">
             Claim a passport in about a minute. No name, no email, just a single
             status you choose to share.
           </p>
@@ -384,9 +178,7 @@ export function ClosingCTA({ onClaim }: LandingHandlers) {
         <Button variant="primary" size="lg" onClick={onClaim}>
           {LANDING.claim} <ArrowRight size={18} />
         </Button>
-      </Card>
+      </div>
     </section>
   );
 }
-
-// ── Footer ───────────────────────────────────────────────────────────────────

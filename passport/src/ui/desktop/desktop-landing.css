@@ -1,0 +1,245 @@
+/* The A1 desktop marketing landing (doc 37, IA A1): the info.sti.care index
+   grammar applied to the app's front door. Solid header with a hairline (the
+   blur treatment is banned), serif display claim beside the sample card (the
+   radial glows die; the object carries the hero), value points as three
+   hairline-separated columns on the page surface, and the closing invitation
+   as the one action callout. */
+
+.dland {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  background: var(--surface-app);
+  color: var(--text-body);
+}
+
+.dland__frame {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.dland__header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--surface-app);
+  border-bottom: var(--hairline);
+}
+
+.dland__header-row {
+  padding: 16px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dland__brand {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+}
+
+.dland__brand img {
+  height: 32px;
+}
+
+.dland__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Hero ───────────────────────────────────────────────────────────────── */
+.dland__hero {
+  padding: 84px 40px 72px;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 72px;
+  align-items: center;
+}
+
+.dland__eyebrow {
+  margin-bottom: 18px;
+}
+
+.dland__title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: clamp(44px, 4.6vw, 64px);
+  letter-spacing: -0.015em;
+  line-height: 1.06;
+  color: var(--text-strong);
+  margin: 0;
+  text-wrap: balance;
+}
+
+.dland__sub {
+  font-size: 19px;
+  line-height: 1.6;
+  color: var(--text-body);
+  margin: 22px 0 0;
+  max-width: 480px;
+}
+
+.dland__cta-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+  flex-wrap: wrap;
+}
+
+.dland__privacy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 26px;
+  color: var(--text-subtle);
+  font-size: 13.5px;
+}
+
+.dland__sample {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.dland__sample-frame {
+  position: relative;
+  width: 380px;
+  max-width: 100%;
+}
+
+.dland__sample-tag {
+  position: absolute;
+  top: -10px;
+  left: 18px;
+  background: var(--ink-900);
+  color: var(--white);
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+}
+
+/* ── Value band: three hairline-separated columns on the page surface ───── */
+.dland__band {
+  border-top: var(--hairline);
+}
+
+.dland__band-grid {
+  padding: 64px 40px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+}
+
+.dland__value {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 32px;
+  border-left: var(--hairline);
+}
+
+.dland__value:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.dland__value-icon {
+  display: inline-flex;
+  color: var(--text-accent);
+}
+
+.dland__value-title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 19px;
+  color: var(--text-strong);
+}
+
+.dland__value-body {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+/* ── Closing invitation: the one action callout ─────────────────────────── */
+.dland__closing {
+  padding: 72px 40px;
+}
+
+.dland__closing-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+  padding: var(--space-7);
+}
+
+.dland__closing-copy {
+  max-width: 560px;
+}
+
+.dland__closing-title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 28px;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+  margin: 0;
+}
+
+.dland__closing-sub {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-body);
+  margin: 10px 0 0;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+.dland__footer {
+  border-top: var(--hairline);
+}
+
+.dland__footer-row {
+  padding: 32px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.dland__footer-brand {
+  height: 26px;
+  opacity: 0.9;
+}
+
+.dland__footer-nav {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.dland__footer-link {
+  font-size: 12.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.dland__footer-note {
+  font-size: 12.5px;
+  color: var(--text-subtle);
+  line-height: 1.5;
+  max-width: 460px;
+}
