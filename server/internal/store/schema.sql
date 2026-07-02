@@ -122,6 +122,21 @@ CREATE TABLE IF NOT EXISTS recovery_envelope (
     updated_at  INTEGER NOT NULL
 ) WITHOUT ROWID;
 
+-- Shared-group blobs (doc 33, slice 2). One fixed-size opaque blob per group,
+-- keyed by an opaque group id (like an alias id): the sealed group object (handle,
+-- roster of per-member entries, and per-member wrapped group key Kg). The server
+-- never learns the group, its members, or any status; it stores bytes and serves
+-- them existence-uniformly (a decoy on a miss), so the blob adds NO oracle the alias
+-- store does not already have. Same shape as the alias/inbox tables: an admin binds
+-- write_auth on the first write, and only a matching token may overwrite or delete
+-- (which admin may change the blob). Ciphertext is exactly contract.GroupBlobSize.
+CREATE TABLE IF NOT EXISTS group_blob (
+    id          TEXT PRIMARY KEY,   -- opaque group id (the only id the server sees)
+    ciphertext  BLOB NOT NULL,      -- padded to contract.GroupBlobSize before storage
+    write_auth  TEXT NOT NULL,      -- hash(write token); gates overwrite/delete by non-owners
+    updated_at  INTEGER NOT NULL
+) WITHOUT ROWID;
+
 CREATE TABLE IF NOT EXISTS knock (
     target_id       TEXT NOT NULL,         -- alias being knocked on
     requester_hash  TEXT NOT NULL,         -- opaque per-requester token

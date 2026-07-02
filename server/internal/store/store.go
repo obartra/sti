@@ -812,6 +812,63 @@ func (s *Store) DeleteRecoveryEnvelope(ctx context.Context, locator, writeAuth s
 	return tx.Commit()
 }
 
+// --- Shared-group blobs (doc 33, slice 2) -----------------------------------
+//
+// A shared-group object: the sealed group handle, its roster of per-member entries,
+// and the per-member wrapped group key Kg. It is stored and read EXACTLY like an
+// alias payload (opaque id, fixed-size ciphertext gated by a write-token hash, read
+// existence-uniformly with a decoy on a miss), so it adds NO oracle the alias store
+// does not already have (doc 33 decision 1). The server never sees the group, its
+// members, or any status; the blob is opaque ciphertext. Slice 2 treats the blob as
+// opaque fixed-size bytes; its internal structure (roster / wrapped Kg) is a later
+// slice.
+
+const groupBlobTable = "group_blob"
+
+// WriteGroupBlob creates the blob (binding writeAuth as its capability) or, if the
+// id exists, overwrites it only when writeAuth matches, via the SAME writeFixed
+// primitive the alias and notify-inbox stores use. authorized=false means the id
+// exists but the caller does not hold its write token (the write did not land).
+func (s *Store) WriteGroupBlob(ctx context.Context, id string, ciphertext []byte, writeAuth string, now int64) (authorized bool, err error) {
+	return s.writeFixed(ctx, groupBlobTable, id, ciphertext, writeAuth, now)
+}
+
+// GetGroupBlob returns the stored blob and whether it exists, via the SAME getFixed
+// primitive the notify inbox uses. Callers MUST NOT turn found=false into a
+// distinguishable response; the handler returns a fixed-size decoy for a miss.
+func (s *Store) GetGroupBlob(ctx context.Context, id string) (ciphertext []byte, found bool, err error) {
+	return s.getFixed(ctx, groupBlobTable, id)
+}
+
+// DeleteGroupBlob removes the blob at id only when writeAuth matches the row's bound
+// capability, mirroring DeleteAccountAuthorized. authorized=false means the row
+// exists under a different token (the delete did not land). A missing row is
+// authorized=true (idempotent no-op). The token check is a constant-time compare in
+// Go, matching the write path's discipline.
+func (s *Store) DeleteGroupBlob(ctx context.Context, id, writeAuth string) (authorized bool, err error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+
+	var stored string
+	switch err := tx.QueryRowContext(ctx, `SELECT write_auth FROM group_blob WHERE id = ?`, id).Scan(&stored); {
+	case errors.Is(err, sql.ErrNoRows):
+		return true, tx.Commit() // nothing to delete; reveal nothing
+	case err != nil:
+		return false, err
+	default:
+		if subtle.ConstantTimeCompare([]byte(stored), []byte(writeAuth)) != 1 {
+			return false, nil
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM group_blob WHERE id = ?`, id); err != nil {
+			return false, err
+		}
+		return true, tx.Commit()
+	}
+}
+
 // --- Admin record management (doc 20 A3) ------------------------------------
 //
 // Operator actions on server-side records, within the blind-store boundary: they

@@ -99,6 +99,9 @@ function fakeApi(poisonInboxId?: string): {
     getRecoveryEnvelope: unused,
     putRecoveryEnvelope: unused,
     deleteRecoveryEnvelope: unused,
+    getGroupBlob: unused,
+    putGroupBlob: unused,
+    deleteGroupBlob: unused,
     health: unused,
   };
   return { api, pings, notified };

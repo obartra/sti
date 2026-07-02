@@ -43,6 +43,9 @@ function fakeAccountApi(): ApiClient {
     getRecoveryEnvelope: unused,
     putRecoveryEnvelope: unused,
     deleteRecoveryEnvelope: unused,
+    getGroupBlob: unused,
+    putGroupBlob: unused,
+    deleteGroupBlob: unused,
     health: unused,
     getAccount: (id) => {
       const e = store.get(id);
@@ -310,6 +313,9 @@ describe("account manager", () => {
       getRecoveryEnvelope: unused,
       putRecoveryEnvelope: unused,
       deleteRecoveryEnvelope: unused,
+      getGroupBlob: unused,
+      putGroupBlob: unused,
+      deleteGroupBlob: unused,
       health: unused,
       getAccount: (id) => {
         const e = accountStore.get(id);
@@ -520,6 +526,9 @@ describe("account manager", () => {
       getRecoveryEnvelope: unused,
       putRecoveryEnvelope: unused,
       deleteRecoveryEnvelope: unused,
+      getGroupBlob: unused,
+      putGroupBlob: unused,
+      deleteGroupBlob: unused,
       health: unused,
       getAccount: (id) => {
         const e = accountStore.get(id);

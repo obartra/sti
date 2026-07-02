@@ -21,6 +21,7 @@ import {
   type PushRegisterRequest,
 } from "./contract.ts";
 import { recoveryMethods } from "./recovery.ts";
+import { groupMethods } from "./group.ts";
 
 export type ApiErrorKind =
   | "unreachable" // network failure or a shed (503): map to gray
@@ -157,6 +158,12 @@ export interface ApiClient {
     writeToken: string,
   ): Promise<void>;
   deleteRecoveryEnvelope(locator: string, writeToken: string): Promise<void>;
+  /** Shared-group blob store (doc 33, slice 2): stored and read exactly like an
+   * alias payload (existence-uniform fixed-size read, write-token-gated put/delete).
+   * The blob is OPAQUE fixed-size bytes here; its structure is a later slice. */
+  getGroupBlob(id: string): Promise<Bytes>;
+  putGroupBlob(id: string, blob: Bytes, writeToken: string): Promise<void>;
+  deleteGroupBlob(id: string, writeToken: string): Promise<void>;
   health(): Promise<boolean>;
 }
 
@@ -490,24 +497,18 @@ export function createApiClient(
   }
 
   return {
-    getAlias(id) {
-      return getFixed(ALIAS, id);
-    },
+    getAlias: (id) => getFixed(ALIAS, id),
 
-    putAlias(id, payload, writeToken, expiresAt) {
-      return putFixed(ALIAS, id, payload, {
+    putAlias: (id, payload, writeToken, expiresAt) =>
+      putFixed(ALIAS, id, payload, {
         [HEADER_WRITE_TOKEN]: writeToken,
         ...expiryHeaders(expiresAt),
-      });
-    },
+      }),
 
-    getInbox(id) {
-      return getFixed(INBOX, id);
-    },
+    getInbox: (id) => getFixed(INBOX, id),
 
-    putInbox(id, payload, writeToken) {
-      return putFixed(INBOX, id, payload, { [HEADER_WRITE_TOKEN]: writeToken });
-    },
+    putInbox: (id, payload, writeToken) =>
+      putFixed(INBOX, id, payload, { [HEADER_WRITE_TOKEN]: writeToken }),
 
     ...accountMethods(call),
 
@@ -549,6 +550,8 @@ export function createApiClient(
     ...vanityMethods(call),
 
     ...recoveryMethods(call),
+
+    ...groupMethods(call),
 
     async health() {
       // A liveness probe is a boolean: unreachable/shed = not healthy, not error.

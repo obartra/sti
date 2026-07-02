@@ -9,7 +9,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { rootForTest } from "../test-support/phrase.ts";
 
 import { createApiClient, ApiError } from "./client.ts";
-import { ALIAS_PAYLOAD_SIZE, ID_ENCODED_LEN } from "./contract.ts";
+import {
+  ALIAS_PAYLOAD_SIZE,
+  GROUP_BLOB_SIZE,
+  ID_ENCODED_LEN,
+} from "./contract.ts";
 import {
   importAesKey,
   seal,
@@ -111,6 +115,38 @@ describe("api client against a live blind store", () => {
       .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ApiError);
     expect((err as ApiError).kind).toBe("forbidden");
+  });
+
+  it("round-trips a group blob and is existence-uniform on a miss (doc 33)", async () => {
+    const id = randomAliasId();
+    const writeToken = randomWriteToken();
+    const key = await importAesKey(crypto.getRandomValues(new Uint8Array(32)));
+
+    // A miss is a fixed-size decoy that fails to open, just like GET /a.
+    const decoy = await api.getGroupBlob(id);
+    expect(decoy.length).toBe(GROUP_BLOB_SIZE); // drift guard vs the server constant
+    await expect(openSized(key, decoy)).rejects.toThrow();
+
+    // Store the opaque sealed blob, then read it back byte-for-byte.
+    const plaintext = utf8ToBytes(
+      JSON.stringify({ handle: "poolnight", roster: ["a", "b"] }),
+    );
+    const blob = await sealToSize(key, plaintext, GROUP_BLOB_SIZE);
+    await api.putGroupBlob(id, blob, writeToken);
+
+    const fetched = await api.getGroupBlob(id);
+    expect(fetched.length).toBe(GROUP_BLOB_SIZE);
+    expect(bytesToUtf8(await openSized(key, fetched))).toBe(
+      bytesToUtf8(plaintext),
+    );
+
+    // The write token gates overwrite and delete end to end.
+    const foreign = await api
+      .putGroupBlob(id, blob, randomWriteToken())
+      .catch((e: unknown) => e);
+    expect(foreign).toBeInstanceOf(ApiError);
+    expect((foreign as ApiError).kind).toBe("forbidden");
+    await expect(api.deleteGroupBlob(id, writeToken)).resolves.toBeUndefined();
   });
 
   it("round-trips the account-sync blob and reports a version", async () => {

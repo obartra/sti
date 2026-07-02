@@ -59,6 +59,24 @@ const (
 	// 256 bytes comfortably holds the ~90-byte envelope with headroom for future
 	// params/versions without another size migration.
 	RecoveryEnvelopeSize = 256
+
+	// GroupBlobSize is the single fixed wire size of every group-blob PUT body and
+	// GET response (doc 33, shared groups). A group object is one sealed blob that
+	// holds the group handle plus a roster of per-member entries (each an opaque
+	// group-card id, the wrapped group key Kg for that member, and an admin flag).
+	// The server stores and serves a constant-size opaque blob and returns a decoy
+	// of the SAME length on a miss, so a stored group and a never-written id are
+	// byte-identical on the wire: the blob is not an existence oracle (the doc 33
+	// "no new oracle" rule). It is stored and read EXACTLY like an alias payload,
+	// just at its own size.
+	//
+	// 16 KiB is sized for EVENT-sized groups: tens of members. A roster entry is on
+	// the order of ~150 bytes (an opaque id plus a wrapped key), so this comfortably
+	// holds up to roughly a hundred members with header/AEAD-framing headroom. This
+	// is a SOFT cap, not built for thousands (doc 33 corner cases: N reads per roster
+	// refresh, N republishes per rotation, fine at event scale). A group that outgrows
+	// it needs a size migration, exactly like AliasPayloadSize/RecoveryEnvelopeSize.
+	GroupBlobSize = 16384
 )
 
 // --- Endpoints --------------------------------------------------------------
@@ -73,6 +91,7 @@ const (
 	PathKnockPrefix    = "/knock/"        // POST: contentless knock
 	PathVanityPrefix   = "/u/"            // GET resolve; PUT register / DELETE release (gated)
 	PathRecoveryPrefix = "/recovery/"     // GET fetch / PUT store / DELETE drop a password envelope (doc 32, gated)
+	PathGroupPrefix    = "/g/"            // GET resolve / PUT store / DELETE drop a shared-group blob (doc 33, gated)
 	PathHealth         = "/healthz"       // GET: liveness
 	PathVapid          = "/vapid"         // GET: the active Web Push public key
 	PathFeedback       = "/feedback"      // POST: file a "Something wrong?" report (doc 35, public)

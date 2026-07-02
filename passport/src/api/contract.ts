@@ -16,6 +16,8 @@ export const ALIAS_PAYLOAD_SIZE = 4096;
 export const ACCOUNT_BLOB_MAX_SIZE = 1 << 20;
 /** Every recovery-envelope PUT/GET is exactly this many bytes (real or decoy, doc 32). */
 export const RECOVERY_ENVELOPE_SIZE = 256;
+/** Every group-blob PUT/GET is exactly this many bytes (real or decoy, doc 33). */
+export const GROUP_BLOB_SIZE = 16384;
 
 export const PATHS = {
   aliasPrefix: "/a/",
@@ -27,6 +29,7 @@ export const PATHS = {
   knockPrefix: "/knock/",
   vanityPrefix: "/u/",
   recoveryPrefix: "/recovery/",
+  groupPrefix: "/g/",
   health: "/healthz",
   vapid: "/vapid",
   feedback: "/feedback",

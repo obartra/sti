@@ -298,6 +298,12 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /recovery/{locator}", s.handleRecoveryGet)
 	s.mux.HandleFunc("PUT /recovery/{locator}", s.handleRecoveryPut)
 	s.mux.HandleFunc("DELETE /recovery/{locator}", s.handleRecoveryDelete)
+	// The shared-group blob store (doc 33, slice 2). Read is existence-uniform (a
+	// decoy on a miss); writes/deletes are write-token gated. Stored and read exactly
+	// like an alias payload, so it adds no oracle the alias store does not already have.
+	s.mux.HandleFunc("GET /g/{id}", s.handleGroupGet)
+	s.mux.HandleFunc("PUT /g/{id}", s.handleGroupPut)
+	s.mux.HandleFunc("DELETE /g/{id}", s.handleGroupDelete)
 	s.mux.HandleFunc("POST /notify", s.handleNotify)
 	s.mux.HandleFunc("POST /republish", s.handleRepublish)
 	s.mux.HandleFunc("POST /push/register", s.handlePushRegister)
@@ -359,6 +365,7 @@ func (r *statusRecorder) Write(b []byte) (int, error) {
 func sensitivePath(method, p string) bool {
 	return (method == http.MethodGet && strings.HasPrefix(p, contract.PathAliasPrefix)) ||
 		(method == http.MethodGet && strings.HasPrefix(p, contract.PathInboxPrefix)) ||
+		(method == http.MethodGet && strings.HasPrefix(p, contract.PathGroupPrefix)) ||
 		(method == http.MethodPost && strings.HasPrefix(p, contract.PathKnockPrefix))
 }
 
@@ -403,13 +410,20 @@ func (s *Server) uniformOverload(w http.ResponseWriter, r *http.Request) {
 		s.writeJSON(w, http.StatusOK, contract.KnockResponse{Status: contract.KnockStatus})
 		return
 	}
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Cache-Control", "no-store")
+	// GET /g has its own fixed size; emit the EXACT decoy its normal miss would, keyed
+	// by the bare id, so saturation is indistinguishable from a nonexistent group id.
+	if strings.HasPrefix(r.URL.Path, contract.PathGroupPrefix) {
+		id := strings.TrimPrefix(r.URL.Path, contract.PathGroupPrefix)
+		_, _ = w.Write(decoyBytes(s.cfg.DecoySecret, id, contract.GroupBlobSize))
+		return
+	}
 	// GET /a or GET /inbox: emit the EXACT decoy a normal miss would, so saturation
 	// is indistinguishable from a nonexistent id. The normal miss keys the decoy by
 	// the bare id, so this must too (keying by the full path would diverge).
 	id := strings.TrimPrefix(r.URL.Path, contract.PathInboxPrefix)
 	id = strings.TrimPrefix(id, contract.PathAliasPrefix)
-	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write(decoyBytes(s.cfg.DecoySecret, id, contract.AliasPayloadSize))
 }
 
