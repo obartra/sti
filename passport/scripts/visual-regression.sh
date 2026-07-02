@@ -9,12 +9,17 @@
 #   scripts/visual-regression.sh                  # diff against baselines, exit 1 on mismatch
 #   scripts/visual-regression.sh --update         # write/replace baselines, then prune orphans
 #   scripts/visual-regression.sh --shard I --of N # diff only shard I of N (1-based): CI fan-out
+#   LP_BASELINE_DIR=dir scripts/visual-regression.sh --update --shard I --of N
+#                                                 # regenerate only slice I of N into dir
 #
-# Sharding splits the (expensive) capture+diff across N parallel CI jobs: each
-# shoots a deterministic 1/N slice of the story corpus. Valid for the diff gate
-# only, never --update (which writes + prunes across the WHOLE corpus). A
-# filtered diff run writes no baselines, so a shard cannot prune. check-baselines
-# still validates the full corpus shape in every shard (jq-only, cheap).
+# Sharding splits the (expensive) capture across N parallel CI jobs: each shoots
+# a deterministic 1/N slice of the story corpus. On the diff gate a shard writes
+# no baselines (so it cannot prune) and check-baselines still validates the full
+# corpus shape in every shard (jq-only, cheap). With --update a shard REGENERATES
+# its slice, and because a filtered lost-pixel update prunes every baseline
+# outside its page set, a sharded update refuses to run unless LP_BASELINE_DIR
+# points it at a throwaway slice dir (repo-relative: Docker mounts $PWD). The CI
+# collector job assembles the slices into visual-baselines/ and prunes there.
 #
 # Prereqs: Docker daemon running. On Apple Silicon, Rosetta 2 (preflighted).
 
@@ -34,8 +39,8 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-if [[ -n "$MODE" && ( -n "$SHARD" || -n "$SHARDS" ) ]]; then
-  echo "::error::--shard/--of cannot be combined with --update"; exit 2
+if [[ -n "$MODE" && ( -n "$SHARD" || -n "$SHARDS" ) && -z "${LP_BASELINE_DIR:-}" ]]; then
+  echo "::error::a sharded --update must write to a throwaway LP_BASELINE_DIR, never visual-baselines/ (a filtered update prunes everything outside its slice)"; exit 2
 fi
 if { [[ -n "$SHARD" ]] && [[ -z "$SHARDS" ]]; } ||
    { [[ -z "$SHARD" ]] && [[ -n "$SHARDS" ]]; }; then
@@ -48,7 +53,7 @@ fi
 shard_ids() {
   jq -r '.entries | to_entries[]
     | select(.value.type=="story")
-    | select(.value.title | startswith("Design System") | not)
+    | select(.value.title | (startswith("Design System") or startswith("PWA/Install screenshots")) | not)
     | .key' storybook-static/index.json \
     | sort -u \
     | awk -v i="$1" -v n="$2" '((NR - 1) % n) == (i - 1)' \
@@ -143,7 +148,7 @@ BLANK_FLOOR=10000
 # Re-shoot a single story id and copy it back only if it came out non-blank. The
 # capture targets a throwaway baseline dir because a filtered lost-pixel run
 # prunes every baseline outside its page set; we never point that at the real
-# dir. Returns 0 if the story is now non-blank in visual-baselines/.
+# dir. Returns 0 if the story is now non-blank in $DEST.
 recapture_one() {
   local id="$1"
   local tmp=".lostpixel/recapture"
@@ -151,17 +156,35 @@ recapture_one() {
   LP_BASELINE_DIR="$tmp" lp_run "$id" update || true
   local shot="$tmp/${id}.png"
   if [[ -f "$shot" ]] && [[ -z "$(find "$shot" -size "-${BLANK_FLOOR}c")" ]]; then
-    cp "$shot" "visual-baselines/${id}.png"
+    cp "$shot" "$DEST/${id}.png"
   fi
   rm -rf "$tmp"
-  [[ -z "$(find "visual-baselines/${id}.png" -size "-${BLANK_FLOOR}c" 2>/dev/null)" ]]
+  [[ -z "$(find "$DEST/${id}.png" -size "-${BLANK_FLOOR}c" 2>/dev/null)" ]]
 }
 
 if [[ "$MODE" == "update" ]]; then
+  # Where the regenerated baselines land: the real dir, or the throwaway slice
+  # dir a sharded (or otherwise redirected) update was pointed at.
+  DEST="${LP_BASELINE_DIR:-visual-baselines}"
+  ONLY=""
+  if [[ -n "$SHARDS" ]]; then
+    mkdir -p "$DEST"
+    ONLY="$(shard_ids "$SHARD" "$SHARDS")"
+    if [[ -z "$ONLY" ]]; then
+      echo "→ Shard ${SHARD}/${SHARDS} has no stories; nothing to regenerate."
+      exit 0
+    fi
+    count="$(printf '%s' "$ONLY" | tr ',' '\n' | grep -c .)"
+    echo "→ Shard ${SHARD}/${SHARDS}: regenerating ${count} baselines into ${DEST}"
+  fi
   # --update exits 1 whenever it writes baselines; PNGs are on disk by then, so
   # tolerate it and let check-baselines.sh --prune be the real gate.
-  lp_run "" update || true
-  ./scripts/check-baselines.sh --prune
+  lp_run "$ONLY" update || true
+  # Prune/shape-check only a full update of the real dir: a slice dir holds
+  # exactly its slice, and the CI collector prunes the assembled union.
+  if [[ "$DEST" == "visual-baselines" ]]; then
+    ./scripts/check-baselines.sh --prune
+  fi
   # Capture-determinism guard. A heavy story very occasionally renders a near-
   # empty (blank) PNG under headless capture even with the mount-paint signal.
   # Re-running the whole suite just relocates the blank to a different random
@@ -169,7 +192,7 @@ if [[ "$MODE" == "update" ]]; then
   # baseline dir, copied back), where the per-story blank probability is low.
   # Bounded; fail loudly if a blank still persists.
   for attempt in 1 2 3 4 5; do
-    blanks="$(find visual-baselines -name '*.png' -size "-${BLANK_FLOOR}c")"
+    blanks="$(find "$DEST" -name '*.png' -size "-${BLANK_FLOOR}c")"
     [[ -z "$blanks" ]] && break
     echo "→ Re-capturing blank shot(s) in isolation (attempt ${attempt}):"
     for f in $blanks; do
@@ -178,7 +201,7 @@ if [[ "$MODE" == "update" ]]; then
       recapture_one "$id" || true
     done
   done
-  blanks="$(find visual-baselines -name '*.png' -size "-${BLANK_FLOOR}c")"
+  blanks="$(find "$DEST" -name '*.png' -size "-${BLANK_FLOOR}c")"
   if [[ -n "$blanks" ]]; then
     echo "::error::Blank baselines persist after retries:"
     printf '  %s\n' $blanks

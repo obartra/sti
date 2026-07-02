@@ -4,8 +4,10 @@ name: Visual regression
 # centaur):
 #  1. Default (no label): the `visual` job runs `npm run test:visual` ->
 #     check-baselines (fail on missing/stale) + lost-pixel diff. The merge gate.
-#  2. With `screenshot:update` on the PR: the `update` job regenerates baselines,
-#     prunes stale, and the bot commits + pushes them back to the PR branch.
+#  2. With `screenshot:update` on the PR: the `update-passport` shards and
+#     `update-info` regenerate baselines in parallel, then `update-commit`
+#     assembles the slices, prunes stale, and the bot commits + pushes them
+#     back to the PR branch in one commit.
 #
 # Render path is the pinned lost-pixel Docker image (linux/amd64) so pixels are
 # stable between local Mac dev (Rosetta) and ubuntu-latest CI.
@@ -163,9 +165,16 @@ jobs:
           echo "visual-shard result: ${shards}; info-visual result: ${info}"
           ok "${shards}" && ok "${info}"
 
-  update:
+  # Baseline regeneration, fanned out like the gate: each shard re-shoots the
+  # same deterministic 1/N story slice the gate diffs, at the same concurrency.
+  # A filtered lost-pixel update PRUNES every baseline outside its page set, so
+  # each shard writes its slice into a throwaway dir (never visual-baselines/)
+  # and uploads it as an artifact; update-commit assembles the union. This cut
+  # the label round-trip's slowest job from a serial full-corpus regen at
+  # concurrency 2 to the gate's own shard shape.
+  update-passport:
     # Only on the label being ADDED (not on every push while it is present), so the
-    # PAT baseline push below (a `synchronize`) does not re-run this whole job.
+    # PAT baseline push in update-commit (a `synchronize`) does not re-run this job.
     if: |
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' &&
@@ -174,11 +183,97 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      SHARD_TOTAL: 3
+      # Same capture parallelism and self-healing as the visual-shard gate jobs.
+      LOST_PIXEL_CONCURRENCY: 4
+      # The throwaway slice dir (repo-relative under passport/): the sharded
+      # update refuses to run without it, see scripts/visual-regression.sh.
+      LP_BASELINE_DIR: .lostpixel/slice
     defaults:
       run:
         working-directory: passport
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+      - uses: ./.github/actions/setup-node
+        with:
+          cache-dependency-path: passport/package-lock.json
+      - run: npm ci
+      - run: npm run build-storybook
+      - run: npm run test:visual:update -- --shard ${{ matrix.shard }} --of ${{ env.SHARD_TOTAL }}
+      - name: Upload baseline slice
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: baseline-slice-${{ matrix.shard }}
+          path: passport/.lostpixel/slice/
+          if-no-files-found: error
+          retention-days: 1
+      # update-commit validates the assembled corpus shape against index.json
+      # without rebuilding storybook; one shard ships the index.
+      - name: Upload story index
+        if: matrix.shard == 1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: storybook-index
+          path: passport/storybook-static/index.json
+          if-no-files-found: error
+          retention-days: 1
+
+  # The info site's baselines regenerate in parallel (small corpus, one job) so
+  # one label click still covers both surfaces; the result rides an artifact to
+  # update-commit like the passport slices.
+  update-info:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+        github.event.action == 'labeled' &&
+        github.event.label.name == 'screenshot:update')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      LOST_PIXEL_CONCURRENCY: 4
+    defaults:
+      run:
+        working-directory: info
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+      - uses: ./.github/actions/setup-node
+        with:
+          cache-dependency-path: info/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:visual:update
+      - name: Upload info baselines
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: baseline-info
+          path: info/visual-baselines/
+          if-no-files-found: error
+          retention-days: 1
+
+  # The single writer: assembles the passport slices and the info baselines,
+  # validates the union, and makes the one label-removal + PAT push. Splitting
+  # regeneration (above, parallel) from the commit keeps the push mechanics
+  # identical to the old single update job.
+  update-commit:
+    needs: [update-passport, update-info]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
     steps:
       # Push baselines with a PAT when one is configured. A commit pushed with the
       # default GITHUB_TOKEN does NOT fire `push`/`pull_request`, so the required
@@ -197,20 +292,31 @@ jobs:
           ref: ${{ github.head_ref || github.ref_name }}
           token: ${{ secrets.SCREENSHOT_BOT_TOKEN || secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-      - uses: ./.github/actions/setup-node
-        with:
-          cache-dependency-path: passport/package-lock.json
-      - run: npm ci
-      - run: npm run build-storybook
-      - run: npm run test:visual:update
-      # The info site's baselines regenerate in the same pass so one label click
-      # covers both surfaces; unchanged pixels produce no diff to commit.
-      - run: npm ci
-        working-directory: info
-      - run: npm run build
-        working-directory: info
-      - run: npm run test:visual:update
-        working-directory: info
+      - name: Assemble baselines from the regen artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          # Replace both baseline dirs wholesale with the regenerated union so
+          # deletions (removed stories/pages) land in the commit too.
+          rm -rf passport/visual-baselines info/visual-baselines
+          mkdir -p passport/visual-baselines
+          slices="$(mktemp -d)"
+          gh run download "${RUN_ID}" --pattern 'baseline-slice-*' --dir "${slices}"
+          cp "${slices}"/baseline-slice-*/*.png passport/visual-baselines/
+          gh run download "${RUN_ID}" --name baseline-info --dir info/visual-baselines
+          gh run download "${RUN_ID}" --name storybook-index --dir passport/storybook-static
+          # The slices are complete by construction; this asserts it (and prunes
+          # any stragglers) against the story corpus the shards captured from.
+          (cd passport && ./scripts/check-baselines.sh --prune)
+          # Each shard already blank-checked its slice; keep the union honest.
+          blanks="$(find passport/visual-baselines info/visual-baselines -name '*.png' -size -10000c)"
+          if [ -n "${blanks}" ]; then
+            echo "::error::Blank baselines in the assembled set:"
+            printf '  %s\n' ${blanks}
+            exit 1
+          fi
       - name: Commit + push updated baselines
         env:
           REASON: ${{ github.event.inputs.reason || 'screenshot:update label triggered regeneration' }}
@@ -230,12 +336,12 @@ jobs:
           if [ -n "${PR}" ]; then
             gh pr edit "${PR}" --remove-label "screenshot:update" || true
           fi
-          git add -A visual-baselines/ ../info/visual-baselines/
+          git add -A passport/visual-baselines/ info/visual-baselines/
           if git diff --staged --quiet; then
             echo "No baseline changes."
             exit 0
           fi
-          git diff --staged --stat visual-baselines/ | tail -20
+          git diff --staged --stat passport/visual-baselines/ info/visual-baselines/ | tail -20
           git commit -m "chore(visual): update baselines" -m "${REASON}" -m "Triggered by @${ACTOR} on ${BRANCH}."
           git push origin "HEAD:${BRANCH}"
           if [ "${HAS_PAT}" != "true" ]; then
