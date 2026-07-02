@@ -229,7 +229,7 @@ const ADMIN_HEALTH_PATH = "/admin/health";
 
 /** One subsystem's internal-error count in the health snapshot (mirrors the server's
  * AdminErrorCount): a fixed subsystem name and a running total, never a message. */
-export interface AdminErrorCount {
+interface AdminErrorCount {
   type: string;
   count: number;
 }
