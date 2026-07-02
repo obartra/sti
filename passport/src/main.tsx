@@ -1,5 +1,4 @@
-import "./design/index.css";
-import "./app.css";
+import "./styles/global.css";
 import { StrictMode, Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
 import { Root } from "./ui/Root.tsx";

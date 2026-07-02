@@ -1,0 +1,3 @@
+/* Tiny single-purpose helpers, composed onto elements (the app's analog of
+   info/src/styles/utilities.css). Highest layer, so a utility always wins
+   over theme, layout, and components. */

@@ -1,0 +1,5 @@
+/* Editorial theme tokens (doc 37). Everything the editorial language adds on
+   top of the vendored tokens lives here: the serif stack, the type scale,
+   hairlines, rhythm, and the derived AA status inks. Populated by the
+   editorial-primitives change; kept as the single home for app-level tokens
+   so the style lint can ban raw values everywhere else. */
