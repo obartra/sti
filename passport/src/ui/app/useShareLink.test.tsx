@@ -88,6 +88,7 @@ function stubController(over: Partial<SessionController>): SessionController {
     rejectJoinRequest: unused,
     redeemJoinRequests: unused,
     leaveGroup: unused,
+    deleteGroup: unused,
     setRecoveryPassword: unused,
     disableRecoveryPassword: unused,
     passkeyEnrolled: unused,

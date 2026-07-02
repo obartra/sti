@@ -36,8 +36,8 @@ one thing.
 Two roles. The creator is the first admin; **for v1 the creator is the only admin**
 (designating more admins, and admin succession, is a later question).
 
-- **Admins can:** invite people, revoke an invite before it is accepted, and remove a
-  member.
+- **Admins can:** invite people, revoke an invite before it is accepted, remove a
+  member, and disband the whole group.
 - **Members can:** request to join (a public group), accept or reject an invite, and
   leave at any time.
 
@@ -58,6 +58,15 @@ is simply no longer in the roster, with no mark and no reason shown. The affecte
 person can tell their own access ended (doc 31); no one else learns which of the two
 it was. What everyone _does_ see, because membership is fully visible, is that the
 roster changed.
+
+And one way to end the whole thing:
+
+- **Disband (admin).** The admin who made a group can dissolve it (doc 31: make it and
+  delete it after). Disbanding deletes the group's shared card and, for a public group,
+  releases its handle so the name stops resolving; the admin's own group card is revoked
+  too. There is no notice: a member's next read finds the group simply gone, the same
+  uniform nothing as a link that never existed. The shared key is not rotated, because
+  there is nothing left to re-lock; each member's own group card is left to lapse.
 
 ## What the group is used for: setup, and one honest notify rule
 

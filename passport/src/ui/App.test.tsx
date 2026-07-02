@@ -213,6 +213,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
     redeemJoinRequests: () =>
       Promise.reject(new Error("not used in this test")),
     leaveGroup: () => Promise.reject(new Error("not used in this test")),
+    deleteGroup: () => Promise.reject(new Error("not used in this test")),
     setRecoveryPassword: () =>
       Promise.reject(new Error("not used in this test")),
     disableRecoveryPassword: () =>
