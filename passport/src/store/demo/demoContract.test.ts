@@ -267,6 +267,16 @@ async function walkController(controller: SessionController): Promise<void> {
   // Shared-group membership (doc 33 slice 4a), walked in its own helper.
   await walkGroupMembership(controller, privGroup.session, privGroup.groupId);
 
+  // Admin disband (doc 33): deleteGroup drops the group from the local blob, the
+  // admin counterpart of the member leave walkGroupJoin covers.
+  const disbanded = await controller.deleteGroup(
+    privGroup.session,
+    pubGroup.groupId,
+  );
+  expect(
+    disbanded.blob.groups?.find((g) => g.groupId === pubGroup.groupId),
+  ).toBeUndefined();
+
   // Passkey gate (doc 32): the demo enrolls no passkey, so the phrase re-view
   // gate reports none enrolled and a verify resolves false.
   expect(controller.passkeyEnrolled()).toBe(false);

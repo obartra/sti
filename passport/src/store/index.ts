@@ -121,6 +121,7 @@ export {
   rejectJoinRequest,
   redeemJoinRequests,
   leaveGroup,
+  deleteGroup,
   type RequestResult,
   type PendingRequest,
   type JoinRequesterDeps,

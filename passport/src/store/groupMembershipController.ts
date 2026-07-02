@@ -28,6 +28,7 @@ import {
   rejectJoinRequest,
   redeemJoinRequests,
   leaveGroup,
+  deleteGroup,
   type JoinRequesterDeps,
   type RequestResult,
   type PendingRequest,
@@ -152,6 +153,15 @@ export interface GroupMembershipController {
    * when the group is unknown or the owner is its admin.
    */
   leaveGroup(session: OwnerSession, groupId: string): Promise<OwnerSession>;
+  /**
+   * Disband a group the owner admins (admin self-teardown): release the public handle,
+   * delete the group blob, revoke the join pointer + the admin's own card, and drop the
+   * local record. A member's next read sees the group gone (an empty roster); disband
+   * does not notify. Every server step is best-effort/idempotent and the local record is
+   * dropped last, so a partial failure is retry-safe. A no-op for a non-admin (they
+   * leave, not disband) or an unknown group.
+   */
+  deleteGroup(session: OwnerSession, groupId: string): Promise<OwnerSession>;
 }
 
 /**
@@ -204,5 +214,7 @@ export function groupMembershipControllerMethods(
       redeemJoinRequests(api, accounts, joinDeps, session),
     leaveGroup: (session, groupId) =>
       leaveGroup(api, accounts, session, groupId),
+    deleteGroup: (session, groupId) =>
+      deleteGroup(api, accounts, session, groupId),
   };
 }

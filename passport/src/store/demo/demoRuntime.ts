@@ -281,7 +281,15 @@ function demoGroupJoin(
   | "rejectJoinRequest"
   | "redeemJoinRequests"
   | "leaveGroup"
+  | "deleteGroup"
 > {
+  // Leave (member) and disband (admin) both end the same way locally: forget the group
+  // record. The demo has no server, so each just drops it, faithful to the real drop.
+  const dropGroup = (groupId: string) =>
+    setBlob({
+      ...getBlob(),
+      groups: (getBlob().groups ?? []).filter((g) => g.groupId !== groupId),
+    });
   return {
     requestToJoin: () => Promise.resolve("not-found" as const),
     reviewJoinRequests: () => Promise.resolve([]),
@@ -289,10 +297,11 @@ function demoGroupJoin(
     rejectJoinRequest: (s) => Promise.resolve(s),
     redeemJoinRequests: (s) => Promise.resolve(s),
     leaveGroup: async (_s, groupId) => {
-      setBlob({
-        ...getBlob(),
-        groups: (getBlob().groups ?? []).filter((g) => g.groupId !== groupId),
-      });
+      dropGroup(groupId);
+      return session();
+    },
+    deleteGroup: async (_s, groupId) => {
+      dropGroup(groupId);
       return session();
     },
   };

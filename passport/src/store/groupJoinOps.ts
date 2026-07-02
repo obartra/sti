@@ -1,6 +1,7 @@
 /**
- * The shared-group REQUEST path plus LEAVE (doc 33, slice 4b): the member-initiated
- * half of the membership lifecycle, built on the invite machinery of slice 4a.
+ * The shared-group REQUEST path, member LEAVE, and admin DISBAND (doc 33): the
+ * member-initiated half of the membership lifecycle, built on the invite machinery of
+ * slice 4a, plus the admin's own teardown (deleteGroup), the counterpart of leave.
  *
  * The key insight the reviewed design turns on: a request's back-half is IDENTICAL
  * to an invite's. Approving a request just means "deliver an invite to the requester
@@ -303,6 +304,68 @@ export async function leaveGroup(
   );
   if (group?.lifecycleInbox === undefined) return session;
   await writePing(api, group.lifecycleInbox, encodeLifecycleLeave());
+  await revokeAlias(api, {
+    id: group.myCardId,
+    writeToken: group.myCardWriteToken,
+  });
+  const blob = await accounts.dropGroup(session.root, groupId);
+  return { root: session.root, blob };
+}
+
+/**
+ * DISBAND (self, admin): dissolve a group the owner created (doc 31, "make it and
+ * delete it after; deletion drops the grouping only"). The teardown is createGroup in
+ * reverse and every server step is best-effort/idempotent so a partial failure can be
+ * retried; the local record is dropped LAST, only after the server teardown has been
+ * ATTEMPTED, so a mid-failure leaves every capability in the record for a retry. A
+ * server error is NOT swallowed (it throws, halting before the later steps and the
+ * local drop), matching findableOps.releaseVanityName's discipline: better to keep the
+ * group and re-run than to forget the write tokens with server state half-torn-down.
+ * Order:
+ *   1. release the public handle first (if any) so the name stops resolving, so no new
+ *      request/read reaches a group that is about to vanish (mirrors releaseVanityName);
+ *   2. delete the group blob so the core is gone: a member's later read returns the
+ *      existence-uniform decoy = an unopenable blob = an empty roster, so the group has
+ *      simply vanished. Disband does NOT notify (doc 31); members see it gone via that
+ *      fail-closed decoy read (readGroupRoster), never a distinguishable "deleted";
+ *   3. revoke the now-orphan join-pointer decoy (public only) so it is not reachable;
+ *   4. revoke the admin's OWN group card so it is not a reachable orphan;
+ *   5. drop the local record.
+ * No `Kg` rotation: the group is gone, so there is nothing to re-seal. Members' own
+ * cards at their card ids are left to expire; the admin holds none of their write
+ * tokens so it cannot revoke them, and they turn unopenable once the blob (and `Kg`)
+ * are gone anyway. A no-op for a non-admin (they leaveGroup, not disband) or an
+ * unknown group.
+ */
+export async function deleteGroup(
+  api: ApiClient,
+  accounts: AccountManager,
+  session: OwnerSession,
+  groupId: string,
+): Promise<OwnerSession> {
+  const group = adminGroup(session, groupId);
+  if (group === undefined) return session;
+  // A public group is the one whose handle bound a join pointer (the handle field is
+  // always set; the pointer + its write token are present only for a public group).
+  // Capture them together so both public steps narrow without a non-null assertion
+  // (lint forbids `!`); undefined for a private group.
+  const pub =
+    group.joinPointerId !== undefined && group.joinWriteToken !== undefined
+      ? {
+          handle: group.handle,
+          pointerId: group.joinPointerId,
+          writeToken: group.joinWriteToken,
+        }
+      : undefined;
+  if (pub !== undefined) {
+    await api.releaseVanityName(pub.handle, pub.writeToken);
+  }
+  if (group.groupWriteToken !== undefined) {
+    await api.deleteGroupBlob(groupId, group.groupWriteToken);
+  }
+  if (pub !== undefined) {
+    await revokeAlias(api, { id: pub.pointerId, writeToken: pub.writeToken });
+  }
   await revokeAlias(api, {
     id: group.myCardId,
     writeToken: group.myCardWriteToken,

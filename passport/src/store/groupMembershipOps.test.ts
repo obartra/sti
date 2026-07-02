@@ -19,6 +19,7 @@ import {
   rejectJoinRequest,
   redeemJoinRequests,
   leaveGroup,
+  deleteGroup,
   type JoinRequesterDeps,
 } from "./groupJoinOps.ts";
 import { createGroup } from "./groupOps.ts";
@@ -82,6 +83,7 @@ function fakeServer(): {
   api: ApiClient;
   groups: Map<string, Bytes>;
   aliasTokens: Map<string, string>;
+  releases: { name: string; writeToken: string }[];
 } {
   const aliases = new Map<string, Bytes>();
   const aliasTokens = new Map<string, string>();
@@ -90,6 +92,8 @@ function fakeServer(): {
   const accounts = new Map<string, Bytes>();
   const knocks = new Map<string, PendingKnock[]>();
   const vanity = new Map<string, string>();
+  // Every vanity-name release, so a disband's handle teardown is assertable.
+  const releases: { name: string; writeToken: string }[] = [];
   const unused = () => {
     throw new Error("not used in this test");
   };
@@ -114,7 +118,10 @@ function fakeServer(): {
       groups.set(id, blob);
       return Promise.resolve();
     },
-    deleteGroupBlob: unused,
+    deleteGroupBlob: (id) => {
+      groups.delete(id);
+      return Promise.resolve();
+    },
     getAccount: (id) => {
       const blob = accounts.get(id);
       return Promise.resolve(blob ? { blob, version: "1" } : null);
@@ -149,7 +156,11 @@ function fakeServer(): {
       vanity.set(name, aliasId);
       return Promise.resolve("registered");
     },
-    releaseVanityName: unused,
+    releaseVanityName: (name, writeToken) => {
+      releases.push({ name, writeToken });
+      vanity.delete(name);
+      return Promise.resolve();
+    },
     resolveVanityName: (name) => Promise.resolve(vanity.get(name) ?? null),
     reportVanityName: unused,
     submitFeedback: unused,
@@ -158,7 +169,7 @@ function fakeServer(): {
     deleteRecoveryEnvelope: unused,
     health: unused,
   };
-  return { api, groups, aliasTokens };
+  return { api, groups, aliasTokens, releases };
 }
 
 // An in-memory StorageLike for the device-local requester stores.
@@ -1062,5 +1073,148 @@ describe("group notify scoping (doc 33, slice 6)", () => {
     );
     expect(result.sent).toHaveLength(0);
     expect(result.failed).toHaveLength(0);
+  });
+});
+
+// Record every alias PUT id (revokeAlias overwrites via putAlias), so a disband's
+// pointer/card revokes are assertable without inspecting opaque payloads.
+function aliasWriteSpy(api: ApiClient): { api: ApiClient; writes: string[] } {
+  const writes: string[] = [];
+  return {
+    writes,
+    api: {
+      ...api,
+      putAlias: (id, payload, token, expiresAt) => {
+        writes.push(id);
+        return api.putAlias(id, payload, token, expiresAt);
+      },
+    },
+  };
+}
+
+describe("group admin disband (doc 33, deleteGroup)", () => {
+  it("public admin group: releases the handle, deletes the blob, revokes the join pointer + own card, drops the record", async () => {
+    const server = fakeServer();
+    const admin = await adminWithPublicGroup(server.api);
+    const group = groupOf(admin.session, admin.groupId);
+    const joinWriteToken = must(group.joinWriteToken, "joinWriteToken");
+    const spy = aliasWriteSpy(server.api);
+
+    const disbanded = await deleteGroup(
+      spy.api,
+      admin.accounts,
+      admin.session,
+      admin.groupId,
+    );
+
+    // The handle no longer resolves, released under the join write token.
+    expect(await server.api.resolveVanityName(group.handle)).toBeNull();
+    expect(server.releases).toContainEqual({
+      name: group.handle,
+      writeToken: joinWriteToken,
+    });
+    // The group blob is gone: a later read returns the existence-uniform decoy.
+    expect(server.groups.has(admin.groupId)).toBe(false);
+    // The join-pointer decoy and the admin's own card were revoked (overwritten).
+    expect(spy.writes).toContain(admin.joinPointerId);
+    expect(spy.writes).toContain(group.myCardId);
+    // The local record is dropped last.
+    expect(
+      disbanded.blob.groups?.find((g) => g.groupId === admin.groupId),
+    ).toBeUndefined();
+  });
+
+  it("private admin group: deletes the blob + own card and drops the record, no handle/pointer teardown", async () => {
+    const server = fakeServer();
+    const admin = await adminWithGroup(server.api);
+    const group = groupOf(admin.session, admin.groupId);
+    const spy = aliasWriteSpy(server.api);
+
+    const disbanded = await deleteGroup(
+      spy.api,
+      admin.accounts,
+      admin.session,
+      admin.groupId,
+    );
+
+    // A private group has no handle to release.
+    expect(server.releases).toHaveLength(0);
+    // The blob is gone and the admin's own card was revoked; the record is dropped.
+    expect(server.groups.has(admin.groupId)).toBe(false);
+    expect(spy.writes).toContain(group.myCardId);
+    expect(
+      disbanded.blob.groups?.find((g) => g.groupId === admin.groupId),
+    ).toBeUndefined();
+  });
+
+  it("no-op for a non-admin member and for an unknown group id", async () => {
+    const server = fakeServer();
+    const admin = await adminWithGroup(server.api);
+    const invited = await inviteToGroup(admin.accounts, admin.session, {
+      groupId: admin.groupId,
+    });
+    const invite = inviteFrom(invited.url);
+    const member = await freshSession(server.api, "sam");
+    const accepted = await acceptGroupInvite(
+      server.api,
+      member.accounts,
+      member.session,
+      invite,
+    );
+
+    // A member disbanding is a no-op (they leave, not disband): the record stays and
+    // nothing is torn down. The member has no admin record for the group, so a call
+    // that touched the server would blow up on the fake's unused primitives.
+    const afterMember = await deleteGroup(
+      server.api,
+      member.accounts,
+      accepted,
+      admin.groupId,
+    );
+    expect(
+      afterMember.blob.groups?.find((g) => g.groupId === admin.groupId),
+    ).toBeDefined();
+    expect(server.groups.has(admin.groupId)).toBe(true);
+
+    // An unknown group id is likewise a no-op: the admin's own groups are untouched.
+    const afterUnknown = await deleteGroup(
+      server.api,
+      admin.accounts,
+      admin.session,
+      "no-such-group",
+    );
+    expect(afterUnknown.blob.groups).toHaveLength(
+      admin.session.blob.groups?.length ?? 0,
+    );
+  });
+
+  it("a member reading a disbanded group gets an empty roster (blob deleted -> decoy)", async () => {
+    const server = fakeServer();
+    const g = await setupWithMembers(server.api, ["sam"]);
+    const sam = must(g.members[0], "member");
+
+    // Sam reads once (caches Kg, publishes their card): the roster is admin + sam.
+    const samRead1 = await readGroupRoster(
+      server.api,
+      sam.accounts,
+      sam.session,
+      g.groupId,
+    );
+    expect(samRead1.members).toHaveLength(2);
+
+    // The admin disbands: the blob is deleted (no notify, doc 31).
+    await deleteGroup(server.api, g.accounts, g.session, g.groupId);
+    expect(server.groups.has(g.groupId)).toBe(false);
+
+    // Sam's next read hits the existence-uniform decoy, which opens to nothing, so the
+    // fail-closed roster path returns empty: the group has simply vanished.
+    const samRead2 = await readGroupRoster(
+      server.api,
+      sam.accounts,
+      samRead1.session,
+      g.groupId,
+    );
+    expect(samRead2.obj).toBeNull();
+    expect(samRead2.members).toHaveLength(0);
   });
 });
