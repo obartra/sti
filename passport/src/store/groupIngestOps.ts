@@ -11,8 +11,8 @@
  * - A LEAVE (on a member inbox) drops that member exactly as a remove does, so the
  *   observable (the roster shrinks, no reason) is byte-identical to an admin remove
  *   (doc 33): leaving and being removed are indistinguishable to the rest of the
- *   group. No `Kg` rotation here (slice 5): the departed member keeps the copy they
- *   hold; making it open nothing new is the rotation slice.
+ *   group. Because it reuses `removeGroupMember`, a leave ROTATES the key too (slice
+ *   5): the departed member keeps their copy of the old `Kg` but it opens nothing new.
  *
  * Every read fails CLOSED: a null poll, a null parse, or an unreadable blob leaves
  * the state unchanged (an invite pending, a member in place), indistinguishable from

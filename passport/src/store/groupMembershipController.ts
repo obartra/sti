@@ -80,9 +80,10 @@ export interface GroupMembershipController {
    */
   pollGroupLifecycle(session: OwnerSession): Promise<OwnerSession>;
   /**
-   * Remove a member from a group the owner admins: drop their slot + roster entry
-   * from the blob and the local roster secret. No key rotation yet (slice 5), so the
-   * removed member keeps the `Kg` they hold; the roster change is what others see,
+   * Remove a member from a group the owner admins (doc 33, slice 5): mint a fresh
+   * `Kg'`, re-wrap it to the surviving members, re-seal the core, and republish the
+   * admin's own card under it. The removed member keeps the old `Kg` they hold, but it
+   * now opens nothing new (no future reads). The roster change is what others see,
    * indistinguishable from a leave. A no-op when unknown.
    */
   removeGroupMember(

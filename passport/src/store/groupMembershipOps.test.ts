@@ -26,10 +26,11 @@ import { createGroupJoinStore } from "./groupJoinStore.ts";
 import type { StorageLike } from "../auth/deviceStore.ts";
 import {
   serializeGroupBlob,
+  parseGroupBlobForMember,
   parseGroupBlobWithKg,
   GROUP_MEMBER_CAP,
 } from "./groupObject.ts";
-import { wrapGroupKey, type GroupKey } from "./groupCrypto.ts";
+import { openGroupCard, wrapGroupKey, type GroupKey } from "./groupCrypto.ts";
 import type {
   GroupMemberSecret,
   GroupRecord,
@@ -45,6 +46,7 @@ import { ALIAS_PAYLOAD_SIZE, GROUP_BLOB_SIZE } from "../api/contract.ts";
 import {
   base64urlToBytes,
   bytesToBase64url,
+  deriveGroupMemberKey,
   randomAliasId,
   type Bytes,
 } from "../crypto/index.ts";
@@ -615,6 +617,207 @@ describe("group request lifecycle (doc 33, slice 4b)", () => {
       must(server.groups.get(admin.groupId), "blob"),
       kgOf(dropped, admin.groupId),
     );
+    expect(must(obj, "obj").roster).toHaveLength(1);
+  });
+});
+
+// One joined member: their own account manager + accepted session, and the card id
+// their group record publishes to. Bundled so a test can read + remove them.
+interface JoinedMember {
+  readonly accounts: AccountManager;
+  readonly session: OwnerSession;
+  readonly cardId: string;
+}
+
+// Build a private group with `handles.length` accepted members, ingested in one poll.
+// Returns the admin (session already ingested) and each member. Invites are threaded
+// through the admin session, every invitee accepts, then a single poll fills every
+// slot, so the admin's Kg wraps to the admin + every member.
+async function setupWithMembers(
+  api: ApiClient,
+  handles: string[],
+): Promise<{
+  accounts: AccountManager;
+  session: OwnerSession;
+  groupId: string;
+  members: JoinedMember[];
+}> {
+  const admin = await adminWithGroup(api);
+  let adminSession = admin.session;
+  const members: JoinedMember[] = [];
+  for (const handle of handles) {
+    const invited = await inviteToGroup(admin.accounts, adminSession, {
+      groupId: admin.groupId,
+    });
+    adminSession = invited.session;
+    const m = await freshSession(api, handle);
+    const accepted = await acceptGroupInvite(
+      api,
+      m.accounts,
+      m.session,
+      inviteFrom(invited.url),
+    );
+    members.push({
+      accounts: m.accounts,
+      session: accepted,
+      cardId: groupOf(accepted, admin.groupId).myCardId,
+    });
+  }
+  const ingested = await pollGroupLifecycle(api, admin.accounts, adminSession);
+  return {
+    accounts: admin.accounts,
+    session: ingested,
+    groupId: admin.groupId,
+    members,
+  };
+}
+
+describe("group key rotation on remove/leave (doc 33, slice 5)", () => {
+  it("remove rotates Kg: the old key opens nothing and the removed member's key no longer unwraps", async () => {
+    const server = fakeServer();
+    const g = await setupWithMembers(server.api, ["sam"]);
+    const sam = must(g.members[0], "member");
+    const oldKg = kgOf(g.session, g.groupId);
+    const samKey = await deriveGroupMemberKey(sam.session.root, g.groupId);
+
+    const removed = await removeGroupMember(server.api, g.accounts, g.session, {
+      groupId: g.groupId,
+      cardId: sam.cardId,
+    });
+    const blob = must(server.groups.get(g.groupId), "blob");
+
+    // The old Kg no longer opens the re-sealed core.
+    expect(await parseGroupBlobWithKg(blob, oldKg)).toBeNull();
+    // The removed member's own key no longer trial-unwraps a slot.
+    expect(await parseGroupBlobForMember(blob, samKey)).toBeNull();
+    // The admin cached a fresh, different Kg that opens the core (roster back to one).
+    const newKg = kgOf(removed, g.groupId);
+    expect(bytesToBase64url(newKg)).not.toBe(bytesToBase64url(oldKg));
+    const obj = await parseGroupBlobWithKg(blob, newKg);
+    expect(must(obj, "obj").roster).toHaveLength(1);
+    // The rebuilt blob is still exactly one fixed-size, random-looking payload.
+    expect(blob.length).toBe(GROUP_BLOB_SIZE);
+  });
+
+  it("a surviving member re-syncs on the next read: cached Kg fails, trial-unwrap recovers Kg', card republishes", async () => {
+    const server = fakeServer();
+    const g = await setupWithMembers(server.api, ["sam", "kim"]);
+    const sam = must(g.members[0], "sam");
+    const kim = must(g.members[1], "kim");
+
+    // Both members read once: caches Kg, publishes their card under it.
+    const kimRead1 = await readGroupRoster(
+      server.api,
+      kim.accounts,
+      kim.session,
+      g.groupId,
+    );
+    const oldKg = kgOf(g.session, g.groupId);
+    expect(groupOf(kimRead1.session, g.groupId).kg).toBe(
+      bytesToBase64url(oldKg),
+    );
+
+    // The admin removes sam, rotating to Kg'. Kim's cached Kg is now stale.
+    const removed = await removeGroupMember(server.api, g.accounts, g.session, {
+      groupId: g.groupId,
+      cardId: sam.cardId,
+    });
+    const newKg = kgOf(removed, g.groupId);
+
+    // Kim's next read fails on the cached key, trial-unwraps Kg', re-caches, and
+    // republishes their card under Kg'.
+    const kimRead2 = await readGroupRoster(
+      server.api,
+      kim.accounts,
+      kimRead1.session,
+      g.groupId,
+    );
+    expect(kimRead2.obj).not.toBeNull();
+    expect(groupOf(kimRead2.session, g.groupId).kg).toBe(
+      bytesToBase64url(newKg),
+    );
+    // A peer opening kim's card under Kg' sees it; under the old Kg it is gray (null).
+    const bytes = await server.api.getAlias(kim.cardId);
+    expect(await openGroupCard(newKg, bytes)).not.toBeNull();
+    expect(await openGroupCard(oldKg, bytes)).toBeNull();
+  });
+
+  it("a member offline during the rotation reads as gray to peers until they republish", async () => {
+    const server = fakeServer();
+    const g = await setupWithMembers(server.api, ["sam", "kim"]);
+    const sam = must(g.members[0], "sam");
+    const kim = must(g.members[1], "kim");
+    // Kim publishes under the old Kg, then stays offline (never re-reads).
+    await readGroupRoster(server.api, kim.accounts, kim.session, g.groupId);
+
+    // The admin removes sam, rotating to Kg'. Kim's card is still under the old key.
+    const removed = await removeGroupMember(server.api, g.accounts, g.session, {
+      groupId: g.groupId,
+      cardId: sam.cardId,
+    });
+
+    // The admin reads the roster under Kg': kim is listed but their card is gray
+    // (null), never a wrong color, because it is still sealed under the old key.
+    const view = await readGroupRoster(
+      server.api,
+      g.accounts,
+      removed,
+      g.groupId,
+    );
+    expect(view.members).toHaveLength(2);
+    const kimRow = must(
+      view.members.find((m) => m.cardId === kim.cardId),
+      "kim row",
+    );
+    expect(kimRow.card).toBeNull();
+  });
+
+  it("the removed member is locked out: their own roster read is empty", async () => {
+    const server = fakeServer();
+    const g = await setupWithMembers(server.api, ["sam"]);
+    const sam = must(g.members[0], "member");
+    // Sam reads once (caches Kg, publishes), then the admin removes them.
+    const samRead1 = await readGroupRoster(
+      server.api,
+      sam.accounts,
+      sam.session,
+      g.groupId,
+    );
+    await removeGroupMember(server.api, g.accounts, g.session, {
+      groupId: g.groupId,
+      cardId: sam.cardId,
+    });
+
+    // Sam's cached Kg no longer opens the core and their slot is gone, so trial-unwrap
+    // fails too: an empty roster, the removed member correctly locked out.
+    const samRead2 = await readGroupRoster(
+      server.api,
+      sam.accounts,
+      samRead1.session,
+      g.groupId,
+    );
+    expect(samRead2.obj).toBeNull();
+    expect(samRead2.members).toHaveLength(0);
+  });
+
+  it("a leave rotates the key too, proving leave and remove are identical", async () => {
+    const server = fakeServer();
+    const g = await setupWithMembers(server.api, ["sam"]);
+    const sam = must(g.members[0], "member");
+    const oldKg = kgOf(g.session, g.groupId);
+    const samKey = await deriveGroupMemberKey(sam.session.root, g.groupId);
+
+    // Sam leaves (writes the leave marker on their member inbox).
+    await leaveGroup(server.api, sam.accounts, sam.session, g.groupId);
+
+    // The admin's poll ingests the leave, which routes through removeGroupMember and
+    // therefore rotates: the old Kg opens nothing and sam's key no longer unwraps.
+    const polled = await pollGroupLifecycle(server.api, g.accounts, g.session);
+    expect(membersOf(polled, g.groupId)).toHaveLength(0);
+    const blob = must(server.groups.get(g.groupId), "blob");
+    expect(await parseGroupBlobWithKg(blob, oldKg)).toBeNull();
+    expect(await parseGroupBlobForMember(blob, samKey)).toBeNull();
+    const obj = await parseGroupBlobWithKg(blob, kgOf(polled, g.groupId));
     expect(must(obj, "obj").roster).toHaveLength(1);
   });
 });
