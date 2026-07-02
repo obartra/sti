@@ -27,7 +27,7 @@ import {
   type AvatarConfig,
 } from "../lib/avatars.ts";
 import { decodeVersioned, isValidHandle } from "./codec.ts";
-import type { NotifyCapability } from "./notifyInbox.ts";
+import type { InboxCapability, NotifyCapability } from "./notifyInbox.ts";
 import type { GroupVisibility, MeetingKind } from "./groupObject.ts";
 
 // v9 adds the optional per-alias display override (`handle` + `avatar` on
@@ -89,7 +89,19 @@ import type { GroupVisibility, MeetingKind } from "./groupObject.ts";
 // and the write tokens here is consistent with how alias write tokens are already
 // kept: the blob is encrypted at rest under the account key, so it is the same
 // vault. Absent on a pre-groups account; the version guards the growth.
-const SCHEMA_VERSION = 16;
+//
+// v17 grows the group record for the membership lifecycle (doc 33, slice 4a).
+// `groupWriteToken` and `kg` become OPTIONAL: only an admin holds the write token
+// (they rewrite the blob) and mints `Kg` at create, so a member's record has
+// neither at first and caches `Kg` only once the admin has added their slot and a
+// roster poll unwraps it. An admin record still requires both (enforced in
+// isGroupRecord). A member carries the admin<->member `lifecycleInbox` (the channel
+// their accept/leave rides); an admin carries the roster `members` (each member's
+// card id, their member key so `Kg` can be re-wrapped in the rotation slice, and
+// their lifecycle inbox) and the `pendingInvites` not yet accepted. All the new
+// fields are optional, so a pre-v17 account (admin-only groups from slice 3) stays
+// valid and simply has none of them.
+const SCHEMA_VERSION = 17;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -195,6 +207,34 @@ export interface FindableRegistration {
 }
 
 /**
+ * One roster member as the admin holds it (doc 33, slice 4a): the opaque `cardId`
+ * where they publish their group card, their `memberKey` (base64url) so `Kg` can be
+ * re-wrapped to them on a key rotation (slice 5), and the `lifecycleInbox` (now the
+ * leave channel for this member). Admin-only; a member never holds another member's
+ * secrets. The member key is safe to keep here (the admin already holds `Kg`; HKDF
+ * is one-way, so it grants no new power), inside the already-encrypted account vault.
+ */
+export interface GroupMemberSecret {
+  readonly cardId: string;
+  readonly memberKey: string;
+  readonly lifecycleInbox: InboxCapability;
+}
+
+/**
+ * An invite the admin has sent but that is not yet accepted (doc 33, slice 4a): a
+ * local `inviteId`, the `lifecycleInbox` the admin minted for it (and polls for the
+ * accept/reject), the `createdDay`, and an optional private `label` for the admin's
+ * own reference. Admin-only. On accept it becomes a {@link GroupMemberSecret}; a
+ * revoke or reject drops it.
+ */
+export interface PendingGroupInvite {
+  readonly inviteId: string;
+  readonly lifecycleInbox: InboxCapability;
+  readonly createdDay: number;
+  readonly label?: string;
+}
+
+/**
  * A shared group the owner is in (doc 33), with everything a device needs to read
  * it and, as admin, rewrite it. `kg` is the base64url of the shared group key `Kg`
  * (the capability that opens every member's card and the group core); `groupId` +
@@ -202,13 +242,20 @@ export interface FindableRegistration {
  * `myCardWriteToken` are where the owner publishes their own group card (sealed
  * under `Kg`). `joinPointerId` + `joinWriteToken` are the dedicated public-handle
  * join pointer, present only when the handle was actually claimed (a public group);
- * slice 4 uses the pointer as the request inbox. `isAdmin` is true for the creator
- * (the sole admin in v1).
+ * a later slice uses the pointer as the request inbox. `isAdmin` is true for the
+ * creator (the sole admin in v1).
+ *
+ * `groupWriteToken` and `kg` are OPTIONAL (doc 33, slice 4a): only an admin holds
+ * the write token, and a member gains `kg` only once the admin has added their slot
+ * and a roster poll caches it, so both are absent on a fresh member record (an admin
+ * record always carries them, enforced by isGroupRecord). A member also carries
+ * `lifecycleInbox` (the admin<->member channel); an admin carries `members` (the
+ * roster secrets) and `pendingInvites` (invites not yet accepted).
  */
 export interface GroupRecord {
   readonly groupId: string;
-  readonly groupWriteToken: string;
-  readonly kg: string;
+  readonly groupWriteToken?: string;
+  readonly kg?: string;
   readonly myCardId: string;
   readonly myCardWriteToken: string;
   readonly handle: string;
@@ -217,6 +264,12 @@ export interface GroupRecord {
   readonly isAdmin: boolean;
   readonly joinPointerId?: string;
   readonly joinWriteToken?: string;
+  /** Admin-only: the accepted roster, one secret per member. */
+  readonly members?: GroupMemberSecret[];
+  /** Admin-only: invites sent but not yet accepted. */
+  readonly pendingInvites?: PendingGroupInvite[];
+  /** Member-only: the admin<->member channel this member accepted through. */
+  readonly lifecycleInbox?: InboxCapability;
 }
 
 /** The account-level sharing default: a public profile, or link-only (private). */
@@ -348,20 +401,22 @@ function isMsOrNull(x: unknown): boolean {
   return x === null || (typeof x === "number" && Number.isInteger(x) && x >= 0);
 }
 
-// A notify capability is four base64url tokens (inbox id, write token, key, and
-// routing token), each id-shaped. Used for a contact's myInbox and theirNotify.
-function isNotifyCapability(x: unknown): x is NotifyCapability {
+// An inbox capability is three id-shaped base64url tokens (inbox id, write token,
+// key). Used for a group's lifecycle inbox (doc 33) and as the base of a notify
+// capability. Kept here (not imported from groupInvite) so the codec's validators
+// stay self-contained.
+function isInboxCapability(x: unknown): x is InboxCapability {
   if (typeof x !== "object" || x === null) return false;
   const r = x as Record<string, unknown>;
+  return isIdField(r.inboxId) && isIdField(r.writeToken) && isIdField(r.key);
+}
+
+// A notify capability is an inbox capability plus the id-shaped routing token used
+// to wake the owner. Used for a contact's myInbox and theirNotify.
+function isNotifyCapability(x: unknown): x is NotifyCapability {
   return (
-    typeof r.inboxId === "string" &&
-    validId(r.inboxId) &&
-    typeof r.writeToken === "string" &&
-    validId(r.writeToken) &&
-    typeof r.key === "string" &&
-    validId(r.key) &&
-    typeof r.routingToken === "string" &&
-    validId(r.routingToken)
+    isInboxCapability(x) &&
+    isIdField((x as unknown as Record<string, unknown>).routingToken)
   );
 }
 
@@ -457,15 +512,60 @@ function isOptionalIdField(x: unknown): boolean {
   return x === undefined || isIdField(x);
 }
 
-// The group's capability tokens: the blob id + write token, `kg` (the base64url of
-// the 32-byte group key, so a 43-char id shape), and the owner's card id + token.
+// The group's always-present capability ids: the blob id and the owner's own card
+// id + write token (where they publish their group card). `groupWriteToken` and `kg`
+// are role/lifecycle dependent (doc 33, slice 4a) so they are OPTIONAL here: an admin
+// must hold both and a member holds neither at first, with the admin case enforced in
+// isGroupRecord. `kg` is the base64url of the 32-byte group key, so a 43-char id shape.
 function hasGroupCapabilities(r: Record<string, unknown>): boolean {
   return (
     isIdField(r.groupId) &&
-    isIdField(r.groupWriteToken) &&
-    isIdField(r.kg) &&
     isIdField(r.myCardId) &&
-    isIdField(r.myCardWriteToken)
+    isIdField(r.myCardWriteToken) &&
+    isOptionalIdField(r.kg) &&
+    isOptionalIdField(r.groupWriteToken)
+  );
+}
+
+// One roster member secret (doc 33, slice 4a): the card id, the member key
+// (base64url, id-shaped), and the lifecycle inbox.
+function isGroupMemberSecret(x: unknown): x is GroupMemberSecret {
+  if (typeof x !== "object" || x === null) return false;
+  const r = x as Record<string, unknown>;
+  return (
+    isIdField(r.cardId) &&
+    isIdField(r.memberKey) &&
+    isInboxCapability(r.lifecycleInbox)
+  );
+}
+
+// One pending invite (doc 33, slice 4a): an id, a lifecycle inbox, a non-negative
+// integer createdDay, and an optional private label capped like a contact label.
+function isPendingGroupInvite(x: unknown): x is PendingGroupInvite {
+  if (typeof x !== "object" || x === null) return false;
+  const r = x as Record<string, unknown>;
+  return (
+    isIdField(r.inviteId) &&
+    isInboxCapability(r.lifecycleInbox) &&
+    typeof r.createdDay === "number" &&
+    Number.isInteger(r.createdDay) &&
+    r.createdDay >= 0 &&
+    (r.label === undefined ||
+      (typeof r.label === "string" && r.label.length <= MAX_CONTACT_LABEL))
+  );
+}
+
+// The admin-only roster + pending invites and the member-only lifecycle inbox, each
+// optional (a fresh group, or a record for the other role, omits the ones it does
+// not use) and strictly shaped when present.
+function hasGroupMembership(r: Record<string, unknown>): boolean {
+  return (
+    (r.members === undefined ||
+      (Array.isArray(r.members) && r.members.every(isGroupMemberSecret))) &&
+    (r.pendingInvites === undefined ||
+      (Array.isArray(r.pendingInvites) &&
+        r.pendingInvites.every(isPendingGroupInvite))) &&
+    (r.lifecycleInbox === undefined || isInboxCapability(r.lifecycleInbox))
   );
 }
 
@@ -485,11 +585,18 @@ function hasGroupMeta(r: Record<string, unknown>): boolean {
   );
 }
 
-// A group record (doc 33).
+// A group record (doc 33). An admin rewrites the blob and holds the shared key, so
+// its record must carry both the group write token and `kg`; a member's record is
+// valid without them (doc 33, slice 4a).
 function isGroupRecord(x: unknown): x is GroupRecord {
   if (typeof x !== "object" || x === null) return false;
   const r = x as Record<string, unknown>;
-  return hasGroupCapabilities(r) && hasGroupMeta(r);
+  if (!hasGroupCapabilities(r) || !hasGroupMeta(r) || !hasGroupMembership(r)) {
+    return false;
+  }
+  if (r.isAdmin === true)
+    return isIdField(r.groupWriteToken) && isIdField(r.kg);
+  return true;
 }
 
 // groups is optional on the account (absent until the owner creates or joins one).

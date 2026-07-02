@@ -30,6 +30,7 @@ import {
   type RootKey,
 } from "../crypto/index.ts";
 import { todayEpochDay } from "../core/clock.ts";
+import type { OwnerState } from "../core/badge.ts";
 import { normalizeVanityName, vanityNameError } from "./vanityName.ts";
 import { deriveAliasCard } from "./ownerCard.ts";
 import {
@@ -88,11 +89,11 @@ function mintGroup(): GroupMint {
   };
 }
 
-// The creator's own group card is byte-identical to an alias payload but sealed
-// under Kg, so it is PUT with the low-level alias write. Its display face is
-// id-derived (anonymous, doc 33): built from the card id alone, so it is unlinkable
-// to the owner's other aliases. The `key` here is unused (the card is sealed under
-// Kg, not an alias key), so the card id doubles as a well-shaped placeholder.
+// A group card is byte-identical to an alias payload but sealed under Kg, so it is
+// PUT with the low-level alias write. Its display face is id-derived (anonymous, doc
+// 33): built from the card id alone, so it is unlinkable to the owner's other
+// aliases. The `key` here is unused (the card is sealed under Kg, not an alias key),
+// so the card id doubles as a well-shaped placeholder.
 function anonymousGroupCardRecord(
   cardId: string,
   writeToken: string,
@@ -100,23 +101,40 @@ function anonymousGroupCardRecord(
   return { id: cardId, writeToken, key: cardId, isPublic: false };
 }
 
-// Publish the creator's current status card as a group card, sealed under Kg, to
-// the group card id (byte-identical to an alias payload, so the same alias PUT).
+/**
+ * Publish a member's current status card as a group card, sealed under `Kg`, to
+ * their group card id (byte-identical to an alias payload, so the same alias PUT).
+ * Shared by create (the creator's card) and the membership ops (a joining member's
+ * card, published on their first roster poll once they hold `Kg`).
+ */
+export async function publishGroupCard(
+  api: ApiClient,
+  state: OwnerState,
+  Kg: GroupKey,
+  card: { cardId: string; cardWriteToken: string },
+): Promise<void> {
+  const view = deriveAliasCard(
+    state,
+    anonymousGroupCardRecord(card.cardId, card.cardWriteToken),
+    todayEpochDay(),
+  );
+  await api.putAlias(
+    card.cardId,
+    await sealGroupCard(Kg, view),
+    card.cardWriteToken,
+  );
+}
+
+// Publish the creator's own group card at create time.
 async function publishCreatorCard(
   api: ApiClient,
   session: OwnerSession,
   mint: GroupMint,
 ): Promise<void> {
-  const card = deriveAliasCard(
-    session.blob.state,
-    anonymousGroupCardRecord(mint.myCardId, mint.myCardWriteToken),
-    todayEpochDay(),
-  );
-  await api.putAlias(
-    mint.myCardId,
-    await sealGroupCard(mint.Kg, card),
-    mint.myCardWriteToken,
-  );
+  await publishGroupCard(api, session.blob.state, mint.Kg, {
+    cardId: mint.myCardId,
+    cardWriteToken: mint.myCardWriteToken,
+  });
 }
 
 // Write the group blob: the group object sealed under Kg, plus the creator's

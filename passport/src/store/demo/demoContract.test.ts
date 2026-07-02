@@ -6,9 +6,10 @@ import {
 } from "./demoRuntime.ts";
 import { computeBadge } from "../../core/badge.ts";
 import { todayEpochDay } from "../../core/clock.ts";
-import type { SessionController } from "../session.ts";
+import type { OwnerSession, SessionController } from "../session.ts";
 import type { PassportStore } from "../passportStore.ts";
 import type { ContactInvite } from "../contactInvite.ts";
+import type { GroupInvite } from "../groupInvite.ts";
 
 /**
  * The demo CONTRACT (doc 28): an anti-staleness walk over the whole
@@ -38,7 +39,63 @@ const INERT_INVITE: ContactInvite = {
   },
 };
 
+// A typed-but-inert group invite. The demo's accept/reject ignore its contents, so
+// placeholder ids satisfy the signature; this never reaches a parser or the network.
+const INERT_GROUP_INVITE: GroupInvite = {
+  groupId: "demo-group",
+  lifecycleInbox: {
+    inboxId: "demo-inbox",
+    writeToken: "demo-write",
+    key: "demo-key",
+  },
+  handle: "book_club",
+  visibility: "private",
+  meetingKind: "event",
+};
+
 const URL_RE = /^https:\/\/sti\.care\/a\//;
+
+// The shared-group membership surface (doc 33 slice 4a): invite records a pending
+// invite and returns a group link; revoke drops it; accept/reject/poll/read/remove
+// all round-trip to a session (the demo has no server, so the cross-party ingest is
+// inert but must still behave). Split out to keep walkController under the complexity
+// ceiling.
+async function walkGroupMembership(
+  controller: SessionController,
+  session: OwnerSession,
+  groupId: string,
+): Promise<void> {
+  const invited = await controller.inviteToGroup(session, groupId, {
+    label: "Sam",
+  });
+  expect(invited.url).toMatch(/^https:\/\/sti\.care\/g/);
+  const pend =
+    invited.session.blob.groups?.find((g) => g.groupId === groupId)
+      ?.pendingInvites ?? [];
+  expect(pend).toHaveLength(1);
+  expect(
+    await controller.acceptGroupInvite(invited.session, INERT_GROUP_INVITE),
+  ).not.toBeNull();
+  expect(
+    await controller.rejectGroupInvite(invited.session, INERT_GROUP_INVITE),
+  ).not.toBeNull();
+  expect(await controller.pollGroupLifecycle(invited.session)).not.toBeNull();
+  const roster = await controller.readGroupRoster(invited.session, groupId);
+  expect(roster.members).toEqual([]);
+  const firstPend = pend[0];
+  if (firstPend === undefined) throw new Error("expected a pending invite");
+  const unrevoked = await controller.revokeGroupInvite(
+    invited.session,
+    groupId,
+    firstPend.inviteId,
+  );
+  expect(
+    unrevoked.blob.groups?.find((g) => g.groupId === groupId)?.pendingInvites,
+  ).toEqual([]);
+  expect(
+    await controller.removeGroupMember(unrevoked, groupId, "nobody"),
+  ).not.toBeNull();
+}
 
 // Walk the whole SessionController surface in one realistic owner journey,
 // asserting the mutate-and-persist contract: every owner action returns a session
@@ -180,6 +237,9 @@ async function walkController(controller: SessionController): Promise<void> {
     privGroup.session.blob.groups?.find((g) => g.groupId === privGroup.groupId)
       ?.joinPointerId,
   ).toBeUndefined();
+
+  // Shared-group membership (doc 33 slice 4a), walked in its own helper.
+  await walkGroupMembership(controller, privGroup.session, privGroup.groupId);
 
   // Passkey gate (doc 32): the demo enrolls no passkey, so the phrase re-view
   // gate reports none enrolled and a verify resolves false.

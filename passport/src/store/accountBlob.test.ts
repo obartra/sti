@@ -280,6 +280,72 @@ describe("account blob codec", () => {
     expect(parseAccountBlob(serializeAccountBlob(blob)).groups).toBeUndefined();
   });
 
+  it("round-trips v17 admin group members + pending invites (doc 33)", () => {
+    const inbox = {
+      inboxId: "S".repeat(43),
+      writeToken: "T".repeat(43),
+      key: "U".repeat(43),
+    };
+    const withMembers: AccountBlob = {
+      ...blob,
+      groups: [
+        {
+          groupId: "G".repeat(43),
+          groupWriteToken: "H".repeat(43),
+          kg: "I".repeat(43),
+          myCardId: "J".repeat(43),
+          myCardWriteToken: "K".repeat(43),
+          handle: "book_club",
+          visibility: "public",
+          meetingKind: "recurring",
+          isAdmin: true,
+          members: [
+            {
+              cardId: "V".repeat(43),
+              memberKey: "W".repeat(43),
+              lifecycleInbox: inbox,
+            },
+          ],
+          pendingInvites: [
+            {
+              inviteId: "X".repeat(43),
+              lifecycleInbox: inbox,
+              createdDay: 19_000,
+              label: "Sam",
+            },
+          ],
+        },
+      ],
+    };
+    expect(parseAccountBlob(serializeAccountBlob(withMembers))).toEqual(
+      withMembers,
+    );
+  });
+
+  it("round-trips a v17 member group (no write token, no Kg, a lifecycle inbox) (doc 33)", () => {
+    const inbox = {
+      inboxId: "S".repeat(43),
+      writeToken: "T".repeat(43),
+      key: "U".repeat(43),
+    };
+    const asMember: AccountBlob = {
+      ...blob,
+      groups: [
+        {
+          groupId: "G".repeat(43),
+          myCardId: "J".repeat(43),
+          myCardWriteToken: "K".repeat(43),
+          handle: "book_club",
+          visibility: "private",
+          meetingKind: "event",
+          isAdmin: false,
+          lifecycleInbox: inbox,
+        },
+      ],
+    };
+    expect(parseAccountBlob(serializeAccountBlob(asMember))).toEqual(asMember);
+  });
+
   it("round-trips a v14 stored recovery phrase (doc 32)", () => {
     // A well-formed 43-char app phrase (base64url, no padding).
     const phrase = "abcdefghijklmnopqrstuvwxyz0123456789-_ABCDE";
@@ -335,7 +401,7 @@ describe("account blob codec", () => {
     avatar: A,
   };
   reject("a non-object", 7);
-  reject("an unknown version", { ...base, v: 17, sharingMode: "link" });
+  reject("an unknown version", { ...base, v: 18, sharingMode: "link" });
   reject("a prior version (v6 is no longer accepted)", {
     v: 6,
     handle: "x",
@@ -366,7 +432,7 @@ describe("account blob codec", () => {
   // A real current-version wire so these reach the findable validator (not the
   // version gate, which `base`'s v7 trips first).
   const vCurrent = {
-    v: 16,
+    v: 17,
     handle: "x",
     aliases: [],
     contacts: [],
@@ -515,6 +581,79 @@ describe("account blob codec", () => {
     groups: [{ ...groupOk, joinPointerId: "short" }],
   });
   reject("a non-array groups", { ...vCurrent, groups: {} });
+  // v17 (doc 33, slice 4a): an admin record must carry the write token and Kg; the
+  // member/invite sub-objects are strictly shaped.
+  reject("an admin group missing its write token", {
+    ...vCurrent,
+    groups: [{ ...groupOk, groupWriteToken: undefined }],
+  });
+  reject("an admin group missing its Kg", {
+    ...vCurrent,
+    groups: [{ ...groupOk, kg: undefined }],
+  });
+  const inboxOk = { inboxId: ID, writeToken: ID, key: ID };
+  reject("a group member secret with a malformed memberKey", {
+    ...vCurrent,
+    groups: [
+      {
+        ...groupOk,
+        members: [{ cardId: ID, memberKey: "short", lifecycleInbox: inboxOk }],
+      },
+    ],
+  });
+  reject("a group member secret with a malformed lifecycle inbox", {
+    ...vCurrent,
+    groups: [
+      {
+        ...groupOk,
+        members: [
+          { cardId: ID, memberKey: ID, lifecycleInbox: { inboxId: ID } },
+        ],
+      },
+    ],
+  });
+  reject("a pending invite with a negative createdDay", {
+    ...vCurrent,
+    groups: [
+      {
+        ...groupOk,
+        pendingInvites: [
+          { inviteId: ID, lifecycleInbox: inboxOk, createdDay: -1 },
+        ],
+      },
+    ],
+  });
+});
+
+describe("v17 member group validity (doc 33)", () => {
+  it("accepts a member group without a write token or Kg but rejects an admin one", () => {
+    const inbox = {
+      inboxId: "A".repeat(43),
+      writeToken: "B".repeat(43),
+      key: "C".repeat(43),
+    };
+    const memberGroup = {
+      groupId: "G".repeat(43),
+      myCardId: "J".repeat(43),
+      myCardWriteToken: "K".repeat(43),
+      handle: "book_club",
+      visibility: "private" as const,
+      meetingKind: "event" as const,
+      isAdmin: false,
+      lifecycleInbox: inbox,
+    };
+    const asMember: AccountBlob = { ...blob, groups: [memberGroup] };
+    // Valid as a member (no groupWriteToken, no kg).
+    expect(parseAccountBlob(serializeAccountBlob(asMember))).toEqual(asMember);
+    // The SAME record flagged admin is invalid: an admin must hold both.
+    const wire = JSON.parse(
+      bytesToUtf8(serializeAccountBlob(asMember)),
+    ) as Record<string, unknown>;
+    const firstGroup = (wire.groups as Record<string, unknown>[])[0];
+    if (firstGroup === undefined) throw new Error("expected a group");
+    firstGroup.isAdmin = true;
+    expect(() => parseAccountBlob(utf8ToBytes(JSON.stringify(wire)))).toThrow();
+  });
 });
 
 describe("avatar migration on read (doc 19)", () => {

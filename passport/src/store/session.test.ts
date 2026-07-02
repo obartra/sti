@@ -67,6 +67,12 @@ function fakeBackend() {
     setFindable: () => Promise.reject(new Error("unused")),
     recordFindable: () => Promise.reject(new Error("unused")),
     recordGroup: () => Promise.reject(new Error("unused")),
+    recordJoinedGroup: () => Promise.reject(new Error("unused")),
+    recordPendingInvite: () => Promise.reject(new Error("unused")),
+    dropPendingInvite: () => Promise.reject(new Error("unused")),
+    promoteInviteToMember: () => Promise.reject(new Error("unused")),
+    dropGroupMember: () => Promise.reject(new Error("unused")),
+    updateGroupKgCache: () => Promise.reject(new Error("unused")),
     setRecoveryName: () => Promise.reject(new Error("unused")),
     sweepExpiredLinks: async (root) => {
       // No links expire in these tests, so a sweep is a pure read of the blob.

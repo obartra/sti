@@ -53,6 +53,8 @@ export type {
   CircleRecord,
   FindableRegistration,
   GroupRecord,
+  GroupMemberSecret,
+  PendingGroupInvite,
   StatusAlias,
   SharingMode,
 } from "./accountBlob.ts";
@@ -88,6 +90,23 @@ export {
   type CreateGroupResult,
   type GroupCreated,
 } from "./groupOps.ts";
+export {
+  groupInviteUrl,
+  parseGroupInvite,
+  type GroupInvite,
+} from "./groupInvite.ts";
+export {
+  inviteToGroup,
+  revokeGroupInvite,
+  acceptGroupInvite,
+  rejectGroupInvite,
+  pollGroupLifecycle,
+  removeGroupMember,
+  readGroupRoster,
+  type GroupInviteResult,
+  type GroupRosterView,
+  type RosterMemberView,
+} from "./groupMembershipOps.ts";
 export {
   serializeAccountBlob,
   parseAccountBlob,

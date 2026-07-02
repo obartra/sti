@@ -100,7 +100,7 @@ export interface GroupObject {
 // 33): a group cannot exceed it because every member needs a slot. The core takes
 // whatever the slots do not, sealed to a fixed size so the roster length is hidden.
 const WRAP_WIDTH = 12 + 32 + 16; // 60
-const GROUP_MEMBER_CAP = 64;
+export const GROUP_MEMBER_CAP = 64;
 const MEMBER_SECTION = GROUP_MEMBER_CAP * WRAP_WIDTH; // 3840
 const CORE_SIZE = GROUP_BLOB_SIZE - MEMBER_SECTION; // 12544
 
@@ -255,4 +255,69 @@ export async function parseGroupBlobWithKg(
   } catch {
     return null;
   }
+}
+
+// The live wrapped keys, packed at the front of the slot region. The invariant the
+// add/drop helpers maintain is that the first `count` slots hold the real per-member
+// wraps in roster order and every later slot is random fill; this reads those back
+// out as byte views so they can be re-laid without ever unwrapping them (the admin
+// moves ciphertext around, it does not need each member's key to do so).
+function packedSlots(blob: Bytes, count: number): Bytes[] {
+  return regions(blob).slots.slice(0, count);
+}
+
+/**
+ * Admin-side (doc 33, slice 4): add one member to the blob. Opens the core with
+ * `Kg`, appends the member's `{cardId}` to the roster, and lays their `wrappedKey`
+ * into the next free slot, then re-seals + re-serializes to a fresh full-size
+ * uniform blob (every other slot re-randomized). The next free slot is at index
+ * `roster.length` because the live wraps stay packed at the front (see
+ * {@link packedSlots}); a joining member still finds theirs by trial-unwrap, so the
+ * packing is bookkeeping, not something a reader relies on. Throws on an unreadable
+ * blob or `Kg` (the admin always holds both) and when the group is already at
+ * {@link GROUP_MEMBER_CAP}, so a caller can never silently overflow the fixed slots.
+ */
+export async function addMemberSlot(
+  blob: Bytes,
+  Kg: GroupKey,
+  cardId: string,
+  wrappedKey: Bytes,
+): Promise<Bytes> {
+  const obj = await parseGroupBlobWithKg(blob, Kg);
+  if (obj === null) throw new Error("addMemberSlot: unreadable blob");
+  if (obj.roster.length >= GROUP_MEMBER_CAP) {
+    throw new Error("addMemberSlot: group is full");
+  }
+  const wrapped = packedSlots(blob, obj.roster.length);
+  const next: GroupObject = { ...obj, roster: [...obj.roster, { cardId }] };
+  return serializeGroupBlob(Kg, next, [...wrapped, wrappedKey]);
+}
+
+/**
+ * Admin-side (doc 33, slice 4): drop one member from the blob. Opens the core with
+ * `Kg`, removes the member's roster entry and their wrapped-key slot, and re-seals +
+ * re-serializes. Dropping the slot from the packed set and re-serializing leaves the
+ * removed member's key nowhere in the blob (the whole buffer is re-randomized), and
+ * keeps the survivors packed so the next add still finds a free slot. Idempotent: a
+ * cardId not in the roster returns the blob unchanged. Slice 4a does NOT rotate `Kg`,
+ * so the removed member keeps the copy they already hold; making that key open
+ * nothing new is the key-rotation slice (5). Throws on an unreadable blob or `Kg`.
+ */
+export async function dropMemberSlot(
+  blob: Bytes,
+  Kg: GroupKey,
+  cardId: string,
+): Promise<Bytes> {
+  const obj = await parseGroupBlobWithKg(blob, Kg);
+  if (obj === null) throw new Error("dropMemberSlot: unreadable blob");
+  const idx = obj.roster.findIndex((r) => r.cardId === cardId);
+  if (idx === -1) return blob; // not a member: nothing to drop (idempotent)
+  const wrapped = packedSlots(blob, obj.roster.length).filter(
+    (_, i) => i !== idx,
+  );
+  const next: GroupObject = {
+    ...obj,
+    roster: obj.roster.filter((_, i) => i !== idx),
+  };
+  return serializeGroupBlob(Kg, next, wrapped);
 }

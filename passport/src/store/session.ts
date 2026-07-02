@@ -73,6 +73,7 @@ import {
   primaryShareAlias,
   registerVanityName,
   releaseVanityName,
+  checkVanityName,
   type VanityRegisterOutcome,
 } from "./findableOps.ts";
 import {
@@ -80,6 +81,10 @@ import {
   type CreateGroupInput,
   type GroupCreated,
 } from "./groupOps.ts";
+import {
+  groupMembershipControllerMethods,
+  type GroupMembershipController,
+} from "./groupMembershipController.ts";
 import {
   recoveryControllerMethods,
   type SetRecoveryPasswordInput,
@@ -117,7 +122,7 @@ export type ResumeResult =
   | { readonly ok: true; readonly session: OwnerSession }
   | { readonly ok: false; readonly reason: ResumeFailure };
 
-export interface SessionController {
+export interface SessionController extends GroupMembershipController {
   /**
    * First run: mint a phrase-recoverable account. Persists nothing locally. When
    * `recovery` (a Username + password) is given, also wraps the fresh in-memory root
@@ -683,18 +688,12 @@ export function createSessionController(deps: SessionDeps): SessionController {
     registerVanityName: (session, name) =>
       registerVanityName(api, accounts, session, name),
 
-    async checkVanityName(name) {
-      // A non-claiming public resolve: an id back means the name is taken, null
-      // means it is free. The caller has already normalized + format-checked.
-      try {
-        return (await api.resolveVanityName(name)) === null ? "free" : "taken";
-      } catch {
-        return "error";
-      }
-    },
+    checkVanityName: (name) => checkVanityName(api, name),
 
     releaseVanityName: (session) => releaseVanityName(api, accounts, session),
     createGroup: (s, input) => createGroup(api, accounts, s, input),
+
+    ...groupMembershipControllerMethods(api, accounts),
 
     ...recoveryControllerMethods(api, accounts),
 
