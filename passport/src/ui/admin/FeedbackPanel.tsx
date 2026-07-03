@@ -22,8 +22,7 @@ export interface FeedbackOps {
   resolve: (token: string, id: number) => Promise<AdminActionResult>;
 }
 
-// Human labels for the fixed server category codes. "question" responses are
-// excluded here; they have their own panel (AnswersPanel) grouped by question.
+// Human labels for the fixed server category codes.
 const REASON_LABELS: Record<string, string> = {
   broken: "Something's broken",
   confusing: "Something's confusing",
@@ -70,8 +69,7 @@ export function FeedbackPanel({
       .list(token)
       .then((r) => {
         if (r.kind === "ok") {
-          // Open-question responses live in the AnswersPanel, not this queue.
-          setReports(r.feedback.filter((f) => f.reason !== "question"));
+          setReports(r.feedback);
           setStatus("ready");
         } else if (r.kind === "unauthorized") {
           onUnauthorized();
