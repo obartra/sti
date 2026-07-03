@@ -8,16 +8,7 @@ import type { GroupRecord, PendingRequest } from "../../store/index.ts";
 import { GroupInviteShare } from "./GroupInviteShare.tsx";
 import { GroupRequestsReview } from "./GroupRequestsReview.tsx";
 import { GROUPS_COPY as C } from "./groupsCopy.ts";
-
-const popover = {
-  position: "absolute" as const,
-  right: 0,
-  top: "calc(100% - 2px)",
-  zIndex: 5,
-  background: "var(--surface-card)",
-  borderRadius: "var(--radius-md)",
-  boxShadow: "var(--shadow-lg)",
-};
+import "./groups.css";
 
 // The confirm popover: says plainly what removal does and that they are not told why.
 function RemoveConfirm({
@@ -28,28 +19,10 @@ function RemoveConfirm({
   onConfirm: () => void;
 }) {
   return (
-    <div
-      style={{
-        ...popover,
-        border: "1px solid var(--expired-100)",
-        padding: 12,
-        width: 260,
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-      }}
-    >
-      <div
-        style={{ fontSize: 14.5, fontWeight: 700, color: "var(--text-strong)" }}
-      >
-        {C.removeConfirmTitle}
-      </div>
-      <div
-        style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}
-      >
-        {C.removeConfirmBody}
-      </div>
-      <div style={{ display: "flex", gap: 8 }}>
+    <div className="gr__pop gr__pop--confirm">
+      <div className="gr__pop-title">{C.removeConfirmTitle}</div>
+      <div className="gr__pop-body">{C.removeConfirmBody}</div>
+      <div className="gr__pop-buttons">
         <Button variant="quiet" size="sm" block onClick={onCancel}>
           {C.cancel}
         </Button>
@@ -67,30 +40,18 @@ function RemoveConfirm({
 export function RemoveControl({ onRemove }: { onRemove: () => void }) {
   const [step, setStep] = useState<"closed" | "menu" | "confirm">("closed");
   return (
-    <div style={{ position: "relative", flex: "none" }}>
+    <div className="gr__pop-anchor">
       <button
         type="button"
         aria-label={C.memberMenu}
         aria-expanded={step !== "closed"}
         onClick={() => setStep(step === "closed" ? "menu" : "closed")}
-        style={{
-          appearance: "none",
-          border: "none",
-          background: "transparent",
-          cursor: "pointer",
-          width: 32,
-          height: 32,
-          borderRadius: "50%",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "var(--text-subtle)",
-        }}
+        className="gr__iconbtn"
       >
         <Dots size={18} />
       </button>
       {step === "menu" && (
-        <div style={{ ...popover, padding: 6, minWidth: 190 }}>
+        <div className="gr__pop gr__pop--menu">
           <Button
             variant="quiet"
             size="sm"

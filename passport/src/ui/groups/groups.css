@@ -1,0 +1,373 @@
+/* Groups (docs 33, 31 + 37): the list, the create/join forms, the roster, and
+   the admin controls, on the editorial grammar. Serif page titles; sections as
+   quiet eyebrows over hairline rows; the tag/count pills retire for plain meta
+   words; the join-time disclosure and the privacy note become hairline asides,
+   not tinted cards. The roster keeps the real status medallion (it IS the
+   product's status glyph). Overlay popovers (kebab, remove confirm) keep their
+   elevation; the danger ways out read through treat ink and a confirm, never a
+   red-filled card. */
+
+.gr {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.gr--roomy {
+  gap: 18px;
+}
+
+.gr__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: clamp(22px, 6vw, 26px);
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  color: var(--text-strong);
+}
+
+.gr__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gr__sub {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-body);
+  margin: 0;
+}
+
+/* The meta line under a title: plain words separated by dots, never chips. */
+.gr__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.gr__meta-dot {
+  color: var(--text-subtle);
+}
+
+.gr__note {
+  font-size: 12.5px;
+  color: var(--text-subtle);
+  line-height: 1.5;
+}
+
+/* ── Section eyebrows ────────────────────────────────────────────────────── */
+.gr__sect-label {
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+/* ── The groups list: nav rows on hairlines ──────────────────────────────── */
+.gr__rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.gr__row {
+  appearance: none;
+  border: none;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-top: var(--hairline);
+  width: 100%;
+}
+
+.gr__row-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--text-muted);
+}
+
+.gr__row-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.gr__row-name {
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gr__row-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.gr__row-trail {
+  display: inline-flex;
+  flex: none;
+  color: var(--ink-400);
+}
+
+.gr__empty {
+  border-top: var(--hairline);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+/* ── The quiet asides: disclosure and privacy note ───────────────────────── */
+.gr__aside {
+  border-top: var(--hairline);
+  padding-top: 12px;
+  display: flex;
+  gap: 10px;
+}
+
+.gr__aside-icon {
+  display: inline-flex;
+  flex: none;
+  margin-top: 1px;
+  color: var(--text-accent);
+}
+
+.gr__aside-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-body);
+}
+
+.gr__aside-quiet {
+  color: var(--text-muted);
+}
+
+/* ── Roster ──────────────────────────────────────────────────────────────── */
+.gr__member {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: var(--hairline);
+}
+
+.gr__member-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.gr__member-name {
+  font-size: 14.5px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The "you"/"admin" marker: a quiet word, never a pill. */
+.gr__member-tag {
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex: none;
+}
+
+/* ── Forms (create, request to join) ─────────────────────────────────────── */
+.gr__form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.gr__form-group {
+  border-top: var(--hairline);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gr__field-note {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+.gr__status {
+  font-size: 12.5px;
+  margin-top: -4px;
+  color: var(--text-muted);
+}
+
+.gr__status--error {
+  color: var(--status-expired-fg);
+}
+
+.gr__error {
+  font-size: 12.5px;
+  color: var(--status-expired-fg);
+}
+
+/* The "we asked for you" / "you're in" confirmations: action callouts. */
+.gr__done {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gr__done-title {
+  font-size: 14.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.gr__done-body {
+  font-size: 13px;
+  color: var(--text-body);
+  line-height: 1.5;
+}
+
+/* ── Admin rows: pending invites, join requests ──────────────────────────── */
+.gr__admin {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gr__admin-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: var(--hairline);
+}
+
+.gr__admin-row-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--text-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── The ways out: leave / disband, treat ink + confirm ──────────────────── */
+.gr__danger {
+  border-top: var(--hairline);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gr__danger-title {
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.gr__danger-body {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.gr__danger-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+/* ── Overlay popovers (kebab menu, remove confirm): keep elevation ───────── */
+.gr__pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% - 2px);
+  z-index: 5;
+  background: var(--surface-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.gr__pop--menu {
+  padding: 6px;
+  min-width: 190px;
+}
+
+.gr__pop--confirm {
+  border: 1px solid var(--expired-100);
+  padding: 12px;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gr__pop-anchor {
+  position: relative;
+  flex: none;
+}
+
+.gr__pop-title {
+  font-size: 14.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.gr__pop-body {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.gr__pop-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.gr__iconbtn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-subtle);
+}

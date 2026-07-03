@@ -4,10 +4,12 @@
 // reveals whether a private group by that name exists. Mirrors the findable-name
 // entry. Shown inline on the groups list (doc 31's UX fork: ask by name from People).
 import { useState } from "react";
-import { Button, Card, Field, Input } from "../../design/components/index.ts";
+import { Button, Field, Input } from "../../design/components/index.ts";
 import { Search } from "../../design/icons.tsx";
+import { cx } from "../../lib/cx.ts";
 import type { RequestResult } from "../../store/index.ts";
 import { GROUPS_COPY as C } from "./groupsCopy.ts";
+import "./groups.css";
 
 type Status = "idle" | "busy" | "requested" | "not-found";
 
@@ -32,65 +34,43 @@ export function RequestToJoin({ onRequest }: RequestToJoinProps) {
 
   if (status === "requested") {
     return (
-      <Card
-        variant="tint"
-        style={{ display: "flex", flexDirection: "column", gap: 6 }}
-      >
-        <div
-          style={{
-            fontSize: 14.5,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-          }}
-        >
-          {C.requestedTitle}
-        </div>
-        <div
-          style={{ fontSize: 13, color: "var(--text-body)", lineHeight: 1.5 }}
-        >
-          {C.requestedBody}
-        </div>
-      </Card>
+      <div className={cx("e-card", "gr__done")}>
+        <div className="gr__done-title">{C.requestedTitle}</div>
+        <div className="gr__done-body">{C.requestedBody}</div>
+      </div>
     );
   }
 
   return (
-    <Card variant="flat">
-      <form
-        onSubmit={submit}
-        style={{ display: "flex", flexDirection: "column", gap: 10 }}
+    <form onSubmit={submit} className="gr__form-group">
+      <Field label={C.requestTitle} htmlFor="join-by-name">
+        <Input
+          id="join-by-name"
+          value={handle}
+          error={status === "not-found"}
+          disabled={status === "busy"}
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          placeholder="e.g. thursday_run"
+          onChange={(ev) => {
+            setHandle(ev.target.value);
+            if (status === "not-found") setStatus("idle");
+          }}
+        />
+      </Field>
+      {status === "not-found" && (
+        <div className="gr__error">{C.requestNotFound}</div>
+      )}
+      <Button
+        type="submit"
+        variant="secondary"
+        size="md"
+        icon={<Search size={16} />}
+        disabled={handle.trim() === "" || status === "busy"}
       >
-        <Field label={C.requestTitle} htmlFor="join-by-name">
-          <Input
-            id="join-by-name"
-            value={handle}
-            error={status === "not-found"}
-            disabled={status === "busy"}
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            placeholder="e.g. thursday_run"
-            onChange={(ev) => {
-              setHandle(ev.target.value);
-              if (status === "not-found") setStatus("idle");
-            }}
-          />
-        </Field>
-        {status === "not-found" && (
-          <div style={{ fontSize: 12.5, color: "var(--status-expired-fg)" }}>
-            {C.requestNotFound}
-          </div>
-        )}
-        <Button
-          type="submit"
-          variant="secondary"
-          size="md"
-          icon={<Search size={16} />}
-          disabled={handle.trim() === "" || status === "busy"}
-        >
-          {C.requestCta}
-        </Button>
-      </form>
-    </Card>
+        {C.requestCta}
+      </Button>
+    </form>
   );
 }

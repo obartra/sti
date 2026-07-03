@@ -7,6 +7,7 @@
 import { Field, Segmented } from "../../design/components/index.ts";
 import type { AliasIdentity } from "../../store/index.ts";
 import { GROUPS_COPY as C } from "./groupsCopy.ts";
+import "./groups.css";
 
 export function GroupFaceChoice({
   value,
@@ -32,14 +33,7 @@ export function GroupFaceChoice({
         onChange={onChange}
         aria-label={C.faceLabel}
       />
-      <div
-        style={{
-          fontSize: 12.5,
-          color: "var(--text-muted)",
-          lineHeight: 1.5,
-          marginTop: 8,
-        }}
-      >
+      <div className="gr__field-note">
         {value === "main" ? C.faceMainNote : C.faceAnonymousNote}
       </div>
     </Field>

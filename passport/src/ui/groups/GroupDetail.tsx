@@ -6,7 +6,7 @@
 // not shared a color here yet. Admin invite / request / remove controls are a later
 // slice (see the seam below).
 import { useEffect, useState } from "react";
-import { Button, Card } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
 import { Medallion } from "../badge-card.tsx";
 import type {
   GroupRecord,
@@ -19,39 +19,19 @@ import {
   type AdminControlsProps,
 } from "./GroupDetail.admin.tsx";
 import { GROUPS_COPY as C, meetingChip, visibilityChip } from "./groupsCopy.ts";
+import "./groups.css";
 
 type RosterState = "loading" | { members: RosterMemberView[] };
 
-const sectionLbl = {
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: "0.06em",
-  textTransform: "uppercase" as const,
-  color: "var(--text-subtle)",
-};
-
-// A short "you" / "admin" tag on a roster row. Both can be true (you are the admin);
-// the reader's own row leads with "you".
+// A short "you" / "admin" marker on a roster row, a quiet word rather than a pill.
+// Both can be true (you are the admin); the reader's own row leads with "you".
 function MemberTag({ member }: { member: RosterMemberView }) {
   const tags = [
     ...(member.isSelf ? [C.you] : []),
     ...(member.isAdmin ? [C.admin] : []),
   ];
   if (tags.length === 0) return null;
-  return (
-    <span
-      style={{
-        fontSize: 11.5,
-        fontWeight: 600,
-        color: "var(--text-muted)",
-        background: "var(--neutral-100)",
-        borderRadius: "var(--radius-pill)",
-        padding: "2px 9px",
-      }}
-    >
-      {tags.join(" · ")}
-    </span>
-  );
+  return <span className="gr__member-tag">{tags.join(" · ")}</span>;
 }
 
 function MemberRow({
@@ -66,30 +46,10 @@ function MemberRow({
   const state = member.card?.state === "blue" ? "blue" : "gray";
   const name = member.card?.identity.handle ?? "";
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "8px 8px",
-      }}
-    >
+    <div className="gr__member">
       <Medallion state={state} size={34} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {name !== "" && (
-          <div
-            style={{
-              fontSize: 14.5,
-              fontWeight: 600,
-              color: "var(--text-strong)",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {name}
-          </div>
-        )}
+      <div className="gr__member-body">
+        {name !== "" && <div className="gr__member-name">{name}</div>}
       </div>
       <MemberTag member={member} />
       {onRemove && <RemoveControl onRemove={onRemove} />}
@@ -107,11 +67,8 @@ function Roster({
   const hasAbsent = members.some((m) => m.card === null);
   return (
     <div>
-      <div style={{ ...sectionLbl, marginBottom: 8 }}>{C.rosterHeading}</div>
-      <Card
-        variant="flat"
-        style={{ padding: 6, display: "flex", flexDirection: "column" }}
-      >
+      <div className="gr__sect-label">{C.rosterHeading}</div>
+      <div className="gr__rows">
         {members.map((m) => (
           <MemberRow
             key={m.cardId}
@@ -123,19 +80,8 @@ function Roster({
             }
           />
         ))}
-      </Card>
-      {hasAbsent && (
-        <div
-          style={{
-            fontSize: 12,
-            color: "var(--text-subtle)",
-            lineHeight: 1.5,
-            marginTop: 8,
-          }}
-        >
-          {C.absentNote}
-        </div>
-      )}
+      </div>
+      {hasAbsent && <div className="gr__note">{C.absentNote}</div>}
     </div>
   );
 }
@@ -158,40 +104,16 @@ function DangerAction({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <Card
-      variant="flat"
-      style={{
-        borderColor: "var(--expired-100)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-      }}
-    >
+    <div className="gr__danger">
       {!open ? (
         <Button variant="danger" size="md" block onClick={() => setOpen(true)}>
           {cta}
         </Button>
       ) : (
         <>
-          <div
-            style={{
-              fontSize: 15,
-              fontWeight: 700,
-              color: "var(--text-strong)",
-            }}
-          >
-            {title}
-          </div>
-          <div
-            style={{
-              fontSize: 13,
-              color: "var(--text-muted)",
-              lineHeight: 1.5,
-            }}
-          >
-            {body}
-          </div>
-          <div style={{ display: "flex", gap: 10 }}>
+          <div className="gr__danger-title">{title}</div>
+          <div className="gr__danger-body">{body}</div>
+          <div className="gr__danger-buttons">
             <Button
               variant="quiet"
               size="md"
@@ -206,7 +128,7 @@ function DangerAction({
           </div>
         </>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -317,49 +239,19 @@ export function GroupDetail(props: GroupDetailProps) {
       : undefined;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-        width: "100%",
-        maxWidth: 600,
-      }}
-    >
+    <div className="gr">
       <div>
-        <h1
-          style={{
-            fontSize: 24,
-            fontWeight: 800,
-            letterSpacing: "-0.02em",
-            color: "var(--text-strong)",
-          }}
-        >
-          {group.handle}
-        </h1>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            marginTop: 6,
-          }}
-        >
-          <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-            {meetingChip(group.meetingKind)}
+        <h1 className="gr__title">{group.handle}</h1>
+        <div className="gr__meta">
+          <span>{meetingChip(group.meetingKind)}</span>
+          <span aria-hidden className="gr__meta-dot">
+            ·
           </span>
-          <span style={{ color: "var(--text-subtle)" }}>·</span>
-          <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-            {visibilityChip(group.visibility)}
-          </span>
+          <span>{visibilityChip(group.visibility)}</span>
         </div>
       </div>
 
-      <div
-        style={{ fontSize: 12.5, color: "var(--text-subtle)", lineHeight: 1.5 }}
-      >
-        {C.membershipIsSharing}
-      </div>
+      <div className="gr__note">{C.membershipIsSharing}</div>
 
       {roster === "loading" ? null : (
         <Roster members={roster.members} onRemoveMember={removeMember} />
