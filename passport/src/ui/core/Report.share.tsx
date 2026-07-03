@@ -2,11 +2,14 @@ import { useState, type ReactNode } from "react";
 import { Copy, Check, Flame, Hand, Heart } from "../../design/icons.tsx";
 import { copyText } from "../../lib/clipboard.ts";
 import { infoUrl } from "../../lib/info.ts";
+import { cx } from "../../lib/cx.ts";
+import "./report.css";
 
 // After a positive is saved, an OPTIONAL way to give a heads-up to someone who
 // isn't on sti.care (linked contacts are handled automatically and silently, so
 // they are never mentioned here). The message is pre-written so the hard part is
-// done; the tone is the user's to pick. Nothing here is required.
+// done; the tone is the user's to pick. Nothing here is required. The message
+// bubble keeps its shape and tint: it depicts the text you'd send (doc 37).
 interface Tone {
   id: string;
   label: string;
@@ -54,23 +57,7 @@ function ToneChip({
       type="button"
       onClick={onSelect}
       aria-pressed={active}
-      style={{
-        flex: 1,
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 5,
-        padding: "8px 6px",
-        borderRadius: "var(--radius-md)",
-        cursor: "pointer",
-        fontSize: 12.5,
-        fontWeight: active ? 700 : 500,
-        border: active
-          ? "1px solid var(--accent)"
-          : "1px solid var(--border-card)",
-        background: active ? "var(--accent-soft)" : "transparent",
-        color: active ? "var(--text-accent)" : "var(--text-muted)",
-      }}
+      className={cx("rp__tone", active && "rp__tone--on")}
     >
       {tone.icon}
       {tone.label}
@@ -90,26 +77,17 @@ export function ShareHeadsUp() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="rp__hu">
       <div>
-        <div
-          style={{ fontSize: 15, fontWeight: 700, color: "var(--text-strong)" }}
-        >
+        <div className="rp__hu-title">
           Linked with someone who isn&apos;t on sti.care?
         </div>
-        <div
-          style={{
-            fontSize: 13,
-            lineHeight: 1.5,
-            color: "var(--text-muted)",
-            marginTop: 5,
-          }}
-        >
+        <div className="rp__hu-sub">
           Shoot them a quick text. We wrote it for you:
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 7 }}>
+      <div className="rp__hu-tones">
         {TONES.map((t) => (
           <ToneChip
             key={t.id}
@@ -120,60 +98,23 @@ export function ShareHeadsUp() {
         ))}
       </div>
 
-      <div
-        style={{
-          position: "relative",
-          background: "var(--accent-soft)",
-          borderRadius: "var(--radius-lg)",
-          borderTopLeftRadius: 5,
-          padding: "13px 42px 13px 14px",
-        }}
-      >
+      <div className="rp__hu-bubble">
         <button
           type="button"
           onClick={copy}
           aria-label="Copy message"
-          style={{
-            position: "absolute",
-            top: 8,
-            right: 8,
-            width: 30,
-            height: 30,
-            borderRadius: "var(--radius-md)",
-            border: "none",
-            background: "transparent",
-            color: "var(--text-accent)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-          }}
+          className="rp__hu-copy"
         >
           {copied ? <Check size={17} /> : <Copy size={17} />}
         </button>
-        <div
-          style={{
-            fontSize: 13.5,
-            lineHeight: 1.55,
-            color: "var(--text-strong)",
-          }}
-        >
-          {tone.message}
-        </div>
+        <div className="rp__hu-msg">{tone.message}</div>
       </div>
 
       <a
         href={infoUrl("/tell-a-partner")}
         target="_blank"
         rel="noopener noreferrer"
-        style={{
-          alignSelf: "flex-start",
-          fontSize: 12.5,
-          fontWeight: 600,
-          color: "var(--text-accent)",
-          textDecoration: "underline",
-          textUnderlineOffset: 3,
-        }}
+        className="rp__hu-link"
       >
         See how to tell a partner
       </a>

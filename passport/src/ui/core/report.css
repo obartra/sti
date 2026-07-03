@@ -1,0 +1,514 @@
+/* Report a result (doc 31 + 37): the owner's data-entry flow on the editorial
+   grammar. Serif page title; the readiness checklist matches Home's (clear-ink
+   check or hollow ring, never tinted circles); each infection is a
+   hairline-opened group whose state reads as an uppercase status word, not a
+   pill; the result chips stay compact controls but select through ink and
+   border weight, never a tint fill; the asides flatten onto the surface. */
+
+.rp {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.rp__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: clamp(24px, 6.5vw, 28px);
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+  color: var(--text-strong);
+}
+
+/* ── The live blue-readiness checklist ──────────────────────────────────── */
+.rp__ready {
+  border-top: var(--hairline);
+  padding-top: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rp__ready-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.rp__ready-icon {
+  display: inline-flex;
+  color: var(--text-accent);
+  flex: none;
+}
+
+.rp__ready-title {
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.rp__ready-sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.rp__check-row {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+}
+
+.rp__check-mark {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rp__check-mark--met {
+  color: var(--status-clear-base);
+}
+
+.rp__check-mark--open {
+  border: 2px solid var(--border-card);
+  border-radius: 50%;
+}
+
+.rp__check-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.rp__check-title {
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+  color: var(--text-body);
+}
+
+.rp__check-title--met {
+  color: var(--text-strong);
+}
+
+.rp__check-sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.rp__verdict {
+  font-size: 12.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-subtle);
+  border-top: var(--hairline);
+  padding-top: 11px;
+}
+
+.rp__verdict--ready {
+  color: var(--status-ink-clear);
+}
+
+/* ── Detail entry ───────────────────────────────────────────────────────── */
+.rp__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rp__hint {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* A quiet aside on the surface: the panel note, the privacy note. */
+.rp__aside {
+  display: flex;
+  gap: 10px;
+  border-top: var(--hairline);
+  padding-top: 12px;
+}
+
+.rp__aside-icon {
+  display: inline-flex;
+  color: var(--text-accent);
+  flex: none;
+  margin-top: 1px;
+}
+
+.rp__aside-title {
+  font-size: 13.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.rp__aside-text {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-body);
+}
+
+/* Core-panel coverage: quiet by default, a 3px clear left rule once covered. */
+.rp__core {
+  display: flex;
+  gap: 12px;
+  border-top: var(--hairline);
+  padding-top: 12px;
+}
+
+.rp__core--done {
+  border-left: 3px solid var(--status-clear-base);
+  padding-left: 12px;
+}
+
+.rp__core-icon {
+  display: inline-flex;
+  flex: none;
+  margin-top: 1px;
+  color: var(--text-accent);
+}
+
+.rp__core--done .rp__core-icon {
+  color: var(--status-clear-base);
+}
+
+.rp__core-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.rp__core-missing {
+  font-size: 12px;
+  color: var(--text-subtle);
+  margin-top: 7px;
+  line-height: 1.5;
+}
+
+.rp__core-missing-label {
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 10.5px;
+  margin-right: 4px;
+}
+
+/* ── Per-infection groups ───────────────────────────────────────────────── */
+.rp__inf {
+  border-top: var(--hairline);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.rp__inf-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rp__inf-name {
+  font-size: 14.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+/* Result chips: compact controls that select through ink + border weight. */
+.rp__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rp__chip {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: var(--weight-medium);
+  padding: 8px 13px;
+  border-radius: var(--radius-sm);
+  border: var(--hairline-strong);
+  background: transparent;
+  color: var(--text-body);
+  transition: all var(--dur-fast) var(--ease-gentle);
+}
+
+.rp__chip--on {
+  border: 1.5px solid var(--text-accent);
+  color: var(--text-strong);
+  font-weight: var(--weight-bold);
+  padding: 7.5px 12.5px;
+}
+
+.rp__inf-note {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rp__learn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  padding: 0;
+  font-size: 12.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-accent);
+}
+
+.rp__site-hint {
+  font-size: 12px;
+  color: var(--text-subtle);
+  line-height: 1.45;
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.rp__site-hint-icon {
+  flex: none;
+  margin-top: 1px;
+  display: inline-flex;
+}
+
+.rp__site {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rp__site-label {
+  font-size: 12.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+.rp__sites {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Route toggles ──────────────────────────────────────────────────────── */
+.rp__routes {
+  border-top: var(--hairline);
+  padding-top: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rp__routes-title {
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.rp__routes-sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.rp__toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rp__toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.rp__toggle-label {
+  flex: 1;
+  font-size: 15px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-strong);
+}
+
+.rp__toggle-hint {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+/* ── Footer: date, on-passport toggle, actions ──────────────────────────── */
+.rp__field-label {
+  font-size: 13.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.rp__passport {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-top: var(--hairline);
+  padding-top: 13px;
+}
+
+.rp__passport-body {
+  flex: 1;
+}
+
+.rp__passport-title {
+  font-size: 15px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-strong);
+}
+
+.rp__passport-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.rp__actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* ── Saved confirmation ─────────────────────────────────────────────────── */
+.rp__saved {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-top: 8px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.rp__saved-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.rp__saved-icon {
+  display: inline-flex;
+  color: var(--status-clear-base);
+}
+
+.rp__saved-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 24px;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+}
+
+.rp__saved-sub {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-body);
+  margin: 0;
+  max-width: 300px;
+}
+
+/* ── The optional heads-up (ShareHeadsUp) ───────────────────────────────── */
+.rp__hu {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rp__hu-title {
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.rp__hu-sub {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin-top: 5px;
+}
+
+.rp__hu-tones {
+  display: flex;
+  gap: 7px;
+}
+
+.rp__tone {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: var(--weight-medium);
+  border: var(--hairline-strong);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.rp__tone--on {
+  border: 1.5px solid var(--text-accent);
+  color: var(--text-strong);
+  font-weight: var(--weight-bold);
+  padding: 7.5px 5.5px;
+}
+
+/* The pre-written text as a message bubble: a depiction of what you'd send,
+   so it keeps its bubble shape and tint (the subject, not our chrome). */
+.rp__hu-bubble {
+  position: relative;
+  background: var(--accent-soft);
+  border-radius: var(--radius-lg);
+  border-top-left-radius: 5px;
+  padding: 13px 42px 13px 14px;
+}
+
+.rp__hu-copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  color: var(--text-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.rp__hu-msg {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-strong);
+}
+
+.rp__hu-link {
+  align-self: flex-start;
+  font-size: 12.5px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

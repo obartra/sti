@@ -1,8 +1,10 @@
 import { useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { HivStatus } from "../../core/badge.ts";
 import type { ReportOutcome } from "../../core/report.ts";
 import { todayEpochDay } from "../../core/clock.ts";
+import { cx } from "../../lib/cx.ts";
+import "./report.css";
 
 // C2 Report a result. Faithful port of comps-reference/app/core-flows.jsx
 // (Report + ReportSaved + the in-file Chip helper). Copy reproduced VERBATIM
@@ -106,13 +108,6 @@ export const LEARN_COPY = {
     "About half of people with an STI feel fine and have no signs. A standard panel checks HIV, gonorrhea, chlamydia and syphilis; herpes is only tested if you have a sore, so ask if you want it.",
 } as const;
 
-export const fieldLbl: CSSProperties = {
-  fontSize: 14,
-  fontWeight: 600,
-  color: "var(--text-body)",
-  marginBottom: 10,
-};
-
 // Core-panel infection ids -> Learn explainer ids, for the "About" link on a
 // touched row. (Herpes/HPV explainers still live in Learn; they're just not
 // reachable from the report anymore, since those rows are gone.)
@@ -136,20 +131,7 @@ export function Chip({ active, onClick, children }: ChipProps) {
     <button
       type="button"
       onClick={onClick}
-      style={{
-        appearance: "none",
-        cursor: "pointer",
-        font: "inherit",
-        fontSize: 14,
-        fontWeight: 600,
-        padding: "9px 14px",
-        borderRadius: "var(--radius-pill)",
-        border:
-          "1px solid " + (active ? "var(--accent)" : "var(--border-card)"),
-        background: active ? "var(--accent-soft)" : "var(--surface-card)",
-        color: active ? "var(--text-accent)" : "var(--text-body)",
-        transition: "all var(--dur-fast) var(--ease-gentle)",
-      }}
+      className={cx("rp__chip", active && "rp__chip--on")}
     >
       {children}
     </button>
@@ -160,28 +142,6 @@ const POS = "Positive";
 const NEG = "Negative";
 
 export type SiteStatus = "positive" | "untouched" | "covered" | "partial";
-
-export function Tag({ children }: { children: ReactNode }) {
-  return (
-    <span
-      style={{
-        flex: "none",
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 5,
-        background: "var(--surface-sunken)",
-        color: "var(--text-muted)",
-        borderRadius: "var(--radius-pill)",
-        padding: "3px 10px",
-        fontSize: 12,
-        fontWeight: 700,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {children}
-    </span>
-  );
-}
 
 // Owner result-entry state plus the derived two-state badge reasoning. None of
 // this is ever surfaced to a viewer; the badge surfaces read only the derived

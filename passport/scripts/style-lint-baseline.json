@@ -79,28 +79,6 @@
   "src/ui/core/Privacy.tsx": {
     "styles": 4
   },
-  "src/ui/core/Report.cards.tsx": {
-    "styles": 8,
-    "legacy": 1
-  },
-  "src/ui/core/Report.infection.tsx": {
-    "styles": 17,
-    "legacy": 2
-  },
-  "src/ui/core/Report.parts.tsx": {
-    "styles": 2
-  },
-  "src/ui/core/Report.route.tsx": {
-    "styles": 18,
-    "legacy": 2
-  },
-  "src/ui/core/Report.share.tsx": {
-    "styles": 9
-  },
-  "src/ui/core/Report.tsx": {
-    "styles": 19,
-    "legacy": 2
-  },
   "src/ui/findable/BioMock.stories.tsx": {
     "styles": 1
   },

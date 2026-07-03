@@ -1,23 +1,13 @@
 import { useState } from "react";
-import {
-  Button,
-  Card,
-  Switch,
-  Field,
-  Input,
-} from "../../design/components/index.ts";
+import { Button, Switch, Field, Input } from "../../design/components/index.ts";
 import { BadgeCard } from "../badge-card.tsx";
 import type { BadgeState, ProtectionLabel, Route } from "../badge-card.tsx";
 import { avatarSrc, type AvatarConfigInput } from "../../lib/avatars.ts";
 import { Check, Lock } from "../../design/icons.tsx";
-import {
-  COPY,
-  fieldLbl,
-  reportOutcome,
-  useReportState,
-} from "./Report.parts.tsx";
+import { COPY, reportOutcome, useReportState } from "./Report.parts.tsx";
 import type { ReportState } from "./Report.parts.tsx";
 import { previewReport, type ReportOutcome } from "../../core/report.ts";
+import "./report.css";
 import {
   INITIAL_OWNER_STATE,
   condomRoutePresent,
@@ -98,39 +88,14 @@ function runSave({
 // reads as gray, never as a labeled status.
 function PrivacyNoteCard() {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <Card variant="tint" style={{ display: "flex", gap: 12 }}>
-        <span
-          style={{
-            color: "var(--text-accent)",
-            flex: "none",
-            marginTop: 1,
-          }}
-        >
-          <Lock size={18} />
-        </span>
-        <div>
-          <div
-            style={{
-              fontSize: 13.5,
-              fontWeight: 700,
-              color: "var(--text-strong)",
-            }}
-          >
-            {COPY.privacyNoteTitle}
-          </div>
-          <div
-            style={{
-              fontSize: 13.5,
-              lineHeight: 1.5,
-              color: "var(--text-body)",
-              marginTop: 2,
-            }}
-          >
-            {COPY.privacyNote}
-          </div>
-        </div>
-      </Card>
+    <div className="rp__aside">
+      <span aria-hidden className="rp__aside-icon">
+        <Lock size={18} />
+      </span>
+      <div>
+        <div className="rp__aside-title">{COPY.privacyNoteTitle}</div>
+        <div className="rp__aside-text">{COPY.privacyNote}</div>
+      </div>
     </div>
   );
 }
@@ -155,7 +120,7 @@ function ReportFooter({
   return (
     <>
       <Field
-        label={<span style={fieldLbl}>{c.dateLabel}</span>}
+        label={<span className="rp__field-label">{c.dateLabel}</span>}
         hint={c.dateHint}
       >
         <Input
@@ -168,27 +133,14 @@ function ReportFooter({
           }}
         />
       </Field>
-      <Card
-        variant="flat"
-        style={{ display: "flex", alignItems: "center", gap: 14 }}
-      >
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              fontSize: 15,
-              fontWeight: 600,
-              color: "var(--text-strong)",
-            }}
-          >
-            {c.onPassportTitle}
-          </div>
-          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-            {c.onPassportSub}
-          </div>
+      <div className="rp__passport">
+        <div className="rp__passport-body">
+          <div className="rp__passport-title">{c.onPassportTitle}</div>
+          <div className="rp__passport-sub">{c.onPassportSub}</div>
         </div>
         <Switch checked={state.onPassport} onChange={state.setOnPassport} />
-      </Card>
-      <div style={{ display: "flex", gap: 12 }}>
+      </div>
+      <div className="rp__actions">
         <Button variant="quiet" size="lg" onClick={onBack}>
           {c.cancel}
         </Button>
@@ -239,25 +191,8 @@ export function Report({
     runSave({ state, onTweak, onApply, onSavedPositive, onSavedHome });
   };
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 20,
-        width: "100%",
-        maxWidth: 600,
-      }}
-    >
-      <h1
-        style={{
-          fontSize: 24,
-          fontWeight: 800,
-          letterSpacing: "-0.02em",
-          color: "var(--text-strong)",
-        }}
-      >
-        {c.title}
-      </h1>
+    <div className="rp">
+      <h1 className="rp__title">{c.title}</h1>
 
       <BlueReadiness preview={preview} />
 
@@ -285,48 +220,12 @@ export function Report({
 
 function SavedHeader() {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        textAlign: "center",
-        gap: 14,
-      }}
-    >
-      <span
-        style={{
-          width: 72,
-          height: 72,
-          borderRadius: "50%",
-          background: "var(--accent-soft)",
-          color: "var(--text-accent)",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
+    <div className="rp__saved-head">
+      <span aria-hidden className="rp__saved-icon">
         <Check size={36} />
       </span>
-      <h1
-        style={{
-          fontSize: 23,
-          fontWeight: 800,
-          letterSpacing: "-0.02em",
-          color: "var(--text-strong)",
-        }}
-      >
-        Result saved
-      </h1>
-      <p
-        style={{
-          fontSize: 15,
-          lineHeight: 1.55,
-          color: "var(--text-body)",
-          margin: 0,
-          maxWidth: 300,
-        }}
-      >
+      <h1 className="rp__saved-title">Result saved</h1>
+      <p className="rp__saved-sub">
         Your card shows gray to others, like any other reason a card isn’t
         current. It never names what you tested for.
       </p>
@@ -363,16 +262,7 @@ export function ReportSaved({
   handle = "robin",
 }: ReportSavedProps) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 20,
-        paddingTop: 8,
-        width: "100%",
-        maxWidth: 600,
-      }}
-    >
+    <div className="rp__saved">
       <SavedHeader />
       <BadgeCard
         state={viewerBadge}
@@ -382,9 +272,7 @@ export function ReportSaved({
         avatarSrc={avatarSrc(avatar)}
         width="100%"
       />
-      <div
-        style={{ height: "0.5px", background: "var(--border-card)", margin: 0 }}
-      />
+      <hr className="e-rule" />
       <ShareHeadsUp />
       <Button variant="primary" size="lg" block onClick={onDone}>
         Done
