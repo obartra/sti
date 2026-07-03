@@ -160,33 +160,15 @@
   "src/ui/findable/BioMock.stories.tsx": {
     "styles": 1
   },
-  "src/ui/findable/BioMock.tsx": {
-    "styles": 16
-  },
   "src/ui/findable/FindableName.tsx": {
     "styles": 21,
-    "legacy": 2
-  },
-  "src/ui/findable/FindableResolve.tsx": {
-    "styles": 8,
-    "legacy": 1
-  },
-  "src/ui/findable/ReportName.tsx": {
-    "styles": 19,
     "legacy": 2
   },
   "src/ui/findable/ShareLinkGuide.stories.tsx": {
     "styles": 1
   },
-  "src/ui/findable/ShareLinkGuide.tsx": {
-    "styles": 22,
-    "legacy": 2
-  },
   "src/ui/findable/ShareLinkPage.stories.tsx": {
     "styles": 1
-  },
-  "src/ui/findable/ShareLinkPage.tsx": {
-    "styles": 4
   },
   "src/ui/groups/AcceptInvite.tsx": {
     "styles": 10,

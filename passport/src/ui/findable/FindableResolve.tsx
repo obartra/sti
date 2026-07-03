@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, Card } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
 import { Globe, Lock } from "../../design/icons.tsx";
 import { CREATE_ACCOUNT_CTA } from "../../copy/canonical.ts";
+import "./findable.css";
 
 // The resolve→knock handoff (doc 17, F5b). A `/u/{name}` link lands here: look the
 // name up to its opaque alias id, then hand into the normal knock flow against
 // that id (a findable name carries no key, so it's the keyless gated path,
 // resolveAlias yields gray-nothing and the public screen shows "ask to view").
 // A miss/unreachable is the uniform "not found", so existence stays fail-closed.
+// Editorial grammar (doc 37): a quiet looking-up line, then a serif not-found
+// page on the surface; no cards, no warning tint (a miss is not an error).
 
 const COPY = {
   looking: "Looking up",
@@ -62,78 +65,27 @@ export function FindableResolve({
 
   if (state === "resolving") {
     return (
-      <Card
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          fontSize: 14,
-          color: "var(--text-muted)",
-        }}
-      >
-        <span style={{ color: "var(--text-accent)", flex: "none" }}>
+      <div className="fres__looking">
+        <span aria-hidden className="fres__looking-icon">
           <Globe size={18} />
         </span>
         <span>
-          {COPY.looking}{" "}
-          <span
-            style={{
-              fontFamily: "var(--font-mono, ui-monospace, monospace)",
-              fontWeight: 700,
-              color: "var(--text-strong)",
-            }}
-          >
-            {name}
-          </span>
-          …
+          {COPY.looking} <span className="fres__name">{name}</span>…
         </span>
-      </Card>
+      </div>
     );
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-        width: "100%",
-        maxWidth: 600,
-      }}
-    >
+    <div className="fres">
       <div>
-        <h1
-          style={{
-            fontSize: 24,
-            fontWeight: 800,
-            letterSpacing: "-0.02em",
-            color: "var(--text-strong)",
-          }}
-        >
-          {COPY.notFoundTitle}
-        </h1>
-        <p
-          style={{
-            fontSize: 15,
-            lineHeight: 1.55,
-            color: "var(--text-body)",
-            marginTop: 8,
-          }}
-        >
-          {COPY.notFoundBody}
-        </p>
+        <h1 className="fres__title">{COPY.notFoundTitle}</h1>
+        <p className="fres__body">{COPY.notFoundBody}</p>
       </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 7,
-          color: "var(--text-subtle)",
-          fontSize: 12,
-          lineHeight: 1.5,
-        }}
-      >
-        <Lock size={13} style={{ flex: "none", marginTop: 2 }} />
+      <div className="fres__privacy">
+        <span aria-hidden className="fres__privacy-icon">
+          <Lock size={13} />
+        </span>
         {COPY.privacy}
       </div>
       <Button variant="primary" size="md" block onClick={onClaim}>

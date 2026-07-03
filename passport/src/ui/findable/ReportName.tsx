@@ -1,13 +1,17 @@
 import { useCallback, useState } from "react";
-import { Button, Card } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
 import { Shield, ShieldCheck } from "../../design/icons.tsx";
 import type { VanityReportReason } from "../../api/client.ts";
+import { cx } from "../../lib/cx.ts";
+import "./findable.css";
 
 // Report a findable name (doc 17, F5c). A small anonymous form: pick a reason from
 // the fixed set and send. Intake is public + rate-limited; an objective rule match
 // (reserved/slur) is auto-actioned server-side, the rest go to the admin review
 // queue. Volume alone never removes a name, so the copy doesn't promise removal.
 // The transport is injected so it's driven in tests/Storybook without a server.
+// Same quiet radio-row grammar as the feedback form (doc 37): one focused task
+// on the page surface, selection reading through ink and border weight.
 
 const REASONS: { code: VanityReportReason; label: string }[] = [
   { code: "impersonation", label: "Pretending to be the service or someone" },
@@ -63,28 +67,13 @@ export function ReportName({ name, report, onClose }: ReportNameProps) {
   if (sent) return <ReportDone onClose={onClose} />;
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="rn">
       <Header name={name} />
-      <form
-        onSubmit={submit}
-        style={{ display: "flex", flexDirection: "column", gap: 12 }}
-      >
+      <form onSubmit={submit} className="rn__form">
         <ReasonPicker reason={reason} onPick={setReason} disabled={busy} />
-        {error !== null && (
-          <div style={{ fontSize: 12.5, color: "var(--status-expired-fg)" }}>
-            {error}
-          </div>
-        )}
-        <div
-          style={{
-            fontSize: 12,
-            color: "var(--text-subtle)",
-            lineHeight: 1.45,
-          }}
-        >
-          {COPY.anonymous}
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        {error !== null && <div className="rn__error">{error}</div>}
+        <div className="rn__anon">{COPY.anonymous}</div>
+        <div className="rn__actions">
           <Button
             type="submit"
             variant="primary"
@@ -101,33 +90,19 @@ export function ReportName({ name, report, onClose }: ReportNameProps) {
           )}
         </div>
       </form>
-    </Card>
+    </div>
   );
 }
 
 function Header({ name }: { name: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <span style={{ color: "var(--text-accent)", flex: "none" }}>
+    <div className="rn__head">
+      <span aria-hidden className="rn__icon">
         <Shield size={18} />
       </span>
-      <div style={{ flex: 1 }}>
-        <div
-          style={{ fontSize: 15, fontWeight: 800, color: "var(--text-strong)" }}
-        >
-          {COPY.title}
-        </div>
-        <div
-          style={{
-            fontFamily: "var(--font-mono, ui-monospace, monospace)",
-            fontSize: 13.5,
-            fontWeight: 700,
-            color: "var(--text-body)",
-            wordBreak: "break-all",
-          }}
-        >
-          {name}
-        </div>
+      <div>
+        <div className="rn__title">{COPY.title}</div>
+        <div className="rn__name">{name}</div>
       </div>
     </div>
   );
@@ -143,43 +118,12 @@ function ReasonPicker({
   disabled: boolean;
 }) {
   return (
-    <fieldset
-      style={{
-        border: "none",
-        margin: 0,
-        padding: 0,
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-      }}
-    >
-      <legend
-        style={{
-          fontSize: 13.5,
-          fontWeight: 700,
-          color: "var(--text-strong)",
-          padding: 0,
-          marginBottom: 2,
-        }}
-      >
-        {COPY.legend}
-      </legend>
+    <fieldset className="rn__reasons">
+      <legend className="rn__legend">{COPY.legend}</legend>
       {REASONS.map(({ code, label }) => (
         <label
           key={code}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "9px 11px",
-            borderRadius: "var(--radius-sm)",
-            cursor: "pointer",
-            border:
-              reason === code
-                ? "1.5px solid var(--text-accent)"
-                : "1px solid var(--border-card)",
-            background: reason === code ? "var(--accent-soft)" : "transparent",
-          }}
+          className={cx("rn__reason", reason === code && "rn__reason--on")}
         >
           <input
             type="radio"
@@ -189,9 +133,7 @@ function ReasonPicker({
             disabled={disabled}
             onChange={() => onPick(code)}
           />
-          <span style={{ fontSize: 13.5, color: "var(--text-body)" }}>
-            {label}
-          </span>
+          <span className="rn__reason-label">{label}</span>
         </label>
       ))}
     </fieldset>
@@ -200,25 +142,17 @@ function ReasonPicker({
 
 function ReportDone({ onClose }: { onClose?: (() => void) | undefined }) {
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ color: "var(--text-accent)", flex: "none" }}>
+    <div className="rn">
+      <div className="rn__head">
+        <span aria-hidden className="rn__icon">
           <ShieldCheck size={20} />
         </span>
-        <div
-          style={{ fontSize: 16, fontWeight: 800, color: "var(--text-strong)" }}
-        >
-          {COPY.doneTitle}
-        </div>
+        <div className="rn__done-title">{COPY.doneTitle}</div>
       </div>
-      <div
-        style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}
-      >
-        {COPY.doneBody}
-      </div>
+      <div className="rn__done-body">{COPY.doneBody}</div>
       <Button variant="secondary" size="md" block onClick={onClose}>
         {COPY.done}
       </Button>
-    </Card>
+    </div>
   );
 }
