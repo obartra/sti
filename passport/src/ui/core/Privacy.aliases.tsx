@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Button, Card } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
 import {
   Globe,
   Lock,
@@ -17,6 +17,7 @@ import {
   useLinkShare,
   type LinkShareContext,
 } from "./Privacy.aliases.share.tsx";
+import "../connect/connect.css";
 
 // "Your links": one honest list of everything that can currently resolve to the
 // owner's status, the public/casual aliases plus every per-contact link. Each row
@@ -58,43 +59,13 @@ function LinkRow({
   onRevoke: () => void;
 }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 11,
-        padding: "10px 10px",
-      }}
-    >
-      <span
-        style={{
-          flex: "none",
-          width: 34,
-          height: 34,
-          borderRadius: "var(--radius-sm)",
-          background: "var(--accent-soft)",
-          color: "var(--text-accent)",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
+    <div className="cl__row">
+      <span aria-hidden className="cl__row-icon">
         {icon}
       </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 14.5,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {title}
-        </div>
-        <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{sub}</div>
+      <div className="cl__row-body">
+        <div className="cl__row-title cl__row-title--clip">{title}</div>
+        <div className="cl__row-sub">{sub}</div>
       </div>
       {onShare && (
         <Button
@@ -137,26 +108,10 @@ export function LiveLinks({
   );
   const canShare = share !== undefined;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="cl">
       <div>
-        <h2
-          style={{
-            fontSize: 18,
-            fontWeight: 800,
-            color: "var(--text-strong)",
-            margin: 0,
-          }}
-        >
-          Your links
-        </h2>
-        <p
-          style={{
-            fontSize: 13.5,
-            lineHeight: 1.5,
-            color: "var(--text-muted)",
-            marginTop: 4,
-          }}
-        >
+        <h2 className="cl__sect-title">Your links</h2>
+        <p className="cl__sect-sub">
           Everything that can resolve to your status right now. Share any one
           again, or revoke it to cut it off, the old link stops working
           immediately.
@@ -164,17 +119,11 @@ export function LiveLinks({
       </div>
 
       {empty ? (
-        <Card
-          variant="flat"
-          style={{ fontSize: 13.5, color: "var(--text-muted)" }}
-        >
+        <div className="cl__empty">
           No links shared yet. Create one from the share sheet or Links.
-        </Card>
+        </div>
       ) : (
-        <Card
-          variant="flat"
-          style={{ padding: 6, display: "flex", flexDirection: "column" }}
-        >
+        <div className="cl__rows">
           {aliases.map((a) => (
             <LinkRow
               key={a.id}
@@ -203,7 +152,7 @@ export function LiveLinks({
               onRevoke={() => onRevokeContact(c.id)}
             />
           ))}
-        </Card>
+        </div>
       )}
       {linkShare.sheet}
     </div>

@@ -1,0 +1,471 @@
+/* The People and Links surfaces (docs 13, 16, 19 + 37): serif page titles,
+   sections as quiet eyebrows, starred and recent connections as dense hairline
+   rows (cards and count pills retire), the scan action as the one callout, and
+   the kebab menus keeping their elevation (they are overlay controls). The QR
+   scanner stays an immersive dark camera mode, on tokens. */
+
+.cn {
+  width: 100%;
+  max-width: 600px;
+}
+
+/* The whole People / Links screen: the surface plus the trailing asides. */
+.cn-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.cn__col {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.cn__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: clamp(24px, 6.5vw, 28px);
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+  color: var(--text-strong);
+}
+
+.cn__sub {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--text-body);
+  margin: 6px 0 0;
+}
+
+/* ── The one action callout: scan to connect ────────────────────────────── */
+.cn__scan {
+  appearance: none;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  font: inherit;
+  background: var(--surface-card);
+  border: var(--hairline-strong);
+  border-radius: var(--radius-xs);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.cn__scan-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--text-accent);
+}
+
+.cn__scan-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.cn__scan-title {
+  display: block;
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.cn__scan-sub {
+  display: block;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+.cn__scan-trail {
+  display: inline-flex;
+  flex: none;
+  color: var(--ink-400);
+}
+
+/* ── Section heads: eyebrow + plain count, never a pill ─────────────────── */
+.cn__head {
+  margin-bottom: 4px;
+}
+
+.cn__head-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.cn__head-label {
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.cn__head-label--muted {
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+}
+
+.cn__head-count {
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+.cn__head-sub {
+  font-size: 12.5px;
+  color: var(--text-subtle);
+  margin-top: 4px;
+  line-height: 1.45;
+}
+
+/* ── Connection rows: dense hairline rows ───────────────────────────────── */
+.cn__rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.cn__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 0;
+  border-top: var(--hairline);
+}
+
+.cn__row-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.cn__row-name {
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-strong);
+}
+
+.cn__row-star {
+  color: var(--status-treat-base);
+  margin-left: 6px;
+  display: inline-flex;
+  vertical-align: -2px;
+}
+
+.cn__row-when {
+  font-size: 12px;
+  color: var(--text-subtle);
+  margin-left: 8px;
+}
+
+.cn__row-sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.cn__empty {
+  border-top: var(--hairline);
+  padding-top: 12px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.cn__more {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+/* Icon-only round tap targets (kebab, unstar). */
+.cn__iconbtn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-subtle);
+  flex: none;
+}
+
+.cn__star {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 4px;
+  display: inline-flex;
+  color: var(--status-treat-base);
+  flex: none;
+}
+
+/* The kebab popover: an overlay control, so it keeps its elevation. */
+.cn__menu {
+  position: absolute;
+  right: 6px;
+  top: calc(100% - 4px);
+  z-index: 5;
+  background: var(--surface-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 6px;
+  min-width: 190px;
+}
+
+.cn__menu-item {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  text-align: left;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-body);
+}
+
+.cn__menu-item--danger {
+  color: var(--status-expired-fg);
+}
+
+/* ── The member-initiated privacy promise ───────────────────────────────── */
+.cn__privacy {
+  border-top: var(--hairline);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cn__privacy-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-accent);
+  font-size: 13px;
+  font-weight: var(--weight-bold);
+}
+
+.cn__privacy-row {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+}
+
+.cn__privacy-check {
+  color: var(--text-accent);
+  flex: none;
+  margin-top: 1px;
+  display: inline-flex;
+}
+
+.cn__privacy-text {
+  font-size: 13.5px;
+  color: var(--text-body);
+  line-height: 1.5;
+}
+
+/* ── Links (per-contact private links) ──────────────────────────────────── */
+.cl {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.cl__form {
+  border-top: var(--hairline);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cl__error {
+  font-size: 12.5px;
+  color: var(--status-expired-fg);
+}
+
+/* The link-ready panel: the action callout with the minted URL. */
+.cl__created {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+}
+
+.cl__created-title {
+  font-size: 13px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.cl__created-url {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-strong);
+  word-break: break-all;
+}
+
+/* A secondary section head inside Links (the live-links list). */
+.cl__sect-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.cl__sect-sub {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin: 4px 0 0;
+}
+
+.cl__empty {
+  border-top: var(--hairline);
+  padding-top: 12px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.cl__rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.cl__row-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--text-muted);
+}
+
+.cl__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: var(--hairline);
+}
+
+.cl__row-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.cl__row-title {
+  font-size: 14.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.cl__row-title--clip {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cl__row-sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.cl__row-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 0 12px;
+}
+
+.cl__row-menu-label {
+  font-size: 12.5px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-subtle);
+}
+
+.cl__row-menu-fields {
+  display: flex;
+  gap: 8px;
+}
+
+.cl__row-menu-grow {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── The QR scanner: an immersive camera mode, kept dark ────────────────── */
+.qrs {
+  position: absolute;
+  inset: 0;
+  background: var(--ink-900);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+  gap: 20px;
+  padding: 24px;
+  text-align: center;
+}
+
+.qrs__close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  appearance: none;
+  border: none;
+  background: rgba(255, 255, 255, 0.16);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--white);
+}
+
+.qrs__viewport {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+}
+
+.qrs__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.qrs__title {
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+}
+
+.qrs__hint {
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.8);
+  max-width: 300px;
+  line-height: 1.5;
+}

@@ -4,6 +4,7 @@ import { QrScanner } from "../../connect/QrScanner.tsx";
 import { GroupsSlot } from "./groupScreens.tsx";
 import { todayEpochDay } from "../../../core/clock.ts";
 import type { ScreenRenderers } from "./context.ts";
+import "../../connect/connect.css";
 
 export const peopleRenderers: ScreenRenderers = {
   // People, top to bottom: scan tile, starred people, groups, then the full contact
@@ -13,7 +14,7 @@ export const peopleRenderers: ScreenRenderers = {
   // tab. The groups slot carries the "join a group by name" entry and runs the group
   // catch-up on mount (doc 33, slice 7b).
   people: (ctx) => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+    <div className="cn-screen">
       <Connect
         contacts={ctx.contacts}
         nowDay={todayEpochDay()}

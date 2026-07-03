@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Button, Card, Input } from "../../design/components/index.ts";
+import { Button, Input } from "../../design/components/index.ts";
 import { Link, Trash, Dots } from "../../design/icons.tsx";
 import { AvatarCard } from "../onboarding/AvatarCard.tsx";
 import { IdentityChoiceRow } from "../share/ShareSheet.identity.tsx";
 import { CreatedLink } from "./ContactLinks.parts.tsx";
 import type { AliasIdentity, ContactRecord } from "../../store/index.ts";
+import "./connect.css";
 
 /* ContactLinks: the owner's per-contact private links (doc 13). Each link is for
    one person and individually revocable; it never expires on its own, so revoking
@@ -32,7 +33,7 @@ export interface ContactLinksProps {
   onEditAvatar?: (() => void) | undefined;
 }
 
-// The "mint a new link" card: nickname, the face choice (when the owner has a name
+// The "mint a new link" form: nickname, the face choice (when the owner has a name
 // to show), and the create button, with an inline error so the action never
 // silently no-ops.
 function CreateCard({
@@ -55,10 +56,7 @@ function CreateCard({
   onCreate: () => void;
 }): React.ReactElement {
   return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 10 }}
-    >
+    <div className="cl__form">
       <Input
         placeholder="Who is this for?"
         value={label}
@@ -81,12 +79,8 @@ function CreateCard({
       >
         {busy ? "Creating..." : "Create a link"}
       </Button>
-      {error !== null && (
-        <div style={{ fontSize: 12.5, color: "var(--status-expired-fg)" }}>
-          {error}
-        </div>
-      )}
-    </Card>
+      {error !== null && <div className="cl__error">{error}</div>}
+    </div>
   );
 }
 
@@ -126,27 +120,10 @@ export function ContactLinks({
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-        width: "100%",
-        maxWidth: 600,
-      }}
-    >
+    <div className="cl">
       <div>
-        <h1
-          style={{
-            fontSize: 24,
-            fontWeight: 800,
-            letterSpacing: "-0.02em",
-            color: "var(--text-strong)",
-          }}
-        >
-          Your links
-        </h1>
-        <p style={{ fontSize: 14, color: "var(--text-body)", marginTop: 6 }}>
+        <h1 className="cn__title">Your links</h1>
+        <p className="cn__sub">
           A private link for one person. They open it to see your status. It
           works until you revoke it.
         </p>
@@ -170,10 +147,7 @@ export function ContactLinks({
       {created !== null && <CreatedLink url={created} />}
 
       {contacts.length > 0 && (
-        <Card
-          variant="flat"
-          style={{ padding: 6, display: "flex", flexDirection: "column" }}
-        >
+        <div className="cl__rows">
           {contacts.map((c) => (
             <ContactRow
               key={c.id}
@@ -187,7 +161,7 @@ export function ContactLinks({
               onRename={onRename ? (label) => onRename(c.id, label) : undefined}
             />
           ))}
-        </Card>
+        </div>
       )}
     </div>
   );
@@ -208,19 +182,17 @@ function RenameField({
   const changed = trimmed !== label.trim();
   return (
     <>
-      <div
-        style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-subtle)" }}
-      >
-        Name
-      </div>
-      <div style={{ display: "flex", gap: 8 }}>
-        <Input
-          aria-label="Rename this link"
-          placeholder="Who is this for?"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          maxLength={64}
-        />
+      <div className="cl__row-menu-label">Name</div>
+      <div className="cl__row-menu-fields">
+        <div className="cl__row-menu-grow">
+          <Input
+            aria-label="Rename this link"
+            placeholder="Who is this for?"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            maxLength={64}
+          />
+        </div>
         <Button
           variant="secondary"
           size="sm"
@@ -247,15 +219,7 @@ function RowMenu({
   onRevoke: () => void;
 }): React.ReactElement {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 8,
-        padding: "6px 10px 12px",
-        borderTop: "1px solid var(--border-card)",
-      }}
-    >
+    <div className="cl__row-menu">
       {onRename && <RenameField label={label} onRename={onRename} />}
       <Button
         variant="quiet"
@@ -286,48 +250,18 @@ function ContactRow({
       ? "Linked both ways"
       : "Waiting for their link";
   return (
-    <div style={{ display: "flex", flexDirection: "column" }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          padding: "10px 10px",
-        }}
-      >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: 14.5,
-              fontWeight: 700,
-              color: "var(--text-strong)",
-            }}
-          >
-            {contact.label || "Unnamed link"}
-          </div>
-          <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-            {status}
-          </div>
+    <div>
+      <div className="cl__row">
+        <div className="cl__row-body">
+          <div className="cl__row-title">{contact.label || "Unnamed link"}</div>
+          <div className="cl__row-sub">{status}</div>
         </div>
         <button
           type="button"
           aria-label={`Options for ${contact.label || "this link"}`}
           aria-expanded={open}
           onClick={() => setOpen((o) => !o)}
-          style={{
-            appearance: "none",
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            width: 34,
-            height: 34,
-            borderRadius: "50%",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--text-subtle)",
-            flex: "none",
-          }}
+          className="cn__iconbtn"
         >
           <Dots size={18} />
         </button>

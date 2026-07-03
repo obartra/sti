@@ -16,44 +16,11 @@
   "src/ui/app/NavLink.tsx": {
     "styles": 1
   },
-  "src/ui/app/screens/linksScreens.tsx": {
-    "styles": 1
-  },
-  "src/ui/app/screens/peopleScreens.tsx": {
-    "styles": 1
-  },
   "src/ui/badge-card.tsx": {
     "styles": 3
   },
-  "src/ui/connect/Connect.tsx": {
-    "styles": 5
-  },
-  "src/ui/connect/ContactLinks.parts.tsx": {
-    "styles": 3,
-    "legacy": 1
-  },
-  "src/ui/connect/ContactLinks.tsx": {
-    "styles": 15,
-    "legacy": 2
-  },
-  "src/ui/connect/parts.tsx": {
-    "styles": 21,
-    "legacy": 2
-  },
-  "src/ui/connect/QrScanner.tsx": {
-    "styles": 8,
-    "hex": 3
-  },
-  "src/ui/connect/recent.tsx": {
-    "styles": 12,
-    "legacy": 2
-  },
   "src/ui/core/ContinuityNudgeCard.stories.tsx": {
     "styles": 1
-  },
-  "src/ui/core/Privacy.aliases.tsx": {
-    "styles": 10,
-    "legacy": 2
   },
   "src/ui/findable/BioMock.stories.tsx": {
     "styles": 1
@@ -101,10 +68,6 @@
   },
   "src/ui/onboarding/AvatarBuilder.tsx": {
     "styles": 1
-  },
-  "src/ui/onboarding/AvatarCard.tsx": {
-    "styles": 1,
-    "legacy": 2
   },
   "src/ui/pwa/installScreenshots.stories.tsx": {
     "styles": 2,
