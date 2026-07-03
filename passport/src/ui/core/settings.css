@@ -1,0 +1,380 @@
+/* Settings (doc 31 + 37). Settings is utility, not publication: the serif is
+   for the page title only; sections are uppercase eyebrows over hairline row
+   groups; icon tiles retire for muted stroke leads; the account subsections
+   (password, phrase, public name) are hairline-opened groups with the phrase
+   and names as document-style mono blocks; the danger zone reads through the
+   treat ink and a confirm, never a red-filled card. */
+
+.st {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.st__center {
+  display: flex;
+  justify-content: center;
+}
+
+.st__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: clamp(24px, 6.5vw, 28px);
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+  color: var(--text-strong);
+}
+
+.st__logout {
+  align-self: flex-start;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+  color: var(--text-accent);
+}
+
+/* ── Sections: eyebrow + hairline group ─────────────────────────────────── */
+.st__section {
+  border-top: var(--hairline);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.st__section-label {
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.st__section-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-top: -8px;
+}
+
+/* ── Subsection: an account block (password, phrase, public name) ───────── */
+.st__block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.st__block + .st__block {
+  border-top: var(--hairline);
+  padding-top: 14px;
+}
+
+.st__block-head {
+  display: flex;
+  gap: 10px;
+}
+
+.st__block-icon {
+  display: inline-flex;
+  color: var(--text-accent);
+  flex: none;
+  margin-top: 1px;
+}
+
+.st__block-body {
+  flex: 1;
+}
+
+.st__block-title {
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.st__block-lead {
+  font-size: 12.5px;
+  color: var(--text-body);
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+.st__note {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.st__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.st__buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.st__error {
+  font-size: 12.5px;
+  color: var(--status-expired-fg);
+}
+
+/* Labels over mono values (the sign-in username, the public name). */
+.st__value-label {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.st__mono {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  word-break: break-all;
+}
+
+/* The revealed phrase as a document: paper, hairline, mono (doc 37). */
+.st__doc {
+  background: var(--surface-card);
+  border: var(--hairline-strong);
+  border-radius: var(--radius-xs);
+  padding: 14px;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: var(--weight-semibold);
+  line-height: 1.7;
+  letter-spacing: 0.02em;
+  color: var(--text-strong);
+  word-break: break-all;
+}
+
+/* A native details expander for secondary specifics (the findable bullets). */
+.st__details {
+  margin-top: 2px;
+}
+
+.st__details summary {
+  font-size: 12.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-accent);
+  cursor: pointer;
+}
+
+.st__details ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.st__lockline {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.st__lockline-icon {
+  flex: none;
+  margin-top: 2px;
+  display: inline-flex;
+}
+
+.st__status {
+  font-size: 12.5px;
+  margin-top: -4px;
+  color: var(--text-muted);
+}
+
+.st__status--error {
+  color: var(--status-expired-fg);
+}
+
+/* Saved indicator beside a field label. */
+.st__field-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.st__saved {
+  font-size: 12px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-accent);
+}
+
+/* ── Profile rows: hairline rows, muted stroke leads, controls at trail ─── */
+.st__row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+}
+
+.st__row + .st__row {
+  border-top: var(--hairline);
+}
+
+.st__row--top {
+  align-items: flex-start;
+}
+
+.st__row-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.st__row-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.st__row-title {
+  font-size: 15px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-strong);
+}
+
+.st__row-title-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.st__row-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
+.st__row-error {
+  font-size: 12.5px;
+  color: var(--status-expired-fg);
+  margin-left: 32px;
+  padding-bottom: 8px;
+}
+
+/* The always-on marker: a quiet status word, not a badge pill. */
+.st__always {
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-accent);
+  white-space: nowrap;
+}
+
+/* ── Attribute chips (condom preference) ────────────────────────────────── */
+.st__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.st__chip {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: var(--weight-medium);
+  padding: 8px 13px;
+  border-radius: var(--radius-sm);
+  border: var(--hairline-strong);
+  background: transparent;
+  color: var(--text-body);
+  transition: all var(--dur-fast) var(--ease-gentle);
+}
+
+.st__chip--on {
+  border: 1.5px solid var(--text-accent);
+  color: var(--text-strong);
+  font-weight: var(--weight-bold);
+  padding: 7.5px 12.5px;
+}
+
+/* ── Danger zone ────────────────────────────────────────────────────────── */
+.st__danger-label {
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--status-ink-treat);
+}
+
+.st__danger {
+  border-top: var(--hairline);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── About footer ───────────────────────────────────────────────────────── */
+.st__about {
+  border-top: var(--hairline);
+  padding-top: 16px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.st__about-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.st__about-link {
+  align-self: flex-start;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+}
+
+.st__keep {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.st__keep-title {
+  font-size: 13.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.st__keep-body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.st__keep-date {
+  color: var(--text-strong);
+  font-weight: var(--weight-bold);
+}

@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { Button, Card } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
+import "../core/settings.css";
 import { Key, Eye, EyeOff, Copy, Fingerprint } from "../../design/icons.tsx";
 import { copyText } from "../../lib/clipboard.ts";
 
@@ -57,26 +58,13 @@ const COPY = {
 
 function CardTitle() {
   return (
-    <div style={{ display: "flex", gap: 10 }}>
-      <span style={{ color: "var(--text-accent)", flex: "none", marginTop: 1 }}>
+    <div className="st__block-head">
+      <span aria-hidden className="st__block-icon">
         <Key size={18} />
       </span>
-      <div style={{ flex: 1 }}>
-        <div
-          style={{ fontSize: 14, fontWeight: 800, color: "var(--text-strong)" }}
-        >
-          {COPY.title}
-        </div>
-        <div
-          style={{
-            fontSize: 12.5,
-            color: "var(--text-body)",
-            lineHeight: 1.5,
-            marginTop: 4,
-          }}
-        >
-          {COPY.lead}
-        </div>
+      <div className="st__block-body">
+        <div className="st__block-title">{COPY.title}</div>
+        <div className="st__block-lead">{COPY.lead}</div>
       </div>
     </div>
   );
@@ -97,25 +85,9 @@ function RevealedPhrase({
     setTimeout(() => setCopied(false), 1600);
   }, [phrase]);
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div
-        style={{
-          background: "var(--surface-card)",
-          borderRadius: "var(--radius-lg)",
-          padding: 14,
-          boxShadow: "var(--shadow-sm)",
-          fontFamily: "var(--font-mono, ui-monospace, monospace)",
-          fontSize: 15,
-          fontWeight: 600,
-          lineHeight: 1.7,
-          letterSpacing: "0.02em",
-          color: "var(--text-strong)",
-          wordBreak: "break-all",
-        }}
-      >
-        {phrase}
-      </div>
-      <div style={{ display: "flex", gap: 8 }}>
+    <div className="st__form">
+      <div className="st__doc">{phrase}</div>
+      <div className="st__buttons">
         <Button
           variant="secondary"
           size="sm"
@@ -172,20 +144,10 @@ function ConfirmGate({
   }, [onVerify, onReveal]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div
-        style={{ fontSize: 12.5, color: "var(--text-body)", lineHeight: 1.5 }}
-      >
-        {COPY.warn}
-      </div>
-      {failed && (
-        <div
-          style={{ fontSize: 12.5, color: "var(--text-body)", lineHeight: 1.5 }}
-        >
-          {COPY.verifyFailed}
-        </div>
-      )}
-      <div style={{ display: "flex", gap: 10 }}>
+    <div className="st__form">
+      <div className="st__note">{COPY.warn}</div>
+      {failed && <div className="st__note">{COPY.verifyFailed}</div>}
+      <div className="st__buttons">
         {passkeyEnrolled ? (
           <Button
             variant="primary"
@@ -230,18 +192,12 @@ export function RecoveryPhrase({
 
   if (phrase === null) {
     return (
-      <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className="st__block">
         <CardTitle />
-        <div
-          style={{
-            fontSize: 12.5,
-            color: "var(--text-muted)",
-            lineHeight: 1.5,
-          }}
-        >
+        <div className="st__note">
           {COPY.fallbackLead} {COPY.fallbackBody}
         </div>
-      </Card>
+      </div>
     );
   }
 
@@ -252,7 +208,7 @@ export function RecoveryPhrase({
   const verify = onVerifyPasskey ?? (() => Promise.resolve(true));
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="st__block">
       <CardTitle />
       {phase === "collapsed" && (
         <Button
@@ -275,6 +231,6 @@ export function RecoveryPhrase({
       {phase === "revealed" && (
         <RevealedPhrase phrase={phrase} onHide={() => setPhase("collapsed")} />
       )}
-    </Card>
+    </div>
   );
 }

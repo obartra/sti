@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Card, Field, Input } from "../../design/components/index.ts";
+import { Field, Input } from "../../design/components/index.ts";
+import "./settings.css";
 
 // The local display name editor on Settings: change or clear the name we greet
 // you by (the account `handle`, doc 16). It is a device-local label, so it saves
@@ -64,30 +65,13 @@ export function NameCard({
   }, []);
 
   return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 12 }}
-    >
+    <div className="st__block">
       <Field
         label={
-          <span
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              justifyContent: "space-between",
-              gap: 8,
-            }}
-          >
+          <span className="st__field-label">
             <span>{COPY.label}</span>
             {saved && (
-              <span
-                aria-live="polite"
-                style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: "var(--text-accent)",
-                }}
-              >
+              <span aria-live="polite" className="st__saved">
                 {COPY.saved}
               </span>
             )}
@@ -105,6 +89,6 @@ export function NameCard({
           }}
         />
       </Field>
-    </Card>
+    </div>
   );
 }

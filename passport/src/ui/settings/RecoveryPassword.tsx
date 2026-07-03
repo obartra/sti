@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Card, Field, Input } from "../../design/components/index.ts";
+import { Button, Field, Input } from "../../design/components/index.ts";
+import "../core/settings.css";
 import { Lock } from "../../design/icons.tsx";
 import {
   normalizeVanityName,
@@ -119,26 +120,13 @@ function usePasswordStrength(password: string): string | null {
 
 function Header({ lead }: { lead: string }) {
   return (
-    <div style={{ display: "flex", gap: 10 }}>
-      <span style={{ color: "var(--text-accent)", flex: "none", marginTop: 1 }}>
+    <div className="st__block-head">
+      <span aria-hidden className="st__block-icon">
         <Lock size={18} />
       </span>
-      <div style={{ flex: 1 }}>
-        <div
-          style={{ fontSize: 14, fontWeight: 800, color: "var(--text-strong)" }}
-        >
-          {COPY.title}
-        </div>
-        <div
-          style={{
-            fontSize: 12.5,
-            color: "var(--text-body)",
-            lineHeight: 1.5,
-            marginTop: 4,
-          }}
-        >
-          {lead}
-        </div>
+      <div className="st__block-body">
+        <div className="st__block-title">{COPY.title}</div>
+        <div className="st__block-lead">{lead}</div>
       </div>
     </div>
   );
@@ -146,11 +134,7 @@ function Header({ lead }: { lead: string }) {
 
 function ErrorLine({ text }: { text: string | null }) {
   if (text === null) return null;
-  return (
-    <div style={{ fontSize: 12.5, color: "var(--status-expired-fg)" }}>
-      {text}
-    </div>
-  );
+  return <div className="st__error">{text}</div>;
 }
 
 // The current form values plus the submit-time error, kept in one hook so SetupForm
@@ -221,13 +205,9 @@ function SetupForm({
   );
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <div className="st__block">
       <Header lead={COPY.offLead} />
-      <div
-        style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}
-      >
-        {COPY.backstop}
-      </div>
+      <div className="st__note">{COPY.backstop}</div>
       <SetupFields
         s={s}
         nameBad={nameBad}
@@ -236,7 +216,7 @@ function SetupForm({
         blocked={blocked}
         submit={submit}
       />
-    </Card>
+    </div>
   );
 }
 
@@ -257,10 +237,7 @@ function SetupFields({
   submit: (e: React.SyntheticEvent) => void;
 }) {
   return (
-    <form
-      onSubmit={submit}
-      style={{ display: "flex", flexDirection: "column", gap: 12 }}
-    >
+    <form onSubmit={submit} className="st__form">
       <Field
         label={COPY.nameLabel}
         htmlFor="recovery-name"
@@ -362,24 +339,12 @@ function EnabledView({
   }, [ops]);
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="st__block">
       <Header lead={COPY.onLead} />
-      <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-        {COPY.yourName}
-      </div>
-      <div
-        style={{
-          fontFamily: "var(--font-mono, ui-monospace, monospace)",
-          fontSize: 17,
-          fontWeight: 700,
-          color: "var(--text-strong)",
-          wordBreak: "break-all",
-        }}
-      >
-        {name}
-      </div>
+      <div className="st__value-label">{COPY.yourName}</div>
+      <div className="st__mono">{name}</div>
       <ErrorLine text={error} />
-      <div style={{ display: "flex", gap: 10 }}>
+      <div className="st__buttons">
         <Button
           variant="secondary"
           size="md"
@@ -392,6 +357,6 @@ function EnabledView({
           {busy ? COPY.turningOff : COPY.turnOff}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }
