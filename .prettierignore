@@ -22,6 +22,9 @@ info/src/env.d.ts
 # Authored design docs: source of truth for the rendered labs pages, left verbatim.
 labs/docs
 
+# Authored video kit: prompts, guides, and generated media, left verbatim.
+labs/video
+
 # Design system, kept verbatim in sync with the source zip.
 passport/src/design
 

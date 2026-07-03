@@ -1,0 +1,11 @@
+# shot1-cold-open  (~3s, 9x16)
+
+Extreme close-up of one hand holding a modern smartphone, a thumb slowly typing. Framed over the shoulder from a high angle so that no face is ever visible, only the hand and the phone. Cozy home interior softly blurred behind, warm morning daylight through a window just out of frame. The phone screen emits a soft glow but its content is abstract and indistinct, no readable interface. The camera pushes in a few centimeters, very slowly. Calm, private, unhurried.
+
+FORMAT: aspect ratio 9:16, vertical, composed for a phone screen. Keep the subject centered and lower in frame, leaving clear negative space in the upper third for a caption added later.
+
+STYLE: calm, warm, editorial, cinematic, minimalist. Soft natural daylight, gentle and unhurried. Shallow depth of field, 50mm look, subtle film grain. Color palette dominated by a warm off-white (#FBF9F4) with near-black navy ink tones (#1B1B2F) and a single calm teal accent (#2F9BB3); no other saturated colors, not dark, not neon. Motion is slow and understated, no fast moves, no bounce, no whip pans. Quiet, reassuring, intimate mood.
+
+AUDIO: soft key taps, quiet room tone, a distant bird. No music.
+
+AVOID: any visible human faces, recognizable people, text, captions, subtitles, UI text, app screenshots, logos, watermarks, brand marks, fast motion, camera shake, lens flares, neon, high saturation, dark or moody grading, clinical or hospital setting, stock-ad cheerfulness, dramatic lighting.

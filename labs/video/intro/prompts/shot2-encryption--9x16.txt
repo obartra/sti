@@ -1,0 +1,11 @@
+# shot2-encryption  (~5s, 9x16)
+
+Macro shot of a smartphone screen resting in an open hand. Fine particles of luminous teal light (#2F9BB3) gently lift off the glass surface and drift upward, as though written marks are dissolving into weightless glowing dust. No readable text at any point, only the poetic transformation of soft glowing marks into rising, shimmering teal particles. Warm off-white surroundings far out of focus. Slow, airy, weightless motion. Cinematic macro, shallow depth of field.
+
+FORMAT: aspect ratio 9:16, vertical, composed for a phone screen. Keep the subject centered and lower in frame, leaving clear negative space in the upper third for a caption added later.
+
+STYLE: calm, warm, editorial, cinematic, minimalist. Soft natural daylight, gentle and unhurried. Shallow depth of field, 50mm look, subtle film grain. Color palette dominated by a warm off-white (#FBF9F4) with near-black navy ink tones (#1B1B2F) and a single calm teal accent (#2F9BB3); no other saturated colors, not dark, not neon. Motion is slow and understated, no fast moves, no bounce, no whip pans. Quiet, reassuring, intimate mood.
+
+AUDIO: a soft airy shimmer, quiet room tone. No music.
+
+AVOID: any visible human faces, recognizable people, text, captions, subtitles, UI text, app screenshots, logos, watermarks, brand marks, fast motion, camera shake, lens flares, neon, high saturation, dark or moody grading, clinical or hospital setting, stock-ad cheerfulness, dramatic lighting.
