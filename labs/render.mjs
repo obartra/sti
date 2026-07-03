@@ -118,7 +118,7 @@ function addAnchors(html) {
 }
 
 // Decision-status pills. The decisions doc tags each bullet with a status word
-// (LOCKED, REJECTED, …) as a bold lead-in: `**LOCKED — headline.**`. We turn that
+// (LOCKED, REJECTED, …) as a bold lead-in: `**LOCKED. headline.**`. We turn that
 // lead-in into a hoverable icon+word pill and keep the headline bold, then drop a
 // legend at the top so the icons are never cryptic. Pure string rewrite on the
 // rendered HTML; no JS ships to the page (the tooltip is a native `title`).
@@ -127,7 +127,7 @@ const STATUS = {
     label: "Locked",
     icon: "🔒",
     cls: "locked",
-    def: "Decided — won't reopen without a strong new reason.",
+    def: "Decided: won't reopen without a strong new reason.",
   },
   BUILT: {
     label: "Built",
@@ -151,7 +151,7 @@ const STATUS = {
     label: "Open",
     icon: "❓",
     cls: "open",
-    def: "Not yet decided — wants outside input.",
+    def: "Not yet decided: wants outside input.",
   },
   LIMIT: {
     label: "Limit",
@@ -175,10 +175,11 @@ const scopeChip = (scope) =>
   `<span class="pill pill-scope" title="${esc(SCOPE_DEF[scope] || scope)}">${esc(scope)}</span>`;
 
 // Match a bold lead-in that *starts* with a known status word: an optional
-// `+ BUILT` companion, an optional `(MVP)` / `(Post-MVP)` scope, then an em dash.
-// Anchored on the status keyword, so ordinary bold headlines are left untouched.
+// `+ BUILT` companion, an optional `(MVP)` / `(Post-MVP)` scope, then the
+// delimiter (a period or colon; the doc carries no em dashes). Anchored on the
+// status keyword, so ordinary bold headlines are left untouched.
 const STATUS_RE =
-  /<strong>\s*(LOCKED|BUILT|REJECTED|DEFERRED|OPEN|LIMIT)(?:\s*\+\s*(BUILT))?(?:\s*\((MVP|Post-MVP)\))?\s*—\s*/g;
+  /<strong>\s*(LOCKED|BUILT|REJECTED|DEFERRED|OPEN|LIMIT)(?:\s*\+\s*(BUILT))?(?:\s*\((MVP|Post-MVP)\))?\s*[.:]\s+/g;
 
 function legend() {
   const rows = Object.values(STATUS)
@@ -320,7 +321,7 @@ mkdirSync(join(OUT, "docs"), { recursive: true });
 for (const d of config.docs) {
   const md = readFileSync(join(HERE, "docs", d.file), "utf8");
   const h1 = md.match(/^#\s+(.+)$/m);
-  const pageTitle = `${d.title} — ${config.title}`;
+  const pageTitle = `${d.title} · ${config.title}`;
   const rendered = addAnchors(statusPills(rewriteDocLinks(marked.parse(md))));
   const body = `      <a class="back" href="/">← ${esc(config.title)}</a>
 ${tocBlock(rendered.toc)}      <article class="prose">
@@ -391,12 +392,12 @@ console.error("  index.html  (landing)");
 
 // ---- 404 page ----
 // Labs has no client-side URL routing (docs are real files; the prototype
-// navigates in-app), so an unknown path is a genuine miss — serve an honest,
+// navigates in-app), so an unknown path is a genuine miss, so serve an honest,
 // branded "not found" rather than the SPA-style copy of the landing page.
 // publish.sh sees this file exists and skips its SPA fallback.
 const notFoundBody = `      <h1>404</h1>
       <p class="tagline">Page not found</p>
-      <p class="lead">That page isn't here — it may have moved, or the link may be off.</p>
+      <p class="lead">That page isn't here. It may have moved, or the link may be off.</p>
       <nav class="crossnav" style="margin-top: 22px">
         <a href="/">${esc(config.title)}</a>
         <a href="${esc(p.path)}">${esc(p.label)}</a>
@@ -407,7 +408,7 @@ const notFoundBody = `      <h1>404</h1>
 writeFileSync(
   join(OUT, "404.html"),
   page({
-    title: `Page not found — ${config.title}`,
+    title: `Page not found · ${config.title}`,
     description: "That page isn't here.",
     bodyClass: "",
     body: notFoundBody,
