@@ -12,7 +12,10 @@ feedback link at the bottom.*
 
 An app that fights STI/HIV stigma in product form: make testing and disclosure ordinary, and
 help people make science-based decisions, without the clean/dirty framing. It is harm
-reduction, never a filter that sorts people or decides who may have sex.
+reduction, never a filter that sorts people or decides who may have sex. It is live at
+[sti.care](https://sti.care), which makes these questions more urgent, not less: some of the
+calls below are built and running, and I would still rather hear I got one wrong now than
+keep shipping on top of it.
 
 How it works:
 
@@ -73,6 +76,11 @@ committing the app to honest info pages on the differences instead of encoding a
 PrEP/U=U, or am I flattening a difference that matters? Does leaning on education-instead-of-
 ranking read as honest or as a dodge?
 
+A residual inside this one: wearing "condoms always" *without* the HIV-prevention label
+weakly implies "HIV-negative and not on PrEP." I've accepted that as the lesser harm (the
+three-state condom preference softens it compared to a binary), but I'd value a check on
+that acceptance.
+
 ### 3. Language
 
 Banned: clean, dirty, clear, healthy, safe, disease-free, "negative" as an identity. The
@@ -90,26 +98,34 @@ moralizing. But intent and impact differ.
 sharing app — however carefully built — inevitably make poz people feel sorted and
 surveilled? Is this a tool you'd want to exist?
 
-### 5. Circles, and the "clean club" risk
+### 5. Groups, and the "clean club" risk
 
-Groups let people share status within a trusted set and get anonymous "go test" nudges if
-someone tests positive. I've kept them mutual-care, not exclusionary (no rankings, no counts,
-joining/leaving looks ordinary; being in a group is itself the sharing, and you join under a
-handle you choose).
+Groups are built and live: people share status within a trusted set and get anonymous "go
+test" nudges if someone tests positive. The shape that shipped is deliberately mutual-care,
+not exclusionary: no rankings, no counts, joining/leaving looks ordinary, being in a group is
+itself the sharing, you join under a handle you choose, and I rejected letting groups set a
+testing-cadence bar ("tested within 30 days to belong" implies a verifiable standard the
+system can't provide, and it's the door I don't want to exist).
 
-**Question:** does a group construct inevitably drift toward "you have to be blue to belong" —
-a serosorting club — no matter how it's framed? Where's the line between "we look out for each
-other" and "we keep the wrong people out"?
+**Question:** with the construct real, does it still drift toward "you have to be blue to
+belong," a serosorting club, no matter how it's framed? If you've seen group dynamics like
+this elsewhere (WhatsApp circles, party lists, PnP communities), what drift should I be
+watching for that the design doesn't already block?
 
 ### 6. What counts as a "known active infection"
 
-Untreated gonorrhea/chlamydia/syphilis would gray someone until treated; detectable HIV until
-suppressed. But **chronic lifelong conditions like HSV and HPV must not permanently gray
-people** — almost every sexually active adult has been exposed to HPV, and graying someone
-forever over herpes would be cruel.
+This line is now decided and built: untreated gonorrhea/chlamydia/syphilis gray someone until
+treated; detectable HIV until suppressed; **chronic lifelong conditions like HSV and HPV
+never gray anyone** (almost every sexually active adult has been exposed to HPV, and graying
+someone forever over herpes would be cruel). Prior-treated syphilis serology doesn't break
+"clear" either; only a genuine reinfection does. For a transient high-transmission moment
+like a visible HSV outbreak, the answer is the ordinary pause: voluntarily gray, identical to
+every other gray, no reason shown, and the education teaches that pausing during an outbreak
+is the considerate move.
 
-**Question:** does that line feel right? Anything about how the app treats chronic vs. acute
-conditions that would feel stigmatizing to people living with HSV/HPV?
+**Question:** does that built line feel right from the inside? Anything about how the app
+treats chronic vs. acute conditions, or about teaching "pause during an outbreak" as the
+considerate move, that would feel stigmatizing to people living with HSV/HPV?
 
 ### 7. The partner-notification feel
 
@@ -122,15 +138,17 @@ making it hard just pushes people toward telling no one.
 **Question:** does that feel supportive or accusatory on the *receiving* end? Could a content-
 free "go get tested" from an unknown source land as *more* alarming than a direct conversation?
 
-### 8. Verification, as a private check
+### 8. Verification, as a private check (decided, still uneasy)
 
-There are no "verified" badges: a verified tier re-creates ranking, and trustworthy
-verification would mean linking a real medical record to an identity the model deliberately
-doesn't hold. One middle path is to let someone optionally check a lab result on their own
-device as a private confidence aid, never shown to anyone and never a separate badge.
+Viewer-visible verification is rejected outright: a verified tier re-creates ranking, and
+trustworthy verification would mean linking a real medical record to an identity the model
+deliberately doesn't hold. What remains deferred is the middle path: letting someone
+optionally check a lab result on their own device as a private confidence aid, input-only,
+never shown to anyone, never changing what a viewer sees in any version.
 
-**Question:** is a private-only verification check worth building, or does even an optional one
-start dragging the product back toward proof and ranking?
+**Question:** is even that input-only check worth ever building, or does an optional private
+one still start dragging the product back toward proof and ranking? I've deferred it rather
+than killed it, and I'm not sure that's conviction or indecision.
 
 ### 9. Is a fresh "all clear" too frictionless? (the testing window)
 
@@ -149,9 +167,10 @@ badge exists to prevent.
 result came back, and when — factor into blue more honestly (capture per-result dates or a "not
 back yet" input, and hold blue until the slowest-seroconverting piece is both in and past its
 window), or does that pile on friction and a leak surface for a nuance most people won't model
-correctly anyway?
+correctly anyway? Today the residual is explainer-only and the decisions log carries this
+exact item as "for outside review"; any sharper handling would stay on-device and never show.
 
-### 10. Should detectable-HIV-in-care reach blue through the condom route?
+### 10. Should detectable-HIV-in-care reach blue through the condom route? (decided, still uneasy)
 
 Today detectable HIV is an active infection on the clearance axis, so no route reaches blue until
 suppressed. But the app already treats condoms as equal-tier HIV prevention (question 2), and blue
@@ -174,8 +193,9 @@ anonymous design I chose in question 7. So the badge change wouldn't stay contai
 
 **Question:** is treating detectable HIV as an absolute clearance blocker the right call, or is it
 the clean/dirty line sneaking back in? If condoms genuinely count as prevention, can the app justify
-accepting them for negatives but not for a detectable person in care? I lean toward keeping the
-blocker, but I want outside eyes on whether that's principled or just fear.
+accepting them for negatives but not for a detectable person in care? The blocker is what shipped
+(it is locked in the decisions log), but I want outside eyes on whether keeping it is principled
+or just fear; this is the decision I would most readily reopen for a strong argument.
 
 ### 11. Anything I'm not seeing
 
