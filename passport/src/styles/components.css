@@ -82,12 +82,16 @@
 }
 
 /* The artifact exception: the badge card (and only it) keeps object-ness.
-   Hairline border, restrained shadow, generous radius; never a glow. */
+   The certificate treatment: a double printed rule, the outer strong
+   hairline plus an inset warm rule, completely flat; never a shadow,
+   never a glow. */
 .e-artifact {
   background: var(--surface-card);
   border: var(--hairline-strong);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-md);
+  box-shadow:
+    inset 0 0 0 5px var(--surface-card),
+    inset 0 0 0 6px var(--warm-200);
 }
 
 /* ------------------------------------------------------------------ rows --- */
