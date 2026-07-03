@@ -55,8 +55,8 @@ const FONTS = `
     />`;
 
 const FOOTER = `<footer>
-        <a href="https://sti.care">sti.care</a> · prototypes and design notes ·
-        not medical advice
+        <a href="https://sti.care">sti.care</a> · design notes · not medical
+        advice
       </footer>`;
 
 function page({ title, description, bodyClass, body }) {
@@ -78,6 +78,22 @@ ${body}
   </body>
 </html>
 `;
+}
+
+// Cross-doc links: the markdown links docs to each other by filename
+// (`[title](02-decisions.md)`). Rewrite links to PUBLISHED docs onto their
+// live /docs/<slug> URL; unwrap links to unpublished docs into plain text so
+// a published page never ships a dead link.
+const FILE_TO_SLUG = new Map(config.docs.map((d) => [d.file, d.slug]));
+
+function rewriteDocLinks(html) {
+  return html.replace(
+    /<a href="(\d{2}-[\w-]+\.md)(#[^"]*)?">([\s\S]*?)<\/a>/g,
+    (_m, file, hash, text) => {
+      const slug = FILE_TO_SLUG.get(file);
+      return slug ? `<a href="/docs/${slug}${hash || ""}">${text}</a>` : text;
+    },
+  );
 }
 
 // Add stable ids to h2/h3 so deep links work, and collect h2s for a TOC.
@@ -211,7 +227,7 @@ function tocBlock(toc) {
 
 function crossnav(currentSlug) {
   const links = [
-    `<a href="${esc(config.prototype.path)}">${esc(config.prototype.label)} prototype</a>`,
+    `<a href="${esc(config.prototype.path)}">${esc(config.prototype.label)}</a>`,
   ];
   for (const d of config.docs) {
     if (d.slug === currentSlug) continue;
@@ -248,7 +264,7 @@ for (const d of config.docs) {
   const md = readFileSync(join(HERE, "docs", d.file), "utf8");
   const h1 = md.match(/^#\s+(.+)$/m);
   const pageTitle = `${d.title} — ${config.title}`;
-  const rendered = addAnchors(statusPills(marked.parse(md)));
+  const rendered = addAnchors(statusPills(rewriteDocLinks(marked.parse(md))));
   const body = `      <a class="back" href="/">← ${esc(config.title)}</a>
 ${tocBlock(rendered.toc)}      <article class="prose">
 ${rendered.html}
@@ -286,9 +302,9 @@ const landingBody = `      <h1>${esc(config.title)}</h1>
       <p class="lead">${esc(config.intro)}</p>
 
       <section>
-        <div class="seclabel">Prototype</div>
+        <div class="seclabel">${esc(p.heading || "The product")}</div>
         <a class="feature" href="${esc(p.path)}">
-          <span class="badge">Live prototype</span>
+          <span class="badge">Live</span>
           <span class="ftitle">${esc(p.label)}</span>
           <p class="fblurb">${esc(p.blurb)}</p>
           <span class="fcta">${esc(p.cta)} →</span>
@@ -326,7 +342,7 @@ const notFoundBody = `      <h1>404</h1>
       <p class="lead">That page isn't here — it may have moved, or the link may be off.</p>
       <nav class="crossnav" style="margin-top: 22px">
         <a href="/">${esc(config.title)}</a>
-        <a href="${esc(p.path)}">${esc(p.label)} prototype</a>
+        <a href="${esc(p.path)}">${esc(p.label)}</a>
       </nav>
 
       ${FOOTER}`;
