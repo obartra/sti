@@ -39,7 +39,22 @@ restating it. A new doc is not done until the whole set still reads as one coher
 
 ## Gates before a PR
 
-- `(cd passport && npm run typecheck && npm run lint && npm run test && npm run build && npm run build-storybook)` (passport is npm-based, not pnpm; the Makefile and CI invoke it the same way)
-- `npx prettier --check .` from the repo root (passport's lint is eslint-only and misses formatting)
-- `(cd server && go build ./... && go test ./... && go vet ./... && gofmt -l internal/ cmd/)`
-- No em dashes anywhere (code, copy, docs, commits). Visual/baseline changes regenerate via the `screenshot:update` PR label, never hand-edited.
+Run `make check` from the repo root before opening a PR. It is the canonical fast
+pre-push gate and runs strictly more than any hand-rolled subset:
+
+- `check-root`: inclusive-language, prettier, eslint, node tests.
+- `check-web` (passport): eslint, `lint:styles` (the doc 37 ratchet), typecheck,
+  `knip` unused-code, unit tests.
+- `check-info`: astro check, voice lint, style lint, build.
+- `check-server`: gofmt, vet, deadcode, go test, alert-script tests.
+
+`make ci` mirrors everything CI runs on top of that (integration, e2e, vulncheck,
+smoke). Prefer these targets over running pieces by hand: `lint:styles` and `knip` are
+the two easiest to forget, and they only fail once CI runs after you have pushed.
+
+- New user-facing UI follows the editorial grammar (doc 37): the passport style-lint
+  ratchet rejects any new inline `style={}`, raw hex color, or use of the stranded
+  `Card` / `Badge` / `Row` / `Segmented` components. Build new screens with the `.e-*`
+  classes and a co-located CSS file (tokens only, no raw hex), never inline styles.
+- No em dashes anywhere (code, copy, docs, commits). Visual/baseline changes regenerate
+  via the `screenshot:update` PR label, never hand-edited.
