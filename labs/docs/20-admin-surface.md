@@ -152,6 +152,18 @@ chrome and is never linked from the app.
   background-loop heartbeat age (-1 if it has never run), and current concurrency against its cap. The
   same blind telemetry `/metrics` exposes, read straight from the in-process counters plus one store
   sample. No per-account or per-id figures; a read, so not itself audited.
+- `GET /admin/logs`: the service's most recent log lines, newest first (`limit`, capped at the
+  buffer; `level` filters to one level). Served from an in-process ring buffer that tees the
+  process logger, so the hardened service user needs no journal access and the buffer starts empty
+  on every boot (the box's journal stays the deep archive). Log lines are already bounded by
+  [doc 12](12-observability-and-metrics.md) §4 (a static message, a count, an `err` value, a
+  config string at startup; never an id, token, IP, or user-typed text), and that rule is now
+  load-bearing for this surface. A read, so not itself audited.
+- `POST /admin/restart` (audit verb `server.restart`): a graceful self-restart. The audit row lands
+  first, the 202 flushes, then the process drains in-flight requests (the same path a signal takes)
+  and exits with a deliberate, distinct non-zero code, so the unit's `Restart=on-failure` revives it
+  a couple of seconds later. The hardened service user cannot call `systemctl` (no privileges by
+  design), so exit-and-be-revived is the whole mechanism; no unit or provision change is needed.
 
 Every mutation writes an audit row and returns a uniform shape; none returns plaintext content.
 

@@ -23,6 +23,7 @@ import (
 	"unicode/utf8"
 
 	"sti.care/api/internal/contract"
+	"sti.care/api/internal/logring"
 	"sti.care/api/internal/metrics"
 	"sti.care/api/internal/store"
 	"sti.care/api/internal/vanityname"
@@ -124,6 +125,15 @@ type Config struct {
 	// Zero leaves the defaults (20/sec, burst 100).
 	RecoveryGlobalPerSec float64
 	RecoveryGlobalBurst  float64
+	// LogRing is the in-process buffer of recent log lines GET /admin/logs serves
+	// (doc 20). nil (the default) serves an empty list; main.go wires the ring
+	// that tees the process logger, so the endpoint shows exactly what stdout got.
+	LogRing *logring.Ring
+	// RequestRestart asks the process to restart itself: POST /admin/restart
+	// calls it after the audit row lands and the 202 flushes. nil (the default)
+	// makes the endpoint a 500; only main.go can provide the drain-and-exit,
+	// since restart is a process-level action (doc 20).
+	RequestRestart func()
 }
 
 func (c *Config) withDefaults() {
