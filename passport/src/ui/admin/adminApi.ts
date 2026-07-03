@@ -223,69 +223,6 @@ export async function getAdminMetrics(
   return { kind: "ok", metrics: { ...ZERO_METRICS, ...r.body } };
 }
 
-// --- Service health (doc 20) ------------------------------------------------
-
-const ADMIN_HEALTH_PATH = "/admin/health";
-
-/** One subsystem's internal-error count in the health snapshot (mirrors the server's
- * AdminErrorCount): a fixed subsystem name and a running total, never a message. */
-interface AdminErrorCount {
-  type: string;
-  count: number;
-}
-
-/** Aggregate, identifier-free operational-health signals (mirrors the server's
- * AdminHealthResponse). Surfaces a backing-up send queue, a stalled background loop,
- * or a rise in internal errors so they are visible on the page instead of only by
- * reading /metrics on the box. Every field is a count, an age, or a system size,
- * never a per-account or per-id figure (doc 12 / doc 20). `janitorAgeSeconds` is -1
- * when the background loop has never run. */
-export interface AdminHealth {
-  errors: AdminErrorCount[];
-  sendQueueDepth: number;
-  sendQueueOldestAgeSeconds: number;
-  janitorAgeSeconds: number;
-  inflightCurrent: number;
-  inflightMax: number;
-}
-
-export type AdminHealthResult =
-  | { kind: "ok"; health: AdminHealth }
-  | { kind: "unauthorized" }
-  | { kind: "error" };
-
-const ZERO_HEALTH: Omit<AdminHealth, "errors"> = {
-  sendQueueDepth: 0,
-  sendQueueOldestAgeSeconds: 0,
-  janitorAgeSeconds: -1,
-  inflightCurrent: 0,
-  inflightMax: 0,
-};
-
-/**
- * Fetch the aggregate health snapshot for the console's health panel. Same error
- * shape as the other reads: 401 surfaces distinctly so the page can re-lock; any
- * other non-200, a network failure, or a malformed body is a generic error the panel
- * shows with a retry. Missing fields default (errors to empty, ages/counts to 0, the
- * heartbeat age to the -1 "never ran" flag) so a partial body never renders NaN.
- */
-export async function getAdminHealth(
-  apiBase: string,
-  token: string,
-  fetchImpl: FetchLike = (input, init) => globalThis.fetch(input, init),
-): Promise<AdminHealthResult> {
-  const r = await adminGetJson<Partial<AdminHealth>>(
-    apiBase + ADMIN_HEALTH_PATH,
-    token,
-    fetchImpl,
-  );
-  if (r.kind !== "ok") return r;
-  return {
-    kind: "ok",
-    health: { ...ZERO_HEALTH, ...r.body, errors: r.body.errors ?? [] },
-  };
-}
-
 // --- Aggregate trends (doc 20 metrics panel) --------------------------------
 
 const ADMIN_TRENDS_PATH = "/admin/trends";

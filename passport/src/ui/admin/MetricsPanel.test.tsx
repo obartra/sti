@@ -31,6 +31,18 @@ const sampleTrends: AdminTrends = {
   ],
 };
 
+const samplePerf = {
+  requestsPerDay: [
+    { day: Math.floor(Date.UTC(2026, 5, 24) / DAY_MS), count: 7 },
+    { day: Math.floor(Date.UTC(2026, 5, 25) / DAY_MS), count: 11 },
+  ],
+  latency: [
+    { underMs: 1, count: 5 },
+    { underMs: 5, count: 2 },
+    { underMs: 0, count: 0 },
+  ],
+};
+
 function okOps(
   metrics: AdminMetrics,
   trends: AdminTrends = sampleTrends,
@@ -38,6 +50,7 @@ function okOps(
   return {
     get: () => Promise.resolve({ kind: "ok", metrics }),
     getTrends: () => Promise.resolve({ kind: "ok", trends }),
+    getPerf: () => Promise.resolve({ kind: "ok", perf: samplePerf }),
   };
 }
 
@@ -69,11 +82,9 @@ describe("MetricsPanel", () => {
     );
     // The two trend chart headings render once the (separate) trends read resolves.
     expect(
-      await screen.findByText("Reports filed per day"),
+      await screen.findByText("Accounts created per day"),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("How long open reports have waited"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("How fast requests finish")).toBeInTheDocument();
     // Aggregate-only: nothing per-account or per-id is ever rendered. No id-shaped or
     // "account #N" label leaks into the panel.
     expect(screen.queryByText(/account #/i)).not.toBeInTheDocument();
@@ -88,6 +99,7 @@ describe("MetricsPanel", () => {
         ops={{
           get: () => Promise.resolve({ kind: "unauthorized" }),
           getTrends: () => Promise.resolve({ kind: "unauthorized" }),
+          getPerf: () => Promise.resolve({ kind: "unauthorized" }),
         }}
         onUnauthorized={onUnauthorized}
       />,
@@ -107,6 +119,7 @@ describe("MetricsPanel", () => {
           get,
           getTrends: () =>
             Promise.resolve({ kind: "ok", trends: sampleTrends }),
+          getPerf: () => Promise.resolve({ kind: "ok", perf: samplePerf }),
         }}
         onUnauthorized={() => undefined}
       />,
@@ -128,6 +141,7 @@ describe("MetricsPanel", () => {
         ops={{
           get: () => Promise.resolve({ kind: "ok", metrics: sample }),
           getTrends,
+          getPerf: () => Promise.resolve({ kind: "ok", perf: samplePerf }),
         }}
         onUnauthorized={() => undefined}
       />,
@@ -137,7 +151,7 @@ describe("MetricsPanel", () => {
     expect(screen.getByText("Couldn't load trends.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(
-      await screen.findByText("Reports filed per day"),
+      await screen.findByText("Accounts created per day"),
     ).toBeInTheDocument();
   });
 });

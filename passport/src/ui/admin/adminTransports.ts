@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import {
   actOnVanityName,
   disableAccount,
-  getAdminHealth,
   getAdminMetrics,
   getAdminTrends,
   listAdminAudit,
@@ -13,7 +12,14 @@ import {
   resolveFeedback,
   revokeAlias,
 } from "./adminApi.ts";
-import { listAdminLogs, restartServer } from "./adminOpsApi.ts";
+import {
+  clearAdminErrors,
+  getAdminErrors,
+  getAdminHealth,
+  getAdminPerf,
+  listAdminLogs,
+  restartServer,
+} from "./adminOpsApi.ts";
 import type { ReviewOps } from "./ReviewPanel.tsx";
 import type { AuditOps } from "./ActivityPanel.tsx";
 import type { MetricsOps } from "./MetricsPanel.tsx";
@@ -22,6 +28,7 @@ import type { FeedbackOps } from "./FeedbackPanel.tsx";
 import type { ManageOps } from "./ManagePanel.tsx";
 import type { LogsOps } from "./LogsPanel.tsx";
 import type { RestartOps } from "./RestartPanel.tsx";
+import type { ErrorsOps } from "./ErrorsPanel.tsx";
 
 // The console's panel transports: each defaults to the real admin endpoints
 // bound to apiBase, or uses the injected stub (tests / Storybook). Split out of
@@ -37,6 +44,7 @@ export interface AdminTransportOverrides {
   manageOps?: ManageOps | undefined;
   logsOps?: LogsOps | undefined;
   restartOps?: RestartOps | undefined;
+  errorsOps?: ErrorsOps | undefined;
 }
 
 export interface AdminTransports {
@@ -48,6 +56,7 @@ export interface AdminTransports {
   manage: ManageOps;
   logs: LogsOps;
   restart: RestartOps;
+  errors: ErrorsOps;
 }
 
 export function useAdminTransports(
@@ -63,6 +72,7 @@ export function useAdminTransports(
     manageOps,
     logsOps,
     restartOps,
+    errorsOps,
   } = over;
   const ops = useMemo<ReviewOps>(
     () =>
@@ -83,6 +93,7 @@ export function useAdminTransports(
       metricsOps ?? {
         get: (t) => getAdminMetrics(apiBase, t),
         getTrends: (t) => getAdminTrends(apiBase, t),
+        getPerf: (t) => getAdminPerf(apiBase, t),
       },
     [metricsOps, apiBase],
   );
@@ -120,5 +131,26 @@ export function useAdminTransports(
       },
     [restartOps, apiBase],
   );
-  return { ops, audit, metrics, health, feedback, manage, logs, restart };
+  // The errors panel reads the per-day buckets plus the ERROR-level log lines
+  // (the issues rollup), and owns the audited clear.
+  const errors = useMemo<ErrorsOps>(
+    () =>
+      errorsOps ?? {
+        get: (t) => getAdminErrors(apiBase, t),
+        errorLines: (t) => listAdminLogs(apiBase, t, { level: "error" }),
+        clear: (t) => clearAdminErrors(apiBase, t),
+      },
+    [errorsOps, apiBase],
+  );
+  return {
+    ops,
+    audit,
+    metrics,
+    health,
+    feedback,
+    manage,
+    logs,
+    restart,
+    errors,
+  };
 }

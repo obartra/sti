@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, waitFor, within } from "storybook/test";
 import { HealthPanel, type HealthOps } from "./HealthPanel.tsx";
-import type { AdminHealth } from "./adminApi.ts";
+import type { AdminHealth } from "./adminOpsApi.ts";
 
 // The health panel (doc 20): the at-a-glance operational read. A single status chip
 // summarizes the box, the tiles break it down (errors, send queue, background-loop
@@ -19,24 +19,36 @@ const opsFor = (health: AdminHealth): HealthOps => ({
 });
 
 // The all-clear: nothing logged, an empty queue, a fresh heartbeat -> green chip.
+const ZERO_COUNTS = [
+  { type: "store", count: 0 },
+  { type: "enqueue", count: 0 },
+  { type: "janitor", count: 0 },
+  { type: "decode", count: 0 },
+];
+
 const CLEAR_HEALTH: AdminHealth = {
-  errors: [
-    { type: "store", count: 0 },
-    { type: "enqueue", count: 0 },
-    { type: "janitor", count: 0 },
-    { type: "decode", count: 0 },
-  ],
+  errors: ZERO_COUNTS,
+  errorsToday: ZERO_COUNTS,
   sendQueueDepth: 0,
   sendQueueOldestAgeSeconds: 0,
   janitorAgeSeconds: 8,
   inflightCurrent: 0,
   inflightMax: 64,
+  buildVersion: "8ab9eba6eb5b",
+  uptimeSeconds: 3600,
+  diskFreeBytes: 27 * 1024 * 1024 * 1024,
 };
 
 // Needs a look: a couple of logged errors and a small send-queue backlog -> amber chip
 // with the per-subsystem breakdown.
 const WARN_HEALTH: AdminHealth = {
   errors: [
+    { type: "store", count: 12 },
+    { type: "enqueue", count: 0 },
+    { type: "janitor", count: 173 },
+    { type: "decode", count: 3 },
+  ],
+  errorsToday: [
     { type: "store", count: 2 },
     { type: "enqueue", count: 0 },
     { type: "janitor", count: 0 },
@@ -47,6 +59,9 @@ const WARN_HEALTH: AdminHealth = {
   janitorAgeSeconds: 12,
   inflightCurrent: 1,
   inflightMax: 64,
+  buildVersion: "8ab9eba6eb5b",
+  uptimeSeconds: 2 * 24 * 3600 + 5 * 3600,
+  diskFreeBytes: 27 * 1024 * 1024 * 1024,
 };
 
 // The all-clear read: the green "All clear" chip and zeroed tiles.
