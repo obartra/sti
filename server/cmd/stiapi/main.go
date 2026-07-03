@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"sti.care/api/internal/logring"
 	"sti.care/api/internal/metrics"
 	"sti.care/api/internal/server"
 	"sti.care/api/internal/store"
@@ -28,8 +29,26 @@ import (
 // misconfigured deploy never exposes admin behind a weak token.
 const adminTokenMinLen = 32
 
+// logRingCapacity bounds the in-process buffer of recent log lines served at
+// GET /admin/logs (doc 20). At the service's log volume this is days of history
+// for a couple of MB; the buffer starts empty on every boot and the box's
+// journal stays the deep archive.
+const logRingCapacity = 5000
+
+// restartExitCode is the deliberate non-zero exit of an admin-requested restart.
+// The unit runs Restart=on-failure, which ignores a clean exit but revives this
+// one after RestartSec; distinct from 1 (boot/config failures) so the journal
+// shows an intended restart, not a crash.
+const restartExitCode = 3
+
 func main() {
-	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// Every log record also lands in an in-memory ring so the admin surface can
+	// show recent lines (doc 20); stdout (the journal) stays the primary sink.
+	ring := logring.New(logRingCapacity)
+	log := slog.New(logring.Tee(
+		slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
+		ring,
+	))
 
 	addr := env("STI_ADDR", ":8080")
 	dbPath := env("STI_DB_PATH", "sti.db")
@@ -156,9 +175,23 @@ func main() {
 	recoveryRate := envFloat("STI_RECOVERY_GLOBAL_RATE", 0)
 	recoveryBurst := envFloat("STI_RECOVERY_GLOBAL_BURST", 0)
 
+	// An admin-requested restart (POST /admin/restart) lands here: the same
+	// graceful drain as a signal, then a deliberate non-zero exit so systemd's
+	// Restart=on-failure brings the process back. Buffered + non-blocking so a
+	// double click can't wedge the handler.
+	restartCh := make(chan struct{}, 1)
+	requestRestart := func() {
+		select {
+		case restartCh <- struct{}{}:
+		default:
+		}
+	}
+
 	srv := server.New(st, server.Config{
 		DecoySecret:               secret,
 		AllowedOrigins:            allowedOrigins,
+		LogRing:                   ring,
+		RequestRestart:            requestRestart,
 		NotifyEnabled:             notifyEnabled,
 		Sender:                    sender,
 		VAPIDPublicKey:            vapidPublic,
@@ -258,14 +291,25 @@ func main() {
 		}()
 	}
 
-	<-ctx.Done()
-	log.Info("shutting down")
+	restart := false
+	select {
+	case <-ctx.Done():
+		log.Info("shutting down")
+	case <-restartCh:
+		restart = true
+		log.Info("restarting (admin requested)")
+		stop() // stop the background loop like a signal would
+	}
 	saveMetrics(metricsState, srv, log) // final snapshot before exit
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = httpSrv.Shutdown(shutdownCtx)
 	if metricsSrv != nil {
 		_ = metricsSrv.Shutdown(shutdownCtx)
+	}
+	if restart {
+		// The drain is done; exit non-zero on purpose (see restartExitCode).
+		os.Exit(restartExitCode)
 	}
 }
 

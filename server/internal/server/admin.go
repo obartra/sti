@@ -30,6 +30,7 @@ const (
 	auditActionAccountDisable  = "account.disable"
 	auditActionAliasRevoke     = "alias.revoke"
 	auditActionFeedbackResolve = "feedback.resolve"
+	auditActionServerRestart   = "server.restart"
 )
 
 // adminReportsLimit caps the review queue page. The queue is operator-facing and
@@ -120,6 +121,12 @@ func (s *Server) registerAdminRoutes() {
 	s.mux.HandleFunc("POST /admin/account/{id}/disable", s.requireAdmin(s.handleAccountDisable))
 	s.mux.HandleFunc("POST /admin/alias/{id}/revoke", s.requireAdmin(s.handleAliasRevoke))
 	s.mux.HandleFunc("GET /admin/lookup/{id}", s.requireAdmin(s.handleAdminLookup))
+	// The service's own recent log lines (doc 20): the in-process buffer, so an
+	// operator can read errors without journal access on the box.
+	s.mux.HandleFunc("GET "+contract.PathAdminLogs, s.requireAdmin(s.handleAdminLogs))
+	// Audited graceful self-restart (doc 20): the process drains and exits with a
+	// deliberate non-zero code so systemd's Restart=on-failure revives it.
+	s.mux.HandleFunc("POST "+contract.PathAdminRestart, s.requireAdmin(s.handleAdminRestart))
 }
 
 // requireAdmin gates an admin handler: a tight per-IP rate limit first (so an
@@ -499,4 +506,59 @@ func (s *Server) handleAdminLookup(w http.ResponseWriter, r *http.Request) {
 		Account: info(m.Account),
 		Inbox:   info(m.Inbox),
 	})
+}
+
+// adminLogsPage is the default GET /admin/logs page; adminLogsLimit caps a
+// caller-supplied `limit` at the ring's full capacity.
+const (
+	adminLogsPage  = 200
+	adminLogsLimit = 5000
+)
+
+// handleAdminLogs answers GET /admin/logs: the service's most recent log lines
+// from the in-process buffer, newest first, optionally filtered to one level
+// (`?level=error`). A read, so not audited. Log lines are bounded by doc 12 §4
+// (static message, count, err, config string; never an id, token, IP, or body),
+// so this stays within the blind-store boundary. With no buffer wired (tests,
+// bare embedding) it serves an empty list rather than erroring.
+func (s *Server) handleAdminLogs(w http.ResponseWriter, r *http.Request) {
+	limit := adminLogsPage
+	if n, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && n > 0 {
+		limit = min(n, adminLogsLimit)
+	}
+	level := strings.ToUpper(r.URL.Query().Get("level"))
+	switch level {
+	case "", "DEBUG", "INFO", "WARN", "ERROR":
+	default:
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "bad level")
+		return
+	}
+	entries := []contract.AdminLogEntry{}
+	if s.cfg.LogRing != nil {
+		for _, e := range s.cfg.LogRing.Recent(limit, level) {
+			entries = append(entries, contract.AdminLogEntry{
+				At: e.At, Level: e.Level, Msg: e.Msg, Attrs: e.Attrs,
+			})
+		}
+	}
+	s.writeJSON(w, http.StatusOK, contract.AdminLogsResponse{Entries: entries})
+}
+
+// handleAdminRestart answers POST /admin/restart: an audited graceful restart.
+// The audit row lands BEFORE anything happens (auditOrFail, like every admin
+// mutation), the 202 flushes to the caller, and only then does the restart
+// callback fire, off this goroutine so the response is never raced. The process
+// drains in-flight requests and exits non-zero; systemd revives it. With no
+// callback wired (tests, bare embedding) the endpoint is a 500: restart is a
+// process-level action only main.go can provide.
+func (s *Server) handleAdminRestart(w http.ResponseWriter, r *http.Request) {
+	if s.cfg.RequestRestart == nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	if !s.auditOrFail(r.Context(), w, auditActionServerRestart, "") {
+		return
+	}
+	w.WriteHeader(http.StatusAccepted)
+	go s.cfg.RequestRestart()
 }

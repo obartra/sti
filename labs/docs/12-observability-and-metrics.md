@@ -202,6 +202,12 @@ of the deployed system and must stay true.
 These are not aspirations. Items 1 to 4 describe the system as it ships today; this doc's
 contribution is to pin them so a future change cannot quietly erode them.
 
+These rules are now load-bearing for an exposed surface, not just hygiene: the process tees its
+own log lines into a fixed-size in-memory ring that `GET /admin/logs` serves to the operator
+console ([doc 20](20-admin-surface.md)). The ring captures records as-is, so anything a log line
+carried would reach the admin page; rules 1 to 3 are what make that safe. A new log call site
+that widened them would now be exposing data, not just writing it to the journal.
+
 ---
 
 ## 5. Where telemetry lives

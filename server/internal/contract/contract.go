@@ -107,6 +107,8 @@ const (
 	PathAdminHealth   = "/admin/health"   // GET: aggregate operational-health signals (doc 20)
 	PathAdminTrends   = "/admin/trends"   // GET: aggregate per-day trends + review latency (doc 20)
 	PathAdminFeedback = "/admin/feedback" // GET: the "Something wrong?" review queue (doc 35)
+	PathAdminLogs     = "/admin/logs"     // GET: the service's recent log lines (doc 20)
+	PathAdminRestart  = "/admin/restart"  // POST: audited graceful self-restart (doc 20)
 )
 
 // --- JSON bodies (only the non-byte endpoints) ------------------------------
@@ -403,6 +405,25 @@ type AdminHealthResponse struct {
 	JanitorAgeSeconds         int64             `json:"janitorAgeSeconds"`
 	InflightCurrent           int64             `json:"inflightCurrent"`
 	InflightMax               int64             `json:"inflightMax"`
+}
+
+// AdminLogEntry is one recent service log line (GET /admin/logs): the instant, the
+// level, the fixed message, and the record's attributes rendered "k=v". Log lines
+// are bounded by doc 12 §4 (a static message, a count, an err value, a config
+// string at startup; never an id, token, IP, or user-typed text), so serving them
+// stays within the blind-store boundary.
+type AdminLogEntry struct {
+	At    int64  `json:"at"` // unix milliseconds
+	Level string `json:"level"`
+	Msg   string `json:"msg"`
+	Attrs string `json:"attrs,omitempty"`
+}
+
+// AdminLogsResponse is GET /admin/logs' body (doc 20): the most recent lines from
+// the in-process log buffer, newest first. The buffer starts empty on every boot
+// (the box's journal stays the deep archive). A read, so it is not itself audited.
+type AdminLogsResponse struct {
+	Entries []AdminLogEntry `json:"entries"`
 }
 
 // DayCount is one daily bucket of a trend series (GET /admin/trends): an epoch-day
