@@ -12,5 +12,3 @@
 # being frontend-called, the gate fails until the entry is removed.
 
 GET /{$}                           public landing HTML served to browsers, never an API call
-GET /admin/logs                    console panel lands in the next PR, which removes this entry
-POST /admin/restart                console control lands in the next PR, which removes this entry

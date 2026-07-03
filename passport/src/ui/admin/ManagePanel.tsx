@@ -77,7 +77,7 @@ function RecordCard({ label, info }: { label: string; info: AdminRecordInfo }) {
 // fires. These actions take a raw operator-typed id with no queue context to check
 // it against (unlike ReviewPanel's one-click, where the name comes from the queue),
 // so this guards against a fat-fingered id disabling or revoking the wrong record.
-function ConfirmButton({
+export function ConfirmButton({
   idle,
   confirm,
   busy,

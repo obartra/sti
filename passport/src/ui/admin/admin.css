@@ -405,6 +405,50 @@
   min-width: 0;
 }
 
+/* -------------------------------------------------------------- server log -- */
+/* The server-log rows: dense mono lines, a quiet time and level up front, the
+   message free to wrap. Errors and warnings pick up their status inks. */
+.adm-log {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.adm-log__row {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.adm-log__time {
+  flex: none;
+  color: var(--text-subtle);
+}
+
+.adm-log__level {
+  flex: none;
+  width: 44px;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+.adm-log__level--warn {
+  color: var(--status-ink-treat);
+}
+
+.adm-log__level--error {
+  color: var(--status-expired-fg);
+}
+
+.adm-log__msg {
+  min-width: 0;
+  word-break: break-word;
+  color: var(--text-body);
+}
+
 /* ------------------------------------------------------------------ notes --- */
 .adm-note {
   font-size: 13px;

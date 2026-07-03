@@ -8,11 +8,14 @@ import type {
   AdminPingResult,
   AdminTrends,
 } from "./adminApi.ts";
+import type { AdminLogEntry } from "./adminOpsApi.ts";
 import type { ReviewOps } from "./ReviewPanel.tsx";
 import type { AuditOps } from "./ActivityPanel.tsx";
 import type { MetricsOps } from "./MetricsPanel.tsx";
 import type { HealthOps } from "./HealthPanel.tsx";
 import type { FeedbackOps } from "./FeedbackPanel.tsx";
+import type { LogsOps } from "./LogsPanel.tsx";
+import type { RestartOps } from "./RestartPanel.tsx";
 
 // The operator surface (doc 20): a dedicated, gated /admin page isolated from the
 // user flows. The stories stub the token validator and the review transport so the
@@ -65,6 +68,44 @@ const feedbackOps = (feedback: AdminFeedback[]): FeedbackOps => ({
   list: () => Promise.resolve({ kind: "ok", feedback }),
   resolve: () => Promise.resolve("ok"),
 });
+
+const logsOps = (entries: AdminLogEntry[]): LogsOps => ({
+  list: () => Promise.resolve({ kind: "ok", entries }),
+});
+
+// The restart control never fires in a capture; stub both calls as fine.
+const restartOps: RestartOps = {
+  restart: () => Promise.resolve("ok"),
+  ping: () => Promise.resolve("ok"),
+};
+
+// Fixed UTC instants so the server-log panel's rows are deterministic. The
+// shapes mirror real slog lines: static message + rendered attrs, no ids.
+const SAMPLE_LOGS: AdminLogEntry[] = [
+  {
+    at: Date.UTC(2026, 5, 25, 18, 45, 12),
+    level: "ERROR",
+    msg: "push send",
+    attrs: "err=Post endpoint: context deadline exceeded",
+  },
+  {
+    at: Date.UTC(2026, 5, 25, 18, 44, 0),
+    level: "INFO",
+    msg: "purged expired knocks",
+    attrs: "count=3",
+  },
+  {
+    at: Date.UTC(2026, 5, 25, 18, 40, 0),
+    level: "WARN",
+    msg: "STI_NOTIFY_ENABLED is set but no VAPID keys are configured; wakes are not delivered",
+  },
+  {
+    at: Date.UTC(2026, 5, 25, 18, 39, 58),
+    level: "INFO",
+    msg: "listening",
+    attrs: "addr=:8080 db=/var/lib/stiapi/sti.db",
+  },
+];
 
 const SAMPLE_METRICS: AdminMetrics = {
   accounts: 1840,
@@ -223,6 +264,8 @@ const BUSY_ARGS = {
   metricsOps: metricsOps(SAMPLE_METRICS, SAMPLE_TRENDS),
   healthOps: healthOps(SAMPLE_HEALTH),
   feedbackOps: feedbackOps(SAMPLE_FEEDBACK),
+  logsOps: logsOps(SAMPLE_LOGS),
+  restartOps,
 } as const;
 
 // The authed console's first section: the health band plus the waiting-work
@@ -271,6 +314,8 @@ export const AuthedEmpty: Story = {
     ),
     healthOps: healthOps(CLEAR_HEALTH),
     feedbackOps: feedbackOps([]),
+    logsOps: logsOps([]),
+    restartOps,
   },
   decorators: [seedToken],
 };
