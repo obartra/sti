@@ -391,10 +391,12 @@ export async function actOnVanityName(
 const ADMIN_FEEDBACK_PATH = "/admin/feedback";
 
 /** One "Something wrong?" report in the queue (mirrors the server's AdminFeedback).
- * `body` is the note the person typed, `id` is the resolve target. */
+ * `body` is the note the person typed, `id` is the resolve target; `topic` is the
+ * fixed code naming which open question a "question" response addresses. */
 export interface AdminFeedback {
   id: number;
   reason: string;
+  topic?: string;
   body: string;
   createdAt: number;
 }

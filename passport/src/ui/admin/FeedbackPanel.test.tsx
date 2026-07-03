@@ -56,6 +56,32 @@ describe("FeedbackPanel", () => {
     await waitFor(() => expect(list).toHaveBeenCalledTimes(2)); // initial + reload
   });
 
+  it("leaves question responses to the answers view", async () => {
+    renderPanel({
+      list: () =>
+        Promise.resolve({
+          kind: "ok",
+          feedback: [
+            {
+              id: 9,
+              reason: "question",
+              topic: "groups",
+              body: "a labs answer",
+              createdAt: 2,
+            },
+            {
+              id: 7,
+              reason: "broken",
+              body: "the share button does nothing",
+              createdAt: 1,
+            },
+          ],
+        } as AdminFeedbackResult),
+    });
+    expect(await screen.findByText("Something's broken")).toBeInTheDocument();
+    expect(screen.queryByText("a labs answer")).not.toBeInTheDocument();
+  });
+
   it("shows an all-clear when the queue is empty", async () => {
     renderPanel();
     expect(await screen.findByText(/no open reports/i)).toBeInTheDocument();

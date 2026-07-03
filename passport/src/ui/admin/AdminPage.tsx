@@ -22,7 +22,7 @@ import {
   readAdminToken,
   saveAdminToken,
 } from "./adminToken.ts";
-import { AuthedShell } from "./AuthedShell.tsx";
+import { AuthedShell, type AdminTab } from "./AuthedShell.tsx";
 import type { ReviewOps } from "./ReviewPanel.tsx";
 import type { AuditOps } from "./ActivityPanel.tsx";
 import type { MetricsOps } from "./MetricsPanel.tsx";
@@ -88,6 +88,11 @@ export interface AdminPageProps {
    * / revoke endpoints bound to apiBase; injectable so tests and Storybook drive it.
    */
   manageOps?: ManageOps;
+  /**
+   * Which console section opens first once authed (default the overview).
+   * Stories use it to capture each tab.
+   */
+  initialTab?: AdminTab;
 }
 
 // Build the panel transports: each defaults to the real admin endpoints bound to
@@ -254,6 +259,7 @@ export function AdminPage({
   healthOps,
   feedbackOps,
   manageOps,
+  initialTab,
 }: AdminPageProps) {
   const validate = useCallback(
     (token: string) => (ping ? ping(token) : pingAdmin(apiBase, token)),
@@ -295,6 +301,7 @@ export function AdminPage({
             manageOps={manage}
             onLock={lock}
             onExpire={expire}
+            initialTab={initialTab}
           />
         ) : (
           <LockGate
