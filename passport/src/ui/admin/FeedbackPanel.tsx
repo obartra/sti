@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "../../design/components/index.ts";
 import { PanelHeading } from "./panelChrome.tsx";
+import { formatUtc } from "./ActivityPanel.tsx";
 import "./admin.css";
 import type {
   AdminActionResult,
@@ -145,9 +146,11 @@ export function FeedbackPanel({
   );
 }
 
+// UTC like the other admin timestamps (Activity, Manage): deterministic across
+// operator locales and in visual capture, unlike toLocaleString.
 function fmtTime(ms: number): string {
   try {
-    return new Date(ms).toLocaleString();
+    return formatUtc(ms);
   } catch {
     return "";
   }

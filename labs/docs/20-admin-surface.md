@@ -66,7 +66,11 @@ user-facing passport share no chunk, so admin can pull in heavier dependencies (
 a richer table/grid) without adding a byte to the user bundle or sitting near a health surface, and
 the shell budget in [doc 22](22-progressive-web-app.md) is unaffected. It is built for a **desktop
 operator** (a wide, multi-panel dashboard layout), not the mobile-first passport frame, since this
-is where the richer aggregate views live.
+is where the richer aggregate views live. The built composition reads operator-first, top to
+bottom: health as a compact status band, the two work queues side by side, the metrics figures and
+trend charts abreast, then the id-lookup tool beside the audit tail. The console widens on
+container queries (the two thresholds where panels pair up and the charts go three-across), never
+viewport media queries, and collapses to a single column when narrow.
 
 - A token gate: enter the bearer secret; on success, the page calls a cheap `GET /admin/ping` to
   validate before showing anything.

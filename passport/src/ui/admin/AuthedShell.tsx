@@ -71,18 +71,14 @@ export function AuthedShell({
           </Button>
         </div>
       </div>
-      {/* Health first (how the box is running right now), then the stored totals and
-          trends, then the work queues, then the management tool and the audit log:
-          a top-to-bottom operator read from live state down to the record of actions. */}
+      {/* An operator-first read, top to bottom: is anything on fire (health), what
+          work is waiting (the two queues, the only panels with actions on queued
+          items), how things are trending (totals + charts), then the tools: the
+          id lookup, which acts on a raw operator-typed id rather than a queued
+          item, beside the audit record. */}
       <HealthPanel
         token={token}
         ops={healthOps}
-        onUnauthorized={onExpire}
-        refreshSignal={refreshSignal}
-      />
-      <MetricsPanel
-        token={token}
-        ops={metricsOps}
         onUnauthorized={onExpire}
         refreshSignal={refreshSignal}
       />
@@ -100,15 +96,21 @@ export function AuthedShell({
           refreshSignal={refreshSignal}
         />
       </div>
-      {/* The Manage tool sits apart from the queues above: it acts on a raw
-          operator-typed id, not on a queued item, so it is its own section. */}
-      <ManagePanel token={token} ops={manageOps} onUnauthorized={onExpire} />
-      <ActivityPanel
+      <MetricsPanel
         token={token}
-        ops={auditOps}
+        ops={metricsOps}
         onUnauthorized={onExpire}
         refreshSignal={refreshSignal}
       />
+      <div className="adm-tools">
+        <ManagePanel token={token} ops={manageOps} onUnauthorized={onExpire} />
+        <ActivityPanel
+          token={token}
+          ops={auditOps}
+          onUnauthorized={onExpire}
+          refreshSignal={refreshSignal}
+        />
+      </div>
     </div>
   );
 }

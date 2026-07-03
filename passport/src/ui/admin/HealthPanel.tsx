@@ -214,7 +214,7 @@ export function HealthPanel({
 
   const st = healthStatus(health);
   return (
-    <section className="adm-panel">
+    <section className="adm-panel adm-panel--health">
       <div className="adm-panel__head">
         <div className="adm-panel__headings">
           <h2 className="adm-panel__title">{COPY.title}</h2>
