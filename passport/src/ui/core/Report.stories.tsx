@@ -1,6 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Report, ReportSaved } from "./Report.tsx";
 import { INITIAL_OWNER_STATE } from "../../core/badge.ts";
+import { toEpochDay } from "../../core/clock.ts";
+
+// The form defaults "Date tested" to today, so an unpinned story re-renders
+// differently every day and its visual baseline drifts with the wall clock.
+// Pin the clock edge to a fixed day (2026-06-15) instead.
+const STORY_DAY = toEpochDay(Date.UTC(2026, 5, 15));
 
 // C2 Report a result. The owner records their OWN test outcomes (positive /
 // negative, per site) and saves them to the passport. This is owner-only data
@@ -17,12 +23,17 @@ type Story = StoryObj<typeof Report>;
 // The report form. Opens straight into per-condition entry, everything starting
 // at "not tested"; the "what a blue card needs" checklist and the HIV-protection
 // route toggles update live as outcomes and routes are entered.
-export const ReportForm: Story = {};
+export const ReportForm: Story = {
+  args: { today: STORY_DAY },
+};
 
 // Starting from an owner already on PrEP, so the route requirement reads as met
 // from the outset and only a complete clear panel is left to earn blue.
 export const OnPrep: Story = {
-  args: { ownerState: { ...INITIAL_OWNER_STATE, onPrep: true } },
+  args: {
+    ownerState: { ...INITIAL_OWNER_STATE, onPrep: true },
+    today: STORY_DAY,
+  },
 };
 
 type SavedStory = StoryObj<typeof ReportSaved>;

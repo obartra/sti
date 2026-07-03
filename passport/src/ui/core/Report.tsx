@@ -52,6 +52,10 @@ export interface ReportProps {
   onSetOwnerState?:
     | ((update: (prev: OwnerState) => OwnerState) => void)
     | undefined;
+  /** The clock edge as an epoch day. Defaults to the device's today; stories
+   * and tests pin it so dated renders (the "Date tested" default) stay
+   * deterministic instead of drifting with the wall clock. */
+  today?: number;
 }
 
 interface SaveArgs {
@@ -137,11 +141,13 @@ function PrivacyNoteCard() {
 function ReportFooter({
   state,
   anyEntered,
+  today,
   onBack,
   onSave,
 }: {
   state: ReportState;
   anyEntered: boolean;
+  today: number;
   onBack?: (() => void) | undefined;
   onSave: () => void;
 }) {
@@ -155,7 +161,7 @@ function ReportFooter({
         <Input
           type="date"
           value={epochDayToISODate(state.panelDay)}
-          max={epochDayToISODate(todayEpochDay())}
+          max={epochDayToISODate(today)}
           onChange={(e) => {
             const day = isoDateToEpochDay(e.target.value);
             if (day !== null) state.setPanelDay(day);
@@ -209,9 +215,10 @@ export function Report({
   onApply,
   ownerState = INITIAL_OWNER_STATE,
   onSetOwnerState,
+  today = todayEpochDay(),
 }: ReportProps) {
   const c = COPY;
-  const state = useReportState();
+  const state = useReportState(today);
   const { anyPositive, anyEntered } = state;
   // Route toggles mirror Settings: they write the owner state immediately (so
   // they count toward blue) AND drive the local preview before the parent
@@ -227,7 +234,7 @@ export function Report({
     onSetOwnerState?.((s) => withCondomRoute(s, v));
   };
   const base = withCondomRoute(withPrep(ownerState, prep), condoms);
-  const preview = previewReport(base, reportOutcome(state), todayEpochDay());
+  const preview = previewReport(base, reportOutcome(state), today);
   const save = () => {
     runSave({ state, onTweak, onApply, onSavedPositive, onSavedHome });
   };
@@ -268,6 +275,7 @@ export function Report({
       <ReportFooter
         state={state}
         anyEntered={anyEntered}
+        today={today}
         onBack={onBack}
         onSave={save}
       />

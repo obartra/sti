@@ -234,36 +234,6 @@
   "src/ui/onboarding/AvatarEdit.tsx": {
     "styles": 4
   },
-  "src/ui/onboarding/Claim.tsx": {
-    "styles": 3
-  },
-  "src/ui/onboarding/ClaimCreateFlow.tsx": {
-    "styles": 8,
-    "legacy": 1
-  },
-  "src/ui/onboarding/ConsentLine.tsx": {
-    "styles": 3
-  },
-  "src/ui/onboarding/FirstRunSetup.tsx": {
-    "styles": 29,
-    "legacy": 5
-  },
-  "src/ui/onboarding/KeepSignedInToggle.tsx": {
-    "styles": 2
-  },
-  "src/ui/onboarding/OtherWaysToLogIn.tsx": {
-    "styles": 6,
-    "legacy": 2
-  },
-  "src/ui/onboarding/recoveryShow.tsx": {
-    "styles": 8
-  },
-  "src/ui/onboarding/SwitchAuthMode.tsx": {
-    "styles": 2
-  },
-  "src/ui/onboarding/TopBack.tsx": {
-    "styles": 4
-  },
   "src/ui/pwa/installScreenshots.stories.tsx": {
     "styles": 2,
     "hex": 1
