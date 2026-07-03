@@ -7,9 +7,9 @@ The Home / Links / People / Care bar it describes has shipped; the parts still p
 are called out inline where they come up (the biggest are the Privacy-to-Settings
 rename and the "be scanned" half of the in-person gesture).
 Where it touches areas other docs already plan, it folds those plans in and says so,
-rather than restating them: it supersedes the navigation and the Connect/Circles
-targets in [07-screen-by-screen-build-guide](07-screen-by-screen-build-guide.md)
-(§E, §F), and it builds on the contact-graph model in
+rather than restating them: it sets the current navigation and the People/Groups
+shape (folding in the earlier Connect/Circles plans), and it builds on the
+contact-graph model in
 [13-contact-graph-and-notification](13-contact-graph-and-notification.md) and the
 in-person flow in [25-in-person-connect](25-in-person-connect.md).
 
@@ -289,9 +289,8 @@ What that means concretely:
 - **A calm roster, never a verdict.** The group shows each member as a status dot,
   newest or starred first. It does **not** compute a room rollup, print counts
   ("7 ready, 2 not shared"), or render a door/check-in "the room is ready" screen.
-  Those exclusion-coded surfaces are out (this agrees with the Circles target already
-  in [07-screen-by-screen-build-guide](07-screen-by-screen-build-guide.md) §F). The
-  event view is a quiet glance at colors, not a bouncer.
+  Those exclusion-coded surfaces are out. The event view is a quiet glance at colors,
+  not a bouncer.
 - **No minimum group size.** Earlier circles hid statuses until a group had ~5
   members, to stop a tiny roster from outing one person. That floor made sense only
   in the old model where being listed was not itself an explicit act of sharing. Here
@@ -305,10 +304,9 @@ What that means concretely:
 
 The "permanent circle" and "event group" distinction collapses: there is one kind of
 group. If you want it for one night, you make it and delete it after; deletion drops
-the grouping only and never touches the underlying connections. This folds together
-what [07-screen-by-screen-build-guide](07-screen-by-screen-build-guide.md) §F split
-across "Circles" and "Events," and supersedes the "set a tested-within-N-days bar"
-entry threshold (removed).
+the grouping only and never touches the underlying connections. This collapses the
+earlier "Circles" and "Events" split into one kind of group, and drops the "set a
+tested-within-N-days bar" entry threshold.
 
 ## Care
 
@@ -345,12 +343,6 @@ the account actions, the attributes, the links list, and the explainer.
 
 ## What this supersedes or folds in
 
-- **[07-screen-by-screen-build-guide](07-screen-by-screen-build-guide.md):** the
-  shipped Home / Links / People / Care bar replaces the implicit `home / connect /
-  circles / care` shape that guide assumed; §E (Connect) and §F (Circles & Events)
-  folded into **People** and **Groups** above. The cross-cutting cleanups in §G
-  (handles not names, blue/gray everywhere, no self-reported stamp, no streak) are
-  unchanged and still apply.
 - **[13-contact-graph-and-notification](13-contact-graph-and-notification.md):** the
   contact and group data model and the partner-notify pipeline are unchanged; this
   doc only simplifies how they are surfaced.

@@ -9,7 +9,6 @@
  * account key, plus a server-side signing step. Until those exist a "pass" would
  * be a non-functional mock, so the path is gated off rather than shown.
  * To re-enable: flip this to true (the code is intact) and wire the signer.
- * Status/reason also recorded in labs/docs/07-screen-by-screen-build-guide.md
- * (the Wallet entry) and labs/docs/11-frontend-backend-integration.md.
+ * Status/reason also recorded in labs/docs/11-frontend-backend-integration.md.
  */
 export const WALLET_ENABLED = false;

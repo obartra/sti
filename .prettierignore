@@ -13,6 +13,8 @@ info/src/env.d.ts
 **/playwright-report
 **/reports/behaviors
 .claude/scratch
+# Agent worktrees: throwaway checkouts of the repo the harness manages; never ours to format.
+.claude/worktrees
 
 # Plain-text route allowlist (METHOD /path reason); prettier has no parser for it.
 .route-allowlist

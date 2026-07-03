@@ -264,9 +264,9 @@ recorded as live.
 
 1. **Pure core** (badge + crypto + clearance math), framework-free, with full tests. No UI, no
    server.
-2. **Port the prototype screens** onto that core (Vite / React / TS), screen by screen per
-   [07-screen-by-screen-build-guide.md](../docs/07-screen-by-screen-build-guide.md), closing the
-   gap from the old four-light model to the approved two-state badge.
+2. **Port the prototype screens** onto that core (Vite / React / TS), screen by screen, closing
+   the gap from the old four-light model to the two-state badge specified in
+   [03-design.md](../docs/03-design.md).
 3. **Backend**: the blind key-value store, routing, and rate limiting, integration-tested against
    real SQLite, with the decoy-uniformity test in place.
 4. **Wire** sync, public resolution, and contentless push end to end.
