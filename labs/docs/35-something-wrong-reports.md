@@ -33,6 +33,16 @@ invites "what could be better" alongside "what happened", so a suggestion has an
 honest home instead of being shoehorned into "something else". The screen keeps
 its "Something wrong?" name; that is the moment a person goes looking for it.
 
+The channel has a second door: the labs open-questions page carries an in-house
+response form (it replaced an external Google Form, so responses stop leaving
+our hands). Those arrive with the **question** category plus an optional
+**topic**, a fixed validated code naming which open question the response
+addresses (semantic codes, not numbers, so the doc can renumber without
+breaking stored rows). Same endpoint, same validation, same store, same queue;
+the topic lets the operator read responses grouped by question. For the labs
+origin to POST from a browser, `https://labs.sti.care` must be listed in the
+box's `STI_ALLOWED_ORIGINS` (an ops step via `secrets`, like the app origins).
+
 The note is the tradeoff. A useful problem report needs room to describe the problem,
 so unlike the public-name report (a reason code and nothing else,
 [doc 17](17-vanity-namespace-governance.md)), this stores text a person wrote. That

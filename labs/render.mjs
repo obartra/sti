@@ -239,22 +239,79 @@ function crossnav(currentSlug) {
 `;
 }
 
-// A feedback call-to-action for docs flagged with `feedback: true`. Renders a
-// live button when feedbackUrl is set, otherwise a neutral "coming soon" note so
-// a deploy never ships a dead link.
+// The in-house response form for docs flagged with `feedback: true` (doc 35): a
+// question picker (fixed topic codes mirroring the server contract), a length-
+// capped note, and a send that POSTs straight to the blind feedback intake. The
+// response arrives with no name attached and lands in the operator queue; no
+// third-party form service is involved. The 2000 cap mirrors the server's
+// FeedbackBodyMaxRunes; the topic codes mirror contract.feedbackTopics.
+const FEEDBACK_TOPICS = [
+  ["general", "In general"],
+  ["blue-equity", "1 · Who can show blue"],
+  ["condom-tier", "2 · Condoms in the same tier"],
+  ["language", "3 · Language"],
+  ["help-or-harm", "4 · Help or harm"],
+  ["groups", "5 · Groups"],
+  ["active-infection", "6 · The active-infection line"],
+  ["notification-feel", "7 · Partner notification"],
+  ["verification", "8 · Verification"],
+  ["testing-window", "9 · The testing window"],
+  ["detectable-hiv", "10 · Detectable HIV and condoms"],
+  ["missing", "11 · Something I'm not seeing"],
+];
+
 function feedbackBlock() {
-  const url = (config.feedbackUrl || "").trim();
-  const label = esc(config.feedbackLabel || "Share feedback");
-  if (!url) {
+  const api = (config.feedbackApi || "").trim();
+  if (!api) {
     return `      <div class="feedbackcta">
-        <p class="feedback-note">A feedback form is on the way. Check back soon.</p>
+        <p class="feedback-note">A response form is on the way. Check back soon.</p>
       </div>
 `;
   }
-  return `      <div class="feedbackcta">
+  const options = FEEDBACK_TOPICS.map(
+    ([code, label]) => `<option value="${esc(code)}">${esc(label)}</option>`,
+  ).join("");
+  return `      <div class="feedbackcta" id="respond">
         <p>Have a perspective on any of these? I'd genuinely value your read.</p>
-        <a class="feedbackbtn" href="${esc(url)}">${label} →</a>
+        <form class="ansform" id="ansform">
+          <label class="ansform-label" for="ans-topic">Which question?</label>
+          <select id="ans-topic">${options}</select>
+          <label class="ansform-label" for="ans-body">Your read</label>
+          <textarea id="ans-body" rows="5" maxlength="2000" placeholder="What do you see that I don't?"></textarea>
+          <p class="feedback-note">It arrives with no name attached, and it's the one thing we keep, so we can read it. Please leave out anything identifying.</p>
+          <p class="feedback-note ansform-status" id="ans-status" role="status"></p>
+          <button class="feedbackbtn" id="ans-send" type="submit">Send</button>
+        </form>
       </div>
+      <script>
+        (function () {
+          var form = document.getElementById("ansform");
+          var body = document.getElementById("ans-body");
+          var topic = document.getElementById("ans-topic");
+          var send = document.getElementById("ans-send");
+          var status = document.getElementById("ans-status");
+          form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            var text = body.value.trim();
+            if (!text) { status.textContent = "Write a line first."; return; }
+            send.disabled = true;
+            status.textContent = "Sending…";
+            fetch("${esc(api)}", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ reason: "question", topic: topic.value, body: text }),
+            }).then(function (res) {
+              if (!res.ok) throw new Error(String(res.status));
+              form.reset();
+              send.disabled = false;
+              status.textContent = "Thanks. We read every one; we can't reply here.";
+            }).catch(function () {
+              send.disabled = false;
+              status.textContent = "Couldn't send that. Try again.";
+            });
+          });
+        })();
+      </script>
 `;
 }
 

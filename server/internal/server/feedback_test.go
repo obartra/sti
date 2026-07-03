@@ -13,7 +13,11 @@ import (
 )
 
 func postFeedback(h http.Handler, reason, body string) *httptest.ResponseRecorder {
-	b, _ := json.Marshal(contract.FeedbackRequest{Reason: reason, Body: body})
+	return postFeedbackTopic(h, reason, "", body)
+}
+
+func postFeedbackTopic(h http.Handler, reason, topic, body string) *httptest.ResponseRecorder {
+	b, _ := json.Marshal(contract.FeedbackRequest{Reason: reason, Topic: topic, Body: body})
 	return do(h, httptest.NewRequest("POST", contract.PathFeedback, bytes.NewReader(b)))
 }
 
@@ -41,6 +45,17 @@ func TestFeedbackIntake(t *testing.T) {
 	if rec := postFeedback(h, contract.FeedbackIdea, "a search box would help"); rec.Code != http.StatusAccepted {
 		t.Fatalf("idea: %d, want 202", rec.Code)
 	}
+	// An open-question response carries a fixed topic code, stored with the row.
+	if rec := postFeedbackTopic(h, contract.FeedbackQuestion, "groups", "groups feel caring, not sorting"); rec.Code != http.StatusAccepted {
+		t.Fatalf("question: %d, want 202", rec.Code)
+	}
+	if got, _ := st.OpenFeedback(ctx, 1); len(got) != 1 || got[0].Topic != "groups" {
+		t.Fatalf("topic not stored: %+v", got)
+	}
+	// An unknown topic is rejected like an unknown category.
+	if rec := postFeedbackTopic(h, contract.FeedbackQuestion, "nonsense", "x"); rec.Code != http.StatusBadRequest {
+		t.Fatalf("bad topic: %d, want 400", rec.Code)
+	}
 	// An unknown category is rejected.
 	if rec := postFeedback(h, "nonsense", "x"); rec.Code != http.StatusBadRequest {
 		t.Fatalf("bad reason: %d, want 400", rec.Code)
@@ -51,8 +66,8 @@ func TestFeedbackIntake(t *testing.T) {
 		t.Fatalf("too long: %d, want 400", rec.Code)
 	}
 
-	if n, _ := st.OpenFeedbackCount(ctx); n != 3 {
-		t.Fatalf("stored count = %d, want 3 (only the three valid reports)", n)
+	if n, _ := st.OpenFeedbackCount(ctx); n != 4 {
+		t.Fatalf("stored count = %d, want 4 (only the four valid reports)", n)
 	}
 }
 

@@ -363,7 +363,9 @@ func (s *Server) handleAdminFeedback(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]contract.AdminFeedback, len(fb))
 	for i, f := range fb {
-		out[i] = contract.AdminFeedback{ID: f.ID, Reason: f.Reason, Body: f.Body, CreatedAt: f.CreatedAt}
+		out[i] = contract.AdminFeedback{
+			ID: f.ID, Reason: f.Reason, Topic: f.Topic, Body: f.Body, CreatedAt: f.CreatedAt,
+		}
 	}
 	s.writeJSON(w, http.StatusOK, contract.AdminFeedbackResponse{Feedback: out})
 }

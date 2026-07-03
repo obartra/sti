@@ -715,7 +715,7 @@ func TestAdminFeedbackReview(t *testing.T) {
 		return do(h, req)
 	}
 
-	if err := st.AddFeedback(ctx, contract.FeedbackBroken, "the share button does nothing", 100); err != nil {
+	if err := st.AddFeedback(ctx, contract.FeedbackBroken, "", "the share button does nothing", 100); err != nil {
 		t.Fatal(err)
 	}
 

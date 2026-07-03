@@ -801,10 +801,10 @@ func TestFeedback(t *testing.T) {
 		t.Fatalf("empty count: %d err %v", n, err)
 	}
 
-	if err := s.AddFeedback(ctx, "broken", "the share button does nothing", 100); err != nil {
+	if err := s.AddFeedback(ctx, "broken", "", "the share button does nothing", 100); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.AddFeedback(ctx, "confusing", "", 200); err != nil {
+	if err := s.AddFeedback(ctx, "confusing", "groups", "", 200); err != nil {
 		t.Fatal(err)
 	}
 
@@ -815,11 +815,12 @@ func TestFeedback(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("queue rows = %d, want 2", len(got))
 	}
-	// Newest first: the confusing (empty-note) row, then the broken one with its note.
-	if got[0].Reason != "confusing" || got[0].Body != "" || got[0].CreatedAt != 200 {
+	// Newest first: the confusing (empty-note, topic-tagged) row, then the broken
+	// one with its note and no topic.
+	if got[0].Reason != "confusing" || got[0].Topic != "groups" || got[0].Body != "" || got[0].CreatedAt != 200 {
 		t.Fatalf("row 0 = %+v", got[0])
 	}
-	if got[1].Reason != "broken" || got[1].Body != "the share button does nothing" {
+	if got[1].Reason != "broken" || got[1].Topic != "" || got[1].Body != "the share button does nothing" {
 		t.Fatalf("row 1 = %+v", got[1])
 	}
 	if n, err := s.OpenFeedbackCount(ctx); err != nil || n != 2 {
@@ -849,7 +850,7 @@ func TestFeedbackCap(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 	for i := 0; i < feedbackCap+50; i++ {
-		if err := s.AddFeedback(ctx, "other", "", int64(i)); err != nil {
+		if err := s.AddFeedback(ctx, "other", "", "", int64(i)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -865,10 +866,10 @@ func TestPurgeFeedback(t *testing.T) {
 	s := openTestStore(t)
 	const day = 24 * 60 * 60 * 1000
 
-	if err := s.AddFeedback(ctx, "broken", "old", 1*day); err != nil {
+	if err := s.AddFeedback(ctx, "broken", "", "old", 1*day); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.AddFeedback(ctx, "broken", "recent", 95*day); err != nil {
+	if err := s.AddFeedback(ctx, "broken", "", "recent", 95*day); err != nil {
 		t.Fatal(err)
 	}
 	// now = 100 days, max age = 30 days: only the 1-day-old report qualifies.
