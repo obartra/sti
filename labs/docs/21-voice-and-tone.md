@@ -127,8 +127,8 @@ anatomical language. Don't sanitize into clinical euphemism.
 - "Asking the server to wake a device does identical work whether or not the device is
   known, so the timing reveals nothing." -> "The server can't tell a real alert from
   noise, so it never learns who was notified." (state the protection, not the channel)
-- "No circles yet. Create one for your crew, your house, or a night." -> "No circles
-  yet. Create one for a group, a household, or an event." (drop the slang)
+- "No groups yet. Create one for your crew, your house, or a night." -> "No groups
+  yet. Create one for your friends, a household, or an event." (drop the slang)
 
 ## When in doubt
 

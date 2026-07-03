@@ -176,10 +176,12 @@ diurnal factor of 3 to 5:
 **The binding constraint is one VPS and SQLite's single writer.** The known knobs from
 `server.go` set the structural ceiling: `MaxInflight` 256 (global concurrency), `SensitiveWait` 5s
 (the sensitive-read fallback timeout), per-IP `5/sec` burst `20`, per-knock `1/sec` burst `10`,
-`KnockTTL` 4 days. Of these, only the per-IP limit is env-configurable (`STI_IP_RATE_PER_SEC` /
-`STI_IP_BURST`, which the integration harness already raises); `MaxInflight`, `SensitiveWait`, and the
-knock caps are compiled-in, so the lab exercises the shipped defaults and the breakpoint it reports is
-the default box's, not a tuned one. `bench.sh` measures the raw floor latency of `GET /healthz`,
+`KnockTTL` 4 days. Most of these are env-configurable and the lab sets them: the per-IP limit
+(`STI_IP_RATE_PER_SEC` / `STI_IP_BURST`), `MaxInflight` (`STI_MAX_INFLIGHT`), `SensitiveWait`
+(`STI_SENSITIVE_WAIT`), and `KnockTTL` (`STI_KNOCK_TTL`). Only the per-`(id, requester)` knock rate
+caps (`KnockRatePerID` / `KnockBurst`) are compiled-in, so the breakpoint the lab reports is against
+whatever ceiling it configured (the shipped defaults, or a low `MaxInflight` when it wants the shed
+onset observable without real saturation). `bench.sh` measures the raw floor latency of `GET /healthz`,
 `GET /a`, and `PUT /a` on the hardware. The lab derives the size numbers above, drives proportional
 mixes against the box, and reports headroom **against that measured floor**, so the capacity claim is
 a test, not a guess. The read floods come from many simulated source IPs (set via
@@ -502,8 +504,9 @@ surface that erodes the blind story? Each concern, with its mitigation.
 The catalog is the **full map of intended product behaviors**, not just the ones the load lab gates.
 It spans the whole product, with each behavior naming the suite that validates it, so it is the team's
 single "does the product behave the way we intend" reference. It is an **internal** artifact (not
-published), structurally modeled on the public `/promises` report
-([build-promises.mjs](../../deploy/build-promises.mjs) renders the Gherkin trust scenarios).
+published), structurally modeled on the public `/promises` report (the in-app
+[Promises](../../passport/src/ui/promises/Promises.tsx) surface, a pure function of the promises data
+gated by `promises.test.ts`).
 
 - **Single source of truth:** `passport/src/loadlab/behaviors.json`. Each behavior carries an id,
   category, the intent (what we mean to be true), the check (how it is validated in one line), a

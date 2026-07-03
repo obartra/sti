@@ -258,12 +258,13 @@ limits below: the server can tell that a knock was answered, just not by or for 
    landing (push routing + the gate) are the later linking and slice-7 work; until then a contact
    has no `theirNotify` so the batch is empty in the running app, exactly as tests simulate it.
 6. **Groups** (client-side bundles, no hide floor, membership is the sharing + the Groups UI). No server surface.
-   Built as account model v7 (`circles`, optional) + circle CRUD on the account manager (upsert
-   normalizes members against current contacts; removing a contact strips it from every circle) +
-   the floor logic: `circleMeetsFloor` and `visibleCircleStatuses`, which hide a circle entirely
-   below five members (never a partial reveal). The Circles UI lands with the contact-status
-   resolution it would display (the mutual-exchange work), so this slice is the tested data +
-   privacy logic, not the screen.
+   Built as account model v7 (`circles`, optional) + circle CRUD on the account manager
+   (`normalizeCircleMembers` normalizes members against current contacts; removing a contact strips
+   it from every circle) + `resolveCircleRoster`, which resolves a circle to its display roster:
+   every member at any group size (no minimum-size hide floor, per decision 4 and doc 31), each
+   member blue only when their shared status currently reads blue and fail-closed to gray otherwise.
+   The Circles UI lands with the contact-status resolution it would display (the mutual-exchange
+   work), so this slice is the tested data + privacy logic, not the screen.
 7. **scan-to-autolink UI** (auto-share on confirm) + **browser service worker / Push subscription**
    (real-device verify), and **prod VAPID key provisioning**: the hardware-gated tail.
 

@@ -1,10 +1,11 @@
 # 31 - App shape and simplification
 
-## Status: PROPOSED (design)
-
 The app does more than it needs to. This doc fixes the shape: the handful of jobs
 the product actually does, the navigation that exposes them, and the simplifications
 that get us there. It is the owner for the app's top-level information architecture.
+The Home / Links / People / Care bar it describes has shipped; the parts still pending
+are called out inline where they come up (the biggest are the Privacy-to-Settings
+rename and the "be scanned" half of the in-person gesture).
 Where it touches areas other docs already plan, it folds those plans in and says so,
 rather than restating them: it supersedes the navigation and the Connect/Circles
 targets in [07-screen-by-screen-build-guide](07-screen-by-screen-build-guide.md)
@@ -34,23 +35,25 @@ Anywhere a feature asks the owner to configure who sees what beyond "public prof
 or private link," it is a candidate for removal. The privacy model already does the
 hard part; the UI should not re-expose it as knobs.
 
-## Target navigation
+## Navigation
 
-A small, stable bottom bar (sidebar on desktop), each item a job above:
+The bottom bar (sidebar on desktop) is a small, stable set, each item a job above:
 
 - **Home** - your card and where you stand.
-- **Links** - share and manage your links (absorbs today's share flow and the
-  "live links" list now buried in Privacy).
+- **Links** - share and manage your links (the share flow and the live-links list,
+  which used to be buried in Privacy).
 - **People** - your connections, starred at the top, and your groups. Scanning to
   connect starts here.
 - **Care** - find testing and the trust links.
 
-Notifications stays a quiet bell, not a tab. **Settings** (which absorbs today's
-Privacy screen) is reached from Home or a name chip, not the bar.
+Notifications is a quiet bell, not a tab. The one account screen is reached from Home
+or a name chip, not the bar.
 
-This replaces today's `home / connect / circles / care` bar: Connect and Circles
-merge into **People**, **Links** gets a first-class home instead of living inside
-Privacy, and Privacy becomes **Settings**.
+This is the shipped shape: Home / Links / People / Care. There is no Connect or Circles
+destination; scanning and groups live under **People**, and **Links** has a first-class
+home of its own instead of living inside Privacy. What is still pending is the account
+screen's rename from **Privacy** to **Settings** (it still carries the Privacy name in
+code, see [Settings](#settings) and the copy-rework list at the end).
 
 ## Identity: faces are the privacy engine
 
@@ -343,10 +346,11 @@ the account actions, the attributes, the links list, and the explainer.
 ## What this supersedes or folds in
 
 - **[07-screen-by-screen-build-guide](07-screen-by-screen-build-guide.md):** the
-  top-level navigation here replaces the implicit `home / connect / circles / care`
-  shape; §E (Connect) and §F (Circles & Events) fold into **People** and **Groups**
-  above. The cross-cutting cleanups in §G (handles not names, blue/gray everywhere,
-  no self-reported stamp, no streak) are unchanged and still apply.
+  shipped Home / Links / People / Care bar replaces the implicit `home / connect /
+  circles / care` shape that guide assumed; §E (Connect) and §F (Circles & Events)
+  folded into **People** and **Groups** above. The cross-cutting cleanups in §G
+  (handles not names, blue/gray everywhere, no self-reported stamp, no streak) are
+  unchanged and still apply.
 - **[13-contact-graph-and-notification](13-contact-graph-and-notification.md):** the
   contact and group data model and the partner-notify pipeline are unchanged; this
   doc only simplifies how they are surfaced.
