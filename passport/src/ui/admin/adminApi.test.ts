@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from "vitest";
 import {
   actOnVanityName,
   disableAccount,
-  getAdminHealth,
   getAdminMetrics,
   getAdminTrends,
   listAdminAudit,
@@ -14,6 +13,7 @@ import {
   revokeAlias,
   type FetchLike,
 } from "./adminApi.ts";
+import { getAdminHealth } from "./adminOpsApi.ts";
 
 function resp(status: number): Response {
   return new Response(null, { status });
@@ -200,7 +200,13 @@ describe("getAdminHealth", () => {
     const ok = vi.fn<FetchLike>().mockResolvedValue(jsonResp(200, health));
     expect(await getAdminHealth("https://api.example", "t", ok)).toEqual({
       kind: "ok",
-      health,
+      // The absent today-bucket and box facts default rather than NaN.
+      health: {
+        ...health,
+        errorsToday: [],
+        uptimeSeconds: 0,
+        diskFreeBytes: 0,
+      },
     });
     expect(ok).toHaveBeenCalledWith(
       "https://api.example/admin/health",
@@ -219,11 +225,14 @@ describe("getAdminHealth", () => {
       kind: "ok",
       health: {
         errors: [],
+        errorsToday: [],
         sendQueueDepth: 5,
         sendQueueOldestAgeSeconds: 0,
         janitorAgeSeconds: -1,
         inflightCurrent: 0,
         inflightMax: 0,
+        uptimeSeconds: 0,
+        diskFreeBytes: 0,
       },
     });
   });

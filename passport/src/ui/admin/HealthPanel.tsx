@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "../../design/components/index.ts";
 import { StatusLabel } from "../editorial/StatusLabel.tsx";
+import { humanBytes } from "./MetricsPanel.tsx";
 import "./admin.css";
-import type { AdminHealth, AdminHealthResult } from "./adminApi.ts";
+import type { AdminHealth, AdminHealthResult } from "./adminOpsApi.ts";
 
 // The health panel (doc 20): a read-only, at-a-glance view of how the box is running
 // right now, at the top of the console. A single status word (StatusLabel) summarizes
@@ -25,13 +26,17 @@ const COPY = {
   statusOk: "All clear",
   statusWarn: "Needs a look",
   statusUnknown: "Health unknown",
-  errorsLabel: "Internal errors",
+  errorsLabel: "Errors today",
+  lifetimeNote: "all time",
   queueLabel: "Send queue",
   loopLabel: "Background loop",
   inflightLabel: "In flight",
   neverRan: "no tick yet",
   queueClear: "empty",
-  noErrors: "none since start",
+  noErrors: "none today",
+  buildLabel: "Build",
+  uptimeLabel: "Up for",
+  diskLabel: "Disk free",
 } as const;
 
 // How long the oldest queued send may sit, or the background loop may go between
@@ -51,21 +56,28 @@ export interface HealthStatus {
   label: string;
 }
 
-// Sum every subsystem's internal-error count. Cumulative since boot, so any nonzero
-// total is worth a look on this low-traffic box (the same >0 tripwire the alert email
-// uses).
+// Sum the lifetime totals across subsystems. They survive restarts (the metrics
+// snapshot), so this is history, not a fire signal.
 function totalErrors(h: AdminHealth): number {
   return h.errors.reduce((sum, e) => sum + e.count, 0);
 }
 
-// Reduce the snapshot to one status: "needs a look" if any internal error is logged,
-// the send queue is stuck draining, or the background loop has gone stale; otherwise
-// "all clear". A never-run loop (age -1) is a fresh boot, not a stall.
+// Sum TODAY's bucket only: the is-it-on-fire-now read the status word keys off.
+function errorsToday(h: AdminHealth): number {
+  return h.errorsToday.reduce((sum, e) => sum + e.count, 0);
+}
+
+// Reduce the snapshot to one status: "needs a look" if an internal error was
+// logged TODAY, the send queue is stuck draining, or the background loop has
+// gone stale; otherwise "all clear". The lifetime totals deliberately do not
+// trip this: they survive restarts, so an old incident must not keep the box
+// amber forever (that ambiguity is exactly what the per-day buckets fixed).
+// A never-run loop (age -1) is a fresh boot, not a stall.
 export function healthStatus(h: AdminHealth | null): HealthStatus {
   if (h === null) return { tone: "unknown", label: COPY.statusUnknown };
   const stuckQueue = h.sendQueueOldestAgeSeconds > QUEUE_STUCK_SECONDS;
   const staleLoop = h.janitorAgeSeconds > LOOP_STALE_SECONDS;
-  if (totalErrors(h) > 0 || stuckQueue || staleLoop) {
+  if (errorsToday(h) > 0 || stuckQueue || staleLoop) {
     return { tone: "warn", label: COPY.statusWarn };
   }
   return { tone: "ok", label: COPY.statusOk };
@@ -117,10 +129,10 @@ function Figure({
   );
 }
 
-// The per-subsystem error breakdown, shown only when something has been logged (an
-// all-zero box shows a plain "none since start" instead of four zeros).
+// The per-subsystem breakdown of TODAY's errors, shown only when something was
+// logged today (an all-clear day shows a plain "none today" instead of zeros).
 function ErrorBreakdown({ health }: { health: AdminHealth }) {
-  const nonzero = health.errors.filter((e) => e.count > 0);
+  const nonzero = health.errorsToday.filter((e) => e.count > 0);
   if (nonzero.length === 0) {
     return (
       <div className="adm-note">
@@ -138,8 +150,23 @@ function ErrorBreakdown({ health }: { health: AdminHealth }) {
   );
 }
 
+// The box strip: which binary is running, for how long, and how much disk is
+// left under the database. System facts the operator otherwise SSHes for.
+function BoxStrip({ health }: { health: AdminHealth }) {
+  if (!health.buildVersion && health.uptimeSeconds === 0) return null;
+  const parts = [
+    health.buildVersion ? `${COPY.buildLabel} ${health.buildVersion}` : "",
+    `${COPY.uptimeLabel} ${humanAge(health.uptimeSeconds)}`,
+    health.diskFreeBytes > 0
+      ? `${COPY.diskLabel} ${humanBytes(health.diskFreeBytes)}`
+      : "",
+  ].filter(Boolean);
+  return <div className="adm-note adm-note--mono">{parts.join(" · ")}</div>;
+}
+
 function HealthFigures({ health }: { health: AdminHealth }) {
-  const errs = totalErrors(health);
+  const errs = errorsToday(health);
+  const lifetime = totalErrors(health);
   const queueNote =
     health.sendQueueDepth > 0
       ? `oldest ${humanAge(health.sendQueueOldestAgeSeconds)}`
@@ -153,6 +180,7 @@ function HealthFigures({ health }: { health: AdminHealth }) {
       <Figure
         label={COPY.errorsLabel}
         value={errs.toLocaleString("en-US")}
+        note={`${lifetime.toLocaleString("en-US")} ${COPY.lifetimeNote}`}
         warn={errs > 0}
       />
       <Figure
@@ -178,11 +206,15 @@ export function HealthPanel({
   token,
   ops,
   onUnauthorized,
+  onStatusChange,
   refreshSignal = 0,
 }: {
   token: string;
   ops: HealthOps;
   onUnauthorized: () => void;
+  // Reports whether the box needs a look, so the shell can mark the Overview
+  // tab from anywhere in the console.
+  onStatusChange?: ((needsLook: boolean) => void) | undefined;
   // Bumped by the shell's "Refresh" control to re-read without a remount.
   refreshSignal?: number;
 }) {
@@ -213,6 +245,9 @@ export function HealthPanel({
   }, [load, refreshSignal]);
 
   const st = healthStatus(health);
+  useEffect(() => {
+    onStatusChange?.(st.tone === "warn");
+  }, [st.tone, onStatusChange]);
   return (
     <section className="adm-panel adm-panel--health">
       <div className="adm-panel__head">
@@ -240,6 +275,7 @@ export function HealthPanel({
         <>
           <HealthFigures health={health} />
           <ErrorBreakdown health={health} />
+          <BoxStrip health={health} />
         </>
       )}
     </section>

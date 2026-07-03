@@ -18,6 +18,7 @@ import type { FeedbackOps } from "./FeedbackPanel.tsx";
 import type { ManageOps } from "./ManagePanel.tsx";
 import type { LogsOps } from "./LogsPanel.tsx";
 import type { RestartOps } from "./RestartPanel.tsx";
+import type { ErrorsOps } from "./ErrorsPanel.tsx";
 
 // The operator surface (doc 20): a dedicated, gated /admin page, isolated from the
 // user flows and never linked from the app. It renders nothing actionable until a
@@ -87,6 +88,11 @@ export interface AdminPageProps {
    * watches the service come back. Injectable like the rest.
    */
   restartOps?: RestartOps;
+  /**
+   * Error-tracking transport (doc 20): the per-day buckets, the ERROR-level
+   * log lines, and the audited clear. Injectable like the rest.
+   */
+  errorsOps?: ErrorsOps;
   /**
    * Which console section opens first once authed (default the overview).
    * Stories use it to capture each tab.
@@ -191,23 +197,24 @@ export function AdminPage({
   manageOps,
   logsOps,
   restartOps,
+  errorsOps,
   initialTab,
 }: AdminPageProps) {
   const validate = useCallback(
     (token: string) => (ping ? ping(token) : pingAdmin(apiBase, token)),
     [ping, apiBase],
   );
-  const { ops, audit, metrics, health, feedback, manage, logs, restart } =
-    useAdminTransports(apiBase, {
-      reviewOps,
-      auditOps,
-      metricsOps,
-      healthOps,
-      feedbackOps,
-      manageOps,
-      logsOps,
-      restartOps,
-    });
+  const transports = useAdminTransports(apiBase, {
+    reviewOps,
+    auditOps,
+    metricsOps,
+    healthOps,
+    feedbackOps,
+    manageOps,
+    logsOps,
+    restartOps,
+    errorsOps,
+  });
   const { phase, token, setToken, error, onSubmit, lock, expire } =
     useAdminGate(validate);
 
@@ -225,14 +232,15 @@ export function AdminPage({
         {phase === "authed" ? (
           <AuthedShell
             token={token}
-            ops={ops}
-            auditOps={audit}
-            metricsOps={metrics}
-            healthOps={health}
-            feedbackOps={feedback}
-            manageOps={manage}
-            logsOps={logs}
-            restartOps={restart}
+            ops={transports.ops}
+            auditOps={transports.audit}
+            metricsOps={transports.metrics}
+            healthOps={transports.health}
+            feedbackOps={transports.feedback}
+            manageOps={transports.manage}
+            logsOps={transports.logs}
+            restartOps={transports.restart}
+            errorsOps={transports.errors}
             onLock={lock}
             onExpire={expire}
             initialTab={initialTab}

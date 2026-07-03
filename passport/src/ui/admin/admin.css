@@ -93,6 +93,21 @@
   padding: 2px 0 10px;
 }
 
+/* The Overview tab's warn dot: visible from any tab while the box needs a
+   look, so the fire indicator survives switching away. */
+.adm-tab-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.adm-tab-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-ink-treat);
+}
+
 /* One tab section: an invisible wrapper keeping the console's vertical rhythm
    for the panels inside it. Every section stays mounted (panels keep their data,
    so switching never flashes a reload); the inactive ones hide via the `hidden`
@@ -283,6 +298,11 @@
   .adm-charts > .adm-chart:last-child {
     grid-column: 1 / -1;
   }
+
+  /* A two-chart set pairs up cleanly; no spanning needed. */
+  .adm-charts--pair > .adm-chart:last-child {
+    grid-column: auto;
+  }
 }
 
 @container (min-width: 1100px) {
@@ -292,6 +312,12 @@
 
   .adm-charts > .adm-chart:last-child {
     grid-column: auto;
+  }
+
+  /* A two-chart set (the queue trends) stays a balanced pair at full width
+     instead of leaving a phantom third column. */
+  .adm-charts--pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -453,6 +479,12 @@
 .adm-note {
   font-size: 13px;
   color: var(--text-muted);
+}
+
+/* The box strip (build, uptime, disk): system facts in quiet mono. */
+.adm-note--mono {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
 }
 
 .adm-error {

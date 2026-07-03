@@ -67,12 +67,18 @@ charting library, a richer table/grid) without adding a byte to the user bundle 
 health surface, and the shell budget in [doc 22](22-progressive-web-app.md) is unaffected. It is built for a **desktop
 operator** (a wide, multi-panel dashboard layout), not the mobile-first passport frame, since this
 is where the richer aggregate views live. The built console reads as four sections behind one tab
-bar, each a job: **Overview** (the health status band plus a waiting-for-review strip of backlog
-figures, the is-anything-on-fire glance and it opens first), **Queues** (the two work queues side
-by side, with the labs answers view below them), **Metrics** (the stored totals and trend charts
-abreast), and **Tools** (the id-lookup tool beside the audit tail). Within a section the console
-widens on container queries (the two thresholds where panels pair up and the charts go
-three-across), never viewport media queries, and collapses to a single column when narrow.
+bar, organized by job with each signal beside the place the operator acts on it: **Overview**
+(opens first: the health band leading with errors-today, a box strip of build/uptime/disk-free
+facts, the waiting-for-review backlog figures, and the errors block: the per-day chart by
+subsystem, the distinct problems rolled up from the error log lines, and the audited clear),
+**Queues** (the two work queues side by side, the labs answers view, and the queue's own trends:
+reports filed per day and the wait histogram), **Usage** (the stored totals with the growth,
+traffic, and request-latency charts), and **Tools** (the id-lookup tool beside the audit tail,
+the server log, and the restart control). The Overview tab label carries a quiet warn dot while
+the box needs a look, so the fire signal survives switching tabs, and the shell offers an
+auto-refresh toggle for a console left open. Within a section the console widens on container
+queries (the two thresholds where panels pair up and the charts go three-across), never viewport
+media queries, and collapses to a single column when narrow.
 
 - A token gate: enter the bearer secret; on success, the page calls a cheap `GET /admin/ping` to
   validate before showing anything.

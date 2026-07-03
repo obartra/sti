@@ -11,6 +11,7 @@ import type { FeedbackOps } from "./FeedbackPanel.tsx";
 import type { ManageOps } from "./ManagePanel.tsx";
 import type { LogsOps } from "./LogsPanel.tsx";
 import type { RestartOps } from "./RestartPanel.tsx";
+import type { ErrorsOps } from "./ErrorsPanel.tsx";
 
 afterEach(() => {
   sessionStorage.clear();
@@ -35,6 +36,8 @@ const emptyAudit: AuditOps = {
 // The metrics panel loads on mount too; stub it for the same reason. Its own tests
 // cover the rendering.
 const emptyMetrics: MetricsOps = {
+  getPerf: () =>
+    Promise.resolve({ kind: "ok", perf: { requestsPerDay: [], latency: [] } }),
   get: () =>
     Promise.resolve({
       kind: "ok",
@@ -63,11 +66,14 @@ const emptyHealth: HealthOps = {
       kind: "ok",
       health: {
         errors: [],
+        errorsToday: [],
         sendQueueDepth: 0,
         sendQueueOldestAgeSeconds: 0,
         janitorAgeSeconds: -1,
         inflightCurrent: 0,
         inflightMax: 0,
+        uptimeSeconds: 0,
+        diskFreeBytes: 0,
       },
     }),
 };
@@ -109,6 +115,14 @@ const idleRestart: RestartOps = {
   ping: () => Promise.resolve("ok"),
 };
 
+// The errors panel loads on mount (Overview); stub it so the authed shell stays
+// server-free. The panel has its own dedicated tests.
+const emptyErrors: ErrorsOps = {
+  get: () => Promise.resolve({ kind: "ok", errors: { days: [], totals: [] } }),
+  errorLines: () => Promise.resolve({ kind: "ok", entries: [] }),
+  clear: () => Promise.resolve("ok"),
+};
+
 function renderPage(
   ping: (token: string) => Promise<AdminPingResult>,
   reviewOps: ReviewOps = emptyOps,
@@ -125,6 +139,7 @@ function renderPage(
       manageOps={emptyManage}
       logsOps={emptyLogs}
       restartOps={idleRestart}
+      errorsOps={emptyErrors}
     />,
   );
 }
@@ -224,12 +239,16 @@ describe("AdminPage", () => {
     sessionStorage.setItem(STORAGE_KEY, "stored-token");
     renderPage(() => Promise.resolve("ok" as const));
 
-    // The default tab is the overview: the health band plus the backlog strip.
+    // The default tab is the overview: the health band, the backlog strip, and
+    // the errors block.
     expect(
       await screen.findByText(/operator session active/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/service health/i)).toBeInTheDocument();
     expect(screen.getByText(/waiting for review/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /^errors$/i }),
+    ).toBeInTheDocument();
     // The queue panels themselves live behind the Queues tab (the overview's
     // backlog strip shares the "Reported names" words, so key off the heading).
     expect(
@@ -246,9 +265,11 @@ describe("AdminPage", () => {
     expect(screen.getByText(/something wrong\?/i)).toBeInTheDocument();
     expect(screen.getByText(/open-questions page/i)).toBeInTheDocument();
 
-    // Metrics, then Tools (the id lookup beside the audit record).
-    await user.click(screen.getByRole("tab", { name: /metrics/i }));
-    expect(await screen.findByText(/service metrics/i)).toBeInTheDocument();
+    // Usage, then Tools (the id lookup beside the audit record).
+    await user.click(screen.getByRole("tab", { name: /usage/i }));
+    expect(
+      await screen.findByRole("heading", { name: /^usage$/i }),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: /tools/i }));
     expect(await screen.findByText(/manage records/i)).toBeInTheDocument();
     expect(screen.getByText(/recent activity/i)).toBeInTheDocument();

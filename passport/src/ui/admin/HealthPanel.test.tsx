@@ -2,25 +2,37 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { HealthPanel, healthStatus, type HealthOps } from "./HealthPanel.tsx";
-import type { AdminHealth } from "./adminApi.ts";
+import type { AdminHealth } from "./adminOpsApi.ts";
+
+const ZERO_COUNTS = [
+  { type: "store", count: 0 },
+  { type: "enqueue", count: 0 },
+  { type: "janitor", count: 0 },
+  { type: "decode", count: 0 },
+];
 
 const CLEAR: AdminHealth = {
-  errors: [
-    { type: "store", count: 0 },
-    { type: "enqueue", count: 0 },
-    { type: "janitor", count: 0 },
-    { type: "decode", count: 0 },
-  ],
+  errors: ZERO_COUNTS,
+  errorsToday: ZERO_COUNTS,
   sendQueueDepth: 0,
   sendQueueOldestAgeSeconds: 0,
   janitorAgeSeconds: 8,
   inflightCurrent: 0,
   inflightMax: 64,
+  buildVersion: "abc1234",
+  uptimeSeconds: 3600,
+  diskFreeBytes: 5 * 1024 * 1024 * 1024,
 };
 
 const WARN: AdminHealth = {
   ...CLEAR,
   errors: [
+    { type: "store", count: 2 },
+    { type: "enqueue", count: 0 },
+    { type: "janitor", count: 173 },
+    { type: "decode", count: 1 },
+  ],
+  errorsToday: [
     { type: "store", count: 2 },
     { type: "enqueue", count: 0 },
     { type: "janitor", count: 0 },
@@ -39,8 +51,17 @@ describe("healthStatus", () => {
     expect(healthStatus(CLEAR)).toEqual({ tone: "ok", label: "All clear" });
   });
 
-  it("needs a look when any internal error is logged", () => {
+  it("needs a look when an internal error was logged today", () => {
     expect(healthStatus(WARN).tone).toBe("warn");
+  });
+
+  it("stays all-clear on lifetime totals alone (history is not a fire)", () => {
+    expect(
+      healthStatus({
+        ...CLEAR,
+        errors: [{ type: "janitor", count: 173 }],
+      }).tone,
+    ).toBe("ok");
   });
 
   it("needs a look when the send queue is stuck draining", () => {
@@ -77,7 +98,7 @@ describe("HealthPanel", () => {
     // The heartbeat age renders as a short relative label, not a raw second count.
     expect(screen.getByText("8s")).toBeInTheDocument();
     // An all-zero box shows a plain "none since start", never four zeros.
-    expect(screen.getByText(/none since start/i)).toBeInTheDocument();
+    expect(screen.getByText(/none today/i)).toBeInTheDocument();
   });
 
   it("shows the amber chip and the per-subsystem error breakdown when logged", async () => {

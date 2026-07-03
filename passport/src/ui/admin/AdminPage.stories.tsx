@@ -3,12 +3,16 @@ import { AdminPage } from "./AdminPage.tsx";
 import type {
   AdminAuditEntry,
   AdminFeedback,
-  AdminHealth,
   AdminMetrics,
   AdminPingResult,
   AdminTrends,
 } from "./adminApi.ts";
-import type { AdminLogEntry } from "./adminOpsApi.ts";
+import type {
+  AdminErrors,
+  AdminHealth,
+  AdminLogEntry,
+  AdminPerf,
+} from "./adminOpsApi.ts";
 import type { ReviewOps } from "./ReviewPanel.tsx";
 import type { AuditOps } from "./ActivityPanel.tsx";
 import type { MetricsOps } from "./MetricsPanel.tsx";
@@ -16,6 +20,7 @@ import type { HealthOps } from "./HealthPanel.tsx";
 import type { FeedbackOps } from "./FeedbackPanel.tsx";
 import type { LogsOps } from "./LogsPanel.tsx";
 import type { RestartOps } from "./RestartPanel.tsx";
+import type { ErrorsOps } from "./ErrorsPanel.tsx";
 
 // The operator surface (doc 20): a dedicated, gated /admin page isolated from the
 // user flows. The stories stub the token validator and the review transport so the
@@ -55,9 +60,11 @@ const auditOps = (entries: AdminAuditEntry[]): AuditOps => ({
 const metricsOps = (
   metrics: AdminMetrics,
   trends: AdminTrends,
+  perf: AdminPerf,
 ): MetricsOps => ({
   get: () => Promise.resolve({ kind: "ok", metrics }),
   getTrends: () => Promise.resolve({ kind: "ok", trends }),
+  getPerf: () => Promise.resolve({ kind: "ok", perf }),
 });
 
 const healthOps = (health: AdminHealth): HealthOps => ({
@@ -78,6 +85,70 @@ const restartOps: RestartOps = {
   restart: () => Promise.resolve("ok"),
   ping: () => Promise.resolve("ok"),
 };
+
+const errorsOps = (errors: AdminErrors, lines: AdminLogEntry[]): ErrorsOps => ({
+  get: () => Promise.resolve({ kind: "ok", errors }),
+  errorLines: () =>
+    Promise.resolve({
+      kind: "ok",
+      entries: lines.filter((l) => l.level === "ERROR"),
+    }),
+  clear: () => Promise.resolve("ok"),
+});
+
+// A week of per-day error buckets: a couple of push-send bursts on the
+// janitor path plus a stray storage error, so the stacked chart and the
+// today/lifetime figures have deterministic content. Aggregate only.
+const SAMPLE_ERRORS: AdminErrors = {
+  days: [0, 0, 3, 0, 1, 5, 2].map((janitor, i) => ({
+    day: Math.floor(Date.UTC(2026, 5, 25) / (24 * 60 * 60 * 1000)) - 6 + i,
+    store: i === 4 ? 1 : 0,
+    enqueue: 0,
+    janitor,
+    decode: 0,
+  })),
+  totals: [
+    { type: "store", count: 12 },
+    { type: "enqueue", count: 0 },
+    { type: "janitor", count: 173 },
+    { type: "decode", count: 3 },
+  ],
+};
+
+const EMPTY_ERRORS: AdminErrors = {
+  days: [0, 1, 2, 3, 4, 5, 6].map((i) => ({
+    day: Math.floor(Date.UTC(2026, 5, 25) / (24 * 60 * 60 * 1000)) - 6 + i,
+    store: 0,
+    enqueue: 0,
+    janitor: 0,
+    decode: 0,
+  })),
+  totals: [
+    { type: "store", count: 0 },
+    { type: "enqueue", count: 0 },
+    { type: "janitor", count: 0 },
+    { type: "decode", count: 0 },
+  ],
+};
+
+// Requests per day + the aggregate latency histogram for the Usage charts.
+const SAMPLE_PERF: AdminPerf = {
+  requestsPerDay: [120, 180, 140, 260, 240, 310, 280].map((count, i) => ({
+    day: Math.floor(Date.UTC(2026, 5, 25) / (24 * 60 * 60 * 1000)) - 6 + i,
+    count,
+  })),
+  latency: [
+    { underMs: 1, count: 820 },
+    { underMs: 5, count: 460 },
+    { underMs: 25, count: 190 },
+    { underMs: 100, count: 40 },
+    { underMs: 500, count: 12 },
+    { underMs: 2500, count: 2 },
+    { underMs: 0, count: 0 },
+  ],
+};
+
+const EMPTY_PERF: AdminPerf = { requestsPerDay: [], latency: [] };
 
 // Fixed UTC instants so the server-log panel's rows are deterministic. The
 // shapes mirror real slog lines: static message + rendered attrs, no ids.
@@ -151,16 +222,25 @@ const EMPTY_TRENDS: AdminTrends = {
 // backlog, so the health chip renders amber with a breakdown. Aggregate only.
 const SAMPLE_HEALTH: AdminHealth = {
   errors: [
-    { type: "store", count: 2 },
+    { type: "store", count: 12 },
     { type: "enqueue", count: 0 },
-    { type: "janitor", count: 0 },
-    { type: "decode", count: 1 },
+    { type: "janitor", count: 173 },
+    { type: "decode", count: 3 },
+  ],
+  errorsToday: [
+    { type: "store", count: 0 },
+    { type: "enqueue", count: 0 },
+    { type: "janitor", count: 2 },
+    { type: "decode", count: 0 },
   ],
   sendQueueDepth: 3,
   sendQueueOldestAgeSeconds: 42,
   janitorAgeSeconds: 12,
   inflightCurrent: 1,
   inflightMax: 64,
+  buildVersion: "8ab9eba6eb5b",
+  uptimeSeconds: 2 * 24 * 3600 + 5 * 3600,
+  diskFreeBytes: 27 * 1024 * 1024 * 1024,
 };
 
 // The all-clear snapshot: nothing logged, an empty queue, a fresh heartbeat.
@@ -171,11 +251,20 @@ const CLEAR_HEALTH: AdminHealth = {
     { type: "janitor", count: 0 },
     { type: "decode", count: 0 },
   ],
+  errorsToday: [
+    { type: "store", count: 0 },
+    { type: "enqueue", count: 0 },
+    { type: "janitor", count: 0 },
+    { type: "decode", count: 0 },
+  ],
   sendQueueDepth: 0,
   sendQueueOldestAgeSeconds: 0,
   janitorAgeSeconds: 8,
   inflightCurrent: 0,
   inflightMax: 64,
+  buildVersion: "8ab9eba6eb5b",
+  uptimeSeconds: 3600,
+  diskFreeBytes: 27 * 1024 * 1024 * 1024,
 };
 
 // Fixed UTC instants so the feedback panel's timestamps are deterministic. The
@@ -261,30 +350,31 @@ const BUSY_ARGS = {
     { name: "free_money", reason: "spam", count: 1, createdAt: 2 },
   ]),
   auditOps: auditOps(SAMPLE_AUDIT),
-  metricsOps: metricsOps(SAMPLE_METRICS, SAMPLE_TRENDS),
+  metricsOps: metricsOps(SAMPLE_METRICS, SAMPLE_TRENDS, SAMPLE_PERF),
   healthOps: healthOps(SAMPLE_HEALTH),
   feedbackOps: feedbackOps(SAMPLE_FEEDBACK),
   logsOps: logsOps(SAMPLE_LOGS),
   restartOps,
+  errorsOps: errorsOps(SAMPLE_ERRORS, SAMPLE_LOGS),
 } as const;
 
-// The authed console's first section: the health band plus the waiting-work
-// figures (the default tab).
+// The authed console's first section (the default tab): the health band, the
+// waiting-work figures, and the errors block with its chart and issues rollup.
 export const AuthedWithReports: Story = {
   args: BUSY_ARGS,
   decorators: [seedToken],
 };
 
-// The Queues tab: both work queues side by side, with the labs answers view
-// (grouped by question, with its per-question counts and CSV download) below.
+// The Queues tab: both work queues side by side, the labs answers view below,
+// then the queue's own trends (inflow and wait).
 export const AuthedQueues: Story = {
   args: { ...BUSY_ARGS, initialTab: "queues" },
   decorators: [seedToken],
 };
 
-// The Metrics tab: the stored totals and the three trend charts.
-export const AuthedMetrics: Story = {
-  args: { ...BUSY_ARGS, initialTab: "metrics" },
+// The Usage tab: the stored totals and the growth/traffic/latency charts.
+export const AuthedUsage: Story = {
+  args: { ...BUSY_ARGS, initialTab: "usage" },
   decorators: [seedToken],
 };
 
@@ -311,11 +401,13 @@ export const AuthedEmpty: Story = {
         pendingFeedback: 0,
       },
       EMPTY_TRENDS,
+      EMPTY_PERF,
     ),
     healthOps: healthOps(CLEAR_HEALTH),
     feedbackOps: feedbackOps([]),
     logsOps: logsOps([]),
     restartOps,
+    errorsOps: errorsOps(EMPTY_ERRORS, []),
   },
   decorators: [seedToken],
 };

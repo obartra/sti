@@ -48,9 +48,26 @@ const SAMPLE_TRENDS: AdminTrends = {
   ],
 };
 
+const SAMPLE_PERF = {
+  requestsPerDay: [120, 180, 140, 260, 240, 310, 280].map((count, i) => ({
+    day: baseDay - 6 + i,
+    count,
+  })),
+  latency: [
+    { underMs: 1, count: 820 },
+    { underMs: 5, count: 460 },
+    { underMs: 25, count: 190 },
+    { underMs: 100, count: 40 },
+    { underMs: 500, count: 12 },
+    { underMs: 2500, count: 2 },
+    { underMs: 0, count: 0 },
+  ],
+};
+
 const opsFor = (metrics: AdminMetrics, trends: AdminTrends): MetricsOps => ({
   get: () => Promise.resolve({ kind: "ok", metrics }),
   getTrends: () => Promise.resolve({ kind: "ok", trends }),
+  getPerf: () => Promise.resolve({ kind: "ok", perf: SAMPLE_PERF }),
 });
 
 // The populated dashboard: totals, the row chart, and both trend charts.
