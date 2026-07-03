@@ -31,6 +31,7 @@ const (
 	auditActionAliasRevoke     = "alias.revoke"
 	auditActionFeedbackResolve = "feedback.resolve"
 	auditActionServerRestart   = "server.restart"
+	auditActionErrorsClear     = "errors.clear"
 )
 
 // adminReportsLimit caps the review queue page. The queue is operator-facing and
@@ -127,6 +128,11 @@ func (s *Server) registerAdminRoutes() {
 	// Audited graceful self-restart (doc 20): the process drains and exits with a
 	// deliberate non-zero code so systemd's Restart=on-failure revives it.
 	s.mux.HandleFunc("POST "+contract.PathAdminRestart, s.requireAdmin(s.handleAdminRestart))
+	// Error tracking + performance (doc 20): per-day aggregate buckets and the
+	// aggregated latency histogram, plus the audited clear of the lifetime totals.
+	s.mux.HandleFunc("GET "+contract.PathAdminErrors, s.requireAdmin(s.handleAdminErrors))
+	s.mux.HandleFunc("GET "+contract.PathAdminPerf, s.requireAdmin(s.handleAdminPerf))
+	s.mux.HandleFunc("POST /admin/errors/clear", s.requireAdmin(s.handleErrorsClear))
 }
 
 // requireAdmin gates an admin handler: a tight per-IP rate limit first (so an
@@ -314,13 +320,25 @@ func (s *Server) handleAdminHealth(w http.ResponseWriter, r *http.Request) {
 			janitorAge = 0
 		}
 	}
+	today := make([]contract.AdminErrorCount, 0, len(errs))
+	for _, e := range s.metrics.ErrorsToday() {
+		today = append(today, contract.AdminErrorCount{Type: e.Type, Count: e.Count})
+	}
+	diskFree := int64(0)
+	if s.cfg.DiskFree != nil {
+		diskFree = s.cfg.DiskFree()
+	}
 	s.writeJSON(w, http.StatusOK, contract.AdminHealthResponse{
 		Errors:                    errs,
+		ErrorsToday:               today,
 		SendQueueDepth:            st.SendQueueDepth,
 		SendQueueOldestAgeSeconds: oldestAge,
 		JanitorAgeSeconds:         janitorAge,
 		InflightCurrent:           h.InflightCurrent,
 		InflightMax:               h.InflightMax,
+		BuildVersion:              s.cfg.BuildVersion,
+		UptimeSeconds:             (now - s.startedAt) / 1000,
+		DiskFreeBytes:             diskFree,
 	})
 }
 
@@ -561,4 +579,62 @@ func (s *Server) handleAdminRestart(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusAccepted)
 	go s.cfg.RequestRestart()
+}
+
+// handleAdminErrors answers GET /admin/errors: the per-day internal-error
+// buckets over a recent window (`days`, clamped like trends; zero-filled,
+// oldest first) plus the lifetime totals per subsystem. Counts of events per
+// fixed subsystem per day, never a message, value, or per-id figure. A read,
+// so not audited.
+func (s *Server) handleAdminErrors(w http.ResponseWriter, r *http.Request) {
+	daily := s.metrics.Daily(trendsDays(r))
+	days := make([]contract.AdminErrorDay, len(daily))
+	for i, d := range daily {
+		days[i] = contract.AdminErrorDay{
+			Day:     d.Day,
+			Store:   d.Counts[metrics.ErrStore],
+			Enqueue: d.Counts[metrics.ErrEnqueue],
+			Janitor: d.Counts[metrics.ErrJanitor],
+			Decode:  d.Counts[metrics.ErrDecode],
+		}
+	}
+	h := s.metrics.Health()
+	totals := make([]contract.AdminErrorCount, len(h.Errors))
+	for i, e := range h.Errors {
+		totals[i] = contract.AdminErrorCount{Type: e.Type, Count: e.Count}
+	}
+	s.writeJSON(w, http.StatusOK, contract.AdminErrorsResponse{Days: days, Totals: totals})
+}
+
+// handleAdminPerf answers GET /admin/perf: requests per day over the window and
+// the request-latency histogram aggregated across endpoint templates. Aggregate
+// only (doc 12): a count of requests per UTC day and coarse latency buckets,
+// never per-request, per-id, or per-endpoint-with-id data. A read, not audited.
+func (s *Server) handleAdminPerf(w http.ResponseWriter, r *http.Request) {
+	daily := s.metrics.Daily(trendsDays(r))
+	perDay := make([]contract.DayCount, len(daily))
+	for i, d := range daily {
+		perDay[i] = contract.DayCount{Day: d.Day, Count: int(d.Requests)}
+	}
+	underMs, counts := s.metrics.LatencyTotal()
+	latency := make([]contract.LatencyBucket, len(counts))
+	for i := range counts {
+		latency[i] = contract.LatencyBucket{UnderMs: underMs[i], Count: int(counts[i])}
+	}
+	s.writeJSON(w, http.StatusOK, contract.AdminPerfResponse{
+		RequestsPerDay: perDay,
+		Latency:        latency,
+	})
+}
+
+// handleErrorsClear answers POST /admin/errors/clear: an audited zeroing of the
+// lifetime error totals. The daily buckets stay (they are the record); this
+// resets the headline number so "since when" starts fresh. Audit-before-act
+// like every admin mutation.
+func (s *Server) handleErrorsClear(w http.ResponseWriter, r *http.Request) {
+	if !s.auditOrFail(r.Context(), w, auditActionErrorsClear, "") {
+		return
+	}
+	s.metrics.ClearErrors()
+	w.WriteHeader(http.StatusNoContent)
 }

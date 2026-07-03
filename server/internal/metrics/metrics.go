@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 // Endpoint is a bounded route-template label value. It is the template, e.g.
@@ -99,6 +100,9 @@ type Metrics struct {
 
 	janitorLastRun *gauge   // unix seconds of the last background-loop tick
 	feedbackTotal  *counter // "Something wrong?" reports filed (doc 35)
+
+	daily *dailyStore      // per-UTC-day error/request buckets (doc 20)
+	nowFn func() time.Time // test clock for the daily buckets; nil = wall time
 }
 
 type seriesKey struct {
@@ -112,6 +116,7 @@ func New() *Metrics {
 	r := newRegistry()
 	m := &Metrics{
 		reg:          r,
+		daily:        newDailyStore(),
 		requests:     map[seriesKey]*counter{},
 		durations:    map[Endpoint]*histogram{},
 		shed:         map[Endpoint]*counter{},
@@ -282,6 +287,7 @@ func (m *Metrics) Observe(method, path string, status int, seconds float64) {
 			c.Inc()
 		}
 	}
+	m.daily.bumpRequest(epochDay(m.now()))
 }
 
 // SensitiveOverload records the never-visible uniform-overload fallback firing on
@@ -299,6 +305,7 @@ func (m *Metrics) Error(t ErrorType) {
 	if c := m.errors[t]; c != nil {
 		c.Inc()
 	}
+	m.daily.bumpError(epochDay(m.now()), t)
 }
 
 // ErrorCount pairs a fixed subsystem error-type with its running total, for the
@@ -419,10 +426,19 @@ type seriesDump struct {
 type dump struct {
 	Version int          `json:"version"`
 	Series  []seriesDump `json:"series"`
+	// Days are the per-UTC-day error/request buckets (doc 20). Absent in old
+	// files (restored as empty) and ignored by old binaries, so the snapshot
+	// stays forward- and backward-tolerant.
+	Days []dayDump `json:"days,omitempty"`
 }
 
-// Snapshot serializes the persistable (counter + histogram) series to JSON.
-func (m *Metrics) Snapshot() ([]byte, error) { return json.Marshal(m.reg.snapshot()) }
+// Snapshot serializes the persistable (counter + histogram) series plus the
+// per-day buckets to JSON.
+func (m *Metrics) Snapshot() ([]byte, error) {
+	d := m.reg.snapshot()
+	d.Days = m.daily.snapshot()
+	return json.Marshal(d)
+}
 
 // Restore loads a Snapshot back into the matching pre-registered series. Unknown
 // series and shape mismatches (e.g. changed histogram buckets) are skipped, so an
@@ -433,6 +449,7 @@ func (m *Metrics) Restore(b []byte) error {
 		return err
 	}
 	m.reg.restore(d)
+	m.daily.restore(d.Days)
 	return nil
 }
 

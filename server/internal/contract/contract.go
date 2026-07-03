@@ -109,6 +109,8 @@ const (
 	PathAdminFeedback = "/admin/feedback" // GET: the "Something wrong?" review queue (doc 35)
 	PathAdminLogs     = "/admin/logs"     // GET: the service's recent log lines (doc 20)
 	PathAdminRestart  = "/admin/restart"  // POST: audited graceful self-restart (doc 20)
+	PathAdminErrors   = "/admin/errors"   // GET: per-day internal-error counts + lifetime totals (doc 20)
+	PathAdminPerf     = "/admin/perf"     // GET: requests per day + request-latency histogram (doc 20)
 )
 
 // --- JSON bodies (only the non-byte endpoints) ------------------------------
@@ -400,11 +402,46 @@ type AdminErrorCount struct {
 // 12). A read, so it is not itself audited.
 type AdminHealthResponse struct {
 	Errors                    []AdminErrorCount `json:"errors"`
+	ErrorsToday               []AdminErrorCount `json:"errorsToday"`
 	SendQueueDepth            int64             `json:"sendQueueDepth"`
 	SendQueueOldestAgeSeconds int64             `json:"sendQueueOldestAgeSeconds"`
 	JanitorAgeSeconds         int64             `json:"janitorAgeSeconds"`
 	InflightCurrent           int64             `json:"inflightCurrent"`
 	InflightMax               int64             `json:"inflightMax"`
+	// The box strip: which binary is running, for how long, and how much disk
+	// is left under the database. System facts, never subject data.
+	BuildVersion  string `json:"buildVersion,omitempty"`
+	UptimeSeconds int64  `json:"uptimeSeconds"`
+	DiskFreeBytes int64  `json:"diskFreeBytes"`
+}
+
+// AdminErrorDay is one UTC epoch-day of internal-error counts by fixed
+// subsystem (GET /admin/errors). Counts of events, never a message or value.
+type AdminErrorDay struct {
+	Day     int64 `json:"day"`
+	Store   int64 `json:"store"`
+	Enqueue int64 `json:"enqueue"`
+	Janitor int64 `json:"janitor"`
+	Decode  int64 `json:"decode"`
+}
+
+// AdminErrorsResponse is GET /admin/errors' body (doc 20): the per-day error
+// series over a recent window (zero-filled, oldest first) plus the lifetime
+// totals per subsystem. The totals survive restarts (the metrics snapshot);
+// POST /admin/errors/clear zeroes them while the daily history stays.
+type AdminErrorsResponse struct {
+	Days   []AdminErrorDay   `json:"days"`
+	Totals []AdminErrorCount `json:"totals"`
+}
+
+// AdminPerfResponse is GET /admin/perf's body (doc 20): requests per day over
+// a recent window and the request-latency histogram aggregated across endpoint
+// templates (per-bucket counts; underMs 0 is the trailing slower-than-the-last-
+// bound overflow, the same convention as the review-latency series). Aggregate
+// only, never a per-request or per-id figure.
+type AdminPerfResponse struct {
+	RequestsPerDay []DayCount      `json:"requestsPerDay"`
+	Latency        []LatencyBucket `json:"latency"`
 }
 
 // AdminLogEntry is one recent service log line (GET /admin/logs): the instant, the

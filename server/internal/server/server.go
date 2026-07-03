@@ -135,6 +135,12 @@ type Config struct {
 	// makes the endpoint a 500; only main.go can provide the drain-and-exit,
 	// since restart is a process-level action (doc 20).
 	RequestRestart func()
+	// BuildVersion names the running binary on the health read (doc 20 box
+	// strip). A build identifier, never anything about a subject. Empty = omitted.
+	BuildVersion string
+	// DiskFree reports free bytes on the filesystem holding the database, for
+	// the health read. nil (the default) reports 0.
+	DiskFree func() int64
 }
 
 func (c *Config) withDefaults() {
@@ -225,6 +231,7 @@ type Server struct {
 	cfg          Config
 	log          *slog.Logger
 	now          func() int64 // unix millis; injectable for tests
+	startedAt    int64        // unix millis at construction, for the health uptime
 	ipLimit      *limiter     // visible 429 on non-sensitive endpoints
 	knockLim     *limiter     // silent per-(id,requester) cap on /knock (never a 429)
 	knockGlobLim *limiter     // single global bucket capping /knock intake (silent)
@@ -266,6 +273,7 @@ func New(st *store.Store, cfg Config, log *slog.Logger, now func() int64) *Serve
 		cfg:          cfg,
 		log:          log,
 		now:          now,
+		startedAt:    now(),
 		ipLimit:      newLimiter(cfg.IPRatePerSec, cfg.IPBurst),
 		knockLim:     newLimiter(cfg.KnockRatePerID, cfg.KnockBurst),
 		knockGlobLim: newLimiter(cfg.KnockGlobalPerSec, cfg.KnockGlobalBurst),

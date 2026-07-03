@@ -208,6 +208,14 @@ console ([doc 20](20-admin-surface.md)). The ring captures records as-is, so any
 carried would reach the admin page; rules 1 to 3 are what make that safe. A new log call site
 that widened them would now be exposing data, not just writing it to the journal.
 
+The metrics snapshot also carries per-UTC-day buckets of internal-error counts (by fixed
+subsystem) and request totals, pruned to a fixed window, so the console can chart errors and
+traffic over time ([doc 20](20-admin-surface.md)). Same rules as every series: counts of events
+per day, never a message, id, or per-subject figure. The audited `errors.clear` admin action
+zeroes the lifetime error counters only; the daily history is the record and stays. The alert
+script's windowed diff skips any window where a counter decreased, so a clear (like a pre-
+persistence restart) suppresses at most one scrape's delta and never fires a false alert.
+
 ---
 
 ## 5. Where telemetry lives

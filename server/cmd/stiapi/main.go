@@ -192,6 +192,8 @@ func main() {
 		AllowedOrigins:            allowedOrigins,
 		LogRing:                   ring,
 		RequestRestart:            requestRestart,
+		BuildVersion:              buildVersion(),
+		DiskFree:                  func() int64 { return diskFreeBytes(filepath.Dir(dbPath)) },
 		NotifyEnabled:             notifyEnabled,
 		Sender:                    sender,
 		VAPIDPublicKey:            vapidPublic,
