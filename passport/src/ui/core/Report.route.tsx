@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
-import { Card, Switch } from "../../design/components/index.ts";
+import { Switch } from "../../design/components/index.ts";
 import { Check, ShieldCheck } from "../../design/icons.tsx";
+import { cx } from "../../lib/cx.ts";
 import { COPY } from "./Report.parts.tsx";
 import type { ReportPreview } from "../../core/report.ts";
+import "./report.css";
 
 // A single "what blue needs" requirement row: a met/unmet marker, a title, and a
-// one-line why. Met is an accent check; unmet is a neutral hollow ring, never a
+// one-line why. Met is a clear-ink check; unmet is a neutral hollow ring, never a
 // red cross (this is guidance toward blue, not an error). Used by the Report
-// blue-readiness card; the Home checklist has its own compact, action-per-row form.
+// blue-readiness section; the Home checklist has its own compact, action-per-row form.
 function CheckRow({
   met,
   title,
@@ -18,43 +20,21 @@ function CheckRow({
   sub: string;
 }) {
   return (
-    <div style={{ display: "flex", gap: 11, alignItems: "flex-start" }}>
+    <div className="rp__check-row">
       <span
-        style={{
-          flex: "none",
-          width: 22,
-          height: 22,
-          borderRadius: "50%",
-          marginTop: 1,
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: met ? "var(--status-clear-bg)" : "transparent",
-          color: met ? "var(--status-clear-base)" : "var(--text-subtle)",
-          border: met ? "none" : "2px solid var(--border-card)",
-        }}
+        aria-hidden
+        className={cx(
+          "rp__check-mark",
+          met ? "rp__check-mark--met" : "rp__check-mark--open",
+        )}
       >
-        {met ? <Check size={14} /> : null}
+        {met ? <Check size={16} /> : null}
       </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 14,
-            fontWeight: 700,
-            color: met ? "var(--text-strong)" : "var(--text-body)",
-          }}
-        >
+      <div className="rp__check-body">
+        <div className={cx("rp__check-title", met && "rp__check-title--met")}>
           {title}
         </div>
-        <div
-          style={{
-            fontSize: 12.5,
-            color: "var(--text-muted)",
-            lineHeight: 1.45,
-          }}
-        >
-          {sub}
-        </div>
+        <div className="rp__check-sub">{sub}</div>
       </div>
     </div>
   );
@@ -66,27 +46,14 @@ function CheckRow({
 export function BlueReadiness({ preview }: { preview: ReportPreview }) {
   const c = COPY;
   return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 14 }}
-    >
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-        <span style={{ color: "var(--text-accent)", flex: "none" }}>
+    <div className="rp__ready">
+      <div className="rp__ready-head">
+        <span aria-hidden className="rp__ready-icon">
           <ShieldCheck size={18} />
         </span>
         <div>
-          <div
-            style={{
-              fontSize: 14,
-              fontWeight: 800,
-              color: "var(--text-strong)",
-            }}
-          >
-            {c.blueTitle}
-          </div>
-          <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-            {c.blueSub}
-          </div>
+          <div className="rp__ready-title">{c.blueTitle}</div>
+          <div className="rp__ready-sub">{c.blueSub}</div>
         </div>
       </div>
       <CheckRow
@@ -97,19 +64,14 @@ export function BlueReadiness({ preview }: { preview: ReportPreview }) {
       <CheckRow met={preview.clear} title={c.blueClear} sub={c.blueClearSub} />
       <CheckRow met={preview.route} title={c.blueRoute} sub={c.blueRouteSub} />
       <div
-        style={{
-          fontSize: 12.5,
-          fontWeight: 700,
-          color: preview.willBeBlue
-            ? "var(--status-clear-base)"
-            : "var(--text-subtle)",
-          borderTop: "1px solid var(--divider)",
-          paddingTop: 11,
-        }}
+        className={cx(
+          "rp__verdict",
+          preview.willBeBlue && "rp__verdict--ready",
+        )}
       >
         {preview.willBeBlue ? c.blueReady : c.blueNotReady}
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -125,31 +87,12 @@ function RouteToggle({
   hint?: ReactNode;
 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <div
-          style={{
-            flex: 1,
-            fontSize: 15,
-            fontWeight: 600,
-            color: "var(--text-strong)",
-          }}
-        >
-          {label}
-        </div>
+    <div className="rp__toggle">
+      <div className="rp__toggle-row">
+        <div className="rp__toggle-label">{label}</div>
         <Switch checked={checked} onChange={onChange} />
       </div>
-      {hint ? (
-        <div
-          style={{
-            fontSize: 12.5,
-            color: "var(--text-muted)",
-            lineHeight: 1.45,
-          }}
-        >
-          {hint}
-        </div>
-      ) : null}
+      {hint ? <div className="rp__toggle-hint">{hint}</div> : null}
     </div>
   );
 }
@@ -170,19 +113,10 @@ export function RouteControls({
 }) {
   const c = COPY;
   return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 14 }}
-    >
+    <div className="rp__routes">
       <div>
-        <div
-          style={{ fontSize: 14, fontWeight: 800, color: "var(--text-strong)" }}
-        >
-          {c.routeTitle}
-        </div>
-        <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-          {c.routeSub}
-        </div>
+        <div className="rp__routes-title">{c.routeTitle}</div>
+        <div className="rp__routes-sub">{c.routeSub}</div>
       </div>
       <RouteToggle checked={prep} onChange={onPrep} label={c.prepLabel} />
       <RouteToggle
@@ -191,6 +125,6 @@ export function RouteControls({
         label={c.condomsLabel}
         hint={c.condomsHint}
       />
-    </Card>
+    </div>
   );
 }

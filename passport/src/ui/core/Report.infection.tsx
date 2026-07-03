@@ -1,8 +1,9 @@
-import { Card } from "../../design/components/index.ts";
 import { Info, ArrowRight } from "../../design/icons.tsx";
-import { COPY, LEARN_COPY, LEARN_MAP, Chip, Tag } from "./Report.parts.tsx";
+import { StatusLabel } from "../editorial/StatusLabel.tsx";
+import { COPY, LEARN_COPY, LEARN_MAP, Chip } from "./Report.parts.tsx";
 import type { SiteStatus, ReportState } from "./Report.parts.tsx";
 import { CorePanelCard } from "./Report.cards.tsx";
+import "./report.css";
 
 interface InfectionCardProps {
   inf: (typeof COPY.infections)[number];
@@ -10,6 +11,8 @@ interface InfectionCardProps {
   onLearn?: ((id: string) => void) | undefined;
 }
 
+// The entered state as a status word (doc 37), never a pill: a positive reads
+// in the treat ink, covered/up-to-date in the clear ink. Owner-only entry.
 function InfectionTags({
   ps,
   ss,
@@ -20,14 +23,16 @@ function InfectionTags({
   v: string;
 }) {
   if (ps) {
-    if (ss === "positive") return <Tag>Positive</Tag>;
-    if (ss === "covered") return <Tag>Covered</Tag>;
+    if (ss === "positive") return <StatusLabel label="Positive" tone="treat" />;
+    if (ss === "covered") return <StatusLabel label="Covered" tone="clear" />;
     return null;
   }
   return (
     <>
-      {v === "Positive" && <Tag>Positive</Tag>}
-      {(v === "Undetectable" || v === "Prior history") && <Tag>Up to date</Tag>}
+      {v === "Positive" && <StatusLabel label="Positive" tone="treat" />}
+      {(v === "Undetectable" || v === "Prior history") && (
+        <StatusLabel label="Up to date" tone="clear" />
+      )}
     </>
   );
 }
@@ -41,34 +46,17 @@ function SiteEntry({
 }) {
   const c = COPY;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div
-        style={{
-          fontSize: 12,
-          color: "var(--text-subtle)",
-          lineHeight: 1.45,
-          display: "flex",
-          gap: 6,
-          alignItems: "flex-start",
-        }}
-      >
-        <Info size={13} style={{ flex: "none", marginTop: 1 }} /> {c.siteHint}
+    <div className="rp__sites">
+      <div className="rp__site-hint">
+        <span aria-hidden className="rp__site-hint-icon">
+          <Info size={13} />
+        </span>
+        {c.siteHint}
       </div>
       {c.sites.map(([sk, slabel]) => (
-        <div
-          key={sk}
-          style={{ display: "flex", flexDirection: "column", gap: 6 }}
-        >
-          <span
-            style={{
-              fontSize: 12.5,
-              fontWeight: 700,
-              color: "var(--text-muted)",
-            }}
-          >
-            {slabel}
-          </span>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        <div key={sk} className="rp__site">
+          <span className="rp__site-label">{slabel}</span>
+          <div className="rp__chips">
             {c.siteOpts.map((o) => (
               <Chip
                 key={o}
@@ -94,26 +82,14 @@ export function DetailEntry({
 }) {
   const c = COPY;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-        {c.detailHint}
-      </div>
-      <Card variant="tint" pad="sm" style={{ display: "flex", gap: 10 }}>
-        <span
-          style={{ color: "var(--text-accent)", flex: "none", marginTop: 1 }}
-        >
+    <div className="rp__detail">
+      <div className="rp__hint">{c.detailHint}</div>
+      <div className="rp__aside">
+        <span aria-hidden className="rp__aside-icon">
           <Info size={15} />
         </span>
-        <span
-          style={{
-            fontSize: 12.5,
-            lineHeight: 1.55,
-            color: "var(--text-body)",
-          }}
-        >
-          {LEARN_COPY.panelNote}
-        </span>
-      </Card>
+        <span className="rp__aside-text">{LEARN_COPY.panelNote}</span>
+      </div>
 
       {/* CORE-PANEL coverage, owner-only guidance. Blue needs the full core
           panel; the per-site reasoning feeds this card but is never shown to
@@ -142,34 +118,15 @@ function InfectionCard({ inf, state, onLearn }: InfectionCardProps) {
   const options = "options" in inf ? inf.options : undefined;
   const note = "note" in inf ? inf.note : undefined;
   return (
-    <Card
-      pad="sm"
-      variant={touched ? "default" : "flat"}
-      style={{ display: "flex", flexDirection: "column", gap: 9 }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-        }}
-      >
-        <span
-          style={{
-            fontSize: 14.5,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-          }}
-        >
-          {inf.name}
-        </span>
+    <div className="rp__inf">
+      <div className="rp__inf-head">
+        <span className="rp__inf-name">{inf.name}</span>
         <InfectionTags ps={ps} ss={ss} v={v} />
       </div>
       {ps ? (
         <SiteEntry inf={inf} state={state} />
       ) : (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        <div className="rp__chips">
           {(options ?? []).map((o) => (
             <Chip key={o} active={v === o} onClick={() => state.set(inf.id, o)}>
               {o}
@@ -178,15 +135,7 @@ function InfectionCard({ inf, state, onLearn }: InfectionCardProps) {
         </div>
       )}
       {note && touched && (
-        <div
-          style={{
-            fontSize: 12.5,
-            color: "var(--text-muted)",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
+        <div className="rp__inf-note">
           <Info size={13} /> {note}
         </div>
       )}
@@ -194,25 +143,11 @@ function InfectionCard({ inf, state, onLearn }: InfectionCardProps) {
         <button
           type="button"
           onClick={() => onLearn?.(LEARN_MAP[inf.id] ?? inf.id)}
-          style={{
-            appearance: "none",
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            font: "inherit",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5,
-            alignSelf: "flex-start",
-            padding: 0,
-            fontSize: 12.5,
-            fontWeight: 700,
-            color: "var(--text-accent)",
-          }}
+          className="rp__learn"
         >
           {LEARN_COPY.learnLink} {inf.name} <ArrowRight size={13} />
         </button>
       )}
-    </Card>
+    </div>
   );
 }
