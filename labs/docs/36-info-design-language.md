@@ -128,10 +128,11 @@ adopting the language elsewhere.
 
 ## What generalizes to the app, and what stays info-only
 
-Generalizes: the cascade-layer architecture over the shared tokens, the serif
-display voice, ink-forward color rules and derived AA status inks, hairline
-surface grammar, the container-query policy, the one-primary-action rule, and
-the style-lint guardrails. Info-only: the 66ch article measure and prose
-styles, the facts strip, and the publication templates; the app's interactive
-screens keep the card and control grammar of `passport/src/design` until the
-adoption effort defines their editorial equivalents.
+Generalized (built, owned by
+[37-app-editorial-adoption](37-app-editorial-adoption.md)): the cascade-layer
+architecture over the shared tokens, the serif display voice, ink-forward
+color rules and derived AA status inks, hairline surface grammar, the
+container-query policy, the one-primary-action rule, and the style-lint
+guardrails; the app's editorial equivalents of cards and rows are its `.e-*`
+grammar. Info-only: the 66ch article measure and prose styles, the facts
+strip, and the publication templates.
