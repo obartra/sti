@@ -1,8 +1,8 @@
 /* BadgeCard (doc 37): THE card. The one deliberate credential artifact on the
-   editorial surface: hairline border, restrained shadow, generous radius,
-   never a glow (the .e-artifact treatment). Its interior keeps its own
-   design: the medallion shapes, the label pills, the identity strip; those
-   are the artifact's print, not app chrome. */
+   editorial surface, on the .e-artifact certificate treatment (a double
+   printed rule, flat, never a glow). Its interior keeps its own design:
+   the medallion shapes, the label pills, the identity strip; those are the
+   artifact's print, not app chrome. */
 
 .bc {
   box-sizing: border-box;

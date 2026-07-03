@@ -8,8 +8,8 @@ import "./badge-card.css";
    core resolves owner -> state on owner surfaces). Two visible states only,
    BLUE and GRAY, no four-light model, no checkmark, no "self-reported" mark
    (honesty lives in one plain sentence). THE card (doc 37): the one credential
-   artifact, on the .e-artifact treatment (hairline border, restrained shadow,
-   no glow); its interior is the artifact's own print. */
+   artifact, on the .e-artifact certificate treatment (a double printed rule,
+   flat, no glow); its interior is the artifact's own print. */
 
 export type BadgeState = "blue" | "gray";
 export type ProtectionLabel =
