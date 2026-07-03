@@ -169,10 +169,6 @@ export const coreRenderers: ScreenRenderers = {
     onDeleteAccount,
     onLogOut,
     onSetName,
-    vanityName,
-    onRegisterVanityName,
-    onCheckVanityName,
-    onReleaseVanityName,
     recoveryName,
     recoveryPhrase,
     passkeyEnrolled,
@@ -194,19 +190,7 @@ export const coreRenderers: ScreenRenderers = {
       onLogOut={isLoggedIn ? onLogOut : undefined}
       onViewPrivacyPolicy={() => nav.go("privacy-policy")}
       onViewTerms={() => nav.go("terms")}
-      // The Findable ops are wired only for a logged-in owner, so the Privacy
-      // screen + FindableName stay identity-agnostic (and storyable): a signed-out
-      // preview shows the section without live actions.
-      vanityName={vanityName}
-      findableOps={
-        isLoggedIn
-          ? {
-              register: onRegisterVanityName,
-              check: onCheckVanityName,
-              release: onReleaseVanityName,
-            }
-          : undefined
-      }
+      // Public names moved to the Links tab (doc 17); Settings no longer manages them.
       // The password card (doc 32) is wired the same way: ops only for a logged-in
       // owner, so Privacy + RecoveryPassword stay identity-agnostic.
       recoveryName={recoveryName}

@@ -108,72 +108,23 @@ describe("Privacy display-name editor (autosaves as you type)", () => {
   });
 });
 
-describe("Privacy findable section (doc 17)", () => {
-  const ops = {
-    register: () => Promise.resolve("registered" as const),
-    check: () => Promise.resolve("free" as const),
-    release: () => Promise.resolve(),
-  };
-
-  it("shows the claim card only when findable ops are provided", () => {
-    const claim = /make my name public/i;
-    const { rerender } = render(
-      <Privacy
-        ownerState={INITIAL_OWNER_STATE}
-        setOwnerState={() => undefined}
-      />,
-    );
-    // Gated off (no ops): the wiring boundary decides; the screen stays clean.
-    expect(
-      screen.queryByRole("button", { name: claim }),
-    ).not.toBeInTheDocument();
-
-    rerender(
-      <Privacy
-        ownerState={INITIAL_OWNER_STATE}
-        setOwnerState={() => undefined}
-        vanityName={null}
-        findableOps={ops}
-      />,
-    );
-    // Unclaimed: the consent disclosure + the register affordance, not a release.
-    expect(
-      screen.getByText("Your name becomes public and searchable."),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: claim })).toBeInTheDocument();
-  });
-
-  it("shows the registered view with the current name when one is claimed", () => {
+// Public names moved to the Links tab (doc 17); Settings no longer renders them. The
+// list UI + claim flow are covered directly in FindableName.test.tsx (PublicNames).
+describe("Privacy no longer manages public names (doc 17, moved to Links)", () => {
+  it("shows no public-name controls in Settings", () => {
     render(
       <Privacy
         ownerState={INITIAL_OWNER_STATE}
         setOwnerState={() => undefined}
-        vanityName="robin"
-        findableOps={ops}
+        onSetName={() => undefined}
       />,
     );
-    expect(screen.getByText("robin")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /release name/i }),
-    ).toBeInTheDocument();
-  });
-
-  it("pins the public name (no release) when a password is set on that same name", () => {
-    render(
-      <Privacy
-        ownerState={INITIAL_OWNER_STATE}
-        setOwnerState={() => undefined}
-        vanityName="robin"
-        findableOps={ops}
-        recoveryName="robin"
-      />,
-    );
-    // The name shows, but the release control is replaced by the plain reason (the
-    // name is the sign-in username, doc 17/32).
-    expect(
-      screen.queryByRole("button", { name: /release name/i }),
+      screen.queryByRole("button", { name: /make my name public/i }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/your sign-in username/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /add a public name/i }),
+    ).not.toBeInTheDocument();
   });
 });
 

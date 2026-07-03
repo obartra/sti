@@ -60,7 +60,7 @@ export const trustRenderers: ScreenRenderers = {
       <LegalPage doc={TERMS} />
     </TrustShell>
   ),
-  "share-link": ({ nav, vanityName, isLoggedIn }) => (
+  "share-link": ({ nav, vanityNames, isLoggedIn }) => (
     <TrustShell
       current="share-link"
       onBack={nav.back}
@@ -69,9 +69,7 @@ export const trustRenderers: ScreenRenderers = {
     >
       <ShareLinkPage
         handle={
-          isLoggedIn && vanityName != null && vanityName !== ""
-            ? vanityName
-            : undefined
+          isLoggedIn && vanityNames.length > 0 ? vanityNames[0] : undefined
         }
       />
     </TrustShell>

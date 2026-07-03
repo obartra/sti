@@ -94,14 +94,16 @@ const backendController = createSessionController({
 // only so knocks to it are reviewed. Empty when logged out.
 function liveLinkAliases(session: OwnerSession | null): AliasRecord[] {
   if (session === null) return [];
-  const findableId = session.blob.findable?.aliasId;
-  return session.blob.aliases.filter((a) => a.id !== findableId);
+  const findableIds = new Set(
+    (session.blob.findables ?? []).map((f) => f.aliasId),
+  );
+  return session.blob.aliases.filter((a) => !findableIds.has(a.id));
 }
 
-// The owner's claimed findable name, or null (logged out, or none). Hoisted so the
-// App component stays under its complexity ceiling.
-function findableName(session: OwnerSession | null): string | null {
-  return session?.blob.findable?.name ?? null;
+// The owner's claimed findable names, newest last (claim order). Empty when logged
+// out or none claimed. Hoisted so the App component stays under its complexity ceiling.
+function findableNames(session: OwnerSession | null): string[] {
+  return (session?.blob.findables ?? []).map((f) => f.name);
 }
 
 // The owner's recovery name, or null (logged out, or no password factor set, doc 32).
@@ -347,7 +349,7 @@ export function App({
         onTryDemo={demo.onTry}
         groups={session ? (session.blob.groups ?? []) : []}
         onGroupCatchup={groupRefresh}
-        vanityName={findableName(session)}
+        vanityNames={findableNames(session)}
         {...recoveryProps(session, controller)}
         push={push}
         {...actions}

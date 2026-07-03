@@ -322,8 +322,9 @@ export async function shareLinkFor(
   // than an opaque /a/{id}. It resolves by name to the keyless findable alias the
   // claim already published, so there is nothing to mint here, and a stranger still
   // has to ask before seeing status. Anonymous public sharing keeps the direct
-  // /a/{id}#k link below (no name, opens straight to the status).
-  const findable = session.blob.findable;
+  // /a/{id}#k link below (no name, opens straight to the status). With several names
+  // claimed, the first is the default main-share link; the Links tab copies any one.
+  const findable = session.blob.findables?.[0];
   if (wantPublic && identity === "main" && findable !== undefined) {
     return { session, url: publicProfileUrl(findable.name) };
   }

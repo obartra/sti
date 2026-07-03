@@ -64,7 +64,7 @@ function fakeBackend() {
     },
     setOwnerState: () => Promise.reject(new Error("unused")),
     setProfile: () => Promise.reject(new Error("unused")),
-    setFindable: () => Promise.reject(new Error("unused")),
+    removeFindable: () => Promise.reject(new Error("unused")),
     recordFindable: () => Promise.reject(new Error("unused")),
     recordGroup: () => Promise.reject(new Error("unused")),
     recordJoinedGroup: () => Promise.reject(new Error("unused")),
@@ -436,7 +436,7 @@ describe("session controller", () => {
       blob: {
         ...session.blob,
         aliases: [alias],
-        findable: { name: "robin", aliasId: alias.id },
+        findables: [{ name: "robin", aliasId: alias.id }],
       },
     };
 

@@ -202,7 +202,10 @@ describe("useOwnerActions findable", () => {
   it("claims a name, folds the session, and returns the outcome", async () => {
     const claimed: OwnerSession = {
       ...session,
-      blob: { ...session.blob, findable: { name: "robin", aliasId: "a" } },
+      blob: {
+        ...session.blob,
+        findables: [{ name: "robin", aliasId: "a" }],
+      },
     };
     const registerVanityName = vi
       .fn()
@@ -242,7 +245,7 @@ describe("useOwnerActions findable", () => {
     expect(outcome).toBe("unavailable");
   });
 
-  it("releases a name and folds the resulting session", async () => {
+  it("releases a named registration and folds the resulting session", async () => {
     const released: OwnerSession = { ...session };
     const releaseVanityName = vi.fn().mockResolvedValue(released);
     const ref = { current: session };
@@ -252,10 +255,10 @@ describe("useOwnerActions findable", () => {
     );
 
     await act(async () => {
-      await result.current.onReleaseVanityName();
+      await result.current.onReleaseVanityName("robin");
     });
 
-    expect(releaseVanityName).toHaveBeenCalledWith(session);
+    expect(releaseVanityName).toHaveBeenCalledWith(session, "robin");
     expect(setSession).toHaveBeenCalledWith(released);
   });
 

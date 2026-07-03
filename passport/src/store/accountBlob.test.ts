@@ -221,8 +221,8 @@ describe("account blob codec", () => {
     );
   });
 
-  it("round-trips a findable registration (doc 17)", () => {
-    const withFindable: AccountBlob = {
+  it("round-trips findable registrations (doc 17)", () => {
+    const withFindables: AccountBlob = {
       handle: "robin",
       aliases: [
         {
@@ -236,11 +236,35 @@ describe("account blob codec", () => {
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
       sharingMode: "public",
-      findable: { name: "robin", aliasId: "G".repeat(43) },
+      findables: [
+        { name: "robin", aliasId: "G".repeat(43) },
+        { name: "wren", aliasId: "J".repeat(43) },
+      ],
     };
-    expect(parseAccountBlob(serializeAccountBlob(withFindable))).toEqual(
-      withFindable,
+    expect(parseAccountBlob(serializeAccountBlob(withFindables))).toEqual(
+      withFindables,
     );
+  });
+
+  it("parses a findables list past the cap of 5 (the cap is a claim-time rule)", () => {
+    // A rare offline multi-device merge can union past MAX_PUBLIC_NAMES; that is a
+    // valid blob (the cap is enforced at claim, not at storage) and must still parse.
+    const findables = Array.from({ length: 6 }, (_, i) => ({
+      name: `name_${i}`,
+      aliasId: String.fromCharCode(65 + i).repeat(43),
+    }));
+    const overCap: AccountBlob = {
+      handle: "robin",
+      aliases: [],
+      contacts: [],
+      state: INITIAL_OWNER_STATE,
+      avatar: DEFAULT_AVATAR,
+      sharingMode: "public",
+      findables,
+    };
+    expect(
+      parseAccountBlob(serializeAccountBlob(overCap)).findables,
+    ).toHaveLength(6);
   });
 
   it("round-trips v16 shared groups (public + private) (doc 33)", () => {
@@ -372,7 +396,7 @@ describe("account blob codec", () => {
     // A group record whose myAvatar is an old/corrupt shape: parse must drop just
     // the avatar (fall back to id-derived), never invalidate the whole account.
     const wire = {
-      v: 18,
+      v: 19,
       handle: "robin",
       aliases: [],
       contacts: [],
@@ -456,7 +480,7 @@ describe("account blob codec", () => {
     avatar: A,
   };
   reject("a non-object", 7);
-  reject("an unknown version", { ...base, v: 19, sharingMode: "link" });
+  reject("an unknown version", { ...base, v: 20, sharingMode: "link" });
   reject("a prior version (v6 is no longer accepted)", {
     v: 6,
     handle: "x",
@@ -484,10 +508,10 @@ describe("account blob codec", () => {
     ],
     sharingMode: "link",
   });
-  // A real current-version wire so these reach the findable validator (not the
+  // A real current-version wire so these reach the findables validator (not the
   // version gate, which `base`'s v7 trips first).
   const vCurrent = {
-    v: 18,
+    v: 19,
     handle: "x",
     aliases: [],
     contacts: [],
@@ -497,15 +521,19 @@ describe("account blob codec", () => {
   };
   reject("a findable with a malformed alias id", {
     ...vCurrent,
-    findable: { name: "robin", aliasId: "short" },
+    findables: [{ name: "robin", aliasId: "short" }],
   });
   reject("a findable with a bad-shaped name", {
     ...vCurrent,
-    findable: { name: "AB", aliasId: ID },
+    findables: [{ name: "AB", aliasId: ID }],
   });
   reject("a findable that is not an object", {
     ...vCurrent,
-    findable: "robin",
+    findables: ["robin"],
+  });
+  reject("findables that is not an array", {
+    ...vCurrent,
+    findables: { name: "robin", aliasId: ID },
   });
   // The stored recovery phrase must be an exact app phrase; a too-short or
   // wrong-charset value fails the parse rather than surfacing a broken phrase.

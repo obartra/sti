@@ -2,9 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Privacy } from "./Privacy.tsx";
 import { INITIAL_OWNER_STATE } from "../../core/badge.ts";
 
-// Settings, in three sections: Account (display name, public name, password),
-// Profile (your face, card attributes, controls), and the danger zone, with the
-// trust pages tucked into an About footer.
+// Settings, in three sections: Account (display name, password), Profile (your
+// face, card attributes, controls), and the danger zone, with the trust pages
+// tucked into an About footer. Public names moved to the Links tab (doc 17).
 const meta: Meta<typeof Privacy> = {
   title: "Passport/Core/Settings",
   component: Privacy,
@@ -37,23 +37,6 @@ export const WithFace: Story = {
     avatarSrc: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>",
     onEditAvatar: () => undefined,
   },
-};
-
-// Findable (doc 17) wired into Account: the claim card with its consent disclosure.
-// The transport is stubbed so it renders without a server.
-const findableOps = {
-  register: () => Promise.resolve("registered" as const),
-  check: () => Promise.resolve("free" as const),
-  release: () => Promise.resolve(),
-};
-
-export const FindableUnclaimed: Story = {
-  args: { vanityName: null, findableOps },
-};
-
-// The owner already holds a public name: the registered view with the release control.
-export const FindableClaimed: Story = {
-  args: { vanityName: "robin", findableOps },
 };
 
 // The password factor (doc 32) wired into Account, with the recovery handle labeled
