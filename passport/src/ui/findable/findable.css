@@ -1,0 +1,456 @@
+/* The findable + share-your-link surfaces (docs 16, 17, 23) on the editorial
+   grammar (doc 37): serif titles, hairline-opened sections instead of cards,
+   the link itself as the one bordered object (an action callout), and the
+   report form on the same quiet radio-row pattern as the feedback form. The
+   bio mockups are depictions of OTHER apps' surfaces, so they keep a
+   restrained frame and their highlight tint: the chip is the subject of the
+   picture, not our chrome. */
+
+/* ── The share-your-link page (inside the trust shell) ───────────────────── */
+.slp {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+}
+
+.slp__head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.slp__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 26px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+}
+
+.slp__lead {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-body);
+}
+
+/* ── The guide ────────────────────────────────────────────────────────────── */
+/* Width response is the container's, not the viewport's (doc 37): wherever
+   the guide has room for two comfortable columns (the trust page's content
+   column), the link block sits beside the bio mockups; anywhere narrower
+   (phones, the settings post-claim moment) it stacks. */
+.slg {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  container-type: inline-size;
+}
+
+.slg__col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.slg__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@container (min-width: 640px) {
+  .slg__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+}
+
+.slg__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 20px;
+  line-height: 1.2;
+  color: var(--text-strong);
+}
+
+.slg__section-title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 19px;
+  line-height: 1.25;
+  color: var(--text-strong);
+}
+
+.slg__section-lead {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+/* The link block: the one action callout (composes with .e-card). */
+.slg__linkcard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.slg__linkrow {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.slg__linkmeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.slg__linklabel {
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.slg__qrnote {
+  font-size: 11.5px;
+  color: var(--text-subtle);
+  line-height: 1.45;
+  margin-top: 6px;
+}
+
+/* The link sits on its own full-width row, not squeezed into the column
+   beside the QR: a short name there wrapped mid-word. break-word keeps it
+   from splitting inside the name unless it truly must. */
+.slg__link {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.slg__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* The exposure note: a hairline-opened aside on the page surface. */
+.slg__exposure {
+  border-top: var(--hairline);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.slg__exposure-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.slg__exposure-icon {
+  display: inline-flex;
+  color: var(--text-accent);
+  flex: none;
+  margin-top: 1px;
+}
+
+.slg__exposure-text {
+  font-size: 13px;
+  color: var(--text-body);
+  line-height: 1.5;
+}
+
+.slg__alt {
+  border-top: var(--hairline);
+  padding-top: 10px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.slg__alt-title {
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.slg__place {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Bio mockups: framed depictions of external surfaces ─────────────────── */
+.bio {
+  background: var(--surface-card);
+  border: var(--hairline-strong);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bio--profile {
+  gap: 10px;
+}
+
+.bio__surface {
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+/* The highlighted link chip: the focal point of every mock. The tint is part
+   of the depiction (how a highlighted link reads in a bio), not our chrome. */
+.bio__chip {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  font-size: 12.5px;
+  color: var(--text-accent);
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  word-break: break-all;
+}
+
+.bio__profiletop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bio__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  flex: none;
+}
+
+.bio__name {
+  font-size: 13px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.bio__fieldlabel {
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.bio__line {
+  font-size: 13px;
+  color: var(--text-body);
+  line-height: 1.5;
+}
+
+.bio__ghost {
+  border-radius: var(--radius-md);
+  border: var(--hairline-strong);
+  background: var(--surface-sunken);
+  height: 30px;
+}
+
+.bio__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--text-accent);
+  background: var(--accent-soft);
+}
+
+/* ── Report a findable name (the feedback-form grammar) ──────────────────── */
+.rn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.rn__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rn__icon {
+  display: inline-flex;
+  color: var(--text-accent);
+  flex: none;
+}
+
+.rn__title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 19px;
+  color: var(--text-strong);
+}
+
+.rn__name {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-body);
+  word-break: break-all;
+}
+
+.rn__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rn__reasons {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rn__legend {
+  font-size: 13.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  padding: 0;
+  margin-bottom: 2px;
+}
+
+.rn__reason {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: var(--hairline-strong);
+}
+
+.rn__reason--on {
+  border: 1.5px solid var(--text-accent);
+}
+
+.rn__reason-label {
+  font-size: 13.5px;
+  color: var(--text-body);
+}
+
+.rn__reason--on .rn__reason-label {
+  color: var(--text-strong);
+  font-weight: var(--weight-medium);
+}
+
+.rn__error {
+  font-size: 12.5px;
+  color: var(--status-expired-fg);
+}
+
+.rn__anon {
+  font-size: 12px;
+  color: var(--text-subtle);
+  line-height: 1.45;
+}
+
+.rn__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.rn__done-title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 20px;
+  color: var(--text-strong);
+}
+
+.rn__done-body {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── The /u/{name} resolve screen ─────────────────────────────────────────── */
+.fres {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.fres__looking {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.fres__looking-icon {
+  display: inline-flex;
+  color: var(--text-accent);
+  flex: none;
+}
+
+.fres__name {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.fres__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 24px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+}
+
+.fres__body {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-body);
+  margin: 8px 0 0;
+}
+
+.fres__privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--text-subtle);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.fres__privacy-icon {
+  flex: none;
+  margin-top: 2px;
+}

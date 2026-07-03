@@ -1,9 +1,10 @@
-import { useState, type CSSProperties } from "react";
-import { Button, Card, Field, Input } from "../../design/components/index.ts";
+import { useState } from "react";
+import { Button, Field, Input } from "../../design/components/index.ts";
 import { Globe, Lock, Copy, Check, Download } from "../../design/icons.tsx";
 import { Matrix, downloadPNG } from "../../lib/qr.tsx";
 import { copyText } from "../../lib/clipboard.ts";
 import { BioMock } from "./BioMock.tsx";
+import { cx } from "../../lib/cx.ts";
 import {
   BIO_MOCKS,
   SAMPLE_HANDLE,
@@ -11,6 +12,7 @@ import {
   publicLinkFor,
   publicHttpsLinkFor,
 } from "./shareLinkGuideCopy.ts";
+import "./findable.css";
 
 // The "share your link" guide (docs 16, 17): helps an owner drop their public
 // link into a bio so matches can find them and ask to view. Reusable across two
@@ -18,13 +20,9 @@ import {
 // handle), and a public page off the landing footer (a sample handle, never a
 // real status). Pure presentation: it builds the link/QR from `handle`, shows
 // one honest line about what a public bio link exposes plus the private-link
-// alternative, and three stylized bio-placement mockups.
-
-const sectionTitle: CSSProperties = {
-  fontSize: 14,
-  fontWeight: 800,
-  color: "var(--text-strong)",
-};
+// alternative, and three stylized bio-placement mockups. On the editorial
+// grammar (doc 37): the link block is the one action callout; everything
+// around it sits on the page surface behind hairlines.
 
 // The link card: the link, a one-tap copy, a QR for in person, and a save action.
 function LinkCard({ handle }: { handle: string }) {
@@ -37,57 +35,23 @@ function LinkCard({ handle }: { handle: string }) {
     setTimeout(() => setCopied(false), 1600);
   };
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+    <div className={cx("e-card", "slg__linkcard")}>
+      <div className="slg__linkrow">
         <Matrix
           value={https}
           size={84}
           color="var(--ink-900)"
           radius="var(--radius-md)"
         />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-              color: "var(--text-subtle)",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
+        <div className="slg__linkmeta">
+          <div className="slg__linklabel">
             <Globe size={13} /> {C.linkLabel}
           </div>
-          <div
-            style={{
-              fontSize: 11.5,
-              color: "var(--text-subtle)",
-              lineHeight: 1.45,
-              marginTop: 6,
-            }}
-          >
-            {C.qrNote}
-          </div>
+          <div className="slg__qrnote">{C.qrNote}</div>
         </div>
       </div>
-      {/* The link sits on its own full-width row, not squeezed into the column
-          beside the QR: a short name there wrapped mid-word (sti.care/u/sa -> m).
-          break-word keeps it from splitting inside the name unless it truly must. */}
-      <div
-        style={{
-          fontFamily: "var(--font-mono, ui-monospace, monospace)",
-          fontSize: 15,
-          fontWeight: 700,
-          color: "var(--text-strong)",
-          wordBreak: "break-word",
-          overflowWrap: "anywhere",
-        }}
-      >
-        {link}
-      </div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div className="slg__link">{link}</div>
+      <div className="slg__actions">
         <Button
           variant="primary"
           size="sm"
@@ -105,7 +69,7 @@ function LinkCard({ handle }: { handle: string }) {
           {C.saveQr}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -113,53 +77,28 @@ function LinkCard({ handle }: { handle: string }) {
 // private-link alternative (doc 16: do not push everyone to public).
 function ExposureNote() {
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-        <span
-          style={{ color: "var(--text-accent)", flex: "none", marginTop: 1 }}
-        >
+    <div className="slg__exposure">
+      <div className="slg__exposure-row">
+        <span aria-hidden className="slg__exposure-icon">
           <Lock size={16} />
         </span>
-        <div
-          style={{ fontSize: 13, color: "var(--text-body)", lineHeight: 1.5 }}
-        >
-          {C.exposes}
-        </div>
+        <div className="slg__exposure-text">{C.exposes}</div>
       </div>
-      <div
-        style={{
-          borderTop: "1px solid var(--divider)",
-          paddingTop: 10,
-          fontSize: 12.5,
-          color: "var(--text-muted)",
-          lineHeight: 1.5,
-        }}
-      >
-        <div style={{ fontWeight: 700, color: "var(--text-strong)" }}>
-          {C.altTitle}
-        </div>
-        <div style={{ marginTop: 2 }}>{C.alt}</div>
+      <div className="slg__alt">
+        <div className="slg__alt-title">{C.altTitle}</div>
+        <div>{C.alt}</div>
       </div>
-    </Card>
+    </div>
   );
 }
 
 // The stylized bio-placement mockups, with the link highlighted in each.
 function Placements({ link }: { link: string }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="slg__place">
       <div>
-        <div style={sectionTitle}>{C.placeTitle}</div>
-        <div
-          style={{
-            fontSize: 12.5,
-            color: "var(--text-muted)",
-            lineHeight: 1.5,
-            marginTop: 4,
-          }}
-        >
-          {C.placeLead}
-        </div>
+        <div className="slg__section-title">{C.placeTitle}</div>
+        <div className="slg__section-lead">{C.placeLead}</div>
       </div>
       {BIO_MOCKS.map((m) => (
         <BioMock key={m.kind} data={m} link={link} />
@@ -211,71 +150,33 @@ export interface ShareLinkGuideProps {
   /** Offer an input to change the handle so the link/QR/copy adapt (the standalone
    * page). Off for the in-app moment, where the claimed name is fixed. */
   editable?: boolean | undefined;
-  /** Lay the link + alternative beside the bio mockups (wide screens). */
-  wide?: boolean | undefined;
 }
 
 export function ShareLinkGuide({
   handle: initialHandle,
   showHeader = true,
   editable = false,
-  wide = false,
 }: ShareLinkGuideProps) {
   const [handle, setHandle] = useState(() => sanitizeHandle(initialHandle));
   const effective = handle || SAMPLE_HANDLE;
   const link = publicLinkFor(effective);
-  const summary = (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {editable && <HandleField handle={handle} onChange={setHandle} />}
-      <LinkCard handle={effective} />
-      <ExposureNote />
-    </div>
-  );
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div className="slg">
       {showHeader && (
         <div>
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 20,
-              fontWeight: 800,
-              letterSpacing: "-0.01em",
-              color: "var(--text-strong)",
-            }}
-          >
-            {C.title}
-          </h2>
-          <div
-            style={{
-              fontSize: 13,
-              color: "var(--text-muted)",
-              lineHeight: 1.5,
-              marginTop: 4,
-            }}
-          >
-            {C.lead}
-          </div>
+          <h2 className="slg__title">{C.title}</h2>
+          <div className="slg__section-lead">{C.lead}</div>
         </div>
       )}
-      {wide ? (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
-            gap: 16,
-            alignItems: "start",
-          }}
-        >
-          {summary}
-          <Placements link={link} />
+      {/* Two columns when the container allows (findable.css), stacked below. */}
+      <div className="slg__body">
+        <div className="slg__col">
+          {editable && <HandleField handle={handle} onChange={setHandle} />}
+          <LinkCard handle={effective} />
+          <ExposureNote />
         </div>
-      ) : (
-        <>
-          {summary}
-          <Placements link={link} />
-        </>
-      )}
+        <Placements link={link} />
+      </div>
     </div>
   );
 }
