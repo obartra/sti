@@ -31,7 +31,7 @@ the device):
 | -------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Alias payloads | `opaque_alias_id → ciphertext`     | Serving a passport when someone opens a link. The id is random and meaningless — the only id we ever see. No handle, avatar, name, grouping, or even a public/private flag. |
 | Account blob   | `opaque_account_id → ciphertext`   | Syncing your encrypted store across your own devices. Addressed by an opaque id derived from your key; holds nothing readable.                                              |
-| Recovery envelopes | passkey: `{opaque_account_id, factor} → ciphertext`; password: `public_handle → ciphertext` | One per opt-in unlock factor: the account's root key wrapped under that factor's own secret (doc 32). The passkey envelope is keyed by the account id; the optional password envelope is keyed by a **public handle** (doc 17), since a new device with only the password does not yet hold the account id. The server holds only the wrapped ciphertext, never a secret, and the account id derives from the root key, never from a password. Whether a handle has a password envelope stays hidden (an existence-uniform read). |
+| Recovery envelope | `locator → ciphertext` | Getting back in from a new device that has only your recovery name and password (doc 32). The **locator** is a non-secret, owner-chosen public handle (doc 17); the ciphertext is your account root wrapped by a memory-hard KDF of your password. There is one table, keyed only by the locator: no factor or account-id column. The server holds only the wrapped bytes, never the password or anything derived from it, and answers a uniform fixed-size decoy on a miss, so whether a given name has an envelope stays hidden (an existence-uniform read). The passkey unlock wraps the same root too, but that wrap stays on your device and never becomes a server envelope. |
 | Notify routing | `hash(notify_token) → opaque_handle` | Routing an anonymous "go get tested" nudge. The token is pairwise and was exchanged phone-to-phone, never through us.                                                     |
 | Push endpoints | `opaque_handle → push subscription` | Waking a device with a contentless ping.                                                                                                                                   |
 | Send queue     | batched outbound jobs              | Holding nudges briefly so cross-user batching hides timing. We trigger the wake; your device decides what (if anything) is shown.                                          |
@@ -57,18 +57,25 @@ date, or how many contacts you have. None of it is readable without a key we nev
 
 ## The one honest caveat
 
-Partner notification is the single place that isn't fully blind yet. With naive *targeted* push,
-our server would observe *which* handles receive an exposure ping — a recipient set. The fix
-(a generic broadcast/cover wake plus a uniform "anything for me?" poll, so recipients and
-non-recipients look identical) is designed but **not built**. Until it ships, "who got notified"
-is not fully private, and we won't pretend otherwise. (See [Open questions](/docs/open-questions)
-and the [Design doc](/docs/design).)
+Partner notification is the last place that isn't fully blind. The hard part is built and on by
+default: a population-wide, contentless cover wake now fires on a fixed schedule (doc 18), whether
+or not anyone reported. Because the schedule is constant, a quiet window emits the identical
+broadcast as a busy one, and a real exposure ping rides the next scheduled wake as one anonymous
+member of the population. That closes the old leak, where a naive *targeted* push would have let
+our server see *which* handles receive a ping.
+
+What remains is the other half of that design: a uniform "anything for me?" poll, so a recipient's
+check for a waiting nudge looks identical to a non-recipient's. That poll isn't built yet. Until it
+ships, the fetch after a wake can still tell who had something waiting, so "who got notified" is not
+yet fully private, and we won't pretend otherwise. (See [Open questions](/docs/open-questions) and
+the [Design doc](/docs/design).)
 
 ## Getting back in, and getting out
 
-- **Recovery is on you, by design.** With no email or phone on file, a recovery passphrase
-  (shown once at signup) is the only way back into an account. We can't reset it — a server-side
-  reset is impossible when the server can't read anything.
+- **Recovery is on you, by design.** With no email or phone on file, a new device gets back in one
+  of a few ways: a synced passkey, your @handle plus your password (doc 32), or the recovery
+  passphrase shown once at signup, which is the backstop rather than the only way. We can't reset
+  any of them; a server-side reset is impossible when the server can't read anything.
 - **Deletion and export** is still an open item: a self-serve "delete everything tied to me" and
   "download what's held about me." Since we hold only ciphertext and opaque tokens, what's even
   meaningful to export is part of that question.

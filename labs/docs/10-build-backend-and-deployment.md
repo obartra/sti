@@ -75,6 +75,7 @@ core read/write surface; later work adds routes around it (the notify inbox in d
 | Route                       | Does                                                            | Notes                                                                 |
 | --------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------- |
 | `GET /a/{id}`               | Return alias ciphertext (the hot read: passport resolution)    | Cloudflare proxies but does not cache it in v1 (see §C). Decoy bytes on a miss. |
+| `PUT /a/{id}`               | Replace alias ciphertext (the primary write: publish)          | Write-token gated, so a leaked id alone cannot overwrite. Sheddable (a write flood cannot ride the never-shed path), and carries the `X-Expires-At` freshness header. |
 | `GET /acct/{id}`            | Return the account sync blob                                    | Addressed by an opaque, key-derived id. Returns the stored `version`. |
 | `PUT /acct/{id}`            | Replace the account sync blob                                   | Write-token gated, a per-account second factor symmetric with aliases (a leaked id alone cannot overwrite). Optional `X-Version` precondition gives optimistic concurrency: a stale write is refused with 409, not clobbered. |
 | `DELETE /acct/{id}`        | Remove the account sync blob                                   | Write-token gated like the PUT; idempotent. |
@@ -93,9 +94,10 @@ This is a common source of confusion, so it is stated plainly: a status is never
 read.
 
 The pull "go get tested" fallback (Decisions §Partner notification) is a **static client page**, not a
-server endpoint, so there is no `/poll` route in v1. A server poll only becomes safe paired with its
-cover-traffic mitigation (broadcast wake + uniform "anything for me?"); that endpoint lands together
-with that mitigation, post-MVP, never in an unsafe interim form (see §F).
+server endpoint, so there is no `/poll` route in v1. The broadcast-wake half of the poll's cover-traffic
+mitigation is already built (the scheduled cover heartbeat, see §F); the `/poll` read itself only becomes
+safe once its own uniform "anything for me?" shape is modeled, so it lands post-MVP, never in an unsafe
+interim form (see §F).
 
 ### Storage shape (SQLite)
 
@@ -108,7 +110,7 @@ ciphertext, so the backend names it for what it is.)
 - `account(id PK, ciphertext, version, updated_at, write_auth)`: per-account sync blob. `write_auth` (hash of the account write token) gates overwrite/delete; `version` backs the optimistic-concurrency precondition (`X-Version`, 409 on a stale write).
 - `notify_route(token_hash PK, routing_endpoint_id)`: routing for the anonymous nudge.
 - `push_endpoint(routing_endpoint_id, subscription, created_at)`: contentless wake targets.
-- `send_queue(id PK, routing_endpoint_id, available_at, created_at)`: the server-side send cycle (never surfaced to a user, per the locked two-timing-jobs rule). **v1 is a simple jittered single send** (a random delay before fan-out gives most of the observable timing decorrelation); the true cross-user batching cycle lands when there is a population to batch across. The two-timing-jobs principle stays locked either way.
+- `send_queue(id PK, routing_endpoint_id, available_at, created_at)`: the server-side send cycle (never surfaced to a user, per the locked two-timing-jobs rule). A real wake queued here no longer fans out on its own: the drain scrubs it and its recipient rides the next **scheduled population-wide cover broadcast**, a fixed wall-clock heartbeat (`CoverHeartbeat`, 6h) that fires whether or not anyone reported, so a real wake is indistinguishable from the decoy heartbeat every registered route already receives. Covers land in a separate `cover_send` queue that never re-triggers a fan-out. The two-timing-jobs principle stays locked.
 - `knock(id PK, target_id, requester_hash, created_at, expires_at)`: contentless knocks, rate-limited and auto-expiring.
 
 Rate-limit token buckets live in memory for speed (optionally checkpointed to SQLite), so a
@@ -275,12 +277,15 @@ recorded as live.
 
 ## F. Open items (carried, not solved here)
 
-- **Targeted-push recipient-set leak, and the `/poll` fallback.** Until the generic broadcast/cover
-  wake plus uniform "anything for me?" poll ships, the server can observe which routing endpoints
-  receive an exposure ping. Tracked in [Open questions](/docs/open-questions). v1 ships **no**
-  `/poll` endpoint (the pull fallback is a static client page); the server-side poll lands together
-  with its cover-traffic mitigation, post-MVP, so it never exists in a privacy-incomplete interim
-  form.
+- **The uniform `/poll` "anything for me?" half.** The cover-broadcast side of this mitigation is
+  **built and on by default**: a scheduled population-wide heartbeat (`CoverHeartbeat`, 6h) fires one
+  contentless wake per registered push route on a fixed wall-clock cadence, and a real exposure wake
+  is scrubbed and rides the next heartbeat as an anonymous member of the population, so the timing of
+  a broadcast no longer reveals which routing endpoints received an exposure ping. What is still open
+  is the paired uniform `/poll` read: v1 ships **no** `/poll` endpoint (the pull fallback is a static
+  client page), so a client cannot yet check on its own schedule without the server learning it
+  looked. That read lands post-MVP once its own existence-uniform shape is modeled, so it never exists
+  in a privacy-incomplete interim form. Tracked in [Open questions](/docs/open-questions).
 - **Read-path and write-path timing (not just response shape).** The decoy test pins the *shape*
   of `GET /a/{id}` (status, length, stable decoy), but a real read is a DB hit while a miss is the
   decoy HMAC, so total time can still differ; likewise a real knock writes a row while a miss does
@@ -289,7 +294,7 @@ recorded as live.
   constant-time**: it enqueues the token hash without ever looking the route up, so the request
   does identical work for a known and an unknown token (the drain resolves real-vs-unknown off the
   request path, and an unknown token wakes nobody). `TestNotifyIntakeIsConstantTime` and
-  `TestNotifyUnknownTokenWakesNobody` pin both halves.
+  `TestHeartbeatNoPopulationWakesNobody` pin both halves.
 - **Account deletion and export.** A self-serve "delete everything tied to me" and "download what
   is held about me." Since the server holds only ciphertext and opaque tokens, the open question
   is what is even meaningful to export. Carried from [Decisions log](/docs/decisions).
