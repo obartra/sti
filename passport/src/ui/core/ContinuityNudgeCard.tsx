@@ -1,10 +1,13 @@
-import { Button, Card } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
 import { Key, Refresh } from "../../design/icons.tsx";
 import type { ContinuityNudge } from "../app/continuityNudge.ts";
+import { cx } from "../../lib/cx.ts";
+import "./nudge.css";
 
 // A low-key, dismissible reminder on Home (doc 32 continuity nudges). It appears
 // only when a nudge is due, never blocks anything, and dismissing it just makes it
-// rare again. Two kinds:
+// rare again. It holds its own actions, so it renders as the sanctioned action
+// callout (.e-card, doc 37), never a tinted card. Two kinds:
 //
 // - phrase: a rehearsal, "can you still find your recovery phrase?" Because the
 //   phrase is the backstop, this is upkeep, not a lockout.
@@ -42,7 +45,7 @@ const COPY = {
 
 function NudgeIcon({ kind }: { kind: ContinuityNudge }) {
   return (
-    <span style={{ color: "var(--text-accent)", flex: "none", marginTop: 1 }}>
+    <span aria-hidden className="nudge__icon">
       {kind === "phrase" ? <Key size={18} /> : <Refresh size={18} />}
     </span>
   );
@@ -58,35 +61,15 @@ export function ContinuityNudgeCard({
   // us they are fine, or to ask again later. Neither touches the account; both just
   // record the time so the prompt stays rare.
   return (
-    <Card
-      variant="tint"
-      style={{ display: "flex", flexDirection: "column", gap: 12 }}
-    >
-      <div style={{ display: "flex", gap: 10 }}>
+    <div className={cx("e-card", "nudge")}>
+      <div className="nudge__head">
         <NudgeIcon kind={kind} />
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              fontSize: 14,
-              fontWeight: 800,
-              color: "var(--text-strong)",
-            }}
-          >
-            {c.title}
-          </div>
-          <div
-            style={{
-              fontSize: 12.5,
-              color: "var(--text-body)",
-              lineHeight: 1.5,
-              marginTop: 4,
-            }}
-          >
-            {c.body}
-          </div>
+        <div className="nudge__body">
+          <div className="nudge__title">{c.title}</div>
+          <div className="nudge__text">{c.body}</div>
         </div>
       </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      <div className="nudge__actions">
         <Button variant="primary" size="sm" onClick={onDismiss}>
           {c.confirm}
         </Button>
@@ -104,6 +87,6 @@ export function ContinuityNudgeCard({
           {c.dismiss}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }

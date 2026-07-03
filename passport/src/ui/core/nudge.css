@@ -1,0 +1,60 @@
+/* The continuity nudge on Home (doc 32 + 37): a dismissible prompt that holds
+   its own actions, so it is one of the two sanctioned white callouts
+   (.e-card), never a tinted card. */
+
+.nudge {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* Size containment stops the content from sizing the card, so the card
+     must take its width from its host explicitly. */
+  width: 100%;
+  container-type: inline-size;
+}
+
+.nudge__head {
+  display: flex;
+  gap: 10px;
+}
+
+.nudge__icon {
+  display: inline-flex;
+  color: var(--text-accent);
+  flex: none;
+  margin-top: 1px;
+}
+
+.nudge__body {
+  flex: 1;
+}
+
+.nudge__title {
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.nudge__text {
+  font-size: 12.5px;
+  color: var(--text-body);
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+.nudge__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* On a narrow (phone-width) card the actions stack full width instead of a
+   ragged wrap; the card's own width decides, not the viewport. */
+@container (max-width: 440px) {
+  .nudge__actions {
+    flex-direction: column;
+  }
+
+  .nudge__actions > * {
+    width: 100%;
+  }
+}

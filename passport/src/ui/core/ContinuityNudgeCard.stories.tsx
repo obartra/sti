@@ -12,8 +12,11 @@ const meta: Meta<typeof ContinuityNudgeCard> = {
     onDismiss: () => undefined,
   },
   decorators: [
+    // width (not just maxWidth): the preview wraps stories in a flex row, so a
+    // widthless block here shrink-wraps, and the card's size containment
+    // (nudge.css) would then collapse both to nothing.
     (Story) => (
-      <div style={{ maxWidth: 420, padding: 16 }}>
+      <div style={{ width: "100%", maxWidth: 420, padding: 16 }}>
         <Story />
       </div>
     ),
