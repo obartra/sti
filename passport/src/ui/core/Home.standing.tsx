@@ -1,6 +1,6 @@
-import { Button, Card } from "../../design/components/index.ts";
-import { Care as CareIcon, Check, Calendar } from "../../design/icons.tsx";
-import { leadTile } from "./Home.parts.tsx";
+import { Button } from "../../design/components/index.ts";
+import { Care as CareIcon, Check, Heart } from "../../design/icons.tsx";
+import { cx } from "../../lib/cx.ts";
 import {
   STANDING_COPY,
   checklistRows,
@@ -9,41 +9,31 @@ import {
   type ChecklistRow,
 } from "./Home.status.ts";
 import type { ReportPreview } from "../../core/report.ts";
+import "./home.css";
 
-// The dashboard's lead: the owner's real standing in one line. Blue reads blue;
-// every gray reason (untested, lapsed, still-gray, paused) reads honestly, never
-// green by default. This is the fix for a fresh owner reading as "Clear".
+// The dashboard's lead: the owner's real standing in one line, serif with the
+// status glyph beside it (doc 37). Blue reads blue; every gray reason
+// (untested, lapsed, still-gray, paused) reads honestly, never green by
+// default. This is the fix for a fresh owner reading as "Clear".
 export function StandingLine({ standing }: { standing: Standing }) {
   const c = STANDING_COPY[standing];
   const blue = c.tone === "blue";
   return (
-    <Card
-      variant="flat"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        borderColor: blue ? "var(--border-strong)" : undefined,
-      }}
-    >
-      <span
-        style={{
-          ...leadTile,
-          background: blue ? "var(--status-clear-bg)" : "var(--surface-sunken)",
-          color: blue ? "var(--status-clear-base)" : "var(--text-muted)",
-        }}
-      >
-        {blue ? <Check size={20} /> : <Calendar size={20} />}
-      </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{ fontSize: 17, fontWeight: 800, color: "var(--text-strong)" }}
+    <div>
+      <div className="hm__standing-row">
+        <span
+          aria-hidden
+          className={cx(
+            "hm__standing-icon",
+            blue ? "hm__standing-icon--blue" : "hm__standing-icon--gray",
+          )}
         >
-          {c.title}
-        </div>
-        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{c.sub}</div>
+          <Heart size={16} />
+        </span>
+        <div className="hm__standing-title">{c.title}</div>
       </div>
-    </Card>
+      <div className="hm__standing-sub">{c.sub}</div>
+    </div>
   );
 }
 
@@ -57,20 +47,14 @@ export function NextTestCard({
   onFindTesting: (() => void) | undefined;
 }) {
   return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", alignItems: "center", gap: 14 }}
-    >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          Next test
-        </div>
+    <div className="hm__section hm__next">
+      <div className="hm__next-body">
+        <div className="hm__label">Next test</div>
         <div
-          style={{
-            fontSize: 15,
-            fontWeight: 700,
-            color: next.overdue ? "var(--text-strong)" : "var(--text-body)",
-          }}
+          className={cx(
+            "hm__next-value",
+            next.overdue && "hm__next-value--overdue",
+          )}
         >
           {next.label}
         </div>
@@ -83,7 +67,7 @@ export function NextTestCard({
       >
         Find testing
       </Button>
-    </Card>
+    </div>
   );
 }
 
@@ -111,32 +95,17 @@ function ChecklistItem({
   onAct: () => void;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+    <div className="hm__check-row">
       <span
-        style={{
-          flex: "none",
-          width: 22,
-          height: 22,
-          borderRadius: "50%",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: row.met ? "var(--status-clear-bg)" : "transparent",
-          color: row.met ? "var(--status-clear-base)" : "var(--text-subtle)",
-          border: row.met ? "none" : "2px solid var(--border-card)",
-        }}
+        aria-hidden
+        className={cx(
+          "hm__check-mark",
+          row.met ? "hm__check-mark--met" : "hm__check-mark--open",
+        )}
       >
-        {row.met ? <Check size={14} /> : null}
+        {row.met ? <Check size={16} /> : null}
       </span>
-      <div
-        style={{
-          flex: 1,
-          minWidth: 0,
-          fontSize: 14,
-          fontWeight: 600,
-          color: row.met ? "var(--text-strong)" : "var(--text-body)",
-        }}
-      >
+      <div className={cx("hm__check-title", row.met && "hm__check-title--met")}>
         {row.title}
       </div>
       {row.met ? null : (
@@ -158,15 +127,8 @@ export function BlueChecklist({
   actions: ChecklistActions;
 }) {
   return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 14 }}
-    >
-      <div
-        style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)" }}
-      >
-        For a blue card
-      </div>
+    <div className="hm__section hm__check">
+      <div className="hm__label">For a blue card</div>
       {checklistRows(standing).map((row) => (
         <ChecklistItem
           key={row.kind}
@@ -174,6 +136,6 @@ export function BlueChecklist({
           onAct={actionFor(row, actions)}
         />
       ))}
-    </Card>
+    </div>
   );
 }

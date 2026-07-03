@@ -11,6 +11,7 @@ import { ContinuityNudgeCard } from "./ContinuityNudgeCard.tsx";
 import type { ContinuityNudge } from "../app/continuityNudge.ts";
 import { standingOf, nextTest } from "./Home.status.ts";
 import type { ReportPreview } from "../../core/report.ts";
+import "./home.css";
 
 // Home is a single scannable dashboard, top to bottom: the owner's honest
 // standing, the next test, the three things blue needs, what people see on your
@@ -27,22 +28,13 @@ function Greeting({
   avatar: AvatarConfigInput | undefined;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+    <div className="hm__head">
       <Avatar
         src={avatar !== undefined ? avatarSrc(avatar) : undefined}
         initials={(handle ?? "you").slice(0, 2).toUpperCase()}
         size="sm"
       />
-      <h1
-        style={{
-          fontSize: 22,
-          fontWeight: 800,
-          letterSpacing: "-0.02em",
-          color: "var(--text-strong)",
-        }}
-      >
-        {handle ? `@${handle}` : "Your passport"}
-      </h1>
+      <h1 className="hm__title">{handle ? `@${handle}` : "Your passport"}</h1>
     </div>
   );
 }
@@ -138,15 +130,7 @@ export function Home(props: HomeProps) {
   const care = onContinueCare ?? onFindTesting;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-        width: "100%",
-        maxWidth: 600,
-      }}
-    >
+    <div className="hm">
       <Greeting handle={handle} avatar={avatar} />
 
       <StandingLine standing={status} />

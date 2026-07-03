@@ -1,9 +1,8 @@
-import type { CSSProperties } from "react";
 import type { BadgeState } from "../badge-card.tsx";
 
-// Shared Home helpers: the copy the pause panel still uses, the anchored owner
-// dates for stable relative labels, and the lead-tile style shared by the
-// dashboard cards. Owner-facing dates only; viewers never see any of this.
+// Shared Home helpers: the copy the pause panel still uses and the anchored
+// owner dates for stable relative labels. Owner-facing dates only; viewers
+// never see any of this.
 export const COPY = {
   pause: {
     manualOn: "Status hidden",
@@ -46,18 +45,6 @@ export function addDays(d: Date, n: number): Date {
 export function fmtDate(d: Date): string {
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
-
-export const leadTile: CSSProperties = {
-  flex: "none",
-  width: 40,
-  height: 40,
-  borderRadius: "var(--radius-sm)",
-  background: "var(--accent-soft)",
-  color: "var(--text-accent)",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
 
 // Two-state badge only (blue / gray). Drives the owner's standing; the
 // viewer-facing `viewerBadge` drives the honest mirror.

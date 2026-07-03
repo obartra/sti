@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Button } from "../../design/components/index.ts";
 import { Plus, Share, Care as CareIcon, Heart } from "../../design/icons.tsx";
 import type { Standing } from "./Home.status.ts";
+import "./home.css";
 
 interface QuickAction {
   key: string;
@@ -94,9 +95,9 @@ export function HomeActions(args: ActionArgs) {
   const primary = primaryAction(args);
   const secondary = secondaryActions(args);
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div className="hm__actions">
       <QuickButton action={primary} />
-      <div style={{ display: "flex", gap: 10 }}>
+      <div className="hm__actions-row">
         {secondary.map((action) => (
           <QuickButton key={action.key} action={action} />
         ))}

@@ -23,8 +23,7 @@
     "styles": 1
   },
   "src/ui/badge-card.tsx": {
-    "styles": 15,
-    "hex": 2
+    "styles": 3
   },
   "src/ui/connect/Connect.tsx": {
     "styles": 5
@@ -51,24 +50,6 @@
   },
   "src/ui/core/ContinuityNudgeCard.stories.tsx": {
     "styles": 1
-  },
-  "src/ui/core/Home.actions.tsx": {
-    "styles": 2
-  },
-  "src/ui/core/Home.mirror.tsx": {
-    "styles": 4,
-    "legacy": 1
-  },
-  "src/ui/core/Home.pause.tsx": {
-    "styles": 12,
-    "legacy": 1
-  },
-  "src/ui/core/Home.standing.tsx": {
-    "styles": 14,
-    "legacy": 3
-  },
-  "src/ui/core/Home.tsx": {
-    "styles": 3
   },
   "src/ui/core/Privacy.about.tsx": {
     "styles": 11

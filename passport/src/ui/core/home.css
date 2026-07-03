@@ -1,0 +1,253 @@
+/* Home (doc 31 + 37): one scannable dashboard on the page surface. The
+   standing leads in serif with the status glyph, the next test and the
+   blue checklist are hairline-opened sections (no tinted sub-cards), the
+   honest mirror is a quiet labeled line, and the pause panel is the one
+   action callout while it shows. */
+
+.hm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.hm__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hm__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 23px;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+}
+
+/* ── The standing: the dashboard's lead line ────────────────────────────── */
+.hm__standing-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.hm__standing-icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.hm__standing-icon--blue {
+  color: var(--status-clear-base);
+}
+
+.hm__standing-icon--gray {
+  color: var(--status-none-base);
+}
+
+.hm__standing-title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 20px;
+  line-height: 1.2;
+  color: var(--text-strong);
+}
+
+.hm__standing-sub {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-top: 3px;
+}
+
+/* ── Hairline-opened dashboard sections ─────────────────────────────────── */
+.hm__section {
+  border-top: var(--hairline);
+  padding-top: 13px;
+}
+
+.hm__label {
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+/* Next test: label + value with the find-testing action beside. */
+.hm__next {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.hm__next-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.hm__next-value {
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--text-body);
+  margin-top: 2px;
+}
+
+.hm__next-value--overdue {
+  color: var(--text-strong);
+}
+
+/* The blue checklist: met/unmet rows, glyphs instead of tinted circles. */
+.hm__check {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hm__check-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.hm__check-mark {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hm__check-mark--met {
+  color: var(--status-clear-base);
+}
+
+.hm__check-mark--open {
+  border: 2px solid var(--border-card);
+  border-radius: 50%;
+}
+
+.hm__check-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-body);
+}
+
+.hm__check-title--met {
+  color: var(--text-strong);
+}
+
+/* The honest mirror: what a viewer resolves on your links. */
+.hm__mirror {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hm__mirror-line {
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  margin-top: 2px;
+}
+
+.hm__mirror-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── The pause panel: the one action callout while paused ───────────────── */
+.hm__pause {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hm__pause-head {
+  display: flex;
+  gap: 12px;
+}
+
+.hm__pause-icon {
+  display: inline-flex;
+  flex: none;
+  margin-top: 1px;
+  color: var(--text-muted);
+}
+
+.hm__pause-body {
+  flex: 1;
+}
+
+.hm__pause-title {
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.hm__pause-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
+.hm__pause-until {
+  border-top: var(--hairline);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hm__pause-until-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hm__pause-until-label {
+  font-size: 12.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+.hm__pause-until-date {
+  font-size: 13.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.hm__pause-note {
+  font-size: 12px;
+  color: var(--text-subtle);
+  line-height: 1.45;
+}
+
+.hm__pause-owner {
+  font-size: 12px;
+  color: var(--text-subtle);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── The action set ─────────────────────────────────────────────────────── */
+.hm__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hm__actions-row {
+  display: flex;
+  gap: 10px;
+}
