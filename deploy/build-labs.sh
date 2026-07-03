@@ -117,8 +117,20 @@ fi
 log "Rendering landing + docs ..."
 node "$LABS_DIR/render.mjs" --out "$STAGE"
 
-# 3. Shared assets.
-cp "$LABS_DIR/labs.css" "$STAGE/labs.css"
+# 3. Shared assets. labs.css is assembled at build time from the passport
+#    design tokens plus the two authored labs sheets, so the token values stay
+#    single-source while labs still deploys standalone (doc 36 grammar). The
+#    self-hosted fonts ship from the same files the passport serves.
+TOKENS_DIR="$REPO_ROOT/passport/src/design/tokens"
+cat "$TOKENS_DIR/colors.css" \
+  "$TOKENS_DIR/spacing.css" \
+  "$TOKENS_DIR/radii.css" \
+  "$TOKENS_DIR/typography.css" \
+  "$TOKENS_DIR/base.css" \
+  "$LABS_DIR/labs-theme.css" \
+  "$LABS_DIR/labs-site.css" >"$STAGE/labs.css"
+mkdir -p "$STAGE/fonts"
+cp "$REPO_ROOT"/passport/public/fonts/*.woff2 "$STAGE/fonts/"
 cp "$LABS_DIR/favicon.svg" "$STAGE/favicon.svg"
 
 # 4. Ship it. 404 falls back to the landing page (publish.sh copies index.html).
