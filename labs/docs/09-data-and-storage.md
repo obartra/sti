@@ -1,14 +1,14 @@
 # Data & storage
 
 *The plain answer to "should I trust this with my status?" What lives on your device, what
-reaches our server, what we provably can't see — and the one place that isn't fully blind yet.
+reaches our server, what we provably can't see, and the one place that isn't fully blind yet.
 Pairs with the Design doc (mechanics) and Philosophy (why). Not legal advice.*
 
 ---
 
 ## In one line
 
-Everything sensitive — diagnoses, dates, who you're linked to, your groups, your handles — lives
+Everything sensitive (diagnoses, dates, who you're linked to, your groups, your handles) lives
 **on your device**, inside an encrypted blob whose key never reaches us. Our server stores
 **ciphertext and opaque routing tokens, nothing else.** It can't read your status, and the stored
 contact graph is unreadable to us. The one honest exception is partner-notification routing, which
@@ -21,15 +21,15 @@ the device):
 
 - diagnoses, test and treatment dates;
 - the badge and all clearance math (the 90-day clock, the per-site logic);
-- your full contact graph — each link's opaque notify-token, link dates, group membership;
-- your alias definitions — handle, avatar, privacy mode, validity/revocation;
+- your full contact graph: each link's opaque notify-token, link dates, group membership;
+- your alias definitions: handle, avatar, privacy mode, validity/revocation;
 - visibility preferences.
 
 **On our server** (stored in the clear, but meaningless without your key):
 
 | Store          | Shape                              | What it's for                                                                                                                                                              |
 | -------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Alias payloads | `opaque_alias_id → ciphertext`     | Serving a passport when someone opens a link. The id is random and meaningless — the only id we ever see. No handle, avatar, name, grouping, or even a public/private flag. |
+| Alias payloads | `opaque_alias_id → ciphertext`     | Serving a passport when someone opens a link. The id is random and meaningless, the only id we ever see. No handle, avatar, name, grouping, or even a public/private flag. |
 | Account blob   | `opaque_account_id → ciphertext`   | Syncing your encrypted store across your own devices. Addressed by an opaque id derived from your key; holds nothing readable.                                              |
 | Recovery envelope | `locator → ciphertext` | Getting back in from a new device that has only your recovery name and password (doc 32). The **locator** is a non-secret, owner-chosen public handle (doc 17); the ciphertext is your account root wrapped by a memory-hard KDF of your password. There is one table, keyed only by the locator: no factor or account-id column. The server holds only the wrapped bytes, never the password or anything derived from it, and answers a uniform fixed-size decoy on a miss, so whether a given name has an envelope stays hidden (an existence-uniform read). The passkey unlock wraps the same root too, but that wrap stays on your device and never becomes a server envelope. |
 | Notify routing | `hash(notify_token) → opaque_handle` | Routing an anonymous "go get tested" nudge. The token is pairwise and was exchanged phone-to-phone, never through us.                                                     |
@@ -39,11 +39,11 @@ the device):
 Post-MVP and optional: SSO as a recovery anchor (`hash(sub) → ciphertext`) and an opt-in,
 off-by-default, content-free email channel. Both still need your key to decrypt anything.
 
-For a miss — an id that doesn't exist, or one you can't decrypt — the server returns
+For a miss (an id that doesn't exist, or one you can't decrypt), the server returns
 **decoy, ciphertext-shaped bytes**, uniform in both size and timing, so "can't read this" and
 "doesn't exist" are indistinguishable.
 
-## What we can — and can't — see
+## What we can, and can't, see
 
 **We can see:** that an alias or a push endpoint exists, that some tokens got pinged, the size of
 a ciphertext, and **aggregate operational telemetry about the service itself** (request rates and

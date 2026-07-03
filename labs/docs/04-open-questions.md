@@ -23,13 +23,13 @@ How it works:
   testing and actively protecting against HIV**. Three honest ways to qualify: on PrEP,
   undetectable, or a public commitment to always using condoms.
 - **U=U is built into the core.** An undetectable person and a person on PrEP show the
-  **exact same label** ("on HIV prevention") — you can never tell which is which, and the
+  **exact same label** ("on HIV prevention"): you can never tell which is which, and the
   badge never shows anyone's actual status or method.
 - **Two states only: blue ("up to date") or gray.** No green (reads as "go"), no yellow/red
-  "warning" state — any "be careful with this person" signal would basically out that they
+  "warning" state: any "be careful with this person" signal would basically out that they
   have something. Gray is a wide bucket (overdue, never tested, taking a break, mid-
   treatment, in care but not yet undetectable) so a single look never decodes to a diagnosis.
-- It protects people **during treatment** without exposing why — mid-treatment just shows
+- It protects people **during treatment** without exposing why: mid-treatment just shows
   gray, identical to every other reason for gray.
 - **No "verified" badges.** A verified tier next to a self-reported one re-creates the ranking
   this exists to dismantle, and trustworthy verification would mean linking a real medical
@@ -56,7 +56,7 @@ commitment), so two groups can't reach it even if diligent:
 
 - **Someone HIV-positive and in care but not yet undetectable** (newly diagnosed, still
   getting to suppression) shows gray, same bucket as overdue. No single look outs them, but
-  over time "tests yet never blue" could be inferred — and because almost everyone on these
+  over time "tests yet never blue" could be inferred, and because almost everyone on these
   apps will qualify, *not* qualifying might stand out more, not less.
 - **Someone who declines PrEP for their own reasons** (side effects, autonomy) and won't
   publicly commit to condoms is gray even if they test constantly. A real PrEP-normative tilt.
@@ -66,9 +66,9 @@ the newly-diagnosed and the PrEP-decliners under the bus?
 
 ### 2. Grouping condoms with PrEP and U=U
 
-The three routes share the *same* positive state — no ranking. Condoms are real, evidence-
+The three routes share the *same* positive state: no ranking. Condoms are real, evidence-
 based prevention, but typical-use efficacy is lower than PrEP/U=U. I grouped them anyway,
-because a lower tier for condom users re-creates the sorting I'm trying to kill — and I'm
+because a lower tier for condom users re-creates the sorting I'm trying to kill, and I'm
 committing the app to honest info pages on the differences instead of encoding a hierarchy.
 
 **Question:** does "publicly commits to condoms" genuinely belong in the same tier as
@@ -88,13 +88,13 @@ badge says **"up to date."** Labels are plain ("on HIV prevention," and a 3-stat
 **Question:** does "up to date" land right, or carry its own baggage? Any words I'm still
 using that quietly stigmatize, or read as clinical/policing to someone who's poz?
 
-### 4. Does the whole thing help or harm poz folks — gut check
+### 4. Does the whole thing help or harm poz folks: gut check
 
 Intent is anti-stigma: U=U in the core, no clean/dirty framing, harm-reduction not
 moralizing. But intent and impact differ.
 
 **Question:** sitting with the whole concept, does it *reduce* stigma, or does a status-
-sharing app — however carefully built — inevitably make poz people feel sorted and
+sharing app, however carefully built, inevitably make poz people feel sorted and
 surveilled? Is this a tool you'd want to exist?
 
 ### 5. Groups, and the "clean club" risk
@@ -128,10 +128,10 @@ considerate move, that would feel stigmatizing to people living with HSV/HPV?
 
 ### 7. The partner-notification feel
 
-If someone tests positive, their recent contacts get an **anonymous, content-free** nudge —
-"a contact suggests getting tested" — never who, when, or what. It's batched and delayed so
+If someone tests positive, their recent contacts get an **anonymous, content-free** nudge
+("a contact suggests getting tested"), never who, when, or what. It's batched and delayed so
 timing can't out anyone, and it routes to free testing + PEP. The person controls who's on the
-list and can remove anyone easily before it sends — I kept removal *frictionless*, because
+list and can remove anyone easily before it sends. I kept removal *frictionless*, because
 making it hard just pushes people toward telling no one.
 
 **Question:** does that feel supportive or accusatory on the *receiving* end? Could a content-
@@ -151,19 +151,19 @@ than killed it, and I'm not sure that's conviction or indecision.
 
 ### 9. Is a fresh "all clear" too frictionless? (the testing window)
 
-Blue wants a core-panel test (HIV, syphilis, gonorrhea, chlamydia) within 90 days, all clear —
+Blue wants a core-panel test (HIV, syphilis, gonorrhea, chlamydia) within 90 days, all clear,
 but the panel isn't one moment. Results land on different clocks, and every test has a *window
 period* where a recent infection won't show yet. Syphilis is the sharp case: you can truly know
 you're negative for HIV/gonorrhea/chlamydia today while the syphilis result is still pending, or
 test so soon after an exposure that "clear" is false reassurance. An *incomplete* panel already
-stays gray — you can log what's back and add syphilis when it arrives — but a *complete,
+stays gray (you can log what's back and add syphilis when it arrives), but a *complete,
 just-tested* panel flips blue even when the slowest result hasn't had time to mean anything. Right
 now that residual is left to explainer copy, not the badge. Any sharper handling has to stay
-on-device and never show — a visible "syphilis pending" would be exactly the tell the two-state
+on-device and never show. A visible "syphilis pending" would be exactly the tell the two-state
 badge exists to prevent.
 
-**Question:** is a frictionless "all clear" too generous? Should the testing *date* — and which
-result came back, and when — factor into blue more honestly (capture per-result dates or a "not
+**Question:** is a frictionless "all clear" too generous? Should the testing *date* (and which
+result came back, and when) factor into blue more honestly (capture per-result dates or a "not
 back yet" input, and hold blue until the slowest-seroconverting piece is both in and past its
 window), or does that pile on friction and a leak surface for a nuance most people won't model
 correctly anyway? Today the residual is explainer-only and the decisions log carries this

@@ -91,9 +91,10 @@ test("decisions doc gets status pills + a single legend; other docs don't", () =
     decisions.indexOf('class="legend"') < decisions.indexOf("<h2"),
     "legend should sit above the first section",
   );
-  // The status lead-ins became pills, so the raw "LOCKED — " text is gone.
+  // The status lead-ins became pills, so no raw "LOCKED." bold lead remains
+  // (and there are no em dashes to key on anymore).
   assert.match(decisions, /class="pill pill-locked"/);
-  assert.doesNotMatch(decisions, /<strong>\s*LOCKED\s*—/);
+  assert.doesNotMatch(decisions, /<strong>\s*LOCKED\s*[.:—]/);
   // A doc that doesn't use the vocabulary gets neither pills nor a legend.
   const philosophy = read("docs/philosophy.html");
   assert.doesNotMatch(philosophy, /class="legend"/);

@@ -11,12 +11,12 @@ unable to read a status in every configuration we offer. Builds on the knock/gra
 ## Why this doc
 
 Sharing a passport is the product's distribution problem. The earlier three-mode framing (Direct /
-Gated / Findable) had one mode that was underused — Gated (opaque + request): you'd post a link
+Gated / Findable) had one mode that was underused, Gated (opaque + request): you'd post a link
 publicly but viewers had no findable name to look you up by. Collapsing to two cleaner modes:
 
-- **Private link** (opaque id + live key) — for people you already know or encounter directly.
+- **Private link** (opaque id + live key), for people you already know or encounter directly.
   Anyone with the keyed URL sees the status immediately. No directory entry, no knock.
-- **Public link** (unique handle + `/u/` + knock) — for posting in a dating app bio or sharing
+- **Public link** (unique handle + `/u/` + knock), for posting in a dating app bio or sharing
   publicly. Anyone who visits `sti.care/u/{handle}` can knock; the owner approves each viewer.
   Findable by design. Reuses the existing vanity namespace infrastructure.
 
@@ -33,7 +33,7 @@ Everything below is derived from keeping this invariant true.
 | | **Private link** | **Public link** |
 |---|---|---|
 | **Reach** | Opaque id (`/a/a7f3k9q2`) | Human handle (`sti.care/u/bigdgrindr`) |
-| **Access** | Live — key in URL, immediate | Request — viewer knocks, owner approves |
+| **Access** | Live: key in URL, immediate | Request: viewer knocks, owner approves |
 | **Directory** | None | Server `name → aliasId` table (vanity_name) |
 | **Existence** | Hidden from anyone without the keyed URL | Disclosed to anyone who visits the handle |
 | **Identity default** | Pseudonym derived from alias id | Recognizable handle set at link creation |
@@ -41,7 +41,7 @@ Everything below is derived from keeping this invariant true.
 
 ### Private link (opaque + live)
 
-Hand someone the keyed link — a DM, an in-person QR scan, a per-contact share. Anyone who holds
+Hand someone the keyed link: a DM, an in-person QR scan, a per-contact share. Anyone who holds
 the keyed URL sees the status immediately. Trust comes from the channel: giving out the link is the
 trust decision. **Default mode for new aliases.**
 
@@ -58,7 +58,7 @@ trust decision. **Default mode for new aliases.**
 
 ### Public link (handle + /u/ + knock)
 
-Post or share a handle publicly — in a dating app bio, on a QR code, on a social profile. Anyone
+Post or share a handle publicly: in a dating app bio, on a QR code, on a social profile. Anyone
 who visits `sti.care/u/{handle}` can see the handle exists and knock (request to view). The owner
 approves each viewer through the blind grant.
 
@@ -66,7 +66,7 @@ approves each viewer through the blind grant.
   is the one index the server maintains beyond opaque-id-to-ciphertext, and it is an explicitly
   consented, opt-in decision with a disclosure at registration (doc 17).
 - **Existence is disclosed.** A `GET /u/{handle}` returning `200 {aliasId}` reveals the handle is
-  registered. That is the opted-into cost of being findable — disclosed before the name is claimed.
+  registered. That is the opted-into cost of being findable, disclosed before the name is claimed.
 - **Knock for everyone.** There is no "public live" mode where a viewer sees the status without an
   explicit grant. Every visitor to a public link must knock and be approved. The blind-store
   invariant is unbroken: the server never sees the key or the card content.
@@ -83,7 +83,7 @@ do not keep as an opt-in.)
 
 ## Per-link identity (handle + avatar)
 
-A link's handle and avatar are set in the share sheet at the moment the link is created or edited —
+A link's handle and avatar are set in the share sheet at the moment the link is created or edited,
 not at account creation. They travel in the encrypted card payload: the server never sees them;
 only a viewer who holds the key (private link) or receives a grant (public link) does.
 
@@ -92,7 +92,7 @@ person might use "BigD" on a Grindr public link and "David" on a Tinder public l
 distinct context. No default is seeded from the display name. Each link's identity is a conscious,
 independent choice.
 
-For **private links,** the default is the id-derived pseudonym — stable per alias, unlinkable
+For **private links,** the default is the id-derived pseudonym, stable per alias, unlinkable
 across aliases. The owner can set a recognizable handle/avatar if they want.
 
 For **public links,** a recognizable handle is the point: viewers visiting `/u/{handle}` should
@@ -175,9 +175,9 @@ passport they are requesting). A private link defaults to a pseudonym but can be
   public context. Replaces the prior one-per-account limit.
 - **Handle at link creation, not account creation.** Onboarding collects only a local display
   name (owner-facing, encrypted). Handles are set in the share sheet when a link is created.
-- **Vanity namespace governance (doc 17) stays.** All existing vanity infrastructure — vanity_name
+- **Vanity namespace governance (doc 17) stays.** All existing vanity infrastructure (vanity_name
   table, /u/ endpoint, server-side validation, admin review queue, report-and-takedown, blocklist,
-  `FindableName.tsx` component — is reused. Doc 17 is updated for the multi-handle model.
+  `FindableName.tsx` component) is reused. Doc 17 is updated for the multi-handle model.
 - **Doc 13 knock stays.** The knock + grant machinery is unchanged; it now applies to public links
   only (private links grant immediate access via the keyed URL).
 
@@ -195,5 +195,5 @@ passport they are requesting). A private link defaults to a pseudonym but can be
 6. **QR** (private-link encoder + scan entry point for in-person sharing). No server surface.
 7. **Existing vanity infrastructure stays unchanged:** vanity_name table, /u/ server endpoint,
    charset validation, reserved list, blocklist, admin review endpoints and panel, report intake,
-   `FindableName.tsx` — all reused. No new server work for public links beyond the blob upgrade
+   `FindableName.tsx`. All reused. No new server work for public links beyond the blob upgrade
    and the existing five-alias-per-account claim check.
