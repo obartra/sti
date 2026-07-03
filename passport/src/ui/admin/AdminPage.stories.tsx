@@ -22,6 +22,10 @@ const meta: Meta<typeof AdminPage> = {
   title: "Passport/Admin/AdminPage",
   component: AdminPage,
   args: { apiBase: "https://api.sti.care" },
+  // A full-page takeover like the app shell: the page owns its own centered
+  // frame, so it skips the preview's flex wrapper (which would shrink-wrap it
+  // and collapse the size-contained console to zero width).
+  parameters: { layout: "fullscreen" },
   decorators: [
     (Story) => {
       sessionStorage.removeItem("sti.admin.token");

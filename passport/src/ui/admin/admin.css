@@ -14,8 +14,13 @@
 }
 
 /* -------------------------------------------------------------- page frame - */
+/* width: 100% is load-bearing: the console (.adm) carries inline-size
+   containment, so its intrinsic width is 0; in any shrink-wrap context (a flex
+   wrapper, Storybook's centering decorator) the page must take its width from
+   its parent or the whole console collapses. */
 .adm-page {
   min-height: 100dvh;
+  width: 100%;
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -28,8 +33,12 @@
   max-width: 420px;
 }
 
+/* The authed console frame: wide enough to compose panels side by side (an
+   operator surface, not a reading page). 1240 + the 20px page padding exactly
+   fills the 1280 capture viewport, so the wide composition is what the visual
+   baselines exercise. */
 .adm-page__inner--authed {
-  max-width: 1080px;
+  max-width: 1240px;
 }
 
 /* ------------------------------------------------------------------ header - */
@@ -113,7 +122,9 @@
 }
 
 /* The dense two-column region for the work queues; a container query (not a JS
-   breakpoint) splits it once the console is wide enough. */
+   breakpoint) splits it once the console is wide enough. The whole console
+   breathes on two thresholds: 700 (side-by-side begins) and 1100 (the full
+   dashboard composition). */
 .adm-queues {
   display: grid;
   grid-template-columns: 1fr;
@@ -121,9 +132,63 @@
   align-items: start;
 }
 
-@container (min-width: 760px) {
+@container (min-width: 700px) {
   .adm-queues {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+@container (min-width: 1100px) {
+  .adm-queues {
+    column-gap: var(--space-8);
+  }
+}
+
+/* Health as a compact status band once there is room: the heading and status
+   word hold a fixed left column while the four figures read 4-across beside
+   them, so the is-anything-on-fire glance costs one row, not a screen. */
+@container (min-width: 700px) {
+  .adm-panel--health {
+    display: grid;
+    grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+    column-gap: var(--space-7);
+    row-gap: 10px;
+    align-items: start;
+  }
+
+  .adm-panel--health > .adm-panel__head {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .adm-panel--health > .adm-figures {
+    grid-column: 2;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .adm-panel--health > .adm-note,
+  .adm-panel--health > .adm-retry,
+  .adm-panel--health > .adm-list {
+    grid-column: 2;
+  }
+}
+
+/* The secondary tools (the id lookup and the audit tail) pair up only at the
+   full dashboard width; below that each wants the whole line. */
+.adm-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: start;
+}
+
+@container (min-width: 1100px) {
+  .adm-tools {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: var(--space-8);
   }
 }
 
@@ -176,10 +241,35 @@
   gap: 8px;
 }
 
+/* The trend charts: stacked when narrow, 2+1 (latency spanning) once the
+   console can hold two, all three abreast at the full dashboard width. The
+   minmax(0, 1fr) tracks are load-bearing: recharts' ResponsiveContainer
+   overflows a bare 1fr track. */
 .adm-charts {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
+}
+
+@container (min-width: 700px) {
+  .adm-charts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-5) var(--space-6);
+  }
+
+  .adm-charts > .adm-chart:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@container (min-width: 1100px) {
+  .adm-charts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .adm-charts > .adm-chart:last-child {
+    grid-column: auto;
+  }
 }
 
 /* ------------------------------------------------------------------- rows --- */
@@ -333,6 +423,14 @@
 }
 
 /* ------------------------------------------------------------ manage tool -- */
+/* The id-lookup form reuses the gate's form stack; once the console is wide it
+   stops stretching to the full frame (an input for one opaque id). */
+@container (min-width: 700px) {
+  .adm-panel .adm-gate__form {
+    max-width: 520px;
+  }
+}
+
 .adm-record {
   display: flex;
   flex-direction: column;
