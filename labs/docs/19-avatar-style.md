@@ -1,17 +1,17 @@
 # sti.care: Avatar Style (Dylan)
 
-_The design doc for replacing the home-grown animal avatars (`passport/src/lib/avatars.ts`) with the
-DiceBear "Dylan" style, rendered locally and recolored to the brand teal palette. It keeps every property
-the current system earned (no photos, offline, deterministic from a per-alias seed, encrypted-blob
-config) and changes only what produces the SVG. Built in tested slices on top of current `main`._
+_How the per-alias avatars work: the DiceBear "Dylan" style (`passport/src/lib/avatars.ts`), rendered
+locally and recolored to the brand teal palette. It replaced the home-grown animal avatars and keeps
+every property that system earned (no photos, offline, deterministic from a per-alias seed,
+encrypted-blob config); only what produces the SVG changed._
 
 ---
 
-## Why this doc
+## Why this look
 
 The avatar is the face a viewer sees when they decrypt a passport (doc 15 made it per-alias). The
-current art is hand-drawn SVG: six animals, five color triples, a couple of hats and glasses. It
-works and it is private, but it looks home-made, and the accessory layer it was built around
+earlier art was hand-drawn SVG: six animals, five color triples, a couple of hats and glasses. It
+worked and it was private, but it looked home-made, and the accessory layer it was built around
 (`ear` / `nose` / `cheek` anchors, the cut `EXTRAS`) never shipped. Rather than keep drawing, we pull
 from a maintained illustration library that already looks good.
 
@@ -19,8 +19,8 @@ The chosen look is DiceBear's Dylan: flat, bold, curved forms with expressive mo
 brand teal palette so the whole cast reads as one family and sits inside the existing tokens. The vibe
 target is "half corporate cartoon, half punk": clean shapes, spiky hair, a face with a mood.
 
-This doc changes the avatar's *rendering and config*. It does not touch the card payload, keys, the
-knock/grant crypto, or where avatars are displayed.
+Only the avatar's *rendering and config* changed. The card payload, keys, the knock/grant crypto, and
+where avatars are displayed did not.
 
 ## Avatars are per-face only, not an owner photo (doc 31)
 
@@ -101,8 +101,8 @@ reveals a link (doc 15 / 16). The copy is sharpened to say so rather than changi
 
 ## Migration off the old config
 
-Avatars are per-alias and recently shipped (PRs #55, #63, doc 15), so real persisted `AvatarConfig`
-blobs exist with the old `{ animal, color, hat, glasses, extra }` shape. They cannot map meaningfully
+Avatars are per-alias (doc 15), so real persisted `AvatarConfig` blobs exist with the old
+`{ animal, color, hat, glasses, extra }` shape. They cannot map meaningfully
 onto Dylan. Because avatars are cosmetic and re-pickable, the migration is simple and lossy on purpose:
 
 - A new strict validator accepts only the new shape.
@@ -140,32 +140,17 @@ be skipped.
 - On brand: every defined tone produces an SVG containing only theme-swatch hexes (no stray default
   skin/hair colors leaking through), for all tone values.
 
-## Slices
+## How it fits together
 
-1. Add pinned DiceBear deps; implement the new `avatars.ts` internals behind the unchanged
-   `avatarSrc` / `avatarFor` / `AvatarConfig` seam, with the theme-derived tone triples defined. Tests:
-   determinism, offline, on-brand palette across all tones.
-2. New validator + load-time fallback migration. Tests: round-trip, legacy fallback.
-3. Rebuild `AvatarBuilder.tsx`: hair + mood + tone chips as mini-avatar swatches, shuffle button.
-   Story + interaction test.
-4. Add the CC-BY attribution line. Update any avatar-related references in docs 15 / 16.
-5. Make the editor reachable and persistent. The `avatar-edit` route existed but
-   nothing navigated to it, and its handler edited local state then discarded it on
-   close, so a post-onboarding owner could never change their avatar. Add an
-   `onSetAvatar` owner action (`controller.setProfile` with the current sharing
-   mode, folded back into the session like the other owner mutations), thread it to
-   the route so "Done" persists, and add an "Edit your avatar" entry in the Privacy
-   screen with a live preview of the current avatar.
-6. More variety (this slice). Replace the single coordinated `tone` with separate
-   skin and hair color picks from one light-to-dark palette; add a beard toggle and
-   a Bald hair option; lay the builder swatches out in a fixed-column grid; and
-   sharpen the default-link-preview copy (keeping the anonymous-by-default face).
-   `AvatarConfig` becomes `{ hair, mood, skin, hairColor, beard }`; old-shape blobs
-   (including the interim `{ hair, mood, tone }`) coerce to the default on read.
-7. Move the builder out of signup. The avatar is not shown on a link by default
-   (it is anonymous), so building it during account creation is premature and makes
-   that screen long. A fresh account now gets a **random** avatar; the full builder
-   lives only on the dedicated `avatar-edit` screen, reached from the Privacy screen
-   and from private-link creation (where a revealed avatar is actually seen). The
-   "Surprise me" button gets a dice icon. Background also auto-contrasts with the
-   avatar; the darkest skin is blue-tinted so the eyes read; the sad mood is dropped.
+The generator lives behind the unchanged `avatarSrc` / `avatarFor` / `AvatarConfig` seam, with the
+theme-derived skin and hair swatches defined in `avatars.ts`. A strict validator accepts only the new
+shape and falls any old, partial, or corrupt blob back to the id-derived default on read (the fallback
+*is* the migration; the interim `{ hair, mood, tone }` shape coerces the same way).
+
+`AvatarBuilder.tsx` lays the hair, mood, beard, skin, and hair-color choices out as mini-avatar and
+color-swatch rows in a fixed-column grid, with a "Surprise me" shuffle on a dice icon. The builder is
+reached from the Privacy screen and from private-link creation, not from signup: a link is anonymous
+by default, so building an avatar at account creation is premature. A fresh account gets a **random**
+avatar, and the full builder appears only where a revealed avatar is actually seen. The background
+auto-contrasts with the chosen skin and hair, the darkest skin is blue-tinted so the eyes read, and
+the CC-BY attribution line sits under the editor.

@@ -60,11 +60,11 @@ secret) and by:
 
 ## The admin page
 
-A dedicated, gated route (`/admin`), isolated from the user flows. It is built as a **separate
-bundle / entry point**, not code-split out of the user app: the operator surface and the
-user-facing passport share no chunk, so admin can pull in heavier dependencies (a charting library,
-a richer table/grid) without adding a byte to the user bundle or sitting near a health surface, and
-the shell budget in [doc 22](22-progressive-web-app.md) is unaffected. It is built for a **desktop
+A dedicated, gated route (`/admin`), isolated from the user flows. It loads as a **lazy,
+code-split chunk** (a dynamic `import()` fetched only when someone visits `/admin`): the operator
+surface and the user-facing passport share no chunk, so admin can pull in heavier dependencies (a
+charting library, a richer table/grid) without adding a byte to the user bundle or sitting near a
+health surface, and the shell budget in [doc 22](22-progressive-web-app.md) is unaffected. It is built for a **desktop
 operator** (a wide, multi-panel dashboard layout), not the mobile-first passport frame, since this
 is where the richer aggregate views live. The built composition reads operator-first, top to
 bottom: health as a compact status band, the two work queues side by side, the metrics figures and
@@ -74,7 +74,7 @@ viewport media queries, and collapses to a single column when narrow.
 
 - A token gate: enter the bearer secret; on success, the page calls a cheap `GET /admin/ping` to
   validate before showing anything.
-- **v1 panel: Findable review (doc 17 §146):** the queue of reported vanity names not auto-actioned,
+- **v1 panel: Findable review ([doc 17](17-vanity-namespace-governance.md), report and takedown):** the queue of reported vanity names not auto-actioned,
   each with the reported name, the report reason, and two one-click actions: **Take down** (revoke →
   24h lock) or **Dismiss**. Volume is shown but never auto-acts.
 - **Something-wrong panel ([doc 35](35-something-wrong-reports.md)):** the queue of reports filed
@@ -87,7 +87,7 @@ viewport media queries, and collapses to a single column when narrow.
 - **Metrics panel:** a read-only dashboard of **aggregate, identifier-free** operational counts,
   shown as **helpful charts** on the desktop layout: number cards for current totals, time-series
   line/area charts for per-day trends, and a small bar/series for the report queue and its latency.
-  (The separate admin bundle is what lets this use a real charting library freely.) Only system-level
+  (The separate admin chunk is what lets this use a real charting library freely.) Only system-level
   totals and trends: total accounts / aliases / live links, accounts created and reports filed per
   day over a recent window, and the report-queue size and review latency. These are the same
   identifier-free service telemetry the blind-store boundary already permits (see below). The hard
@@ -134,7 +134,8 @@ chrome and is never linked from the app.
   written), never content. Shipped.
 - `GET /admin/metrics`: aggregate, identifier-free service counts for the metrics panel. No
   per-account or per-id figures; a read, so not itself audited. The current totals: accounts, aliases,
-  live knocks, send-queue depth, database size, and the report-queue size.
+  live knocks, send-queue depth, database size, the report-queue size, and the open "Something wrong?"
+  report count.
 - `GET /admin/trends`: aggregate, identifier-free time series over a recent window (`days`, capped):
   accounts created per day, reports filed per day, and the review-latency histogram. Daily sign-ups
   come from a purely aggregate daily tally bumped once when an account is first created, so the server

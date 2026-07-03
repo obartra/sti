@@ -1,6 +1,6 @@
 # 23 - Privacy policy, terms, and the trust footer
 
-Status: BUILT (the trust footer, the `/privacy-policy` and `/terms` pages, and the landing link all shipped).
+Status: BUILT (the trust footer, the `/privacy` and `/terms` pages, and the landing link all shipped).
 
 ## Why now
 
@@ -47,8 +47,9 @@ Three sibling content screens under a shared "what we stand behind" grouping,
 all in the `public` group so they are reachable logged out and directly by URL:
 
 - `promises` (exists today)
-- `privacy` is already taken by the in-app Privacy **settings** screen, so the
-  policy gets a distinct screen id: `privacy-policy`.
+- the privacy policy page: its screen id is `privacy-policy`, but its URL path is
+  `/privacy`. The in-app Privacy **settings** screen (id `privacy`) lives at
+  `/settings`, so `/privacy` is free for the policy page.
 - `terms`.
 
 `privacy-policy` and `terms` are pure functions of static copy (like the
@@ -67,6 +68,7 @@ The footer carries:
 - **Our promises** -> `promises`
 - **Privacy** -> `privacy-policy`
 - **Terms** -> `terms`
+- **Share your link** -> `share-link` (the public "share your link" guide)
 - **STI basics** -> the education library at info.sti.care (external, in a new
   tab; the library itself is [doc 34](34-education-library-subdomain.md))
 
@@ -154,7 +156,8 @@ We do not sell or share your data, because we do not have readable data to sell.
 - Connections stay on your device until you remove them. We do not auto-remove
   them.
 - Access requests are short-lived and auto-expire.
-- Your account backup stays until you delete it.
+- Your account backup stays until you delete it, or until about two years
+  without using the app, whichever comes first. Opening the app keeps it.
 - A "something wrong" note is kept until we have read it, then swept on a fixed
   schedule; we do not keep it indefinitely.
 - The admin action log is append-only and retained for accountability; it holds

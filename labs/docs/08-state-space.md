@@ -130,8 +130,9 @@ Two modes as of June 27, 2026 (revised from three — the intermediate Gated mod
   each viewer via the blind grant. No viewer sees the card without an explicit grant.
 - Existence is **disclosed**: a `GET /u/{handle}` returning `200` reveals the handle is registered.
   This is the opted-into cost of being findable, disclosed at registration (doc 17).
-- **Cap: 5 active public links per account.** Handle is set at link creation in the share sheet,
-  not at account creation.
+- **Cap: 5 active public links per account.** The handle is claimed either at account creation
+  (the optional username at sign-up, doc 32) or later from the Findable section in Settings, never
+  from the share sheet.
 - Scrapeable/watchable over time (mitigated, never fully solved).
 
 *(Two modes. D1 is the default. D2 requires explicit opt-in with consent disclosure. `vanity + live`
@@ -177,11 +178,14 @@ Two modes as of June 27, 2026 (revised from three — the intermediate Gated mod
 
 ## G. Identity (per alias)
 
-- `handle` + `avatar` — chosen per alias, stored only in the encrypted payload. **No real name
-  anywhere** (no field exists).
+- `handle` and `avatar`: the card's displayed face. By default both derive deterministically from
+  the alias id; an owner can override them per alias, and only that override is stored in the
+  encrypted payload. **No real name anywhere** (no field exists).
 - `opaque_id` — the URL address; random, meaningless, the only server-visible id.
-- Per-alias defaults: fresh random avatar + fresh handle (anti-relink). Reuse across aliases =
-  **warn-only** at the moment of linkage, never blocked.
+- Per-alias default face: the deterministic id-derived pseudonym and avatar (`pseudonymFor(id)`,
+  `avatarFor(id)`; see §D1). Because the id is random per alias, two of an owner's aliases share no
+  default face, so the default is already unlinkable across links with no separate anti-relink step
+  and no reuse warning. Showing the account's main identity instead is an explicit per-alias opt-in.
 
 ---
 

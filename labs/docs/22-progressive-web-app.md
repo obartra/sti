@@ -114,7 +114,7 @@ A `public/manifest.webmanifest`, linked from `index.html`, with a matching
 | `icons`            | 192 and 512 px, plus a `purpose: "maskable"` variant          | Maskable so Android does not letterbox the favicon mark.                             |
 | `categories`       | `["health", "medical"]`                                        | Store and launcher categorization.                                                  |
 | `description`      | One plain line: what it is and the privacy promise            | User-facing copy, voice-and-tone governed; shown by some install UIs.                |
-| `shortcuts`        | Care, Share, Connect                                           | Long-press launcher entries to the three primary routes.                            |
+| `shortcuts`        | Care, Share, People                                           | Long-press launcher entries to the three primary routes.                            |
 | `screenshots`      | a narrow (mobile) capture, BUILT                              | Richer install UI on Chromium. The source of truth is a dedicated Storybook story (`PWA/Install screenshots`), and `scripts/screenshots/generate.mjs` screenshots it into `public/screenshots/`, so the manifest image stays in sync with the real UI. Fixture data only (S7), never a real session: no real badge or handle ships in a static asset. |
 
 Icons derive from the existing `public/favicon.svg` (teal rounded square, white mark). The maskable
@@ -219,14 +219,16 @@ The app version is already stamped (`__APP_VERSION__`), so the cache name carrie
   suite.) So the worker installs quietly on visit one and controls from visit two, the standard PWA
   lifecycle. This is also what keeps old versions working: nothing is force-swapped under a running
   page.
-- **Surface the update; let the user activate it.** When a newer worker is installed and waiting (a
-  worker reaching `installed` while one already controls the page), the app shows a quiet, dismissible
-  affordance. Tapping Reload posts the waiting worker a `SKIP_WAITING` message (the ONLY path that
-  calls `skipWaiting`, so activation is always user-initiated); the worker activates, `controllerchange`
-  fires, and the page reloads once onto the new version. Dismiss leaves the running version untouched;
-  the next cold start picks the update up regardless. Copy follows voice and tone, outcome-first:
-  **"A newer version is ready."** with **Reload** / **Not now** actions. (Implemented in slice 3:
-  `swUpdate.ts`, `registerSw.ts`, `UpdateBanner.tsx`.)
+- **Adopt the update silently at the next navigation; never interrupt.** When a newer worker is
+  installed and waiting (a worker reaching `installed` while one already controls the page),
+  `registerSw` records it (`notifyUpdateReady`) rather than surfacing a banner. The router adopts it at
+  the user's **next screen change**: `applyPendingUpdate` posts the waiting worker a `SKIP_WAITING`
+  message (the ONLY path that calls `skipWaiting`, so activation always lands on a navigation boundary
+  the user initiated, never mid-interaction); the worker activates, `controllerchange` fires, and the
+  page reloads once onto the new version. Applying at a navigation rather than immediately also keeps a
+  still-running old page from requesting a code chunk the new deploy has dropped. If the user never
+  navigates, the waiting worker adopts naturally on the next cold start (standard lifecycle). No banner,
+  no prompt, no copy. (Implemented in slice 3: `swUpdate.ts`, `registerSw.ts`.)
 - **No silent data migration risk.** The worker only ever touches the public shell cache. User data
   lives in the encrypted blob and is versioned by the app's own store-migration path, untouched here.
 
@@ -391,8 +393,9 @@ Each slice is independently shippable and leaves the app correct.
 2. **Offline shell (BUILT).** `install`/`activate`/`fetch` composed into the existing worker
    (section B), a build-time precache manifest, the cross-origin (incl. API) passthrough. Outcome:
    the installed app opens offline and renders the owner's own local status.
-3. **Update UX (BUILT).** Versioned shell cache, a user-initiated `SKIP_WAITING` activation, and the
-   voice-reviewed "reload to update" affordance (no automatic skipWaiting/claim; section E).
+3. **Update UX (BUILT).** Versioned shell cache and silent navigation-boundary adoption: a waiting
+   worker is recorded and adopted via `SKIP_WAITING` at the user's next screen change, no banner and no
+   automatic skipWaiting/claim (section E).
 4. **Offline-created state (section H), BUILT.** This was the foundational change anticipated below:
    the encrypted blob is now cached in a root-key-sealed local store (`localBlobStore.ts`), and the
    sync (`offlineSync.ts`) reads **local-first** (so a reload restores the session offline) and writes
@@ -409,7 +412,7 @@ Each slice is independently shippable and leaves the app correct.
    One more, named in full in section L: the blob push is **last-write-wins**, so two devices editing
    the same account while one is offline can have the reconnecting device overwrite the other's edit.
 5. **Reconnect catch-up, RECONSIDERED (section M).** Periodic background sync is replaced by a
-   reconnect/foreground inbox catch-up (`useReconnectCatchup`, BUILT) plus a recommended long-TTL push,
+   reconnect/foreground inbox catch-up (`useCatchup`, BUILT) plus a recommended long-TTL push,
    which reach low-connectivity users without the device-initiated cadence leak. The timer is not
    shipped.
 

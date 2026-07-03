@@ -147,7 +147,7 @@ in the repo and grown by report-and-takedown; neither is exhaustive.
   `sys`, `official`, `staff`, `team`, `mod`, `moderator`, `support`, `help`, `helpdesk`, `contact`,
   `info`, `abuse`, `security`, `legal`, `privacy`, `billing`, `payments`, `api`, `app`, `www`, `mail`,
   `email`, `noreply`, `no_reply`, `sti`, `sticare`, `care`, `health`, `clinic`, `verify`, `verified`,
-  `test`, `null`, `undefined`. (Brand + operational terms; prevents an account masquerading as the
+  `test`, `null`, `undefined`, `demo`. (Brand + operational terms; prevents an account masquerading as the
   service or its staff.)
 - **Blocklist (abuse / impersonation-prone):** slurs and harassment terms, and obvious
   authority-impersonation patterns (`*_official`, `the_real_*` style is **not** auto-blocked, see

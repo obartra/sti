@@ -4,8 +4,8 @@
 // the registration endpoint and a periodic re-scan share one definition of
 // "allowed" and a name can never be accepted one place and swept another.
 //
-// Findable is gated; nothing wires this yet. It is the first, self-contained
-// slice (F1) of that build.
+// Findable is launched: the server wires these checks into the live registration,
+// resolve, and report paths (GET/PUT/DELETE /u/{name} plus POST /u/{name}/report).
 package vanityname
 
 import (
