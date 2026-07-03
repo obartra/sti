@@ -71,23 +71,13 @@ export async function listAdminReports(
   token: string,
   fetchImpl: FetchLike = (input, init) => globalThis.fetch(input, init),
 ): Promise<AdminReportsResult> {
-  let res: Response;
-  try {
-    res = await fetchImpl(apiBase + ADMIN_REPORTS_PATH, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  } catch {
-    return { kind: "error" };
-  }
-  if (res.status === 401) return { kind: "unauthorized" };
-  if (res.status !== 200) return { kind: "error" };
-  try {
-    const body = (await res.json()) as { reports?: AdminReport[] };
-    return { kind: "ok", reports: body.reports ?? [] };
-  } catch {
-    return { kind: "error" };
-  }
+  const r = await adminGetJson<{ reports?: AdminReport[] }>(
+    apiBase + ADMIN_REPORTS_PATH,
+    token,
+    fetchImpl,
+  );
+  if (r.kind !== "ok") return r;
+  return { kind: "ok", reports: r.body.reports ?? [] };
 }
 
 // --- Recent activity (A4, doc 20) -------------------------------------------
@@ -148,6 +138,39 @@ export async function listAdminAudit(
   }
 }
 
+// A parsed GET result before the caller wraps its typed payload: the JSON body on a
+// 200, or the shared unauthorized/error outcomes. Collapses the identical fetch +
+// status + parse boilerplate the aggregate reads (metrics, health, trends) share, so
+// each of those becomes a bind-and-default one-liner. A 401 stays distinct so the page
+// can re-lock; any other non-200, a network failure, or a malformed body is an error.
+type GetJsonResult<T> =
+  | { kind: "ok"; body: T }
+  | { kind: "unauthorized" }
+  | { kind: "error" };
+
+async function adminGetJson<T>(
+  url: string,
+  token: string,
+  fetchImpl: FetchLike,
+): Promise<GetJsonResult<T>> {
+  let res: Response;
+  try {
+    res = await fetchImpl(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    return { kind: "error" };
+  }
+  if (res.status === 401) return { kind: "unauthorized" };
+  if (res.status !== 200) return { kind: "error" };
+  try {
+    return { kind: "ok", body: (await res.json()) as T };
+  } catch {
+    return { kind: "error" };
+  }
+}
+
 // --- Service metrics (A5, doc 20) -------------------------------------------
 
 const ADMIN_METRICS_PATH = "/admin/metrics";
@@ -191,23 +214,76 @@ export async function getAdminMetrics(
   token: string,
   fetchImpl: FetchLike = (input, init) => globalThis.fetch(input, init),
 ): Promise<AdminMetricsResult> {
-  let res: Response;
-  try {
-    res = await fetchImpl(apiBase + ADMIN_METRICS_PATH, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  } catch {
-    return { kind: "error" };
-  }
-  if (res.status === 401) return { kind: "unauthorized" };
-  if (res.status !== 200) return { kind: "error" };
-  try {
-    const body = (await res.json()) as Partial<AdminMetrics>;
-    return { kind: "ok", metrics: { ...ZERO_METRICS, ...body } };
-  } catch {
-    return { kind: "error" };
-  }
+  const r = await adminGetJson<Partial<AdminMetrics>>(
+    apiBase + ADMIN_METRICS_PATH,
+    token,
+    fetchImpl,
+  );
+  if (r.kind !== "ok") return r;
+  return { kind: "ok", metrics: { ...ZERO_METRICS, ...r.body } };
+}
+
+// --- Service health (doc 20) ------------------------------------------------
+
+const ADMIN_HEALTH_PATH = "/admin/health";
+
+/** One subsystem's internal-error count in the health snapshot (mirrors the server's
+ * AdminErrorCount): a fixed subsystem name and a running total, never a message. */
+interface AdminErrorCount {
+  type: string;
+  count: number;
+}
+
+/** Aggregate, identifier-free operational-health signals (mirrors the server's
+ * AdminHealthResponse). Surfaces a backing-up send queue, a stalled background loop,
+ * or a rise in internal errors so they are visible on the page instead of only by
+ * reading /metrics on the box. Every field is a count, an age, or a system size,
+ * never a per-account or per-id figure (doc 12 / doc 20). `janitorAgeSeconds` is -1
+ * when the background loop has never run. */
+export interface AdminHealth {
+  errors: AdminErrorCount[];
+  sendQueueDepth: number;
+  sendQueueOldestAgeSeconds: number;
+  janitorAgeSeconds: number;
+  inflightCurrent: number;
+  inflightMax: number;
+}
+
+export type AdminHealthResult =
+  | { kind: "ok"; health: AdminHealth }
+  | { kind: "unauthorized" }
+  | { kind: "error" };
+
+const ZERO_HEALTH: Omit<AdminHealth, "errors"> = {
+  sendQueueDepth: 0,
+  sendQueueOldestAgeSeconds: 0,
+  janitorAgeSeconds: -1,
+  inflightCurrent: 0,
+  inflightMax: 0,
+};
+
+/**
+ * Fetch the aggregate health snapshot for the console's health panel. Same error
+ * shape as the other reads: 401 surfaces distinctly so the page can re-lock; any
+ * other non-200, a network failure, or a malformed body is a generic error the panel
+ * shows with a retry. Missing fields default (errors to empty, ages/counts to 0, the
+ * heartbeat age to the -1 "never ran" flag) so a partial body never renders NaN.
+ */
+export async function getAdminHealth(
+  apiBase: string,
+  token: string,
+  fetchImpl: FetchLike = (input, init) => globalThis.fetch(input, init),
+): Promise<AdminHealthResult> {
+  const r = await adminGetJson<Partial<AdminHealth>>(
+    apiBase + ADMIN_HEALTH_PATH,
+    token,
+    fetchImpl,
+  );
+  if (r.kind !== "ok") return r;
+  return {
+    kind: "ok",
+    health: { ...ZERO_HEALTH, ...r.body, errors: r.body.errors ?? [] },
+  };
 }
 
 // --- Aggregate trends (doc 20 metrics panel) --------------------------------
@@ -260,30 +336,20 @@ export async function getAdminTrends(
   days = TRENDS_DAYS,
   fetchImpl: FetchLike = (input, init) => globalThis.fetch(input, init),
 ): Promise<AdminTrendsResult> {
-  let res: Response;
-  try {
-    res = await fetchImpl(`${apiBase}${ADMIN_TRENDS_PATH}?days=${days}`, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  } catch {
-    return { kind: "error" };
-  }
-  if (res.status === 401) return { kind: "unauthorized" };
-  if (res.status !== 200) return { kind: "error" };
-  try {
-    const body = (await res.json()) as Partial<AdminTrends>;
-    return {
-      kind: "ok",
-      trends: {
-        reportsPerDay: body.reportsPerDay ?? [],
-        signupsPerDay: body.signupsPerDay ?? [],
-        reviewLatency: body.reviewLatency ?? [],
-      },
-    };
-  } catch {
-    return { kind: "error" };
-  }
+  const r = await adminGetJson<Partial<AdminTrends>>(
+    `${apiBase}${ADMIN_TRENDS_PATH}?days=${days}`,
+    token,
+    fetchImpl,
+  );
+  if (r.kind !== "ok") return r;
+  return {
+    kind: "ok",
+    trends: {
+      reportsPerDay: r.body.reportsPerDay ?? [],
+      signupsPerDay: r.body.signupsPerDay ?? [],
+      reviewLatency: r.body.reviewLatency ?? [],
+    },
+  };
 }
 
 export type AdminAction = "takedown" | "dismiss";

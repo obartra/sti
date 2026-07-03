@@ -1,0 +1,352 @@
+/* The operator console (doc 20) in the editorial grammar (doc 36/37): a
+   hairline-ruled dashboard, not a stack of cards. Serif section heads, quiet
+   uppercase eyebrow labels, big serif figures for the totals, the status word
+   (StatusLabel) instead of a colored pill, and one rule per section boundary.
+   Co-located and unlayered so it wins over globals; every value is a token, so
+   the style-lint (doc 37) sees no inline style and no raw hex here. */
+
+.adm {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+/* -------------------------------------------------------------- page frame - */
+.adm-page {
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 48px 20px;
+  box-sizing: border-box;
+}
+
+.adm-page__inner {
+  width: 100%;
+  max-width: 420px;
+}
+
+.adm-page__inner--authed {
+  max-width: 1080px;
+}
+
+/* ------------------------------------------------------------------ header - */
+.adm-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: var(--space-2);
+}
+
+.adm-head__mark {
+  color: var(--text-accent);
+  flex: none;
+  display: inline-flex;
+}
+
+.adm-head__body {
+  flex: 1;
+}
+
+.adm-head__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 22px;
+  line-height: 1.1;
+  color: var(--text-strong);
+}
+
+.adm-head__sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.adm-head__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.adm-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ----------------------------------------------------------------- panels -- */
+/* A panel is a hairline-opened section, never a box. */
+.adm-panel {
+  border-top: var(--hairline);
+  padding: 22px 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.adm-panel__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.adm-panel__headings {
+  flex: 1;
+  min-width: 0;
+}
+
+.adm-panel__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 19px;
+  line-height: 1.2;
+  color: var(--text-strong);
+}
+
+.adm-panel__sub {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+/* The dense two-column region for the work queues; a container query (not a JS
+   breakpoint) splits it once the console is wide enough. */
+.adm-queues {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@container (min-width: 760px) {
+  .adm-queues {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+/* ------------------------------------------------------------------ figures- */
+/* The stored-totals and health tiles: a serif figure over an eyebrow label, no
+   box. A responsive grid keeps them on one scannable line. */
+.adm-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--space-5) var(--space-4);
+}
+
+.adm-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.adm-figure__value {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 26px;
+  line-height: 1.05;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.adm-figure--warn .adm-figure__value {
+  color: var(--status-ink-treat);
+}
+
+.adm-figure__label {
+  font-size: 11.5px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.adm-figure__note {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ------------------------------------------------------------------ charts - */
+.adm-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.adm-charts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* ------------------------------------------------------------------- rows --- */
+/* A queue item / activity entry: a hairline-topped block, content over its
+   actions. Quiet, a rule per row, never a card per row. */
+.adm-item {
+  border-top: var(--hairline);
+  padding: var(--space-3) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adm-item:first-child {
+  border-top: 0;
+}
+
+.adm-item__name {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  word-break: break-all;
+}
+
+.adm-item__meta {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+/* The action label and its time on one baseline row (audit entries). */
+.adm-item__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.adm-item__row .adm-item__name {
+  flex: 1;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+}
+
+.adm-item__time {
+  flex: none;
+  font-size: 11.5px;
+  color: var(--text-subtle);
+}
+
+/* An opaque id / target on its own line, quiet mono so it never reads as prose. */
+.adm-item__id {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12.5px;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+.adm-item__body {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-body);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.adm-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* A quiet uppercase list of entries (audit tail, breakdown). */
+.adm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ------------------------------------------------------------------ notes --- */
+.adm-note {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.adm-error {
+  font-size: 13px;
+  color: var(--status-expired-fg);
+}
+
+.adm-error--inline {
+  font-size: 12.5px;
+}
+
+.adm-retry {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* The queue-backlog count on a panel heading: a quiet derived-ink figure, not a
+   pill. */
+.adm-count {
+  align-self: flex-start;
+  font-size: 12.5px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------- lock gate - */
+/* The token gate is a control surface (a sign-in), so it keeps a flat bordered
+   frame; the authed console below is hairline-structured page. */
+.adm-gate {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border: var(--hairline-strong);
+  border-radius: var(--radius-xs);
+  padding: var(--space-5);
+}
+
+.adm-gate__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.adm-gate__mark {
+  color: var(--text-accent);
+  flex: none;
+  display: inline-flex;
+}
+
+.adm-gate__title {
+  font-size: 16px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.adm-gate__sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.adm-gate__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ------------------------------------------------------------ manage tool -- */
+.adm-record {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adm-record__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-4);
+}
+
+.adm-record__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

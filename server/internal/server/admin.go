@@ -102,6 +102,10 @@ func (s *Server) registerAdminRoutes() {
 	s.mux.HandleFunc("GET "+contract.PathAdminAudit, s.requireAdmin(s.handleAdminAudit))
 	// Aggregate service metrics (doc 20 A5): identifier-free totals for the dashboard.
 	s.mux.HandleFunc("GET "+contract.PathAdminMetrics, s.requireAdmin(s.handleAdminMetrics))
+	// Aggregate operational health (doc 20): identifier-free error counters, the
+	// background-loop heartbeat, and the send-queue backlog for the console's health
+	// read, so a stuck queue or a rise in errors is visible without reading /metrics.
+	s.mux.HandleFunc("GET "+contract.PathAdminHealth, s.requireAdmin(s.handleAdminHealth))
 	// Aggregate trends (doc 20 metrics panel): identifier-free per-day counts + review
 	// latency. Separate from /admin/metrics so the totals stay cheap and this heavier
 	// aggregation is opt-in when the trends view mounts.
@@ -259,6 +263,57 @@ func (s *Server) handleAdminMetrics(w http.ResponseWriter, r *http.Request) {
 		DBSizeBytes:     st.DBSizeBytes,
 		PendingReports:  len(reports),
 		PendingFeedback: pendingFeedback,
+	})
+}
+
+// handleAdminHealth answers GET /admin/health: the aggregate, identifier-free
+// operational-health signals for the console's health panel (doc 20). A read, so it is
+// not audited. It combines the in-process health snapshot (internal-error counters by
+// subsystem, the background-loop heartbeat, current concurrency) with a fresh store
+// sample for the send-queue depth and the oldest queued send's age. Every figure is a
+// count, an age, or a system size, never a per-account or per-id value, so it stays
+// within the blind-store boundary (doc 12). This is the same blind telemetry the
+// loopback /metrics endpoint exposes, surfaced on the page so a stuck queue or a rise
+// in errors is visible without reading /metrics on the box.
+func (s *Server) handleAdminHealth(w http.ResponseWriter, r *http.Request) {
+	st, err := s.st.Stats(r.Context())
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
+		return
+	}
+	h := s.metrics.Health()
+	errs := make([]contract.AdminErrorCount, len(h.Errors))
+	for i, e := range h.Errors {
+		errs[i] = contract.AdminErrorCount{Type: e.Type, Count: e.Count}
+	}
+	now := s.now()
+	// Oldest-send age: seconds since the oldest queued send was created, floored at 0;
+	// 0 when the queue is empty (OldestSendCreatedAt == 0). A rising value is the
+	// stuck-drain signal the janitor heartbeat alone would not catch.
+	oldestAge := int64(0)
+	if st.OldestSendCreatedAt > 0 {
+		if d := now - st.OldestSendCreatedAt; d > 0 {
+			oldestAge = d / 1000
+		}
+	}
+	// Janitor age: seconds since the last background-loop tick; -1 when it has never
+	// run (the gauge is still 0), so the client shows "no heartbeat yet" rather than a
+	// nonsensical age measured from the epoch.
+	janitorAge := int64(-1)
+	if h.JanitorLastRunUnix > 0 {
+		if age := now/1000 - h.JanitorLastRunUnix; age > 0 {
+			janitorAge = age
+		} else {
+			janitorAge = 0
+		}
+	}
+	s.writeJSON(w, http.StatusOK, contract.AdminHealthResponse{
+		Errors:                    errs,
+		SendQueueDepth:            st.SendQueueDepth,
+		SendQueueOldestAgeSeconds: oldestAge,
+		JanitorAgeSeconds:         janitorAge,
+		InflightCurrent:           h.InflightCurrent,
+		InflightMax:               h.InflightMax,
 	})
 }
 

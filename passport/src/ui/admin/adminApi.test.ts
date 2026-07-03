@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   actOnVanityName,
   disableAccount,
+  getAdminHealth,
   getAdminMetrics,
   getAdminTrends,
   listAdminAudit,
@@ -179,6 +180,74 @@ describe("getAdminMetrics", () => {
       .mockResolvedValue(new Response("not json", { status: 200 }));
     expect(
       (await getAdminMetrics("https://api.example", "t", badBody)).kind,
+    ).toBe("error");
+  });
+});
+
+describe("getAdminHealth", () => {
+  it("returns the health snapshot on 200, defaulting missing fields", async () => {
+    const health = {
+      errors: [
+        { type: "store", count: 2 },
+        { type: "decode", count: 1 },
+      ],
+      sendQueueDepth: 3,
+      sendQueueOldestAgeSeconds: 42,
+      janitorAgeSeconds: 12,
+      inflightCurrent: 1,
+      inflightMax: 64,
+    };
+    const ok = vi.fn<FetchLike>().mockResolvedValue(jsonResp(200, health));
+    expect(await getAdminHealth("https://api.example", "t", ok)).toEqual({
+      kind: "ok",
+      health,
+    });
+    expect(ok).toHaveBeenCalledWith(
+      "https://api.example/admin/health",
+      expect.objectContaining({
+        method: "GET",
+        headers: { Authorization: "Bearer t" },
+      }),
+    );
+
+    // A partial body fills the absent fields: errors to empty, counts/ages to 0, and
+    // the heartbeat age to the -1 "never ran" flag (never NaN in the UI).
+    const partial = vi
+      .fn<FetchLike>()
+      .mockResolvedValue(jsonResp(200, { sendQueueDepth: 5 }));
+    expect(await getAdminHealth("https://api.example", "t", partial)).toEqual({
+      kind: "ok",
+      health: {
+        errors: [],
+        sendQueueDepth: 5,
+        sendQueueOldestAgeSeconds: 0,
+        janitorAgeSeconds: -1,
+        inflightCurrent: 0,
+        inflightMax: 0,
+      },
+    });
+  });
+
+  it("maps 401 to unauthorized and other failures to error", async () => {
+    const codes: [number, "unauthorized" | "error"][] = [
+      [401, "unauthorized"],
+      [503, "error"],
+    ];
+    for (const [status, kind] of codes) {
+      const f = vi.fn<FetchLike>().mockResolvedValue(jsonResp(status, {}));
+      expect((await getAdminHealth("https://api.example", "t", f)).kind).toBe(
+        kind,
+      );
+    }
+    const netDown = vi.fn<FetchLike>().mockRejectedValue(new Error("offline"));
+    expect(
+      (await getAdminHealth("https://api.example", "t", netDown)).kind,
+    ).toBe("error");
+    const badBody = vi
+      .fn<FetchLike>()
+      .mockResolvedValue(new Response("not json", { status: 200 }));
+    expect(
+      (await getAdminHealth("https://api.example", "t", badBody)).kind,
     ).toBe("error");
   });
 });

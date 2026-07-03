@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"sti.care/api/internal/contract"
+	"sti.care/api/internal/metrics"
 	"sti.care/api/internal/store"
 )
 
@@ -327,6 +328,79 @@ func TestAdminMetrics(t *testing.T) {
 	// The read is telemetry, not an action: it writes no audit row.
 	if entries, err := st.RecentAudits(ctx, 0, 10); err != nil || len(entries) != 0 {
 		t.Fatalf("metrics read should not audit: entries=%d err=%v", len(entries), err)
+	}
+}
+
+// The health endpoint (doc 20): an authed read returns the aggregate, identifier-free
+// operational-health snapshot (internal-error counters by subsystem, the background-loop
+// heartbeat age, the send-queue backlog, concurrency); the fixed error-type set always
+// exists; a fresh box reports the -1 "never ran" heartbeat flag; increments and a tick
+// are reflected on the next read; an unauthed read is the uniform 401; and the read is
+// never audited.
+func TestAdminHealth(t *testing.T) {
+	srv, st := newTestAdminSrv(t, testAdminToken)
+	h := srv.Handler()
+	ctx := context.Background()
+	authed := func() contract.AdminHealthResponse {
+		req := httptest.NewRequest("GET", contract.PathAdminHealth, nil)
+		req.Header.Set("Authorization", "Bearer "+testAdminToken)
+		rec := do(h, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("health: %d", rec.Code)
+		}
+		var got contract.AdminHealthResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	byType := func(hr contract.AdminHealthResponse) map[string]int64 {
+		m := map[string]int64{}
+		for _, e := range hr.Errors {
+			m[e.Type] = e.Count
+		}
+		return m
+	}
+
+	// An unauthed read is rejected like every admin endpoint, never reaching the data.
+	if rec := do(h, httptest.NewRequest("GET", contract.PathAdminHealth, nil)); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("health no auth: %d, want 401", rec.Code)
+	}
+
+	// Fresh: every error series exists at zero (the fixed subsystem set), the queue is
+	// empty, and the janitor has never ticked so its age is the -1 "no heartbeat" flag.
+	fresh := authed()
+	fm := byType(fresh)
+	for _, want := range []string{"store", "enqueue", "janitor", "decode"} {
+		if _, ok := fm[want]; !ok {
+			t.Fatalf("health errors missing %q series: %+v", want, fresh.Errors)
+		}
+	}
+	if fresh.SendQueueDepth != 0 || fresh.SendQueueOldestAgeSeconds != 0 {
+		t.Fatalf("fresh queue = depth %d age %d, want 0/0", fresh.SendQueueDepth, fresh.SendQueueOldestAgeSeconds)
+	}
+	if fresh.JanitorAgeSeconds != -1 {
+		t.Fatalf("fresh janitorAgeSeconds = %d, want -1 (never run)", fresh.JanitorAgeSeconds)
+	}
+
+	// A couple of internal errors and a background-loop tick are reflected on the next
+	// read: counts by subsystem, and a real (non-negative) heartbeat age.
+	srv.metrics.Error(metrics.ErrStore)
+	srv.metrics.Error(metrics.ErrStore)
+	srv.metrics.Error(metrics.ErrDecode)
+	srv.metrics.JanitorRan(srv.now() / 1000)
+	got := authed()
+	gm := byType(got)
+	if gm["store"] != 2 || gm["decode"] != 1 || gm["enqueue"] != 0 || gm["janitor"] != 0 {
+		t.Fatalf("error counts = %+v, want store 2 decode 1 others 0", gm)
+	}
+	if got.JanitorAgeSeconds < 0 {
+		t.Fatalf("janitorAgeSeconds = %d, want >= 0 after a tick", got.JanitorAgeSeconds)
+	}
+
+	// The read is telemetry, not an action: it writes no audit row.
+	if entries, err := st.RecentAudits(ctx, 0, 10); err != nil || len(entries) != 0 {
+		t.Fatalf("health read should not audit: entries=%d err=%v", len(entries), err)
 	}
 }
 
@@ -687,6 +761,9 @@ func TestAdminFindableReviewGatedOffWithAdmin(t *testing.T) {
 	}
 	if rec := do(h, httptest.NewRequest("GET", contract.PathAdminFeedback, nil)); rec.Code != http.StatusNotFound {
 		t.Fatalf("feedback while admin off: %d, want 404", rec.Code)
+	}
+	if rec := do(h, httptest.NewRequest("GET", contract.PathAdminHealth, nil)); rec.Code != http.StatusNotFound {
+		t.Fatalf("health while admin off: %d, want 404", rec.Code)
 	}
 }
 

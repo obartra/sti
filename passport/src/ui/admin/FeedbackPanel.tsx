@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { Button, Card } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
+import { PanelHeading } from "./panelChrome.tsx";
+import "./admin.css";
 import type {
   AdminActionResult,
   AdminFeedback,
@@ -45,10 +47,13 @@ export function FeedbackPanel({
   token,
   ops,
   onUnauthorized,
+  refreshSignal = 0,
 }: {
   token: string;
   ops: FeedbackOps;
   onUnauthorized: () => void;
+  // Bumped by the shell's "Refresh" control to re-read without a remount.
+  refreshSignal?: number;
 }) {
   const [status, setStatus] = useState<Status>("loading");
   const [reports, setReports] = useState<AdminFeedback[]>([]);
@@ -75,7 +80,7 @@ export function FeedbackPanel({
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshSignal]);
 
   const resolve = useCallback(
     (id: number) => {
@@ -98,29 +103,18 @@ export function FeedbackPanel({
   );
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div>
-        <div
-          style={{ fontSize: 15, fontWeight: 800, color: "var(--text-strong)" }}
-        >
-          {COPY.title}
-        </div>
-        <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-          {COPY.sub}
-        </div>
-      </div>
+    <section className="adm-panel">
+      <PanelHeading
+        title={COPY.title}
+        sub={COPY.sub}
+        count={status === "ready" ? reports.length : undefined}
+      />
 
-      {status === "loading" && (
-        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          {COPY.loading}
-        </div>
-      )}
+      {status === "loading" && <div className="adm-note">{COPY.loading}</div>}
 
       {status === "loadError" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 13, color: "var(--status-expired-fg)" }}>
-            {COPY.loadError}
-          </div>
+        <div className="adm-retry">
+          <div className="adm-error">{COPY.loadError}</div>
           <Button variant="secondary" size="sm" onClick={load}>
             {COPY.retry}
           </Button>
@@ -128,17 +122,13 @@ export function FeedbackPanel({
       )}
 
       {status === "ready" && reports.length === 0 && (
-        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          {COPY.empty}
-        </div>
+        <div className="adm-note">{COPY.empty}</div>
       )}
 
       {status === "ready" && reports.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="adm-list">
           {actError !== null && (
-            <div style={{ fontSize: 12.5, color: "var(--status-expired-fg)" }}>
-              {actError}
-            </div>
+            <div className="adm-error adm-error--inline">{actError}</div>
           )}
           {reports.map((r) => (
             <FeedbackRow
@@ -150,7 +140,7 @@ export function FeedbackPanel({
           ))}
         </div>
       )}
-    </Card>
+    </section>
   );
 }
 
@@ -173,35 +163,15 @@ function FeedbackRow({
 }) {
   const note = report.body.trim();
   return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 10 }}
-    >
-      <div>
-        <div
-          style={{ fontSize: 14, fontWeight: 700, color: "var(--text-strong)" }}
-        >
+    <div className="adm-item">
+      <div className="adm-item__row">
+        <div className="adm-item__name">
           {REASON_LABELS[report.reason] ?? "Something else"}
         </div>
-        <div
-          style={{
-            fontSize: 13,
-            color: note === "" ? "var(--text-subtle)" : "var(--text-body)",
-            marginTop: 4,
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-            fontStyle: note === "" ? "italic" : "normal",
-          }}
-        >
-          {note === "" ? COPY.noNote : note}
-        </div>
-        <div
-          style={{ fontSize: 12, color: "var(--text-subtle)", marginTop: 6 }}
-        >
-          {fmtTime(report.createdAt)}
-        </div>
+        <div className="adm-item__time">{fmtTime(report.createdAt)}</div>
       </div>
-      <div style={{ display: "flex", gap: 8 }}>
+      <div className="adm-item__body">{note === "" ? COPY.noNote : note}</div>
+      <div className="adm-item__actions">
         <Button
           variant="secondary"
           size="sm"
@@ -211,6 +181,6 @@ function FeedbackRow({
           {COPY.resolve}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }

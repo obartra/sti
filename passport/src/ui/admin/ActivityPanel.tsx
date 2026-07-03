@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Button, Card } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
+import "./admin.css";
 import {
   AUDIT_PAGE,
   type AdminAuditEntry,
@@ -56,10 +57,14 @@ export function ActivityPanel({
   token,
   ops,
   onUnauthorized,
+  refreshSignal = 0,
 }: {
   token: string;
   ops: AuditOps;
   onUnauthorized: () => void;
+  // Bumped by the shell's "Refresh" control to re-read (alongside this panel's own
+  // Refresh button, which reloads just the activity tail).
+  refreshSignal?: number;
 }) {
   const [status, setStatus] = useState<Status>("loading");
   const [entries, setEntries] = useState<AdminAuditEntry[]>([]);
@@ -108,24 +113,14 @@ export function ActivityPanel({
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshSignal]);
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              fontSize: 15,
-              fontWeight: 800,
-              color: "var(--text-strong)",
-            }}
-          >
-            {COPY.title}
-          </div>
-          <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-            {COPY.sub}
-          </div>
+    <section className="adm-panel">
+      <div className="adm-panel__head">
+        <div className="adm-panel__headings">
+          <h2 className="adm-panel__title">{COPY.title}</h2>
+          <div className="adm-panel__sub">{COPY.sub}</div>
         </div>
         {status === "ready" && (
           <Button variant="ghost" size="sm" onClick={load}>
@@ -134,17 +129,11 @@ export function ActivityPanel({
         )}
       </div>
 
-      {status === "loading" && (
-        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          {COPY.loading}
-        </div>
-      )}
+      {status === "loading" && <div className="adm-note">{COPY.loading}</div>}
 
       {status === "loadError" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 13, color: "var(--status-expired-fg)" }}>
-            {COPY.loadError}
-          </div>
+        <div className="adm-retry">
+          <div className="adm-error">{COPY.loadError}</div>
           <Button variant="secondary" size="sm" onClick={load}>
             {COPY.retry}
           </Button>
@@ -152,13 +141,11 @@ export function ActivityPanel({
       )}
 
       {status === "ready" && entries.length === 0 && (
-        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          {COPY.empty}
-        </div>
+        <div className="adm-note">{COPY.empty}</div>
       )}
 
       {status === "ready" && entries.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="adm-list">
           {entries.map((e) => (
             <ActivityRow key={e.id} entry={e} />
           ))}
@@ -174,45 +161,22 @@ export function ActivityPanel({
           )}
         </div>
       )}
-    </Card>
+    </section>
   );
 }
 
 function ActivityRow({ entry }: { entry: AdminAuditEntry }) {
   return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 2 }}
-    >
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-        <div
-          style={{
-            flex: 1,
-            fontSize: 13.5,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-          }}
-        >
+    <div className="adm-item">
+      <div className="adm-item__row">
+        <div className="adm-item__name">
           {ACTION_LABELS[entry.action] ?? entry.action}
         </div>
-        <div
-          style={{ fontSize: 11.5, color: "var(--text-subtle)", flex: "none" }}
-        >
-          {formatUtc(entry.createdAt)}
-        </div>
+        <div className="adm-item__time">{formatUtc(entry.createdAt)}</div>
       </div>
       {entry.target !== "" && (
-        <div
-          style={{
-            fontFamily: "var(--font-mono, ui-monospace, monospace)",
-            fontSize: 12.5,
-            color: "var(--text-muted)",
-            wordBreak: "break-all",
-          }}
-        >
-          {entry.target}
-        </div>
+        <div className="adm-item__id">{entry.target}</div>
       )}
-    </Card>
+    </div>
   );
 }
