@@ -139,10 +139,12 @@ describe("ShareSheet link wiring", () => {
       "[data-share-overlay]",
     );
     expect(overlay).not.toBeNull();
-    // `fixed` keeps it pinned to the viewport instead of anchoring to the
-    // document and showing through partway down a long page.
-    expect(overlay?.style.position).toBe("fixed");
-    expect(overlay?.style.pointerEvents).toBe("none");
+    // The layer's position: fixed and pointer-events live in share-sheet.css
+    // (.sh is viewport-fixed so the closed bottom sheet never parks mid-page;
+    // .sh--closed turns taps off). jsdom doesn't compute stylesheet rules, so
+    // assert the class carrying them.
+    expect(overlay?.classList.contains("sh")).toBe(true);
+    expect(overlay?.classList.contains("sh--closed")).toBe(true);
     expect(overlay).toHaveAttribute("aria-hidden", "true");
   });
 
@@ -151,7 +153,7 @@ describe("ShareSheet link wiring", () => {
     const overlay = container.querySelector<HTMLElement>(
       "[data-share-overlay]",
     );
-    expect(overlay?.style.pointerEvents).toBe("auto");
+    expect(overlay?.classList.contains("sh--open")).toBe(true);
     expect(overlay).toHaveAttribute("aria-hidden", "false");
   });
 

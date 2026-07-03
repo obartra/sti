@@ -206,15 +206,11 @@
     "legacy": 2
   },
   "src/ui/onboarding/AvatarBuilder.tsx": {
-    "styles": 9,
-    "legacy": 1
+    "styles": 1
   },
   "src/ui/onboarding/AvatarCard.tsx": {
     "styles": 1,
     "legacy": 2
-  },
-  "src/ui/onboarding/AvatarEdit.tsx": {
-    "styles": 4
   },
   "src/ui/pwa/installScreenshots.stories.tsx": {
     "styles": 2,
@@ -234,25 +230,8 @@
     "styles": 15,
     "legacy": 2
   },
-  "src/ui/share/ShareSheet.identity.tsx": {
-    "styles": 10
-  },
-  "src/ui/share/ShareSheet.lifetime.tsx": {
-    "styles": 2,
-    "legacy": 1
-  },
-  "src/ui/share/ShareSheet.parts.tsx": {
-    "styles": 7,
-    "hex": 2
-  },
   "src/ui/share/ShareSheet.stories.tsx": {
     "styles": 1
-  },
-  "src/ui/share/ShareSheet.tsx": {
-    "styles": 8
-  },
-  "src/ui/share/ShareSheet.url.tsx": {
-    "styles": 9
   },
   "src/ui/wallet/apple-pass.tsx": {
     "styles": 19,

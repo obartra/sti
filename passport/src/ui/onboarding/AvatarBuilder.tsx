@@ -1,45 +1,9 @@
-import type { CSSProperties } from "react";
-import { Button, Card } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
 import { Dice } from "../../design/icons.tsx";
 import { avatarParts, avatarSrc, randomAvatar } from "../../lib/avatars.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
-
-const partLabel: CSSProperties = {
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: "0.05em",
-  textTransform: "uppercase",
-  color: "var(--text-subtle)",
-  marginBottom: 8,
-};
-
-// Fixed columns so the swatches line up in tidy rows instead of ragged wrap.
-const swatchGrid: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(6, 1fr)",
-  gap: 8,
-};
-
-const swatch = (active: boolean): CSSProperties => ({
-  appearance: "none",
-  cursor: "pointer",
-  padding: 0,
-  width: "100%",
-  aspectRatio: "1 / 1",
-  borderRadius: "50%",
-  overflow: "hidden",
-  border: "none",
-  background: "transparent",
-  boxShadow: active
-    ? "0 0 0 3px var(--accent)"
-    : "0 0 0 1px var(--border-card)",
-});
-
-const swatchImg: CSSProperties = {
-  width: "100%",
-  height: "100%",
-  display: "block",
-};
+import { cx } from "../../lib/cx.ts";
+import "./avatar.css";
 
 export interface AvatarBuilderProps {
   config: AvatarConfig;
@@ -48,7 +12,8 @@ export interface AvatarBuilderProps {
 
 // Avatar builder: pick a hair, mood, skin color, hair color, and beard. Each
 // option is a live mini preview of the avatar with that one part changed, and
-// "Surprise me" rolls a fresh random face.
+// "Surprise me" rolls a fresh random face. Part rows open with a hairline on
+// the host surface (doc 37); the swatch rings are the selection control.
 export function AvatarBuilder({ config, onChange }: AvatarBuilderProps) {
   const P = avatarParts;
   const set = (key: keyof AvatarConfig, idx: number) =>
@@ -61,19 +26,20 @@ export function AvatarBuilder({ config, onChange }: AvatarBuilderProps) {
 
   // Each option shows just what it controls: a color row renders solid color
   // swatches; an asset row (hair, mood, beard) renders a mini avatar of that asset.
-  // A disabled row (hair color while bald) dims and stops responding.
+  // A disabled row (hair color while bald) dims and stops responding. The swatch
+  // color itself is data (the palette hexes), so it stays an inline value.
   const row = (
     label: string,
     key: keyof AvatarConfig,
     options: readonly string[],
     opts: { colors?: readonly string[]; disabled?: boolean } = {},
   ) => (
-    <div style={opts.disabled ? { opacity: 0.45 } : undefined}>
-      <div style={partLabel}>
+    <div className={cx("avb__part", opts.disabled && "avb__part--disabled")}>
+      <div className="avb__part-label">
         {label}
         {opts.disabled ? " (set by Bald)" : ""}
       </div>
-      <div style={swatchGrid}>
+      <div className="avb__grid">
         {options.map((name, i) => (
           <button
             // Color rows share option names (skin and hair use one palette), so the
@@ -83,19 +49,23 @@ export function AvatarBuilder({ config, onChange }: AvatarBuilderProps) {
             aria-label={`${label}: ${name}`}
             aria-pressed={config[key] === i}
             disabled={opts.disabled ?? false}
-            style={{
-              ...swatch(config[key] === i),
-              cursor: opts.disabled ? "default" : "pointer",
-            }}
+            className={cx(
+              "avb__swatch",
+              config[key] === i && "avb__swatch--on",
+              opts.disabled && "avb__swatch--disabled",
+            )}
             onClick={() => set(key, i)}
           >
             {opts.colors ? (
-              <span style={{ ...swatchImg, background: opts.colors[i] }} />
+              <span
+                className="avb__fill"
+                style={{ background: opts.colors[i] }}
+              />
             ) : (
               <img
                 src={avatarSrc({ ...config, [key]: i })}
                 alt=""
-                style={swatchImg}
+                className="avb__fill"
               />
             )}
           </button>
@@ -105,27 +75,12 @@ export function AvatarBuilder({ config, onChange }: AvatarBuilderProps) {
   );
 
   return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 16 }}
-    >
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 10,
-        }}
-      >
+    <div className="avb">
+      <div className="avb__preview">
         <img
           src={avatarSrc(config)}
           alt="Your avatar"
-          style={{
-            width: 96,
-            height: 96,
-            borderRadius: "50%",
-            boxShadow: "var(--shadow-md)",
-          }}
+          className="avb__preview-img"
         />
         <Button variant="secondary" size="sm" onClick={shuffle}>
           <Dice size={16} /> Surprise me
@@ -139,6 +94,6 @@ export function AvatarBuilder({ config, onChange }: AvatarBuilderProps) {
         colors: P.hairColorHexes,
         disabled: baldSelected,
       })}
-    </Card>
+    </div>
   );
 }

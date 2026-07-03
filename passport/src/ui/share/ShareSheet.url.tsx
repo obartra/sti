@@ -9,10 +9,14 @@ import {
   Refresh,
 } from "../../design/icons.tsx";
 import { Matrix, downloadPNG } from "../../lib/qr.tsx";
+import { cx } from "../../lib/cx.ts";
+import "./share-sheet.css";
 
-/* The share sheet's URL card: the QR thumbnail, the link text, and the
+/* The share sheet's URL block: the QR thumbnail, the link text, and the
    copy/save actions, plus its pending/error states. Lifted out of ShareSheet so
-   that file stays under its size/complexity caps. */
+   that file stays under its size/complexity caps. On the editorial grammar
+   (doc 37) it is the sheet's one action callout (.e-card), not a shadowed
+   card. */
 
 const COPY = {
   labelPublic: "Public profile",
@@ -35,7 +39,7 @@ const COPY = {
 const URL_PUBLIC = "sti.care/a/a7f3k9q2#k=Zr8";
 const URL_LINK = "sti.care/a/a7f3k9q2";
 
-// The URL card has four states, driven by `realUrl` plus the prepare error flag:
+// The URL block has four states, driven by `realUrl` plus the prepare error flag:
 //   string  -> "ready": the owner's real link + a scannable QR of it.
 //   undefined -> "placeholder": no session wired (Storybook), show the demo link.
 //   null + no error -> "pending": the app is minting the link; show no URL yet.
@@ -61,7 +65,7 @@ export function urlReady(state: UrlState): state is "ready" | "placeholder" {
   return state === "ready" || state === "placeholder";
 }
 
-// Resolve what the URL card renders: the real link when present (scheme stripped
+// Resolve what the URL block renders: the real link when present (scheme stripped
 // for display), else the demo link for the placeholder (Storybook) state. The QR
 // seed tracks the alias id so it varies per link (the matrix is stylized). For
 // pending/error there is no link to show, so the url is blank and the seed is the
@@ -96,13 +100,13 @@ function UrlThumb({
   if (urlReady(state))
     return <Matrix value={`https://${url}`} size={64} color="var(--ink-900)" />;
   return (
-    <div style={{ filter: "blur(2px)", opacity: 0.5 }}>
+    <div className="sh__url-thumb--pending">
       <Matrix seed={seed} size={64} color="var(--ink-400)" />
     </div>
   );
 }
 
-// The three link kinds the card can show: a private one-off link, the durable
+// The three link kinds the block can show: a private one-off link, the durable
 // anonymous public link, or the findable public-name (/u/) link.
 function cardLabel(link: boolean, named: boolean): string {
   if (named) return COPY.labelName;
@@ -122,18 +126,7 @@ function CardLabel({
   named: boolean;
 }): ReactElement {
   return (
-    <div
-      style={{
-        fontSize: 12,
-        fontWeight: 700,
-        letterSpacing: "0.05em",
-        textTransform: "uppercase",
-        color: "var(--text-subtle)",
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-      }}
-    >
+    <div className="sh__url-label">
       {link ? <Link size={13} /> : <Globe size={13} />} {cardLabel(link, named)}
     </div>
   );
@@ -153,16 +146,9 @@ function UrlStatusBody({
   onRetry: (() => void) | undefined;
 }): ReactElement {
   return (
-    <div style={{ flex: 1, minWidth: 0 }}>
+    <div className="sh__url-body">
       <CardLabel link={link} named={named} />
-      <div
-        style={{
-          fontSize: 13,
-          color: "var(--text-muted)",
-          lineHeight: 1.45,
-          margin: "8px 0 10px",
-        }}
-      >
+      <div className="sh__url-status">
         {state === "error" ? COPY.prepareFailed : COPY.preparing}
       </div>
       {state === "error" && onRetry !== undefined && (
@@ -201,30 +187,11 @@ function UrlReadyBody({
     setTimeout(() => setCopied(false), 1600);
   };
   return (
-    <div style={{ flex: 1, minWidth: 0 }}>
+    <div className="sh__url-body">
       <CardLabel link={link} named={named} />
-      <div
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: 13.5,
-          color: "var(--text-strong)",
-          margin: "6px 0 6px",
-          wordBreak: "break-all",
-        }}
-      >
-        {url}
-      </div>
-      <div
-        style={{
-          fontSize: 11.5,
-          color: "var(--text-subtle)",
-          lineHeight: 1.45,
-          marginBottom: 10,
-        }}
-      >
-        {cardNote(link, named)}
-      </div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div className="sh__url-link">{url}</div>
+      <div className="sh__url-note">{cardNote(link, named)}</div>
+      <div className="sh__url-actions">
         <Button
           variant="secondary"
           size="sm"
@@ -271,17 +238,7 @@ export function UrlCard({
 }): ReactElement {
   const named = urlReady(state) && isNamedLink(url);
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: 12,
-        alignItems: "center",
-        background: "var(--surface-card)",
-        borderRadius: "var(--radius-md)",
-        padding: 14,
-        boxShadow: "var(--shadow-sm)",
-      }}
-    >
+    <div className={cx("e-card", "sh__url")}>
       <UrlThumb state={state} url={url} seed={seed} />
       {urlReady(state) ? (
         <UrlReadyBody
