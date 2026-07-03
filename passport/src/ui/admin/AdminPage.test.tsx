@@ -202,21 +202,38 @@ describe("AdminPage", () => {
     expect(sessionStorage.getItem(STORAGE_KEY)).toBe("tok");
   });
 
-  it("shows the full panel set once authed", async () => {
+  it("opens on the overview and reaches every panel through the tabs", async () => {
+    const user = userEvent.setup();
     sessionStorage.setItem(STORAGE_KEY, "stored-token");
     renderPage(() => Promise.resolve("ok" as const));
 
-    // The authed shell composes every operator panel, including the A3 management one.
+    // The default tab is the overview: the health band plus the backlog strip.
     expect(
       await screen.findByText(/operator session active/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/service health/i)).toBeInTheDocument();
-    expect(screen.getByText(/service metrics/i)).toBeInTheDocument();
-    expect(screen.getByText(/reported names/i)).toBeInTheDocument();
+    expect(screen.getByText(/waiting for review/i)).toBeInTheDocument();
+    // The queue panels themselves live behind the Queues tab (the overview's
+    // backlog strip shares the "Reported names" words, so key off the heading).
+    expect(
+      screen.queryByRole("heading", { name: /reported names/i }),
+    ).not.toBeInTheDocument();
+
+    // Queues: both work queues plus the labs answers view.
+    await user.click(screen.getByRole("tab", { name: /queues/i }));
+    expect(
+      await screen.findByRole("heading", { name: /reported names/i }),
+    ).toBeInTheDocument();
     // The Feedback panel, keyed off its unique sub (its bare title collides with a
     // metrics stat card of the same name).
     expect(screen.getByText(/something wrong\?/i)).toBeInTheDocument();
-    expect(screen.getByText(/manage records/i)).toBeInTheDocument();
+    expect(screen.getByText(/open-questions page/i)).toBeInTheDocument();
+
+    // Metrics, then Tools (the id lookup beside the audit record).
+    await user.click(screen.getByRole("tab", { name: /metrics/i }));
+    expect(await screen.findByText(/service metrics/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: /tools/i }));
+    expect(await screen.findByText(/manage records/i)).toBeInTheDocument();
     expect(screen.getByText(/recent activity/i)).toBeInTheDocument();
   });
 

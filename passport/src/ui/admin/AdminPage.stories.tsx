@@ -137,8 +137,31 @@ const CLEAR_HEALTH: AdminHealth = {
   inflightMax: 64,
 };
 
-// Fixed UTC instants so the feedback panel's timestamps are deterministic.
+// Fixed UTC instants so the feedback panel's timestamps are deterministic. The
+// "question" rows are labs open-questions responses (doc 35): they carry a topic
+// code and render in the Answers view on the Queues tab, not the feedback queue.
 const SAMPLE_FEEDBACK: AdminFeedback[] = [
+  {
+    id: 5,
+    reason: "question",
+    topic: "groups",
+    body: "Groups read as mutual care to me. The invite-only ones that ask for a screenshot are the thing to watch.",
+    createdAt: Date.UTC(2026, 5, 25, 18, 40, 0),
+  },
+  {
+    id: 4,
+    reason: "question",
+    topic: "help-or-harm",
+    body: "It helped me have the conversation earlier than I would have on my own.",
+    createdAt: Date.UTC(2026, 5, 25, 16, 12, 0),
+  },
+  {
+    id: 3,
+    reason: "question",
+    topic: "groups",
+    body: "A group I'm in switched to sharing statuses before events and it feels routine now.",
+    createdAt: Date.UTC(2026, 5, 25, 15, 30, 0),
+  },
   {
     id: 2,
     reason: "broken",
@@ -187,20 +210,44 @@ export const LockGate: Story = {
   args: { ping: always("ok") },
 };
 
-// The authed shell with a couple of reported names in the review queue and a few
-// recent actions in the activity log below it.
+// The busy console's shared transports: reported names, feedback + answers, a
+// needs-a-look health snapshot, and the trend series. Each tab story reuses them
+// so the four captures show one consistent service state.
+const BUSY_ARGS = {
+  ping: always("ok"),
+  reviewOps: reviewOps([
+    { name: "rob1n", reason: "impersonation", count: 3, createdAt: 1 },
+    { name: "free_money", reason: "spam", count: 1, createdAt: 2 },
+  ]),
+  auditOps: auditOps(SAMPLE_AUDIT),
+  metricsOps: metricsOps(SAMPLE_METRICS, SAMPLE_TRENDS),
+  healthOps: healthOps(SAMPLE_HEALTH),
+  feedbackOps: feedbackOps(SAMPLE_FEEDBACK),
+} as const;
+
+// The authed console's first section: the health band plus the waiting-work
+// figures (the default tab).
 export const AuthedWithReports: Story = {
-  args: {
-    ping: always("ok"),
-    reviewOps: reviewOps([
-      { name: "rob1n", reason: "impersonation", count: 3, createdAt: 1 },
-      { name: "free_money", reason: "spam", count: 1, createdAt: 2 },
-    ]),
-    auditOps: auditOps(SAMPLE_AUDIT),
-    metricsOps: metricsOps(SAMPLE_METRICS, SAMPLE_TRENDS),
-    healthOps: healthOps(SAMPLE_HEALTH),
-    feedbackOps: feedbackOps(SAMPLE_FEEDBACK),
-  },
+  args: BUSY_ARGS,
+  decorators: [seedToken],
+};
+
+// The Queues tab: both work queues side by side, with the labs answers view
+// (grouped by question, with its per-question counts and CSV download) below.
+export const AuthedQueues: Story = {
+  args: { ...BUSY_ARGS, initialTab: "queues" },
+  decorators: [seedToken],
+};
+
+// The Metrics tab: the stored totals and the three trend charts.
+export const AuthedMetrics: Story = {
+  args: { ...BUSY_ARGS, initialTab: "metrics" },
+  decorators: [seedToken],
+};
+
+// The Tools tab: the id lookup beside the audit record.
+export const AuthedTools: Story = {
+  args: { ...BUSY_ARGS, initialTab: "tools" },
   decorators: [seedToken],
 };
 

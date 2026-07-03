@@ -85,6 +85,14 @@
   gap: 6px;
 }
 
+/* ------------------------------------------------------------------- tabs -- */
+/* The console's four sections behind one bar. The Segmented design component
+   draws the control; this wrapper only seats it under the header. */
+.adm-tabs {
+  display: flex;
+  padding: 2px 0 10px;
+}
+
 /* ----------------------------------------------------------------- panels -- */
 /* A panel is a hairline-opened section, never a box. */
 .adm-panel {
@@ -347,6 +355,39 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* ---------------------------------------------------------------- answers --- */
+/* The labs answers view: per-question counts as a compact cousin of the
+   stored-totals figures, then each question opens a quiet group of rows. */
+.adm-answers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.adm-figures--compact {
+  gap: var(--space-4);
+}
+
+.adm-figures--compact .adm-figure__value {
+  font-size: 20px;
+}
+
+.adm-answers__bar {
+  display: flex;
+}
+
+.adm-answers__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* An answer's text beside its time on the shared baseline row. */
+.adm-item__body--grow {
+  flex: 1;
+  min-width: 0;
 }
 
 /* ------------------------------------------------------------------ notes --- */

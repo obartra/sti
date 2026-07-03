@@ -66,11 +66,13 @@ user-facing passport share no chunk, so admin can pull in heavier dependencies (
 a richer table/grid) without adding a byte to the user bundle or sitting near a health surface, and
 the shell budget in [doc 22](22-progressive-web-app.md) is unaffected. It is built for a **desktop
 operator** (a wide, multi-panel dashboard layout), not the mobile-first passport frame, since this
-is where the richer aggregate views live. The built composition reads operator-first, top to
-bottom: health as a compact status band, the two work queues side by side, the metrics figures and
-trend charts abreast, then the id-lookup tool beside the audit tail. The console widens on
-container queries (the two thresholds where panels pair up and the charts go three-across), never
-viewport media queries, and collapses to a single column when narrow.
+is where the richer aggregate views live. The built console reads as four sections behind one tab
+bar, each a job: **Overview** (the health status band plus a waiting-for-review strip of backlog
+figures, the is-anything-on-fire glance and it opens first), **Queues** (the two work queues side
+by side, with the labs answers view below them), **Metrics** (the stored totals and trend charts
+abreast), and **Tools** (the id-lookup tool beside the audit tail). Within a section the console
+widens on container queries (the two thresholds where panels pair up and the charts go
+three-across), never viewport media queries, and collapses to a single column when narrow.
 
 - A token gate: enter the bearer secret; on success, the page calls a cheap `GET /admin/ping` to
   validate before showing anything.
@@ -81,6 +83,10 @@ viewport media queries, and collapses to a single column when narrow.
   through the public "Something wrong?" form, each with its category, the optional note the person
   typed, and a time, with one action: **Resolve** (clear it once handled). The note is the one piece of
   user-typed text the store holds; the panel is where the operator reads it.
+- **Answers view ([doc 35](35-something-wrong-reports.md)):** the labs open-questions responses,
+  which arrive in the same feedback store under the **question** category with a topic code. The
+  view keeps only those rows, groups them by question with a count per question, and offers the
+  same one-click **Resolve**, plus a CSV download of the set for reading offline.
 - **Activity panel (A4):** a read-only tail of recent admin actions (action, target, time), newest
   first. This makes the audit log's "reconstructable" promise usable from the page instead of only via
   SQLite on the box. Read-only, no actions; the same opaque rows the log already stores.
@@ -102,8 +108,9 @@ viewport media queries, and collapses to a single column when narrow.
   stuck queue or a rise in errors is visible without reading `/metrics` on the server. Same hard rules
   as the metrics panel: a count, an age, or a system size, never a per-account or per-id figure.
 - **Refresh + panel counts:** the shell carries a single **Refresh** control that re-reads every
-  auto-loading panel at once, so an operator can pull fresh numbers without reloading the tab; each
-  work queue shows its backlog as a count on its own heading, so a number appears in exactly one place.
+  auto-loading panel on the open section at once (a section re-reads anyway when opened), so an
+  operator can pull fresh numbers without reloading the browser tab; each work queue shows its
+  backlog as a count on its own heading.
 - **Built to grow:** the page is a shell with panels, so account disable, alias revoke, and metadata
   lookup by id drop in as additional panels without re-architecting. The management panel now ships
   those three in the console (lookup renders opaque metadata only; disable and revoke each take a
