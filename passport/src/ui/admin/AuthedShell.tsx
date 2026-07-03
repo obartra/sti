@@ -133,6 +133,39 @@ function BacklogPanel({
   );
 }
 
+// The console's masthead: the shield mark and session line, with the Refresh
+// sweep and the Lock control on the right.
+function ShellHead({
+  onRefresh,
+  onLock,
+}: {
+  onRefresh: () => void;
+  onLock: () => void;
+}) {
+  return (
+    <div className="adm-head">
+      <span className="adm-head__mark">
+        <ShieldCheck size={20} />
+      </span>
+      <div className="adm-head__body">
+        <h1 className="adm-head__title">{COPY.authedTitle}</h1>
+        <div className="adm-head__sub">{COPY.authedSub}</div>
+      </div>
+      <div className="adm-head__actions">
+        <Button variant="ghost" size="sm" onClick={onRefresh}>
+          <span className="adm-btn-icon">
+            <Refresh size={15} />
+            {COPY.refreshAll}
+          </span>
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onLock}>
+          {COPY.lockAgain}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function AuthedShell({
   token,
   ops,
@@ -167,26 +200,7 @@ export function AuthedShell({
   const refreshAll = useCallback(() => setRefreshSignal((n) => n + 1), []);
   return (
     <div className="adm">
-      <div className="adm-head">
-        <span className="adm-head__mark">
-          <ShieldCheck size={20} />
-        </span>
-        <div className="adm-head__body">
-          <h1 className="adm-head__title">{COPY.authedTitle}</h1>
-          <div className="adm-head__sub">{COPY.authedSub}</div>
-        </div>
-        <div className="adm-head__actions">
-          <Button variant="ghost" size="sm" onClick={refreshAll}>
-            <span className="adm-btn-icon">
-              <Refresh size={15} />
-              {COPY.refreshAll}
-            </span>
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onLock}>
-            {COPY.lockAgain}
-          </Button>
-        </div>
-      </div>
+      <ShellHead onRefresh={refreshAll} onLock={onLock} />
       <div className="adm-tabs">
         <Segmented
           options={TAB_OPTIONS}
