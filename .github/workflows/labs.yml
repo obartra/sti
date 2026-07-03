@@ -1,0 +1,46 @@
+name: Deploy labs
+
+# Publishes labs.sti.care (gh-pages) whenever the labs content, the deploy
+# scripts, or the token/font inputs its stylesheet is assembled from change on
+# main. build-labs.sh runs with no prototype zip, so it reuses the /passport
+# already published on gh-pages; deploys with a new prototype zip stay a
+# manual deploy/build-labs.sh run (zips are local-only, never committed).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "labs/**"
+      - "deploy/**"
+      - "passport/src/design/tokens/**"
+      - "passport/public/fonts/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-labs
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      # The renderer needs `marked` from the root package.
+      - name: Install renderer deps
+        run: npm install --no-audit --no-fund
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Build and publish labs.sti.care
+        run: deploy/build-labs.sh

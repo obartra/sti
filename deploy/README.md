@@ -19,6 +19,12 @@ Zips in the repo root are gitignored (`/*.zip`), so they never get committed.
 
 ## Quick start
 
+**Deploys are automatic:** the `Deploy labs` workflow (`.github/workflows/labs.yml`)
+runs `build-labs.sh` on every merge to `main` that touches `labs/`, `deploy/`, or the
+token/font files the labs stylesheet is assembled from, reusing the `/passport`
+already published. Run the script by hand only to ship a new prototype zip (zips are
+local-only, never committed) or to `--dry-run` the tree.
+
 Drop the prototype zip in the repo root and run:
 
 ```sh
