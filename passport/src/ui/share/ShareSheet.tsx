@@ -1,4 +1,4 @@
-import { type CSSProperties, type ReactElement } from "react";
+import { type ReactElement } from "react";
 import { Button } from "../../design/components/index.ts";
 import { X, Eye, Share, Refresh } from "../../design/icons.tsx";
 import { BadgeCard } from "../badge-card.tsx";
@@ -21,18 +21,21 @@ import {
   urlReady,
   displayLink,
 } from "./ShareSheet.url.tsx";
+import { cx } from "../../lib/cx.ts";
+import "./share-sheet.css";
 
 /* ShareSheet, the share modal opened by "Share my passport" and the share-rail
-   buttons. Faithful port of the design prototype's ShareSheet (app/shell.jsx).
-   It shows the badge card, the share URL + QR, a copy / save action, an
-   add-to-wallet row, and (for private links) a revoke action. Two layouts:
-   a centered desktop modal and a mobile bottom sheet with a grabber handle. */
+   buttons. It shows the badge card, the share URL + QR, a copy / save action,
+   an add-to-wallet row, and (for private links) a revoke action. Two layouts:
+   a centered desktop modal and a mobile bottom sheet with a grabber handle.
+   The panel is a control surface (doc 37): it keeps radius and elevation;
+   its interior sits on the editorial grammar (share-sheet.css). */
 
 type SharingMode = "public" | "link";
 
 // Copy strings live inline in the prototype (not in copy.js), so they are kept
 // here verbatim rather than threaded through the shared copy module. The URL
-// card's own strings live with it in ShareSheet.url.tsx.
+// block's own strings live with it in ShareSheet.url.tsx.
 const COPY = {
   titlePublic: "Share your passport",
   titleLink: "Share private link",
@@ -116,79 +119,20 @@ function SheetHeader({
   onClose: (() => void) | undefined;
 }): ReactElement {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginBottom: 16,
-      }}
-    >
-      <div
-        style={{ fontSize: 18, fontWeight: 700, color: "var(--text-strong)" }}
-      >
+    <div className="sh__head">
+      <div className="sh__title">
         {link ? COPY.titleLink : COPY.titlePublic}
       </div>
       <button
         type="button"
         onClick={onClose}
         aria-label="Close"
-        style={{
-          appearance: "none",
-          border: "none",
-          background: "var(--surface-sunken)",
-          width: 32,
-          height: 32,
-          borderRadius: "50%",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          color: "var(--text-muted)",
-        }}
+        className="sh__close"
       >
         <X size={16} />
       </button>
     </div>
   );
-}
-
-function sheetStyleFor(desktop: boolean, open: boolean): CSSProperties {
-  if (desktop)
-    return {
-      position: "absolute",
-      top: "50%",
-      left: "50%",
-      width: 460,
-      maxWidth: "calc(100vw - 48px)",
-      maxHeight: "90vh",
-      overflowY: "auto",
-      background: "var(--surface-app)",
-      borderRadius: "var(--radius-xl)",
-      padding: "22px 22px 24px",
-      boxShadow: "var(--shadow-xl)",
-      transform: open
-        ? "translate(-50%,-50%) scale(1)"
-        : "translate(-50%,-47%) scale(0.98)",
-      opacity: open ? 1 : 0,
-      transition:
-        "transform var(--dur-slow) var(--ease-out), opacity var(--dur-base) var(--ease-gentle)",
-    };
-  return {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    maxHeight: "92%",
-    overflowY: "auto",
-    background: "var(--surface-app)",
-    borderTopLeftRadius: "var(--radius-xl)",
-    borderTopRightRadius: "var(--radius-xl)",
-    padding: "14px 20px 24px",
-    boxShadow: "var(--shadow-xl)",
-    transform: open ? "translateY(0)" : "translateY(100%)",
-    transition: "transform var(--dur-slow) var(--ease-out)",
-  };
 }
 
 // Hand off to the OS share sheet when one exists, then close on a completed
@@ -223,7 +167,7 @@ function SheetActions({
   onRevoke: (() => void) | undefined;
 }): ReactElement {
   return (
-    <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+    <div className="sh__actions">
       {link && (
         <Button
           variant="quiet"
@@ -251,30 +195,23 @@ function SheetActions({
 // The reassurance line under the badge card ("Just your status, nothing else").
 function Reassurance(): ReactElement {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        justifyContent: "center",
-        margin: "14px 0 14px",
-        color: "var(--text-subtle)",
-        fontSize: 12.5,
-        textAlign: "center",
-      }}
-    >
+    <div className="sh__reassure">
       <Eye size={14} /> {COPY.reassurance}
     </div>
   );
 }
 
+// The two panel layouts: a centered desktop modal, or the mobile bottom sheet.
+function panelClassFor(desktop: boolean): string {
+  return cx("sh__panel", desktop ? "sh__panel--desktop" : "sh__panel--mobile");
+}
+
 // The sheet panel itself (the positioned card, or bottom sheet): badge preview,
-// the identity / face / lifetime controls, the URL card, and the action row.
+// the identity / face / lifetime controls, the URL block, and the action row.
 // Lifted out of ShareSheet so that component stays within its size/complexity
 // caps; it just resolves props and mounts the overlay + this panel.
 function SheetPanel(props: ShareSheetProps): ReactElement {
   const {
-    open,
     onClose,
     sharingMode = "public",
     state,
@@ -325,7 +262,7 @@ function SheetPanel(props: ShareSheetProps): ReactElement {
     nativeShareOrClose(nativeShare, realUrl ?? `https://${url}`, onClose);
 
   return (
-    <div style={sheetStyleFor(desktop, open)}>
+    <div className={panelClassFor(desktop)}>
       <Grabber desktop={desktop} />
       <SheetHeader link={link} onClose={onClose} />
       <BadgeCard
@@ -371,32 +308,17 @@ function SheetPanel(props: ShareSheetProps): ReactElement {
 export function ShareSheet(props: ShareSheetProps): ReactElement {
   const { open, onClose } = props;
   return (
+    // Always viewport-fixed: the sheet is a modal layer, not page content. As
+    // `absolute` it anchored to the document (the shell isn't a positioned
+    // ancestor), so when closed the bottom sheet's translateY(100%) parked it
+    // ~100vh down a long page, showing through and overlapping content. The
+    // open/closed state drives the panel + scrim transitions from the root.
     <div
       aria-hidden={!open}
       data-share-overlay=""
-      style={{
-        // Always viewport-fixed: the sheet is a modal layer, not page content.
-        // As `absolute` it anchored to the document (the shell isn't a positioned
-        // ancestor), so when closed the bottom sheet's translateY(100%) parked it
-        // ~100vh down a long page, showing through and overlapping content.
-        position: "fixed",
-        inset: 0,
-        zIndex: 30,
-        pointerEvents: open ? "auto" : "none",
-      }}
+      className={cx("sh", open ? "sh--open" : "sh--closed")}
     >
-      <div
-        onClick={onClose}
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: "rgba(27,27,47,0.42)",
-          backdropFilter: "blur(2px)",
-          WebkitBackdropFilter: "blur(2px)",
-          opacity: open ? 1 : 0,
-          transition: "opacity var(--dur-base) var(--ease-gentle)",
-        }}
-      />
+      <div onClick={onClose} className="sh__scrim" />
       <SheetPanel {...props} />
     </div>
   );

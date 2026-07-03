@@ -2,10 +2,11 @@ import { Button } from "../../design/components/index.ts";
 import { AvatarBuilder } from "./AvatarBuilder.tsx";
 import type { AvatarConfig } from "../../lib/avatars.ts";
 import { AVATAR_CREDIT } from "../../lib/credits.ts";
+import "./onboarding.css";
+import "./avatar.css";
 
 // Standalone avatar editor (account already claimed, reached from Privacy).
-// Faithful port of onboarding.jsx AvatarEdit: a title, the shared AvatarBuilder,
-// and a done action. Copy verbatim from copy.js (privacy.editAvatar*).
+// A serif title, the shared AvatarBuilder, the art credit, and a done action.
 const COPY = {
   title: "Your avatar",
   done: "Done",
@@ -19,41 +20,12 @@ export interface AvatarEditProps {
 
 export function AvatarEdit({ config, onChange, onDone }: AvatarEditProps) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 18,
-        width: "100%",
-        maxWidth: 600,
-      }}
-    >
-      <h1
-        style={{
-          fontSize: 24,
-          fontWeight: 800,
-          letterSpacing: "-0.02em",
-          color: "var(--text-strong)",
-        }}
-      >
-        {COPY.title}
-      </h1>
+    <div className="onb">
+      <h1 className="onb__title">{COPY.title}</h1>
       <AvatarBuilder config={config} onChange={onChange} />
-      <p
-        style={{
-          fontSize: 11,
-          lineHeight: 1.5,
-          color: "var(--text-subtle)",
-          margin: 0,
-        }}
-      >
+      <p className="ave__credit">
         {AVATAR_CREDIT.title} by {AVATAR_CREDIT.creator},{" "}
-        <a
-          href={AVATAR_CREDIT.licenseUrl}
-          target="_blank"
-          rel="noreferrer"
-          style={{ color: "inherit", textDecoration: "underline" }}
-        >
+        <a href={AVATAR_CREDIT.licenseUrl} target="_blank" rel="noreferrer">
           {AVATAR_CREDIT.license}
         </a>
       </p>

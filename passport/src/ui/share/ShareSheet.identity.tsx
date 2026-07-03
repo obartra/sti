@@ -8,6 +8,7 @@ import {
   type AvatarConfig,
 } from "../../lib/avatars.ts";
 import type { AliasIdentity } from "../../store/index.ts";
+import "./share-sheet.css";
 
 /* The share sheet's per-alias identity choice (doc 15): a link shows either the
    unlinkable id-derived face (default) or the owner's main identity, with the
@@ -74,8 +75,8 @@ export function IdentityChoiceRow({
 }): ReactElement | null {
   if (onChange === undefined || !hasName) return null;
   return (
-    <div style={{ margin: "0 0 14px" }}>
-      <div style={{ display: "flex", gap: 8 }}>
+    <div className="sh__row">
+      <div className="sh__choice-row">
         <Button
           variant={choice === "anonymous" ? "primary" : "quiet"}
           size="md"
@@ -94,17 +95,10 @@ export function IdentityChoiceRow({
         </Button>
       </div>
       {choice === "main" && (
-        <div
-          style={{
-            marginTop: 8,
-            display: "flex",
-            gap: 6,
-            fontSize: 12,
-            lineHeight: 1.45,
-            color: "var(--text-subtle)",
-          }}
-        >
-          <Globe size={13} style={{ flex: "none", marginTop: 2 }} />
+        <div className="sh__warn">
+          <span aria-hidden className="sh__warn-icon">
+            <Globe size={13} />
+          </span>
           {COPY.warn}
         </div>
       )}
@@ -140,29 +134,11 @@ export function FaceOverrideRow({
   }
   const working = override ?? fallback;
   return (
-    <div style={{ margin: "0 0 14px" }}>
-      <div
-        style={{
-          fontSize: 13,
-          fontWeight: 700,
-          color: "var(--text-strong)",
-          marginBottom: 4,
-        }}
-      >
-        {COPY.faceTitle}
-      </div>
+    <div className="sh__row">
+      <div className="sh__subtitle">{COPY.faceTitle}</div>
       {!editing ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div
-            style={{
-              flex: 1,
-              fontSize: 12,
-              lineHeight: 1.45,
-              color: "var(--text-subtle)",
-            }}
-          >
-            {COPY.faceDefault}
-          </div>
+        <div className="sh__face-row">
+          <div className="sh__face-note">{COPY.faceDefault}</div>
           <Button
             variant="secondary"
             size="sm"
@@ -172,9 +148,9 @@ export function FaceOverrideRow({
           </Button>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="sh__face-edit">
           <AvatarBuilder config={working} onChange={onChange} />
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="sh__choice-row">
             {override !== undefined && (
               <Button
                 variant="quiet"

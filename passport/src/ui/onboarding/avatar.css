@@ -1,0 +1,89 @@
+/* The avatar builder and the standalone avatar editor (doc 19) on the
+   editorial grammar (doc 37): the builder's flat card becomes hairline-opened
+   part rows on whatever surface hosts it (the edit screen, the share sheet's
+   per-link face control); the swatches keep their control rings. */
+
+.avb {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.avb__preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.avb__preview-img {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  box-shadow: var(--shadow-sm);
+}
+
+.avb__part {
+  border-top: var(--hairline);
+  padding-top: 12px;
+}
+
+.avb__part--disabled {
+  opacity: 0.45;
+}
+
+.avb__part-label {
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  margin-bottom: 8px;
+}
+
+/* Fixed columns so the swatches line up in tidy rows instead of ragged wrap. */
+.avb__grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+.avb__swatch {
+  appearance: none;
+  cursor: pointer;
+  padding: 0;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  overflow: hidden;
+  border: none;
+  background: transparent;
+  box-shadow: 0 0 0 1px var(--border-card);
+}
+
+.avb__swatch--on {
+  box-shadow: 0 0 0 3px var(--accent);
+}
+
+.avb__swatch--disabled {
+  cursor: default;
+}
+
+.avb__fill {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ── The standalone editor screen ───────────────────────────────────────── */
+.ave__credit {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-subtle);
+  margin: 0;
+}
+
+.ave__credit a {
+  color: inherit;
+  text-decoration: underline;
+}

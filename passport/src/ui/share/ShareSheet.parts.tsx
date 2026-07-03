@@ -1,5 +1,7 @@
 import type { ReactElement } from "react";
-import { QrCode, ArrowRight } from "../../design/icons.tsx";
+import { QrCode } from "../../design/icons.tsx";
+import { ActionRow } from "../editorial/ActionRow.tsx";
+import "./share-sheet.css";
 
 /* Presentational bits of the share sheet, split out so ShareSheet.tsx stays under
    its size/complexity caps. Each gates its own visibility (returns null), so the
@@ -17,21 +19,12 @@ export function Grabber({
   desktop: boolean;
 }): ReactElement | null {
   if (desktop) return null;
-  return (
-    <div
-      style={{
-        width: 40,
-        height: 4,
-        borderRadius: 999,
-        background: "var(--ink-200)",
-        margin: "0 auto 16px",
-      }}
-    />
-  );
+  return <div className="sh__grabber" />;
 }
 
 // The add-to-wallet row. `show` gates it (the app passes features.WALLET_ENABLED,
-// currently false: passes are built but gated off, pending signing certs).
+// currently false: passes are built but gated off, pending signing certs). A
+// hairline action row (doc 37), never a card with an icon tile.
 export function WalletRow({
   show,
   onWallet,
@@ -41,58 +34,13 @@ export function WalletRow({
 }): ReactElement | null {
   if (!show) return null;
   return (
-    <button
-      type="button"
-      onClick={onWallet}
-      style={{
-        appearance: "none",
-        cursor: "pointer",
-        width: "100%",
-        marginTop: 12,
-        textAlign: "left",
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "12px 14px",
-        borderRadius: "var(--radius-md)",
-        border: "1px solid var(--border-card)",
-        background: "var(--surface-card)",
-        boxShadow: "var(--shadow-sm)",
-      }}
-    >
-      <span
-        style={{
-          flex: "none",
-          width: 38,
-          height: 38,
-          borderRadius: "var(--radius-sm)",
-          background: "#1B1B2F",
-          color: "#fff",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <QrCode size={19} />
-      </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 14.5,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-          }}
-        >
-          {COPY.walletTitle}
-        </div>
-        <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-          {COPY.walletSub}
-        </div>
-      </div>
-      <ArrowRight
-        size={18}
-        style={{ color: "var(--text-subtle)", flex: "none" }}
+    <div className="sh__wallet">
+      <ActionRow
+        lead={<QrCode size={18} />}
+        title={COPY.walletTitle}
+        sub={COPY.walletSub}
+        onClick={onWallet}
       />
-    </button>
+    </div>
   );
 }
