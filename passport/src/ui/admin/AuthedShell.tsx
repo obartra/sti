@@ -193,11 +193,13 @@ export function AuthedShell({
   const [tab, setTab] = useState<AdminTab>(initialTab);
   // One shared refresh signal: bumping it re-reads every auto-loading panel in place
   // (no remount), so an operator can pull fresh numbers across the console at once
-  // instead of reloading the tab or retrying each panel. Panels on the other tabs
-  // simply re-read when they next mount. The Manage tool is idle until an id is
-  // typed, so it is deliberately left off the sweep.
+  // instead of reloading the tab or retrying each panel. The Manage tool is idle
+  // until an id is typed, so it is deliberately left off the sweep.
   const [refreshSignal, setRefreshSignal] = useState(0);
   const refreshAll = useCallback(() => setRefreshSignal((n) => n + 1), []);
+  // Every section stays mounted; switching tabs only flips the `hidden` attribute.
+  // Panels load once at unlock and keep their data, so a switch is instant instead
+  // of remounting into a "Loading…" flash, and Refresh reaches all of them.
   return (
     <div className="adm">
       <ShellHead onRefresh={refreshAll} onLock={onLock} />
@@ -209,55 +211,51 @@ export function AuthedShell({
           aria-label={COPY.tabsLabel}
         />
       </div>
-      {tab === "overview" && (
-        <>
-          <HealthPanel
+      <div className="adm-section" hidden={tab !== "overview"}>
+        <HealthPanel
+          token={token}
+          ops={healthOps}
+          onUnauthorized={onExpire}
+          refreshSignal={refreshSignal}
+        />
+        <BacklogPanel
+          token={token}
+          ops={metricsOps}
+          onUnauthorized={onExpire}
+          refreshSignal={refreshSignal}
+        />
+      </div>
+      <div className="adm-section" hidden={tab !== "queues"}>
+        <div className="adm-queues">
+          <ReviewPanel
             token={token}
-            ops={healthOps}
+            ops={ops}
             onUnauthorized={onExpire}
             refreshSignal={refreshSignal}
           />
-          <BacklogPanel
-            token={token}
-            ops={metricsOps}
-            onUnauthorized={onExpire}
-            refreshSignal={refreshSignal}
-          />
-        </>
-      )}
-      {tab === "queues" && (
-        <>
-          <div className="adm-queues">
-            <ReviewPanel
-              token={token}
-              ops={ops}
-              onUnauthorized={onExpire}
-              refreshSignal={refreshSignal}
-            />
-            <FeedbackPanel
-              token={token}
-              ops={feedbackOps}
-              onUnauthorized={onExpire}
-              refreshSignal={refreshSignal}
-            />
-          </div>
-          <AnswersPanel
+          <FeedbackPanel
             token={token}
             ops={feedbackOps}
             onUnauthorized={onExpire}
             refreshSignal={refreshSignal}
           />
-        </>
-      )}
-      {tab === "metrics" && (
+        </div>
+        <AnswersPanel
+          token={token}
+          ops={feedbackOps}
+          onUnauthorized={onExpire}
+          refreshSignal={refreshSignal}
+        />
+      </div>
+      <div className="adm-section" hidden={tab !== "metrics"}>
         <MetricsPanel
           token={token}
           ops={metricsOps}
           onUnauthorized={onExpire}
           refreshSignal={refreshSignal}
         />
-      )}
-      {tab === "tools" && (
+      </div>
+      <div className="adm-section" hidden={tab !== "tools"}>
         <div className="adm-tools">
           <ManagePanel
             token={token}
@@ -271,7 +269,7 @@ export function AuthedShell({
             refreshSignal={refreshSignal}
           />
         </div>
-      )}
+      </div>
     </div>
   );
 }
