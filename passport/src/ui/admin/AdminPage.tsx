@@ -1,34 +1,23 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button, Field, Input } from "../../design/components/index.ts";
 import { Lock } from "../../design/icons.tsx";
 import "./admin.css";
-import {
-  actOnVanityName,
-  disableAccount,
-  getAdminHealth,
-  getAdminMetrics,
-  getAdminTrends,
-  listAdminAudit,
-  listAdminFeedback,
-  listAdminReports,
-  lookupRecord,
-  pingAdmin,
-  resolveFeedback,
-  revokeAlias,
-  type AdminPingResult,
-} from "./adminApi.ts";
+import { pingAdmin, type AdminPingResult } from "./adminApi.ts";
 import {
   clearAdminToken,
   readAdminToken,
   saveAdminToken,
 } from "./adminToken.ts";
 import { AuthedShell, type AdminTab } from "./AuthedShell.tsx";
+import { useAdminTransports } from "./adminTransports.ts";
 import type { ReviewOps } from "./ReviewPanel.tsx";
 import type { AuditOps } from "./ActivityPanel.tsx";
 import type { MetricsOps } from "./MetricsPanel.tsx";
 import type { HealthOps } from "./HealthPanel.tsx";
 import type { FeedbackOps } from "./FeedbackPanel.tsx";
 import type { ManageOps } from "./ManagePanel.tsx";
+import type { LogsOps } from "./LogsPanel.tsx";
+import type { RestartOps } from "./RestartPanel.tsx";
 
 // The operator surface (doc 20): a dedicated, gated /admin page, isolated from the
 // user flows and never linked from the app. It renders nothing actionable until a
@@ -89,79 +78,20 @@ export interface AdminPageProps {
    */
   manageOps?: ManageOps;
   /**
+   * Server-log transport (doc 20). Defaults to the real logs endpoint bound to
+   * apiBase; injectable so tests and Storybook drive it.
+   */
+  logsOps?: LogsOps;
+  /**
+   * Restart transport (doc 20): the audited restart plus the ping probe that
+   * watches the service come back. Injectable like the rest.
+   */
+  restartOps?: RestartOps;
+  /**
    * Which console section opens first once authed (default the overview).
    * Stories use it to capture each tab.
    */
   initialTab?: AdminTab;
-}
-
-// Build the panel transports: each defaults to the real admin endpoints bound to
-// apiBase, or uses the injected stub (tests / Storybook). Hoisted out of AdminPage
-// so the component stays within its length ceiling.
-function useAdminTransports(
-  apiBase: string,
-  over: {
-    reviewOps?: ReviewOps | undefined;
-    auditOps?: AuditOps | undefined;
-    metricsOps?: MetricsOps | undefined;
-    healthOps?: HealthOps | undefined;
-    feedbackOps?: FeedbackOps | undefined;
-    manageOps?: ManageOps | undefined;
-  },
-): {
-  ops: ReviewOps;
-  audit: AuditOps;
-  metrics: MetricsOps;
-  health: HealthOps;
-  feedback: FeedbackOps;
-  manage: ManageOps;
-} {
-  const { reviewOps, auditOps, metricsOps, healthOps, feedbackOps, manageOps } =
-    over;
-  const ops = useMemo<ReviewOps>(
-    () =>
-      reviewOps ?? {
-        list: (t) => listAdminReports(apiBase, t),
-        act: (t, name, action) =>
-          actOnVanityName({ apiBase, token: t, name, action }),
-      },
-    [reviewOps, apiBase],
-  );
-  const audit = useMemo<AuditOps>(
-    () =>
-      auditOps ?? { list: (t, before) => listAdminAudit(apiBase, t, before) },
-    [auditOps, apiBase],
-  );
-  const metrics = useMemo<MetricsOps>(
-    () =>
-      metricsOps ?? {
-        get: (t) => getAdminMetrics(apiBase, t),
-        getTrends: (t) => getAdminTrends(apiBase, t),
-      },
-    [metricsOps, apiBase],
-  );
-  const health = useMemo<HealthOps>(
-    () => healthOps ?? { get: (t) => getAdminHealth(apiBase, t) },
-    [healthOps, apiBase],
-  );
-  const feedback = useMemo<FeedbackOps>(
-    () =>
-      feedbackOps ?? {
-        list: (t) => listAdminFeedback(apiBase, t),
-        resolve: (t, id) => resolveFeedback(apiBase, t, id),
-      },
-    [feedbackOps, apiBase],
-  );
-  const manage = useMemo<ManageOps>(
-    () =>
-      manageOps ?? {
-        lookup: (t, id) => lookupRecord(apiBase, t, id),
-        disable: (t, id) => disableAccount(apiBase, t, id),
-        revoke: (t, id) => revokeAlias(apiBase, t, id),
-      },
-    [manageOps, apiBase],
-  );
-  return { ops, audit, metrics, health, feedback, manage };
 }
 
 // The token-gate state machine, split out so AdminPage stays within its length
@@ -259,23 +189,25 @@ export function AdminPage({
   healthOps,
   feedbackOps,
   manageOps,
+  logsOps,
+  restartOps,
   initialTab,
 }: AdminPageProps) {
   const validate = useCallback(
     (token: string) => (ping ? ping(token) : pingAdmin(apiBase, token)),
     [ping, apiBase],
   );
-  const { ops, audit, metrics, health, feedback, manage } = useAdminTransports(
-    apiBase,
-    {
+  const { ops, audit, metrics, health, feedback, manage, logs, restart } =
+    useAdminTransports(apiBase, {
       reviewOps,
       auditOps,
       metricsOps,
       healthOps,
       feedbackOps,
       manageOps,
-    },
-  );
+      logsOps,
+      restartOps,
+    });
   const { phase, token, setToken, error, onSubmit, lock, expire } =
     useAdminGate(validate);
 
@@ -299,6 +231,8 @@ export function AdminPage({
             healthOps={health}
             feedbackOps={feedback}
             manageOps={manage}
+            logsOps={logs}
+            restartOps={restart}
             onLock={lock}
             onExpire={expire}
             initialTab={initialTab}

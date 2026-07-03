@@ -8,6 +8,8 @@ import { HealthPanel, type HealthOps } from "./HealthPanel.tsx";
 import { FeedbackPanel, type FeedbackOps } from "./FeedbackPanel.tsx";
 import { AnswersPanel } from "./AnswersPanel.tsx";
 import { ManagePanel, type ManageOps } from "./ManagePanel.tsx";
+import { LogsPanel, type LogsOps } from "./LogsPanel.tsx";
+import { RestartPanel, type RestartOps } from "./RestartPanel.tsx";
 import "./admin.css";
 import type { AdminMetrics } from "./adminApi.ts";
 
@@ -174,6 +176,8 @@ export function AuthedShell({
   healthOps,
   feedbackOps,
   manageOps,
+  logsOps,
+  restartOps,
   onLock,
   onExpire,
   initialTab = "overview",
@@ -185,6 +189,8 @@ export function AuthedShell({
   healthOps: HealthOps;
   feedbackOps: FeedbackOps;
   manageOps: ManageOps;
+  logsOps: LogsOps;
+  restartOps: RestartOps;
   onLock: () => void;
   onExpire: () => void;
   // Which section opens first; stories use it to capture each tab.
@@ -269,6 +275,18 @@ export function AuthedShell({
             refreshSignal={refreshSignal}
           />
         </div>
+        <LogsPanel
+          token={token}
+          ops={logsOps}
+          onUnauthorized={onExpire}
+          refreshSignal={refreshSignal}
+        />
+        <RestartPanel
+          token={token}
+          ops={restartOps}
+          onUnauthorized={onExpire}
+          onRestarted={refreshAll}
+        />
       </div>
     </div>
   );

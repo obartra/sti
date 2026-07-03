@@ -143,12 +143,12 @@ export async function listAdminAudit(
 // status + parse boilerplate the aggregate reads (metrics, health, trends) share, so
 // each of those becomes a bind-and-default one-liner. A 401 stays distinct so the page
 // can re-lock; any other non-200, a network failure, or a malformed body is an error.
-type GetJsonResult<T> =
+export type GetJsonResult<T> =
   | { kind: "ok"; body: T }
   | { kind: "unauthorized" }
   | { kind: "error" };
 
-async function adminGetJson<T>(
+export async function adminGetJson<T>(
   url: string,
   token: string,
   fetchImpl: FetchLike,

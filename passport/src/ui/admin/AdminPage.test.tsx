@@ -9,6 +9,8 @@ import type { MetricsOps } from "./MetricsPanel.tsx";
 import type { HealthOps } from "./HealthPanel.tsx";
 import type { FeedbackOps } from "./FeedbackPanel.tsx";
 import type { ManageOps } from "./ManagePanel.tsx";
+import type { LogsOps } from "./LogsPanel.tsx";
+import type { RestartOps } from "./RestartPanel.tsx";
 
 afterEach(() => {
   sessionStorage.clear();
@@ -94,6 +96,19 @@ const emptyManage: ManageOps = {
   revoke: () => Promise.resolve("ok"),
 };
 
+// The logs panel loads on mount when the Tools tab shows; stub it so the authed
+// shell stays server-free. The panel has its own dedicated tests.
+const emptyLogs: LogsOps = {
+  list: () => Promise.resolve({ kind: "ok", entries: [] }),
+};
+
+// The restart control only acts on a deliberate double click; stub it anyway so
+// the authed shell stays server-free. The panel has its own dedicated tests.
+const idleRestart: RestartOps = {
+  restart: () => Promise.resolve("ok"),
+  ping: () => Promise.resolve("ok"),
+};
+
 function renderPage(
   ping: (token: string) => Promise<AdminPingResult>,
   reviewOps: ReviewOps = emptyOps,
@@ -108,6 +123,8 @@ function renderPage(
       healthOps={emptyHealth}
       feedbackOps={emptyFeedback}
       manageOps={emptyManage}
+      logsOps={emptyLogs}
+      restartOps={idleRestart}
     />,
   );
 }
@@ -235,6 +252,8 @@ describe("AdminPage", () => {
     await user.click(screen.getByRole("tab", { name: /tools/i }));
     expect(await screen.findByText(/manage records/i)).toBeInTheDocument();
     expect(screen.getByText(/recent activity/i)).toBeInTheDocument();
+    expect(screen.getByText(/server log/i)).toBeInTheDocument();
+    expect(screen.getByText(/restart the service/i)).toBeInTheDocument();
   });
 
   it("locks again, clearing the stored token", async () => {
