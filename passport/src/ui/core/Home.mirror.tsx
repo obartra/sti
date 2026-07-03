@@ -1,8 +1,9 @@
-import { Button, Card } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
 import { Eye, Link as LinkIcon } from "../../design/icons.tsx";
 import { blueHeadline } from "../badge-card.tsx";
 import type { ProtectionLabel, Route } from "../badge-card.tsx";
 import type { HomeBadge } from "./Home.parts.tsx";
+import "./home.css";
 
 // The honest mirror in one plain line: what a viewer resolves on your links. Not
 // the full card, not a paragraph. A blue owner sees their route stated; a gray
@@ -31,21 +32,14 @@ export function ViewerMirror({
   onManageLinks: (() => void) | undefined;
 }) {
   return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 12 }}
-    >
+    <div className="hm__section hm__mirror">
       <div>
-        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          On your links, people see
-        </div>
-        <div
-          style={{ fontSize: 15, fontWeight: 700, color: "var(--text-strong)" }}
-        >
+        <div className="hm__label">On your links, people see</div>
+        <div className="hm__mirror-line">
           {mirrorLine(viewerBadge, labels, route)}
         </div>
       </div>
-      <div style={{ display: "flex", gap: 10 }}>
+      <div className="hm__mirror-actions">
         <Button
           variant="ghost"
           size="sm"
@@ -63,6 +57,6 @@ export function ViewerMirror({
           Manage links
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }

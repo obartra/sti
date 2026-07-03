@@ -1,0 +1,112 @@
+/* BadgeCard (doc 37): THE card. The one deliberate credential artifact on the
+   editorial surface: hairline border, restrained shadow, generous radius,
+   never a glow (the .e-artifact treatment). Its interior keeps its own
+   design: the medallion shapes, the label pills, the identity strip; those
+   are the artifact's print, not app chrome. */
+
+.bc {
+  box-sizing: border-box;
+  padding: 22px 24px 24px;
+  font-family: var(--font-sans);
+}
+
+.bc__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bc__logo {
+  height: 19px;
+  opacity: 0.92;
+}
+
+/* ── Medallion ──────────────────────────────────────────────────────────── */
+.bc__medal {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Hero ───────────────────────────────────────────────────────────────── */
+.bc__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  padding: 26px 0 18px;
+}
+
+.bc__word {
+  font-weight: var(--weight-extrabold);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  white-space: normal;
+  text-wrap: balance;
+}
+
+.bc__word--blue {
+  font-size: 25px;
+  color: var(--text-strong);
+  max-width: 270px;
+}
+
+.bc__word--gray {
+  font-size: 22px;
+  color: var(--neutral-600);
+  max-width: 250px;
+}
+
+/* ── Label pills: part of the artifact's own print ──────────────────────── */
+.bc__labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.bc__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px 7px 11px;
+  border-radius: var(--radius-pill);
+  font-size: 13.5px;
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
+
+/* ── Identity strip ─────────────────────────────────────────────────────── */
+.bc__identity {
+  border-top: var(--hairline);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bc__who {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.bc__handle {
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.bc__identity-labels {
+  margin-top: -2px;
+}
+
+.bc__sentence {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
