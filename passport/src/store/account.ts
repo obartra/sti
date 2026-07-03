@@ -135,20 +135,17 @@ export interface AccountManager extends GroupMembershipAccounts {
    */
   setProfile(root: RootKey, profile: OwnerProfile): Promise<AccountBlob>;
   /**
-   * Record (or clear, when null) the owner's findable registration (doc 17): the
-   * claimed name and the alias it resolves to. Pure persistence; the server-side
-   * claim/release and the dedicated alias's lifecycle are driven a layer up
-   * (findableOps), so this just writes the blob field after that has succeeded.
+   * Drop the owner's registration for `name` from the findables list (doc 17). Pure
+   * persistence; the server-side release and the dedicated alias's removal are driven
+   * a layer up (findableOps), so this just clears the blob entry after that succeeds.
+   * A no-op when the name is not held.
    */
-  setFindable(
-    root: RootKey,
-    findable: FindableRegistration | null,
-  ): Promise<AccountBlob>;
+  removeFindable(root: RootKey, name: string): Promise<AccountBlob>;
   /**
-   * Record a findable claim atomically (doc 17): upsert the dedicated alias AND set
-   * the registration in a SINGLE blob write, so there is no intermediate state where
-   * the alias exists without its registration (which would surface it as a stray
-   * public link). Called by findableOps after the server bind succeeds.
+   * Record a findable claim atomically (doc 17): upsert the dedicated alias AND append
+   * the registration to the list in a SINGLE blob write, so there is no intermediate
+   * state where the alias exists without its registration (which would surface it as a
+   * stray public link). Called by findableOps after the server bind succeeds.
    */
   recordFindable(
     root: RootKey,
@@ -253,17 +250,27 @@ function withCircleRemoved(blob: AccountBlob, circleId: string): AccountBlob {
   };
 }
 
-// Set or clear the optional findable registration. exactOptionalPropertyTypes
-// forbids assigning `undefined`, so a clear (null) deletes the key off a fresh copy
-// rather than writing `findable: undefined`.
-function withFindable(
+// Write the findables list, omitting the field entirely when it is empty so an
+// account with no public name stays compact (matching serializeAccountBlob and the
+// exactOptionalPropertyTypes contract: a clear deletes the key, never writes []).
+function withFindables(
   blob: AccountBlob,
-  findable: FindableRegistration | null,
+  findables: FindableRegistration[],
 ): AccountBlob {
-  if (findable !== null) return { ...blob, findable };
+  if (findables.length > 0) return { ...blob, findables };
   const next = { ...blob };
-  delete (next as { findable?: FindableRegistration }).findable;
+  delete (next as { findables?: FindableRegistration[] }).findables;
   return next;
+}
+
+// Drop the registration for `name` from the list (a no-op when it is not present).
+// The dedicated alias is removed separately by the caller (removeAlias), mirroring
+// how the claim records the alias and registration in one step.
+function withRemovedFindable(blob: AccountBlob, name: string): AccountBlob {
+  return withFindables(
+    blob,
+    (blob.findables ?? []).filter((f) => f.name !== name),
+  );
 }
 
 // Set or clear the optional recovery locator (doc 32), and with it the
@@ -286,17 +293,22 @@ function withRecoveryName(
   return next;
 }
 
-// Upsert the dedicated findable alias AND set the registration in one step, so a
-// claim's two facts land in a single blob write (no alias-without-registration gap).
-function withFindableAlias(
+// Upsert the dedicated findable alias AND append the registration to the list in one
+// step, so a claim's two facts land in a single blob write (no alias-without-
+// registration gap). Any prior registration under the same name is replaced, keeping
+// names unique in the list.
+function withAddedFindable(
   blob: AccountBlob,
   alias: AliasRecord,
   findable: FindableRegistration,
 ): AccountBlob {
-  return {
-    ...blob,
-    aliases: [...blob.aliases.filter((a) => a.id !== alias.id), alias],
+  const findables = [
+    ...(blob.findables ?? []).filter((f) => f.name !== findable.name),
     findable,
+  ];
+  return {
+    ...withFindables(blob, findables),
+    aliases: [...blob.aliases.filter((a) => a.id !== alias.id), alias],
   };
 }
 
@@ -374,12 +386,15 @@ export type BlobModify = (
 // claim/release lives a layer up (findableOps).
 function findableMethods(
   modify: BlobModify,
-): Pick<AccountManager, "setFindable" | "recordFindable" | "setRecoveryName"> {
+): Pick<
+  AccountManager,
+  "removeFindable" | "recordFindable" | "setRecoveryName"
+> {
   return {
-    setFindable: (root, findable) =>
-      modify(root, (blob) => withFindable(blob, findable)),
+    removeFindable: (root, name) =>
+      modify(root, (blob) => withRemovedFindable(blob, name)),
     recordFindable: (root, alias, findable) =>
-      modify(root, (blob) => withFindableAlias(blob, alias, findable)),
+      modify(root, (blob) => withAddedFindable(blob, alias, findable)),
     setRecoveryName: (root, name) =>
       modify(root, (blob) => withRecoveryName(blob, name, nowMs())),
   };

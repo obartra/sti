@@ -142,16 +142,30 @@ describe("mergeAccountBlobs (doc 22 S8, 3-way)", () => {
     expect("circles" in noCircles).toBe(false);
   });
 
-  it("merges findable: an add survives, a clear by one side I left alone is taken", () => {
-    const reg = { name: "robin", aliasId: "x" };
-    const mineSetsName: AccountBlob = { ...BASE, findable: reg };
-    // I claimed a name; they had none and did not touch it: my claim survives.
-    expect(mergeAccountBlobs(BASE, mineSetsName, BASE).findable).toEqual(reg);
+  it("merges findables by name: two different offline claims both survive", () => {
+    const robin = { name: "robin", aliasId: "x" };
+    const wren = { name: "wren", aliasId: "y" };
+    // Each device claimed a DIFFERENT name offline (neither in the ancestor): both
+    // adds survive, merged by name.
+    const mine: AccountBlob = { ...BASE, findables: [robin] };
+    const theirs: AccountBlob = { ...BASE, findables: [wren] };
+    const merged = mergeAccountBlobs(BASE, mine, theirs);
+    expect(merged.findables).toEqual(expect.arrayContaining([robin, wren]));
+    expect(merged.findables).toHaveLength(2);
+  });
 
-    // They released the name; I left it untouched: the release is taken (omitted).
-    const baseWithName: AccountBlob = { ...BASE, findable: reg };
-    const cleared = mergeAccountBlobs(baseWithName, baseWithName, BASE);
-    expect("findable" in cleared).toBe(false);
+  it("merges findables: a name deleted on one side stays deleted (delete wins)", () => {
+    const robin = { name: "robin", aliasId: "x" };
+    const wren = { name: "wren", aliasId: "y" };
+    const base: AccountBlob = { ...BASE, findables: [robin, wren] };
+    // They released "robin"; I left the list untouched: the release is taken.
+    const theirs: AccountBlob = { ...BASE, findables: [wren] };
+    const merged = mergeAccountBlobs(base, base, theirs);
+    expect(merged.findables).toEqual([wren]);
+
+    // Both sides dropped every name back to none: the field is omitted entirely.
+    const emptied = mergeAccountBlobs(base, BASE, BASE);
+    expect("findables" in emptied).toBe(false);
   });
 
   it("is a no-op when neither side diverged from the ancestor", () => {

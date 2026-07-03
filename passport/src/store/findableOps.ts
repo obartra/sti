@@ -17,6 +17,7 @@
 
 import type { ApiClient, VanityRegisterResult } from "../api/client.ts";
 import type { AccountManager } from "./account.ts";
+import { MAX_PUBLIC_NAMES } from "./accountBlob.ts";
 import type { AccountBlob, AliasRecord } from "./accountBlob.ts";
 import { deriveAliasCard, withIdentity } from "./ownerCard.ts";
 import { publishCard, revokeAlias } from "./publish.ts";
@@ -40,9 +41,9 @@ export function primaryShareAlias(
   blob: AccountBlob,
   wantPublic: boolean,
 ): AliasRecord | undefined {
-  const findableId = blob.findable?.aliasId;
+  const findableIds = new Set((blob.findables ?? []).map((f) => f.aliasId));
   return blob.aliases.find(
-    (a) => a.isPublic === wantPublic && a.id !== findableId,
+    (a) => a.isPublic === wantPublic && !findableIds.has(a.id),
   );
 }
 
@@ -77,6 +78,11 @@ export async function registerVanityName(
   session: OwnerSession,
   name: string,
 ): Promise<VanityRegisterOutcome> {
+  if ((session.blob.findables?.length ?? 0) >= MAX_PUBLIC_NAMES) {
+    // The list is full; the UI gates the add control, so this is a defensive stop
+    // that mints nothing and reports the failure.
+    return { session, result: "error" };
+  }
   const alias = await mintFindableAlias(api, session);
   const result = await api
     .registerVanityName(name, alias.id, alias.writeToken)
@@ -101,14 +107,15 @@ export async function registerVanityName(
  * revoke the dedicated alias (overwrite its card), and clear the registration. Order
  * is fail-safe, the server release first (so the name stops resolving), then the
  * revoke, then the local teardown; any server failure leaves everything in the blob
- * for a retry. A no-op when no name is claimed.
+ * for a retry. A no-op when `name` is not one the owner holds.
  */
 export async function releaseVanityName(
   api: ApiClient,
   accounts: AccountManager,
   session: OwnerSession,
+  name: string,
 ): Promise<OwnerSession> {
-  const reg = session.blob.findable;
+  const reg = (session.blob.findables ?? []).find((f) => f.name === name);
   if (reg === undefined) return session;
   const alias = session.blob.aliases.find((a) => a.id === reg.aliasId);
   // Release on the server first. Without the alias's write token (an inconsistent
@@ -124,7 +131,7 @@ export async function releaseVanityName(
     await revokeAlias(api, alias);
     await accounts.removeAlias(session.root, alias.id);
   }
-  const blob = await accounts.setFindable(session.root, null);
+  const blob = await accounts.removeFindable(session.root, name);
   return { root: session.root, blob };
 }
 

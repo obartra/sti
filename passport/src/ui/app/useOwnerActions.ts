@@ -75,8 +75,8 @@ export interface OwnerActions extends GroupJoinActions {
   onRegisterVanityName: (name: string) => Promise<VanityRegisterResult>;
   /** Check if a findable name is free as the owner types (no claim). */
   onCheckVanityName: (name: string) => Promise<"free" | "taken" | "error">;
-  /** Release the owner's claimed findable name (no-op if none). */
-  onReleaseVanityName: () => Promise<void>;
+  /** Release one of the owner's claimed findable names (no-op if not held). */
+  onReleaseVanityName: (name: string) => Promise<void>;
   /** Turn the password factor on (or change it, doc 32); resolves with the outcome
    * the Settings card shows (set / wrong phrase / taken name / weak / error). */
   onSetRecoveryPassword: (
@@ -287,13 +287,16 @@ function useFindableActions(
     [controller, sessionRef, setSession],
   );
 
-  const onReleaseVanityName = useCallback(async (): Promise<void> => {
-    const current = sessionRef.current;
-    if (current === null) return;
-    const updated = await controller.releaseVanityName(current);
-    sessionRef.current = updated;
-    setSession(updated);
-  }, [controller, sessionRef, setSession]);
+  const onReleaseVanityName = useCallback(
+    async (name: string): Promise<void> => {
+      const current = sessionRef.current;
+      if (current === null) return;
+      const updated = await controller.releaseVanityName(current, name);
+      sessionRef.current = updated;
+      setSession(updated);
+    },
+    [controller, sessionRef, setSession],
+  );
 
   return { onRegisterVanityName, onCheckVanityName, onReleaseVanityName };
 }

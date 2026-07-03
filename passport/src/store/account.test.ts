@@ -456,19 +456,37 @@ describe("account manager", () => {
     ).rejects.toThrow();
   });
 
-  it("setFindable sets then clears the registration (clear omits the key)", async () => {
+  it("recordFindable appends names and removeFindable drops one (doc 17 cap 5)", async () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
-    const reg = { name: "robin", aliasId: "A".repeat(43) };
+    const aliasA: AliasRecord = { ...record, id: "A".repeat(43) };
+    const aliasB: AliasRecord = { ...record, id: "D".repeat(43) };
 
-    const set = await accounts.setFindable(created.root, reg);
-    expect(set.findable).toEqual(reg);
+    // Two claims append (each records its dedicated alias + registration together).
+    const one = await accounts.recordFindable(created.root, aliasA, {
+      name: "robin",
+      aliasId: aliasA.id,
+    });
+    expect(one.findables).toEqual([{ name: "robin", aliasId: aliasA.id }]);
 
-    const cleared = await accounts.setFindable(created.root, null);
-    expect(cleared.findable).toBeUndefined();
-    // Cleared by omission, not an explicit `findable: undefined` key, so the blob
-    // round-trips clean and never re-persists a dangling field.
-    expect(Object.prototype.hasOwnProperty.call(cleared, "findable")).toBe(
+    const two = await accounts.recordFindable(created.root, aliasB, {
+      name: "wren",
+      aliasId: aliasB.id,
+    });
+    expect(two.findables?.map((f) => f.name)).toEqual(["robin", "wren"]);
+    // Both dedicated aliases are recorded so knocks to them are reviewed.
+    expect(two.aliases.map((a) => a.id)).toEqual(
+      expect.arrayContaining([aliasA.id, aliasB.id]),
+    );
+
+    // Removing one leaves the other.
+    const dropped = await accounts.removeFindable(created.root, "robin");
+    expect(dropped.findables).toEqual([{ name: "wren", aliasId: aliasB.id }]);
+
+    // Removing the last drops the field entirely (omitted, never `findables: []`).
+    const empty = await accounts.removeFindable(created.root, "wren");
+    expect(empty.findables).toBeUndefined();
+    expect(Object.prototype.hasOwnProperty.call(empty, "findables")).toBe(
       false,
     );
   });

@@ -1,7 +1,5 @@
 import { COPY, Section } from "./Privacy.parts.tsx";
 import { NameCard } from "./Privacy.name.tsx";
-import { FindableName, type FindableOps } from "../findable/FindableName.tsx";
-import { ShareLinkGuide } from "../findable/ShareLinkGuide.tsx";
 import {
   RecoveryPassword,
   type RecoveryPasswordOps,
@@ -9,13 +7,11 @@ import {
 import { RecoveryPhrase } from "../settings/RecoveryPhrase.tsx";
 
 // Account: who you are and how you get back in. The display name (a device-local
-// label that autosaves), the public name (claim/manage the public handle, doc 17),
-// and the password factor (doc 32), each shown only when its ops are wired.
+// label that autosaves) and the password factor (doc 32), each shown only when its
+// ops are wired. Public names moved to the Links tab (doc 17), managed there.
 export interface AccountSectionProps {
   name: string | null;
   onSetName?: ((name: string | null) => void) | undefined;
-  vanityName: string | null | undefined;
-  findableOps: FindableOps | undefined;
   recoveryName: string | null | undefined;
   recoveryOps: RecoveryPasswordOps | undefined;
   /** The stored recovery phrase to re-view (doc 32). undefined hides the card
@@ -33,28 +29,15 @@ export interface AccountSectionProps {
 export function AccountSection({
   name,
   onSetName,
-  vanityName,
-  findableOps,
   recoveryName,
   recoveryOps,
   recoveryPhrase,
   passkeyEnrolled,
   onVerifyPasskey,
 }: AccountSectionProps) {
-  const held = vanityName ?? null;
-  // The public name is pinned when a password login is set on that same handle
-  // (doc 17, doc 32): releasing it would break the sign-in, so FindableName hides
-  // the release control. The server enforces the same rule.
-  const pinned = held !== null && held !== "" && recoveryName === held;
   return (
     <Section title={COPY.accountTitle}>
       {onSetName && <NameCard name={name} onSave={onSetName} />}
-      {findableOps && (
-        <>
-          <FindableName currentName={held} ops={findableOps} pinned={pinned} />
-          {held !== null && held !== "" && <ShareLinkGuide handle={held} />}
-        </>
-      )}
       {recoveryOps && (
         <RecoveryPassword
           recoveryName={recoveryName ?? null}
