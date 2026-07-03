@@ -109,7 +109,20 @@ import type { GroupVisibility, MeetingKind } from "./groupObject.ts";
 // their lifecycle inbox) and the `pendingInvites` not yet accepted. All the new
 // fields are optional, so a pre-v17 account (admin-only groups from slice 3) stays
 // valid and simply has none of them.
-const SCHEMA_VERSION = 18;
+// v19 turns the single optional `findable` into a `findables` LIST (doc 17): the
+// owner can claim up to MAX_PUBLIC_NAMES public names, each backed by its own
+// dedicated public alias. The server already allows this (one name per alias, and an
+// account holds unlimited aliases); v19 only lifts the client's one-per-account
+// structural cap. No migration path: there are no real accounts in the wild yet, so a
+// pre-v19 blob fails the strict version check exactly like any older version.
+const SCHEMA_VERSION = 19;
+
+/**
+ * The most public names one account may hold at once (doc 17). A client-side cap: the
+ * server enforces only one name per alias, so this bounds how many dedicated public
+ * aliases the account mints. The add control disables at this count.
+ */
+export const MAX_PUBLIC_NAMES = 5;
 
 /** A published alias and the capabilities to manage it from any device. */
 export interface AliasRecord {
@@ -321,11 +334,12 @@ export interface AccountBlob {
    */
   readonly circles?: CircleRecord[];
   /**
-   * The owner's public vanity-name registration (doc 17). Optional so pre-v11
-   * construction sites stay valid; absent means no name is claimed. The referenced
-   * alias is also present in `aliases`.
+   * The owner's public vanity-name registrations (doc 17): up to MAX_PUBLIC_NAMES
+   * claimed names, each with its own dedicated public alias (also present in
+   * `aliases`). Optional and omitted when empty, so an account with no public name
+   * stays compact. Names are unique (the server rejects a duplicate claim).
    */
-  readonly findable?: FindableRegistration;
+  readonly findables?: FindableRegistration[];
   /**
    * The shared groups the owner is in (doc 33). Optional so pre-v16 construction
    * sites stay valid; absent means no groups. Each record holds the group key and
@@ -501,8 +515,16 @@ function isFindableRegistration(x: unknown): x is FindableRegistration {
   );
 }
 
-function isOptionalFindable(x: unknown): boolean {
-  return x === undefined || isFindableRegistration(x);
+// A list of findable registrations: an array of well-shaped entries. Length is NOT
+// capped here: MAX_PUBLIC_NAMES is a claim-time rule (enforced at register + in the
+// UI), not a storage invariant, so a rare offline multi-device merge that unions past
+// the cap still parses and self-heals as the owner removes one.
+function isFindablesArray(x: unknown): x is FindableRegistration[] {
+  return Array.isArray(x) && x.every(isFindableRegistration);
+}
+
+function isOptionalFindables(x: unknown): boolean {
+  return x === undefined || isFindablesArray(x);
 }
 
 // An id-shaped base64url token, or (when optional) absent.
@@ -650,7 +672,7 @@ export function serializeAccountBlob(blob: AccountBlob): Bytes {
       ? { homeDefaultView: blob.homeDefaultView }
       : {}),
     ...(blob.circles !== undefined ? { circles: blob.circles } : {}),
-    ...(blob.findable !== undefined ? { findable: blob.findable } : {}),
+    ...(blob.findables !== undefined ? { findables: blob.findables } : {}),
     ...(blob.groups !== undefined ? { groups: blob.groups } : {}),
     ...(blob.recoveryName !== undefined
       ? { recoveryName: blob.recoveryName }
@@ -695,8 +717,8 @@ function assertValidOptionalFields(o: Record<string, unknown>): void {
   if (!isOptionalCircles(o.circles)) {
     throw new Error("account blob: invalid circles");
   }
-  if (!isOptionalFindable(o.findable)) {
-    throw new Error("account blob: invalid findable");
+  if (!isOptionalFindables(o.findables)) {
+    throw new Error("account blob: invalid findables");
   }
   if (!isOptionalGroups(o.groups)) {
     throw new Error("account blob: invalid groups");
@@ -736,7 +758,7 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
     ...(Array.isArray(o.circles)
       ? { circles: o.circles as CircleRecord[] }
       : {}),
-    ...(isFindableRegistration(o.findable) ? { findable: o.findable } : {}),
+    ...(isFindablesArray(o.findables) ? { findables: o.findables } : {}),
     ...(Array.isArray(o.groups)
       ? { groups: (o.groups as GroupRecord[]).map(migrateGroupAvatar) }
       : {}),

@@ -179,9 +179,12 @@ passport they are requesting). A private link defaults to a pseudonym but can be
   removed: if you want viewers to knock and be approved, give them a findable handle; if you want
   immediate access, use a private link.
 - **Public link cap: 5 per account.** Multiple public handles are allowed (up to 5), one per
-  public context. Replaces the prior one-per-account limit.
-- **Handle at link creation, not account creation.** Onboarding collects only a local display
-  name (owner-facing, encrypted). Handles are set in the share sheet when a link is created.
+  public context. Replaces the prior one-per-account limit. Built: the owner manages the list from
+  the Public names section on the Links tab (not Settings), each name backed by its own dedicated
+  public alias.
+- **Handle claimed after account creation, not during onboarding.** Onboarding collects only a
+  local display name (owner-facing, encrypted). Public names are claimed later from the Public
+  names section on the Links tab, a deliberate opt-in, never forced at sign-up.
 - **Vanity namespace governance (doc 17) stays.** All existing vanity infrastructure (vanity_name
   table, /u/ endpoint, server-side validation, admin review queue, report-and-takedown, blocklist,
   `FindableName.tsx` component) is reused. Doc 17 is updated for the multi-handle model.
@@ -195,9 +198,11 @@ passport they are requesting). A private link defaults to a pseudonym but can be
 2. **Local display name** at account creation / onboarding (replaces any forced handle choice).
 3. **Public link cap enforcement.** Reject creation past 5 active public links; surface remaining
    count in the share sheet.
-4. **Blob upgrade:** `findable: FindableRegistration` (single, optional) →
-   `findable: FindableRegistration[]` (array, capped at 5 at write time). Each entry carries its
-   own handle + alias id. Bump the blob version.
+4. **Blob upgrade (built):** the single optional `findable` became `findables:
+   FindableRegistration[]` at blob v19, each entry carrying its own name + dedicated alias id. The
+   cap is a claim-time rule (enforced at register and in the add control), not a storage invariant,
+   so a rare offline multi-device merge can union past 5 and still parse, self-healing on the next
+   removal.
 5. **Updatable lifetime UI** on the private link (a "link lasts" preset row); revoke-now in both modes.
 6. **QR** (private-link encoder + scan entry point for in-person sharing). No server surface.
 7. **Existing vanity infrastructure stays unchanged:** vanity_name table, /u/ server endpoint,

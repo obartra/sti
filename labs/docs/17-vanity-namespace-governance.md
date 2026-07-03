@@ -86,8 +86,8 @@ reasons.) Format errors (too short, bad characters) are their own specific, non-
   squatter, the global cap bounds a distributed land-grab across many IPs / fresh aliases. Over-limit is
   a visible `429` (a public act, nothing to hide). This is the real backstop behind the client-side
   per-account cap (above).
-- **Handle caps, and where each is enforced.** Each public link has its own handle, claimed when the
-  link is created in the share sheet, not at account creation.
+- **Handle caps, and where each is enforced.** Each public link has its own handle, claimed from the
+  Public names section on the Links tab (up to 5 per account), not at account creation.
   - **One active name per alias (server-enforced).** A claim is rejected if the requesting alias already
     holds a different active name, so an alias cannot hoard several names (e.g. confusable variants
     `robin` / `rob1n` all aimed at one card). This is the only cap the directory CAN enforce, because it
@@ -268,7 +268,7 @@ Findable mode ships only when all of the following are true:
    is in place. Counsel review is **not** a launch blocker; it is needed only to relax that posture.
 
 All seven now hold, so the onboarding Findable option is enabled (the "Soon" state has been retired)
-and a name can be claimed from Settings.
+and names are claimed and managed (up to 5 per account) from the Public names section on the Links tab.
 
 ## Honest limits (carried)
 

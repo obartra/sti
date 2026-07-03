@@ -131,8 +131,8 @@ Two modes as of June 27, 2026 (revised from three: the intermediate Gated mode i
 - Existence is **disclosed**: a `GET /u/{handle}` returning `200` reveals the handle is registered.
   This is the opted-into cost of being findable, disclosed at registration (doc 17).
 - **Cap: 5 active public links per account.** The handle is claimed either at account creation
-  (the optional username at sign-up, doc 32) or later from the Findable section in Settings, never
-  from the share sheet.
+  (the optional username at sign-up, doc 32) or later from the Public names section on the Links
+  tab, never from the share sheet.
 - Scrapeable/watchable over time (mitigated, never fully solved).
 
 *(Two modes. D1 is the default. D2 requires explicit opt-in with consent disclosure. `vanity + live`,

@@ -2,40 +2,45 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Field, Input } from "../../design/components/index.ts";
 import { cx } from "../../lib/cx.ts";
 import "../core/settings.css";
-import { Globe, Lock } from "../../design/icons.tsx";
+import "./findable.css";
+import { Globe, Lock, Copy, Check, Trash, Plus } from "../../design/icons.tsx";
 import {
   normalizeVanityName,
   vanityNameError,
   type VanityNameError,
 } from "../../store/vanityName.ts";
+import { MAX_PUBLIC_NAMES } from "../../store/accountBlob.ts";
+import { copyText } from "../../lib/clipboard.ts";
+import { publicLinkFor, publicHttpsLinkFor } from "./shareLinkGuideCopy.ts";
 import type { VanityRegisterResult } from "../../api/client.ts";
 
-// Findable owner registration (doc 17, F5). Lets the owner claim a public vanity
-// name for their alias, behind an explicit consent disclosure. The transport is
-// injected (FindableOps) so this is driven in tests/Storybook without a server,
-// and so the parent can bind it to the right alias + persist the chosen name.
+// The owner's public-name manager (doc 17), on the Links tab: a list of up to
+// MAX_PUBLIC_NAMES claimed names, each backed by its own dedicated public alias, plus
+// an add flow behind an explicit consent disclosure. The transport is injected
+// (FindableOps) so this is driven in tests/Storybook without a server, and so the
+// parent binds it to the right aliases + persists each chosen name. The list is
+// prop-driven: a claim or removal folds the owner session a layer up, which flows
+// back in as a fresh `names`, so the component never tracks its own list.
 
 export interface FindableOps {
-  /** Claim `name` for the owner's alias. Returns the outcome, never throws on the
+  /** Claim `name` for the owner. Returns the outcome, never throws on the
    * expected "unavailable" (taken/reserved/blocked) case. */
   register: (name: string) => Promise<VanityRegisterResult>;
   /** Look up if `name` is free, without claiming it, so the form can answer as the
    * owner types. `name` is already normalized + format-valid. */
   check: (name: string) => Promise<"free" | "taken" | "error">;
-  /** Release the currently registered name into the 24h lock. */
-  release: () => Promise<void>;
+  /** Release the named registration into the 24h lock (no-op if not held). */
+  release: (name: string) => Promise<void>;
 }
 
-export interface FindableNameProps {
-  /** The owner's currently registered name, or null if none. */
-  currentName: string | null;
+export interface PublicNamesProps {
+  /** The owner's claimed public names, in claim order. Empty when none. */
+  names: string[];
   ops: FindableOps;
-  /** Persist the result: the new name on a claim, or null on release. */
-  onChange?: (name: string | null) => void;
-  /** True when this name is the owner's sign-in username (a password is set on it,
-   * doc 32): the name is pinned, so the release control is hidden and a plain reason
-   * is shown. The server enforces the same rule (doc 17); this is the matching UI. */
-  pinned?: boolean;
+  /** The name pinned as the sign-in username (doc 32), if any: it cannot be
+   * removed, so its row shows the reason instead of a remove control. The server
+   * enforces the same rule (doc 17); this is the matching UI. */
+  pinnedName?: string | null | undefined;
 }
 
 const NAME_ERROR: Record<VanityNameError, string> = {
@@ -46,7 +51,16 @@ const NAME_ERROR: Record<VanityNameError, string> = {
 };
 
 const COPY = {
-  title: "Public name",
+  sectionTitle: "Public names",
+  sectionLead: "Names people can look you up by. You can have up to 5.",
+  // A calm empty state when the owner holds none.
+  empty:
+    "You have no public names yet. Add one so people can find you and ask to see your status.",
+  add: "Add a public name",
+  // Shown in place of the add control once the list is full (doc 17 cap).
+  atCap: "You have the maximum of 5.",
+  cancel: "Cancel",
+  // Your name becomes public: one honest line up front.
   lead: "Your name becomes public and searchable.",
   // The consent disclosure (doc 17 launch-gate item 5): being findable means people
   // can see you're here. Always-visible, never behind the expander. This is honest
@@ -56,7 +70,7 @@ const COPY = {
   sub: "Your status itself stays private. People still ask to see it, and you still approve.",
   details: "What else this means",
   bullets: [
-    "Release the name and, after a short delay, anyone can claim it.",
+    "Remove a name and, after a short delay, anyone can claim it.",
     "Names aren't verified; someone may pick one close to yours.",
   ],
   label: "Choose a name",
@@ -69,33 +83,76 @@ const COPY = {
   // that covers them all. "Available" reads at a normal level and stays honest.
   unavailable: "That name isn't available. Try another.",
   failed: "Couldn't reach the service. Try again.",
-  registeredAt: "People can find you at this name:",
-  release: "Release name",
-  releasing: "Releasing…",
-  // Shown in place of the release control when the name is the owner's sign-in
-  // username (doc 32): releasing it would break the password login, so we point at
+  linkLabel: "People can find you at:",
+  copy: "Copy link",
+  copied: "Copied",
+  remove: "Remove",
+  removing: "Removing…",
+  // Shown in place of the remove control when the name is the owner's sign-in
+  // username (doc 32): removing it would break the password login, so we point at
   // the fix instead of a dead end. Matches the server's refusal reason.
   pinned:
-    "This name is your sign-in username. Turn the password off first to release it.",
+    "This name is your sign-in username. Turn the password off first to remove it.",
 } as const;
 
-export function FindableName({
-  currentName,
+export function PublicNames({
+  names,
   ops,
-  onChange,
-  pinned = false,
-}: FindableNameProps) {
-  if (currentName !== null) {
-    return (
-      <RegisteredView
-        name={currentName}
-        ops={ops}
-        onReleased={() => onChange?.(null)}
-        pinned={pinned}
-      />
-    );
-  }
-  return <RegisterForm ops={ops} onRegistered={(n) => onChange?.(n)} />;
+  pinnedName = null,
+}: PublicNamesProps) {
+  const [adding, setAdding] = useState(false);
+  const atCap = names.length >= MAX_PUBLIC_NAMES;
+  return (
+    <section className="pn">
+      <div className="st__block-head">
+        <span aria-hidden className="st__block-icon">
+          <Globe size={18} />
+        </span>
+        <div className="st__block-body">
+          <div className="st__block-title">{COPY.sectionTitle}</div>
+          <div className="st__block-lead">{COPY.sectionLead}</div>
+        </div>
+      </div>
+
+      {names.length === 0 && !adding && (
+        <div className="st__note">{COPY.empty}</div>
+      )}
+
+      {names.length > 0 && (
+        <div className="pn__list">
+          {names.map((name) => (
+            <NameRow
+              key={name}
+              name={name}
+              ops={ops}
+              pinned={name === pinnedName}
+            />
+          ))}
+        </div>
+      )}
+
+      {adding ? (
+        <RegisterForm
+          ops={ops}
+          onRegistered={() => setAdding(false)}
+          onCancel={() => setAdding(false)}
+        />
+      ) : (
+        <div className="pn__add">
+          <Button
+            variant="secondary"
+            size="md"
+            icon={<Plus size={16} />}
+            disabled={atCap}
+            onClick={() => setAdding(true)}
+          >
+            {COPY.add}
+          </Button>
+          {atCap && <div className="st__note">{COPY.atCap}</div>}
+        </div>
+      )}
+    </section>
+  );
 }
 
 type NameStatus = "idle" | "checking" | "free" | "taken" | "error";
@@ -158,12 +215,17 @@ function StatusLine({
   );
 }
 
+// The add flow: the consent disclosure + the name picker. A successful claim folds
+// the session a layer up (the list grows via props) and calls onRegistered so the
+// section closes the form; onCancel backs out without claiming.
 function RegisterForm({
   ops,
   onRegistered,
+  onCancel,
 }: {
   ops: FindableOps;
-  onRegistered: (name: string) => void;
+  onRegistered: () => void;
+  onCancel: () => void;
 }) {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -183,7 +245,7 @@ function RegisterForm({
       void ops
         .register(normalized)
         .then((result) => {
-          if (result === "registered") onRegistered(normalized);
+          if (result === "registered") onRegistered();
           else if (result === "unavailable") setClaimError(COPY.unavailable);
           else setClaimError(COPY.failed);
         })
@@ -221,40 +283,57 @@ function RegisterForm({
           status={status}
           claimError={claimError}
         />
-        <Button
-          type="submit"
-          variant="primary"
-          size="md"
-          block
-          disabled={blockSubmit}
-        >
-          {busy ? COPY.claiming : COPY.claim}
-        </Button>
+        <div className="pn__form-actions">
+          <Button
+            type="button"
+            variant="ghost"
+            size="md"
+            disabled={busy}
+            onClick={onCancel}
+          >
+            {COPY.cancel}
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            size="md"
+            disabled={blockSubmit}
+          >
+            {busy ? COPY.claiming : COPY.claim}
+          </Button>
+        </div>
       </form>
     </div>
   );
 }
 
-function RegisteredView({
+// One claimed name: the name, its public link with a one-tap copy, and a remove
+// control (or, when the name is the sign-in username, the plain pin reason). A
+// removal folds the session a layer up, so the row simply unmounts as `names` shrinks.
+function NameRow({
   name,
   ops,
-  onReleased,
   pinned,
 }: {
   name: string;
   ops: FindableOps;
-  onReleased: () => void;
   pinned: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  const release = useCallback(() => {
+  const copy = () => {
+    if (!copyText(publicHttpsLinkFor(name))) return;
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1600);
+  };
+
+  const remove = useCallback(() => {
     setBusy(true);
     setError(null);
     void ops
-      .release()
-      .then(onReleased)
+      .release(name)
       // The server enforces the pin too (doc 17): if a password was set on this name
       // (e.g. in another tab) after we rendered, it refuses with a 409. Surface the
       // plain reason rather than a generic failure.
@@ -262,35 +341,48 @@ function RegisteredView({
         setError(isPinRefusal(e) ? COPY.pinned : COPY.failed),
       )
       .finally(() => setBusy(false));
-  }, [ops, onReleased]);
+  }, [ops, name]);
 
   return (
-    <div className="st__block">
-      <div className="st__block-head">
-        <span aria-hidden className="st__block-icon">
-          <Globe size={18} />
-        </span>
-        <div className="st__block-body">
-          <div className="st__block-title">{COPY.title}</div>
+    <div className="pn__row">
+      <div className="pn__row-body">
+        <div className="st__mono">{name}</div>
+        <div className="pn__link">
+          <span className="pn__link-label">{COPY.linkLabel}</span>
+          <span className="pn__link-value">{publicLinkFor(name)}</span>
         </div>
+        {error !== null && <div className="st__error">{error}</div>}
       </div>
-      <div className="st__value-label">{COPY.registeredAt}</div>
-      <div className="st__mono">{name}</div>
-      {error !== null && <div className="st__error">{error}</div>}
-      {/* Pinned (doc 32): this name is the sign-in username, so we do not offer to
-          release it. Show the fix instead of a control that would be refused. */}
-      {pinned ? (
-        <div className="st__note">{COPY.pinned}</div>
-      ) : (
-        <Button variant="secondary" size="md" disabled={busy} onClick={release}>
-          {busy ? COPY.releasing : COPY.release}
+      <div className="pn__row-actions">
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={copied ? <Check size={15} /> : <Copy size={15} />}
+          onClick={copy}
+        >
+          {copied ? COPY.copied : COPY.copy}
         </Button>
-      )}
+        {/* Pinned (doc 32): this name is the sign-in username, so we do not offer to
+            remove it. Show the fix instead of a control that would be refused. */}
+        {pinned ? (
+          <span className="st__note">{COPY.pinned}</span>
+        ) : (
+          <Button
+            variant="quiet"
+            size="sm"
+            icon={<Trash size={15} />}
+            disabled={busy}
+            onClick={remove}
+          >
+            {busy ? COPY.removing : COPY.remove}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
 
-// A release the server refused because the name carries a password login (doc 17
+// A remove the server refused because the name carries a password login (doc 17
 // pin): the DELETE answers 409, which the api client surfaces as a "conflict" kind.
 function isPinRefusal(e: unknown): boolean {
   return (

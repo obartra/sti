@@ -36,11 +36,13 @@ export interface OwnerActions extends GroupJoinActions {
   /** Persist the owner's local display name (keeps avatar + sharing mode); pass
    * null to clear it back to no name. Owner-facing only, never sent to a viewer. */
   onSetName: (name: string | null) => void;
-  /** Mint a new per-contact link with a face (anonymous, or the owner's name);
-   * resolves with the contact + URL. The link is durable until revoked. */
+  /** Mint a new per-contact link with a face (anonymous, or the owner's name)
+   * and a lifetime (an absolute expiry instant, or null for until-revoked);
+   * resolves with the contact + URL. */
   onCreateContactLink: (
     label: string,
     identity: AliasIdentity,
+    expiresAt?: number | null,
   ) => Promise<ContactLinkResult>;
   /** Rename one contact link's local label (owner-only nickname; never shared). */
   onRenameContact: (id: string, label: string) => void;
@@ -75,8 +77,8 @@ export interface OwnerActions extends GroupJoinActions {
   onRegisterVanityName: (name: string) => Promise<VanityRegisterResult>;
   /** Check if a findable name is free as the owner types (no claim). */
   onCheckVanityName: (name: string) => Promise<"free" | "taken" | "error">;
-  /** Release the owner's claimed findable name (no-op if none). */
-  onReleaseVanityName: () => Promise<void>;
+  /** Release one of the owner's claimed findable names (no-op if not held). */
+  onReleaseVanityName: (name: string) => Promise<void>;
   /** Turn the password factor on (or change it, doc 32); resolves with the outcome
    * the Settings card shows (set / wrong phrase / taken name / weak / error). */
   onSetRecoveryPassword: (
@@ -290,13 +292,16 @@ function useFindableActions(
     [controller, sessionRef, setSession],
   );
 
-  const onReleaseVanityName = useCallback(async (): Promise<void> => {
-    const current = sessionRef.current;
-    if (current === null) return;
-    const updated = await controller.releaseVanityName(current);
-    sessionRef.current = updated;
-    setSession(updated);
-  }, [controller, sessionRef, setSession]);
+  const onReleaseVanityName = useCallback(
+    async (name: string): Promise<void> => {
+      const current = sessionRef.current;
+      if (current === null) return;
+      const updated = await controller.releaseVanityName(current, name);
+      sessionRef.current = updated;
+      setSession(updated);
+    },
+    [controller, sessionRef, setSession],
+  );
 
   return { onRegisterVanityName, onCheckVanityName, onReleaseVanityName };
 }

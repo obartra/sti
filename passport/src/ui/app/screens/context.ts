@@ -134,14 +134,14 @@ export interface ScreenCtx extends GroupJoinActions {
   /** Shared-group catch-up (doc 33): ingest arrived accepts/leaves and pick up
    * approvals, folding the session. Triggered on People / group-detail mount. */
   onGroupCatchup: () => Promise<void>;
-  /** The owner's claimed findable name, or null (logged out, or none claimed). */
-  vanityName: string | null;
+  /** The owner's claimed findable names, in claim order (empty logged out or none). */
+  vanityNames: string[];
   /** Claim a public findable name; resolves with the outcome (doc 17, gated). */
   onRegisterVanityName: (name: string) => Promise<VanityRegisterResult>;
   /** Check if a findable name is free as the owner types (no claim). */
   onCheckVanityName: (name: string) => Promise<"free" | "taken" | "error">;
-  /** Release the owner's claimed findable name (no-op if none). */
-  onReleaseVanityName: () => Promise<void>;
+  /** Release one of the owner's claimed findable names (no-op if not held). */
+  onReleaseVanityName: (name: string) => Promise<void>;
   /** The owner's recovery name, or null when no password factor is set (doc 32). */
   recoveryName: string | null;
   /** When the recovery password was last set or changed (epoch ms, doc 32), or

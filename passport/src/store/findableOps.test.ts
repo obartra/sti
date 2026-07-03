@@ -97,7 +97,7 @@ describe("registerVanityName", () => {
     );
 
     expect(result).toBe("registered");
-    const reg = next.blob.findable;
+    const reg = next.blob.findables?.find((f) => f.name === "robin");
     expect(reg).toBeDefined();
     expect(reg?.name).toBe("robin");
     // The backing alias is in the blob (so knocks to it are reviewed) and public.
@@ -126,7 +126,7 @@ describe("registerVanityName", () => {
     );
 
     expect(result).toBe("unavailable");
-    expect(next.blob.findable).toBeUndefined();
+    expect(next.blob.findables).toBeUndefined();
     expect(next.blob.aliases).toHaveLength(0);
     expect(register).toHaveBeenCalledOnce();
     // Two PUTs to the same alias id: the publish, then the revoke (garbage).
@@ -149,8 +149,55 @@ describe("registerVanityName", () => {
     );
 
     expect(result).toBe("error");
-    expect(next.blob.findable).toBeUndefined();
+    expect(next.blob.findables).toBeUndefined();
     expect(next.blob.aliases).toHaveLength(0);
+  });
+
+  it("appends a second name so both land in findables (doc 17 cap 5)", async () => {
+    const { api } = fakeApi({ registerResult: "registered" });
+    const { accounts, session } = await freshSession(api);
+
+    const one = (await registerVanityName(api, accounts, session, "robin"))
+      .session;
+    const two = (await registerVanityName(api, accounts, one, "wren")).session;
+
+    // Both registrations survive, each with its own dedicated public alias.
+    expect(two.blob.findables?.map((f) => f.name)).toEqual(["robin", "wren"]);
+    const aliasIds = new Set(two.blob.findables?.map((f) => f.aliasId));
+    expect(aliasIds.size).toBe(2);
+    for (const id of aliasIds) {
+      expect(two.blob.aliases.find((a) => a.id === id)?.isPublic).toBe(true);
+    }
+  });
+
+  it("returns 'error' and mints nothing when already at the cap of 5", async () => {
+    const { api, putAlias, register } = fakeApi({
+      registerResult: "registered",
+    });
+    const { accounts, session } = await freshSession(api);
+
+    // Fill the list to MAX_PUBLIC_NAMES.
+    let current = session;
+    for (const name of ["a_one", "a_two", "a_three", "a_four", "a_five"]) {
+      current = (await registerVanityName(api, accounts, current, name))
+        .session;
+    }
+    expect(current.blob.findables).toHaveLength(5);
+    putAlias.mockClear();
+    register.mockClear();
+
+    // A sixth claim is refused defensively: no alias minted, no server call, no change.
+    const { session: next, result } = await registerVanityName(
+      api,
+      accounts,
+      current,
+      "a_six",
+    );
+    expect(result).toBe("error");
+    expect(next).toBe(current);
+    expect(next.blob.findables).toHaveLength(5);
+    expect(putAlias).not.toHaveBeenCalled();
+    expect(register).not.toHaveBeenCalled();
   });
 });
 
@@ -165,20 +212,38 @@ describe("releaseVanityName", () => {
     const alias = claimed.blob.aliases[0];
     putAlias.mockClear();
 
-    const next = await releaseVanityName(api, accounts, claimed);
+    const next = await releaseVanityName(api, accounts, claimed, "robin");
 
     expect(release).toHaveBeenCalledWith("robin", alias?.writeToken);
-    expect(next.blob.findable).toBeUndefined();
+    expect(next.blob.findables).toBeUndefined();
     expect(next.blob.aliases).toHaveLength(0);
     // The alias was revoked (a PUT to its id).
     expect(putAlias.mock.calls.map((c) => c[0] as string)).toContain(alias?.id);
   });
 
-  it("is a no-op when no name is claimed", async () => {
+  it("releases one name and leaves the other in place", async () => {
+    const { api, release } = fakeApi({ registerResult: "registered" });
+    const { accounts, session } = await freshSession(api);
+    const one = (await registerVanityName(api, accounts, session, "robin"))
+      .session;
+    const two = (await registerVanityName(api, accounts, one, "wren")).session;
+    const wrenAliasId = two.blob.findables?.find(
+      (f) => f.name === "wren",
+    )?.aliasId;
+
+    const next = await releaseVanityName(api, accounts, two, "robin");
+
+    // Only "robin" is gone; "wren" and its backing alias survive.
+    expect(release).toHaveBeenCalledWith("robin", expect.any(String));
+    expect(next.blob.findables?.map((f) => f.name)).toEqual(["wren"]);
+    expect(next.blob.aliases.map((a) => a.id)).toContain(wrenAliasId);
+  });
+
+  it("is a no-op when the name is not one the owner holds", async () => {
     const { api, release } = fakeApi({});
     const { accounts, session } = await freshSession(api);
 
-    const next = await releaseVanityName(api, accounts, session);
+    const next = await releaseVanityName(api, accounts, session, "nobody");
 
     expect(next).toBe(session);
     expect(release).not.toHaveBeenCalled();
@@ -205,12 +270,14 @@ describe("releaseVanityName", () => {
         ? Promise.reject(new Error("network"))
         : Promise.resolve();
 
-    await expect(releaseVanityName(api, accounts, claimed)).rejects.toThrow();
+    await expect(
+      releaseVanityName(api, accounts, claimed, "robin"),
+    ).rejects.toThrow();
 
     // Nothing was torn down: the persisted blob still has the registration and its
     // alias, so the owner can retry.
     const reloaded = (await accounts.recover(created.recoveryPhrase))?.blob;
-    expect(reloaded?.findable).toBeDefined();
+    expect(reloaded?.findables?.some((f) => f.name === "robin")).toBe(true);
     expect(reloaded?.aliases.map((a) => a.id)).toContain(alias?.id);
   });
 });
@@ -248,24 +315,32 @@ describe("primaryShareAlias", () => {
     isPublic,
   });
 
-  it("excludes the findable alias when picking the share alias", () => {
-    const findable = mk("F", true);
+  it("excludes every findable alias when picking the share alias", () => {
+    const findableA = mk("F", true);
+    const findableB = mk("G", true);
     const share = mk("S", true);
     const blob = {
-      aliases: [findable, share],
-      findable: { name: "robin", aliasId: findable.id },
+      aliases: [findableA, findableB, share],
+      findables: [
+        { name: "robin", aliasId: findableA.id },
+        { name: "wren", aliasId: findableB.id },
+      ],
     } as unknown as AccountBlob;
 
-    // Both are public, but the findable alias must never be returned as the share
-    // link, so the OTHER public alias is chosen.
+    // All findable aliases are public, but none may be returned as the share link,
+    // so the OTHER public alias is chosen.
     expect(primaryShareAlias(blob, true)?.id).toBe(share.id);
   });
 
-  it("returns undefined when the only public alias is the findable one", () => {
-    const findable = mk("F", true);
+  it("returns undefined when the only public aliases are findable ones", () => {
+    const findableA = mk("F", true);
+    const findableB = mk("G", true);
     const blob = {
-      aliases: [findable],
-      findable: { name: "robin", aliasId: findable.id },
+      aliases: [findableA, findableB],
+      findables: [
+        { name: "robin", aliasId: findableA.id },
+        { name: "wren", aliasId: findableB.id },
+      ],
     } as unknown as AccountBlob;
 
     expect(primaryShareAlias(blob, true)).toBeUndefined();

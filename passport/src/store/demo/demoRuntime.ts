@@ -449,6 +449,8 @@ export function createDemoController(): SessionController {
     registerVanityName: (s) =>
       Promise.resolve({ session: s, result: "unavailable" as const }),
     checkVanityName: () => Promise.resolve("taken" as const),
+    // Release takes a name (doc 17), but the demo holds no public names, so it
+    // ignores the name and returns the session unchanged.
     releaseVanityName: (s) => Promise.resolve(s),
     ...demoRecovery(getBlob, setBlob, session),
     ...demoGroups(getBlob, setBlob, session),

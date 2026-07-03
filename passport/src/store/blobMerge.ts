@@ -33,6 +33,7 @@ import type {
   AliasRecord,
   ContactRecord,
   CircleRecord,
+  FindableRegistration,
 } from "./accountBlob.ts";
 
 /** Structural equality for the plain JSON values a blob is built from. */
@@ -79,33 +80,42 @@ function pickScalar<T>(base: T, mine: T, theirs: T): T {
  * rule. Order follows `mine` first, then records only `theirs` added, so the result
  * is deterministic.
  */
-function mergeById<T extends { readonly id: string }>(
+function mergeByKey<T>(
   base: readonly T[],
   mine: readonly T[],
   theirs: readonly T[],
+  keyOf: (x: T) => string,
 ): T[] {
-  const b = new Map(base.map((x) => [x.id, x]));
-  const m = new Map(mine.map((x) => [x.id, x]));
-  const t = new Map(theirs.map((x) => [x.id, x]));
+  const b = new Map(base.map((x) => [keyOf(x), x]));
+  const m = new Map(mine.map((x) => [keyOf(x), x]));
+  const t = new Map(theirs.map((x) => [keyOf(x), x]));
   const out: T[] = [];
-  const ids = new Set<string>([...m.keys(), ...t.keys()]);
-  for (const id of ids) {
-    const mi = m.get(id);
-    const ti = t.get(id);
+  const keys = new Set<string>([...m.keys(), ...t.keys()]);
+  for (const k of keys) {
+    const mi = m.get(k);
+    const ti = t.get(k);
     if (mi !== undefined && ti !== undefined) {
       // Both sides have it. With an ancestor, reconcile field-by-field. With NONE
-      // (both devices independently added the same id), it is a true divergence, so
+      // (both devices independently added the same key), it is a true divergence, so
       // mine wins per the policy above; standing in `ti` as the pseudo-ancestor makes
       // pickScalar return mine on any differing field (and either when identical).
-      out.push(pickScalar(b.get(id) ?? ti, mi, ti));
+      out.push(pickScalar(b.get(k) ?? ti, mi, ti));
       continue;
     }
     // Present on one side only: kept only when it is a fresh add (not in the
     // ancestor), so a record the other side deleted stays deleted.
     const only = mi ?? ti;
-    if (only !== undefined && !b.has(id)) out.push(only);
+    if (only !== undefined && !b.has(k)) out.push(only);
   }
   return out;
+}
+
+function mergeById<T extends { readonly id: string }>(
+  base: readonly T[],
+  mine: readonly T[],
+  theirs: readonly T[],
+): T[] {
+  return mergeByKey(base, mine, theirs, (x) => x.id);
 }
 
 /** Merge `mine` onto `theirs` over their common ancestor `base` (doc 22 S8). */
@@ -119,7 +129,18 @@ export function mergeAccountBlobs(
     mine.circles ?? [],
     theirs.circles ?? [],
   );
-  const findable = pickScalar(base.findable, mine.findable, theirs.findable);
+  // Public names merge by name like any add-or-both list (delete wins): two devices
+  // that each claimed a different name offline both survive. Names are unique (the
+  // server rejects a duplicate claim), so a name is never on both sides with a
+  // different alias. A rare offline race can union past MAX_PUBLIC_NAMES; that stays a
+  // valid blob (the cap is a claim-time rule, not a storage invariant) and self-heals
+  // as the owner removes one, so no live public name is silently orphaned here.
+  const findables = mergeByKey<FindableRegistration>(
+    base.findables ?? [],
+    mine.findables ?? [],
+    theirs.findables ?? [],
+    (f) => f.name,
+  );
   const handle = pickScalar(base.handle, mine.handle, theirs.handle);
   return {
     ...(handle !== undefined ? { handle } : {}),
@@ -138,6 +159,6 @@ export function mergeAccountBlobs(
     ),
     // Optional fields are omitted when empty/absent, matching serializeAccountBlob.
     ...(circles.length > 0 ? { circles } : {}),
-    ...(findable !== undefined ? { findable } : {}),
+    ...(findables.length > 0 ? { findables } : {}),
   };
 }

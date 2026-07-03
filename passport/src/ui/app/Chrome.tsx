@@ -81,7 +81,7 @@ export interface ChromeProps extends GroupJoinActions {
   onLeaveGroup: ScreenCtx["onLeaveGroup"];
   onDeleteGroup: ScreenCtx["onDeleteGroup"];
   onGroupCatchup: ScreenCtx["onGroupCatchup"];
-  vanityName: ScreenCtx["vanityName"];
+  vanityNames: ScreenCtx["vanityNames"];
   onRegisterVanityName: ScreenCtx["onRegisterVanityName"];
   onCheckVanityName: ScreenCtx["onCheckVanityName"];
   onReleaseVanityName: ScreenCtx["onReleaseVanityName"];
@@ -215,7 +215,7 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     onRejectGroupInvite: props.onRejectGroupInvite,
     onRequestToJoin: props.onRequestToJoin,
     onGroupCatchup: props.onGroupCatchup,
-    vanityName: props.vanityName,
+    vanityNames: props.vanityNames,
     onRegisterVanityName: props.onRegisterVanityName,
     onCheckVanityName: props.onCheckVanityName,
     onReleaseVanityName: props.onReleaseVanityName,

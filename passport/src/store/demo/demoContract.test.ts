@@ -243,7 +243,7 @@ async function walkController(controller: SessionController): Promise<void> {
   // name); release is a no-op that returns a session.
   const vanity = await controller.registerVanityName(dropped, "robin");
   expect(vanity.result).toBe("unavailable");
-  expect(await controller.releaseVanityName(dropped)).not.toBeNull();
+  expect(await controller.releaseVanityName(dropped, "robin")).not.toBeNull();
 
   // Shared groups (doc 33): create records a group in the local blob and reports
   // the create outcome (a public handle "registered", a private one "created").

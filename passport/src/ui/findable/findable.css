@@ -284,6 +284,75 @@
   background: var(--accent-soft);
 }
 
+/* ── Public names manager (the Links tab, doc 17) ────────────────────────── */
+/* The owner's up-to-5 list of claimed public names, above the private links.
+   Hairline-opened rows on the page surface (doc 37), the name in mono, its
+   public link beneath, and per-row copy/remove controls. */
+.pn {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pn__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.pn__row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: 12px 0;
+  border-top: var(--hairline);
+}
+
+.pn__row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pn__link {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pn__link-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.pn__link-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-body);
+  word-break: break-all;
+}
+
+.pn__row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pn__add {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.pn__form-actions {
+  display: flex;
+  gap: 10px;
+}
+
 /* ── Report a findable name (the feedback-form grammar) ──────────────────── */
 .rn {
   display: flex;

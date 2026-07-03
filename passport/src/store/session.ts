@@ -366,11 +366,11 @@ export interface SessionController extends GroupMembershipController {
    */
   checkVanityName(name: string): Promise<"free" | "taken" | "error">;
   /**
-   * Release the owner's claimed findable name: drop the server binding (into the
-   * 24h lock), revoke the dedicated alias, and clear the registration. A no-op when
-   * no name is claimed. Returns the updated session.
+   * Release one of the owner's claimed findable names: drop the server binding (into
+   * the 24h lock), revoke its dedicated alias, and clear the registration. A no-op
+   * when `name` is not one the owner holds. Returns the updated session.
    */
-  releaseVanityName(session: OwnerSession): Promise<OwnerSession>;
+  releaseVanityName(session: OwnerSession, name: string): Promise<OwnerSession>;
   /**
    * Create a shared group (doc 33): mint the group key, publish the creator's own
    * group card sealed under it, write the group blob, and, for a public group,
@@ -612,24 +612,17 @@ export function createSessionController(deps: SessionDeps): SessionController {
       setShareLinkExpiry(api, accounts, session, durationMs),
 
     async deleteAccount(session) {
-      // Best-effort: drop any public findable binding first (doc 17), so the name
-      // does not linger claimed after the account is gone. The alias itself is
-      // revoked by deleteAccount's revoke-all below. Never blocks deletion.
-      const reg = session.blob.findable;
-      const alias = reg
-        ? session.blob.aliases.find((a) => a.id === reg.aliasId)
-        : undefined;
-      if (reg !== undefined && alias !== undefined) {
-        await api
-          .releaseVanityName(reg.name, alias.writeToken)
-          .catch(() => undefined);
+      // Best-effort: drop every public findable binding first (doc 17) so no name
+      // lingers claimed after the account is gone (the aliases are revoked below).
+      for (const reg of session.blob.findables ?? []) {
+        const alias = session.blob.aliases.find((a) => a.id === reg.aliasId);
+        const done = alias && api.releaseVanityName(reg.name, alias.writeToken);
+        if (done) await done.catch(() => undefined);
       }
-      // Wipe the local resumable key material FIRST (doc 24): a deleted account
-      // must leave no resumable key, and these clears are local and cheap. If the
-      // server-side delete below throws (a transient network blip mid-revoke), the
-      // device must still be left un-resumable, not silently resume into an account
-      // the owner believes is gone. The server delete is retryable; the local wipe
-      // is the part that protects this device, so it can't be gated on the network.
+      // Wipe the local resumable key material FIRST (doc 24): if the server delete
+      // below throws (a transient blip mid-revoke), the device must still be left
+      // un-resumable rather than silently resuming into an account the owner believes
+      // is gone. The server delete is retryable; the local wipe protects this device.
       devices.clear();
       await keys.clear();
       await accounts.deleteAccount(session.root);
@@ -690,7 +683,8 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
     checkVanityName: (name) => checkVanityName(api, name),
 
-    releaseVanityName: (session) => releaseVanityName(api, accounts, session),
+    releaseVanityName: (session, name) =>
+      releaseVanityName(api, accounts, session, name),
     createGroup: (s, input) => createGroup(api, accounts, s, input),
 
     ...groupMembershipControllerMethods(api, accounts),

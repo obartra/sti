@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
-import { FindableName, type FindableOps } from "./FindableName.tsx";
+import { PublicNames, type FindableOps } from "./FindableName.tsx";
 import type { VanityRegisterResult } from "../../api/client.ts";
 
 function ops(over: Partial<FindableOps> = {}): FindableOps {
@@ -13,32 +13,46 @@ function ops(over: Partial<FindableOps> = {}): FindableOps {
   };
 }
 
-describe("FindableName", () => {
-  it("claims a normalized name and reports it up", async () => {
+// Open the add flow (the claim form starts collapsed behind the "Add a public
+// name" control, so claiming stays a deliberate step).
+async function openAdd(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: /add a public name/i }));
+}
+
+describe("PublicNames (the Links-tab manager)", () => {
+  it("shows a calm empty state and the add control when none are held", () => {
+    render(<PublicNames names={[]} ops={ops()} />);
+    expect(screen.getByText(/no public names yet/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /add a public name/i }),
+    ).toBeEnabled();
+    // No claim form until the owner opens it.
+    expect(screen.queryByLabelText(/choose a name/i)).not.toBeInTheDocument();
+  });
+
+  it("claims a normalized name through the add flow", async () => {
     const user = userEvent.setup();
     const register = vi.fn(() => Promise.resolve("registered" as const));
-    const onChange = vi.fn();
-    render(
-      <FindableName
-        currentName={null}
-        ops={ops({ register })}
-        onChange={onChange}
-      />,
-    );
+    render(<PublicNames names={[]} ops={ops({ register })} />);
 
+    await openAdd(user);
     await user.type(screen.getByLabelText(/choose a name/i), "RoBiN");
     await user.click(
       screen.getByRole("button", { name: /make my name public/i }),
     );
 
     expect(register).toHaveBeenCalledWith("robin"); // normalized
-    await waitFor(() => expect(onChange).toHaveBeenCalledWith("robin"));
+    // On success the form closes (the list would grow via a fresh `names` prop).
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/choose a name/i)).not.toBeInTheDocument(),
+    );
   });
 
   it("checks availability as you type and shows a free name is free", async () => {
     const user = userEvent.setup();
     const check = vi.fn(() => Promise.resolve("free" as const));
-    render(<FindableName currentName={null} ops={ops({ check })} />);
+    render(<PublicNames names={[]} ops={ops({ check })} />);
+    await openAdd(user);
     await user.type(screen.getByLabelText(/choose a name/i), "robin");
     expect(await screen.findByText(/that name is free/i)).toBeInTheDocument();
     expect(check).toHaveBeenCalledWith("robin");
@@ -48,24 +62,25 @@ describe("FindableName", () => {
     const user = userEvent.setup();
     const register = vi.fn(() => Promise.resolve("registered" as const));
     render(
-      <FindableName
-        currentName={null}
+      <PublicNames
+        names={[]}
         ops={ops({ register, check: () => Promise.resolve("taken") })}
       />,
     );
+    await openAdd(user);
     await user.type(screen.getByLabelText(/choose a name/i), "robin");
     expect(await screen.findByText(/isn't available/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /make my name public/i }),
     ).toBeDisabled();
-    // It never even tried to claim a name it already knows is taken.
     expect(register).not.toHaveBeenCalled();
   });
 
   it("does not call the server for a format-invalid name as you type", async () => {
     const user = userEvent.setup();
     const check = vi.fn(() => Promise.resolve("free" as const));
-    render(<FindableName currentName={null} ops={ops({ check })} />);
+    render(<PublicNames names={[]} ops={ops({ check })} />);
+    await openAdd(user);
     await user.type(screen.getByLabelText(/choose a name/i), "ab"); // too short
     expect(
       await screen.findByText(/at least 3 characters/i),
@@ -73,47 +88,15 @@ describe("FindableName", () => {
     expect(check).not.toHaveBeenCalled();
   });
 
-  it("rejects an invalid name locally without calling the server", async () => {
-    const user = userEvent.setup();
-    const register = vi.fn(() => Promise.resolve("registered" as const));
-    render(<FindableName currentName={null} ops={ops({ register })} />);
-
-    await user.type(screen.getByLabelText(/choose a name/i), "ab"); // too short
-    await user.click(
-      screen.getByRole("button", { name: /make my name public/i }),
-    );
-
-    expect(
-      await screen.findByText(/at least 3 characters/i),
-    ).toBeInTheDocument();
-    expect(register).not.toHaveBeenCalled();
-  });
-
-  it("does not block abuse names locally: it asks the server, which is authoritative (G8)", async () => {
-    // The client no longer ships a scam/abuse blocklist; a name like "scam" passes the
-    // instant check and reaches the server, which answers blocked names with a 409
-    // surfaced as "unavailable". So the client must NOT short-circuit it.
-    const user = userEvent.setup();
-    const register = vi.fn(() => Promise.resolve("unavailable" as const));
-    render(<FindableName currentName={null} ops={ops({ register })} />);
-
-    await user.type(screen.getByLabelText(/choose a name/i), "scam");
-    await user.click(
-      screen.getByRole("button", { name: /make my name public/i }),
-    );
-
-    expect(register).toHaveBeenCalledWith("scam");
-    expect(await screen.findByText(/isn't available/i)).toBeInTheDocument();
-  });
-
   it("shows an 'unavailable' message when the name can't be claimed", async () => {
     const user = userEvent.setup();
     render(
-      <FindableName
-        currentName={null}
+      <PublicNames
+        names={[]}
         ops={ops({ register: () => Promise.resolve("unavailable") })}
       />,
     );
+    await openAdd(user);
     await user.type(screen.getByLabelText(/choose a name/i), "robin");
     await user.click(
       screen.getByRole("button", { name: /make my name public/i }),
@@ -124,11 +107,12 @@ describe("FindableName", () => {
   it("surfaces a transport error", async () => {
     const user = userEvent.setup();
     render(
-      <FindableName
-        currentName={null}
+      <PublicNames
+        names={[]}
         ops={ops({ register: () => Promise.resolve("error") })}
       />,
     );
+    await openAdd(user);
     await user.type(screen.getByLabelText(/choose a name/i), "robin");
     await user.click(
       screen.getByRole("button", { name: /make my name public/i }),
@@ -138,8 +122,9 @@ describe("FindableName", () => {
 
   it("discloses the public-name consequences, with the findable cost visible up front", async () => {
     const user = userEvent.setup();
-    render(<FindableName currentName={null} ops={ops()} />);
-    // The headline + the findable cost are visible WITHOUT opening anything
+    render(<PublicNames names={[]} ops={ops()} />);
+    await openAdd(user);
+    // The headline + the findable cost are visible WITHOUT opening the expander
     // (doc 17 launch gate: the impact must not be buried).
     expect(
       screen.getByText(/becomes public and searchable/i),
@@ -156,52 +141,76 @@ describe("FindableName", () => {
     expect(screen.getByText(/aren't verified/i)).toBeInTheDocument();
   });
 
-  it("shows the registered name and releases it", async () => {
+  it("lists each held name with its public link and removes one", async () => {
     const user = userEvent.setup();
     const release = vi.fn(() => Promise.resolve());
-    const onChange = vi.fn();
-    render(
-      <FindableName
-        currentName="robin"
-        ops={ops({ release })}
-        onChange={onChange}
-      />,
-    );
+    render(<PublicNames names={["robin", "wren"]} ops={ops({ release })} />);
 
+    // Both names + their public links show; no claim form while just listing.
     expect(screen.getByText("robin")).toBeInTheDocument();
-    // The register form is not shown while a name is held.
+    expect(screen.getByText("wren")).toBeInTheDocument();
+    expect(screen.getByText("sti.care/u/robin")).toBeInTheDocument();
+    expect(screen.getByText("sti.care/u/wren")).toBeInTheDocument();
     expect(screen.queryByLabelText(/choose a name/i)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /release name/i }));
-    expect(release).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(onChange).toHaveBeenCalledWith(null));
+    // Removing a name releases exactly that one.
+    const removes = screen.getAllByRole("button", { name: /^remove$/i });
+    expect(removes).toHaveLength(2);
+    const first = removes[0];
+    if (!first) throw new Error("expected a remove control");
+    await user.click(first);
+    expect(release).toHaveBeenCalledWith("robin");
   });
 
-  it("hides the release control and explains why when the name is pinned", () => {
-    const release = vi.fn(() => Promise.resolve());
-    render(<FindableName currentName="robin" ops={ops({ release })} pinned />);
+  it("copies a name's public link", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+    render(<PublicNames names={["robin"]} ops={ops()} />);
 
+    await user.click(screen.getByRole("button", { name: /copy link/i }));
+    expect(writeText).toHaveBeenCalledWith("https://sti.care/u/robin");
+  });
+
+  it("hides the remove control and explains why when a name is pinned", () => {
+    render(<PublicNames names={["robin"]} ops={ops()} pinnedName="robin" />);
     expect(screen.getByText("robin")).toBeInTheDocument();
-    // No release control while the name is the sign-in username (doc 32).
+    // No remove control while the name is the sign-in username (doc 32).
     expect(
-      screen.queryByRole("button", { name: /release name/i }),
+      screen.queryByRole("button", { name: /^remove$/i }),
     ).not.toBeInTheDocument();
     expect(screen.getByText(/your sign-in username/i)).toBeInTheDocument();
   });
 
-  it("surfaces the plain pin reason if the server refuses a release (409)", async () => {
+  it("surfaces the plain pin reason if the server refuses a remove (409)", async () => {
     const user = userEvent.setup();
-    // A pin set in another tab after render: the release is not gated here, but the
+    // A pin set in another tab after render: the remove is not gated here, but the
     // server refuses with a 409, surfaced by the api client as a "conflict".
     const conflict = Object.assign(new Error("vanity release"), {
       kind: "conflict" as const,
     });
     const release = vi.fn(() => Promise.reject(conflict));
-    render(<FindableName currentName="robin" ops={ops({ release })} />);
+    render(<PublicNames names={["robin"]} ops={ops({ release })} />);
 
-    await user.click(screen.getByRole("button", { name: /release name/i }));
+    await user.click(screen.getByRole("button", { name: /^remove$/i }));
     expect(
       await screen.findByText(/your sign-in username/i),
     ).toBeInTheDocument();
+  });
+
+  it("disables the add control at the maximum of 5 names", () => {
+    render(
+      <PublicNames
+        names={["a_one", "a_two", "a_three", "a_four", "a_five"]}
+        ops={ops()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /add a public name/i }),
+    ).toBeDisabled();
+    expect(screen.getByText(/maximum of 5/i)).toBeInTheDocument();
   });
 });

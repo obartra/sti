@@ -202,7 +202,7 @@ function shareSession(
     avatar: DEFAULT_AVATAR,
     sharingMode,
     ...(findableName !== null
-      ? { findable: { name: findableName, aliasId: "f".repeat(43) } }
+      ? { findables: [{ name: findableName, aliasId: "f".repeat(43) }] }
       : {}),
   };
   return {
