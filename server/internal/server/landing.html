@@ -6,6 +6,10 @@
     <meta name="robots" content="noindex" />
     <title>sti.care API</title>
     <style>
+      /* Editorial grammar (labs/docs/36) on hard-coded token values, since the
+         server ships zero build deps and no webfonts (noindex API page):
+         warm-50 #FBF9F4, warm-100 #F4F1E9, warm-200 #ECE7DB, ink-900 #1B1B2F,
+         ink-500 #5C5C6E, teal-500 #2F9BB3, teal-700 #1F6E80. */
       :root {
         color-scheme: light;
       }
@@ -15,8 +19,8 @@
         display: grid;
         place-items: center;
         padding: 24px;
-        background: #fbf9f4;
-        color: #1b1b2f;
+        background: #fbf9f4; /* warm-50 */
+        color: #1b1b2f; /* ink-900 */
         font:
           16px/1.6 -apple-system,
           BlinkMacSystemFont,
@@ -33,23 +37,25 @@
         letter-spacing: -0.01em;
       }
       h1 span {
-        color: #2f9bb3;
+        color: #2f9bb3; /* teal-500 */
       }
       p {
-        color: #5c5c6e;
+        color: #5c5c6e; /* ink-500 */
       }
       a {
-        color: #1f6e80;
+        color: #1f6e80; /* teal-700 */
       }
       code {
-        background: #f4f1e9;
+        background: #f4f1e9; /* warm-100 */
         padding: 2px 6px;
         border-radius: 6px;
         font-size: 0.9em;
       }
       ul {
-        color: #5c5c6e;
-        padding-left: 1.1rem;
+        color: #5c5c6e; /* ink-500 */
+        border-top: 1px solid #ece7db; /* the one hairline (warm-200) */
+        margin-top: 1.2rem;
+        padding: 1rem 0 0 1.1rem;
       }
       li {
         margin: 0.3rem 0;

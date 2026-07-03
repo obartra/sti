@@ -1,0 +1,64 @@
+/* labs.sti.care editorial vocabulary, layered over the concatenated passport
+   tokens (deploy/build-labs.sh emits labs.css = design tokens + this file +
+   labs-site.css, so labs still deploys standalone with single-source tokens).
+   Same grammar as info.sti.care (doc 36): self-hosted type with metric-tuned
+   fallbacks, a serif display face, a reading measure, hairlines, and status
+   inks derived to pass AA as small text on the warm background. */
+
+@font-face {
+  font-family: "Hanken Grotesk";
+  src: url("/fonts/hanken-grotesk-latin-wght-normal.woff2") format("woff2");
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+2018-201D, U+2026;
+}
+
+@font-face {
+  font-family: "Hanken Grotesk Fallback";
+  src: local("Arial");
+  size-adjust: 100.94%;
+  ascent-override: 99.07%;
+  descent-override: 30.02%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Source Serif 4";
+  src: url("/fonts/source-serif-4-latin-600-normal.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+2018-201D, U+2026;
+}
+
+@font-face {
+  font-family: "Source Serif 4 Fallback";
+  src: local("Georgia");
+  size-adjust: 109.02%;
+  ascent-override: 95.03%;
+  descent-override: 30.73%;
+  line-gap-override: 0%;
+}
+
+:root {
+  --font-sans:
+    "Hanken Grotesk", "Hanken Grotesk Fallback", ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-serif:
+    "Source Serif 4", "Source Serif 4 Fallback", Georgia, "Times New Roman",
+    serif;
+
+  --type-title: clamp(30px, 3.4vw + 20px, 44px);
+  --type-doc-title: clamp(26px, 2vw + 20px, 34px);
+  --type-section: clamp(20px, 1vw + 17px, 24px);
+  --measure: 66ch;
+
+  --hairline: 1px solid var(--warm-200);
+  --hairline-strong: 1px solid var(--ink-200);
+
+  /* Derived AA inks for the decision-status words (same method as info). */
+  --status-ink-clear: color-mix(in srgb, var(--clear-600) 85%, var(--ink-900));
+  --status-ink-treat: color-mix(in srgb, var(--treat-600) 60%, var(--ink-900));
+  --status-ink-none: var(--neutral-600);
+}

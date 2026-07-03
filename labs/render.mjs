@@ -4,7 +4,8 @@
 // Usage: node labs/render.mjs --out <dir>
 //   Reads labs/labs.config.json (which docs publish, in order) and the markdown
 //   from labs/docs/, and writes <dir>/index.html + <dir>/docs/<slug>.html.
-//   labs.css and favicon are copied in by build-labs.sh, not here.
+//   labs.css (tokens + theme + site), fonts, and the favicon are assembled and
+//   copied in by build-labs.sh, not here.
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -42,12 +43,15 @@ const slugify = (s) =>
 
 marked.setOptions({ gfm: true, breaks: false });
 
+// Self-hosted type (no third-party font hosts): the woff2 files are copied in
+// from passport/public/fonts by build-labs.sh; the @font-face lives in labs.css.
 const FONTS = `
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Bungee&family=Fredoka:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
+      rel="preload"
+      href="/fonts/hanken-grotesk-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
     />`;
 
 const FOOTER = `<footer>
@@ -63,7 +67,7 @@ function page({ title, description, bodyClass, body }) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${esc(title)}</title>
     <meta name="description" content="${esc(description)}" />
-    <meta name="theme-color" content="#fbf2dd" />
+    <meta name="theme-color" content="#FBF9F4" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />${FONTS}
     <link rel="stylesheet" href="/labs.css" />
   </head>
