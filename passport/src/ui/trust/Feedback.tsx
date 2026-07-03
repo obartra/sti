@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { Button, Field } from "../../design/components/index.ts";
 import { Help, Check } from "../../design/icons.tsx";
 import { cx } from "../../lib/cx.ts";
-import { type FeedbackReason, FEEDBACK_BODY_MAX } from "../../api/client.ts";
+import { type FeedbackReason, FEEDBACK_BODY_MAX } from "../../api/contract.ts";
 import "./feedback.css";
 
 // The "Something wrong?" form (doc 35). It replaced a mailto so a report lands in
@@ -16,12 +16,13 @@ const REASONS: { code: FeedbackReason; label: string }[] = [
   { code: "broken", label: "Something's broken" },
   { code: "confusing", label: "Something's confusing" },
   { code: "safety", label: "A safety concern" },
+  { code: "idea", label: "An idea to make it better" },
   { code: "other", label: "Something else" },
 ];
 
 const COPY = {
   title: "Something wrong?",
-  lead: "Tell us what happened and we'll look into it.",
+  lead: "Tell us what happened, or what could be better.",
   legend: "What kind of thing?",
   noteLabel: "Anything that helps (optional)",
   notePlaceholder: "What happened?",

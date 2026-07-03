@@ -37,6 +37,10 @@ func TestFeedbackIntake(t *testing.T) {
 	if rec := postFeedback(h, contract.FeedbackConfusing, ""); rec.Code != http.StatusAccepted {
 		t.Fatalf("empty note: %d, want 202", rec.Code)
 	}
+	// A suggestion is accepted like any other category.
+	if rec := postFeedback(h, contract.FeedbackIdea, "a search box would help"); rec.Code != http.StatusAccepted {
+		t.Fatalf("idea: %d, want 202", rec.Code)
+	}
 	// An unknown category is rejected.
 	if rec := postFeedback(h, "nonsense", "x"); rec.Code != http.StatusBadRequest {
 		t.Fatalf("bad reason: %d, want 400", rec.Code)
@@ -47,8 +51,8 @@ func TestFeedbackIntake(t *testing.T) {
 		t.Fatalf("too long: %d, want 400", rec.Code)
 	}
 
-	if n, _ := st.OpenFeedbackCount(ctx); n != 2 {
-		t.Fatalf("stored count = %d, want 2 (only the two valid reports)", n)
+	if n, _ := st.OpenFeedbackCount(ctx); n != 3 {
+		t.Fatalf("stored count = %d, want 3 (only the three valid reports)", n)
 	}
 }
 

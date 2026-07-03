@@ -65,11 +65,12 @@ describe("Feedback", () => {
 
   it("offers exactly the fixed category set", () => {
     render(<Feedback submit={vi.fn()} />);
-    expect(screen.getAllByRole("radio")).toHaveLength(4);
+    expect(screen.getAllByRole("radio")).toHaveLength(5);
     for (const label of [
       /something's broken/i,
       /something's confusing/i,
       /a safety concern/i,
+      /an idea to make it better/i,
       /something else/i,
     ]) {
       expect(screen.getByRole("radio", { name: label })).toBeInTheDocument();

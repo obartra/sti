@@ -77,3 +77,15 @@ export interface PushRegisterRequest {
 export interface VapidResponse {
   readonly publicKey: string;
 }
+
+/** The fixed "Something wrong?" categories (doc 35); mirrors the server's set. */
+export type FeedbackReason =
+  | "broken"
+  | "confusing"
+  | "safety"
+  | "idea"
+  | "other";
+
+/** The longest note the "Something wrong?" form accepts, mirroring the server cap
+ * so an over-length body is caught before the request. */
+export const FEEDBACK_BODY_MAX = 2000;

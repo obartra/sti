@@ -6,7 +6,8 @@
  */
 
 import type { ResolvedView } from "../ui/public/PublicResolution.tsx";
-import type { VanityReportReason, FeedbackReason } from "../api/client.ts";
+import type { VanityReportReason } from "../api/client.ts";
+import type { FeedbackReason } from "../api/contract.ts";
 import type { PendingKnock } from "./pendingKnockStore.ts";
 
 /**
