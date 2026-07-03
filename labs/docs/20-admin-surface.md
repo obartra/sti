@@ -164,6 +164,16 @@ chrome and is never linked from the app.
   and exits with a deliberate, distinct non-zero code, so the unit's `Restart=on-failure` revives it
   a couple of seconds later. The hardened service user cannot call `systemctl` (no privileges by
   design), so exit-and-be-revived is the whole mechanism; no unit or provision change is needed.
+- `GET /admin/errors`: per-day internal-error counts by fixed subsystem over a recent window
+  (`days`, capped; zero-filled, oldest first) plus the lifetime totals. The per-day buckets live in
+  the metrics snapshot ([doc 12](12-observability-and-metrics.md)), so they survive restarts and
+  are pruned to the window. Counts of events, never a message or value; a read, not audited.
+- `GET /admin/perf`: requests per day over the same window and the request-latency histogram
+  aggregated across endpoint templates (coarse buckets; the trailing bucket is the slower-than-
+  the-last-bound overflow). Aggregate only; a read, not audited.
+- `POST /admin/errors/clear` (audit verb `errors.clear`): zeroes the lifetime error totals so the
+  headline number starts fresh. The per-day history stays (it is the record), and the box's alert
+  scrape tolerates the decrease (it skips a delta window when a counter shrinks).
 
 Every mutation writes an audit row and returns a uniform shape; none returns plaintext content.
 
