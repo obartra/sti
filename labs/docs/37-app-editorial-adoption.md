@@ -1,14 +1,14 @@
 # 37 - The app adopts the editorial language
 
-## Status: IN PROGRESS (the style architecture, self-hosted fonts, and the migration ratchet are built; the editorial grammar and the screen migrations land cluster by cluster)
+## Status: BUILT (every surface runs the language; the style lint is absolute)
 
-The passport app is moving onto the editorial design language that
+The passport app runs on the editorial design language that
 [36-info-design-language](36-info-design-language.md) built for info.sti.care.
 Doc 36 owns the language (type, surfaces, color, density, the one-primary-action
 rule); this doc owns the app-side mechanics: the style architecture, the
-migration rules, and the guardrails that keep the move one-directional. The
-same effort carries the language to the logged-out pages, the labs docs site,
-and the api landing page, so every surface reads as one product.
+absolute style-lint rules, and the sanctioned exceptions. The same effort
+carried the language to the logged-out pages, the labs docs site, and the api
+landing page, so every surface reads as one product.
 
 ## Style architecture
 
@@ -46,16 +46,17 @@ queries, one filled primary action per viewport. The app adds the decisions an
 interactive product needs:
 
 - **Card taxonomy.** Exactly three kinds of surface keep card-ness: the badge
-  card (the credential the product is about), the wallet passes (depictions of
-  physical objects), and overlays such as the share sheet (control surfaces
-  keep radius and elevation). Everything else is hairline-structured page.
-  Tinted cards, glow shadows, icon tiles, and pill chips retire from app
-  markup; their classes stay in the vendored CSS, unused.
+  card (the credential the product is about, on the `.e-artifact` certificate
+  frame: a double printed rule, flat, never a glow), the wallet passes
+  (depictions of physical objects), and overlays such as the share sheet
+  (control surfaces keep radius and elevation). Everything else is
+  hairline-structured page. Tinted cards, glow shadows, icon tiles, and pill
+  chips retired from app markup; their classes stay in the vendored CSS,
+  unused.
 - **Stranded design components.** From `design/components`, the app keeps
-  `Button`, `IconButton`, and the form controls. `Card`, `Badge`, `Row`, and
-  `Segmented` are stranded: never restyled, never wrapped; migrating screens
-  simply stop using them in favor of the `.e-*` grammar. The style lint
-  ratchets their usage down.
+  `Button`, `IconButton`, `Segmented` (a control surface), and the form
+  controls. `Card`, `Badge`, and `Row` are stranded: never restyled, never
+  wrapped; no screen uses them. The style lint bans them outright.
 - **Status vocabulary.** Status renders as the uppercase word plus the heart
   glyph in a derived AA-safe ink (info's StatusLabel), never a colored pill,
   and never color alone.
@@ -68,38 +69,35 @@ interactive product needs:
   lint enforces the CSS half: no viewport `@media` beyond the 900px chrome
   breakpoint.
 
-## The migration ratchet
+## The style lint
 
-The legacy styling (inline `style` props referencing tokens) cannot be banned
-in one step, so `passport/scripts/style-lint.mjs` enforces a one-way ratchet
-against `scripts/style-lint-baseline.json`, a per-file snapshot of three
-counts: inline style blocks, raw hex colors, and stranded surface components.
-Above the baseline fails as a new violation; below it fails too, telling you
-to run `npm run lint:styles -- --write`, which records the improvement and
-refuses to record a regression. The baseline shrinking to nothing is the
-definition of done; then the rules are absolute, exactly like info's lint.
-The `@media` rule is absolute from day one.
+`passport/scripts/style-lint.mjs` enforces the language absolutely (the
+migration burn-down ratchet it started as is retired): no inline `style={}`
+blocks, no raw hex outside `styles/theme.css`, no stranded surface components
+(`Card`/`Badge`/`Row`), and no viewport `@media` beyond the 900px chrome
+breakpoint. A short explicit allowlist in the script covers what a class or
+token cannot express: data-driven inline values (medallion and pass sizes,
+avatar swatch colors, QR geometry, NavLink's style passthrough), the wallet
+pass depictions with their platforms' own colors, QR/PNG paint colors, and
+Storybook fixture layout (`*.stories.tsx`, inline styles only; hex stays
+banned there too). An allowlist entry needs a reason of that kind; everything
+else is a lint failure.
 
-Migration rules per change:
-
-- **Whole screens only.** A screen is either fully editorial or fully legacy;
-  a half-migrated screen never ships. Cross-screen inconsistency while the
-  effort runs is accepted and expected; the baseline file is the public
-  burn-down.
-- Stories update with their screen, and baselines regenerate through the
-  `screenshot:update` label in the same change.
-- Copy touched along the way is held to the voice guide.
+Rules that still hold for any styling change: stories update with their
+screen, baselines regenerate through the `screenshot:update` label in the
+same change, and copy touched along the way is held to the voice guide.
 
 ## Surfaces beyond the app
 
-- **info.sti.care** already runs the language (doc 36) and shares the fonts
-  and the passport barrel.
-- **labs.sti.care** consolidates onto it: the standalone sticker aesthetic
-  retires, its stylesheet derives from the passport tokens at build time, and
-  its published content gets refreshed in the same effort (owned here, built
-  in the labs deploy scripts).
+- **info.sti.care** runs the language (doc 36) and shares the fonts and the
+  passport barrel.
+- **labs.sti.care** runs it too: its deployed stylesheet is assembled at build
+  time from the passport design tokens plus two authored sheets
+  (`labs/labs-theme.css`, `labs/labs-site.css`), and it self-hosts the same
+  font files the passport serves.
 - **The api landing page** (`server/internal/server/landing.html`) stays a
-  standalone Go-served file and simply adopts the real token values.
+  standalone Go-served file on the real token values (hex with token-name
+  comments, system fonts only).
 
 ## What stays out of scope
 
