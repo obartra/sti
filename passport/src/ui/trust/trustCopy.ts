@@ -45,6 +45,9 @@ export interface LegalDoc {
 }
 
 const UPDATED = "June 2026";
+// The privacy policy carries the early-testing note, added after the June text, so
+// it shows its own later date. Terms is unchanged and keeps UPDATED.
+const PRIVACY_UPDATED = "July 2026";
 
 /** Shown once near the top of each legal page, so the layered notice is honest
  * about which part binds. Plain and calm, per doc 21. */
@@ -54,7 +57,7 @@ const SUMMARY_NOTE =
 export const PRIVACY_POLICY: LegalDoc = {
   title: "Privacy",
   lead: "What we can see is almost nothing, and here is exactly why.",
-  updated: UPDATED,
+  updated: PRIVACY_UPDATED,
   summaryNote: SUMMARY_NOTE,
   blocks: [
     {
@@ -128,6 +131,15 @@ export const PRIVACY_POLICY: LegalDoc = {
       paragraphs: [
         "You hold the keys. You can turn any link off so no one can read it again, and you can delete your account from the app, which overwrites your shared links and removes your encrypted backup.",
         "One honest limit: because only your device holds your keys, if you lose them and your recovery phrase, we cannot recover your data for you, and we cannot un-show something a person already saw.",
+      ],
+    },
+    {
+      heading: "While we're in early testing",
+      summary:
+        "sti.care is new. What we can and can't see holds the same now as at launch, but a few protections get stronger as more people use it, and while we're small expect the occasional bug.",
+      paragraphs: [
+        "sti.care is new and still being tested. Everything above about what we can and cannot see holds the same now as it will at launch. Those protections are built into how the app works, not switched on later.",
+        "A few of them lean on there being a crowd to blend into: the more people use sti.care, the harder it is for anyone watching the server to draw conclusions from timing or patterns. While the community is small, that cover is thinner. And like any young app, expect the occasional bug, so please don't make sti.care your only record of your health yet.",
       ],
     },
     {

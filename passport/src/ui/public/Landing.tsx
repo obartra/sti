@@ -35,6 +35,8 @@ const COPY = {
       "If a recent partner tests positive, you get an anonymous alert to go get tested.",
     ],
   ],
+  testing:
+    "sti.care is new and still in active testing. Your privacy protections already work the same as at launch, but expect the occasional bug, and don’t make it your only record yet.",
 } as const;
 
 function ValuePoint({
@@ -176,6 +178,13 @@ function PrivacyFootnote() {
   );
 }
 
+// A calm, honest note that the product is young: the confidentiality guarantees
+// hold the same as at launch (they are architectural), but reliability and the
+// crowd you blend into are still maturing, so it should not be a sole record yet.
+function TestingNote() {
+  return <p className="land__testing">{COPY.testing}</p>;
+}
+
 export interface LandingProps {
   onClaim?: () => void;
   onSample?: () => void;
@@ -214,6 +223,7 @@ export function Landing({
       <LandingActions onClaim={onClaim} onSample={onSample} />
       <PromisesLink onPromises={onPromises} />
       <ValuePoints />
+      <TestingNote />
       <PrivacyFootnote />
       <TrustFooter
         onPromises={onPromises}
