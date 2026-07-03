@@ -24,8 +24,14 @@ one-way and does not promise one.
 A report is a fixed **category** plus an **optional note** the person types:
 
 - Category (a fixed, validated set, never free-form on the wire): something is
-  broken, something is confusing, a safety concern, or something else.
+  broken, something is confusing, a safety concern, an idea to make it better,
+  or something else.
 - An optional short note, length-capped, so a person can say what happened.
+
+The idea category widens the channel slightly beyond defects: the form's lead
+invites "what could be better" alongside "what happened", so a suggestion has an
+honest home instead of being shoehorned into "something else". The screen keeps
+its "Something wrong?" name; that is the moment a person goes looking for it.
 
 The note is the tradeoff. A useful problem report needs room to describe the problem,
 so unlike the public-name report (a reason code and nothing else,

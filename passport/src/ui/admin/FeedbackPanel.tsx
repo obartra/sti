@@ -26,6 +26,7 @@ const REASON_LABELS: Record<string, string> = {
   broken: "Something's broken",
   confusing: "Something's confusing",
   safety: "A safety concern",
+  idea: "An idea to make it better",
   other: "Something else",
 };
 

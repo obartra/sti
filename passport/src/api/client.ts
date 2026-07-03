@@ -18,6 +18,7 @@ import {
   HEADER_WRITE_TOKEN,
   PATHS,
   validId,
+  type FeedbackReason,
   type PushRegisterRequest,
 } from "./contract.ts";
 import { recoveryMethods } from "./recovery.ts";
@@ -177,13 +178,6 @@ export type VanityReportReason =
   | "slur"
   | "spam"
   | "other";
-
-/** The fixed "Something wrong?" categories (doc 35); mirrors the server's set. */
-export type FeedbackReason = "broken" | "confusing" | "safety" | "other";
-
-/** The longest note the "Something wrong?" form accepts, mirroring the server cap
- * so an over-length body is caught before the request. */
-export const FEEDBACK_BODY_MAX = 2000;
 
 export const OCTET_STREAM = "application/octet-stream";
 

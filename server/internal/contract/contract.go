@@ -264,11 +264,13 @@ const (
 	FeedbackBroken    = "broken"
 	FeedbackConfusing = "confusing"
 	FeedbackSafety    = "safety"
+	FeedbackIdea      = "idea"
 	FeedbackOther     = "other"
 )
 
 var feedbackReasons = map[string]struct{}{
-	FeedbackBroken: {}, FeedbackConfusing: {}, FeedbackSafety: {}, FeedbackOther: {},
+	FeedbackBroken: {}, FeedbackConfusing: {}, FeedbackSafety: {},
+	FeedbackIdea: {}, FeedbackOther: {},
 }
 
 // ValidFeedbackReason reports whether r is one of the fixed feedback reason codes.
