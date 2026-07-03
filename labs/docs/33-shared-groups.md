@@ -1,6 +1,6 @@
 # 33 - Shared groups (the model)
 
-## Status: APPROVED (design); ready to build. Storage is (A) a server group blob, allowed only if it adds no oracle the alias store does not already have; removal rotates the group key.
+## Status: SHIPPED. Storage is (A) a server group blob, stored and read exactly like an alias payload so it adds no oracle the alias store does not already have; removal rotates the group key.
 
 A group is one shared thing many people are in, used to **set up a whole network of
 status-sharing at once** instead of one pairwise link at a time. This doc owns what a
@@ -106,8 +106,9 @@ the group**, not member-from-member.
   13). They republish it when their badge changes. The roster is the set of those ids;
   holding `Kg` + the roster, any member reads every member's color and join handle.
 - **The group object** (its handle, roster, wrapped `Kg` per member, admin flag) is
-  itself ciphertext; the server stores bytes and routes reads, never the contents.
-  Exactly where it lives is the first open question below.
+  itself ciphertext; the server stores bytes and routes reads, never the contents. It
+  lives in a server group blob (option A below), stored and read exactly like an alias
+  payload.
 - **The public handle**, when the group is public, resolves like a findable name (doc
   17): a lookup returns an opaque pointer a requester uses to ask to join; it carries
   no roster and no status. A private group has no such entry, so it cannot be found.
@@ -131,7 +132,7 @@ In plain terms: **kicking someone out means giving everyone still in the group a
 shared key and re-locking every card with it, so the old key the removed person holds
 becomes useless.** The cost is that everyone still in the group has to re-publish once
 after a removal; whether that cost is acceptable at our group sizes, or whether we want
-a cheaper scheme later, is the second open question below.
+a cheaper scheme later, is the second decision recorded below.
 
 ## What stays unchanged
 
@@ -143,23 +144,24 @@ a cheaper scheme later, is the second open question below.
   unlinkable to their other aliases, and the group is opaque to anyone without `Kg`.
   (Decorrelation _between members_ is intentionally dropped: members see each other.)
 
-## The two decisions (resolved)
+## The two decisions
 
 1. **Where the group object lives: (A) a server-stored group blob**, sealed so only
    members can read it, that members poll for roster and key changes. An admin writes
    it, members read it. Chosen for its simpler propagation, under **one hard
    constraint: the group blob must add no oracle the alias store does not already
-   have.** Concretely, that means the group blob is stored and read exactly like an
-   alias payload: an opaque id, a fixed-or-decoy-uniform read so its existence is not
-   revealed, per-IP + global rate limits, and writes gated by a capability token
-   (which admin may change it). If any of those cannot hold for the group blob, we fall
-   back to (B) channel-only rather than accept a new oracle. Slice 2 must demonstrate
-   the no-new-oracle property before the blob ships.
+   have.** That constraint holds in the shipped endpoints: the group blob is stored and
+   read exactly like an alias payload. A `GET /g/{id}` returns a stored blob or a
+   fixed-size decoy computed unconditionally, so existence is not revealed by content or
+   timing; the read sits behind per-IP + global rate limits; and `PUT`/`DELETE` are
+   gated by a capability write token (a wrong token is a 403, the same oracle the alias
+   store already exposes on an unguessable 256-bit id). The (B) channel-only fallback was
+   never needed because the no-new-oracle property held.
 
 2. **Removal = rotate the group key + every remaining member republishes once.**
-   Accepted for v1. It is the honest meaning of "no future reads" and is correct at the
-   group sizes we target (event-sized, tens not thousands). A cheaper key scheme (e.g.
-   per-epoch keys) is a possible later optimization, not a v1 requirement.
+   It is the honest meaning of "no future reads" and is correct at the group sizes we
+   target (event-sized, tens not thousands). A cheaper key scheme (e.g. per-epoch keys)
+   remains a possible later optimization, not a requirement.
 
 ## Corner cases
 
@@ -173,22 +175,27 @@ a cheaper scheme later, is the second open question below.
 - **Adding a hostile member** is a social problem with a one-tap exit (leave), not a
   visibility leak: the roster is fully visible and joining is consented.
 
-## Implementation plan (slices)
+## How it is built
 
-1. **Crypto:** group card seal/open under `Kg`, and wrap/unwrap `Kg` per member
-   (mirrors publish.ts + the envelope wraps). Pure, unit-tested.
-2. **Group object + roster:** the server group blob (A), stored and read exactly like
-   an alias payload (opaque id, existence-uniform read, rate-limited, capability-gated
-   writes) so it adds no new oracle; fall back to channel-only if that cannot hold.
-   Server tests, including the existence-uniformity of the blob read.
-3. **Create + public/private handle**: mint `Kg`, choose the handle and its visibility;
-   a public handle resolves to an opaque join pointer (doc 17-style).
-4. **Membership lifecycle**: invite / accept / reject / revoke, request / approve /
-   reject, remove, leave. Roster propagates.
-5. **Remove + key rotation**: mint `Kg'`, re-wrap to remaining, everyone republishes;
-   removed reads go uniform; leave and remove indistinguishable to others.
-6. **Notify scoping**: an event-vs-recurring group flag; a member's positive fans out
-   individual contentless pings to the implied-exposed set, never attributed to the
-   group; the join-time disclosure copy (doc 21).
-7. **UI**: the calm roster of colors, the join-time honesty, the admin controls
-   (invite / remove), leave; wired into the People surface per the nav plan (doc 31).
+The model above is live on both tiers. The pieces:
+
+- **Crypto:** group card seal/open under `Kg`, and wrap/unwrap `Kg` per member (mirrors
+  the publish path and the envelope wraps), pure and unit-tested in the passport store.
+- **Group object + roster:** the server group blob (A), stored and read exactly like an
+  alias payload (opaque id, existence-uniform read, rate-limited, capability-gated
+  writes) so it adds no new oracle; the server tests cover the existence-uniformity of
+  the blob read. The passport builds and reads the sealed group object and roster.
+- **Create + public/private handle:** creation mints `Kg` and chooses the handle and its
+  visibility; a public handle resolves to an opaque join pointer, the way a findable name
+  does (doc 17).
+- **Membership lifecycle:** invite / accept / reject / revoke and request / approve /
+  reject, plus remove and leave, with the roster propagating through the blob.
+- **Remove + key rotation:** a remove or leave mints `Kg'`, re-wraps it to the remaining
+  members, and everyone republishes; the removed member's reads go uniform, and leave and
+  remove are indistinguishable to everyone else.
+- **Notify scoping:** an event-vs-recurring group flag fans a member's positive out as
+  individual contentless pings to the implied-exposed set, never attributed to the group,
+  with the honesty disclosed at join time (notify model in doc 13, voice in doc 21).
+- **UI:** the calm roster of colors, the join-time honesty, the face choice (appear as
+  your main identity or a fresh handle), the admin controls (invite / remove) and leave,
+  wired into the People surface per the nav plan (doc 31).

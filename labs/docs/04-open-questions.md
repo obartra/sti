@@ -69,8 +69,7 @@ the newly-diagnosed and the PrEP-decliners under the bus?
 The three routes share the *same* positive state — no ranking. Condoms are real, evidence-
 based prevention, but typical-use efficacy is lower than PrEP/U=U. I grouped them anyway,
 because a lower tier for condom users re-creates the sorting I'm trying to kill — and I'm
-committing the app to honest info pages on the differences instead of encoding a hierarchy
-(my small swing at the sex-ed-access gap).
+committing the app to honest info pages on the differences instead of encoding a hierarchy.
 
 **Question:** does "publicly commits to condoms" genuinely belong in the same tier as
 PrEP/U=U, or am I flattening a difference that matters? Does leaning on education-instead-of-

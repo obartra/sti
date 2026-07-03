@@ -1,7 +1,7 @@
 # sti.care: Frontend to Backend Integration
 
-*The "make it real." How the fixtures-only passport app starts talking to the blind store at
-api.sti.care, one tested slice at a time. Pairs with
+*The "make it real." How the passport app talks to the blind store at
+api.sti.care, built one tested slice at a time. Pairs with
 [Build, Backend & Deployment](10-build-backend-and-deployment.md) (what the server is),
 [Data & storage](/docs/data) (what lives where), and the [Decisions log](/docs/decisions) (the
 locked choices this must honor).*
@@ -10,15 +10,18 @@ locked choices this must honor).*
 
 ## Where we are
 
-The passport app is live at sti.care and feature-complete on screens, but it runs on **local
-fixtures only**. Nothing calls the backend: the badge is a fixed fixture, onboarding mints no real
-keys, and link/knock/notify are no-ops. The backend is already deployed and blind (see
-[Build & Deployment](10-build-backend-and-deployment.md)): it stores opaque ciphertext by opaque
-id, routes contentless pushes, rate-limits, and runs no badge logic.
+The passport app is live at sti.care and **talks to the backend for real**. Slices 1 through 5
+below are built: onboarding mints a real key-derived session, the app derives the owner view from
+the decrypted device blob (`src/ui/App.tsx` builds `createApiClient` plus `createBackendStore` and
+renders `deriveOwnerView`), and public resolution, account sync, card publish, badge derivation, and
+knock/notify all round-trip against the live server. Storybook still binds the fixture
+implementation so the visual gate stays offline, but the running app no longer does. The backend is
+deployed and blind (see [Build & Deployment](10-build-backend-and-deployment.md)): it stores opaque
+ciphertext by opaque id, routes contentless pushes, rate-limits, and runs no badge logic.
 
-The job of this doc is the seam between the two. It does not change the server (the contract in
-`server/internal/contract/contract.go` is locked) and it does not redesign any screen. It replaces
-fixture data with real, encrypted, round-tripped data, slice by slice.
+This doc describes the seam between the two. It does not change the server (the contract in
+`server/internal/contract/contract.go` is locked) and it does not redesign any screen. It carries
+real, encrypted, round-tripped data where the fixtures used to sit, slice by slice.
 
 ## Principles this seam inherits
 
@@ -41,7 +44,7 @@ fixture data with real, encrypted, round-tripped data, slice by slice.
    owner's app badge. Blue is valid only on a fresh confirmed read; if the pass cannot refresh, the
    server is unreachable, or the last sync is older than the freshness window
    (`WALLET_FRESH_HOURS`, 24h), the pass shows gray, never stale-blue (`03-design.md` "Fail closed
-   to gray"; `wallet/shared.tsx` `livePassState`). The owner's in-app badge is computed live from
+   to gray"; `src/ui/wallet/shared.tsx` `livePassState`). The owner's in-app badge is computed live from
    device state and is never stale; public resolution returns the current ciphertext or a decoy and
    has no staleness path of its own. A shed request (`429`/`503` on the non-sensitive endpoints)
    surfaces as gray, not as a scary error.
@@ -107,8 +110,10 @@ Validation). Order is by dependency and by blast radius, simplest real read firs
    badge is real, not a fixture.
 5. **Knock / notify / circles.** `POST /knock/{id}` (uniform response), `POST /notify` by
    `tokenHash`, and push registration. The targeted-notify privacy caveat (recipient-set
-   visibility) is called out in Data & storage and is out of scope for this seam until the
-   broadcast/cover-wake fix ships.
+   visibility) is answered by the scheduled cover broadcast, which ships on by default
+   (`DrainSends` / `fanOutHeartbeat`, gated by `NotifyEnabled`, default on): a real due-send rides
+   the same population-wide heartbeat as the cover wakes, so it is indistinguishable from the
+   silent case. Data & storage carries the honest limits.
 
 ## Validation: every slice proves itself end to end
 
@@ -137,23 +142,22 @@ already ships `server_test.go`, so it boots in-process for tests), which keeps t
 fast and offline and matches the project default of testing against the real datastore, not a
 mock.
 
-## Prerequisite: cross-origin access (blocks slice 2)
+## Cross-origin access (built)
 
-Slice 1 is same-process and unaffected, but the moment the real browser at `sti.care` calls
-`api.sti.care` (slice 2), it crosses an origin boundary, and today **neither the Go server nor the
-Caddy proxy sends any CORS headers or answers an `OPTIONS` preflight**, so the browser blocks the
-request. This is transport, not the contract (no endpoint or shape changes), so it does not break
-the "contract is locked" rule. Two ways to resolve it, to settle before slice 2:
+Slice 1 is same-process, but the moment the real browser at `sti.care` calls `api.sti.care`
+(slice 2) it crosses an origin boundary, so the server must send CORS headers and answer the
+`OPTIONS` preflight or the browser blocks the request. This is transport, not the contract (no
+endpoint or shape changes), so it does not break the "contract is locked" rule.
 
-- **CORS allowlist on the server** (recommended): allow `https://sti.care`, the Netlify
-  deploy-preview origins, and `localhost` dev, with `Access-Control-Allow-Headers: X-Write-Token,
-  X-Version` and an `OPTIONS` handler. Keeps the api on its own origin and is unit-testable in Go.
-- **Same-origin proxy**: a Netlify redirect from `sti.care/api/*` to `api.sti.care/*` so the
-  browser stays same-origin and no CORS is needed. Simpler client, but routes all api traffic
-  through Netlify, which cuts against the fixed-cost, degrade-not-bill posture of the backend.
-
-Leaning the server allowlist. Either way it lands with a test before slice 2 resolves anything in a
-real browser.
+This ships as a CORS allowlist on the server (`Server.cors`). A configured origin
+(`STI_ALLOWED_ORIGINS`, matched exactly, no wildcard) gets `Access-Control-Allow-Origin`, the
+allowed methods and request headers (including `X-Write-Token` and `X-Version`), and a genuine
+preflight (one carrying `Access-Control-Request-Method`) is answered as a uniform `204`. A
+disallowed or absent Origin gets no allow headers, so same-origin and non-browser callers are
+untouched and unlisted browser origins are blocked at the reader. The middleware changes no response
+body, so existence-uniformity on `GET /a` and `POST /knock` holds. The same-origin Netlify-proxy
+alternative was not taken: routing all api traffic through Netlify cuts against the fixed-cost,
+degrade-not-bill posture of the backend.
 
 ## Decisions
 
