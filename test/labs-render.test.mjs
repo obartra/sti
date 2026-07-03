@@ -108,10 +108,15 @@ test("emits an honest 404 page, distinct from the landing", () => {
   assert.notEqual(notFound, read("index.html"));
 });
 
-test("feedback page renders a live button to the configured form", () => {
+test("feedback page renders the in-house response form", () => {
   const fb = config.docs.find((d) => d.feedback);
   assert.ok(fb, "expected a doc flagged feedback:true");
   const html = read(`docs/${fb.slug}.html`);
-  assert.match(html, /class="feedbackbtn"/);
-  assert.match(html, new RegExp(config.feedbackUrl.replace(/[/.]/g, "\\$&")));
+  // The form posts straight to the blind feedback intake (doc 35): a topic
+  // picker, a length-capped note, and a send; no third-party form service.
+  assert.match(html, /id="ansform"/);
+  assert.match(html, /id="ans-topic"/);
+  assert.match(html, /maxlength="2000"/);
+  assert.match(html, new RegExp(config.feedbackApi.replace(/[/.]/g, "\\$&")));
+  assert.doesNotMatch(html, /forms\.gle/);
 });
