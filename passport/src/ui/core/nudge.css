@@ -6,6 +6,10 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  /* Size containment stops the content from sizing the card, so the card
+     must take its width from its host explicitly. */
+  width: 100%;
+  container-type: inline-size;
 }
 
 .nudge__head {
@@ -41,4 +45,16 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* On a narrow (phone-width) card the actions stack full width instead of a
+   ragged wrap; the card's own width decides, not the viewport. */
+@container (max-width: 440px) {
+  .nudge__actions {
+    flex-direction: column;
+  }
+
+  .nudge__actions > * {
+    width: 100%;
+  }
 }

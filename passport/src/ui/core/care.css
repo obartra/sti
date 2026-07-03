@@ -26,6 +26,10 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /* Size containment stops the content from sizing the callout, so it takes
+     its width from the screen column explicitly. */
+  width: 100%;
+  container-type: inline-size;
 }
 
 .care__hero-eyebrow {
@@ -72,6 +76,20 @@
   color: var(--text-accent);
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+/* On a narrow (phone-width) callout the primary goes full width and the quiet
+   alternative centers beneath it; the card's own width decides. */
+@container (max-width: 440px) {
+  .care__hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .care__hero-alt {
+    align-self: center;
+    padding: 4px 0;
+  }
 }
 
 /* The at-home screening aside (gray badge only): a hairline-opened row. */
