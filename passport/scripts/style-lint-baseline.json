@@ -49,17 +49,8 @@
     "styles": 12,
     "legacy": 2
   },
-  "src/ui/core/Care.tsx": {
-    "styles": 20,
-    "hex": 4,
-    "legacy": 10
-  },
   "src/ui/core/ContinuityNudgeCard.stories.tsx": {
     "styles": 1
-  },
-  "src/ui/core/ContinuityNudgeCard.tsx": {
-    "styles": 7,
-    "legacy": 1
   },
   "src/ui/core/Home.actions.tsx": {
     "styles": 2
@@ -78,10 +69,6 @@
   },
   "src/ui/core/Home.tsx": {
     "styles": 3
-  },
-  "src/ui/core/Notifications.tsx": {
-    "styles": 5,
-    "legacy": 3
   },
   "src/ui/core/Privacy.about.tsx": {
     "styles": 11

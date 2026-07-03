@@ -1,0 +1,132 @@
+/* Care (doc 31 + 37): the app's mini library, so it visually IS one. The
+   filled teal hero dies for an action callout on the page surface; resource
+   and learn lists are hairline rows with muted stroke icons (tiles retired);
+   section heads are quiet eyebrows; the disclaimer stays a quiet footnote. */
+
+.care {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.care__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: clamp(26px, 7vw, 30px);
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+  color: var(--text-strong);
+}
+
+/* The one action callout: find testing. */
+.care__hero {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.care__hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.care__hero-eyebrow-icon {
+  display: inline-flex;
+  color: var(--text-accent);
+}
+
+.care__hero-line {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 19px;
+  line-height: 1.35;
+  color: var(--text-strong);
+}
+
+.care__hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.care__hero-alt {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* The at-home screening aside (gray badge only): a hairline-opened row. */
+.care__aside {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: var(--hairline);
+  padding-top: 14px;
+}
+
+.care__aside-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--text-accent);
+}
+
+.care__aside-body {
+  flex: 1;
+}
+
+.care__aside-eyebrow {
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.care__aside-text {
+  font-size: 14px;
+  color: var(--text-body);
+  line-height: 1.45;
+  margin-top: 2px;
+}
+
+/* Section head + the hairline row lists (rows come from the .e-row grammar). */
+.care__section {
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  margin: 4px 0 0;
+}
+
+.care__rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.care__footer {
+  font-size: 11.5px;
+  color: var(--text-subtle);
+  line-height: 1.5;
+  text-align: center;
+  padding: 0 8px;
+}

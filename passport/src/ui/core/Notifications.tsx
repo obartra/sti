@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from "react";
-import { Button, Card, Row } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
 import {
   Bell,
   Users,
@@ -8,11 +8,13 @@ import {
   Chevron,
   Lock,
 } from "../../design/icons.tsx";
+import { cx } from "../../lib/cx.ts";
+import "./notifications.css";
 
-// Notifications: the activity inbox. Faithful port of core-app.jsx
-// Notifications, copy verbatim from copy.js (notifications). Each row is a
-// neutral prompt that never names a condition or a person in its own text;
-// the privacy-safe wording is the whole point of the screen.
+// Notifications: the activity inbox, a quiet one (doc 37): hairline rows on
+// the page surface, never tinted. Each row is a neutral prompt that never
+// names a condition or a person in its own text; the privacy-safe wording is
+// the whole point of the screen.
 // The default items mirror what the app actually renders (see coreScreens
 // notificationItems): the re-test nudge shown once freshness has lapsed and a
 // CONTENTLESS knock entry - no requester, no count, no per-knock timing. The
@@ -56,10 +58,10 @@ export interface NotificationItem {
 }
 
 function iconFor(k: NotifIcon): ReactNode {
-  if (k === "bell") return <Bell size={20} />;
-  if (k === "users") return <Users size={20} />;
-  if (k === "circle") return <Circles size={20} />;
-  return <Heart size={20} />;
+  if (k === "bell") return <Bell size={18} />;
+  if (k === "users") return <Users size={18} />;
+  if (k === "circle") return <Circles size={18} />;
+  return <Heart size={18} />;
 }
 
 const DEFAULT_ITEMS: NotificationItem[] = COPY.notifications.items.map((n) => ({
@@ -67,6 +69,54 @@ const DEFAULT_ITEMS: NotificationItem[] = COPY.notifications.items.map((n) => ({
   title: n.title,
   sub: n.sub,
 }));
+
+// One inbox row on the hairline grammar. A row with an inline action isn't
+// itself tappable (only its button is), so it must NOT render as a <button> -
+// that would nest a button in a button. It's interactive only when it
+// navigates via onOpen.
+function InboxRow({ item }: { item: NotificationItem }) {
+  const act = item.action;
+  const sub = item.when ? `${item.sub} · ${item.when}` : item.sub;
+  const body = (
+    <>
+      <span className="e-row__lead">{iconFor(item.icon)}</span>
+      <span className="e-row__body">
+        <span className="e-row__title">{item.title}</span>
+        <span className="e-row__sub">{sub}</span>
+      </span>
+    </>
+  );
+  if (act) {
+    return (
+      <div className="e-row">
+        {body}
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={act.busy}
+          onClick={act.onAct}
+        >
+          {act.busy ? `${act.label}…` : act.label}
+        </Button>
+      </div>
+    );
+  }
+  if (item.onOpen) {
+    return (
+      <button
+        type="button"
+        className={cx("e-row", "e-row--action")}
+        onClick={item.onOpen}
+      >
+        {body}
+        <span className="e-row__trail" aria-hidden>
+          <Chevron size={18} />
+        </span>
+      </button>
+    );
+  }
+  return <div className="e-row">{body}</div>;
+}
 
 export interface NotificationsProps {
   items?: NotificationItem[];
@@ -85,85 +135,18 @@ export function Notifications({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-        width: "100%",
-        maxWidth: 600,
-      }}
-    >
-      <h1
-        style={{
-          fontSize: 24,
-          fontWeight: 800,
-          letterSpacing: "-0.02em",
-          color: "var(--text-strong)",
-        }}
-      >
-        {c.title}
-      </h1>
+    <div className="ntf">
+      <h1 className="ntf__title">{c.title}</h1>
       {items.length === 0 ? (
-        <Card
-          variant="flat"
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            padding: "28px 16px",
-            fontSize: 14,
-            fontWeight: 600,
-            color: "var(--text-muted)",
-          }}
-        >
-          {c.empty}
-        </Card>
+        <div className="ntf__empty">{c.empty}</div>
       ) : (
-        <Card
-          variant="flat"
-          style={{ padding: 6, display: "flex", flexDirection: "column" }}
-        >
-          {items.map((n, i) => {
-            const act = n.action;
-            const trail = act ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={act.busy}
-                onClick={act.onAct}
-              >
-                {act.busy ? `${act.label}…` : act.label}
-              </Button>
-            ) : (
-              <Chevron size={18} />
-            );
-            // A row with an action isn't itself tappable (only its button is), so
-            // it must NOT render as a <button> - that would nest a button in a
-            // button. It's interactive only when it navigates via onOpen.
-            return (
-              <Row
-                key={i}
-                lead={iconFor(n.icon)}
-                title={n.title}
-                sub={n.when ? `${n.sub} · ${n.when}` : n.sub}
-                trail={trail}
-                interactive={!!n.onOpen && !act}
-                {...(n.onOpen && !act ? { onClick: n.onOpen } : {})}
-              />
-            );
-          })}
-        </Card>
+        <div className="ntf__rows">
+          {items.map((n, i) => (
+            <InboxRow key={i} item={n} />
+          ))}
+        </div>
       )}
-      <div
-        style={{
-          fontSize: 12.5,
-          color: "var(--text-subtle)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 6,
-        }}
-      >
+      <div className="ntf__foot">
         <Lock size={13} /> Notifications never name a condition or a person.
       </div>
     </div>

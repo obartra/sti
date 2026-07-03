@@ -1,22 +1,22 @@
-import type { CSSProperties, ReactNode } from "react";
-import { Button, Card, Row } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
 import {
   MapPin,
   Stethoscope,
   Shield,
   Heart,
-  Chevron,
-  Info,
   Phone,
   Clock,
 } from "../../design/icons.tsx";
+import { ActionRow } from "../editorial/ActionRow.tsx";
+import { cx } from "../../lib/cx.ts";
+import "./care.css";
 
 // Care: testing, at-home screening, local resource finders, and learn-and-talk
-// rows. Faithful port of core-app.jsx Care, copy verbatim from copy.js (care +
-// the learn.official / learn.title / learn.sub / learn.footer strings the
-// screen reads). The `badge` is TWO-STATE only (blue / gray): a gray viewer
-// (no status yet) additionally sees the at-home screening prompt. There is no
-// four-light status here.
+// rows. The app's mini library (doc 37), so it reads like one: the find-testing
+// moment is the one action callout, everything else is hairline rows with muted
+// stroke icons on the page surface. The `badge` is TWO-STATE only (blue /
+// gray): a gray viewer (no status yet) additionally sees the at-home screening
+// prompt. There is no four-light status here.
 const COPY = {
   care: {
     title: "Care",
@@ -58,27 +58,6 @@ const COPY = {
   },
 } as const;
 
-const sectionLbl: CSSProperties = {
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: "0.06em",
-  textTransform: "uppercase",
-  color: "var(--text-subtle)",
-  margin: "4px 0 10px",
-};
-
-const leadTile: CSSProperties = {
-  flex: "none",
-  width: 40,
-  height: 40,
-  borderRadius: "var(--radius-sm)",
-  background: "var(--accent-soft)",
-  color: "var(--text-accent)",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
 // Two-state badge: "blue" (has a status) or "gray" (no status yet). The at-home
 // screening prompt only shows for "gray". This is the approved two-state model,
 // never a four-light status.
@@ -96,7 +75,9 @@ export interface CareProps {
   onLearnTesting?: (() => void) | undefined;
 }
 
-function GetTestedCard({
+// The one action callout: find testing. The old filled-teal hero (glow, white
+// text) dies here; the callout carries the same content on the editorial card.
+function GetTestedCallout({
   onFindClinic,
   onLearnOfficial,
 }: {
@@ -105,127 +86,49 @@ function GetTestedCard({
 }) {
   const c = COPY.care;
   return (
-    <Card
-      style={{
-        borderRadius: "var(--radius-lg)",
-        padding: 20,
-        background: "var(--accent)",
-        boxShadow: "var(--shadow-md), var(--shadow-accent)",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          color: "#fff",
-          marginBottom: 8,
-        }}
-      >
-        <MapPin size={20} />
-        <span
-          style={{
-            fontSize: 12,
-            fontWeight: 700,
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
-            opacity: 0.9,
-          }}
-        >
-          {c.getTestedEyebrow}
+    <div className={cx("e-card", "care__hero")}>
+      <div className="care__hero-eyebrow">
+        <span aria-hidden className="care__hero-eyebrow-icon">
+          <MapPin size={16} />
         </span>
+        {c.getTestedEyebrow}
       </div>
-      <div
-        style={{
-          fontSize: 19,
-          fontWeight: 700,
-          color: "#fff",
-          lineHeight: 1.3,
-          marginBottom: 14,
-        }}
-      >
-        {c.getTested}
-      </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <Button
-          variant="secondary"
-          onClick={onFindClinic}
-          style={{ background: "#fff", borderColor: "transparent" }}
-        >
+      <div className="care__hero-line">{c.getTested}</div>
+      <div className="care__hero-actions">
+        <Button variant="primary" onClick={onFindClinic}>
           {c.findClinic}
         </Button>
         <button
           type="button"
           onClick={onLearnOfficial}
-          style={{
-            appearance: "none",
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            font: "inherit",
-            fontSize: 13,
-            fontWeight: 600,
-            color: "#fff",
-            textDecoration: "underline",
-            textUnderlineOffset: 3,
-            opacity: 0.9,
-          }}
+          className="care__hero-alt"
         >
           {COPY.learn.official}
         </button>
       </div>
-    </Card>
+    </div>
   );
 }
 
-function HeymistrCard({
+function HeymistrAside({
   onHeymistr,
 }: {
   onHeymistr?: (() => void) | undefined;
 }) {
   const c = COPY.care;
   return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", alignItems: "center", gap: 14 }}
-    >
-      <span style={leadTile}>
+    <div className="care__aside">
+      <span aria-hidden className="care__aside-icon">
         <Stethoscope size={20} />
       </span>
-      <div style={{ flex: 1 }}>
-        <div
-          style={{
-            fontSize: 12,
-            fontWeight: 700,
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
-            color: "var(--text-subtle)",
-          }}
-        >
-          {c.heymistrEyebrow}
-        </div>
-        <div
-          style={{
-            fontSize: 14.5,
-            color: "var(--text-body)",
-            lineHeight: 1.4,
-            marginTop: 2,
-          }}
-        >
-          {c.heymistr}
-        </div>
+      <div className="care__aside-body">
+        <div className="care__aside-eyebrow">{c.heymistrEyebrow}</div>
+        <div className="care__aside-text">{c.heymistr}</div>
       </div>
       <Button variant="ghost" size="sm" onClick={onHeymistr}>
         {c.heymistrCta}
       </Button>
-    </Card>
+    </div>
   );
 }
 
@@ -237,73 +140,34 @@ function LearnRows({
   onLearnTesting?: (() => void) | undefined;
 }) {
   const c = COPY.care;
-  const chevron = <Chevron size={18} />;
-  const learnIcons: ReactNode[] = [
-    <Shield key="shield" size={20} />,
-    <Info key="info" size={20} />,
-  ];
   return (
-    <Card
-      variant="flat"
-      style={{ padding: 6, display: "flex", flexDirection: "column" }}
-    >
-      <Row
-        lead={<Heart size={20} />}
+    <div className="care__rows">
+      <ActionRow
+        lead={<Heart size={18} />}
         title={COPY.learn.title}
         sub={COPY.learn.sub}
-        trail={chevron}
         onClick={onLearn}
       />
-      <Row
-        lead={<Stethoscope size={20} />}
+      <ActionRow
+        lead={<Stethoscope size={18} />}
         title={COPY.learn.testingTitle}
         sub={COPY.learn.testingSub}
-        trail={chevron}
         onClick={onLearnTesting}
       />
-      {c.rows.map((row, i) => {
-        const isTalk = row[0] === "Talk to someone";
-        const lead = isTalk ? <Phone size={20} /> : learnIcons[i];
-        const trail: ReactNode = isTalk ? (
-          <a
-            href={"tel:" + c.talkNumber}
-            aria-label={c.callLabel}
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: "50%",
-              flex: "none",
-              textDecoration: "none",
-              background: "var(--accent-soft)",
-              color: "var(--text-accent)",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Phone size={18} />
-          </a>
-        ) : (
-          chevron
-        );
-        const onClick = isTalk
-          ? () => {
-              window.location.href = "tel:" + c.talkNumber;
-            }
-          : undefined;
-        return (
-          <Row
-            key={row[0]}
-            lead={lead}
-            title={row[0]}
-            sub={row[1]}
-            trail={trail}
-            onClick={onClick}
-          />
-        );
-      })}
-    </Card>
+      <ActionRow
+        lead={<Shield size={18} />}
+        title={c.rows[0][0]}
+        sub={c.rows[0][1]}
+      />
+      <ActionRow
+        lead={<Phone size={18} />}
+        title={c.rows[1][0]}
+        sub={c.rows[1][1]}
+        onClick={() => {
+          window.location.href = "tel:" + c.talkNumber;
+        }}
+      />
+    </div>
   );
 }
 
@@ -319,77 +183,43 @@ export function Care({
   onLearnTesting,
 }: CareProps) {
   const c = COPY.care;
-  const chevron = <Chevron size={18} />;
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-        width: "100%",
-        maxWidth: 600,
-      }}
-    >
-      <h1
-        style={{
-          fontSize: 26,
-          fontWeight: 800,
-          letterSpacing: "-0.02em",
-          color: "var(--text-strong)",
-        }}
-      >
-        {c.title}
-      </h1>
+    <div className="care">
+      <h1 className="care__title">{c.title}</h1>
 
-      <GetTestedCard
+      <GetTestedCallout
         onFindClinic={onFindClinic}
         onLearnOfficial={onLearnOfficial}
       />
 
-      {badge === "gray" && <HeymistrCard onHeymistr={onHeymistr} />}
+      {badge === "gray" && <HeymistrAside onHeymistr={onHeymistr} />}
 
-      <div style={sectionLbl}>{c.resourcesEyebrow}</div>
-      <Card
-        variant="flat"
-        style={{ padding: 6, display: "flex", flexDirection: "column" }}
-      >
-        <Row
-          lead={<Clock size={20} />}
+      <div className="care__section">{c.resourcesEyebrow}</div>
+      <div className="care__rows">
+        <ActionRow
+          lead={<Clock size={18} />}
           title={c.pepTitle}
           sub={c.pepSub}
-          trail={chevron}
           onClick={onFindPep}
         />
-        <Row
-          lead={<Shield size={20} />}
+        <ActionRow
+          lead={<Shield size={18} />}
           title={c.condomsTitle}
           sub={c.condomsSub}
-          trail={chevron}
           onClick={onFindCondoms}
         />
-        <Row
-          lead={<Stethoscope size={20} />}
+        <ActionRow
+          lead={<Stethoscope size={18} />}
           title={c.prepTitle}
           sub={c.prepSub}
-          trail={chevron}
           onClick={onFindPrep}
         />
-      </Card>
+      </div>
 
-      <div style={sectionLbl}>{c.learn}</div>
+      <div className="care__section">{c.learn}</div>
       <LearnRows onLearn={onLearn} onLearnTesting={onLearnTesting} />
 
-      <div
-        style={{
-          fontSize: 11.5,
-          color: "var(--text-subtle)",
-          lineHeight: 1.5,
-          textAlign: "center",
-          padding: "0 8px",
-        }}
-      >
-        {COPY.learn.footer}
-      </div>
+      <div className="care__footer">{COPY.learn.footer}</div>
     </div>
   );
 }
