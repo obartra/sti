@@ -1,12 +1,13 @@
 {
   "title": "sti.care labs",
-  "tagline": "Works in progress, and the thinking behind them.",
-  "intro": "A place for prototypes and the design rationale they came from.",
+  "tagline": "Design notes from building sti.care.",
+  "intro": "The thinking behind sti.care: why it exists, what we decided and rejected, and how the privacy actually works. Written while building, published as-is.",
   "prototype": {
-    "label": "STI Passport",
-    "blurb": "The working design prototype: a shareable passport that shows one honest thing, whether someone is up to date on testing and actively protecting against HIV.",
-    "path": "/passport/",
-    "cta": "Open the prototype"
+    "heading": "The product",
+    "label": "sti.care",
+    "blurb": "The live product: a private way to show you're up to date on testing, without showing anything else. Everything sensitive stays on your device.",
+    "path": "https://sti.care",
+    "cta": "Open sti.care"
   },
   "feedbackUrl": "https://forms.gle/SSw4bUUixd8Bruw1A",
   "feedbackLabel": "Share feedback",
@@ -29,13 +30,25 @@
       "file": "03-design.md",
       "slug": "design",
       "title": "Design",
-      "blurb": "The how. The full product and technical spec for the build."
+      "blurb": "The how. The full product and technical spec."
     },
     {
       "file": "09-data-and-storage.md",
       "slug": "data",
       "title": "Data & storage",
-      "blurb": "What we store, what we can't see, and what we can."
+      "blurb": "What we store, what we provably can't see, and the one place that isn't fully blind."
+    },
+    {
+      "file": "21-voice-and-tone.md",
+      "slug": "voice",
+      "title": "Voice & tone",
+      "blurb": "Every word a user reads, and the rules that keep it honest and plain."
+    },
+    {
+      "file": "36-info-design-language.md",
+      "slug": "design-language",
+      "title": "Design language",
+      "blurb": "Why every sti.care surface reads like a publication, not a dashboard."
     },
     {
       "file": "04-open-questions.md",
