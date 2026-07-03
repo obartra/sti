@@ -2,6 +2,8 @@ import { Matrix } from "../../lib/qr.tsx";
 import { Medallion, blueHeadline, tagsFor } from "../badge-card.tsx";
 import type { BadgeState, ProtectionLabel, Route } from "../badge-card.tsx";
 import { SETTINGS_SCREEN_NAME } from "../../copy/canonical.ts";
+import { cx } from "../../lib/cx.ts";
+import "./wallet.css";
 
 /* Wallet, Apple Wallet, Google Wallet & a standalone shareable card for the
    passport. Faithful port of comps-reference/app/wallet.jsx, implementing the
@@ -162,27 +164,13 @@ export function PassAvatar({
 }) {
   return (
     <span
-      style={{
-        flex: "none",
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        overflow: "hidden",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "rgba(255,255,255,0.18)",
-        boxShadow: ring ? "0 0 0 2px rgba(255,255,255,0.5)" : "none",
-      }}
+      className={cx("pass__avatar", ring && "pass__avatar--ring")}
+      style={{ width: size, height: size }}
     >
       {src ? (
-        <img
-          src={src}
-          alt=""
-          style={{ width: "100%", height: "100%", display: "block" }}
-        />
+        <img src={src} alt="" />
       ) : (
-        <span style={{ fontWeight: 800, color: "#fff", fontSize: size * 0.4 }}>
+        <span className="pass__avatar-initial" style={{ fontSize: size * 0.4 }}>
           {(handle[0] ?? "").toUpperCase()}
         </span>
       )}
@@ -204,15 +192,11 @@ export function UrlText({
 }) {
   return (
     <span
-      style={{
-        fontFamily: "var(--font-mono)",
-        fontSize: 11.5,
-        letterSpacing: "-0.01em",
-        color: light ? "rgba(255,255,255,0.82)" : "var(--text-muted)",
-        wordBreak: "break-all",
-        textAlign: center ? "center" : "left",
-        lineHeight: 1.35,
-      }}
+      className={cx(
+        "pass__url",
+        light && "pass__url--light",
+        center && "pass__url--center",
+      )}
     >
       {url}
     </span>
@@ -232,40 +216,19 @@ export function PassQR({
   state?: BadgeState;
 }) {
   return (
-    <span style={{ position: "relative", display: "inline-flex" }}>
+    <span className="pass__qr">
       <Matrix size={size} seed={ALIAS_ID} hole={9} color="var(--ink-900)" />
-      <span
-        style={{
-          position: "absolute",
-          inset: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
+      <span className="pass__qr-center">
         {kind === "status" ? (
-          <span
-            style={{
-              background: "#fff",
-              borderRadius: 9,
-              padding: 3,
-              display: "inline-flex",
-            }}
-          >
+          <span className="pass__qr-plate">
             <Medallion state={state} size={size * 0.2} />
           </span>
         ) : (
           <img
             src={LOGO_MARK}
             alt=""
-            style={{
-              width: size * 0.2,
-              height: size * 0.2,
-              borderRadius: 6,
-              background: "#fff",
-              padding: 3,
-              boxSizing: "border-box",
-            }}
+            className="pass__qr-logo"
+            style={{ width: size * 0.2, height: size * 0.2 }}
           />
         )}
       </span>

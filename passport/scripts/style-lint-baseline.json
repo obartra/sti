@@ -57,30 +57,14 @@
     "styles": 19,
     "hex": 5
   },
-  "src/ui/wallet/controls.tsx": {
-    "styles": 27,
-    "hex": 9,
-    "legacy": 1
-  },
   "src/ui/wallet/google-pass.tsx": {
     "styles": 19,
     "hex": 3
   },
-  "src/ui/wallet/screen-parts.tsx": {
-    "styles": 21,
-    "hex": 2,
-    "legacy": 2
-  },
-  "src/ui/wallet/share-card.tsx": {
-    "styles": 14,
-    "hex": 1
-  },
   "src/ui/wallet/shared.tsx": {
-    "styles": 8,
-    "hex": 3
+    "styles": 3
   },
   "src/ui/wallet/Wallet.tsx": {
-    "styles": 2,
     "legacy": 1
   }
 }

@@ -15,6 +15,7 @@ import {
   TrustFooter,
   WalletHeader,
 } from "./screen-parts.tsx";
+import "./wallet.css";
 
 // Public re-exports kept on Wallet.tsx so existing importers (stories, etc.)
 // keep resolving the same names from the same module.
@@ -130,16 +131,7 @@ export function Wallet(props: WalletProps) {
   };
 
   return (
-    <div
-      style={{
-        width: "100%",
-        maxWidth: 600,
-        display: "flex",
-        flexDirection: "column",
-        gap: 18,
-        position: "relative",
-      }}
-    >
+    <div className="wl">
       <WalletHeader />
 
       {/* 1 · format choice, gated by privacy */}
@@ -161,13 +153,7 @@ export function Wallet(props: WalletProps) {
         onChange={setPlatform}
       />
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          padding: "4px 0 6px",
-        }}
-      >
+      <div className="wl__stage">
         <PassEl
           format={format}
           state={passState}
