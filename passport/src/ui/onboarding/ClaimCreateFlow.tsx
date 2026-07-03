@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
   Button,
-  Card,
   Field,
   IconButton,
   Input,
 } from "../../design/components/index.ts";
 import { Dice, ArrowRight, Chevron } from "../../design/icons.tsx";
+import { cx } from "../../lib/cx.ts";
+import "./onboarding.css";
 import { randomAvatar } from "../../lib/avatars.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
 import type { SignUpRecovery } from "../../store/index.ts";
@@ -42,13 +43,14 @@ function NameField({
       error={error}
       htmlFor={inputId}
     >
-      <div style={{ display: "flex", gap: 8 }}>
-        <Input
-          id={inputId}
-          value={value}
-          onChange={(e) => onChange(sanitize(e.target.value))}
-          style={{ flex: 1 }}
-        />
+      <div className="onb__fieldrow">
+        <div className="onb__fieldrow-grow">
+          <Input
+            id={inputId}
+            value={value}
+            onChange={(e) => onChange(sanitize(e.target.value))}
+          />
+        </div>
         <IconButton aria-label={COPY.shuffleLabel} onClick={onShuffle}>
           <Dice size={18} />
         </IconButton>
@@ -88,11 +90,7 @@ function usePasswordStrength(password: string): string | null {
 // A small red line under a field.
 function ErrorLine({ text }: { text: string | null }) {
   if (text === null) return null;
-  return (
-    <div style={{ fontSize: 12.5, color: "var(--status-expired-fg)" }}>
-      {text}
-    </div>
-  );
+  return <div className="onb__field-error">{text}</div>;
 }
 
 // The optional password state, kept in one hook so PasswordDisclosure stays small.
@@ -132,29 +130,11 @@ function DisclosureToggle({
       aria-expanded={open}
       aria-controls={regionId}
       onClick={onToggle}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 8,
-        padding: 0,
-        background: "none",
-        border: "none",
-        cursor: "pointer",
-        font: "inherit",
-        fontSize: 14,
-        fontWeight: 700,
-        color: "var(--text-body)",
-      }}
+      className="onb__disclose"
     >
       {COPY.passwordDisclosure}
       <span
-        style={{
-          display: "inline-flex",
-          color: "var(--text-subtle)",
-          transform: open ? "rotate(90deg)" : "none",
-          transition: "transform 120ms ease",
-        }}
+        className={cx("onb__disclose-icon", open && "onb__disclose-icon--open")}
       >
         <Chevron size={18} />
       </span>
@@ -187,16 +167,8 @@ function PasswordCard({
   const pwId = useId();
   const confirmId = useId();
   return (
-    <Card
-      id={regionId}
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 12 }}
-    >
-      <div
-        style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}
-      >
-        {COPY.passwordBackstop}
-      </div>
+    <div id={regionId} className="onb__group">
+      <div className="onb__group-note">{COPY.passwordBackstop}</div>
       <Field label={COPY.pwNameLabel} htmlFor={nameId} hint={COPY.pwNameHint}>
         <Input
           id={nameId}
@@ -237,7 +209,7 @@ function PasswordCard({
         />
       </Field>
       <ErrorLine text={mismatch ? COPY.pwMismatch : null} />
-    </Card>
+    </div>
   );
 }
 
@@ -257,7 +229,7 @@ function PasswordDisclosure(props: {
   const regionId = useId();
   const { open, onToggle, ...rest } = props;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="onb__disclosure">
       <DisclosureToggle open={open} regionId={regionId} onToggle={onToggle} />
       {open && <PasswordCard regionId={regionId} {...rest} />}
     </div>

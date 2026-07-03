@@ -1,19 +1,7 @@
-import type { CSSProperties } from "react";
+import "./onboarding.css";
 
 // The consent line at the point of account creation (doc 23). Links the terms and
 // privacy policy inline; renders nothing if neither is wired.
-
-const consentLink: CSSProperties = {
-  appearance: "none",
-  border: "none",
-  background: "none",
-  padding: 0,
-  cursor: "pointer",
-  font: "inherit",
-  fontWeight: 700,
-  color: "var(--text-accent)",
-};
-
 export function ConsentLine({
   onViewPrivacyPolicy,
   onViewTerms,
@@ -23,20 +11,13 @@ export function ConsentLine({
 }) {
   if (!onViewPrivacyPolicy && !onViewTerms) return null;
   return (
-    <p
-      style={{
-        margin: 0,
-        textAlign: "center",
-        fontSize: 12,
-        color: "var(--text-subtle)",
-      }}
-    >
+    <p className="onb__consent">
       By entering, you agree to our{" "}
-      <button type="button" style={consentLink} onClick={onViewTerms}>
+      <button type="button" className="onb__link" onClick={onViewTerms}>
         Terms
       </button>{" "}
       and{" "}
-      <button type="button" style={consentLink} onClick={onViewPrivacyPolicy}>
+      <button type="button" className="onb__link" onClick={onViewPrivacyPolicy}>
         Privacy
       </button>
       .

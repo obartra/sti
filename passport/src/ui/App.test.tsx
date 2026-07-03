@@ -328,7 +328,7 @@ describe("App onboarding flow", () => {
     await user.click(screen.getByRole("button", { name: /saved it/i }));
     // Choose Gated ("Ask first") so this account's links are bare /a/{id} (no key
     // in the fragment); the default is now Direct, which would carry the key.
-    await user.click(await screen.findByRole("tab", { name: "Ask first" }));
+    await user.click(await screen.findByRole("radio", { name: "Ask first" }));
     await user.click(
       await screen.findByRole("button", { name: /Enter my passport/ }),
     );
