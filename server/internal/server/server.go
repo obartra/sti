@@ -80,9 +80,10 @@ type Config struct {
 	// constant-time and never logged. By the time it reaches here main.go has
 	// enforced a length floor (when AdminEnabled), so it is trusted non-trivial.
 	AdminToken string
-	// AdminRatePerSec / AdminBurst bound /admin/* per client IP, tightly: the
-	// surface is for one operator, so a low budget slows any brute force without
-	// affecting real use. Zero leaves the defaults (1/sec, burst 5).
+	// AdminRatePerSec / AdminBurst bound /admin/* per client IP. The budget must
+	// absorb the console's unlock sweep (every panel fetches at once, a dozen or
+	// so requests) while staying far below any useful brute-force pace against a
+	// 32+ char random bearer. Zero leaves the defaults (5/sec, burst 40).
 	AdminRatePerSec float64
 	AdminBurst      float64
 	// VanityLockWindow is the post-release lock during which a freed name is
@@ -172,10 +173,10 @@ func (c *Config) withDefaults() {
 		c.KnockBurst = 10
 	}
 	if c.AdminRatePerSec == 0 {
-		c.AdminRatePerSec = 1
+		c.AdminRatePerSec = 5
 	}
 	if c.AdminBurst == 0 {
-		c.AdminBurst = 5
+		c.AdminBurst = 40
 	}
 	if c.VanityLockWindow == 0 {
 		c.VanityLockWindow = 24 * time.Hour
