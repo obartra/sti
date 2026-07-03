@@ -657,9 +657,16 @@ describe("owner session against a live blind store", () => {
     const made = await ctl.createContactLink(session, "Sam");
     expect(made.contact.label).toBe("Sam");
     expect(made.contact.alias.isPublic).toBe(false);
-    // Durable: the link never expires on its own, it lives until revoked.
+    // Default lifetime: no expiry, the link lives until revoked.
     expect(made.contact.expiresAt).toBeNull();
     expect(made.session.blob.contacts).toHaveLength(1);
+
+    // A chosen lifetime is stored as the absolute instant the owner picked.
+    const in7d = nowMs() + 7 * 24 * 60 * 60 * 1000;
+    const timed = await ctl.createContactLink(made.session, "Ari", {
+      expiresAt: in7d,
+    });
+    expect(timed.contact.expiresAt).toBe(in7d);
     // The link carries the key, so the one recipient can open it directly.
     expect(made.url).toContain(`/a/${made.contact.alias.id}#k=`);
 
@@ -673,8 +680,8 @@ describe("owner session against a live blind store", () => {
     );
 
     // Revoke: the contact is dropped and the link stops resolving.
-    const after = await ctl.revokeContact(made.session, made.contact.id);
-    expect(after.blob.contacts).toHaveLength(0);
+    const after = await ctl.revokeContact(timed.session, made.contact.id);
+    expect(after.blob.contacts.map((c) => c.label)).toEqual(["Ari"]);
     expect(await store.resolveAlias(caps(made.contact.alias))).toBeNull();
   });
 

@@ -5,15 +5,17 @@ import type { LinkShareContext } from "../../core/Privacy.aliases.share.tsx";
 import type { ScreenCtx, ScreenRenderers } from "./context.ts";
 import "../../connect/connect.css";
 
-// The per-contact link manager: mint a private link for one person, list active
-// links, rename, revoke (doc 13). Each link is durable until revoked. Shared by the
+// The per-contact link manager: mint a private link for one person with a chosen
+// lifetime, list active links, rename, revoke (doc 13, doc 16). Shared by the
 // Links tab and the `alias-share` sub-screen it pushes.
 function contactManager(ctx: ScreenCtx) {
   const { nav, owner, contacts, onCreateContactLink, onRenameContact } = ctx;
   return (
     <ContactLinks
       contacts={contacts}
-      onCreate={(label, identity) => onCreateContactLink(label, identity)}
+      onCreate={(label, identity, expiresAt) =>
+        onCreateContactLink(label, identity, expiresAt)
+      }
       onRename={onRenameContact}
       onRevoke={ctx.onRevokeContact}
       canShowName={owner.handle !== undefined && owner.handle !== ""}

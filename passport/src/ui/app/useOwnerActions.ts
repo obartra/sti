@@ -123,14 +123,17 @@ export function useOwnerActions(
   const profile = useProfileActions(controller, sessionRef, setSession);
 
   const onCreateContactLink = useCallback(
-    async (label: string, identity: AliasIdentity) => {
+    async (
+      label: string,
+      identity: AliasIdentity,
+      expiresAt: number | null = null,
+    ) => {
       const current = sessionRef.current;
       if (current === null) throw new Error("not signed in");
-      const result = await controller.createContactLink(
-        current,
-        label,
+      const result = await controller.createContactLink(current, label, {
         identity,
-      );
+        expiresAt,
+      });
       sessionRef.current = result.session;
       setSession(result.session);
       return result;

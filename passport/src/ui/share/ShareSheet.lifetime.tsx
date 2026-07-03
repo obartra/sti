@@ -42,6 +42,24 @@ function keyFor(durationMs: number | null): string {
   return best;
 }
 
+// A private link's expiry as a short row fragment: null/absent (until revoked)
+// renders nothing, otherwise a day-grained countdown. Day counts round up, so a
+// link with any time left today reads "Expires today", not "Expired". Shared by
+// every list that shows a private link; public links never carry an expiry
+// (doc 16), so they never call this.
+export function expiryLabel(
+  expiresAt: number | null | undefined,
+  now: number,
+): string | null {
+  if (expiresAt === null || expiresAt === undefined) return null;
+  const left = expiresAt - now;
+  if (left <= 0) return "Expired";
+  const days = Math.ceil(left / DAY_MS);
+  if (days <= 1) return "Expires today";
+  if (days === 2) return "Expires tomorrow";
+  return `Expires in ${days} days`;
+}
+
 // The current selection derived from an alias's absolute `expiresAt` (or
 // undefined/null when the link has no expiry): the remaining time snapped to the
 // nearest offered length, so the row highlights a sensible choice on reopen.

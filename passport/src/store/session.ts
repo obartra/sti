@@ -68,6 +68,7 @@ import {
   setShareLinkExpiry,
   shareLinkFor,
   type RevealChoice,
+  type ContactLinkOpts,
 } from "./shareOps.ts";
 import {
   primaryShareAlias,
@@ -257,15 +258,15 @@ export interface SessionController extends GroupMembershipController {
   ): Promise<number>;
   /**
    * Mint a fresh PRIVATE link for one specific contact (a named, individually
-   * revocable link), publish the current card to it, and record it. The link is
-   * durable: it never expires on its own and lives until revoked. Returns the
-   * session, the new contact, and the URL.
+   * revocable link), publish the current card to it, and record it. The owner
+   * picks the face and the lifetime at mint time (`expiresAt` is an absolute
+   * epoch-ms instant, or null for until-revoked, doc 16); revoking always cuts
+   * it off immediately. Returns the session, the new contact, and the URL.
    */
   createContactLink(
     session: OwnerSession,
     label: string,
-    identity?: AliasIdentity,
-    avatarOverride?: AvatarConfig,
+    opts?: ContactLinkOpts,
   ): Promise<ContactLinkResult>;
   /**
    * Rename one contact's local label (the owner-only nickname). Purely local: the
@@ -644,12 +645,8 @@ export function createSessionController(deps: SessionDeps): SessionController {
       return grantPending(api, approvals);
     },
 
-    createContactLink(session, label, identity = "anonymous", avatarOverride) {
-      return mintContactLink(api, accounts, session, {
-        label,
-        identity,
-        avatarOverride,
-      });
+    createContactLink(session, label, opts = {}) {
+      return mintContactLink(api, accounts, session, { label, ...opts });
     },
 
     renameContact: (session, contactId, label) =>

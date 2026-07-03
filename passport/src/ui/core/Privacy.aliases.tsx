@@ -17,6 +17,8 @@ import {
   useLinkShare,
   type LinkShareContext,
 } from "./Privacy.aliases.share.tsx";
+import { expiryLabel } from "../share/ShareSheet.lifetime.tsx";
+import { nowMs } from "../../core/clock.ts";
 import "../connect/connect.css";
 
 // "Your links": one honest list of everything that can currently resolve to the
@@ -43,6 +45,14 @@ function contactUrl(c: ContactRecord): string {
   return c.myInbox !== undefined
     ? contactInviteUrl(c.alias, c.myInbox)
     : keyedAliasLinkUrl(c.alias);
+}
+
+// A row's sub line with the link's remaining time appended, when it has an
+// expiry. Only private links ever carry one (doc 16); the public-profile row
+// never calls this, so the invariant is visible right here in the component.
+function withExpiry(sub: string, expiresAt: number | null | undefined): string {
+  const expiry = expiryLabel(expiresAt, nowMs());
+  return expiry === null ? sub : `${sub} · ${expiry}`;
 }
 
 function LinkRow({
@@ -129,7 +139,11 @@ export function LiveLinks({
               key={a.id}
               icon={a.isPublic ? <Globe size={18} /> : <Lock size={18} />}
               title={a.isPublic ? "Public profile" : "Casual link"}
-              sub={a.isPublic ? "Anyone with the link" : "Link-only, unlisted"}
+              sub={
+                a.isPublic
+                  ? "Anyone with the link"
+                  : withExpiry("Link-only, unlisted", a.expiresAt)
+              }
               onShare={
                 canShare ? () => linkShare.open(aliasLinkUrl(a)) : undefined
               }
@@ -141,11 +155,12 @@ export function LiveLinks({
               key={c.id}
               icon={<LinkIcon size={18} />}
               title={c.label || "Unnamed link"}
-              sub={
+              sub={withExpiry(
                 c.theirStatusAlias !== undefined
                   ? "Linked both ways"
-                  : "Private link"
-              }
+                  : "Private link",
+                c.expiresAt,
+              )}
               onShare={
                 canShare ? () => linkShare.open(contactUrl(c)) : undefined
               }

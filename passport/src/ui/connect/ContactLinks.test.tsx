@@ -18,12 +18,16 @@ function aliasRecord() {
   };
 }
 
-function contact(label: string, linked: boolean): ContactRecord {
+function contact(
+  label: string,
+  linked: boolean,
+  expiresAt: number | null = null,
+): ContactRecord {
   const base = {
     id: randomAliasId(),
     label,
     createdDay: 19_000,
-    expiresAt: null,
+    expiresAt,
     alias: aliasRecord(),
   };
   return linked
@@ -65,10 +69,46 @@ describe("ContactLinks", () => {
     ).toBeInTheDocument();
   });
 
-  it("has no lifetime control: every link is durable until revoked", () => {
-    render(<ContactLinks contacts={[]} onCreate={noCreate} onRevoke={noop} />);
-    expect(screen.queryByText("Lasts")).toBeNull();
-    expect(screen.queryByRole("tablist", { name: "Link lifetime" })).toBeNull();
+  it("offers the lifetime choice and defaults to no expiry", async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn(() => Promise.resolve({ url: "" }));
+    render(<ContactLinks contacts={[]} onCreate={onCreate} onRevoke={noop} />);
+    expect(screen.getByRole("group", { name: "Link lasts" })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: /Create a link/ }));
+    expect(onCreate).toHaveBeenCalledWith("", "anonymous", null);
+  });
+
+  it("mints with an absolute expiry when a lifetime is picked", async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn<
+      (l: string, i: string, e: number | null) => Promise<{ url: string }>
+    >(() => Promise.resolve({ url: "" }));
+    render(<ContactLinks contacts={[]} onCreate={onCreate} onRevoke={noop} />);
+    const before = Date.now();
+    await user.click(screen.getByRole("button", { name: "7 days" }));
+    await user.click(screen.getByRole("button", { name: /Create a link/ }));
+    const expiresAt = onCreate.mock.calls[0]?.[2];
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    expect(expiresAt).toBeGreaterThanOrEqual(before + sevenDays);
+    expect(expiresAt).toBeLessThanOrEqual(Date.now() + sevenDays);
+  });
+
+  it("shows how long a link has left, and nothing on a no-expiry link", () => {
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    render(
+      <ContactLinks
+        contacts={[
+          contact("Sam", true, Date.now() + sevenDays),
+          contact("Ana", false),
+        ]}
+        onCreate={noCreate}
+        onRevoke={noop}
+      />,
+    );
+    expect(screen.getByText(/Expires in 7 days/)).toBeInTheDocument();
+    expect(screen.getByText(/Waiting for their link/).textContent).not.toMatch(
+      /Expires/,
+    );
   });
 
   it("mints anonymously by default", async () => {
@@ -83,7 +123,7 @@ describe("ContactLinks", () => {
       />,
     );
     await user.click(screen.getByRole("button", { name: /Create a link/ }));
-    expect(onCreate).toHaveBeenCalledWith("", "anonymous");
+    expect(onCreate).toHaveBeenCalledWith("", "anonymous", null);
   });
 
   it("mints with the owner's name when they choose to show it", async () => {
@@ -99,7 +139,7 @@ describe("ContactLinks", () => {
     );
     await user.click(screen.getByRole("button", { name: "Show my name" }));
     await user.click(screen.getByRole("button", { name: /Create a link/ }));
-    expect(onCreate).toHaveBeenCalledWith("", "main");
+    expect(onCreate).toHaveBeenCalledWith("", "main", null);
   });
 
   it("hides the show-my-name choice when the owner has no name", () => {

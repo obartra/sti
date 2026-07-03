@@ -3,22 +3,28 @@ import { Button, Input } from "../../design/components/index.ts";
 import { Link, Trash, Dots } from "../../design/icons.tsx";
 import { AvatarCard } from "../onboarding/AvatarCard.tsx";
 import { IdentityChoiceRow } from "../share/ShareSheet.identity.tsx";
+import { LifetimeRow, expiryLabel } from "../share/ShareSheet.lifetime.tsx";
 import { CreatedLink } from "./ContactLinks.parts.tsx";
+import { nowMs } from "../../core/clock.ts";
 import type { AliasIdentity, ContactRecord } from "../../store/index.ts";
 import "./connect.css";
 
 /* ContactLinks: the owner's per-contact private links (doc 13). Each link is for
-   one person and individually revocable; it never expires on its own, so revoking
-   it is the single cut-off. The link carries the key, so the recipient opens it
-   directly. No status is shown here; this is link management, not a viewer surface. */
+   one person and individually revocable, and the owner picks how long it lasts
+   at creation (doc 16): a preset lifetime, or until they turn it off. Revoking
+   always cuts it off immediately. The link carries the key, so the recipient
+   opens it directly. No status is shown here; this is link management, not a
+   viewer surface. */
 
 export interface ContactLinksProps {
   contacts: ContactRecord[];
-  /** Mint a new link for `label` with a face (anonymous, or the owner's name);
-   * resolves with the shareable URL. The link is durable until revoked. */
+  /** Mint a new link for `label` with a face (anonymous, or the owner's name)
+   * and a lifetime: `expiresAt` is the absolute instant the link stops working,
+   * or null for until-revoked. Resolves with the shareable URL. */
   onCreate: (
     label: string,
     identity: AliasIdentity,
+    expiresAt: number | null,
   ) => Promise<{ url: string }>;
   onRevoke: (id: string) => void;
   /** Rename one link's local label (the owner-only nickname; never shared with the
@@ -34,13 +40,15 @@ export interface ContactLinksProps {
 }
 
 // The "mint a new link" form: nickname, the face choice (when the owner has a name
-// to show), and the create button, with an inline error so the action never
-// silently no-ops.
+// to show), the lifetime choice, and the create button, with an inline error so
+// the action never silently no-ops.
 function CreateCard({
   label,
   setLabel,
   identity,
   setIdentity,
+  lifetime,
+  setLifetime,
   canShowName,
   busy,
   error,
@@ -50,6 +58,8 @@ function CreateCard({
   setLabel: (v: string) => void;
   identity: AliasIdentity;
   setIdentity: (v: AliasIdentity) => void;
+  lifetime: number | null;
+  setLifetime: (v: number | null) => void;
   canShowName: boolean;
   busy: boolean;
   error: string | null;
@@ -70,6 +80,10 @@ function CreateCard({
         hasName={canShowName}
         onChange={setIdentity}
       />
+      {/* How long the link lasts (doc 16): a preset duration, or until the owner
+          turns it off. The choice is fixed at creation; changing your mind later
+          means revoking this link and making a new one. */}
+      <LifetimeRow choice={lifetime} onChange={setLifetime} />
       <Button
         variant="primary"
         size="md"
@@ -95,6 +109,9 @@ export function ContactLinks({
 }: ContactLinksProps): React.ReactElement {
   const [label, setLabel] = useState("");
   const [identity, setIdentity] = useState<AliasIdentity>("anonymous");
+  // The chosen lifetime as a duration from now (null = until turned off). Turned
+  // into an absolute expiry instant at the moment the link is created.
+  const [lifetime, setLifetime] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -104,10 +121,12 @@ export function ContactLinks({
     setBusy(true);
     setCreated(null);
     setError(null);
-    void onCreate(label.trim(), identity)
+    const expiresAt = lifetime === null ? null : nowMs() + lifetime;
+    void onCreate(label.trim(), identity, expiresAt)
       .then((r) => {
         setCreated(r.url);
         setLabel("");
+        setLifetime(null);
       })
       // Surface the failure instead of swallowing it: a primary action must never
       // silently do nothing (that reads as "the button is broken").
@@ -124,8 +143,8 @@ export function ContactLinks({
       <div>
         <h1 className="cn__title">Your links</h1>
         <p className="cn__sub">
-          A private link for one person. They open it to see your status. It
-          works until you revoke it.
+          A private link for one person. They open it to see your status. You
+          choose how long it lasts.
         </p>
       </div>
 
@@ -138,6 +157,8 @@ export function ContactLinks({
         setLabel={setLabel}
         identity={identity}
         setIdentity={setIdentity}
+        lifetime={lifetime}
+        setLifetime={setLifetime}
         canShowName={canShowName}
         busy={busy}
         error={error}
@@ -233,8 +254,8 @@ function RowMenu({
   );
 }
 
-// One contact row: the private label, a linked-vs-pending line, and a "⋯" menu to
-// rename or revoke the link.
+// One contact row: the private label, a linked-vs-pending line (plus how long the
+// link has left, when it has an expiry), and a "⋯" menu to rename or revoke.
 function ContactRow({
   contact,
   onRevoke,
@@ -245,10 +266,12 @@ function ContactRow({
   onRename: ((label: string) => void) | undefined;
 }): React.ReactElement {
   const [open, setOpen] = useState(false);
-  const status =
+  const linked =
     contact.theirStatusAlias !== undefined
       ? "Linked both ways"
       : "Waiting for their link";
+  const expiry = expiryLabel(contact.expiresAt, nowMs());
+  const status = expiry === null ? linked : `${linked} · ${expiry}`;
   return (
     <div>
       <div className="cl__row">

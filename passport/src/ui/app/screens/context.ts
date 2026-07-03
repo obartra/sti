@@ -79,11 +79,12 @@ export interface ScreenCtx extends GroupJoinActions {
   /** The owner's per-contact links (newest last); empty logged out. */
   contacts: ContactRecord[];
   /** Mint a new per-contact link for `label` with a face (anonymous, or the
-   * owner's name); resolves with the contact + URL. The link is durable until
-   * revoked. */
+   * owner's name) and a lifetime: `expiresAt` is the absolute instant the link
+   * stops working, or null for until-revoked. Resolves with the contact + URL. */
   onCreateContactLink: (
     label: string,
     identity: AliasIdentity,
+    expiresAt: number | null,
   ) => Promise<ContactLinkResult>;
   /** Rename one contact link's local label (owner-only nickname; never shared). */
   onRenameContact: (id: string, label: string) => void;
