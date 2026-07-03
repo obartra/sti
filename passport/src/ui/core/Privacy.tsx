@@ -7,6 +7,7 @@ import { DangerZone } from "./Privacy.danger.tsx";
 import { AccountSection } from "./Privacy.account.tsx";
 import { ProfileSection } from "./Privacy.profile.tsx";
 import { AboutFooter } from "./Privacy.about.tsx";
+import "./settings.css";
 
 export interface PrivacyProps {
   ownerState: OwnerState;
@@ -58,20 +59,7 @@ export interface PrivacyProps {
 // zone: logging out is reversible (the phrase still works), delete is not.
 function LogOutRow({ onLogOut }: { onLogOut: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onLogOut}
-      style={{
-        alignSelf: "flex-start",
-        padding: 0,
-        background: "none",
-        border: "none",
-        cursor: "pointer",
-        fontSize: 14,
-        fontWeight: 700,
-        color: "var(--text-accent)",
-      }}
-    >
+    <button type="button" onClick={onLogOut} className="st__logout">
       {COPY.logOut}
     </button>
   );
@@ -101,26 +89,9 @@ export function Privacy({
 }: PrivacyProps) {
   const state = usePrivacyState(ownerState, setOwnerState);
   return (
-    <div style={{ display: "flex", justifyContent: "center" }}>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 22,
-          width: "100%",
-          maxWidth: 600,
-        }}
-      >
-        <h1
-          style={{
-            fontSize: 24,
-            fontWeight: 800,
-            letterSpacing: "-0.02em",
-            color: "var(--text-strong)",
-          }}
-        >
-          {COPY.title}
-        </h1>
+    <div className="st__center">
+      <div className="st">
+        <h1 className="st__title">{COPY.title}</h1>
 
         {onLogOut && <LogOutRow onLogOut={onLogOut} />}
 

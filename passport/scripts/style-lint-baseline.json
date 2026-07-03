@@ -51,40 +51,12 @@
   "src/ui/core/ContinuityNudgeCard.stories.tsx": {
     "styles": 1
   },
-  "src/ui/core/Privacy.about.tsx": {
-    "styles": 11
-  },
   "src/ui/core/Privacy.aliases.tsx": {
     "styles": 10,
     "legacy": 2
   },
-  "src/ui/core/Privacy.danger.tsx": {
-    "styles": 8,
-    "legacy": 1
-  },
-  "src/ui/core/Privacy.install.tsx": {
-    "styles": 5
-  },
-  "src/ui/core/Privacy.name.tsx": {
-    "styles": 3,
-    "legacy": 1
-  },
-  "src/ui/core/Privacy.parts.tsx": {
-    "styles": 4
-  },
-  "src/ui/core/Privacy.sections.tsx": {
-    "styles": 36,
-    "legacy": 5
-  },
-  "src/ui/core/Privacy.tsx": {
-    "styles": 4
-  },
   "src/ui/findable/BioMock.stories.tsx": {
     "styles": 1
-  },
-  "src/ui/findable/FindableName.tsx": {
-    "styles": 21,
-    "legacy": 2
   },
   "src/ui/findable/ShareLinkGuide.stories.tsx": {
     "styles": 1
@@ -141,16 +113,8 @@
   "src/ui/settings/RecoveryPassword.stories.tsx": {
     "styles": 1
   },
-  "src/ui/settings/RecoveryPassword.tsx": {
-    "styles": 13,
-    "legacy": 2
-  },
   "src/ui/settings/RecoveryPhrase.stories.tsx": {
     "styles": 1
-  },
-  "src/ui/settings/RecoveryPhrase.tsx": {
-    "styles": 15,
-    "legacy": 2
   },
   "src/ui/share/ShareSheet.stories.tsx": {
     "styles": 1

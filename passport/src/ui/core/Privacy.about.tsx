@@ -1,5 +1,5 @@
-import type { CSSProperties } from "react";
-import { COPY, keepUntilLabel, fieldLbl } from "./Privacy.parts.tsx";
+import { COPY, keepUntilLabel } from "./Privacy.parts.tsx";
+import "./settings.css";
 
 export interface AboutFooterProps {
   now: number;
@@ -7,17 +7,6 @@ export interface AboutFooterProps {
   onViewPrivacyPolicy?: (() => void) | undefined;
   onViewTerms?: (() => void) | undefined;
 }
-
-const aboutLink: CSSProperties = {
-  alignSelf: "flex-start",
-  padding: 0,
-  background: "none",
-  border: "none",
-  cursor: "pointer",
-  fontSize: 13,
-  fontWeight: 600,
-  color: "var(--text-muted)",
-};
 
 // A de-emphasized footer group at the very bottom of Settings: the trust pages
 // (promises, privacy, terms) plus the plain retention note. Kept reachable but
@@ -29,30 +18,33 @@ export function AboutFooter({
   onViewTerms,
 }: AboutFooterProps) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-        marginTop: 8,
-        paddingTop: 16,
-        borderTop: "1px solid var(--divider)",
-      }}
-    >
-      <div style={{ ...fieldLbl, marginBottom: 0 }}>{COPY.aboutTitle}</div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+    <div className="st__about">
+      <div className="st__section-label">{COPY.aboutTitle}</div>
+      <div className="st__about-links">
         {onViewPromises && (
-          <button type="button" onClick={onViewPromises} style={aboutLink}>
+          <button
+            type="button"
+            onClick={onViewPromises}
+            className="st__about-link"
+          >
             {COPY.aboutPromises}
           </button>
         )}
         {onViewPrivacyPolicy && (
-          <button type="button" onClick={onViewPrivacyPolicy} style={aboutLink}>
+          <button
+            type="button"
+            onClick={onViewPrivacyPolicy}
+            className="st__about-link"
+          >
             {COPY.aboutPrivacy}
           </button>
         )}
         {onViewTerms && (
-          <button type="button" onClick={onViewTerms} style={aboutLink}>
+          <button
+            type="button"
+            onClick={onViewTerms}
+            className="st__about-link"
+          >
             {COPY.aboutTerms}
           </button>
         )}
@@ -68,31 +60,12 @@ export function AboutFooter({
 // than an actionable countdown; the date is the reference instant plus the window.
 function RetentionNote({ now }: { now: number }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 4,
-        padding: "2px 2px 0",
-      }}
-    >
-      <div style={fieldLbl}>{COPY.keepTitle}</div>
-      <p
-        style={{
-          margin: 0,
-          fontSize: 13,
-          lineHeight: 1.5,
-          color: "var(--text-muted)",
-        }}
-      >
-        {COPY.keepBody}
-      </p>
-      <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>
+    <div className="st__keep">
+      <div className="st__keep-title">{COPY.keepTitle}</div>
+      <p className="st__keep-body">{COPY.keepBody}</p>
+      <p className="st__keep-body">
         {COPY.keepPrefix}
-        <strong style={{ color: "var(--text-strong)", fontWeight: 700 }}>
-          {keepUntilLabel(now)}
-        </strong>
-        .
+        <strong className="st__keep-date">{keepUntilLabel(now)}</strong>.
       </p>
     </div>
   );

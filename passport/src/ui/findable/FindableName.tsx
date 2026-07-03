@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Card, Field, Input } from "../../design/components/index.ts";
+import { Button, Field, Input } from "../../design/components/index.ts";
+import { cx } from "../../lib/cx.ts";
+import "../core/settings.css";
 import { Globe, Lock } from "../../design/icons.tsx";
 import {
   normalizeVanityName,
@@ -150,13 +152,7 @@ function StatusLine({
   if (text === null) return null;
   const isError = claimError !== null || formatError !== null || taken;
   return (
-    <div
-      style={{
-        fontSize: 12.5,
-        marginTop: -4,
-        color: isError ? "var(--status-expired-fg)" : "var(--text-muted)",
-      }}
-    >
+    <div className={cx("st__status", isError && "st__status--error")}>
       {text}
     </div>
   );
@@ -201,12 +197,9 @@ function RegisterForm({
     busy || normalized === "" || bad !== null || status === "taken";
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <div className="st__block">
       <Consent />
-      <form
-        onSubmit={submit}
-        style={{ display: "flex", flexDirection: "column", gap: 12 }}
-      >
+      <form onSubmit={submit} className="st__form">
         <Field label={COPY.label} htmlFor="vanity-name">
           <Input
             id="vanity-name"
@@ -238,7 +231,7 @@ function RegisterForm({
           {busy ? COPY.claiming : COPY.claim}
         </Button>
       </form>
-    </Card>
+    </div>
   );
 }
 
@@ -272,54 +265,28 @@ function RegisteredView({
   }, [ops, onReleased]);
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ color: "var(--text-accent)", flex: "none" }}>
+    <div className="st__block">
+      <div className="st__block-head">
+        <span aria-hidden className="st__block-icon">
           <Globe size={18} />
         </span>
-        <div
-          style={{ fontSize: 14, fontWeight: 800, color: "var(--text-strong)" }}
-        >
-          {COPY.title}
+        <div className="st__block-body">
+          <div className="st__block-title">{COPY.title}</div>
         </div>
       </div>
-      <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-        {COPY.registeredAt}
-      </div>
-      <div
-        style={{
-          fontFamily: "var(--font-mono, ui-monospace, monospace)",
-          fontSize: 17,
-          fontWeight: 700,
-          color: "var(--text-strong)",
-          wordBreak: "break-all",
-        }}
-      >
-        {name}
-      </div>
-      {error !== null && (
-        <div style={{ fontSize: 12.5, color: "var(--status-expired-fg)" }}>
-          {error}
-        </div>
-      )}
+      <div className="st__value-label">{COPY.registeredAt}</div>
+      <div className="st__mono">{name}</div>
+      {error !== null && <div className="st__error">{error}</div>}
       {/* Pinned (doc 32): this name is the sign-in username, so we do not offer to
           release it. Show the fix instead of a control that would be refused. */}
       {pinned ? (
-        <div
-          style={{
-            fontSize: 12.5,
-            color: "var(--text-muted)",
-            lineHeight: 1.5,
-          }}
-        >
-          {COPY.pinned}
-        </div>
+        <div className="st__note">{COPY.pinned}</div>
       ) : (
         <Button variant="secondary" size="md" disabled={busy} onClick={release}>
           {busy ? COPY.releasing : COPY.release}
         </Button>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -338,61 +305,23 @@ function isPinRefusal(e: unknown): boolean {
 // a native <details> expander so the reader can open them but isn't walled by them.
 function Consent() {
   return (
-    <div style={{ display: "flex", gap: 10 }}>
-      <span style={{ color: "var(--text-accent)", flex: "none", marginTop: 1 }}>
+    <div className="st__block-head">
+      <span aria-hidden className="st__block-icon">
         <Globe size={18} />
       </span>
-      <div style={{ flex: 1 }}>
-        <div
-          style={{ fontSize: 14, fontWeight: 800, color: "var(--text-strong)" }}
-        >
-          {COPY.lead}
-        </div>
+      <div className="st__block-body">
+        <div className="st__block-title">{COPY.lead}</div>
         {/* The harvest cost stays visible (doc 17), not behind the expander. */}
-        <div
-          style={{
-            fontSize: 12.5,
-            color: "var(--text-body)",
-            lineHeight: 1.5,
-            marginTop: 4,
-          }}
-        >
-          {COPY.harvest}
-        </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 6,
-            marginTop: 6,
-            fontSize: 12.5,
-            color: "var(--text-muted)",
-            lineHeight: 1.5,
-          }}
-        >
-          <Lock size={13} style={{ flex: "none", marginTop: 2 }} />
+        <div className="st__block-lead">{COPY.harvest}</div>
+        <div className="st__lockline">
+          <span aria-hidden className="st__lockline-icon">
+            <Lock size={13} />
+          </span>
           <span>{COPY.sub}</span>
         </div>
-        <details style={{ marginTop: 8 }}>
-          <summary
-            style={{
-              fontSize: 12.5,
-              fontWeight: 700,
-              color: "var(--text-accent)",
-              cursor: "pointer",
-            }}
-          >
-            {COPY.details}
-          </summary>
-          <ul
-            style={{
-              margin: "8px 0 0",
-              paddingLeft: 18,
-              fontSize: 12.5,
-              color: "var(--text-muted)",
-              lineHeight: 1.5,
-            }}
-          >
+        <details className="st__details">
+          <summary>{COPY.details}</summary>
+          <ul>
             {COPY.bullets.map((b) => (
               <li key={b}>{b}</li>
             ))}

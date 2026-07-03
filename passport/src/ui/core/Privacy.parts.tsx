@@ -1,7 +1,9 @@
 import { useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { CondomPreference, OwnerState } from "../../core/badge.ts";
 import { SETTINGS_SCREEN_NAME } from "../../copy/canonical.ts";
+import { cx } from "../../lib/cx.ts";
+import "./settings.css";
 
 // Privacy and sharing: the card-attribute + controls + danger state. The live link
 // list is the real LiveLinks (Privacy.aliases.tsx); this module holds only what is
@@ -94,22 +96,8 @@ export function keepUntilLabel(fromMs: number): string {
 
 export type Condoms = "off" | "raw" | "either" | "always";
 
-export const fieldLbl: CSSProperties = {
-  fontSize: 14,
-  fontWeight: 600,
-  color: "var(--text-body)",
-  marginBottom: 10,
-};
-
-// A settings section heading (Account, Profile), a touch stronger than fieldLbl.
-const sectionHeading: CSSProperties = {
-  fontSize: 17,
-  fontWeight: 800,
-  letterSpacing: "-0.01em",
-  color: "var(--text-strong)",
-};
-
-// A labeled block: a section heading, an optional sub-line, then its cards.
+// A labeled section (doc 37): an uppercase eyebrow, an optional sub-line, then
+// its hairline-opened groups. Settings is utility, so the eyebrow, not serif.
 export function Section({
   title,
   sub,
@@ -120,27 +108,18 @@ export function Section({
   children: ReactNode;
 }) {
   return (
-    <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <section className="st__section">
       <div>
-        <div style={sectionHeading}>{title}</div>
-        {sub !== undefined && (
-          <div
-            style={{
-              fontSize: 13,
-              color: "var(--text-muted)",
-              lineHeight: 1.5,
-              marginTop: 2,
-            }}
-          >
-            {sub}
-          </div>
-        )}
+        <div className="st__section-label">{title}</div>
       </div>
+      {sub !== undefined && <div className="st__section-sub">{sub}</div>}
       {children}
     </section>
   );
 }
 
+// A compact selection control on the editorial grammar: selection reads
+// through ink and border weight, never a tint fill.
 export function Chip({
   active,
   onClick,
@@ -154,20 +133,7 @@ export function Chip({
     <button
       type="button"
       onClick={onClick}
-      style={{
-        appearance: "none",
-        cursor: "pointer",
-        font: "inherit",
-        fontSize: 14,
-        fontWeight: 600,
-        padding: "9px 14px",
-        borderRadius: "var(--radius-pill)",
-        border:
-          "1px solid " + (active ? "var(--accent)" : "var(--border-card)"),
-        background: active ? "var(--accent-soft)" : "var(--surface-card)",
-        color: active ? "var(--text-accent)" : "var(--text-body)",
-        transition: "all var(--dur-fast) var(--ease-gentle)",
-      }}
+      className={cx("st__chip", active && "st__chip--on")}
     >
       {children}
     </button>

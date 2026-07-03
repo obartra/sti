@@ -1,17 +1,11 @@
-import {
-  Card,
-  Button,
-  Switch,
-  Badge,
-  Avatar,
-  Row,
-} from "../../design/components/index.ts";
+import { Button, Switch, Avatar } from "../../design/components/index.ts";
 import { EyeOff, Users, Bell } from "../../design/icons.tsx";
 import { COPY, Chip } from "./Privacy.parts.tsx";
 import type { Condoms, PrivacyState } from "./Privacy.parts.tsx";
 import type { PushControls } from "../app/usePush.ts";
 import { InstallRow } from "./Privacy.install.tsx";
 import { isIOS, isStandalone } from "../../pwa/installPrompt.ts";
+import "./settings.css";
 
 // Your face: the account's default avatar, framed under Profile with an entry to the
 // editor (doc 19). It is the default face a revealed link wears; a link can override
@@ -24,23 +18,21 @@ export function FaceCard({
   onEditAvatar: () => void;
 }) {
   return (
-    <Card variant="flat" style={{ padding: 6 }}>
-      <Row
-        interactive={false}
-        lead={<Avatar size="lg" src={avatarSrc} alt="" />}
-        title={COPY.faceTitle}
-        sub={COPY.faceSub}
-        trail={
-          <Button variant="secondary" size="sm" onClick={onEditAvatar}>
-            {COPY.faceEdit}
-          </Button>
-        }
-      />
-    </Card>
+    <div className="st__row">
+      <Avatar size="lg" src={avatarSrc} alt="" />
+      <div className="st__row-body">
+        <div className="st__row-title">{COPY.faceTitle}</div>
+        <div className="st__row-sub">{COPY.faceSub}</div>
+      </div>
+      <Button variant="secondary" size="sm" onClick={onEditAvatar}>
+        {COPY.faceEdit}
+      </Button>
+    </div>
   );
 }
 
-// What rides on the card besides the status, self-declared, optional.
+// What rides on the card besides the status, self-declared, optional. Toggle
+// rows separated by hairlines; the condom preference as editorial chips.
 export function AttributesCard({ state }: { state: PrivacyState }) {
   const condomChips: [Condoms, string][] = [
     ["off", COPY.condomOff],
@@ -49,105 +41,43 @@ export function AttributesCard({ state }: { state: PrivacyState }) {
     ["always", COPY.condomAlways],
   ];
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <div className="st__block">
       <div>
-        <div
-          style={{ fontSize: 15, fontWeight: 700, color: "var(--text-strong)" }}
-        >
-          {COPY.attrsTitle}
-        </div>
-        <div
-          style={{
-            fontSize: 13,
-            color: "var(--text-muted)",
-            lineHeight: 1.5,
-            marginTop: 3,
-          }}
-        >
-          {COPY.attrsSub}
-        </div>
+        <div className="st__row-title">{COPY.attrsTitle}</div>
+        <div className="st__row-sub">{COPY.attrsSub}</div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              fontSize: 14.5,
-              fontWeight: 600,
-              color: "var(--text-strong)",
-            }}
-          >
-            {COPY.hivLabel}
-          </div>
-          <div
-            style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 1 }}
-          >
-            {COPY.hivLabelSub}
-          </div>
+      <div className="st__row">
+        <div className="st__row-body">
+          <div className="st__row-title">{COPY.hivLabel}</div>
+          <div className="st__row-sub">{COPY.hivLabelSub}</div>
         </div>
         <Switch checked={state.labelHiv} onChange={state.setLabelHiv} />
       </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          borderTop: "1px solid var(--divider)",
-          paddingTop: 12,
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              fontSize: 14.5,
-              fontWeight: 600,
-              color: "var(--text-strong)",
-            }}
-          >
-            {COPY.doxyLabel}
-          </div>
-          <div
-            style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 1 }}
-          >
-            {COPY.doxyLabelSub}
-          </div>
+      <div className="st__row">
+        <div className="st__row-body">
+          <div className="st__row-title">{COPY.doxyLabel}</div>
+          <div className="st__row-sub">{COPY.doxyLabelSub}</div>
         </div>
         <Switch checked={state.doxy} onChange={state.setDoxy} />
       </div>
-      <div style={{ borderTop: "1px solid var(--divider)", paddingTop: 12 }}>
-        <div
-          style={{
-            fontSize: 14.5,
-            fontWeight: 600,
-            color: "var(--text-strong)",
-          }}
-        >
-          {COPY.condomTitle}
-        </div>
-        <div
-          style={{
-            fontSize: 12.5,
-            color: "var(--text-muted)",
-            lineHeight: 1.5,
-            marginTop: 1,
-          }}
-        >
-          {COPY.condomSub}
-        </div>
-        <div
-          style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}
-        >
-          {condomChips.map(([value, label]) => (
-            <Chip
-              key={value}
-              active={state.condoms === value}
-              onClick={() => state.setCondoms(value)}
-            >
-              {label}
-            </Chip>
-          ))}
+      <div className="st__row st__row--top">
+        <div className="st__row-body">
+          <div className="st__row-title">{COPY.condomTitle}</div>
+          <div className="st__row-sub">{COPY.condomSub}</div>
+          <div className="st__chips">
+            {condomChips.map(([value, label]) => (
+              <Chip
+                key={value}
+                active={state.condoms === value}
+                onClick={() => state.setCondoms(value)}
+              >
+                {label}
+              </Chip>
+            ))}
+          </div>
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -166,50 +96,14 @@ function pushSub(push: PushControls): string {
 // arrives (a closed-app notification). Disabled when the browser can't do push.
 function PushRow({ push }: { push: PushControls }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-        padding: "10px 8px",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <span
-          style={{
-            flex: "none",
-            width: 40,
-            height: 40,
-            borderRadius: "var(--radius-sm)",
-            background: "var(--accent-soft)",
-            color: "var(--text-accent)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Bell size={20} />
+    <>
+      <div className="st__row">
+        <span aria-hidden className="st__row-icon">
+          <Bell size={18} />
         </span>
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              fontSize: 15,
-              fontWeight: 600,
-              color: "var(--text-strong)",
-            }}
-          >
-            {COPY.pushRow}
-          </div>
-          <div
-            style={{
-              fontSize: 13,
-              color: "var(--text-muted)",
-              lineHeight: 1.5,
-              marginTop: 2,
-            }}
-          >
-            {pushSub(push)}
-          </div>
+        <div className="st__row-body">
+          <div className="st__row-title">{COPY.pushRow}</div>
+          <div className="st__row-sub">{pushSub(push)}</div>
         </div>
         <Switch
           checked={push.enabled}
@@ -217,18 +111,8 @@ function PushRow({ push }: { push: PushControls }) {
           onChange={(on) => (on ? push.enable() : push.disable())}
         />
       </div>
-      {push.error !== null && (
-        <div
-          style={{
-            fontSize: 12.5,
-            color: "var(--status-expired-fg)",
-            marginLeft: 54,
-          }}
-        >
-          {push.error}
-        </div>
-      )}
-    </div>
+      {push.error !== null && <div className="st__row-error">{push.error}</div>}
+    </>
   );
 }
 
@@ -240,96 +124,34 @@ export function ControlsCard({
   push?: PushControls | undefined;
 }) {
   return (
-    <Card
-      variant="flat"
-      style={{ display: "flex", flexDirection: "column", gap: 4 }}
-    >
-      {/* Partner alerts are baked in: informational row, no switch. */}
-      <div style={{ display: "flex", gap: 14, padding: "10px 8px" }}>
-        <span
-          style={{
-            flex: "none",
-            width: 40,
-            height: 40,
-            borderRadius: "var(--radius-sm)",
-            background: "var(--accent-soft)",
-            color: "var(--text-accent)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Users size={20} />
+    <div className="st__block">
+      {/* Partner alerts are baked in: informational row, no switch. The
+          always-on marker is a quiet status word, never a badge pill. */}
+      <div className="st__row st__row--top">
+        <span aria-hidden className="st__row-icon">
+          <Users size={18} />
         </span>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span
-              style={{
-                fontSize: 15,
-                fontWeight: 600,
-                color: "var(--text-strong)",
-              }}
-            >
-              {COPY.anonAlerts}
-            </span>
-            <span style={{ flex: "none", whiteSpace: "nowrap" }}>
-              <Badge variant="accent">Always on</Badge>
-            </span>
+        <div className="st__row-body">
+          <div className="st__row-title-line">
+            <span className="st__row-title">{COPY.anonAlerts}</span>
+            <span className="st__always">Always on</span>
           </div>
-          <div
-            style={{
-              fontSize: 13,
-              color: "var(--text-muted)",
-              lineHeight: 1.5,
-              marginTop: 2,
-            }}
-          >
-            {COPY.anonAlertsSub}
-          </div>
+          <div className="st__row-sub">{COPY.anonAlertsSub}</div>
         </div>
       </div>
       {push && <PushRow push={push} />}
       <InstallRow />
       {/* Manual pause: show plain gray to everyone (CtrlRow). */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 14,
-          padding: "10px 8px",
-        }}
-      >
-        <span
-          style={{
-            flex: "none",
-            width: 40,
-            height: 40,
-            borderRadius: "var(--radius-sm)",
-            background: "var(--accent-soft)",
-            color: "var(--text-accent)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <EyeOff size={20} />
+      <div className="st__row">
+        <span aria-hidden className="st__row-icon">
+          <EyeOff size={18} />
         </span>
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              fontSize: 15,
-              fontWeight: 600,
-              color: "var(--text-strong)",
-            }}
-          >
-            {COPY.pauseRow}
-          </div>
-          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-            {COPY.pauseRowSub}
-          </div>
+        <div className="st__row-body">
+          <div className="st__row-title">{COPY.pauseRow}</div>
+          <div className="st__row-sub">{COPY.pauseRowSub}</div>
         </div>
         <Switch checked={state.paused} onChange={state.setPaused} />
       </div>
-    </Card>
+    </div>
   );
 }
