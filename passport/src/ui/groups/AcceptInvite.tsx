@@ -5,8 +5,9 @@
 // the contact-invite accept flow (PublicResolution.accept). A logged-out visitor is
 // pointed to make an account first, since joining needs one.
 import { useState } from "react";
-import { Button, Card } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
 import { Lock, Users } from "../../design/icons.tsx";
+import { cx } from "../../lib/cx.ts";
 import type {
   AliasIdentity,
   GroupInvite,
@@ -14,47 +15,27 @@ import type {
 } from "../../store/index.ts";
 import { GROUPS_COPY as C, acceptTitle, disclosureFor } from "./groupsCopy.ts";
 import { GroupFaceChoice } from "./GroupFaceChoice.tsx";
+import "./groups.css";
 
-// The join-time disclosure card: the three honest lines, the middle one selected by
+// The join-time disclosure: the three honest lines, the middle one selected by
 // the group's meeting kind (doc 33). Mirrors the create form's disclosure.
 function JoinDisclosure({ meetingKind }: { meetingKind: MeetingKind }) {
   return (
-    <Card variant="tint" style={{ display: "flex", gap: 12 }}>
-      <span style={{ color: "var(--text-accent)", flex: "none", marginTop: 1 }}>
+    <div className="gr__aside">
+      <span aria-hidden className="gr__aside-icon">
         <Lock size={17} />
       </span>
-      <div
-        style={{
-          fontSize: 13,
-          lineHeight: 1.55,
-          color: "var(--text-body)",
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-        }}
-      >
+      <div className="gr__aside-body">
         <span>{C.membershipIsSharing}</span>
         <span>{disclosureFor(meetingKind)}</span>
-        <span style={{ color: "var(--text-muted)" }}>{C.leaveIsEasy}</span>
+        <span className="gr__aside-quiet">{C.leaveIsEasy}</span>
       </div>
-    </Card>
+    </div>
   );
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-        width: "100%",
-        maxWidth: 600,
-      }}
-    >
-      {children}
-    </div>
-  );
+  return <div className="gr">{children}</div>;
 }
 
 export interface AcceptInviteProps {
@@ -105,25 +86,10 @@ export function AcceptInvite({
   if (done) {
     return (
       <Shell>
-        <Card
-          variant="tint"
-          style={{ display: "flex", flexDirection: "column", gap: 8 }}
-        >
-          <div
-            style={{
-              fontSize: 17,
-              fontWeight: 800,
-              color: "var(--text-strong)",
-            }}
-          >
-            {C.acceptedTitle}
-          </div>
-          <div
-            style={{ fontSize: 14, color: "var(--text-body)", lineHeight: 1.5 }}
-          >
-            {C.acceptedBody}
-          </div>
-        </Card>
+        <div className={cx("e-card", "gr__done")}>
+          <div className="gr__done-title">{C.acceptedTitle}</div>
+          <div className="gr__done-body">{C.acceptedBody}</div>
+        </div>
         <Button variant="primary" size="lg" block onClick={onJoined}>
           {C.title}
         </Button>
@@ -133,16 +99,7 @@ export function AcceptInvite({
 
   return (
     <Shell>
-      <h1
-        style={{
-          fontSize: 24,
-          fontWeight: 800,
-          letterSpacing: "-0.02em",
-          color: "var(--text-strong)",
-        }}
-      >
-        {acceptTitle(invite.handle)}
-      </h1>
+      <h1 className="gr__title">{acceptTitle(invite.handle)}</h1>
       <JoinDisclosure meetingKind={invite.meetingKind} />
       {isLoggedIn ? (
         <>
@@ -167,15 +124,7 @@ export function AcceptInvite({
         </>
       ) : (
         <>
-          <div
-            style={{
-              fontSize: 13.5,
-              color: "var(--text-muted)",
-              lineHeight: 1.55,
-            }}
-          >
-            {C.acceptNeedAccount}
-          </div>
+          <div className="gr__note">{C.acceptNeedAccount}</div>
           <Button variant="primary" size="lg" block onClick={onClaim}>
             {C.acceptClaimCta}
           </Button>

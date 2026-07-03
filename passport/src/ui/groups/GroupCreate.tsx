@@ -7,12 +7,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Button,
-  Card,
   Field,
   Input,
   Segmented,
 } from "../../design/components/index.ts";
 import { Lock, Users } from "../../design/icons.tsx";
+import { cx } from "../../lib/cx.ts";
 import {
   normalizeVanityName,
   vanityNameError,
@@ -25,6 +25,7 @@ import {
 } from "../../store/index.ts";
 import { GROUPS_COPY as C, disclosureFor } from "./groupsCopy.ts";
 import { GroupFaceChoice } from "./GroupFaceChoice.tsx";
+import "./groups.css";
 
 const NAME_ERROR: Record<VanityNameError, string> = {
   "too-short": C.handleTooShort,
@@ -85,16 +86,7 @@ function OptionRow<T extends string>({
         onChange={onChange}
         aria-label={label}
       />
-      <div
-        style={{
-          fontSize: 12.5,
-          color: "var(--text-muted)",
-          lineHeight: 1.5,
-          marginTop: 8,
-        }}
-      >
-        {note}
-      </div>
+      <div className="gr__field-note">{note}</div>
     </Field>
   );
 }
@@ -122,41 +114,26 @@ function StatusLine({
   if (text === null) return null;
   const isError = claimError !== null || formatError !== null || taken;
   return (
-    <div
-      style={{
-        fontSize: 12.5,
-        marginTop: -4,
-        color: isError ? "var(--status-expired-fg)" : "var(--text-muted)",
-      }}
-    >
+    <div className={cx("gr__status", isError && "gr__status--error")}>
       {text}
     </div>
   );
 }
 
-// The join-time disclosure (doc 33): a calm Lock-style note. Says the three honest
+// The join-time disclosure (doc 33): a calm hairline aside. Says the three honest
 // things, with the event-vs-recurring line selected by the chosen meeting kind.
 function Disclosure({ meetingKind }: { meetingKind: MeetingKind }) {
   return (
-    <Card variant="tint" style={{ display: "flex", gap: 12 }}>
-      <span style={{ color: "var(--text-accent)", flex: "none", marginTop: 1 }}>
+    <div className="gr__aside">
+      <span aria-hidden className="gr__aside-icon">
         <Lock size={17} />
       </span>
-      <div
-        style={{
-          fontSize: 13,
-          lineHeight: 1.55,
-          color: "var(--text-body)",
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-        }}
-      >
+      <div className="gr__aside-body">
         <span>{C.membershipIsSharing}</span>
         <span>{disclosureFor(meetingKind)}</span>
-        <span style={{ color: "var(--text-muted)" }}>{C.leaveIsEasy}</span>
+        <span className="gr__aside-quiet">{C.leaveIsEasy}</span>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -283,26 +260,8 @@ export function GroupCreate({
     (visibility === "public" && (status === "taken" || status === "checking"));
 
   return (
-    <form
-      onSubmit={submit}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 18,
-        width: "100%",
-        maxWidth: 600,
-      }}
-    >
-      <h1
-        style={{
-          fontSize: 24,
-          fontWeight: 800,
-          letterSpacing: "-0.02em",
-          color: "var(--text-strong)",
-        }}
-      >
-        {C.createTitle}
-      </h1>
+    <form onSubmit={submit} className="gr__form">
+      <h1 className="gr__title">{C.createTitle}</h1>
 
       <NameField
         handle={handle}

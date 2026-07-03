@@ -3,7 +3,7 @@
 // shows a human member count. A create CTA sits up top; an empty state invites the
 // first group. This is both the /groups screen and the People slot between starred
 // and the contact list (doc 31).
-import { Button, Card } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
 import { Plus, Chevron, Lock, Users } from "../../design/icons.tsx";
 import type { GroupRecord, RequestResult } from "../../store/index.ts";
 import { RequestToJoin } from "./RequestToJoin.tsx";
@@ -13,6 +13,7 @@ import {
   meetingChip,
   visibilityChip,
 } from "./groupsCopy.ts";
+import "./groups.css";
 
 // The reader plus everyone else the record knows about. An admin's `members` is
 // the roster minus themselves, so add one; a member record has no roster and reads
@@ -21,61 +22,10 @@ function countOf(group: GroupRecord): number {
   return (group.members?.length ?? 0) + 1;
 }
 
-function Chip({ children }: { children: string }) {
-  return (
-    <span
-      style={{
-        fontSize: 11.5,
-        fontWeight: 600,
-        color: "var(--text-muted)",
-        background: "var(--neutral-100)",
-        borderRadius: "var(--radius-pill)",
-        padding: "2px 9px",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {children}
-    </span>
-  );
-}
-
 function EmptyState({ onCreate }: { onCreate?: (() => void) | undefined }) {
   return (
-    <Card
-      variant="flat"
-      style={{
-        textAlign: "center",
-        padding: "34px 24px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 12,
-      }}
-    >
-      <span
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: "50%",
-          background: "var(--accent-soft)",
-          color: "var(--text-accent)",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Users size={28} />
-      </span>
-      <div
-        style={{
-          fontSize: 14,
-          color: "var(--text-muted)",
-          lineHeight: 1.55,
-          maxWidth: 280,
-        }}
-      >
-        {C.empty}
-      </div>
+    <div className="gr__empty">
+      <span>{C.empty}</span>
       <Button
         variant="secondary"
         size="md"
@@ -84,7 +34,7 @@ function EmptyState({ onCreate }: { onCreate?: (() => void) | undefined }) {
       >
         {C.create}
       </Button>
-    </Card>
+    </div>
   );
 }
 
@@ -96,66 +46,32 @@ function GroupRow({
   onOpenGroup?: ((id: string) => void) | undefined;
 }) {
   return (
-    <Card
-      pad="sm"
-      variant="interactive"
+    <button
+      type="button"
+      className="gr__row"
       onClick={() => onOpenGroup?.(group.groupId)}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 13,
-        cursor: "pointer",
-      }}
     >
-      <span
-        style={{
-          flex: "none",
-          width: 44,
-          height: 44,
-          borderRadius: "var(--radius-sm)",
-          background: "var(--accent-soft)",
-          color: "var(--text-accent)",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Users size={21} />
+      <span aria-hidden className="gr__row-icon">
+        <Users size={20} />
       </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 15.5,
-            fontWeight: 700,
-            color: "var(--text-strong)",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            minWidth: 0,
-          }}
-        >
-          {group.handle}
-        </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            marginTop: 5,
-          }}
-        >
-          <Chip>{meetingChip(group.meetingKind)}</Chip>
-          <Chip>{visibilityChip(group.visibility)}</Chip>
-          <span style={{ fontSize: 12, color: "var(--text-subtle)" }}>
-            {memberCount(countOf(group))}
+      <span className="gr__row-body">
+        <span className="gr__row-name">{group.handle}</span>
+        <span className="gr__row-meta">
+          <span>{meetingChip(group.meetingKind)}</span>
+          <span aria-hidden className="gr__meta-dot">
+            ·
           </span>
-        </div>
-      </div>
-      <Chevron
-        size={20}
-        style={{ color: "var(--text-subtle)", flex: "none" }}
-      />
-    </Card>
+          <span>{visibilityChip(group.visibility)}</span>
+          <span aria-hidden className="gr__meta-dot">
+            ·
+          </span>
+          <span>{memberCount(countOf(group))}</span>
+        </span>
+      </span>
+      <span aria-hidden className="gr__row-trail">
+        <Chevron size={20} />
+      </span>
+    </button>
   );
 }
 
@@ -174,32 +90,9 @@ export function GroupsList({
   onRequestToJoin,
 }: GroupsListProps) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-        width: "100%",
-        maxWidth: 600,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: 26,
-            fontWeight: 800,
-            letterSpacing: "-0.02em",
-            color: "var(--text-strong)",
-          }}
-        >
-          {C.title}
-        </h1>
+    <div className="gr">
+      <div className="gr__head">
+        <h1 className="gr__title">{C.title}</h1>
         <Button
           variant="primary"
           size="sm"
@@ -209,27 +102,12 @@ export function GroupsList({
           {C.create}
         </Button>
       </div>
-      <p
-        style={{
-          fontSize: 14,
-          lineHeight: 1.55,
-          color: "var(--text-body)",
-          margin: 0,
-        }}
-      >
-        {C.listSub}
-      </p>
+      <p className="gr__sub">{C.listSub}</p>
 
       {groups.length === 0 ? (
         <EmptyState onCreate={onCreate} />
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-            gap: 10,
-          }}
-        >
+        <div className="gr__rows">
           {groups.map((g) => (
             <GroupRow key={g.groupId} group={g} onOpenGroup={onOpenGroup} />
           ))}
@@ -238,18 +116,12 @@ export function GroupsList({
 
       {onRequestToJoin && <RequestToJoin onRequest={onRequestToJoin} />}
 
-      <Card variant="tint" style={{ display: "flex", gap: 12 }}>
-        <span
-          style={{ color: "var(--text-accent)", flex: "none", marginTop: 1 }}
-        >
+      <div className="gr__aside">
+        <span aria-hidden className="gr__aside-icon">
           <Lock size={17} />
         </span>
-        <div
-          style={{ fontSize: 13, lineHeight: 1.55, color: "var(--text-body)" }}
-        >
-          {C.privacyNote}
-        </div>
-      </Card>
+        <div className="gr__aside-body">{C.privacyNote}</div>
+      </div>
     </div>
   );
 }

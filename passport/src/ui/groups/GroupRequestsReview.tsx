@@ -5,17 +5,10 @@
 // invite over the grant channel; rejecting hides the request. Admin + public only;
 // the parent gates on that.
 import { useCallback, useEffect, useState } from "react";
-import { Button, Card } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
 import type { GroupRecord, PendingRequest } from "../../store/index.ts";
 import { GROUPS_COPY as C } from "./groupsCopy.ts";
-
-const sectionLbl = {
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: "0.06em",
-  textTransform: "uppercase" as const,
-  color: "var(--text-subtle)",
-};
+import "./groups.css";
 
 type State = "loading" | { requests: PendingRequest[] };
 
@@ -27,24 +20,8 @@ function RequestRow({
   onReject: () => void;
 }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "8px 8px",
-      }}
-    >
-      <div
-        style={{
-          flex: 1,
-          minWidth: 0,
-          fontSize: 14,
-          color: "var(--text-body)",
-        }}
-      >
-        {C.requestRow}
-      </div>
+    <div className="gr__admin-row">
+      <div className="gr__admin-row-text">{C.requestRow}</div>
       <Button variant="quiet" size="sm" onClick={onReject}>
         {C.rejectCta}
       </Button>
@@ -97,25 +74,12 @@ export function GroupRequestsReview({
   const requests = state === "loading" ? [] : state.requests;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={sectionLbl}>{C.requestsHeading}</div>
+    <div className="gr__admin">
+      <div className="gr__sect-label">{C.requestsHeading}</div>
       {requests.length === 0 ? (
-        <Card
-          variant="flat"
-          style={{
-            padding: "12px 12px",
-            fontSize: 12.5,
-            color: "var(--text-subtle)",
-            lineHeight: 1.5,
-          }}
-        >
-          {C.requestsEmpty}
-        </Card>
+        <div className="gr__note">{C.requestsEmpty}</div>
       ) : (
-        <Card
-          variant="flat"
-          style={{ padding: 6, display: "flex", flexDirection: "column" }}
-        >
+        <div className="gr__rows">
           {requests.map((r) => (
             <RequestRow
               key={r.requesterHash}
@@ -123,7 +87,7 @@ export function GroupRequestsReview({
               onReject={() => act(onReject, r)}
             />
           ))}
-        </Card>
+        </div>
       )}
     </div>
   );

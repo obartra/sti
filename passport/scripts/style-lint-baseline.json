@@ -31,40 +31,11 @@
   "src/ui/findable/ShareLinkPage.stories.tsx": {
     "styles": 1
   },
-  "src/ui/groups/AcceptInvite.tsx": {
-    "styles": 10,
-    "legacy": 2
-  },
   "src/ui/groups/GroupCreate.tsx": {
-    "styles": 8,
-    "legacy": 2
-  },
-  "src/ui/groups/GroupDetail.admin.tsx": {
-    "styles": 7
-  },
-  "src/ui/groups/GroupDetail.tsx": {
-    "styles": 18,
-    "legacy": 2
+    "legacy": 1
   },
   "src/ui/groups/GroupFaceChoice.tsx": {
-    "styles": 1,
     "legacy": 1
-  },
-  "src/ui/groups/GroupInviteShare.tsx": {
-    "styles": 7,
-    "legacy": 1
-  },
-  "src/ui/groups/GroupRequestsReview.tsx": {
-    "styles": 6,
-    "legacy": 2
-  },
-  "src/ui/groups/GroupsList.tsx": {
-    "styles": 19,
-    "legacy": 3
-  },
-  "src/ui/groups/RequestToJoin.tsx": {
-    "styles": 5,
-    "legacy": 2
   },
   "src/ui/onboarding/AvatarBuilder.tsx": {
     "styles": 1
