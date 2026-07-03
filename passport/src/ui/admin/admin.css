@@ -93,6 +93,21 @@
   padding: 2px 0 10px;
 }
 
+/* One tab section: an invisible wrapper keeping the console's vertical rhythm
+   for the panels inside it. Every section stays mounted (panels keep their data,
+   so switching never flashes a reload); the inactive ones hide via the `hidden`
+   attribute. The [hidden] rule is load-bearing: the flex display would otherwise
+   override the attribute's default display:none. */
+.adm-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.adm-section[hidden] {
+  display: none;
+}
+
 /* ----------------------------------------------------------------- panels -- */
 /* A panel is a hairline-opened section, never a box. */
 .adm-panel {

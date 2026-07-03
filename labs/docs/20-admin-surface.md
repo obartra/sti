@@ -108,9 +108,9 @@ three-across), never viewport media queries, and collapses to a single column wh
   stuck queue or a rise in errors is visible without reading `/metrics` on the server. Same hard rules
   as the metrics panel: a count, an age, or a system size, never a per-account or per-id figure.
 - **Refresh + panel counts:** the shell carries a single **Refresh** control that re-reads every
-  auto-loading panel on the open section at once (a section re-reads anyway when opened), so an
-  operator can pull fresh numbers without reloading the browser tab; each work queue shows its
-  backlog as a count on its own heading.
+  auto-loading panel across all sections at once (sections stay mounted, so switching tabs never
+  reloads a panel), so an operator can pull fresh numbers without reloading the browser tab; each
+  work queue shows its backlog as a count on its own heading.
 - **Built to grow:** the page is a shell with panels, so account disable, alias revoke, and metadata
   lookup by id drop in as additional panels without re-architecting. The management panel now ships
   those three in the console (lookup renders opaque metadata only; disable and revoke each take a
