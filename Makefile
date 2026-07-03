@@ -29,6 +29,7 @@ WOKE_VERSION ?= v0.19.0
 # Dead-code analyzer (golang.org/x/tools/cmd/deadcode), pinned. Same `go run`
 # model as woke/govulncheck; reports functions unreachable from any main or test.
 DEADCODE_VERSION ?= v0.47.0
+JSCPD_VERSION ?= 5.0.11
 
 .PHONY: help backend web dev \
 	check-root check-web check-info test-integration test-e2e check-server deadcode vulncheck smoke \
@@ -93,6 +94,9 @@ deadcode: ## Server: fail on any function unreachable from a main or a test
 
 vulncheck: ## Server: govulncheck over the stdlib + deps the code calls
 	cd server && go run golang.org/x/vuln/cmd/govulncheck@v1.4.0 ./...
+
+dupe: ## Report substantial copy-paste clones in server + client source (informational lens, never a gate)
+	npx --yes jscpd@$(JSCPD_VERSION) --config .jscpd.json server/internal server/cmd passport/src info/src
 
 smoke: ## Server: build, boot a throwaway instance, run the smoke script
 	cd server && go build -o /tmp/stiapi ./cmd/stiapi

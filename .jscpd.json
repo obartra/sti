@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json.schemastore.org/jscpd.json",
+  "gitignore": true,
+  "absolute": false,
+  "minLines": 12,
+  "minTokens": 90,
+  "format": ["typescript", "tsx", "go", "css"],
+  "reporters": ["console"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/storybook-static/**",
+    "**/.astro/**",
+    "**/coverage/**",
+    "**/visual-baselines/**",
+    "**/.claude/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.integration.test.ts",
+    "**/*.spec.ts",
+    "**/*.pw.spec.ts",
+    "**/*_test.go",
+    "**/*.stories.tsx",
+    "**/*.d.ts"
+  ]
+}

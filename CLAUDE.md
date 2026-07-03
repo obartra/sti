@@ -58,3 +58,12 @@ the two easiest to forget, and they only fail once CI runs after you have pushed
   classes and a co-located CSS file (tokens only, no raw hex), never inline styles.
 - No em dashes anywhere (code, copy, docs, commits). Visual/baseline changes regenerate
   via the `screenshot:update` PR label, never hand-edited.
+
+## Consolidation lens (not a gate)
+
+`make dupe` reports substantial copy-paste clones in the server and client source (a
+tuned jscpd run over production source only, skipping tests/stories/fixtures/baselines).
+It is an on-demand lens for spotting consolidation opportunities, never a CI gate and
+never wired into `make check`. Consolidate a clone only when a shared helper makes the
+code genuinely simpler; duplication that reads clearer apart, or that would couple two
+things that should move independently, stays. Do not DRY for its own sake.
