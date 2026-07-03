@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
+import { usePasswordStrength } from "../../auth/usePasswordStrength.ts";
 import { Button, Field, Input } from "../../design/components/index.ts";
 import "../core/settings.css";
 import { Lock } from "../../design/icons.tsx";
@@ -89,33 +90,6 @@ export function RecoveryPassword({ recoveryName, ops }: RecoveryPasswordProps) {
       onDone={() => setChanging(false)}
     />
   );
-}
-
-// Live, as-you-type strength feedback: the reason string when the password is too
-// weak, or null when it passes (or the field is empty). The estimator loads via
-// dynamic import so its zxcvbn bundle stays out of the app shell; a request counter
-// drops stale answers so a fast typist never sees an earlier keystroke's result.
-function usePasswordStrength(password: string): string | null {
-  const [reason, setReason] = useState<string | null>(null);
-  const reqId = useRef(0);
-  useEffect(() => {
-    if (password === "") {
-      setReason(null);
-      return;
-    }
-    const id = ++reqId.current;
-    const timer = setTimeout(() => {
-      void import("../../auth/passwordStrength.ts").then(
-        ({ gradePassword }) => {
-          if (id !== reqId.current) return;
-          const grade = gradePassword(password);
-          setReason(grade.ok ? null : grade.reason);
-        },
-      );
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [password]);
-  return reason;
 }
 
 function Header({ lead }: { lead: string }) {

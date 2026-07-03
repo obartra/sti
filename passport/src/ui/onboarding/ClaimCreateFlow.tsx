@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useId, useState } from "react";
+import { usePasswordStrength } from "../../auth/usePasswordStrength.ts";
 import {
   Button,
   Field,
@@ -57,34 +58,6 @@ function NameField({
       </div>
     </Field>
   );
-}
-
-// Live, as-you-type password strength feedback: the reason string when the password
-// is too weak, or null when it passes (or is empty). The estimator loads via dynamic
-// import so its zxcvbn bundle stays out of the app shell; a request counter drops
-// stale answers so a fast typist never sees an earlier keystroke's result. Mirrors
-// the Settings card's hook (RecoveryPassword.tsx).
-function usePasswordStrength(password: string): string | null {
-  const [reason, setReason] = useState<string | null>(null);
-  const reqId = useRef(0);
-  useEffect(() => {
-    if (password === "") {
-      setReason(null);
-      return;
-    }
-    const id = ++reqId.current;
-    const timer = setTimeout(() => {
-      void import("../../auth/passwordStrength.ts").then(
-        ({ gradePassword }) => {
-          if (id !== reqId.current) return;
-          const grade = gradePassword(password);
-          setReason(grade.ok ? null : grade.reason);
-        },
-      );
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [password]);
-  return reason;
 }
 
 // A small red line under a field.
