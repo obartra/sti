@@ -60,18 +60,8 @@ func (s *Server) groupPayload(r *http.Request, id string) []byte {
 // be exactly the fixed size, and the write token authorizes the write (writeFixed
 // binds it on the first write). A wrong token is a 403, like the alias/inbox PUT.
 func (s *Server) handleGroupPut(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	if !contract.ValidID(id) {
-		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed id")
-		return
-	}
-	if !s.ipLimit.allow(clientIP(r), s.now()) {
-		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
-		return
-	}
-	token := r.Header.Get(contract.HeaderWriteToken)
-	if token == "" {
-		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "missing write token")
+	id, token, ok := s.writeGuard(w, r)
+	if !ok {
 		return
 	}
 	body, err := io.ReadAll(io.LimitReader(r.Body, contract.GroupBlobSize+1))
@@ -84,7 +74,7 @@ func (s *Server) handleGroupPut(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "payload must be exactly the fixed size")
 		return
 	}
-	ok, err := s.st.WriteGroupBlob(r.Context(), id, body, hashToken(token), s.now())
+	ok, err = s.st.WriteGroupBlob(r.Context(), id, body, hashToken(token), s.now())
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
 		return
@@ -104,18 +94,8 @@ func (s *Server) handleGroupPut(w http.ResponseWriter, r *http.Request) {
 // mirroring the account-blob delete. After a delete the id reads back as a decoy,
 // exactly like a never-written id.
 func (s *Server) handleGroupDelete(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	if !contract.ValidID(id) {
-		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed id")
-		return
-	}
-	if !s.ipLimit.allow(clientIP(r), s.now()) {
-		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
-		return
-	}
-	token := r.Header.Get(contract.HeaderWriteToken)
-	if token == "" {
-		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "missing write token")
+	id, token, ok := s.writeGuard(w, r)
+	if !ok {
 		return
 	}
 	ok, err := s.st.DeleteGroupBlob(r.Context(), id, hashToken(token))

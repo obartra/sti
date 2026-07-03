@@ -795,19 +795,32 @@ func (s *Server) handleInboxPut(w http.ResponseWriter, r *http.Request) {
 	s.handleFixedPut(w, r, s.st.WriteInbox)
 }
 
-func (s *Server) handleFixedPut(w http.ResponseWriter, r *http.Request, write storeWriteFn) {
-	id := r.PathValue("id")
+// writeGuard runs the shared prologue for a write-token-authorized handler keyed on
+// a path id: it validates the id, applies the per-IP rate limit, and requires a
+// non-empty write token, writing the uniform error and returning ok=false on any
+// failure so the caller returns at once. Keeping this in one place means the
+// authorization preamble is audited once rather than re-derived per handler.
+func (s *Server) writeGuard(w http.ResponseWriter, r *http.Request) (id, token string, ok bool) {
+	id = r.PathValue("id")
 	if !contract.ValidID(id) {
 		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed id")
-		return
+		return "", "", false
 	}
 	if !s.ipLimit.allow(clientIP(r), s.now()) {
 		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
-		return
+		return "", "", false
 	}
-	token := r.Header.Get(contract.HeaderWriteToken)
+	token = r.Header.Get(contract.HeaderWriteToken)
 	if token == "" {
 		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "missing write token")
+		return "", "", false
+	}
+	return id, token, true
+}
+
+func (s *Server) handleFixedPut(w http.ResponseWriter, r *http.Request, write storeWriteFn) {
+	id, token, ok := s.writeGuard(w, r)
+	if !ok {
 		return
 	}
 	body, err := io.ReadAll(io.LimitReader(r.Body, contract.AliasPayloadSize+1))
@@ -820,7 +833,7 @@ func (s *Server) handleFixedPut(w http.ResponseWriter, r *http.Request, write st
 		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "payload must be exactly the fixed size")
 		return
 	}
-	ok, err := write(r.Context(), id, body, hashToken(token), s.now())
+	ok, err = write(r.Context(), id, body, hashToken(token), s.now())
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
 		return
@@ -948,18 +961,8 @@ func parseExpectedVersion(h string) (int64, error) {
 // missing id still returns 204, revealing nothing; a wrong token is a uniform 403.
 // The owner's aliases are separate rows the client revokes (overwrites) first.
 func (s *Server) handleAccountDelete(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	if !contract.ValidID(id) {
-		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed id")
-		return
-	}
-	if !s.ipLimit.allow(clientIP(r), s.now()) {
-		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
-		return
-	}
-	token := r.Header.Get(contract.HeaderWriteToken)
-	if token == "" {
-		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "missing write token")
+	id, token, ok := s.writeGuard(w, r)
+	if !ok {
 		return
 	}
 	ok, err := s.st.DeleteAccountAuthorized(r.Context(), id, hashToken(token))
@@ -1098,18 +1101,8 @@ func (s *Server) handleKnock(w http.ResponseWriter, r *http.Request) {
 // or missing token returns 403 for both a real and a nonexistent alias, so it
 // still never reveals whether an alias exists to someone who lacks the token.
 func (s *Server) handleKnockReview(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	if !contract.ValidID(id) {
-		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed id")
-		return
-	}
-	if !s.ipLimit.allow(clientIP(r), s.now()) {
-		s.writeError(w, http.StatusTooManyRequests, contract.ErrRateLimited, "")
-		return
-	}
-	token := r.Header.Get(contract.HeaderWriteToken)
-	if token == "" {
-		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "missing write token")
+	id, token, ok := s.writeGuard(w, r)
+	if !ok {
 		return
 	}
 	ok, err := s.st.VerifyAliasWrite(r.Context(), id, hashToken(token))
