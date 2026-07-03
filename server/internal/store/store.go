@@ -144,6 +144,19 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("backfill account.last_seen_at: %w", err)
 		}
 	}
+	// feedback.topic: which open question a "question" response addresses (doc 35),
+	// a fixed validated code like reason. Older databases have the feedback table
+	// without it; add it in place ('' = no topic).
+	hasTopic, err := hasColumn(ctx, db, "feedback", "topic")
+	if err != nil {
+		return err
+	}
+	if !hasTopic {
+		if _, err := db.ExecContext(ctx,
+			`ALTER TABLE feedback ADD COLUMN topic TEXT NOT NULL DEFAULT ''`); err != nil {
+			return fmt.Errorf("add feedback.topic: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -661,6 +674,7 @@ func (s *Store) ClearVanityReports(ctx context.Context, name string) error {
 type Feedback struct {
 	ID        int64
 	Reason    string
+	Topic     string
 	Body      string
 	CreatedAt int64
 }
@@ -670,22 +684,22 @@ type Feedback struct {
 // row was written), so the cap is a silent ceiling, not a signal.
 const feedbackCap = 5000
 
-// AddFeedback records one report. reason is a fixed code and body is already
-// length-capped by the caller. The conditional insert applies the table cap without
-// a second round trip.
-func (s *Store) AddFeedback(ctx context.Context, reason, body string, now int64) error {
+// AddFeedback records one report. reason and topic are fixed codes and body is
+// already length-capped by the caller. The conditional insert applies the table cap
+// without a second round trip.
+func (s *Store) AddFeedback(ctx context.Context, reason, topic, body string, now int64) error {
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO feedback (reason, body, created_at)
-		 SELECT ?, ?, ?
+		`INSERT INTO feedback (reason, topic, body, created_at)
+		 SELECT ?, ?, ?, ?
 		 WHERE (SELECT COUNT(*) FROM feedback) < ?`,
-		reason, body, now, feedbackCap)
+		reason, topic, body, now, feedbackCap)
 	return err
 }
 
 // OpenFeedback returns the review queue: reports newest first, capped at limit.
 func (s *Store) OpenFeedback(ctx context.Context, limit int) ([]Feedback, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, reason, body, created_at FROM feedback
+		`SELECT id, reason, topic, body, created_at FROM feedback
 		 ORDER BY id DESC LIMIT ?`, limit)
 	if err != nil {
 		return nil, err
@@ -694,7 +708,7 @@ func (s *Store) OpenFeedback(ctx context.Context, limit int) ([]Feedback, error)
 	var out []Feedback
 	for rows.Next() {
 		var f Feedback
-		if err := rows.Scan(&f.ID, &f.Reason, &f.Body, &f.CreatedAt); err != nil {
+		if err := rows.Scan(&f.ID, &f.Reason, &f.Topic, &f.Body, &f.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, f)

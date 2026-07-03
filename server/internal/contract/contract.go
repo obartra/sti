@@ -265,12 +265,13 @@ const (
 	FeedbackConfusing = "confusing"
 	FeedbackSafety    = "safety"
 	FeedbackIdea      = "idea"
+	FeedbackQuestion  = "question"
 	FeedbackOther     = "other"
 )
 
 var feedbackReasons = map[string]struct{}{
 	FeedbackBroken: {}, FeedbackConfusing: {}, FeedbackSafety: {},
-	FeedbackIdea: {}, FeedbackOther: {},
+	FeedbackIdea: {}, FeedbackQuestion: {}, FeedbackOther: {},
 }
 
 // ValidFeedbackReason reports whether r is one of the fixed feedback reason codes.
@@ -279,23 +280,48 @@ func ValidFeedbackReason(r string) bool {
 	return ok
 }
 
+// Feedback topics: which open question (labs.sti.care/docs/open-questions) a
+// "question" response addresses. A FIXED set like the reasons, semantic rather
+// than numbered so the doc can renumber without breaking stored rows; empty
+// means the response names no particular question.
+var feedbackTopics = map[string]struct{}{
+	"general": {}, "blue-equity": {}, "condom-tier": {}, "language": {},
+	"help-or-harm": {}, "groups": {}, "active-infection": {},
+	"notification-feel": {}, "verification": {}, "testing-window": {},
+	"detectable-hiv": {}, "missing": {},
+}
+
+// ValidFeedbackTopic reports whether t is empty or one of the fixed topic codes.
+func ValidFeedbackTopic(t string) bool {
+	if t == "" {
+		return true
+	}
+	_, ok := feedbackTopics[t]
+	return ok
+}
+
 // FeedbackBodyMaxRunes caps the optional note, the one free-text field the store
 // holds, so intake cannot be used to dump unbounded content. A longer body is a 400.
 const FeedbackBodyMaxRunes = 2000
 
-// FeedbackRequest is the body of POST /feedback: a fixed reason code and an optional
-// note. The endpoint is public + rate-limited; the record names no reporter.
+// FeedbackRequest is the body of POST /feedback: a fixed reason code, an optional
+// fixed topic code (which open question a "question" response addresses), and an
+// optional note. The endpoint is public + rate-limited; the record names no
+// reporter.
 type FeedbackRequest struct {
 	Reason string `json:"reason"`
+	Topic  string `json:"topic,omitempty"`
 	Body   string `json:"body"`
 }
 
 // AdminFeedback is one open report in the admin queue (GET /admin/feedback): its row
-// id (the resolve target), category, the optional note the person typed, and when it
-// came in. Operator-readable by design; never a reporter identity.
+// id (the resolve target), category, the optional topic code, the optional note the
+// person typed, and when it came in. Operator-readable by design; never a reporter
+// identity.
 type AdminFeedback struct {
 	ID        int64  `json:"id"`
 	Reason    string `json:"reason"`
+	Topic     string `json:"topic,omitempty"`
 	Body      string `json:"body"`
 	CreatedAt int64  `json:"createdAt"`
 }

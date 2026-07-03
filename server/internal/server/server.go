@@ -735,12 +735,16 @@ func (s *Server) handleFeedback(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "missing or invalid reason")
 		return
 	}
+	if !contract.ValidFeedbackTopic(req.Topic) {
+		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "invalid topic")
+		return
+	}
 	body := strings.TrimSpace(req.Body)
 	if utf8.RuneCountInString(body) > contract.FeedbackBodyMaxRunes {
 		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "note too long")
 		return
 	}
-	if err := s.st.AddFeedback(r.Context(), req.Reason, body, s.now()); err != nil {
+	if err := s.st.AddFeedback(r.Context(), req.Reason, req.Topic, body, s.now()); err != nil {
 		s.writeError(w, http.StatusInternalServerError, contract.ErrInternal, "")
 		return
 	}

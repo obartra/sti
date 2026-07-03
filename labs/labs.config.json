@@ -9,8 +9,7 @@
     "path": "https://sti.care",
     "cta": "Open sti.care"
   },
-  "feedbackUrl": "https://forms.gle/SSw4bUUixd8Bruw1A",
-  "feedbackLabel": "Share feedback",
+  "feedbackApi": "https://api.sti.care/feedback",
   "docsHeading": "The thinking",
   "docsIntro": "The why, the what, and the how, plus the open questions I most want outside eyes on.",
   "docs": [

@@ -192,6 +192,7 @@ CREATE INDEX IF NOT EXISTS idx_vanity_report_name ON vanity_report (name);
 CREATE TABLE IF NOT EXISTS feedback (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     reason      TEXT NOT NULL,            -- a fixed reason code (see contract), validated
+    topic       TEXT NOT NULL DEFAULT '', -- a fixed topic code (which open question), validated
     body        TEXT NOT NULL DEFAULT '', -- optional free text, length-capped at intake
     created_at  INTEGER NOT NULL
 );

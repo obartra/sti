@@ -453,6 +453,63 @@ section {
   color: var(--text-muted);
 }
 
+/* The in-house response form (doc 35): plain controls on the callout. */
+.ansform {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ansform-label {
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.ansform select,
+.ansform textarea {
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-strong);
+  background: var(--surface-card);
+  border: var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  padding: 9px 10px;
+}
+
+.ansform textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.ansform select:focus-visible,
+.ansform textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.ansform .feedbackbtn {
+  align-self: flex-start;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+  margin-top: 4px;
+}
+
+.ansform .feedbackbtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.ansform-status:empty {
+  display: none;
+}
+
 .feedbackbtn {
   display: inline-block;
   background: var(--accent);
