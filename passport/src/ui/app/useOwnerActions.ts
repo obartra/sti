@@ -36,11 +36,13 @@ export interface OwnerActions extends GroupJoinActions {
   /** Persist the owner's local display name (keeps avatar + sharing mode); pass
    * null to clear it back to no name. Owner-facing only, never sent to a viewer. */
   onSetName: (name: string | null) => void;
-  /** Mint a new per-contact link with a face (anonymous, or the owner's name);
-   * resolves with the contact + URL. The link is durable until revoked. */
+  /** Mint a new per-contact link with a face (anonymous, or the owner's name)
+   * and a lifetime (an absolute expiry instant, or null for until-revoked);
+   * resolves with the contact + URL. */
   onCreateContactLink: (
     label: string,
     identity: AliasIdentity,
+    expiresAt?: number | null,
   ) => Promise<ContactLinkResult>;
   /** Rename one contact link's local label (owner-only nickname; never shared). */
   onRenameContact: (id: string, label: string) => void;
@@ -123,14 +125,17 @@ export function useOwnerActions(
   const profile = useProfileActions(controller, sessionRef, setSession);
 
   const onCreateContactLink = useCallback(
-    async (label: string, identity: AliasIdentity) => {
+    async (
+      label: string,
+      identity: AliasIdentity,
+      expiresAt: number | null = null,
+    ) => {
       const current = sessionRef.current;
       if (current === null) throw new Error("not signed in");
-      const result = await controller.createContactLink(
-        current,
-        label,
+      const result = await controller.createContactLink(current, label, {
         identity,
-      );
+        expiresAt,
+      });
       sessionRef.current = result.session;
       setSession(result.session);
       return result;

@@ -6,17 +6,25 @@ import type { LinkShareContext } from "./Privacy.aliases.share.tsx";
 import type { AliasRecord, ContactRecord } from "../../store/index.ts";
 
 const id = (c: string) => c.repeat(43);
-const alias = (seed: string, isPublic: boolean): AliasRecord => ({
+const alias = (
+  seed: string,
+  isPublic: boolean,
+  expiresAt?: number | null,
+): AliasRecord => ({
   id: id(seed),
   writeToken: id("W"),
   key: id("K"),
   isPublic,
+  ...(expiresAt !== undefined ? { expiresAt } : {}),
 });
-const contact = (label: string): ContactRecord => ({
+const contact = (
+  label: string,
+  expiresAt: number | null = null,
+): ContactRecord => ({
   id: id("C"),
   label,
   createdDay: 19_000,
-  expiresAt: null,
+  expiresAt,
   alias: alias("D", false),
 });
 
@@ -86,6 +94,27 @@ describe("LiveLinks", () => {
       />,
     );
     expect(screen.queryByRole("button", { name: /^Share/ })).toBeNull();
+  });
+
+  it("shows remaining time on private links only, never on the public profile", () => {
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    render(
+      <LiveLinks
+        aliases={[
+          // A public alias never carries an expiry in the model; the guard here
+          // proves the row ignores one even if it somehow did.
+          alias("A", true, Date.now() + sevenDays),
+          alias("B", false, Date.now() + sevenDays),
+        ]}
+        contacts={[contact("Sam", Date.now() + sevenDays)]}
+        onRevokeAlias={vi.fn()}
+        onRevokeContact={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByText(/Expires in 7 days/)).toHaveLength(2);
+    expect(screen.getByText("Anyone with the link").textContent).not.toMatch(
+      /Expires/,
+    );
   });
 
   it("shows an empty state when nothing is shared", () => {

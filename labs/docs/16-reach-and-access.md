@@ -133,6 +133,13 @@ Duration is a property of the link/capability, not a per-viewer timer.
 - **v1 supports an updatable lifetime + immediate revoke.** The owner can extend or shorten a link's
   lifetime at any time and can revoke immediately (overwrite the payload to garbage, drop the
   record). Nothing is immutable.
+- **Where the lifetime surfaces (settled; this has churned).** The owner picks the lifetime at
+  creation: the Links screen's create card and the share sheet's private mode both carry the
+  "Link lasts" preset row. Every private-link row (the Links screen's per-contact list and the
+  everything-that-resolves list) shows its remaining time ("Expires in N days"); public rows never
+  show or carry one. The standing casual link's lifetime stays adjustable in the share sheet;
+  changing a per-contact link's lifetime after creation is revoke-and-recreate, a per-row lifetime
+  editor is deliberately not built.
 - **Expiry is an absolute timestamp (epoch ms); the mechanism allows sub-day, though the presets
   today are day-granular.** Durations are presets the owner picks (1 day, 7 days, 30 days, or no
   expiry); the link's `expiresAt` is `now + preset` at the moment it is set.

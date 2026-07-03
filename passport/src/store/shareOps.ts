@@ -28,6 +28,17 @@ export interface RevealChoice {
   readonly identity: AliasIdentity;
   readonly avatarOverride?: AvatarConfig | undefined;
 }
+
+/**
+ * The owner's choices for a freshly minted contact link: the face it shows
+ * (doc 15) and its lifetime (doc 16). All optional: the default link is
+ * anonymous and lives until revoked.
+ */
+export interface ContactLinkOpts {
+  readonly identity?: AliasIdentity;
+  readonly avatarOverride?: AvatarConfig | undefined;
+  readonly expiresAt?: number | null;
+}
 import { contactInviteUrl, type ContactInvite } from "./contactInvite.ts";
 import { mintNotify } from "./notifyInbox.ts";
 import { primaryShareAlias } from "./findableOps.ts";
@@ -51,8 +62,9 @@ import type {
   ShareLinkResult,
 } from "./session.ts";
 
-// A per-contact link is durable: it lives until the owner revokes it (doc 13), so
-// it is minted with no expiry. Revocation is the single cut-off.
+// A per-contact link's default lifetime: until the owner revokes it (doc 13).
+// The owner can pick a shorter lifetime at mint time (doc 16): an absolute expiry
+// instant the server enforces. Revoking always cuts a link off immediately.
 const NO_EXPIRY = null;
 
 // The face a revealed ("main") link stamps: the owner's account identity, but with
@@ -72,18 +84,17 @@ function faceFor(
 // Mint a fresh private alias for one contact, publish the current card to it, and
 // record it. The alias is private (unadvertised); the link is a contact INVITE
 // (doc 13 path A) carrying the alias key plus the owner's notify capability, so the
-// one recipient can read the card AND, on accept, notify back. The link never
-// expires on its own; revoking it is the only way to cut it off.
+// one recipient can read the card AND, on accept, notify back. The owner picks
+// the link's lifetime at mint time: an absolute expiry instant, or null for
+// until-revoked; revoking always cuts it off immediately.
 export async function mintContactLink(
   api: ApiClient,
   accounts: AccountManager,
   session: OwnerSession,
-  opts: {
-    label: string;
-  } & RevealChoice,
+  opts: { label: string } & ContactLinkOpts,
 ): Promise<ContactLinkResult> {
-  const { label, identity, avatarOverride } = opts;
-  const expiresAt = NO_EXPIRY;
+  const { label, identity = "anonymous", avatarOverride } = opts;
+  const expiresAt = opts.expiresAt ?? NO_EXPIRY;
   // The sender's optional shared name (doc 15): present only when they chose to show
   // their name (identity "main") AND have a name set. It seeds the recipient's local
   // label as a one-time snapshot; "anonymous" shares nothing.

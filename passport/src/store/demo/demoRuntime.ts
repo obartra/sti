@@ -62,12 +62,16 @@ function demoBlueState(): OwnerState {
   };
 }
 
-function demoContact(label: string, agoDays: number): ContactRecord {
+function demoContact(
+  label: string,
+  agoDays: number,
+  expiresAt: number | null = null,
+): ContactRecord {
   return {
     id: randomAliasId(),
     label,
     createdDay: todayEpochDay() - agoDays,
-    expiresAt: null,
+    expiresAt,
     alias: {
       id: randomAliasId(),
       writeToken: randomWriteToken(),
@@ -338,6 +342,16 @@ export function createDemoController(): SessionController {
   });
   const getBlob = () => blob;
   const setBlob = (b: AccountBlob) => void (blob = b);
+  // Record a fresh contact and answer with the shape every mint path returns.
+  const addContact = async (contact: ContactRecord) => {
+    blob = { ...blob, contacts: [...blob.contacts, contact] };
+    return { session: await session(), contact, url: demoUrl() };
+  };
+  // Replace the contact list wholesale (rename, revoke) and hand back a session.
+  const withContacts = async (contacts: ContactRecord[]) => {
+    blob = { ...blob, contacts };
+    return session();
+  };
 
   return {
     signUp: async (handle, recovery) => {
@@ -388,38 +402,24 @@ export function createDemoController(): SessionController {
     // informational row, never a dead-end the demo can't honor).
     reviewKnocks: () => Promise.resolve({ count: 1, pending: [] }),
     approveKnocks: (_s, approvals) => Promise.resolve(approvals.length),
-    createContactLink: async (_s, label) => {
-      const contact = demoContact(label, 0);
-      blob = { ...blob, contacts: [...blob.contacts, contact] };
-      return { session: await session(), contact, url: demoUrl() };
-    },
-    renameContact: async (_s, contactId, label) => {
-      blob = {
-        ...blob,
-        contacts: blob.contacts.map((c) =>
+    createContactLink: (_s, label, opts) =>
+      addContact(demoContact(label, 0, opts?.expiresAt ?? null)),
+    renameContact: (_s, contactId, label) =>
+      withContacts(
+        blob.contacts.map((c) =>
           c.id === contactId
             ? { ...c, label: label.trim().slice(0, MAX_CONTACT_LABEL) }
             : c,
         ),
-      };
-      return session();
-    },
-    revokeContact: async (_s, contactId) => {
-      blob = {
-        ...blob,
-        contacts: blob.contacts.filter((c) => c.id !== contactId),
-      };
-      return session();
-    },
+      ),
+    revokeContact: (_s, contactId) =>
+      withContacts(blob.contacts.filter((c) => c.id !== contactId)),
     revokeAlias: async (_s, aliasId) => {
       blob = { ...blob, aliases: blob.aliases.filter((a) => a.id !== aliasId) };
       return session();
     },
-    acceptContactInvite: async (_s, _invite, label) => {
-      const contact = demoContact(label, 0);
-      blob = { ...blob, contacts: [...blob.contacts, contact] };
-      return { session: await session(), contact, url: demoUrl() };
-    },
+    acceptContactInvite: (_s, _invite, label) =>
+      addContact(demoContact(label, 0)),
     ingestContactReturn: (s) => Promise.resolve(s),
     notifyContactsOfPositive: () =>
       Promise.resolve({ sent: [], skipped: [], failed: [] }),
