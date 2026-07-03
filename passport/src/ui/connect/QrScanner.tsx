@@ -4,6 +4,7 @@ import { parseScannedLink } from "../../store/index.ts";
 import type { AliasLink } from "../../store/index.ts";
 import { Button } from "../../design/components/index.ts";
 import { X } from "../../design/icons.tsx";
+import "./connect.css";
 
 /* The in-app QR scanner (doc 16). Opens the camera, samples frames, and decodes
    with jsQR. A scanned code is untrusted: only a well-formed alias link resolves
@@ -168,34 +169,11 @@ function Viewfinder({
 }) {
   return (
     <>
-      <div
-        style={{
-          position: "relative",
-          width: 240,
-          height: 240,
-          borderRadius: "var(--radius-xl)",
-          overflow: "hidden",
-          boxShadow: "0 0 0 2px rgba(255,255,255,0.85)",
-        }}
-      >
-        <video
-          ref={videoRef}
-          muted
-          playsInline
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-        />
+      <div className="qrs__viewport">
+        <video ref={videoRef} muted playsInline className="qrs__video" />
       </div>
-      <div style={{ fontSize: 15, fontWeight: 700 }}>{COPY.title}</div>
-      <div
-        style={{
-          fontSize: 13.5,
-          color: "rgba(255,255,255,0.8)",
-          maxWidth: 280,
-          lineHeight: 1.5,
-        }}
-      >
-        {COPY.hint}
-      </div>
+      <div className="qrs__title">{COPY.title}</div>
+      <div className="qrs__hint">{COPY.hint}</div>
     </>
   );
 }
@@ -215,17 +193,8 @@ function ScanMessage({
 }) {
   return (
     <>
-      <div style={{ fontSize: 15, fontWeight: 700 }}>{COPY.title}</div>
-      <div
-        style={{
-          fontSize: 13.5,
-          color: "rgba(255,255,255,0.8)",
-          maxWidth: 300,
-          lineHeight: 1.5,
-        }}
-      >
-        {messageFor(status)}
-      </div>
+      <div className="qrs__title">{COPY.title}</div>
+      <div className="qrs__hint">{messageFor(status)}</div>
       <Button variant="secondary" size="lg" onClick={onBack}>
         {COPY.close}
       </Button>
@@ -244,41 +213,12 @@ export function QrScanner({ onResult, onBack }: QrScannerProps) {
   const status = useQrScan(videoRef, onResult);
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        background: "#0B0B14",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "#fff",
-        gap: 20,
-        padding: 24,
-        textAlign: "center",
-      }}
-    >
+    <div className="qrs">
       <button
         type="button"
         onClick={onBack}
         aria-label={COPY.close}
-        style={{
-          position: "absolute",
-          top: 16,
-          right: 16,
-          appearance: "none",
-          border: "none",
-          background: "rgba(255,255,255,0.16)",
-          width: 38,
-          height: 38,
-          borderRadius: "50%",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          color: "#fff",
-        }}
+        className="qrs__close"
       >
         <X size={18} />
       </button>

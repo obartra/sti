@@ -3,6 +3,7 @@ import { LiveLinks } from "../../core/Privacy.aliases.tsx";
 import { avatarSrc } from "../../../lib/avatars.ts";
 import type { LinkShareContext } from "../../core/Privacy.aliases.share.tsx";
 import type { ScreenCtx, ScreenRenderers } from "./context.ts";
+import "../../connect/connect.css";
 
 // The per-contact link manager: mint a private link for one person, list active
 // links, rename, revoke (doc 13). Each link is durable until revoked. Shared by the
@@ -39,7 +40,7 @@ export const linksRenderers: ScreenRenderers = {
   // private links; below it, the live-links list shows everything that can resolve
   // to your status right now, each individually shareable and revocable (doc 31).
   links: (ctx) => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+    <div className="cn-screen">
       {contactManager(ctx)}
       <LiveLinks
         aliases={ctx.aliases}

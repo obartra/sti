@@ -3,6 +3,7 @@ import { QrCode } from "../../design/icons.tsx";
 import { COPY, DiscoverTile, FavesSection } from "./parts.tsx";
 import { RecentSection } from "./recent.tsx";
 import type { ContactRecord } from "../../store/accountBlob.ts";
+import "./connect.css";
 
 // The full contact list starts collapsed; it's the secondary "browse if you need
 // it" surface, below starred and groups. (A dedicated "all contacts" page is a
@@ -48,40 +49,20 @@ export function Connect({
   const faveContacts = recent.filter((c) => faves.has(c.id));
 
   return (
-    <div style={{ width: "100%", maxWidth: 600 }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="cn">
+      <div className="cn__col">
         <div>
-          <h1
-            style={{
-              fontSize: 26,
-              fontWeight: 800,
-              letterSpacing: "-0.02em",
-              color: "var(--text-strong)",
-            }}
-          >
-            {COPY.title}
-          </h1>
-          <p
-            style={{
-              fontSize: 14.5,
-              lineHeight: 1.55,
-              color: "var(--text-body)",
-              marginTop: 6,
-            }}
-          >
-            {COPY.sub}
-          </p>
+          <h1 className="cn__title">{COPY.title}</h1>
+          <p className="cn__sub">{COPY.sub}</p>
         </div>
 
         {/* meet someone in person: scan their code to connect */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <DiscoverTile
-            icon={<QrCode size={22} />}
-            title={COPY.scanTile}
-            sub={COPY.scanTileSub}
-            onClick={onScan}
-          />
-        </div>
+        <DiscoverTile
+          icon={<QrCode size={22} />}
+          title={COPY.scanTile}
+          sub={COPY.scanTileSub}
+          onClick={onScan}
+        />
 
         {/* faves, starred contacts: a prominent surface */}
         <FavesSection faves={faveContacts} onToggleFave={onToggleFave} />

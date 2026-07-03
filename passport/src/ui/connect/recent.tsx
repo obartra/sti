@@ -1,16 +1,12 @@
-import { Button, Card } from "../../design/components/index.ts";
+import { Button } from "../../design/components/index.ts";
 import { Star, StarFill, Trash } from "../../design/icons.tsx";
 import { relativeDayLabel } from "../../core/clock.ts";
 import type { ContactRecord } from "../../store/accountBlob.ts";
-import {
-  COPY,
-  ContactAvatar,
-  SectionHead,
-  contactName,
-  menuItem,
-} from "./parts.tsx";
+import { COPY, ContactAvatar, SectionHead, contactName } from "./parts.tsx";
+import "./connect.css";
 
-// The kebab popover for a recent-linkup row: star/unstar and delete the link.
+// The kebab popover for a recent-connection row: star/unstar and delete the link.
+// An overlay control, so it keeps its elevation (doc 37).
 function RecentRowMenu({
   contactId,
   isFave,
@@ -23,23 +19,11 @@ function RecentRowMenu({
   onRemove: (contactId: string) => void;
 }) {
   return (
-    <div
-      style={{
-        position: "absolute",
-        right: 6,
-        top: "calc(100% - 4px)",
-        zIndex: 5,
-        background: "var(--surface-card)",
-        borderRadius: "var(--radius-md)",
-        boxShadow: "var(--shadow-lg)",
-        padding: 6,
-        minWidth: 190,
-      }}
-    >
+    <div className="cn__menu">
       <button
         type="button"
         onClick={() => onToggleFave(contactId)}
-        style={menuItem("var(--text-body)")}
+        className="cn__menu-item"
       >
         {isFave ? <StarFill size={15} /> : <Star size={15} />}{" "}
         {isFave ? "Unstar" : "Star as fave"}
@@ -47,7 +31,7 @@ function RecentRowMenu({
       <button
         type="button"
         onClick={() => onRemove(contactId)}
-        style={menuItem("var(--status-expired-fg)")}
+        className="cn__menu-item cn__menu-item--danger"
       >
         <Trash size={15} /> {COPY.menuDelete}
       </button>
@@ -55,7 +39,7 @@ function RecentRowMenu({
   );
 }
 
-// One recent-linkup row (a contact) plus its kebab menu.
+// One recent-connection row (a contact) plus its kebab menu.
 function RecentRow({
   contact,
   nowDay,
@@ -75,45 +59,16 @@ function RecentRow({
 }) {
   const name = contactName(contact);
   return (
-    <div
-      style={{
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
-        gap: 11,
-        padding: "7px 6px",
-      }}
-    >
+    <div className="cn__row">
       <ContactAvatar contact={contact} size="sm" />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <span
-          style={{
-            fontSize: 14,
-            fontWeight: 600,
-            color: "var(--text-strong)",
-          }}
-        >
-          {name}
-        </span>
+      <div className="cn__row-body">
+        <span className="cn__row-name">{name}</span>
         {isFave && (
-          <span
-            style={{
-              color: "var(--status-treat-base)",
-              marginLeft: 6,
-              display: "inline-flex",
-              verticalAlign: "-2px",
-            }}
-          >
+          <span aria-hidden className="cn__row-star">
             <StarFill size={12} />
           </span>
         )}
-        <span
-          style={{
-            fontSize: 12,
-            color: "var(--text-subtle)",
-            marginLeft: 8,
-          }}
-        >
+        <span className="cn__row-when">
           {relativeDayLabel(contact.createdDay, nowDay)}
         </span>
       </div>
@@ -122,20 +77,7 @@ function RecentRow({
         aria-label={`Options for ${name}`}
         aria-expanded={menuOpen}
         onClick={onToggleMenu}
-        style={{
-          appearance: "none",
-          border: "none",
-          background: "transparent",
-          cursor: "pointer",
-          width: 34,
-          height: 34,
-          borderRadius: "50%",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "var(--text-subtle)",
-          flex: "none",
-        }}
+        className="cn__iconbtn"
       >
         <svg
           viewBox="0 0 24 24"
@@ -191,21 +133,9 @@ export function RecentSection({
         muted
       />
       {recent.length === 0 ? (
-        <Card
-          variant="flat"
-          style={{
-            textAlign: "center",
-            color: "var(--text-muted)",
-            fontSize: 14,
-          }}
-        >
-          {COPY.empty}
-        </Card>
+        <div className="cn__empty">{COPY.empty}</div>
       ) : (
-        <Card
-          variant="flat"
-          style={{ padding: 4, display: "flex", flexDirection: "column" }}
-        >
+        <div className="cn__rows">
           {recent.slice(0, visible).map((c) => (
             <RecentRow
               key={c.id}
@@ -223,12 +153,12 @@ export function RecentSection({
               variant="ghost"
               size="sm"
               onClick={onShowMore}
-              style={{ alignSelf: "flex-start", margin: 4 }}
+              className="cn__more"
             >
               {COPY.showMore} · {recent.length - visible} left
             </Button>
           )}
-        </Card>
+        </div>
       )}
     </div>
   );
