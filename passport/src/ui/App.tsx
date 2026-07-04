@@ -32,6 +32,7 @@ import {
 import { useBackupSync } from "./app/useBackupSync.ts";
 import { NotBackedUp } from "./app/NotBackedUp.tsx";
 import { DemoBanner } from "./app/DemoBanner.tsx";
+import { DemoWatermark } from "./app/DemoWatermark.tsx";
 import {
   browserDeviceStore,
   createDeviceStore,
@@ -178,8 +179,8 @@ const NO_DEMO: DemoControls = {
   onExit: () => undefined,
 };
 
-// The two persistent banners above the chrome: the demo-mode marker (doc 28) and the
-// not-backed-up marker (doc 22). Bundled so App's render stays within its size cap.
+// The persistent markers above the chrome: the demo banner + watermark (doc 28) and
+// the not-backed-up marker (doc 22). Bundled so App's render stays within its size cap.
 function Banners({
   demo,
   backupPending,
@@ -190,6 +191,7 @@ function Banners({
   return (
     <>
       <DemoBanner active={demo.mode} onExit={demo.onExit} />
+      <DemoWatermark active={demo.mode} />
       <NotBackedUp pending={backupPending} demo={demo.mode} />
     </>
   );
