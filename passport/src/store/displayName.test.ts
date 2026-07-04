@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   sanitizeDisplayName,
   normalizeDisplayName,
+  handleFromDisplayName,
   MAX_DISPLAY_NAME,
 } from "./displayName.ts";
 
@@ -40,5 +41,28 @@ describe("display name normalization", () => {
     expect(normalizeDisplayName("  Sam Rivers  ")).toBe("Sam Rivers");
     expect(normalizeDisplayName("   ")).toBe("");
     expect(normalizeDisplayName("🎉")).toBe("");
+  });
+});
+
+describe("handleFromDisplayName (display name to a shareable handle)", () => {
+  it("lowercases, turns spaces into underscores, keeps the handle shape", () => {
+    expect(handleFromDisplayName("Sam Rivers")).toBe("sam_rivers");
+    expect(handleFromDisplayName("Sam")).toBe("sam");
+  });
+
+  it("folds diacritics to their base letter and drops name punctuation", () => {
+    expect(handleFromDisplayName("José Ng-Smith")).toBe("jose_ngsmith");
+    expect(handleFromDisplayName("O'Brien")).toBe("obrien");
+  });
+
+  it("collapses and trims underscores and caps at the handle length", () => {
+    expect(handleFromDisplayName("  Sam   Rivers  ")).toBe("sam_rivers");
+    expect(handleFromDisplayName("a".repeat(40))).toHaveLength(30);
+  });
+
+  it("returns empty when nothing usable remains, so callers can fall back", () => {
+    expect(handleFromDisplayName("さくら")).toBe(""); // non-latin script
+    expect(handleFromDisplayName("Al")).toBe(""); // shorter than the handle minimum
+    expect(handleFromDisplayName("🎉")).toBe("");
   });
 });

@@ -32,3 +32,25 @@ export function sanitizeDisplayName(raw: string): string {
 export function normalizeDisplayName(raw: string): string {
   return sanitizeDisplayName(raw).trim();
 }
+
+// Derive a valid handle candidate from a display name, matching the handle shape
+// (lowercase letters, digits, underscore, length 3 to 30). The display name is
+// internal and never shared with anyone; a handle is. This reduction is the bridge:
+// it seeds the default for a person's first handle, and it is what the owner's "show
+// my name" card stamps, so the raw display name (mixed case, spaces, punctuation)
+// never reaches a viewer. Diacritics fold to their base letter ("jose" from "José"),
+// spaces become underscores, and anything else is dropped. Returns "" when nothing
+// usable remains (for example a non-latin script), so callers fall back to the
+// id-derived face rather than an invalid handle.
+export function handleFromDisplayName(raw: string): string {
+  const reduced = raw
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 30);
+  return reduced.length >= 3 ? reduced : "";
+}
