@@ -16,9 +16,7 @@ import type { ResolvedView } from "../../ui/public/PublicResolution.tsx";
 import type { OwnerSession, SessionController } from "../session.ts";
 import type { PassportStore } from "../passportStore.ts";
 import {
-  MAX_CONTACT_LABEL,
   type AccountBlob,
-  type ContactRecord,
   type GroupRecord,
   type PendingGroupInvite,
 } from "../accountBlob.ts";
@@ -28,6 +26,14 @@ import {
   demoJoinRequestStore,
   demoRoster,
 } from "./demoGroupSeed.ts";
+import { demoViewerRequestStore } from "./demoPeerSeed.ts";
+import {
+  demoContact,
+  demoContactMethods,
+  demoCircleMethods,
+  demoKnocks,
+  demoUrl,
+} from "./demoOwner.ts";
 import { groupInviteUrl } from "../groupInvite.ts";
 import type { OwnerState } from "../../core/badge.ts";
 import {
@@ -62,25 +68,6 @@ function demoBlueState(): OwnerState {
   };
 }
 
-function demoContact(
-  label: string,
-  agoDays: number,
-  expiresAt: number | null = null,
-): ContactRecord {
-  return {
-    id: randomAliasId(),
-    label,
-    createdDay: todayEpochDay() - agoDays,
-    expiresAt,
-    alias: {
-      id: randomAliasId(),
-      writeToken: randomWriteToken(),
-      key: randomAliasId(),
-      isPublic: false,
-    },
-  };
-}
-
 /** A freshly seeded demo account: handle, a blue badge, a couple of contacts, and
  * one group, so every tab has something real to look at. Rebuilt on each demo
  * entry. */
@@ -104,10 +91,6 @@ const DEMO_PEER_CARD: ResolvedView = {
   route: "hiv",
   identity: { handle: "demo-friend" },
 };
-
-function demoUrl(): string {
-  return `https://sti.care/a/${randomAliasId()}`;
-}
 
 // The recovery-factor demo methods (doc 32). The demo has no server, so it just
 // records or clears the recovery name locally and reports success, so the Settings
@@ -248,7 +231,28 @@ function demoGroupMembership(
       }));
       return session();
     },
-    acceptGroupInvite: () => session(),
+    // Accepting a group invite joins as a MEMBER (doc 33): record a member-side group
+    // from the invite (no admin write token or Kg; those arrive on the first roster
+    // poll in the real flow), so People shows the joined group. Idempotent. doc 28 F.
+    acceptGroupInvite: async (_s, invite) => {
+      const already = (getBlob().groups ?? []).some(
+        (g) => g.groupId === invite.groupId,
+      );
+      if (!already) {
+        const group: GroupRecord = {
+          groupId: invite.groupId,
+          myCardId: randomAliasId(),
+          myCardWriteToken: randomWriteToken(),
+          handle: invite.handle,
+          visibility: invite.visibility,
+          meetingKind: invite.meetingKind,
+          isAdmin: false,
+          lifecycleInbox: invite.lifecycleInbox,
+        };
+        setBlob({ ...getBlob(), groups: [...(getBlob().groups ?? []), group] });
+      }
+      return session();
+    },
     rejectGroupInvite: () => session(),
     pollGroupLifecycle: () => session(),
     removeGroupMember: async (_s, groupId, cardId) => {
@@ -298,8 +302,27 @@ function demoGroupJoin(
   // Device-local waiting join requests per public admin group (see demoGroupSeed):
   // review seeds a contentless row on first read; approve/reject clear it.
   const joinRequests = demoJoinRequestStore();
+  // One public group the reviewer can DISCOVER and join (doc 28 F, Flow 4 member side):
+  // requestToJoin resolves for this seeded handle, and the scripted admin approves on
+  // the next redeem poll, adding the member-side record. Any other handle stays
+  // "not-found" (the demo discovers no other real group). A distinct handle from the
+  // owner's own seeded group, so joining is a genuine second-party join.
+  const joinable = {
+    handle: "climbing_crew",
+    groupId: randomAliasId(),
+    lifecycleInbox: demoInbox(),
+    visibility: "public" as const,
+    meetingKind: "recurring" as const,
+  };
+  let joinRequested = false;
   return {
-    requestToJoin: () => Promise.resolve("not-found" as const),
+    requestToJoin: (_s, handle) => {
+      if (normalizeVanityName(handle) === joinable.handle) {
+        joinRequested = true;
+        return Promise.resolve("requested" as const);
+      }
+      return Promise.resolve("not-found" as const);
+    },
     reviewJoinRequests: (_s, groupId) =>
       Promise.resolve(
         joinRequests.review(
@@ -314,7 +337,27 @@ function demoGroupJoin(
       joinRequests.drop(groupId, request.requesterHash);
       return Promise.resolve(s);
     },
-    redeemJoinRequests: (s) => Promise.resolve(s),
+    // The scripted admin approves the reviewer's pending request on the next poll,
+    // delivering the join: record the member-side group so People shows it. Idempotent.
+    redeemJoinRequests: async (s) => {
+      const joined = (getBlob().groups ?? []).some(
+        (g) => g.groupId === joinable.groupId,
+      );
+      if (!joinRequested || joined) return s;
+      const group: GroupRecord = {
+        groupId: joinable.groupId,
+        myCardId: randomAliasId(),
+        myCardWriteToken: randomWriteToken(),
+        handle: joinable.handle,
+        visibility: joinable.visibility,
+        meetingKind: joinable.meetingKind,
+        isAdmin: false,
+        lifecycleInbox: joinable.lifecycleInbox,
+      };
+      setBlob({ ...getBlob(), groups: [...(getBlob().groups ?? []), group] });
+      joinRequested = false;
+      return session();
+    },
     leaveGroup: async (_s, groupId) => {
       dropGroup(groupId);
       return session();
@@ -342,16 +385,6 @@ export function createDemoController(): SessionController {
   });
   const getBlob = () => blob;
   const setBlob = (b: AccountBlob) => void (blob = b);
-  // Record a fresh contact and answer with the shape every mint path returns.
-  const addContact = async (contact: ContactRecord) => {
-    blob = { ...blob, contacts: [...blob.contacts, contact] };
-    return { session: await session(), contact, url: demoUrl() };
-  };
-  // Replace the contact list wholesale (rename, revoke) and hand back a session.
-  const withContacts = async (contacts: ContactRecord[]) => {
-    blob = { ...blob, contacts };
-    return session();
-  };
 
   return {
     signUp: async (handle, recovery) => {
@@ -397,55 +430,12 @@ export function createDemoController(): SessionController {
     // The demo has no server enforcing expiry, so the lifetime choice is a no-op.
     setShareLinkExpiry: (s) => Promise.resolve(s),
     deleteAccount: () => Promise.resolve(),
-    // One contentless ask, so the demo inbox shows "someone asked to see your
-    // status" (faithful to real behavior: a count with no grantable pending is an
-    // informational row, never a dead-end the demo can't honor).
-    reviewKnocks: () => Promise.resolve({ count: 1, pending: [] }),
-    approveKnocks: (_s, approvals) => Promise.resolve(approvals.length),
-    createContactLink: (_s, label, opts) =>
-      addContact(demoContact(label, 0, opts?.expiresAt ?? null)),
-    renameContact: (_s, contactId, label) =>
-      withContacts(
-        blob.contacts.map((c) =>
-          c.id === contactId
-            ? { ...c, label: label.trim().slice(0, MAX_CONTACT_LABEL) }
-            : c,
-        ),
-      ),
-    revokeContact: (_s, contactId) =>
-      withContacts(blob.contacts.filter((c) => c.id !== contactId)),
-    revokeAlias: async (_s, aliasId) => {
-      blob = { ...blob, aliases: blob.aliases.filter((a) => a.id !== aliasId) };
-      return session();
-    },
-    acceptContactInvite: (_s, _invite, label) =>
-      addContact(demoContact(label, 0)),
-    ingestContactReturn: (s) => Promise.resolve(s),
+    ...demoKnocks(),
+    ...demoContactMethods(getBlob, setBlob, session),
     notifyContactsOfPositive: () =>
       Promise.resolve({ sent: [], skipped: [], failed: [] }),
     hasPartnerNudge: () => Promise.resolve(false),
-    createCircle: async (_s, name, memberContactIds) => {
-      const circleId = randomAliasId();
-      const circle = { id: circleId, name, memberContactIds };
-      blob = { ...blob, circles: [...(blob.circles ?? []), circle] };
-      return { session: await session(), circleId };
-    },
-    updateCircle: async (_s, circleId, name, memberContactIds) => {
-      blob = {
-        ...blob,
-        circles: (blob.circles ?? []).map((c) =>
-          c.id === circleId ? { id: circleId, name, memberContactIds } : c,
-        ),
-      };
-      return session();
-    },
-    removeCircle: async (_s, circleId) => {
-      blob = {
-        ...blob,
-        circles: (blob.circles ?? []).filter((c) => c.id !== circleId),
-      };
-      return session();
-    },
+    ...demoCircleMethods(getBlob, setBlob, session),
     registerVanityName: (s) =>
       Promise.resolve({ session: s, result: "unavailable" as const }),
     checkVanityName: () => Promise.resolve("taken" as const),
@@ -465,14 +455,23 @@ export function createDemoController(): SessionController {
  * demo user (or an app reviewer) can open "someone else's" passport on one device.
  */
 export function createDemoStore(): PassportStore {
+  // Flow 3 (knock as a viewer): a gray peer the reviewer can ask to see. Its link
+  // resolves to the uniform gray-nothing, so opening it shows the knock affordance;
+  // a knock resolves a beat later (the scripted owner approves). One request is
+  // pre-seeded, so the Requests surface also shows a live "waiting" row. doc 28 F.
+  const viewer = demoViewerRequestStore(DEMO_PEER_CARD);
   return {
-    resolveAlias: () => Promise.resolve(DEMO_PEER_CARD),
-    knock: () => Promise.resolve(),
-    redeemGrant: () => Promise.resolve(null),
+    resolveAlias: (link) =>
+      Promise.resolve(viewer.isGray(link.id) ? null : DEMO_PEER_CARD),
+    knock: (aliasId) => {
+      viewer.knock(aliasId);
+      return Promise.resolve();
+    },
+    redeemGrant: (aliasId) => Promise.resolve(viewer.redeem(aliasId)),
     resolveVanityName: () => Promise.resolve(null),
     reportVanityName: () => Promise.resolve(),
     submitFeedback: () => Promise.resolve(),
-    pendingRequests: () => [],
-    forgetRequest: () => undefined,
+    pendingRequests: () => viewer.pending(),
+    forgetRequest: (aliasId) => viewer.forget(aliasId),
   };
 }

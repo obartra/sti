@@ -126,6 +126,24 @@ async function walkGroupJoin(
   expect(left.blob.groups?.find((g) => g.groupId === groupId)).toBeUndefined();
 }
 
+// The grant-a-knock surface (doc 28 F): one grantable ask carrying a truthy pubKey,
+// so Approve renders. Approving it returns the count granted and clears the row, so a
+// re-review returns nothing (the "granted, gone from the queue" outcome). Split out to
+// keep walkController under the complexity ceiling.
+async function walkKnocks(
+  controller: SessionController,
+  session: OwnerSession,
+): Promise<void> {
+  const knocks = await controller.reviewKnocks(session);
+  expect(knocks.count).toBe(1);
+  expect(knocks.pending).toHaveLength(1);
+  expect(knocks.pending[0]?.pending.pubKey).toBeTruthy();
+  expect(await controller.approveKnocks(session, knocks.pending)).toBe(1);
+  const cleared = await controller.reviewKnocks(session);
+  expect(cleared.count).toBe(0);
+  expect(cleared.pending).toEqual([]);
+}
+
 // Walk the whole SessionController surface in one realistic owner journey,
 // asserting the mutate-and-persist contract: every owner action returns a session
 // whose blob reflects the change, so the demo can never drift into a hollow
@@ -179,12 +197,8 @@ async function walkController(controller: SessionController): Promise<void> {
     await controller.setShareLinkExpiry(renewed.session, null),
   ).not.toBeNull();
 
-  // Inbox: one contentless ask (a count with no grantable pending) and an approve
-  // that honors however many it is handed.
-  const knocks = await controller.reviewKnocks(renewed.session);
-  expect(knocks.count).toBe(1);
-  expect(knocks.pending).toEqual([]);
-  expect(await controller.approveKnocks(renewed.session, [])).toBe(0);
+  // Inbox (doc 28 F, grant a knock), walked in its own helper.
+  await walkKnocks(controller, renewed.session);
 
   // Contacts: create persists a durable link (no expiry), revoke drops it.
   const created = await controller.createContactLink(renewed.session, "Robin");
@@ -202,14 +216,17 @@ async function walkController(controller: SessionController): Promise<void> {
   // Alias revoke (no public aliases seeded): a no-op that still returns a session.
   expect(await controller.revokeAlias(revoked, "unknown")).not.toBeNull();
 
-  // Contact invites (doc 13 path A): accept records a two-way contact; ingesting a
-  // return is a no-op that returns a session.
+  // Contact invites (doc 13 path A): accept records a real two-way contact, reading
+  // the peer's own status alias + notify off the invite (not half-linked); ingesting a
+  // return with no matching pending contact is a no-op that returns a session unchanged.
   const accepted = await controller.acceptContactInvite(
     revoked,
     INERT_INVITE,
     "Lee",
   );
-  expect(accepted.session.blob.contacts.map((c) => c.label)).toContain("Lee");
+  const lee = accepted.session.blob.contacts.find((c) => c.label === "Lee");
+  expect(lee?.theirStatusAlias).toBe(INERT_INVITE.alias);
+  expect(lee?.theirNotify).toBe(INERT_INVITE.notify);
   expect(
     await controller.ingestContactReturn(accepted.session, INERT_INVITE),
   ).not.toBeNull();
@@ -290,18 +307,30 @@ async function walkController(controller: SessionController): Promise<void> {
   controller.forget();
 }
 
-// Walk the whole PassportStore read surface: any shared link resolves to the
-// canned peer; the keyless / grant paths fail closed to null; the local request
-// log is empty and forgettable.
+// Walk the whole PassportStore read surface: any shared link resolves to the canned
+// peer; an un-knocked grant fails closed to null; a knock then two redeems resolves to
+// a card (the scripted owner approves on the 2nd poll); the seeded waiting request is
+// listed and forgettable.
 async function walkStore(store: PassportStore): Promise<void> {
   const card = await store.resolveAlias({ id: "x", key: "y" });
   expect(card?.identity.handle).toBe("demo-friend");
+  // A fresh store seeds one waiting request (a peer the reviewer already asked to see).
+  const seeded = store.pendingRequests();
+  expect(seeded).toHaveLength(1);
+  const first = seeded[0];
+  if (first === undefined) throw new Error("expected a seeded request");
+  // An un-knocked grant fails closed to null.
+  expect(await store.redeemGrant("unknown-alias")).toBeNull();
+  // Knock, then redeem twice: null on the first poll, the card on the second.
   await store.knock("any-alias");
   expect(await store.redeemGrant("any-alias")).toBeNull();
+  expect((await store.redeemGrant("any-alias"))?.identity.handle).toBe(
+    "demo-friend",
+  );
   expect(await store.resolveVanityName("robin")).toBeNull();
   await store.reportVanityName("robin", "impersonation");
-  expect(store.pendingRequests()).toEqual([]);
-  store.forgetRequest("any-alias");
+  store.forgetRequest(first.id);
+  expect(store.pendingRequests().map((r) => r.id)).not.toContain(first.id);
 }
 
 describe("demo contract (anti-staleness)", () => {
