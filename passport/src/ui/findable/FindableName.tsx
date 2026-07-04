@@ -41,6 +41,9 @@ export interface PublicNamesProps {
    * removed, so its row shows the reason instead of a remove control. The server
    * enforces the same rule (doc 17); this is the matching UI. */
   pinnedName?: string | null | undefined;
+  /** A suggested starting value for the person's FIRST public name, derived from
+   * their display name (editable). Ignored once they hold at least one name. */
+  suggestedName?: string | undefined;
 }
 
 const NAME_ERROR: Record<VanityNameError, string> = {
@@ -96,6 +99,7 @@ export function PublicNames({
   names,
   ops,
   pinnedName = null,
+  suggestedName,
 }: PublicNamesProps) {
   const [adding, setAdding] = useState(false);
   const atCap = names.length >= MAX_PUBLIC_NAMES;
@@ -133,6 +137,7 @@ export function PublicNames({
           ops={ops}
           onRegistered={() => setAdding(false)}
           onCancel={() => setAdding(false)}
+          initialName={names.length === 0 ? (suggestedName ?? "") : ""}
         />
       ) : (
         <div className="pn__add">
@@ -219,12 +224,16 @@ function RegisterForm({
   ops,
   onRegistered,
   onCancel,
+  initialName = "",
 }: {
   ops: FindableOps;
   onRegistered: () => void;
   onCancel: () => void;
+  // A suggested starting value for a person's first handle, derived from their
+  // display name (editable). Empty for later handles or when nothing was derivable.
+  initialName?: string;
 }) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialName);
   const [busy, setBusy] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
 

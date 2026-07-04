@@ -30,6 +30,22 @@ describe("PublicNames (the Links-tab manager)", () => {
     expect(screen.queryByLabelText(/choose a name/i)).not.toBeInTheDocument();
   });
 
+  it("seeds the first name's field from the suggested handle, editable", async () => {
+    const user = userEvent.setup();
+    render(<PublicNames names={[]} ops={ops()} suggestedName="sam_rivers" />);
+    await openAdd(user);
+    expect(screen.getByLabelText(/choose a name/i)).toHaveValue("sam_rivers");
+  });
+
+  it("does not seed the suggestion once a name already exists", async () => {
+    const user = userEvent.setup();
+    render(
+      <PublicNames names={["robin"]} ops={ops()} suggestedName="sam_rivers" />,
+    );
+    await openAdd(user);
+    expect(screen.getByLabelText(/choose a name/i)).toHaveValue("");
+  });
+
   it("claims a normalized name through the add flow", async () => {
     const user = userEvent.setup();
     const register = vi.fn(() => Promise.resolve("registered" as const));
