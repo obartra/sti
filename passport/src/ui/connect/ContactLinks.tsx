@@ -81,9 +81,13 @@ function CreateCard({
         onChange={setIdentity}
       />
       {/* How long the link lasts (doc 16): a preset duration, or until the owner
-          turns it off. The choice is fixed at creation; changing your mind later
-          means revoking this link and making a new one. */}
-      <LifetimeRow choice={lifetime} onChange={setLifetime} />
+          turns it off. Only offered for an anonymous, one-off link; a link that
+          shows your name is a standing link and never expires, so the row is
+          hidden and it stays open until you revoke it. The choice is fixed at
+          creation; changing your mind later means revoking and making a new one. */}
+      {identity === "anonymous" && (
+        <LifetimeRow choice={lifetime} onChange={setLifetime} />
+      )}
       <Button
         variant="primary"
         size="md"
@@ -121,7 +125,10 @@ export function ContactLinks({
     setBusy(true);
     setCreated(null);
     setError(null);
-    const expiresAt = lifetime === null ? null : nowMs() + lifetime;
+    // A named ("show my name") link is standing and never expires; only an
+    // anonymous, one-off link carries a chosen lifetime.
+    const expiresAt =
+      identity === "anonymous" && lifetime !== null ? nowMs() + lifetime : null;
     void onCreate(label.trim(), identity, expiresAt)
       .then((r) => {
         setCreated(r.url);
@@ -143,8 +150,7 @@ export function ContactLinks({
       <div>
         <h1 className="cn__title">Your links</h1>
         <p className="cn__sub">
-          A private link for one person. They open it to see your status. You
-          choose how long it lasts.
+          A private link for one person. They open it to see your status.
         </p>
       </div>
 

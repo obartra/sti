@@ -142,6 +142,27 @@ describe("ContactLinks", () => {
     expect(onCreate).toHaveBeenCalledWith("", "main", null);
   });
 
+  it("hides the lifetime choice for a named link, which is standing and never expires", async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn(() => Promise.resolve({ url: "" }));
+    render(
+      <ContactLinks
+        contacts={[]}
+        onCreate={onCreate}
+        onRevoke={noop}
+        canShowName
+      />,
+    );
+    // Pick a duration while anonymous, then switch to showing your name.
+    await user.click(screen.getByRole("button", { name: "7 days" }));
+    await user.click(screen.getByRole("button", { name: "Show my name" }));
+    // The lifetime choice is gone: a named link is standing, not one-off.
+    expect(screen.queryByRole("group", { name: "Link lasts" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: /Create a link/ }));
+    // The earlier duration does not stick to the named link; it never expires.
+    expect(onCreate).toHaveBeenCalledWith("", "main", null);
+  });
+
   it("hides the show-my-name choice when the owner has no name", () => {
     render(<ContactLinks contacts={[]} onCreate={noCreate} onRevoke={noop} />);
     expect(screen.queryByRole("button", { name: "Show my name" })).toBeNull();
