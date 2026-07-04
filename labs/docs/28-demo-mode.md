@@ -127,7 +127,7 @@ any screen, even from a screenshot, whether they are in the demo.
 - **For App Review (doc 26, D2): make a blind, in-person app testable on one device.** The reviewer
   opens the demo straight from the landing screen, with no credentials to manage, and every flow that
   normally needs a second person is pre-seeded with a canned peer so they can see both sides. The App
-  Review notes point here, and a direct route (for example `/#demo`) lets the notes deep-link it.
+  Review notes point here, and a direct route (`/demo`) lets the notes deep-link it.
 
 ## F. The in-person flows, made testable on one device
 
@@ -164,9 +164,10 @@ contentless by design (doc 09), so nothing about it is lost by leaving it out of
 
 ## G. Entry and exit
 
-- **Entry:** the landing page **"Try the demo"** action, plus the stable `/#demo` route for the review
-  notes and for sharing a link straight into the demo. Entering syncs the URL to `/#demo` so a reload
-  stays in the demo; leaving clears it so the real app is not stranded on the demo route.
+- **Entry:** the landing page **"Try the demo"** action, plus the stable `/demo` route for the review
+  notes and for sharing a link straight into the demo. The whole demo runs under the `/demo` path
+  prefix (`/demo/links`, `/demo/people`), so entering moves the URL to `/demo` and a reload stays in
+  the demo; leaving drops back to the real root so the app is not stranded on the demo route.
 - **Entry for development:** a build-time flag (`VITE_DEMO`) boots straight into the demo, so the whole
   app can be run and exercised with no server at all (the same simulated backend the demo ships with).
   This is a developer convenience, not a user surface; it only seeds the initial state, so the in-app
@@ -201,8 +202,8 @@ Each is independently shippable; the static sample card stays until slice 3 repl
 1. **Reserve `demo`** in the server namespace (doc 17), with the blocklist test extended.
 2. **Seeded demo account + sandbox store mode:** load fixtures into an in-memory session, short-circuit
    every server call in demo mode, and the no-network / no-account test that pins it.
-3. **Label, entry, exit:** the persistent demo banner, the landing **"Try the demo"** action and
-   `/#demo` route, and the exit-to-claim that carries nothing across.
+3. **Label, entry, exit:** the persistent demo banner and watermark, the landing **"Try the demo"**
+   action and `/demo` route, and the exit-to-claim that carries nothing across.
 4. **The canned peer and the in-person script:** the sample peer card, link, and QR that make Connect,
    the ask, the alert, and view-a-status all reachable solo.
 5. **Wire into the App Review notes** (doc 26) so the reviewer's script and the demo are one artifact.
@@ -217,7 +218,7 @@ Each is independently shippable; the static sample card stays until slice 3 repl
 - **Age and content framing.** The demo shows the same frank sexual-health copy as the app (doc 21),
   which the 17+ store rating (doc 26, D4) already covers; confirm the demo is inside that gate, not in
   front of it.
-- **A shareable demo link: decided, `/#demo` is public.** It is a real "try it" surface, not
+- **A shareable demo link: decided, `/demo` is public.** It is a real "try it" surface, not
   review-only, so it can be linked and shared. It carries no tracking, consistent with the no-tracking
   posture (doc 22, S5): the route is client-side and logs nothing.
 - **Reset cadence: decided, it simply never persists.** Because the demo holds no server or shared

@@ -408,22 +408,50 @@ describe("the root keeps the clean URL", () => {
   });
 });
 
-describe("the #demo fragment is sticky across navigation (doc 28)", () => {
-  it("keeps /#demo on mount normalization and every navigation", async () => {
-    window.history.replaceState(null, "", "/#demo");
+describe("the /demo prefix is sticky across navigation (doc 28)", () => {
+  it("derives demo screens under /demo and keeps the prefix on every navigation", async () => {
+    window.history.replaceState(null, "", "/demo/links");
     try {
       const { result } = renderHook(() => useAppRouter());
-      // Unlike a stale `/#screen`, `#demo` is the sticky app-wide fragment: mount
-      // normalization must not strip it, so a reload stays in the demo.
-      await waitFor(() => expect(window.location.hash).toBe("#demo"));
+      // The `/demo` prefix is stripped for routing, so a demo URL resolves to the same
+      // screen as the real app: `/demo/links` is the Links screen.
+      expect(result.current.route.screen).toBe("links");
+      await waitFor(() => expect(window.location.pathname).toBe("/demo/links"));
       // It rides along on a forward navigation (go) and a tab switch (jump), so the
       // reviewer can never navigate their way out of the demo by chance.
       act(() => result.current.nav.go("wallet"));
-      expect(window.location.pathname).toBe("/wallet");
-      expect(window.location.hash).toBe("#demo");
+      expect(window.location.pathname).toBe("/demo/wallet");
       act(() => result.current.nav.jump("care"));
-      expect(window.location.pathname).toBe("/care");
-      expect(window.location.hash).toBe("#demo");
+      expect(window.location.pathname).toBe("/demo/care");
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
+  it("keeps the bare /demo for the home root (no trailing slash)", async () => {
+    window.history.replaceState(null, "", "/demo");
+    try {
+      const { result } = renderHook(() => useAppRouter());
+      expect(result.current.route.screen).toBe("home");
+      await waitFor(() => expect(window.location.pathname).toBe("/demo"));
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
+  it("keeps a pathless screen (the self preview) inside the demo, not at bare /#screen", () => {
+    window.history.replaceState(null, "", "/demo");
+    try {
+      const { result } = renderHook(() => useAppRouter());
+      // "See what others see" navigates to the id-less a2-public self preview, which has
+      // no clean path. It must stay under /demo (fragment kept), never escape to a bare
+      // /#a2-public that would drop the prefix and leak out of the demo on reload.
+      act(() => result.current.nav.go("a2-public", { self: true }));
+      expect(window.location.pathname).toBe("/demo");
+      expect(window.location.hash).toBe("#a2-public");
+      // A follow-on navigation still carries the /demo prefix.
+      act(() => result.current.nav.jump("links"));
+      expect(window.location.pathname).toBe("/demo/links");
     } finally {
       window.history.replaceState(null, "", "/");
     }

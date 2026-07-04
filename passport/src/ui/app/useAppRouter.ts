@@ -200,15 +200,54 @@ function parameterizedRoute(pathname: string, hash: string): Route | null {
   return aliasRoute(pathname, hash);
 }
 
+// The demo runs the whole app under a `/demo` path prefix (doc 28 G): the demo boots
+// from it and every screen keeps it (`/demo/links`, `/demo/people`), so a reload stays
+// in the demo instead of dropping to the real app, and the address stays shareable.
+// A leading `/demo` in the path always implies demo mode (Root boots on it), so there
+// is no real screen it collides with. Kept out of the screen table on purpose: the
+// demo is a mode over the whole app, not one more screen.
+const DEMO_PREFIX = "/demo";
+
+// Strip the `/demo` prefix so the demo routes through the same clean-path table as the
+// real app: `/demo` -> `/` (home), `/demo/links` -> `/links`. A non-demo path is left
+// untouched (no real path starts with `/demo`).
+function stripDemo(pathname: string): string {
+  if (pathname === DEMO_PREFIX) return "/";
+  if (pathname.startsWith(DEMO_PREFIX + "/"))
+    return pathname.slice(DEMO_PREFIX.length);
+  return pathname;
+}
+
+// Whether the current URL is inside the demo: any path under the `/demo` prefix.
+function inDemo(): boolean {
+  const { pathname } = window.location;
+  return pathname === DEMO_PREFIX || pathname.startsWith(DEMO_PREFIX + "/");
+}
+
+// Prefix a canonical path with `/demo` when the app is in demo mode, so every URL the
+// router writes stays inside the demo. `/` (home) becomes the bare `/demo`, not
+// `/demo/`. A screen with no clean path canonicalizes to a degenerate `/#screen` (the
+// id-less "see what others see" self preview is the one reachable in the demo); it too
+// must stay inside the demo, or navigating to it drops the `/demo` prefix and a reload
+// leaves the demo. Keep its fragment but move it under `/demo` (`/demo#a2-public`); the
+// fragment is inert on reload, which falls back to the demo home.
+function demoPath(canonical: string): string {
+  if (!inDemo()) return canonical;
+  if (canonical.startsWith("/#")) return DEMO_PREFIX + canonical.slice(1);
+  return canonical === "/" ? DEMO_PREFIX : DEMO_PREFIX + canonical;
+}
+
 // Derive the current route from the URL, in priority order: an id-carrying link
 // (above), then the clean-path table (every non-parameterized screen). Every screen
 // now owns a clean path, so a legacy `/#screen` hash is no longer read: a stale
 // `/#home` bookmark falls through to the bare-root entry (the landing) and mount
 // normalization strips the hash. The `#k=` fragment on an alias link is handled by
-// parameterizedRoute above, not here, so dropping the hash read never touches it.
+// parameterizedRoute above, not here, so dropping the hash read never touches it. The
+// `/demo` prefix (demo mode) is stripped first so the demo shares this same table.
 export function routeFromLocation(): Route | null {
   if (typeof window === "undefined") return null;
-  const { pathname, hash } = window.location;
+  const pathname = stripDemo(window.location.pathname);
+  const hash = window.location.hash;
   const param = parameterizedRoute(pathname, hash);
   if (param) return param;
   const cleanPath = pathname.replace(/\/$/, "") || "/";
@@ -235,25 +274,16 @@ function ownsUrl(route: Route): boolean {
   return route.screen === "a2-public" && route.data?.id != null;
 }
 
-// The demo runs the whole app under a sticky `#demo` fragment (doc 28 G): the demo
-// boots from it, so keeping it on every URL write means a reload stays in the demo
-// instead of dropping to the real app, and the address stays shareable. It is the one
-// fragment the app carries across navigation; every legacy hash is still normalized
-// away. A `#demo` in the URL always implies demo mode (Root boots on it), so there is
-// no real screen it could collide with.
-function demoFragment(): string {
-  return window.location.hash === "#demo" ? "#demo" : "";
-}
-
 // Write the canonical URL for a screen, pushing a new history entry or replacing the
 // current one. Returns whether a push actually happened (it is a no-op when the URL
-// already matches), so the caller can keep its app-pushed depth count honest.
+// already matches), so the caller can keep its app-pushed depth count honest. In demo
+// mode the target carries the `/demo` prefix, so navigation never leaves the demo.
 function syncUrl(
   screen: Screen,
   data: RouteData | null | undefined,
   mode: "push" | "replace",
 ): boolean {
-  const target = canonicalUrl(screen, data) + demoFragment();
+  const target = demoPath(canonicalUrl(screen, data));
   if (window.location.pathname + window.location.hash === target) return false;
   if (mode === "push") {
     window.history.pushState(null, "", target);

@@ -665,7 +665,9 @@ describe("demo mode", () => {
     // the demo account seeds asynchronously, so there is a window with no session,
     // and demo is always signed in (bug D, the glitchy redirect to the logged-out
     // home when navigating to Links).
-    window.history.pushState({}, "", "/links");
+    // The demo runs under the `/demo` prefix (doc 28 G), so a demo app-screen URL is
+    // `/demo/links`; the router strips the prefix to resolve the Links screen.
+    window.history.pushState({}, "", "/demo/links");
     render(
       <App
         store={createDemoStore()}
