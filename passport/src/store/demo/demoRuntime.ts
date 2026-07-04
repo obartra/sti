@@ -36,6 +36,7 @@ import {
 } from "./demoOwner.ts";
 import { groupInviteUrl } from "../groupInvite.ts";
 import type { OwnerState } from "../../core/badge.ts";
+import { deriveOwnerCard } from "../ownerCard.ts";
 import {
   importRootKey,
   randomAliasId,
@@ -66,6 +67,19 @@ function demoBlueState(): OwnerState {
     paused: false,
     clearUntilDay: null,
   };
+}
+
+/** The live @demo passport card, derived from the very seed the demo boots into,
+ * so the landing preview is the real demo card rather than a static mockup. Pure
+ * and networkless (deriveOwnerCard), recomputed each call so its 90-day clock stays
+ * current with the wall clock. */
+export function demoSampleCard(): ResolvedView {
+  return deriveOwnerCard(
+    demoBlueState(),
+    DEMO_HANDLE,
+    todayEpochDay(),
+    DEFAULT_AVATAR,
+  );
 }
 
 /** A freshly seeded demo account: handle, a blue badge, a couple of contacts, and

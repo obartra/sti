@@ -8,6 +8,7 @@ import {
   ArrowRight,
 } from "../../design/icons.tsx";
 import { LANDING } from "./desktop-landing.copy.ts";
+import { demoSampleCard } from "../../store/demo/demoRuntime.ts";
 import "./desktop-landing.css";
 
 /* Section components for the A1 desktop marketing landing. Split out of
@@ -109,15 +110,12 @@ function HeroCopy({ onClaim, onSample }: LandingHandlers) {
 
 // ── Hero sample-card column ──────────────────────────────────────────────────
 function HeroSample() {
+  // The live @demo card, the same one "Try the demo" boots into, so the desktop
+  // landing preview is real and current rather than a static mockup.
   return (
     <div className="dland__sample">
       <div className="dland__sample-frame">
-        <BadgeCard
-          state="blue"
-          labels={["hiv", "condoms_always"]}
-          identity={{ handle: "sam" }}
-          width="100%"
-        />
+        <BadgeCard {...demoSampleCard()} width="100%" />
         <span className="dland__sample-tag">Sample</span>
       </div>
     </div>
