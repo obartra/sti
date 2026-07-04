@@ -1,6 +1,8 @@
 # sti.care: Decisions Log
 
-*Scannable record of decisions, each tagged with a status (see the key below). Mechanics live in the Design doc; rationale in the Philosophy doc. Open items at the bottom.*
+*Scannable record of decisions, each tagged with a status. Open items at the bottom.*
+
+**Status key:** LOCKED = settled; REJECTED = considered and ruled out; DEFERRED = intentionally post-launch; OPEN = still unresolved.
 
 ---
 
@@ -36,9 +38,9 @@
 ## Flat attributes & protection labels
 
 - **LOCKED. PrEP and undetectable surface ONLY under a single shared umbrella label, "On HIV prevention," identical for both and never distinguishable** (HARD INVARIANT). This camouflages undetectable people among the PrEP majority. "Undetectable" is **never** a viewer-visible attribute (it is HIV-positive disclosure); method is never shown.
-- **LOCKED. Condom preference is a 3-state, optional, self-declared attribute**, displayed as **"No condoms," "Condoms optional," "Condoms always"** (internal state keys `raw` / `either` / `condoms_always`), **decoupled from how blue/gray is computed.** All three are displayable flat attributes; **only "Condoms always," shown publicly,** qualifies as the HIV-protection route for blue. Keeping all three displayable is required so "Condoms always" isn't a lone tell. (The earlier "either works" label was renamed to "Condoms optional" for clarity in Pass 5b.)
+- **LOCKED. Condom preference is a 3-state, optional, self-declared attribute**, displayed as **"No condoms," "Condoms optional," "Condoms always"** (internal state keys `raw` / `either` / `condoms_always`), **decoupled from how blue/gray is computed.** All three are displayable flat attributes; **only "Condoms always," shown publicly,** qualifies as the HIV-protection route for blue. Keeping all three displayable is required so "Condoms always" isn't a lone tell.
 - **LOCKED. Umbrella and condom preference are independent and independently displayable**; neither's presence/absence implies the other, so the umbrella's absence stays uninformative.
-- **LOCKED. The blue headline states the route the person made public to earn blue, never more.** "Tested & on HIV prevention" for the PrEP/undetectable umbrella (which **always wins** and never distinguishes the two); "Tested & always uses condoms" **only** when condoms-always is the route, legitimate because that preference is already shown publicly, so the headline discloses nothing new. A PrEP/U=U person's condom use never changes the headline. Stating the already-public route is **not** a "sharpening" of the condom residual. (Full spec: Design §1.)
+- **LOCKED. The blue headline states the route the person made public to earn blue, never more.** "Tested & on HIV prevention" for the PrEP/undetectable umbrella (which **always wins** and never distinguishes the two); "Tested & always uses condoms" **only** when condoms-always is the route, legitimate because that preference is already shown publicly, so the headline discloses nothing new. A PrEP/U=U person's condom use never changes the headline. Stating the already-public route is **not** a "sharpening" of the condom residual.
 - **LOCKED. "uses condoms" and "on doxy-PEP" remain optional self-declared flat attributes;** never ranked or summed into a verdict.
 - **LOCKED. PrEP and undetectable are equivalent HIV-protection paths, but HIV-only**, never "fully safe"; other-STI recency is a separate axis.
 - **LOCKED. Attributes/labels show on gray too** (most useful then) and are gated by **authorization**, never by badge color.
@@ -51,17 +53,17 @@
 
 ## Circles (groups)
 
-- **LOCKED. A convenience layer over pairwise links; not a live status feed, not a "clean club."** One kind of group (the permanent/event split is gone; see doc 31).
-- **DECIDED (supersedes the earlier ~5 floor, see doc 31). Membership is the sharing:** joining a group is consenting to show your blue/gray color to its members, so there is no minimum group size and no door. No counts, no leaderboards; joining/leaving/skipping looks ordinary.
-- **DECIDED (see doc 31). You appear under the handle you joined with** (your identity, or a fresh anonymous handle); the roster is fully visible to members, so there is no hidden-membership and no "additional private members" notice.
+- **LOCKED. A convenience layer over pairwise links; not a live status feed, not a "clean club."** One kind of group.
+- **LOCKED. Membership is the sharing:** joining a group is consenting to show your blue/gray color to its members, so there is no minimum group size and no door. No counts, no leaderboards; joining/leaving/skipping looks ordinary.
+- **LOCKED. You appear under the handle you joined with** (your identity, or a fresh anonymous handle); the roster is fully visible to members, so there is no hidden-membership and no "additional private members" notice.
 - **LOCKED. Membership disclosure is per-person; revealing a group's existence never reveals its members.**
-- **LOCKED. The individual controls their own status disclosure in a group; the group never overrides it.** No group-level switch makes members' statuses visible (it would expose a member beyond their own choice). Each member's in-group visibility is the member's own setting; any group display preference operates only within what each member already shares (hides, never reveals). (There is no min-group floor; membership is the sharing, see above. Build: remove the group "what members see" status toggle, it's drift.)
-- **DECIDED. Group names carry no constraints.** Anyone can name a group anything; we don't force descriptive names (a color in a group named for a place or event says more than a bare color) and we don't restrict them either.
-- **DECIDED. Admins can add members.** Joining is the consent; if you are not comfortable with a group's admins adding people, don't join. Leaving is easy and looks ordinary.
+- **LOCKED. The individual controls their own status disclosure in a group; the group never overrides it.** No group-level switch makes members' statuses visible (it would expose a member beyond their own choice). Each member's in-group visibility is the member's own setting; any group display preference operates only within what each member already shares (hides, never reveals). (There is no min-group floor; membership is the sharing, see above.)
+- **LOCKED. Group names carry no constraints.** Anyone can name a group anything; we don't force descriptive names (a color in a group named for a place or event says more than a bare color) and we don't restrict them either.
+- **LOCKED. Admins can add members.** Joining is the consent; if you are not comfortable with a group's admins adding people, don't join. Leaving is easy and looks ordinary.
 - **LOCKED. Discovery = member-initiated, link-scoped** (only someone you've already paired with can reveal a group). No open search, no stranger discovery, no contact intersection.
 - **LOCKED. Anti-spam via consensual pull + sticky declines + outbound rate-limiting.**
 - **REJECTED. Max-group caps** (punish legitimate organizers more than abusers).
-- **LOCKED. No testing "bar" / cadence requirement for groups.** A 14/30/90-day "tested within X" group requirement implies a *verifiable* testing standard the system cannot provide (everything is self-reported; blue already encodes testing recency). It's false rigor. Groups are simply **mutually-linked shared spaces**, not a gate that enforces a cadence. (Removed from the build in Pass 5 fixes.)
+- **LOCKED. No testing "bar" / cadence requirement for groups.** A 14/30/90-day "tested within X" group requirement implies a *verifiable* testing standard the system cannot provide (everything is self-reported; blue already encodes testing recency). It's false rigor. Groups are simply **mutually-linked shared spaces**, not a gate that enforces a cadence.
 - **OPEN. Is the group construct a care tool or a serosorting gate?** → for outside review.
 
 ## Identity & sharing (aliases)
@@ -73,22 +75,21 @@
   opt-in**, flagged at claim time as findable and not unlinkable.
 - **LOCKED. A local display name** (entered at account creation, owner-facing only, never sent
   to the server) is the one name-like field in the system. It is NOT a public handle and does not
-  seed link handles. See principle 6.
-- **REFINED by [Per-alias Identity](15-per-alias-identity.md) and [Reach and Access](16-reach-and-access.md):**
-  the displayed face (handle + avatar) is per-alias and unlinkable by default, recognizable by
-  opt-in (doc 15). Reach and access split into **two modes** (revised from three, June 27 2026):
+  seed link handles.
+- **LOCKED. Reach and access are per-alias.**
+  The displayed face (handle + avatar) is per-alias and unlinkable by default, recognizable by
+  opt-in. Reach and access split into **two modes**:
   **Private link** (opaque id + live key, immediate, default) and **Public link** (human handle +
-  `/u/` directory + knock/grant, findable). The intermediate Gated mode (opaque + request) is
-  removed. `vanity + live` remains off the menu, the one config that would put a readable
-  status on the server. **Multiple public handles per account: up to 5** (one per public context,
-  e.g. one for Grindr, one for Tinder). Handle is set at link creation in the share sheet, not at
-  account creation.
-- **DECIDED. Shared name is a one-time copy, not a live field (docs 15/31).** A sharer may
+  `/u/` directory + knock/grant, findable). `vanity + live` remains off the menu, the one config
+  that would put a readable status on the server. **Multiple public handles per account: up to 5**
+  (one per public context, e.g. one for Grindr, one for Tinder). Handle is set at link creation in
+  the share sheet, not at account creation.
+- **LOCKED. Shared name is a one-time copy, not a live field.** A sharer may
   optionally attach a name to a face (default off). The receiver gets it once as the starting value
   of their own editable label and owns it from then on; it never re-syncs if the sharer later changes
   their name. The handle underneath stays live and auto-updates; a shared name is a snapshot. So the
   shared name and the receiver's rename are the same editable label, just seeded differently.
-- **DECIDED. Easy reclaim of your own released name during the 24h lock (doc 17).** The post-release
+- **LOCKED. Easy reclaim of your own released name during the 24h lock.** The post-release
   lock blocks third-party watch-and-grab, not the account that just held the name: if you release or
   rename off a public handle and change your mind, you can re-claim it straight away while the window
   runs. Keyed to the same account, so it never helps an impersonator, and it never overrides a
@@ -96,7 +97,7 @@
 
 ## Resolution & privacy
 
-- **LOCKED. Two modes (revised June 27 2026 from three).** Private link → anyone with the keyed
+- **LOCKED. Two modes.** Private link → anyone with the keyed
   URL sees immediately; everyone else sees uniform gray-nothing. Public link → anyone who visits
   `sti.care/u/{handle}` can knock; viewing requires an explicit grant from the owner. Existence is
   hidden for private links, disclosed for public links (the opted-into cost of findability). The
@@ -166,7 +167,7 @@
 - **LOCKED. Content: anonymous, contentless** ("a contact suggests getting tested"); never who/when/what/count; never labeled 1:1-vs-circle. **Batched, server controls timing.**
 - **LOCKED. A "get screened" nudge, not a real-time PEP alarm;** PEP urgency via always-on education; every notification routes to immediate testing + PEP info.
 - **LOCKED. Reachability (MVP scope): push (primary) + pull "go get tested" page (fallback),** both identity-free. **Accepted limit:** a fully-disengaged recipient can't be force-notified. **DEFERRED. Opt-in, off-by-default, blind-routed email** (content-free "go check"); phone banned.
-- **LIMIT. Accepted tradeoffs, stated honestly:** (a) targeted push reveals to the *server* which handles received an exposure ping. Mitigation direction is a generic broadcast/cover wake + a uniform "anything for me?" poll so recipients and non-recipients look identical [eng follow-up]; (b) notification anonymity is bounded by the *recipient's* in-window contact count and degrades toward deanonymizing at one contact, unfixable without not sending; distinct from the min-group-size-5 rule, which protects group status *viewing*.
+- **LOCKED. Accepted tradeoffs, stated honestly:** (a) targeted push reveals to the *server* which handles received an exposure ping. Mitigation direction is a generic broadcast/cover wake + a uniform "anything for me?" poll so recipients and non-recipients look identical [eng follow-up]; (b) notification anonymity is bounded by the *recipient's* in-window contact count and degrades toward deanonymizing at one contact, unfixable without not sending; distinct from the min-group-size-5 rule, which protects group status *viewing*.
 
 ## Testing reminders
 
@@ -206,10 +207,10 @@
 
 ## Still open
 
-1. Badge equity. **For outside review** (see [Open questions](/docs/open-questions)): detectable-poz can't reach blue until suppressed (and a near-universal positive state may make non-qualifiers *more* conspicuous); and PrEP-choice-normativity (declining PrEP forces the condom route or gray).
+1. Badge equity. **For outside review:** detectable-poz can't reach blue until suppressed (and a near-universal positive state may make non-qualifiers *more* conspicuous); and PrEP-choice-normativity (declining PrEP forces the condom route or gray).
 2. Label-display residual: "condoms always" without the umbrella weakly implies HIV-negative-not-on-PrEP; accepted as lesser harm (3-state softens it vs. a binary); confirm.
 3. Notification: push-recipient-set mitigation (broadcast wake + uniform poll); draft-window length (~30 min) and send-cycle cadence.
-4. Shared-view date granularity; scan-to-autolink auto-share default. (The minimum group-size question is closed: there is no floor, see Circles and doc 31.)
+4. Shared-view date granularity; scan-to-autolink auto-share default. (The minimum group-size question is closed: there is no floor, see Circles.)
 5. Knock endpoint timing: the production knock/notify endpoint must do constant-time work across the whole write/dedupe path (not just return a uniform string); the in-memory prototype mock doesn't model this.
 6. Account deletion and data export: a self-serve way to delete your account and everything tied to it, and to download what's held about you. Worth pinning down what (if anything) is personal enough to export, since the server holds only ciphertext and opaque tokens.
-7. Testing-window honesty: a complete, recently-tested panel earns blue even though syphilis (and the HIV early window) may not have had time to seroconvert; today that residual is explainer-only, not in the badge. Whether to factor per-result dates / a "not back yet" input into blue, on-device, never displayed, is **for outside review** (see [Open questions](/docs/open-questions)).
+7. Testing-window honesty: a complete, recently-tested panel earns blue even though syphilis (and the HIV early window) may not have had time to seroconvert; today that residual is explainer-only, not in the badge. Whether to factor per-result dates / a "not back yet" input into blue, on-device, never displayed, is **for outside review**.
