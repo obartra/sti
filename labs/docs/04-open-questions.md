@@ -49,10 +49,19 @@ But whether that line sits right is exactly what I want feedback on.
 
 ## The questions
 
-### 1. The big one: who can show "blue," and who can't
+### 1. Does the whole thing help or harm poz folks: gut check
+
+This is the meta-question, the one the others feed into. Intent is anti-stigma: U=U in the
+core, no clean/dirty framing, harm-reduction not moralizing. But intent and impact differ.
+
+**Question:** sitting with the whole concept, does it *reduce* stigma, or does a status-
+sharing app, however carefully built, inevitably make poz people feel sorted and
+surveilled? Is this a tool you'd want to exist?
+
+### 2. Who can't reach "blue," and whether that redraws a clean/dirty line
 
 Blue requires being actively protected against HIV (PrEP, undetectable, or public condom
-commitment), so two groups can't reach it even if diligent:
+commitment), so some people can't reach it even if diligent:
 
 - **Someone HIV-positive and in care but not yet undetectable** (newly diagnosed, still
   getting to suppression) shows gray, same bucket as overdue. No single look outs them, but
@@ -64,7 +73,40 @@ commitment), so two groups can't reach it even if diligent:
 **Question:** is rewarding active HIV protection the right call mid-epidemic, or does it throw
 the newly-diagnosed and the PrEP-decliners under the bus?
 
-### 2. Grouping condoms with PrEP and U=U
+The sharpest version of this is detectable HIV in care. Today detectable HIV is an active
+infection on the clearance axis, so no route reaches blue until suppressed. But the app already
+treats condoms as equal-tier HIV prevention (the next question), and blue is defined as
+"actively protecting," not "no transmissible virus" and explicitly not "clean." By that logic a
+detectable person who publicly commits to condoms is actively protecting, and the same condom
+route is already the only road to blue for the HIV-negative PrEP-decliner above. The condom
+preference is worn by a broad mixed population, so requiring it for this subgroup wouldn't out
+them; it's the same camouflage the PrEP-decliner already relies on. Allowing it would also erase
+the "tests yet never blue" inference above. So refusing it arguably puts the clean/dirty line
+back on the clearance axis, the one place blue can't be reached by behavior at all.
+
+The reason I lean no: U=U neutralizes the source biologically and continuously, while condoms
+over a detectable person leave live, uncontrolled virus behind a per-act barrier and a
+self-reported commitment. That's the largest difference of degree anywhere on the route axis,
+and it means blue would be sitting on top of uncontrolled live virus. There's also a knock-on
+cost: saying yes would force partner-notification (the receiving-end question below) to stop
+being uniformly gentle. A condom failure with a detectable partner is a real possible-HIV-
+exposure, which argues for a sharper, faster, less content-free "get tested now, consider PEP"
+alert, in direct tension with the calm, batched, anonymous design I chose there. So the badge
+change wouldn't stay contained to the badge.
+
+**Question:** is treating detectable HIV as an absolute clearance blocker the right call, or is
+it the clean/dirty line sneaking back in? If condoms genuinely count as prevention, can the app
+justify accepting them for negatives but not for a detectable person in care? The blocker is
+what shipped (it is locked in the decisions log), but I want outside eyes on whether keeping it
+is principled or just fear; this is the decision I would most readily reopen for a strong
+argument.
+
+One more residual on the same axis: wearing "condoms always" *without* the HIV-prevention label
+weakly implies "HIV-negative and not on PrEP." I've accepted that as the lesser harm (the
+three-state condom preference softens it compared to a binary), but I'd value a check on that
+acceptance.
+
+### 3. Grouping condoms with PrEP and U=U
 
 The three routes share the *same* positive state: no ranking. Condoms are real, evidence-
 based prevention, but typical-use efficacy is lower than PrEP/U=U. I grouped them anyway,
@@ -75,43 +117,42 @@ committing the app to honest info pages on the differences instead of encoding a
 PrEP/U=U, or am I flattening a difference that matters? Does leaning on education-instead-of-
 ranking read as honest or as a dodge?
 
-A residual inside this one: wearing "condoms always" *without* the HIV-prevention label
-weakly implies "HIV-negative and not on PrEP." I've accepted that as the lesser harm (the
-three-state condom preference softens it compared to a binary), but I'd value a check on
-that acceptance.
+### 4. Does a shareable badge become a gate?
 
-### 3. Language
+The product refuses to *be* a filter: it never sorts people, never decides who may have sex,
+and gray is a wide bucket precisely so a look can't decode to a diagnosis. But a thing I can
+share is a thing someone can ask me to show. I can build it so the app is never a gate and
+still watch "can I see your passport?" harden into an expected step before sex, blue as the
+price of admission. The product refuses to be a gate; it can still be *used* as one.
 
-Banned: clean, dirty, clear, healthy, safe, disease-free, "negative" as an identity. The
-badge says **"up to date."** Labels are plain ("on HIV prevention," and a 3-state condom preference).
+**Question:** is that social pressure a real risk, disclosure becoming demanded rather than
+offered? And is there anything in the design that would blunt it, or does a shareable blue
+badge inevitably invite being used as a checkpoint?
 
-**Question:** does "up to date" land right, or carry its own baggage? Any words I'm still
-using that quietly stigmatize, or read as clinical/policing to someone who's poz?
+### 5. Rewarding access
 
-### 4. Does the whole thing help or harm poz folks: gut check
+Rewarding PrEP and testing rewards people who can *get* to PrEP and testing, which tilts toward
+the insured and the well-resourced. I answer this inside the product: condoms count toward blue
+as a route that needs no clinic, and free testing, free condoms, and free/low-cost PrEP finders
+are one tap away. But that's my answer from where I sit.
 
-Intent is anti-stigma: U=U in the core, no clean/dirty framing, harm-reduction not
-moralizing. But intent and impact differ.
+**Question:** is counting condoms and putting free options one tap away actually *enough* to
+keep blue from privileging people with healthcare access, or does the reward still land hardest
+on those who already have the most? I'd especially value this from someone who lives closer to
+the access barriers than I do.
 
-**Question:** sitting with the whole concept, does it *reduce* stigma, or does a status-
-sharing app, however carefully built, inevitably make poz people feel sorted and
-surveilled? Is this a tool you'd want to exist?
+### 6. The partner-notification feel
 
-### 5. Groups, and the "clean club" risk
+If someone tests positive, their recent contacts get an **anonymous, content-free** nudge
+("a contact suggests getting tested"), never who, when, or what. It's batched and delayed so
+timing can't out anyone, and it routes to free testing + PEP. The person controls who's on the
+list and can remove anyone easily before it sends. I kept removal *frictionless*, because
+making it hard just pushes people toward telling no one.
 
-Groups are built and live: people share status within a trusted set and get anonymous "go
-test" nudges if someone tests positive. The shape that shipped is deliberately mutual-care,
-not exclusionary: no rankings, no counts, joining/leaving looks ordinary, being in a group is
-itself the sharing, you join under a handle you choose, and I rejected letting groups set a
-testing-cadence bar ("tested within 30 days to belong" implies a verifiable standard the
-system can't provide, and it's the door I don't want to exist).
+**Question:** does that feel supportive or accusatory on the *receiving* end? Could a content-
+free "go get tested" from an unknown source land as *more* alarming than a direct conversation?
 
-**Question:** with the construct real, does it still drift toward "you have to be blue to
-belong," a serosorting club, no matter how it's framed? If you've seen group dynamics like
-this elsewhere (WhatsApp circles, party lists, PnP communities), what drift should I be
-watching for that the design doesn't already block?
-
-### 6. What counts as a "known active infection"
+### 7. What counts as a "known active infection"
 
 This line is now decided and built: untreated gonorrhea/chlamydia/syphilis gray someone until
 treated; detectable HIV until suppressed; **chronic lifelong conditions like HSV and HPV
@@ -126,41 +167,33 @@ is the considerate move.
 treats chronic vs. acute conditions, or about teaching "pause during an outbreak" as the
 considerate move, that would feel stigmatizing to people living with HSV/HPV?
 
-### 7. The partner-notification feel
+### 8. Groups, and the "clean club" risk
 
-If someone tests positive, their recent contacts get an **anonymous, content-free** nudge
-("a contact suggests getting tested"), never who, when, or what. It's batched and delayed so
-timing can't out anyone, and it routes to free testing + PEP. The person controls who's on the
-list and can remove anyone easily before it sends. I kept removal *frictionless*, because
-making it hard just pushes people toward telling no one.
+Groups are built and live: people share status within a trusted set and get anonymous "go
+test" nudges if someone tests positive. The shape that shipped is deliberately mutual-care,
+not exclusionary: no rankings, no counts, joining/leaving looks ordinary, being in a group is
+itself the sharing, you join under a handle you choose, and I rejected letting groups set a
+testing-cadence bar ("tested within 30 days to belong" implies a verifiable standard the
+system can't provide, and it's the door I don't want to exist).
 
-**Question:** does that feel supportive or accusatory on the *receiving* end? Could a content-
-free "go get tested" from an unknown source land as *more* alarming than a direct conversation?
+**Question:** with the construct real, does it still drift toward "you have to be blue to
+belong," a serosorting club, no matter how it's framed? If you've seen group dynamics like
+this elsewhere (WhatsApp circles, party lists, PnP communities), what drift should I be
+watching for that the design doesn't already block?
 
-### 8. Verification, as a private check (decided, still uneasy)
+### 9. For a clinical reviewer: is a fresh "all clear" too frictionless? (the testing window)
 
-Viewer-visible verification is rejected outright: a verified tier re-creates ranking, and
-trustworthy verification would mean linking a real medical record to an identity the model
-deliberately doesn't hold. What remains deferred is the middle path: letting someone
-optionally check a lab result on their own device as a private confidence aid, input-only,
-never shown to anyone, never changing what a viewer sees in any version.
-
-**Question:** is even that input-only check worth ever building, or does an optional private
-one still start dragging the product back toward proof and ranking? I've deferred it rather
-than killed it, and I'm not sure that's conviction or indecision.
-
-### 9. Is a fresh "all clear" too frictionless? (the testing window)
-
-Blue wants a core-panel test (HIV, syphilis, gonorrhea, chlamydia) within 90 days, all clear,
-but the panel isn't one moment. Results land on different clocks, and every test has a *window
-period* where a recent infection won't show yet. Syphilis is the sharp case: you can truly know
-you're negative for HIV/gonorrhea/chlamydia today while the syphilis result is still pending, or
-test so soon after an exposure that "clear" is false reassurance. An *incomplete* panel already
-stays gray (you can log what's back and add syphilis when it arrives), but a *complete,
-just-tested* panel flips blue even when the slowest result hasn't had time to mean anything. Right
-now that residual is left to explainer copy, not the badge. Any sharper handling has to stay
-on-device and never show. A visible "syphilis pending" would be exactly the tell the two-state
-badge exists to prevent.
+This one is a clinical question more than a lived-experience one, so it's really aimed at an
+epidemiologist or clinician. Blue wants a core-panel test (HIV, syphilis, gonorrhea, chlamydia)
+within 90 days, all clear, but the panel isn't one moment. Results land on different clocks, and
+every test has a *window period* where a recent infection won't show yet. Syphilis is the sharp
+case: you can truly know you're negative for HIV/gonorrhea/chlamydia today while the syphilis
+result is still pending, or test so soon after an exposure that "clear" is false reassurance. An
+*incomplete* panel already stays gray (you can log what's back and add syphilis when it arrives),
+but a *complete, just-tested* panel flips blue even when the slowest result hasn't had time to
+mean anything. Right now that residual is left to explainer copy, not the badge. Any sharper
+handling has to stay on-device and never show. A visible "syphilis pending" would be exactly the
+tell the two-state badge exists to prevent.
 
 **Question:** is a frictionless "all clear" too generous? Should the testing *date* (and which
 result came back, and when) factor into blue more honestly (capture per-result dates or a "not
@@ -169,33 +202,6 @@ window), or does that pile on friction and a leak surface for a nuance most peop
 correctly anyway? Today the residual is explainer-only and the decisions log carries this
 exact item as "for outside review"; any sharper handling would stay on-device and never show.
 
-### 10. Should detectable-HIV-in-care reach blue through the condom route? (decided, still uneasy)
-
-Today detectable HIV is an active infection on the clearance axis, so no route reaches blue until
-suppressed. But the app already treats condoms as equal-tier HIV prevention (question 2), and blue
-is defined as "actively protecting," not "no transmissible virus" and explicitly not "clean." By
-that logic a detectable person who publicly commits to condoms is actively protecting, and the same
-condom route is already the only road to blue for HIV-negative PrEP-decliners (question 1, second
-group). The condom preference is worn by a broad mixed population, so requiring it for this subgroup
-wouldn't out them; it's the same camouflage the PrEP-decliner already relies on. Allowing it would
-also erase the "tests yet never blue" inference from question 1. So refusing it arguably puts the
-clean/dirty line back on the clearance axis, the one place blue can't be reached by behavior at all.
-
-The reason I lean no: U=U neutralizes the source biologically and continuously, while condoms over a
-detectable person leave live, uncontrolled virus behind a per-act barrier and a self-reported
-commitment. That's the largest difference of degree anywhere on the route axis, and it means blue
-would be sitting on top of uncontrolled live virus. There's also a knock-on cost: saying yes would
-force partner-notification (question 7) to stop being uniformly gentle. A condom failure with a
-detectable partner is a real possible-HIV-exposure, which argues for a sharper, faster, less
-content-free "get tested now, consider PEP" alert, in direct tension with the calm, batched,
-anonymous design I chose in question 7. So the badge change wouldn't stay contained to the badge.
-
-**Question:** is treating detectable HIV as an absolute clearance blocker the right call, or is it
-the clean/dirty line sneaking back in? If condoms genuinely count as prevention, can the app justify
-accepting them for negatives but not for a detectable person in care? The blocker is what shipped
-(it is locked in the decisions log), but I want outside eyes on whether keeping it is principled
-or just fear; this is the decision I would most readily reopen for a strong argument.
-
-### 11. Anything I'm not seeing
+### 10. Anything I'm not seeing
 
 If you live closer to this than I do, **what's the question I haven't thought to ask?**
