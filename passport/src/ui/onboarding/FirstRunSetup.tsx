@@ -69,17 +69,15 @@ function Point({
   );
 }
 
-// One reach mode as a quiet radio row: the mode name and what it means, both
-// visible so the two modes can be compared, selection reading through ink and
-// border weight.
+// One reach mode as a quiet radio row: just the mode name, selection reading
+// through ink and border weight. The description for the selected mode is shown
+// once below, so picking a mode visibly changes the copy instead of sitting inert.
 function ReachChoice({
   title,
-  sub,
   checked,
   onPick,
 }: {
   title: string;
-  sub: string;
   checked: boolean;
   onPick: () => void;
 }) {
@@ -92,10 +90,7 @@ function ReachChoice({
         checked={checked}
         onChange={onPick}
       />
-      <span>
-        <span className="onb__choice-title">{title}</span>
-        <span className="onb__choice-sub">{sub}</span>
-      </span>
+      <span className="onb__choice-title">{title}</span>
     </label>
   );
 }
@@ -133,18 +128,19 @@ function ReachSection({
       <fieldset className="onb__choices">
         <legend className="onb__legend">{COPY.reachTitle}</legend>
         <ReachChoice
-          title={COPY.reachDirect}
-          sub={COPY.reachDirectSub}
-          checked={sharing === "public"}
-          onPick={() => onChange("public")}
-        />
-        <ReachChoice
           title={COPY.reachGated}
-          sub={COPY.reachGatedSub}
           checked={sharing === "link"}
           onPick={() => onChange("link")}
         />
+        <ReachChoice
+          title={COPY.reachDirect}
+          checked={sharing === "public"}
+          onPick={() => onChange("public")}
+        />
       </fieldset>
+      <p className="onb__choice-sub">
+        {sharing === "public" ? COPY.reachDirectSub : COPY.reachGatedSub}
+      </p>
       <FindableRow />
       <div className="onb__note">
         <span aria-hidden className="onb__note-icon">
@@ -182,9 +178,10 @@ export function FirstRunSetup({
   onViewPrivacyPolicy,
   onViewTerms,
 }: FirstRunSetupProps) {
-  // Direct ("public") is the default reach mode (doc 16): a link you hand over
-  // opens instantly. "Ask first" (Gated, "link") is the approve-each-viewer mode.
-  const [sharing, setSharing] = useState<"public" | "link">("public");
+  // "Ask first" (Gated, "link") is the default: private by default, you approve each
+  // viewer. "Direct" ("public") is the opt-in where a link you hand over opens
+  // instantly. Either is changeable per link and in settings.
+  const [sharing, setSharing] = useState<"public" | "link">("link");
   return (
     <div className="onb">
       <TopBack title="Step 3 of 3" onBack={onBack} />
