@@ -30,6 +30,9 @@ metadata out, it only rots and creates churn:
 - No rot-prone counts of source artifacts (number of screens, files, tests, components). Real
   protocol and crypto constants that are the spec (key sizes, iteration counts, fixed payload sizes,
   time windows) are codebase state, keep them.
+- Write each doc for the current version only. State a decision as it stands now and cut
+  prior-version framing ("supersedes the old floor", "revised from three", "renamed in pass 5",
+  "we used to"); the reader should track what is true, never what changed.
 
 Whenever a doc is added or substantially changed, do a review and consolidation round before the PR.
 Evaluate everything added: does it belong at all, is it in the right doc and the right place, does it

@@ -76,6 +76,13 @@
 - **LOCKED. A local display name** (entered at account creation, owner-facing only, never sent
   to the server) is the one name-like field in the system. It is NOT a public handle and does not
   seed link handles.
+- **LOCKED. The display name names the owner; handles are for sharing.** The app refers to the owner
+  only by their **display name**: a real name, so mixed case and spaces are welcome (capped, control
+  and bidi characters stripped), greeted plainly and never `@`-prefixed. **Handles** are the
+  identities used to share a profile: up to 5 public and unlimited private, none required. A public
+  handle is required only for username/password sign-in, where it doubles as the sign-in username,
+  and that factor is turned on or off in settings. The `@handle` styling belongs to handles alone
+  (shared cards, wallet passes, a peer's handle), never to the owner's own name.
 - **LOCKED. Reach and access are per-alias.**
   The displayed face (handle + avatar) is per-alias and unlinkable by default, recognizable by
   opt-in. Reach and access split into **two modes**:
