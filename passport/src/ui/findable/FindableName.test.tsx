@@ -124,13 +124,12 @@ describe("PublicNames (the Links-tab manager)", () => {
     const user = userEvent.setup();
     render(<PublicNames names={[]} ops={ops()} />);
     await openAdd(user);
-    // The headline + the findable cost are visible WITHOUT opening the expander
-    // (doc 17 launch gate: the impact must not be buried).
+    // The findable cost is visible WITHOUT opening the expander (doc 17 launch gate:
+    // the impact must not be buried), now stated as one line.
     expect(
-      screen.getByText(/becomes public and searchable/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/anyone can see you have a passport here/i),
+      screen.getByText(
+        /your name becomes public, so anyone can see you have a passport here/i,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/your status itself stays private/i),
