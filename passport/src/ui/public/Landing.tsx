@@ -10,6 +10,7 @@ import {
 } from "../../design/icons.tsx";
 import { TrustFooter } from "../trust/TrustFooter.tsx";
 import { LANDING_PROMISES_LINK } from "../trust/trustCopy.ts";
+import { demoSampleCard } from "../../store/demo/demoRuntime.ts";
 import "./landing.css";
 
 // A1 logged-out landing on the editorial grammar (doc 37): serif claim, the
@@ -85,14 +86,11 @@ function LandingHero() {
 }
 
 function SampleCard() {
+  // The live @demo card, the same one "Try the demo" boots into, so the landing
+  // preview is real and current rather than a static mockup.
   return (
     <div className="land__sample">
-      <BadgeCard
-        state="blue"
-        labels={["hiv", "condoms_always"]}
-        identity={{ handle: "sam" }}
-        width="100%"
-      />
+      <BadgeCard {...demoSampleCard()} width="100%" />
       <span className="land__sample-tag">Sample</span>
     </div>
   );
