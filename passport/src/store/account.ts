@@ -26,6 +26,7 @@ import { createAccountSync, type AccountSync } from "./accountSync.ts";
 import { republishOwnerCard } from "./ownerCard.ts";
 import { revokeAlias } from "./publish.ts";
 import { isValidHandle } from "./codec.ts";
+import { normalizeDisplayName } from "./displayName.ts";
 import {
   isSharingMode,
   type AccountBlob,
@@ -182,7 +183,7 @@ export interface AccountManager extends GroupMembershipAccounts {
 // (doc 32); it is the same phrase shown once at sign-up, kept only inside this vault.
 function freshBlob(recoveryPhrase: string, handle?: string): AccountBlob {
   return {
-    ...(handle ? { handle } : {}),
+    ...(handle ? { handle: normalizeDisplayName(handle) } : {}),
     aliases: [],
     contacts: [],
     state: INITIAL_OWNER_STATE,
@@ -201,13 +202,17 @@ function applyProfileName(
   handle: string | null | undefined,
 ): AccountBlob {
   if (handle === undefined) return blob;
-  if (handle === "" || handle === null) {
+  // Normalize to the display-name policy (mixed case and spaces welcome, control and
+  // bidi stripped, capped) so any caller, not only the UI, stores a clean value; a
+  // name that normalizes to empty clears it.
+  const clean = handle === null ? "" : normalizeDisplayName(handle);
+  if (clean === "") {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { handle: _drop, ...rest } = blob;
     return rest;
   }
-  if (!isValidHandle(handle)) throw new Error("setProfile: invalid handle");
-  return { ...blob, handle };
+  if (!isValidHandle(clean)) throw new Error("setProfile: invalid handle");
+  return { ...blob, handle: clean };
 }
 
 // Drop a contact and strip it from every circle, so no circle dangles a member

@@ -26,7 +26,7 @@ afterEach(() => {
 describe("Root demo deep-link", () => {
   it("boots straight into the demo when the URL is /demo", async () => {
     await mountRoot("/demo");
-    expect((await screen.findAllByText(/@demo/)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/Hi, demo/)).length).toBeGreaterThan(0);
     expect(screen.getByText(BANNER)).toBeInTheDocument();
     // The clean path is kept as-is (no stray hash, no trailing slash).
     expect(window.location.pathname).toBe("/demo");

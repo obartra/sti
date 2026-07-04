@@ -287,8 +287,8 @@ describe("App onboarding flow", () => {
     await onboard(user, "kai");
 
     // Home renders the derived owner: the chosen handle, not the fixture's.
-    expect((await screen.findAllByText(/@kai/)).length).toBeGreaterThan(0);
-    expect(screen.queryByText("@robin")).toBeNull();
+    expect((await screen.findAllByText(/Hi, kai/)).length).toBeGreaterThan(0);
+    expect(screen.queryByText("Hi, robin")).toBeNull();
   });
 
   it("enters even when binding a passkey fails (phrase stays the way back)", async () => {
@@ -302,7 +302,7 @@ describe("App onboarding flow", () => {
     await onboard(user);
 
     // The account was created (default handle "robin"), so the app still enters.
-    expect((await screen.findAllByText(/@robin/)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/Hi, robin/)).length).toBeGreaterThan(0);
   });
 
   it("reports a result and the home badge turns blue (report -> setOwnerState -> derive)", async () => {
@@ -389,7 +389,7 @@ describe("App onboarding flow", () => {
 
     // Onboard into the app.
     await onboard(user);
-    expect((await screen.findAllByText(/@robin/)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/Hi, robin/)).length).toBeGreaterThan(0);
 
     // Open Settings (the home "Manage links" action routes there), then the
     // danger zone's two-step delete.
@@ -404,7 +404,7 @@ describe("App onboarding flow", () => {
     // The account was really deleted and the app logged out to the landing.
     expect(deleteAccount).toHaveBeenCalledOnce();
     expect(await screen.findByText("Claim your passport")).toBeInTheDocument();
-    expect(screen.queryByText("@robin")).toBeNull();
+    expect(screen.queryByText("Hi, robin")).toBeNull();
   });
 
   it("shows a contentless knock entry in the inbox only when someone knocked", async () => {
@@ -552,8 +552,8 @@ describe("App onboarding flow", () => {
     await user.click(phraseLogIn);
 
     // The recovered account drives the app (its handle, not the fixture's).
-    expect((await screen.findAllByText(/@rosa/)).length).toBeGreaterThan(0);
-    expect(screen.queryByText("@robin")).toBeNull();
+    expect((await screen.findAllByText(/Hi, rosa/)).length).toBeGreaterThan(0);
+    expect(screen.queryByText("Hi, robin")).toBeNull();
   });
 
   it("logs in on a new device with the recovery name + password (doc 32)", async () => {
@@ -583,8 +583,8 @@ describe("App onboarding flow", () => {
     await user.click(pwLogIn);
 
     // The recovered account drives the app (its handle, not the fixture's).
-    expect((await screen.findAllByText(/@rosa/)).length).toBeGreaterThan(0);
-    expect(screen.queryByText("@robin")).toBeNull();
+    expect((await screen.findAllByText(/Hi, rosa/)).length).toBeGreaterThan(0);
+    expect(screen.queryByText("Hi, robin")).toBeNull();
   });
 
   it("keeps a logged-out visitor out of app screens (no owner data leaks)", async () => {
@@ -594,7 +594,7 @@ describe("App onboarding flow", () => {
     render(<App store={stubStore(null)} controller={fakeController()} />);
 
     expect(await screen.findByText("Claim your passport")).toBeInTheDocument();
-    expect(screen.queryByText("@robin")).toBeNull();
+    expect(screen.queryByText("Hi, robin")).toBeNull();
     expect(screen.queryByText("Good to see you,")).toBeNull();
   });
 
@@ -605,7 +605,7 @@ describe("App onboarding flow", () => {
     render(<App store={stubStore(null)} controller={fakeController()} />);
 
     expect(await screen.findByText("Claim your passport")).toBeInTheDocument();
-    expect(screen.queryByText("@robin")).toBeNull();
+    expect(screen.queryByText("Hi, robin")).toBeNull();
     expect(screen.queryByText("Good to see you,")).toBeNull();
   });
 });
@@ -641,8 +641,8 @@ describe("demo mode", () => {
       />,
     );
 
-    // The seeded demo session drives the app: the @demo handle reaches home.
-    expect((await screen.findAllByText(/@demo/)).length).toBeGreaterThan(0);
+    // The seeded demo session drives the app: the owner greeting names the demo.
+    expect((await screen.findAllByText(/Hi, demo/)).length).toBeGreaterThan(0);
     // The persistent banner marks every demo screen.
     expect(
       screen.getByText("Demo. Nothing here is saved or sent."),
