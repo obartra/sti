@@ -42,9 +42,9 @@ that lets an app reviewer exercise every flow, including the in-person ones, on 
 The logged-out landing ([Landing.tsx](../../passport/src/ui/public/Landing.tsx)) offers
 **"Claim your passport"** and **"See a sample card."** The sample is a single static `BadgeCard`
 (handle `sam`, a "Sample" pill). It shows what a card looks like; it does not let anyone **use**
-anything. So a curious user cannot feel how sharing, connecting, an ask, an alert, or reporting a
-result actually work, and an app reviewer (doc 26, D2) cannot exercise the flows that make this app
-what it is, because those flows are designed to need a second person in the room.
+anything. So a curious user cannot feel how sharing, connecting, an ask, or reporting a result
+actually work, and an app reviewer (doc 26, D2) cannot exercise the flows that make this app what it
+is, because those flows are designed to need a second person in the room.
 
 **The demo replaces the sample card on the landing** (section E): the static "look at this card"
 affordance becomes a live "try the whole thing" entry, so there is one demo surface, not a sample card
@@ -60,9 +60,9 @@ A single, fixed, synthetic account with the identity handle **`demo`**, recogniz
 - **Seeded so every tab has something real**, loaded from a fixture set (the app already keeps
   fixtures, [ui/app/fixtures.ts](../../passport/src/ui/app/fixtures.ts)): a badge (show both a blue and
   a gray state so the meaning is legible), a couple of connections, at least one shared link, a
-  **pending ask** to grant, a sample **alert**, and some Care content. The data is obviously
-  synthetic (the handles are `@demo` and clearly-fake fixture peers), so nothing reads as a real
-  person's status.
+  **pending ask** to grant, a **group** to join, a gray peer link to **knock** on, and some Care
+  content. The data is obviously synthetic (the handles are `@demo` and clearly-fake fixture peers),
+  so nothing reads as a real person's status.
 
 ## C. Works the same, with one difference: it forgets
 
@@ -131,27 +131,42 @@ any screen, even from a screenshot, whether they are in the demo.
 
 ## F. The in-person flows, made testable on one device
 
-This is the part that turns demo mode from a nicety into the answer for Guideline 2.1. The flows a
-lone reviewer cannot otherwise reach, and how the demo seeds each:
+This is the part that turns demo mode from a nicety into the answer for Guideline 2.1. Every flow a
+lone reviewer cannot otherwise reach is answered by a **scripted second party**: standing state is
+pre-seeded, and the interactive steps auto-respond, so the reviewer works one device with no demo-only
+buttons and no waiting on a real peer. The flows, and how the demo scripts each:
 
-- **See someone else's passport:** a canned peer card is already in the fixtures, openable from the
-  demo's connections, so "view a status" works with no second device.
-- **Connect in person:** a sample peer link or QR ships with the demo so a mock Connect can be walked
-  end to end (the scanner reads the canned link, the demo adds the connection locally).
-- **Answer an ask:** the demo starts with one pending ask, so granting and the resulting view are both
-  reachable.
-- **Get an alert:** a sample alert is pre-seeded, so the contentless heads-up and its "go get tested"
-  next step are visible.
-- **Report a result:** allowed in the demo and applied locally, so the reviewer (and a user) sees the
-  badge move, then it resets.
+- **See someone else's passport:** a canned peer card is in the seed, openable from the demo's
+  connections, so "view a status" works with no second device.
+- **Answer an ask (owner side):** the demo starts with one pending ask on a shared link. Approving it
+  grants access and clears the row, so the owner's grant and its confirmation are both reachable.
+- **Knock as a viewer (viewer side):** a seeded gray peer link starts closed. Opening it, asking, and
+  reloading resolves the scripted approval, so the viewer's side of an ask, the wait, and the reveal
+  all play out on one device.
+- **Connect in person:** the accept and return legs run locally, so a mock Connect completes into a
+  real two-way connection (both peers exchanged) rather than a half-linked stub.
+- **Join a group as a member:** a public group is discoverable by handle; requesting to join is
+  approved by the scripted admin, and the reviewer lands as an ordinary member (not an admin), so the
+  member's side of group life is reachable.
+- **Report a result:** applied locally, so the reviewer (and a user) sees the badge move, then it
+  resets.
 
-These five are also written verbatim into the App Review notes as the reviewer's script, so the demo
-and the notes never drift.
+These are written verbatim into the App Review notes as the reviewer's script, so the demo and the
+notes never drift.
+
+**Intentionally not a solo flow: getting an alert.** A partner alert is one person telling another to
+go get tested; there is no honest way to make a lone reviewer *receive* one without either faking an
+incoming message or standing up a second party, and neither earns its keep. It would also set the
+wrong tone for a first look: a brand-new visitor poking at the demo does not need to be told, out of
+nowhere, that someone flagged them. So the alert intake stays inert in the demo, and the App Review
+notes cover the alert path by description rather than as a hands-on step. The heads-up itself is
+contentless by design (doc 09), so nothing about it is lost by leaving it out of the walk-through.
 
 ## G. Entry and exit
 
-- **Entry:** the landing page **"Try the demo"** action, plus an optional stable route (`/#demo`) for
-  the review notes and for sharing a link straight into the demo.
+- **Entry:** the landing page **"Try the demo"** action, plus the stable `/#demo` route for the review
+  notes and for sharing a link straight into the demo. Entering syncs the URL to `/#demo` so a reload
+  stays in the demo; leaving clears it so the real app is not stranded on the demo route.
 - **Entry for development:** a build-time flag (`VITE_DEMO`) boots straight into the demo, so the whole
   app can be run and exercised with no server at all (the same simulated backend the demo ships with).
   This is a developer convenience, not a user surface; it only seeds the initial state, so the in-app

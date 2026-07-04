@@ -5,11 +5,22 @@ import {
   createDemoStore,
 } from "../store/demo/demoRuntime.ts";
 
-// Client-only dev mode: `VITE_DEMO=1 npm run dev` boots straight into the demo
-// runtime, so the whole app can be exercised with no server (doc 28). It only
-// seeds the INITIAL state; "Leave demo" still drops to the real, logged-out app.
+// Two ways to boot straight into the demo (doc 28), so the whole app can be exercised
+// with no server. Both only seed the INITIAL state; "Leave demo" still drops to the
+// real, logged-out app.
+//   - The stable `/#demo` route, so the App Review notes (and a shared link) can deep
+//     link into the demo on any device.
+//   - A build flag (`VITE_DEMO=1 npm run dev`), a developer convenience.
+const DEMO_HASH = "#demo";
+
+function demoRouteAtBoot(): boolean {
+  return typeof location !== "undefined" && location.hash === DEMO_HASH;
+}
+
 const DEMO_AT_BOOT =
-  import.meta.env.VITE_DEMO === "1" || import.meta.env.VITE_DEMO === "true";
+  import.meta.env.VITE_DEMO === "1" ||
+  import.meta.env.VITE_DEMO === "true" ||
+  demoRouteAtBoot();
 
 /**
  * The app root: the real app, plus the toggle into demo mode (doc 28). Entering
@@ -27,28 +38,33 @@ export function Root() {
     [demo],
   );
 
+  // Entering syncs the URL to `/#demo` so a reload stays in the demo and the address
+  // is shareable; leaving clears it so the real app is not stuck on the demo route.
+  const enter = () => {
+    if (typeof location !== "undefined") location.hash = DEMO_HASH.slice(1);
+    setDemo(true);
+  };
+  const exit = () => {
+    if (typeof location !== "undefined" && location.hash === DEMO_HASH) {
+      history.replaceState(null, "", location.pathname + location.search);
+    }
+    setDemo(false);
+  };
+
   if (demo && demoStore && demoController) {
     return (
       <App
         key="demo"
         store={demoStore}
         controller={demoController}
-        demo={{
-          mode: true,
-          onTry: () => undefined,
-          onExit: () => setDemo(false),
-        }}
+        demo={{ mode: true, onTry: () => undefined, onExit: exit }}
       />
     );
   }
   return (
     <App
       key="real"
-      demo={{
-        mode: false,
-        onTry: () => setDemo(true),
-        onExit: () => undefined,
-      }}
+      demo={{ mode: false, onTry: enter, onExit: () => undefined }}
     />
   );
 }

@@ -144,9 +144,9 @@ verify. Mitigations, all of them:
 - A **demo mode**, openable from the landing screen with no credentials, seeded so every screen
   (including the in-person flows) is reachable on one device. This is a real user-facing feature, not
   a review-only hack; full design in [Demo mode](28-demo-mode.md).
-- The demo ships a **canned peer** (a sample passport link and QR) so the reviewer can complete a
-  Connect, view a status, and answer an ask solo. The reviewer's script and the demo are one artifact
-  (doc 28, F).
+- The demo ships a **scripted second party** so the reviewer can, solo, view a status, answer an ask,
+  knock on a link as a viewer, complete a Connect into a two-way connection, and join a group as a
+  member. The reviewer's script and the demo are one artifact (doc 28, F).
 - **Detailed App Review notes** that explain the privacy model and walk each non-obvious flow, plus a
   **screen recording** of the in-person Connect (Apple accepts demo videos for hard-to-reproduce
   features).
