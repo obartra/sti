@@ -407,3 +407,25 @@ describe("the root keeps the clean URL", () => {
     }
   });
 });
+
+describe("the #demo fragment is sticky across navigation (doc 28)", () => {
+  it("keeps /#demo on mount normalization and every navigation", async () => {
+    window.history.replaceState(null, "", "/#demo");
+    try {
+      const { result } = renderHook(() => useAppRouter());
+      // Unlike a stale `/#screen`, `#demo` is the sticky app-wide fragment: mount
+      // normalization must not strip it, so a reload stays in the demo.
+      await waitFor(() => expect(window.location.hash).toBe("#demo"));
+      // It rides along on a forward navigation (go) and a tab switch (jump), so the
+      // reviewer can never navigate their way out of the demo by chance.
+      act(() => result.current.nav.go("wallet"));
+      expect(window.location.pathname).toBe("/wallet");
+      expect(window.location.hash).toBe("#demo");
+      act(() => result.current.nav.jump("care"));
+      expect(window.location.pathname).toBe("/care");
+      expect(window.location.hash).toBe("#demo");
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+});

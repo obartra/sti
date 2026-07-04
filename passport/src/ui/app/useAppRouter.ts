@@ -235,6 +235,16 @@ function ownsUrl(route: Route): boolean {
   return route.screen === "a2-public" && route.data?.id != null;
 }
 
+// The demo runs the whole app under a sticky `#demo` fragment (doc 28 G): the demo
+// boots from it, so keeping it on every URL write means a reload stays in the demo
+// instead of dropping to the real app, and the address stays shareable. It is the one
+// fragment the app carries across navigation; every legacy hash is still normalized
+// away. A `#demo` in the URL always implies demo mode (Root boots on it), so there is
+// no real screen it could collide with.
+function demoFragment(): string {
+  return window.location.hash === "#demo" ? "#demo" : "";
+}
+
 // Write the canonical URL for a screen, pushing a new history entry or replacing the
 // current one. Returns whether a push actually happened (it is a no-op when the URL
 // already matches), so the caller can keep its app-pushed depth count honest.
@@ -243,7 +253,7 @@ function syncUrl(
   data: RouteData | null | undefined,
   mode: "push" | "replace",
 ): boolean {
-  const target = canonicalUrl(screen, data);
+  const target = canonicalUrl(screen, data) + demoFragment();
   if (window.location.pathname + window.location.hash === target) return false;
   if (mode === "push") {
     window.history.pushState(null, "", target);
