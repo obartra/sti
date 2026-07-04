@@ -87,30 +87,6 @@
 .sti-card--interactive:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
 .sti-card--interactive:active { transform: translateY(0); }
 
-/* ------------------------------------------------------------ StatusPill --- */
-/* Always: dot/icon + word. Reads in grayscale and for color-blind users.     */
-.sti-pill {
-  display: inline-flex; align-items: center; gap: var(--gap-inline);
-  font-weight: var(--weight-semibold); font-size: var(--text-sm);
-  line-height: 1; border-radius: var(--radius-pill);
-  padding: 7px 14px 7px 11px; white-space: nowrap;
-}
-.sti-pill__icon { display: inline-flex; width: 16px; height: 16px; flex: none; }
-.sti-pill__icon svg { width: 100%; height: 100%; }
-.sti-pill--lg { font-size: var(--text-base); padding: 10px 18px 10px 14px; }
-.sti-pill--lg .sti-pill__icon { width: 20px; height: 20px; }
-
-.sti-pill--clear   { background: var(--status-clear-bg);   color: var(--status-clear-fg); }
-.sti-pill--treat   { background: var(--status-treat-bg);   color: var(--status-treat-fg); }
-.sti-pill--expired { background: var(--status-expired-bg); color: var(--status-expired-fg); }
-.sti-pill--none    { background: var(--status-none-bg);    color: var(--status-none-fg); }
-
-/* solid variant for high-emphasis (e.g. the passport hero) */
-.sti-pill--solid.sti-pill--clear   { background: var(--status-clear-base);   color: var(--white); }
-.sti-pill--solid.sti-pill--treat   { background: var(--status-treat-base);   color: var(--white); }
-.sti-pill--solid.sti-pill--expired { background: var(--status-expired-base); color: var(--white); }
-.sti-pill--solid.sti-pill--none    { background: var(--status-none-base);    color: var(--white); }
-
 /* ----------------------------------------------------------------- Badge --- */
 .sti-badge {
   display: inline-flex; align-items: center; gap: 6px;
