@@ -445,15 +445,15 @@ describe("account manager", () => {
     });
     expect("handle" in clearedEmpty).toBe(false);
 
-    // An invalid name (over the 64-char limit) is rejected at write time, like
-    // create()'s guard, so it can't seal fine and then throw on the next parse.
-    await expect(
-      accounts.setProfile(created.root, {
-        avatar,
-        sharingMode,
-        handle: "x".repeat(65),
-      }),
-    ).rejects.toThrow();
+    // An over-long name is normalized to the display-name cap, not rejected: the
+    // input already limits length, so a long value is trimmed rather than thrown, and
+    // a bad value can never seal fine and then throw on the next parse.
+    const capped = await accounts.setProfile(created.root, {
+      avatar,
+      sharingMode,
+      handle: "x".repeat(65),
+    });
+    expect(capped.handle).toBe("x".repeat(40));
   });
 
   it("recordFindable appends names and removeFindable drops one (doc 17 cap 5)", async () => {

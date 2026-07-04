@@ -20,6 +20,17 @@ import "./home.css";
 // once. The status is always the real one, so a fresh owner reads "not set up",
 // never green (doc 31 "Home").
 
+// Two-letter initials for the avatar fallback: the first letter of the first two
+// words, so a multi-word display name like "sam rivers" reads "SR", not "SA".
+function initialsOf(name: string): string {
+  return name
+    .split(/\s+/)
+    .map((w) => Array.from(w)[0] ?? "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 function Greeting({
   handle,
   avatar,
@@ -31,10 +42,12 @@ function Greeting({
     <div className="hm__head">
       <Avatar
         src={avatar !== undefined ? avatarSrc(avatar) : undefined}
-        initials={(handle ?? "you").slice(0, 2).toUpperCase()}
+        initials={initialsOf(handle ?? "you")}
         size="sm"
       />
-      <h1 className="hm__title">{handle ? `@${handle}` : "Your passport"}</h1>
+      <h1 className="hm__title">
+        {handle ? `Hi, ${handle}` : "Your passport"}
+      </h1>
     </div>
   );
 }

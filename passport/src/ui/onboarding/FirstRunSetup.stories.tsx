@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { FirstRunSetup } from "./FirstRunSetup.tsx";
 
-// B3: first-run setup. Reach defaults to Direct (doc 16); "Ask first" (Gated) is
-// the approve-each-viewer alternative, and Findable is the third mode (the row
-// points to Settings, where a name is claimed).
+// B3: first-run setup. Reach defaults to "Ask first" (Gated, private by default);
+// Direct is the instant-open opt-in, and only the selected mode's description
+// shows. Findable is the third mode (the row points to Settings, where a name is
+// claimed).
 const meta: Meta<typeof FirstRunSetup> = {
   title: "Passport/Onboarding/First-run setup",
   component: FirstRunSetup,

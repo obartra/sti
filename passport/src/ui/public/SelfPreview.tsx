@@ -8,6 +8,7 @@ import {
   type AliasRecord,
 } from "../../store/index.ts";
 import { pseudonymFor } from "../../lib/avatars.ts";
+import { handleFromDisplayName } from "../../store/displayName.ts";
 import { todayEpochDay } from "../../core/clock.ts";
 import type { OwnerState } from "../../core/badge.ts";
 import "./self-preview.css";
@@ -45,7 +46,11 @@ function faceKind(
   accountHandle: string | undefined,
 ): FaceKind {
   if (record.handle === undefined) return "anonymous";
-  return record.handle === accountHandle ? "you" : "named";
+  // A "main" record stamps the handle derived from the display name, so classify
+  // "you" against that same reduced form, not the raw internal display name.
+  return record.handle === handleFromDisplayName(accountHandle ?? "")
+    ? "you"
+    : "named";
 }
 
 function buildOptions(

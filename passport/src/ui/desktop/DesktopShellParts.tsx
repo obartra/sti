@@ -92,7 +92,7 @@ function OwnerChip({
         size="sm"
       />
       <span className="desk-owner__body">
-        <span className="desk-owner__handle">{handle ? `@${handle}` : ""}</span>
+        <span className="desk-owner__handle">{handle ?? ""}</span>
         <span className="desk-owner__hint">{COPY.home.viewAs}</span>
       </span>
       <Eye size={16} className="desk-owner__eye" />

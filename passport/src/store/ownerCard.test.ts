@@ -227,6 +227,19 @@ describe("withIdentity (mint-time identity choice, doc 15)", () => {
     });
   });
 
+  it("reduces a display-name-shaped account name to a handle, never the raw name", () => {
+    const r = aliasRecord();
+    const named = { handle: "Sam Rivers", avatar: DEFAULT_AVATAR };
+    // The internal display name never reaches a card; "show my name" stamps a handle.
+    expect(withIdentity(r, "main", named).handle).toBe("sam_rivers");
+  });
+
+  it("falls back to the id-derived face when the name yields no usable handle", () => {
+    const r = aliasRecord();
+    const nonLatin = { handle: "さくら", avatar: DEFAULT_AVATAR };
+    expect(withIdentity(r, "main", nonLatin).handle).toBeUndefined();
+  });
+
   it("is deterministic: card built from a stamped record shows the main face", () => {
     const r = aliasRecord();
     const stamped = withIdentity(r, "main", account);

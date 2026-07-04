@@ -8,13 +8,18 @@ import {
 // Two ways to boot straight into the demo (doc 28), so the whole app can be exercised
 // with no server. Both only seed the INITIAL state; "Leave demo" still drops to the
 // real, logged-out app.
-//   - The stable `/#demo` route, so the App Review notes (and a shared link) can deep
-//     link into the demo on any device.
+//   - The stable `/demo` route, so the App Review notes (and a shared link) can deep
+//     link into the demo on any device. The whole demo runs under this path prefix
+//     (`/demo/links`, `/demo/people`), so a reload stays in the demo.
 //   - A build flag (`VITE_DEMO=1 npm run dev`), a developer convenience.
-const DEMO_HASH = "#demo";
+const DEMO_PATH = "/demo";
 
 function demoRouteAtBoot(): boolean {
-  return typeof location !== "undefined" && location.hash === DEMO_HASH;
+  if (typeof location === "undefined") return false;
+  return (
+    location.pathname === DEMO_PATH ||
+    location.pathname.startsWith(DEMO_PATH + "/")
+  );
 }
 
 const DEMO_AT_BOOT =
@@ -38,15 +43,16 @@ export function Root() {
     [demo],
   );
 
-  // Entering syncs the URL to `/#demo` so a reload stays in the demo and the address
-  // is shareable; leaving clears it so the real app is not stuck on the demo route.
+  // Entering moves the URL to `/demo` so a reload stays in the demo and the address is
+  // shareable; leaving drops back to the real root so the app is not stuck on the demo
+  // route. The router then keeps every in-demo screen under the `/demo` prefix.
   const enter = () => {
-    if (typeof location !== "undefined") location.hash = DEMO_HASH.slice(1);
+    if (typeof history !== "undefined") history.pushState(null, "", DEMO_PATH);
     setDemo(true);
   };
   const exit = () => {
-    if (typeof location !== "undefined" && location.hash === DEMO_HASH) {
-      history.replaceState(null, "", location.pathname + location.search);
+    if (typeof history !== "undefined" && demoRouteAtBoot()) {
+      history.replaceState(null, "", "/");
     }
     setDemo(false);
   };

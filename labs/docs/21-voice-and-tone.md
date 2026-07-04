@@ -75,16 +75,15 @@ The voice holds; the warmth dials up or down:
 5. **Sentence case everywhere**, including headers and buttons. No Title Case.
 6. **Buttons are verbs that name the outcome.** "Share my status", "Get tested",
    "Delete everything." Not "Submit", not "OK".
-7. **"and", not "&"**, in copy.
-8. **No exclamation points** unless the delight is real and rare.
-9. **No em dashes** (house rule, everywhere). Restructure: comma, period, parentheses,
-   "because", "so".
-10. **Health copy is never alarmist or stigmatizing.** "treatable" not "gets worse over
-    time"; "a painless sore that is easy to miss" only if it leads to "so test for it",
-    never as a scare.
-11. **Honesty without a target list.** State what is protected ("we can't read it",
-    "the server never learns who was notified"), not the channel an attacker would
-    probe.
+7. **Plain punctuation.** Spell out "and" rather than "&", skip exclamation points
+   unless the delight is real and rare, and no em dashes anywhere (restructure with a
+   comma, period, parentheses, "because", or "so").
+8. **Health copy is never alarmist or stigmatizing.** "treatable" not "gets worse over
+   time"; "a painless sore that is easy to miss" only if it leads to "so test for it",
+   never as a scare.
+9. **Honesty without a target list.** State what is protected ("we can't read it",
+   "the server never learns who was notified"), not the channel an attacker would
+   probe.
 
 ## Vocabulary: say this, not that
 

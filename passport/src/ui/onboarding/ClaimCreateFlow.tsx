@@ -17,12 +17,13 @@ import {
   normalizeVanityName,
   vanityNameError,
 } from "../../store/vanityName.ts";
+import { sanitizeDisplayName } from "../../store/displayName.ts";
 import { COPY } from "./claimCopy.ts";
 import { funName } from "./funName.ts";
 
-// Only lowercase letters, digits, and underscore make a name (matches the handle
-// shape the account accepts). Shared by typing and the shuffle button.
-const sanitize = (raw: string) => raw.replace(/[^a-z0-9_]/gi, "").toLowerCase();
+// The display name is owner-facing only, so it reads as a real name: mixed case and
+// spaces welcome, unlike a handle. Shared by typing and the shuffle button.
+const sanitize = sanitizeDisplayName;
 
 // The name field with a shuffle button that fills a short, playful name.
 function NameField({
@@ -266,8 +267,6 @@ export function CreateFlow({
   // the owner edits the Username so the error never lingers past a fix.
   const [nameTaken, setNameTaken] = useState(false);
   const trimmed = name.trim();
-  // Empty is allowed (name is optional); if something is typed it needs ≥3 chars.
-  const ok = trimmed.length === 0 || trimmed.length >= 3;
   // Seed one random avatar per mount so every new account starts with a face.
   const [avatar] = useState<AvatarConfig>(() =>
     randomAvatar(Math.floor(Math.random() * 0x7fffffff)),
@@ -297,7 +296,7 @@ export function CreateFlow({
     <>
       <NameField
         value={name}
-        error={trimmed.length > 0 && !ok ? COPY.nameTooShort : undefined}
+        error={undefined}
         onChange={setName}
         onShuffle={() => setName(sanitize(funName()))}
       />
@@ -316,7 +315,7 @@ export function CreateFlow({
         variant="primary"
         size="lg"
         block
-        disabled={!ok || busy || pwBlocked}
+        disabled={busy || pwBlocked}
         onClick={submit}
       >
         {COPY.cta} <ArrowRight size={18} />

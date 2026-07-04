@@ -1,18 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Field, Input } from "../../design/components/index.ts";
+import { sanitizeDisplayName } from "../../store/displayName.ts";
 import "./settings.css";
 
 // The local display name editor on Settings: change or clear the name we greet
 // you by (the account `handle`, doc 16). It is a device-local label, so it saves
 // as you type (debounced), with no button. Mirrors onboarding's input rules so the
-// two never disagree: the handle charset, and an entered name of at least three
-// characters (empty is allowed and clears it). Owner-facing only; a link shows it
-// to a viewer only when you choose to reveal yourself (doc 15).
+// two never disagree: a real name (mixed case and spaces welcome), free-form with no
+// minimum (empty is allowed and clears it). Owner-facing only; a link shows it to a
+// viewer only when you choose to reveal yourself (doc 15).
 const COPY = {
   label: "Display name",
   hint: "Only you see it, unless you show it on a link. Never required.",
   placeholder: "Pick a display name",
-  tooShort: "At least 3 characters.",
   saved: "Saved",
 } as const;
 
@@ -36,11 +36,10 @@ export function NameCard({
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
   const trimmed = value.trim();
-  const tooShort = trimmed.length > 0 && trimmed.length < 3;
   const changed = trimmed !== (name ?? "");
 
   useEffect(() => {
-    if (tooShort || !changed) {
+    if (!changed) {
       pending.current = undefined;
       return;
     }
@@ -53,7 +52,7 @@ export function NameCard({
       savedTimer.current = setTimeout(() => setSaved(false), 2000);
     }, SAVE_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [trimmed, tooShort, changed]);
+  }, [trimmed, changed]);
 
   useEffect(() => {
     return () => {
@@ -78,13 +77,12 @@ export function NameCard({
           </span>
         }
         hint={COPY.hint}
-        error={tooShort ? COPY.tooShort : undefined}
       >
         <Input
           value={value}
           placeholder={COPY.placeholder}
           onChange={(e) => {
-            setValue(e.target.value.replace(/[^a-z0-9_]/gi, "").toLowerCase());
+            setValue(sanitizeDisplayName(e.target.value));
             setSaved(false);
           }}
         />

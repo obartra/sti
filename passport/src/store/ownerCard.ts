@@ -25,6 +25,7 @@ import type { ResolvedView } from "../ui/public/PublicResolution.tsx";
 import type { ApiClient } from "../api/client.ts";
 import type { AliasRecord } from "./accountBlob.ts";
 import { avatarSrc, pseudonymFor, type AvatarConfig } from "../lib/avatars.ts";
+import { handleFromDisplayName } from "./displayName.ts";
 import { republishCard, sealCardPayload } from "./publish.ts";
 
 // The condom preferences that have a public label ("none" shows nothing).
@@ -121,9 +122,14 @@ export function withIdentity(
   account: { readonly handle?: string; readonly avatar: AvatarConfig },
 ): AliasRecord {
   if (identity === "main") {
+    // The account name is the internal display name, never shared. "Show my name"
+    // reveals a handle, so reduce it to the handle shape (Sam Jones -> sam_jones); a
+    // name with nothing usable falls back to the id-derived face, never the raw name.
+    const handle =
+      account.handle !== undefined ? handleFromDisplayName(account.handle) : "";
     return {
       ...record,
-      ...(account.handle !== undefined ? { handle: account.handle } : {}),
+      ...(handle ? { handle } : {}),
       avatar: account.avatar,
     };
   }

@@ -81,21 +81,26 @@ describe("create-account flow (doc 19)", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Shuffle a name" }),
     );
-    // A non-empty, handle-shaped name is filled in.
+    // A non-empty, name-shaped value is filled in (words and spaces, not a handle).
     expect(field.value.length).toBeGreaterThan(0);
-    expect(field.value).toMatch(/^[a-z0-9_]+$/);
+    expect(field.value).toMatch(/^[a-z]+( [a-z]+)*$/);
   });
 
-  it("shows an error if a name is started but too short (under 3 chars)", async () => {
+  it("keeps the display name a real name: uppercase and spaces survive, no minimum", async () => {
     render(<CreateFlow />);
-    await userEvent.type(
-      screen.getByLabelText("What should we call you?"),
-      "ab",
+    const field = screen.getByLabelText<HTMLInputElement>(
+      "What should we call you?",
     );
-    expect(screen.getByText("At least 3 characters.")).toBeInTheDocument();
+    await userEvent.type(field, "Sam Rivers");
+    // Mixed case and the space survive, unlike the lowercased, stripped handle charset.
+    expect(field.value).toBe("Sam Rivers");
+    // No minimum: a short name shows no error and never blocks submit.
+    await userEvent.clear(field);
+    await userEvent.type(field, "Jo");
+    expect(screen.queryByText(/at least .* character/i)).toBeNull();
     expect(
       screen.getByRole("button", { name: /create|continue|claim/i }),
-    ).toBeDisabled();
+    ).not.toBeDisabled();
   });
 });
 

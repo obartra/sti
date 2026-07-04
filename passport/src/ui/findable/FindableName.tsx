@@ -41,6 +41,9 @@ export interface PublicNamesProps {
    * removed, so its row shows the reason instead of a remove control. The server
    * enforces the same rule (doc 17); this is the matching UI. */
   pinnedName?: string | null | undefined;
+  /** A suggested starting value for the person's FIRST public name, derived from
+   * their display name (editable). Ignored once they hold at least one name. */
+  suggestedName?: string | undefined;
 }
 
 const NAME_ERROR: Record<VanityNameError, string> = {
@@ -60,14 +63,11 @@ const COPY = {
   // Shown in place of the add control once the list is full (doc 17 cap).
   atCap: "You have the maximum of 5.",
   cancel: "Cancel",
-  // Your name becomes public: one honest line up front.
-  lead: "Your name becomes public and searchable.",
-  // The consent disclosure (doc 17 launch-gate item 5): being findable means people
-  // can see you're here. Always-visible, never behind the expander. This is honest
-  // consent for an opt-in public feature, not a leaked attack surface.
-  harvest:
-    "A public name is listed openly, so anyone can see you have a passport here. That's the trade for being findable.",
-  sub: "Your status itself stays private. People still ask to see it, and you still approve.",
+  // The consent disclosure (doc 17 launch-gate item 5): one honest line up front, so
+  // being findable openly is a knowing choice. Stays visible, never behind the
+  // expander. This is honest consent for an opt-in public feature.
+  lead: "Your name becomes public, so anyone can see you have a passport here.",
+  sub: "Your status itself stays private. People still ask to see it, and you approve.",
   details: "What else this means",
   bullets: [
     "Remove a name and, after a short delay, anyone can claim it.",
@@ -99,6 +99,7 @@ export function PublicNames({
   names,
   ops,
   pinnedName = null,
+  suggestedName,
 }: PublicNamesProps) {
   const [adding, setAdding] = useState(false);
   const atCap = names.length >= MAX_PUBLIC_NAMES;
@@ -136,6 +137,7 @@ export function PublicNames({
           ops={ops}
           onRegistered={() => setAdding(false)}
           onCancel={() => setAdding(false)}
+          initialName={names.length === 0 ? (suggestedName ?? "") : ""}
         />
       ) : (
         <div className="pn__add">
@@ -222,12 +224,16 @@ function RegisterForm({
   ops,
   onRegistered,
   onCancel,
+  initialName = "",
 }: {
   ops: FindableOps;
   onRegistered: () => void;
   onCancel: () => void;
+  // A suggested starting value for a person's first handle, derived from their
+  // display name (editable). Empty for later handles or when nothing was derivable.
+  initialName?: string;
 }) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialName);
   const [busy, setBusy] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
 
@@ -403,8 +409,6 @@ function Consent() {
       </span>
       <div className="st__block-body">
         <div className="st__block-title">{COPY.lead}</div>
-        {/* The harvest cost stays visible (doc 17), not behind the expander. */}
-        <div className="st__block-lead">{COPY.harvest}</div>
         <div className="st__lockline">
           <span aria-hidden className="st__lockline-icon">
             <Lock size={13} />

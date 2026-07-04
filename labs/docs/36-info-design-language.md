@@ -1,12 +1,10 @@
 # 36 - The editorial design language (info.sti.care)
 
-## Status: BUILT (the info site runs on it; the app-side adoption is underway, owned by [37-app-editorial-adoption](37-app-editorial-adoption.md))
-
 The info site's visual language and style architecture. Same tokens as the app,
 different grammar: where the app is a product of cards and controls, the library
 is a publication. This doc owns the rules; the live rendering of every piece is
-the unlisted `/styleguide` page on the site itself. Doc 37 owns carrying the
-language to the app and the other surfaces; what is info-only is marked.
+the unlisted style-guide page on the site itself. Where a decision generalizes
+to the app or the other surfaces, that is noted, and what is info-only is marked.
 
 ## Why an editorial skin
 
@@ -15,77 +13,76 @@ approachable, and it must earn that through structure, not decoration. Tinted
 cards, pill chips, and icon tiles read app-like and bubbly at desktop; a
 publication reads through typographic hierarchy, hairline rules, density, and
 restraint. The skin changes the grammar while keeping the palette, spacing, and
-button primitives from `passport/src/design`, so the two surfaces still read as
-one brand.
+button primitives shared with the app, so the two surfaces still read as one
+brand.
 
 ## Type
 
 - **Display serif: Source Serif 4 SemiBold** (OFL), self-hosted as a single
-  latin woff2, headings only. Chosen over more literary serifs for its sturdy,
-  institutional register; it pairs naturally with Hanken Grotesk, which remains
-  the body and UI face everywhere.
-- The serif loads with a capsize-metric-tuned Georgia fallback (`size-adjust`
-  and overrides in `info/src/styles/fonts.css`), so the swap cannot reflow.
-- Scale (clamps interpolate 320px to 1120px viewports): display
-  `clamp(32px, 2.8vw + 23px, 54px)`, article title `clamp(27px, 1.7vw + 21px,
-  40px)`, section title `clamp(21px, 0.9vw + 18px, 28px)`, prose question 20px.
-  Sans: lead `clamp(16px, 0.4vw + 15px, 18px)`, body 16px on 1.65, eyebrow 12px
-  bold uppercase at 0.08em, micro 13px floor.
-- Reading measure: 66ch (`--measure`).
+  latin font file, headings only. Chosen over more literary serifs for its
+  sturdy, institutional register; it pairs naturally with Hanken Grotesk, which
+  remains the body and UI face everywhere.
+- The serif loads with a capsize-metric-tuned Georgia fallback, so the swap
+  cannot reflow.
+- A fluid type scale runs from a large display size at the top, down through
+  article title, section title, and prose question sizes, to body. The sans
+  scale runs from a lead size down through body (set on generous line height),
+  a small bold uppercase eyebrow with wide tracking, and a micro floor.
+- A comfortable reading measure of roughly 66 characters.
 - Motifs: a hairline rule opens every major section; index sections carry a
-  serif numeral eyebrow (`01`), the skin's one decorative accent.
+  serif numeral eyebrow (01), the skin's one decorative accent.
 
 ## Surfaces
 
-- The page is the surface: warm-50 everywhere, content structured by hairlines
-  (`--hairline` on the background, `--hairline-strong` inside white cards).
-- White cards are reserved for exactly two callout types, both 8px radius,
-  1px ink-200 border, no shadow: **urgent** (the PEP callout, with a 3px warm
-  left rule) and **action** (CTA blocks).
+- The page is the surface: the warm background everywhere, content structured
+  by hairlines (a lighter hairline on the background, a stronger one inside
+  white cards).
+- White cards are reserved for exactly two callout types, both with a small
+  radius, a thin ink border, and no shadow: **urgent** (the PEP callout, with a
+  warm left rule) and **action** (CTA blocks).
 - No tinted card surfaces, no icon tiles, no decorative gradients or glows, no
   shadows, no backdrop blur. Radius appears only on the two callouts and on
-  interactive controls (the passport button primitives keep their own).
+  interactive controls (the button primitives keep their own).
 
 ## Color
 
-- Ink-forward text: headings ink-900, body ink-700, meta ink-500. Ink-400 is
-  banned for copy (it fails AA on the warm background); it may only color
-  decorative strokes like row chevrons.
+- Ink-forward text: headings in the darkest ink, body in a mid ink, meta in a
+  lighter ink. The lightest ink is banned for copy (it fails AA on the warm
+  background); it may only color decorative strokes like row chevrons.
 - Teal appears only as: links, the primary button, focus rings, and the section
   numerals. It is never a surface.
-- **Status labels** are the word in uppercase 12px bold plus the heart glyph,
-  no background. The word takes a derived ink
-  (`color-mix` toward ink-900 in `info/src/styles/theme.css`) measured at or
-  above 4.5:1 on warm-50; the glyph keeps the raw status color. Word plus icon
-  stays mandatory so status reads in grayscale and for color-blind users.
-- Every text color choice is a token; raw hex exists only in the passport
-  tokens and the theme file, enforced by lint.
+- **Status labels** are the word in small bold uppercase plus the heart glyph,
+  no background. The word takes a derived ink pushed toward the darkest ink and
+  measured at or above 4.5:1 on the warm background; the glyph keeps the raw
+  status color. Word plus icon stays mandatory so status reads in grayscale and
+  for color-blind users.
+- Every text color choice is a token; raw hex exists only in the shared token
+  and theme definitions, enforced by lint.
 
 ## Density and rhythm
 
-- The 4px spacing tokens remain the base. Section rhythm is
-  `clamp(48px, 5vw + 32px, 88px)`; blocks inside a section sit on space-6.
+- The base spacing scale remains the base. Section rhythm is fluid, and blocks
+  inside a section sit on a consistent smaller step.
 - Hairline discipline: one rule per boundary, never two lines doing the same
   job, never a rule and a border-box edge together.
-- List rows are dense but touchable: condition rows 52px minimum, guide rows
-  padded on space-4.
+- List rows are dense but touchable: condition rows keep a comfortable touch
+  minimum, guide rows are padded.
 - Motion is hover and focus only; nothing moves layout.
 
 ## Layout
 
-- Frame: 1120px max (the app shell's width), gutters
-  `clamp(16px, 5vw, 40px)`.
-- **One viewport breakpoint: 900px** (shared with the app's desktop shell),
+- Frame: a fixed max width matching the app shell, with fluid gutters.
+- **One shared desktop breakpoint** (the same one the app's desktop shell uses),
   used only for chrome and page-grid composition. Everything content-level
-  responds to its **container** (`.l-zone`), not the viewport, so the same
-  component adapts whether it sits beside a rail or full-width. The style lint
-  enforces this split.
-- The 12-column grid (`.l-grid`) exists at 900px and up; below it, templates
-  are single-column and **source order is the phone priority order**. Desktop
-  repositions by grid placement only: no `display: contents`, no `order`, and
-  the only `display: none` is the header section nav below 900px.
-- 320px is the floor and is gated by the visual baselines: single column, full
-  gutters at 16px, fluid buttons that wrap their labels instead of clipping.
+  responds to its **container**, not the viewport, so the same component adapts
+  whether it sits beside a rail or full-width. The style lint enforces this
+  split.
+- The 12-column grid exists at desktop and up; below it, templates are
+  single-column and **source order is the phone priority order**. Desktop
+  repositions by grid placement only, without reordering tricks, and the only
+  thing hidden below desktop is the header section nav.
+- The narrow floor is gated by the visual baselines: single column, full
+  gutters, fluid buttons that wrap their labels instead of clipping.
 
 ## Templates and their one action
 
@@ -104,35 +101,33 @@ one brand.
 
 ## Style architecture
 
-- Entry: `info/src/styles/global.css` declares the cascade-layer order
-  `passport, theme, layout, components, utilities` and imports the passport
-  design CSS read-only into the lowest layer. Info-level tokens live in
-  `theme.css` under the theme layer; the frame and grid in `layout.css`; the
-  markdown body in `prose.css`; tiny helpers in `utilities.css`.
-- Components are `.astro` files with **scoped styles**, which are unlayered
-  and therefore final: global files never style component internals, and
-  components never redeclare tokens.
-- The only passport component classes used in info markup are the button
-  primitives (`.sti-btn*`), composed but never overridden; contexts that need
-  different behavior add a utility (`.u-btn-fluid`) on the element.
-- **Style lint** (`info/scripts/style-lint.mjs`, in the `check-info` gate): no
-  `style=` attributes, no raw hex outside the theme file, no viewport media
-  queries beyond the 900px chrome breakpoint.
+- The cascade is ordered in explicit layers, lowest to highest: the shared
+  design tokens, then theme, layout, components, and utilities. The shared
+  design CSS is imported read-only into the lowest layer. Info-level tokens
+  live in the theme layer; the frame and grid in the layout layer; the markdown
+  body and small helpers in their own files.
+- Components carry **scoped styles**, which are unlayered and therefore final:
+  global files never style component internals, and components never redeclare
+  tokens.
+- The only shared component classes used in info markup are the button
+  primitives, composed but never overridden; contexts that need different
+  behavior add a utility on the element rather than reaching into the primitive.
+- **Style lint** (in the info gate): no inline style attributes, no raw hex
+  outside the theme definition, no viewport media queries beyond the one shared
+  chrome breakpoint.
 
 ## The style guide page
 
-`/styleguide` renders every text style, color, and component with the real CSS:
-unlisted, `noindex`, but shipped, so it enters the lost-pixel corpus and the
-whole system regresses as one dense target. It is also the review artifact for
-adopting the language elsewhere.
+The style-guide page renders every text style, color, and component with the
+real CSS: unlisted and noindex, but shipped, so it enters the visual-baseline
+corpus and the whole system regresses as one dense target. It is also the
+review artifact for adopting the language elsewhere.
 
 ## What generalizes to the app, and what stays info-only
 
-Generalized (built, owned by
-[37-app-editorial-adoption](37-app-editorial-adoption.md)): the cascade-layer
-architecture over the shared tokens, the serif display voice, ink-forward
-color rules and derived AA status inks, hairline surface grammar, the
-container-query policy, the one-primary-action rule, and the style-lint
-guardrails; the app's editorial equivalents of cards and rows are its `.e-*`
-grammar. Info-only: the 66ch article measure and prose styles, the facts
-strip, and the publication templates.
+Generalizes to the app: the layered cascade over the shared tokens, the serif
+display voice, ink-forward color rules and derived AA status inks, the hairline
+surface grammar, the container-query policy, the one-primary-action rule, and
+the style-lint guardrails, with the app carrying its own editorial equivalents
+of cards and rows. Info-only: the article reading measure and prose styles, the
+facts strip, and the publication templates.

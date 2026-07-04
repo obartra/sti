@@ -70,16 +70,17 @@ How "not ready" is handled without a warning state.
 - PrEP and undetectable are equivalent HIV-protection paths, but **HIV-only**, never "fully safe." Other-STI recency is a separate axis.
 - **Labels/attributes show on gray too** (most useful when testing reassurance is absent) and are gated by **authorization**, never by badge color.
 
-## 4. Circles (groups)
+## 4. Groups
 
-- A **convenience layer over pairwise links**, not a live mutual-status feed, not a "clean club." Permanent or event-based.
-- **Membership is the sharing; no minimum group size** (supersedes the earlier ~5 floor, see doc 31). Joining a group is itself consenting to show your blue/gray color to its members, so a headcount protects nothing. No counts ("3 of 5" outs by elimination), no leaderboards, no door; joining/leaving/skipping looks ordinary. The one residual to respect: a color in a group named for a specific place or event carries more than a bare color, so group names are not forced to be descriptive.
-- **Per-group handle visibility** (private by default). Every group carries a universal "there may be additional private members" notice, so private membership is uninformative.
-- **Membership disclosure is per-person:** revealing a group exists never reveals its members; each member discloses only their own.
-- **The individual controls their own status disclosure in a group; the GROUP never overrides it.** There is no group-level switch that makes members' statuses visible (that would expose a member beyond their own choice and invert the consent model). Each member's status visibility inside a circle is that member's own setting. Any group-display preference can only ever operate *within* what each member already chose to share (it can hide, never reveal beyond the individual's setting). The min-group-5 rule is a separate anti-deanonymization floor that only ever *hides*. (Build note: a group-level "what members see: each person's status / hide statuses" toggle is drift and must be removed.)
-- **Discovery = member-initiated, link-scoped:** only someone you've already paired with can reveal a group + its join secret. No open search, no stranger discovery, no contact intersection.
-- **Anti-spam:** consensual pull + sticky declines + outbound rate-limiting. Not max-group caps.
-- Membership and the link graph are **client-defined and on-device only.**
+- A **convenience layer over pairwise links**, not a real-time alerting feed and not a "clean club." There is **one kind of group.** Whether it is a one-time **event** or a **recurring** meeting is only a cadence hint for partner-notify timing, never a second kind of group.
+- **Membership is the sharing; there is no minimum size and no door.** Joining a group is itself consenting to show your blue/gray color to its members, so a headcount protects nothing. No counts ("3 of 5" outs by elimination), no leaderboards, no join gate; joining, leaving, and skipping all look ordinary. The one residual to respect: a color in a group named for a specific place or event carries more than a bare color, so group names are never forced to be descriptive.
+- **Everything inside a group is fully visible to its members.** Every member sees the whole roster and each member's current color, refreshed on read. There are no hidden members, so there is no "additional private members" notice and no per-member visibility dial. You choose the **face** you appear under, your usual identity or a fresh handle, but you appear, visibly, as a member.
+- **The member controls their own disclosure; the group never overrides it.** Your color in a group is whatever your own status resolves to for the face you joined with; no group-level switch can reveal a member beyond what they chose by joining. Leaving and being removed are indistinguishable to the others: the roster just changes, with no mark and no reason shown, while the affected person can tell their own access ended.
+- **Membership disclosure is per-person:** revealing that a group exists never reveals who is in it; each member discloses only their own membership.
+- **Discovery is member-initiated and link-scoped.** A private group is reachable only through an invite an admin sends; a public group is reachable through its findable handle, which resolves to an opaque join pointer, never to the roster. No open search, no stranger discovery, no contact intersection.
+- **Roles:** the creator is the admin, and can invite people, revoke an invite before it is accepted, remove a member, and disband the group. A removal or a leave rotates the group key, so a removed member gets no future reads.
+- **Anti-spam:** consensual pull, sticky declines, and outbound rate-limiting, never max-group caps.
+- **The server never learns the group.** The group object (its handle, roster, and per-member wrapped key) is a sealed blob the server stores and serves exactly like a passport payload; only a member holding the group key can read the roster and the colors.
 
 ## 5. Identity & aliases (the canonical unit)
 

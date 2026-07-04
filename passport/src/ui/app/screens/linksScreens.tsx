@@ -3,6 +3,7 @@ import { LiveLinks } from "../../core/Privacy.aliases.tsx";
 import { PublicNames, type FindableOps } from "../../findable/FindableName.tsx";
 import { ShareLinkGuide } from "../../findable/ShareLinkGuide.tsx";
 import { avatarSrc } from "../../../lib/avatars.ts";
+import { handleFromDisplayName } from "../../../store/displayName.ts";
 import type { LinkShareContext } from "../../core/Privacy.aliases.share.tsx";
 import type { ScreenCtx, ScreenRenderers } from "./context.ts";
 import "../../connect/connect.css";
@@ -44,6 +45,9 @@ function publicNames(ctx: ScreenCtx) {
       // A name that is also the sign-in username (doc 32) is pinned: it cannot be
       // removed without turning the password off first.
       pinnedName={ctx.recoveryName}
+      // Seed the first handle's default from the internal display name, reduced to
+      // the handle shape (editable). The display name itself is never shared.
+      suggestedName={handleFromDisplayName(ctx.owner.handle ?? "")}
     />
   );
 }
