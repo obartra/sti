@@ -36,6 +36,7 @@ export function HomeScreen({
       tested={ownerState.testing.lastPanelDay !== null}
       onShare={openShare}
       onReport={() => nav.go("report")}
+      onFeelOff={() => nav.go("feel-off")}
       onViewAs={() => nav.go("a2-public", { self: true })}
       onPrivacy={() => nav.go("privacy")}
       onFindTesting={() => nav.go("care")}

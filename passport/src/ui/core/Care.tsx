@@ -6,6 +6,7 @@ import {
   Heart,
   Phone,
   Clock,
+  Eye,
 } from "../../design/icons.tsx";
 import { ActionRow } from "../editorial/ActionRow.tsx";
 import { cx } from "../../lib/cx.ts";
@@ -27,6 +28,8 @@ const COPY = {
     heymistr:
       "New to testing? Heymistr ships discreet at-home screening kits on a regular schedule.",
     heymistrCta: "Sign up",
+    feelOffTitle: "Something feel off?",
+    feelOffSub: "Pause and get checked, privately.",
     resourcesEyebrow: "Free and low-cost near you",
     // PEP is post-exposure and time-critical (under 72h), so it leads the resource
     // finders. Copy matches the public /exposed page for one voice across surfaces.
@@ -65,6 +68,9 @@ type CareBadge = "blue" | "gray";
 
 export interface CareProps {
   badge?: CareBadge;
+  /** Open the owner-only "something feel off?" pause-and-get-seen surface (doc 02).
+   * Absent for a logged-out viewer, who never sees it. */
+  onFeelOff?: (() => void) | undefined;
   onFindClinic?: (() => void) | undefined;
   onLearnOfficial?: (() => void) | undefined;
   onHeymistr?: (() => void) | undefined;
@@ -173,6 +179,7 @@ function LearnRows({
 
 export function Care({
   badge = "gray",
+  onFeelOff,
   onFindClinic,
   onLearnOfficial,
   onHeymistr,
@@ -193,6 +200,17 @@ export function Care({
       />
 
       {badge === "gray" && <HeymistrAside onHeymistr={onHeymistr} />}
+
+      {onFeelOff && (
+        <div className="care__rows">
+          <ActionRow
+            lead={<Eye size={18} />}
+            title={c.feelOffTitle}
+            sub={c.feelOffSub}
+            onClick={onFeelOff}
+          />
+        </div>
+      )}
 
       <div className="care__section">{c.resourcesEyebrow}</div>
       <div className="care__rows">

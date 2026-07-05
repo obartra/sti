@@ -1,5 +1,6 @@
 import { HomeScreen } from "./HomeScreen.tsx";
 import { Care } from "../../core/Care.tsx";
+import { FeelOff } from "../../core/FeelOff.tsx";
 import { Notifications } from "../../core/Notifications.tsx";
 import type { NotificationItem } from "../../core/Notifications.tsx";
 import { Privacy } from "../../core/Privacy.tsx";
@@ -118,9 +119,10 @@ export function notificationItems(
 
 export const coreRenderers: ScreenRenderers = {
   home: (ctx) => <HomeScreen {...ctx} />,
-  care: ({ owner }) => (
+  care: ({ owner, nav }) => (
     <Care
       badge={owner.badge}
+      onFeelOff={() => nav.go("feel-off")}
       onLearn={() => openResource(infoUrl("/"))}
       onLearnTesting={() => openResource(infoUrl("/testing"))}
       onFindClinic={() => openResource(RESOURCES.clinic)}
@@ -128,6 +130,23 @@ export const coreRenderers: ScreenRenderers = {
       onFindCondoms={() => openResource(RESOURCES.condoms)}
       onFindPep={() => openResource(RESOURCES.pep)}
       onFindPrep={() => openResource(RESOURCES.prep)}
+    />
+  ),
+  // "Something feel off?" (doc 02): pause for a transient episode and get seen. A
+  // manual pause can be lifted here; an auto-pause clearance window cannot (no
+  // onResume), matching the Home pause rules. Never reached logged out (app group).
+  "feel-off": ({ owner, setOwnerState }) => (
+    <FeelOff
+      paused={owner.paused || owner.autoPaused}
+      {...(owner.paused || owner.autoPaused
+        ? {}
+        : { onPause: () => setOwnerState((s) => ({ ...s, paused: true })) })}
+      {...(owner.paused && !owner.autoPaused
+        ? { onResume: () => setOwnerState((s) => ({ ...s, paused: false })) }
+        : {})}
+      onLearnSymptoms={() => openResource(infoUrl("/symptoms"))}
+      onFindTesting={() => openResource(RESOURCES.clinic)}
+      onFindPep={() => openResource(RESOURCES.pep)}
     />
   ),
   notifications: ({

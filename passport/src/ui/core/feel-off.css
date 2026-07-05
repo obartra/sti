@@ -1,0 +1,98 @@
+/* "Something feel off?" (doc 02 + 37): an owner-only pause-and-get-seen surface,
+   styled like the Care library it sits beside. Calm intro, one action, hairline
+   finder rows with muted stroke icons, a quiet footnote. Tokens only. */
+
+.fo {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.fo__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: clamp(26px, 7vw, 30px);
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+  color: var(--text-strong);
+}
+
+.fo__intro {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-body);
+}
+
+/* Not-paused: the one-tap pause and its quiet sub. */
+.fo__pause {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fo__pause-sub {
+  font-size: 13px;
+  color: var(--text-subtle);
+  text-align: center;
+}
+
+/* Already-paused: a calm confirmation callout holding the optional resume. */
+.fo__paused {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fo__paused-title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 17px;
+  color: var(--text-strong);
+}
+
+.fo__paused-sub {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-body);
+}
+
+.fo__resume {
+  align-self: flex-start;
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 4px 0 0;
+  font: inherit;
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.fo__section {
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  margin: 4px 0 0;
+}
+
+.fo__rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.fo__footer {
+  font-size: 11.5px;
+  color: var(--text-subtle);
+  line-height: 1.5;
+  text-align: center;
+  padding: 0 8px;
+}

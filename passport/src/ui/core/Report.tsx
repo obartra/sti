@@ -32,6 +32,9 @@ export interface ReportProps {
   onSavedHome?: (() => void) | undefined;
   /** Open the education explainer for an infection on info.sti.care (doc 34). */
   onLearn?: ((id: string) => void) | undefined;
+  /** Open the "something feel off?" pause-and-get-seen surface (doc 02), for when
+   * the owner is not ready to log a result and wants to pause instead. */
+  onFeelOff?: (() => void) | undefined;
   /** Persist the derived badge inputs (the prototype's setTweak). */
   onTweak?: ((tweak: Record<string, string>) => void) | undefined;
   /** Apply the reported result to the real owner state (the wired app). */
@@ -163,6 +166,7 @@ export function Report({
   onSavedPositive,
   onSavedHome,
   onLearn,
+  onFeelOff,
   onTweak,
   onApply,
   ownerState = INITIAL_OWNER_STATE,
@@ -193,6 +197,12 @@ export function Report({
   return (
     <div className="rp">
       <h1 className="rp__title">{c.title}</h1>
+
+      {onFeelOff && (
+        <button type="button" className="rp__feeloff" onClick={onFeelOff}>
+          Something feel off? Pause instead.
+        </button>
+      )}
 
       <BlueReadiness preview={preview} />
 

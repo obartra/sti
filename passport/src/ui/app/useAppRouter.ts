@@ -75,6 +75,7 @@ const SCREEN_PATH: Partial<Record<Screen, string>> = {
   scan: "/people/scan",
   wallet: "/wallet",
   care: "/care",
+  "feel-off": "/care/feel-off",
   notifications: "/notifications",
   "avatar-edit": "/avatar",
   groups: "/groups",
