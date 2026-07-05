@@ -101,6 +101,9 @@ export interface ScreenCtx extends GroupJoinActions {
   onForgetRequest: (aliasId: string) => void;
   /** Whether a session is active (a logged-in owner), for screens shown to both. */
   isLoggedIn: boolean;
+  /** Whether the app is running the seeded in-memory demo (doc 28), so screens with
+   * no honest demo behavior (the camera scanner) can simulate instead. */
+  demoMode: boolean;
   /** Enter the demo (the landing's "try the demo" action, doc 28). */
   onTryDemo: () => void;
   /**

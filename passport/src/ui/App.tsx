@@ -287,8 +287,7 @@ export function App({
   // The viewer's own access requests (device-local; see usePendingRequests). A
   // logged-out viewer's way back to a status the owner may later share; unrelated
   // to the session, so it works with no account.
-  const { requests: pendingRequests, forget: forgetRequest } =
-    usePendingRequests();
+  const { requests, forget } = usePendingRequests();
 
   // Device push for the partner-notify wake (slice 7); a Privacy toggle drives it.
   // In demo mode the real api/offlineSync stay untouched: networkSession hands the
@@ -345,9 +344,10 @@ export function App({
         contacts={session ? session.blob.contacts : []}
         faves={faves}
         onToggleFave={toggleFave}
-        pendingRequests={pendingRequests}
-        onForgetRequest={forgetRequest}
+        pendingRequests={requests}
+        onForgetRequest={forget}
         isLoggedIn={session !== null}
+        demoMode={demo.mode}
         onTryDemo={demo.onTry}
         groups={session ? (session.blob.groups ?? []) : []}
         onGroupCatchup={groupRefresh}

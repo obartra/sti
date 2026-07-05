@@ -138,6 +138,10 @@ buttons and no waiting on a real peer. The flows, and how the demo scripts each:
 
 - **See someone else's passport:** a canned peer card is in the seed, openable from the demo's
   connections, so "view a status" works with no second device.
+- **Scan a code in person:** the demo has no camera and nothing real to point at, so the Scan tile
+  simulates the read: a brief beat, then it opens the seeded peer's passport, exactly as scanning their
+  code would. The scan-to-connect path works on one device, and the Scan tile stays the real tile with
+  no demo-only button.
 - **Answer an ask (owner side):** the demo starts with one pending ask on a shared link. Approving it
   grants access and clears the row, so the owner's grant and its confirmation are both reachable.
 - **Knock as a viewer (viewer side):** a seeded gray peer link starts closed. Opening it, asking, and

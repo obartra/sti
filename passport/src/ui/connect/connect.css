@@ -458,6 +458,39 @@
   object-fit: cover;
 }
 
+/* The demo viewport has no camera feed, so it fills the frame with a calm, pulsing
+   placeholder holding the code glyph while the simulated scan resolves. */
+.qrs__viewport--demo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.qrs__demo-icon {
+  animation: qrs-demo-pulse 1.1s var(--ease-gentle) infinite;
+}
+
+@keyframes qrs-demo-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qrs__demo-icon {
+    animation: none;
+    opacity: 0.9;
+  }
+}
+
 .qrs__title {
   font-size: 15px;
   font-weight: var(--weight-bold);
