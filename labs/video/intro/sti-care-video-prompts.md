@@ -23,36 +23,50 @@ case, no em dashes, no exclamation points, teal as an accent only.
 
 ## Global negative prompt (append to every shot)
 
-> Avoid: any visible human faces, recognizable people, text, captions, subtitles, UI text,
-> app screenshots, logos, watermarks, brand marks, fast motion, camera shake, lens flares,
-> neon, high saturation, dark or moody grading, clinical or hospital setting, stock-ad
-> cheerfulness, dramatic lighting.
+> Avoid: text, letters, words, numbers, characters, calligraphy, writing, or symbols of any
+> language, on a screen or anywhere in frame; any visible human faces or recognizable
+> people; UI, app screenshots, logos, watermarks, brand marks; fast motion, camera shake,
+> lens flares, neon, high saturation, dark or moody grading, clinical or hospital setting,
+> stock-ad cheerfulness, dramatic lighting.
+
+Calibration note: a first test of Shot 2 came back with the model rendering glowing
+foreign-language calligraphy on the phone screen. The cause was the phrase "written marks"
+plus a negative that only said "text" (the model did not treat non-English glyphs as
+"text"). The fix, validated on a re-run, is baked in above and into the shots: describe a
+screen as an "abstract glow," never as "written marks" or anything that implies writing,
+and ban characters/glyphs of any language explicitly. If your Gemini interface has a
+separate negative-prompt field, paste the Avoid list there; it is enforced more strongly.
 
 ---
 
 ## SHOT 1 — cold open (beat 1, ~3s, 16:9 and 9:16)
 
 **Prompt:**
-> Extreme close-up of one hand holding a modern smartphone, a thumb slowly typing. Framed
-> over the shoulder from a high angle so that no face is ever visible, only the hand and the
-> phone. Cozy home interior softly blurred behind, warm morning daylight through a window
-> just out of frame. The phone screen emits a soft glow but its content is abstract and
-> indistinct, no readable interface. The camera pushes in a few centimeters, very slowly.
-> Calm, private, unhurried. [Global style block] [Global negative prompt]
+> Extreme close-up of one hand holding a modern smartphone, a thumb slowly and gently moving
+> over the glass. Framed over the shoulder from a high angle so that no face is ever visible,
+> only the hand and the phone. Cozy home interior softly blurred behind, warm morning
+> daylight through a window just out of frame. The screen shows only a soft, indistinct warm
+> glow, with no interface, no icons and no writing of any kind. The camera pushes in a few
+> centimeters, very slowly. Calm, private, unhurried. [Global style block] [Global negative
+> prompt]
 >
 > Audio: soft key taps, quiet room tone, a distant bird. No music.
 
 ## SHOT 2 — encryption (beat 2, ~5s, 16:9 and 9:16)
 
 **Prompt:**
-> Macro shot of a smartphone screen resting in an open hand. Fine particles of luminous
-> teal light (#2F9BB3) gently lift off the glass surface and drift upward, as though written
-> marks are dissolving into weightless glowing dust. No readable text at any point, only the
-> poetic transformation of soft glowing marks into rising, shimmering teal particles. Warm
-> off-white surroundings far out of focus. Slow, airy, weightless motion. Cinematic macro,
-> shallow depth of field. [Global style block] [Global negative prompt]
+> Macro cinematic shot of a smartphone lying flat on an open palm. The screen is dark and
+> glossy and shows only a soft, abstract glow of teal light (#2F9BB3), with no interface and
+> no writing of any kind. Slowly the glow breaks apart and fine particles of teal light lift
+> off the glass and drift upward, as if the light itself is dissolving into weightless,
+> shimmering dust. Warm off-white surroundings, far out of focus. Motion is slow, airy and
+> weightless. Shallow depth of field, cinematic macro, subtle film grain. [Global style
+> block] [Global negative prompt]
 >
 > Audio: a soft airy shimmer, quiet room tone. No music.
+>
+> Validated: this wording generated cleanly with no on-screen text (see
+> `assets/reference/shot2-encryption-validated.mp4`).
 
 ## SHOT 3 — the blind store (beat 3, ~6s, 16:9 and 9:16)
 

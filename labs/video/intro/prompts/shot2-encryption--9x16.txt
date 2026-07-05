@@ -1,6 +1,6 @@
 # shot2-encryption  (~5s, 9x16)
 
-Macro shot of a smartphone screen resting in an open hand. Fine particles of luminous teal light (#2F9BB3) gently lift off the glass surface and drift upward, as though written marks are dissolving into weightless glowing dust. No readable text at any point, only the poetic transformation of soft glowing marks into rising, shimmering teal particles. Warm off-white surroundings far out of focus. Slow, airy, weightless motion. Cinematic macro, shallow depth of field.
+Macro cinematic shot of a smartphone lying flat on an open palm. The screen is dark and glossy and shows only a soft, abstract glow of teal light (#2F9BB3), with no interface and no writing of any kind. Slowly the glow breaks apart and fine particles of teal light lift off the glass and drift upward, as if the light itself is dissolving into weightless, shimmering dust. Warm off-white surroundings, far out of focus. Motion is slow, airy and weightless. Shallow depth of field, cinematic macro, subtle film grain.
 
 FORMAT: aspect ratio 9:16, vertical, composed for a phone screen. Keep the subject centered and lower in frame, leaving clear negative space in the upper third for a caption added later.
 
@@ -8,4 +8,4 @@ STYLE: calm, warm, editorial, cinematic, minimalist. Soft natural daylight, gent
 
 AUDIO: a soft airy shimmer, quiet room tone. No music.
 
-AVOID: any visible human faces, recognizable people, text, captions, subtitles, UI text, app screenshots, logos, watermarks, brand marks, fast motion, camera shake, lens flares, neon, high saturation, dark or moody grading, clinical or hospital setting, stock-ad cheerfulness, dramatic lighting.
+AVOID: text, letters, words, numbers, characters, calligraphy, writing, or symbols of any language, on a screen or anywhere in frame; any visible human faces or recognizable people; UI, app screenshots, logos, watermarks, brand marks; fast motion, camera shake, lens flares, neon, high saturation, dark or moody grading, clinical or hospital setting, stock-ad cheerfulness, dramatic lighting.
