@@ -98,6 +98,9 @@ vulncheck: ## Server: govulncheck over the stdlib + deps the code calls
 dupe: ## Report substantial copy-paste clones in server + client source (informational lens, never a gate)
 	npx --yes jscpd@$(JSCPD_VERSION) --config .jscpd.json server/internal server/cmd passport/src info/src
 
+dead-css: ## Report CSS classes + design tokens defined but never referenced (informational lens, never a gate)
+	cd passport && node scripts/dead-css.mjs
+
 smoke: ## Server: build, boot a throwaway instance, run the smoke script
 	cd server && go build -o /tmp/stiapi ./cmd/stiapi
 	cd server && bash -c 'STI_DECOY_SECRET="$$(openssl rand -hex 32)" STI_ADDR=127.0.0.1:8080 STI_DB_PATH="$$(mktemp -u).db" /tmp/stiapi & srv=$$!; trap "kill $$srv 2>/dev/null" EXIT; for _ in $$(seq 1 40); do curl -sf http://127.0.0.1:8080/healthz >/dev/null && break; sleep 0.25; done; bash deploy/smoke.sh http://127.0.0.1:8080'
