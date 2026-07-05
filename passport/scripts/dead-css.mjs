@@ -45,7 +45,8 @@ for (const f of cssFiles) {
       for (const m of sel.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g))
         if (!classDefs.has(m[1])) classDefs.set(m[1], f);
     }
-    depth += (line.match(/\{/g) || []).length - (line.match(/\}/g) || []).length;
+    depth +=
+      (line.match(/\{/g) || []).length - (line.match(/\}/g) || []).length;
     if (depth < 0) depth = 0;
   }
 }
@@ -59,7 +60,8 @@ for (const f of cssFiles)
   for (const m of readFileSync(f, "utf8").matchAll(/(?<![\w-])(--[\w-]+)\s*:/g))
     if (!tokenDefs.has(m[1])) tokenDefs.set(m[1], f);
 
-const wordRe = (w) => new RegExp(`(?<![\\w-])${w.replace(/-/g, "\\-")}(?![\\w-])`);
+const wordRe = (w) =>
+  new RegExp(`(?<![\\w-])${w.replace(/-/g, "\\-")}(?![\\w-])`);
 const underDynPrefix = (cls) =>
   [...dynPrefixes].some((p) => cls.startsWith(p) && cls !== p);
 
@@ -77,9 +79,13 @@ for (const [tok, file] of tokenDefs) {
     deadTokens.push([tok, relative(process.cwd(), file)]);
 }
 
-console.log(`# CSS classes defined but never referenced (${deadClasses.length})`);
+console.log(
+  `# CSS classes defined but never referenced (${deadClasses.length})`,
+);
 for (const [c, f] of deadClasses.sort()) console.log(`  .${c}  <-  ${f}`);
-console.log(`\n# Tokens defined but never used via var() (${deadTokens.length})`);
+console.log(
+  `\n# Tokens defined but never used via var() (${deadTokens.length})`,
+);
 for (const [t, f] of deadTokens.sort()) console.log(`  ${t}  <-  ${f}`);
 console.log(
   "\nLens, not a gate: confirm each (a computed class name can look dead).",
