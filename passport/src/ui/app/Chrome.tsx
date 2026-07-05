@@ -72,6 +72,7 @@ export interface ChromeProps extends GroupJoinActions {
   pendingRequests: ScreenCtx["pendingRequests"];
   onForgetRequest: ScreenCtx["onForgetRequest"];
   isLoggedIn: ScreenCtx["isLoggedIn"];
+  demoMode: ScreenCtx["demoMode"];
   onTryDemo: ScreenCtx["onTryDemo"];
   onAcceptContactInvite: ScreenCtx["onAcceptContactInvite"];
   onIngestContactReturn: ScreenCtx["onIngestContactReturn"];
@@ -196,6 +197,7 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     pendingRequests: props.pendingRequests,
     onForgetRequest: props.onForgetRequest,
     isLoggedIn: props.isLoggedIn,
+    demoMode: props.demoMode,
     onTryDemo: props.onTryDemo,
     onAcceptContactInvite: props.onAcceptContactInvite,
     onIngestContactReturn: props.onIngestContactReturn,
