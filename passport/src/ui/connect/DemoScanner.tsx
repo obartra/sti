@@ -31,7 +31,10 @@ export function DemoScanner({ onResult, onBack }: DemoScannerProps) {
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
   useEffect(() => {
-    const timer = setTimeout(() => onResultRef.current(DEMO_SCAN_LINK), SCAN_DELAY_MS);
+    const timer = setTimeout(
+      () => onResultRef.current(DEMO_SCAN_LINK),
+      SCAN_DELAY_MS,
+    );
     return () => clearTimeout(timer);
   }, []);
 

@@ -22,8 +22,6 @@ describe("DemoScanner", () => {
   it("shows the scanner chrome and a close control", () => {
     render(<DemoScanner onResult={vi.fn()} onBack={vi.fn()} />);
     expect(screen.getByText("Scan a code")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Close" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
   });
 });
