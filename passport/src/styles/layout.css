@@ -2,10 +2,13 @@
    app-only document frame lives in document.css. Grid vocabulary joins as
    screens migrate. */
 
-/* A full-viewport scroll surface: mobile sub-screens and the public canvas. */
+/* A full-viewport scroll surface: mobile sub-screens and the public canvas. In
+   demo mode the fixed banner reserves --demo-inset at the top, so the surface
+   starts below it (default 0: no banner, no offset). */
 .l-surface {
   position: absolute;
   inset: 0;
+  top: var(--demo-inset, 0px);
   overflow-y: auto;
   background: var(--surface-app);
 }
