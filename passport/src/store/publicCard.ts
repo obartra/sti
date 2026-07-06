@@ -20,12 +20,12 @@ import {
 import { decodeVersioned, isValidHandle } from "./codec.ts";
 
 // One wire schema, parsed by exact version: a payload whose `v` is not this
-// version fails closed. v2 is the only shape we accept; v1 (the pre-avatar shape,
-// already published to the live store) is intentionally no longer parsed, so a
-// stale v1 link resolves to gray until the owner's next edit republishes it. We
-// keep the number at 2 (not reset to 1) so it stays monotonic with what is in the
-// wild and a version number never denotes two different shapes.
-const SCHEMA_VERSION = 2;
+// version fails closed. v3 is the only shape we accept; earlier shapes (v1
+// pre-avatar, v2 pre-freshness) are intentionally no longer parsed, so a stale
+// older link resolves to gray until the owner's next edit or app-open republishes
+// it. The number stays monotonic with what is in the wild, so a version never
+// denotes two different shapes.
+const SCHEMA_VERSION = 3;
 
 const BADGE_STATES: readonly BadgeState[] = ["blue", "gray"];
 // Keyed by the union so a new ProtectionLabel fails to compile here until it is
@@ -53,6 +53,11 @@ interface PublishedCard {
   // so the avatar is no longer a cross-alias correlation surface. Optional: a card
   // with no avatar resolves to a handle-derived stand-in.
   readonly avatar?: AvatarConfig;
+  // The epoch day a BLUE card's freshness lapses (last panel + the testing window).
+  // Present only on blue cards. It rides inside the sealed block, so it is invisible
+  // to the blind server; a viewer reads it to fail a stale blue closed to gray
+  // (applyFreshness). It is never rendered, so no "expires on" date is shown.
+  readonly freshUntil?: number;
 }
 
 function isBadgeState(x: unknown): x is BadgeState {
@@ -79,6 +84,11 @@ export function serializePublicCard(card: ResolvedView): Bytes {
     handle: card.identity.handle,
     // Omit entirely when absent so a no-avatar card is byte-clean.
     ...(card.avatar ? { avatar: card.avatar } : {}),
+    // Carry the freshness deadline only on blue (the only card that can go
+    // stale-blue); a gray card is already fail-closed, so it needs none.
+    ...(card.state === "blue" && card.freshUntil !== undefined
+      ? { freshUntil: card.freshUntil }
+      : {}),
   };
   return utf8ToBytes(JSON.stringify(wire));
 }
@@ -113,5 +123,46 @@ export function parsePublicCard(bytes: Bytes): ResolvedView {
     ...(isAvatarConfig(o.avatar)
       ? { avatar: o.avatar, avatarSrc: avatarSrc(o.avatar) }
       : {}),
+    // Carry the freshness deadline through when present and well-formed on a blue
+    // card; a missing or malformed value is simply absent, which applyFreshness
+    // treats as an undeclared window (passes through, since only a deadline-carrying
+    // blue can be stale). Every real blue card carries a valid one.
+    ...(o.state === "blue" && isEpochDay(o.freshUntil)
+      ? { freshUntil: o.freshUntil }
+      : {}),
+  };
+}
+
+/** A non-negative integer epoch day. */
+function isEpochDay(x: unknown): x is number {
+  return typeof x === "number" && Number.isInteger(x) && x >= 0;
+}
+
+/**
+ * Fail a stale BLUE card closed to gray at read time (doc 02 "never stale-blue").
+ * A blue card that carries a freshness deadline is valid only while
+ * `today <= freshUntil`; once past it, the card collapses to its gray form: state
+ * gray, the blue-only headline route dropped, identity and attribute labels kept
+ * (labels show on gray too), so it renders like any other gray. Enforcement is
+ * scoped to cards that DECLARE a deadline, which is every real blue card
+ * (deriveOwnerCard always stamps one) and the only card a stale-blue could ever be;
+ * a sealed, authenticated card a viewer receives cannot be a blue-without-deadline,
+ * so a blue with no deadline (only ever a hand-built test view) passes through. Null
+ * passes through (the uniform gray-nothing); gray cards are unchanged.
+ */
+export function applyFreshness(
+  view: ResolvedView | null,
+  nowDay: number,
+): ResolvedView | null {
+  if (view?.state !== "blue" || view.freshUntil === undefined) return view;
+  if (nowDay <= view.freshUntil) return view;
+  // Past the deadline: fail closed to the gray form. Drop the blue-only route and the
+  // deadline; keep identity + labels so it reads like a natively-gray card.
+  return {
+    state: "gray",
+    route: null,
+    identity: view.identity,
+    ...(view.labels ? { labels: view.labels } : {}),
+    ...(view.avatar ? { avatar: view.avatar, avatarSrc: view.avatarSrc } : {}),
   };
 }

@@ -103,6 +103,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
     // No link in these tests has an expiry, so the in-memory pre-check never fires
     // this; return the current blob unchanged for completeness.
     sweepExpiredLinks: () => Promise.resolve({ root, blob } as OwnerSession),
+    refreshLiveLinks: () => Promise.resolve(),
     // Faithful to the controller contract: a public account's link carries the
     // key in the fragment, a private ("link") account's does not.
     shareLink: (session) => {

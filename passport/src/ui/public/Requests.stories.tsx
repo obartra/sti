@@ -1,6 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Requests } from "./Requests.tsx";
 import type { ResolvedView } from "./PublicResolution.tsx";
+import { todayEpochDay } from "../../core/clock.ts";
+
+// Anchor the "asked" days to today so the relative label ("2 days ago") is stable
+// across calendar days: with a fixed epoch day the label drifts with the wall clock
+// and the screenshot diffs on a boundary. `at` and today move together, so the
+// rendered text never changes.
+const TODAY = todayEpochDay();
 
 // The viewer's own list of access requests they've made: the way back for a
 // logged-out viewer. A ready row resolves to a card; a not-yet row stays a calm
@@ -33,14 +40,14 @@ export const Empty: Story = {
 
 export const Waiting: Story = {
   args: {
-    requests: [{ id: ID_A, at: 0 }],
+    requests: [{ id: ID_A, at: TODAY - 1 }],
     resolve: () => Promise.resolve(null),
   },
 };
 
 export const Shared: Story = {
   args: {
-    requests: [{ id: ID_A, at: 0 }],
+    requests: [{ id: ID_A, at: TODAY - 3 }],
     resolve: () => Promise.resolve(SHARED),
   },
 };
@@ -48,8 +55,8 @@ export const Shared: Story = {
 export const Mixed: Story = {
   args: {
     requests: [
-      { id: ID_A, at: 0 },
-      { id: ID_B, at: 0 },
+      { id: ID_A, at: TODAY - 2 },
+      { id: ID_B, at: TODAY - 5 },
     ],
     resolve: (id) => Promise.resolve(id === ID_A ? SHARED : null),
   },

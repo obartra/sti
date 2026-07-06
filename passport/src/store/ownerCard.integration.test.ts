@@ -12,13 +12,19 @@ import {
   republishOwnerCard,
 } from "./index.ts";
 import type { OwnerState } from "../core/badge.ts";
-import { NOW_DAY, daysAgo } from "../core/badge.fixtures.ts";
+import { todayEpochDay } from "../core/clock.ts";
 import type { AliasRecord } from "./accountBlob.ts";
 import { startApi, type Harness } from "../test-support/serverHarness.ts";
 
+// Anchor to the real clock, not a frozen fixture day: resolveAlias recomputes card
+// freshness against today (doc 02), so a card published as of a fixed 2024 day would
+// resolve stale-gray. NOW_DAY is today; the panel is 10 days back, well within the
+// 90-day window, so the card is genuinely fresh through the resolve.
+const NOW_DAY = todayEpochDay();
+
 const blue: OwnerState = {
   testing: {
-    lastPanelDay: daysAgo(10),
+    lastPanelDay: NOW_DAY - 10,
     corePanelComplete: true,
     exposedSitesCovered: true,
   },

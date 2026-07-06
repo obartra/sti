@@ -191,6 +191,13 @@ export interface SessionController extends GroupMembershipController {
    */
   sweepExpiredLinks(session: OwnerSession): Promise<OwnerSession>;
   /**
+   * Re-seal every still-live link's card at today's day (republish-on-open, doc 02),
+   * so a snapshot that has aged out of or into blue is brought current for viewers
+   * without waiting for the owner's next edit. Read-only on the blob, so it returns
+   * nothing; best-effort at the call site.
+   */
+  refreshLiveLinks(session: OwnerSession): Promise<void>;
+  /**
    * Persist a new owner state (a reported result, a pause), republish every
    * alias so the badge propagates, and return the session with the updated blob.
    */
@@ -473,7 +480,7 @@ function blobMethods(
   accounts: AccountManager,
 ): Pick<
   SessionController,
-  "setProfile" | "setOwnerState" | "sweepExpiredLinks"
+  "setProfile" | "setOwnerState" | "sweepExpiredLinks" | "refreshLiveLinks"
 > {
   return {
     setProfile: async (session, profile) => ({
@@ -488,6 +495,8 @@ function blobMethods(
       root: session.root,
       blob: await accounts.sweepExpiredLinks(session.root),
     }),
+    // Read-only on the blob (the badge is derived), so it folds nothing back.
+    refreshLiveLinks: (session) => accounts.refreshLiveLinks(session.root),
   };
 }
 

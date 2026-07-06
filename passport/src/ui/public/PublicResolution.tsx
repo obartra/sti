@@ -31,6 +31,11 @@ export interface ResolvedView {
    * (a v1 payload) falls back to the handle-derived avatar. */
   avatar?: AvatarConfig;
   avatarSrc?: string;
+  /** The epoch day a BLUE card's freshness lapses (last panel + the testing window).
+   * Present only on blue cards; it is what lets a viewer fail a stale blue closed to
+   * gray at read time, so a passive owner's card never renders stale-blue. Never
+   * shown; the resolver reads it and drops it. */
+  freshUntil?: number;
 }
 
 export interface PublicResolutionProps {

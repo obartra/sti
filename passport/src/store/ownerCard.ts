@@ -17,6 +17,7 @@
 import {
   computeBadge,
   umbrellaRoutePresent,
+  TESTING_WINDOW_DAYS,
   type OwnerState,
   type CondomPreference,
 } from "../core/badge.ts";
@@ -61,11 +62,28 @@ export function deriveOwnerCard(
     route = umbrellaRoutePresent(state) ? "hiv" : "condoms_always";
   }
 
+  // A blue card carries the epoch day its freshness lapses (last panel + the testing
+  // window), so a viewer can fail a stale blue closed to gray at read time even if
+  // the owner never republishes (see applyFreshness). Blue guarantees a real
+  // lastPanelDay (testedInWindow requires one), so the deadline is always defined.
+  // Gray cards carry none: gray is already the fail-closed state.
+  const freshUntil =
+    badge === "blue" && state.testing.lastPanelDay !== null
+      ? { freshUntil: state.testing.lastPanelDay + TESTING_WINDOW_DAYS }
+      : {};
+
   // Carry the owner's avatar (config + its rendered src) so a viewer sees the look
   // the owner built, not a handle-derived stand-in. Symmetric with parsePublicCard,
   // so a published card round-trips to exactly this view.
   const avatarFields = avatar ? { avatar, avatarSrc: avatarSrc(avatar) } : {};
-  return { state: badge, labels, route, identity: { handle }, ...avatarFields };
+  return {
+    state: badge,
+    labels,
+    route,
+    identity: { handle },
+    ...freshUntil,
+    ...avatarFields,
+  };
 }
 
 /**
