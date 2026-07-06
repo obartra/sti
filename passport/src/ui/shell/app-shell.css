@@ -6,9 +6,12 @@
 .app-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  /* In demo mode the fixed banner reserves --demo-inset at the top: shift the
+     column down by it and shrink the min-height to match, so the bottom tab bar
+     stays on screen (default 0: no banner, no offset). */
+  margin: var(--demo-inset, 0px) auto 0;
+  min-height: calc(100dvh - var(--demo-inset, 0px));
   max-width: 480px;
-  margin: 0 auto;
   background: var(--surface-app);
 }
 .app-shell__content {

@@ -33,6 +33,7 @@ import {
   demoCircleMethods,
   demoKnocks,
   demoUrl,
+  demoVanityNames,
 } from "./demoOwner.ts";
 import { groupInviteUrl } from "../groupInvite.ts";
 import type { OwnerState } from "../../core/badge.ts";
@@ -452,12 +453,7 @@ export function createDemoController(): SessionController {
       Promise.resolve({ sent: [], skipped: [], failed: [] }),
     hasPartnerNudge: () => Promise.resolve(false),
     ...demoCircleMethods(getBlob, setBlob, session),
-    registerVanityName: (s) =>
-      Promise.resolve({ session: s, result: "unavailable" as const }),
-    checkVanityName: () => Promise.resolve("taken" as const),
-    // Release takes a name (doc 17), but the demo holds no public names, so it
-    // ignores the name and returns the session unchanged.
-    releaseVanityName: (s) => Promise.resolve(s),
+    ...demoVanityNames(getBlob, setBlob, session),
     ...demoRecovery(getBlob, setBlob, session),
     ...demoGroups(getBlob, setBlob, session),
     ...demoGroupMembership(getBlob, setBlob, session),

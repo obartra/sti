@@ -8,6 +8,9 @@
 .desk-shell {
   position: absolute;
   inset: 0;
+  /* In demo mode the fixed banner reserves --demo-inset at the top; start the
+     shell below it (default 0: no banner, no offset). */
+  top: var(--demo-inset, 0px);
   display: flex;
   background: var(--surface-app);
   color: var(--text-body);
