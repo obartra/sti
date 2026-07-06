@@ -435,6 +435,8 @@ export function createDemoController(): SessionController {
       return session();
     },
     sweepExpiredLinks: () => session(),
+    // No server to republish to; the demo card is always derived live anyway.
+    refreshLiveLinks: () => Promise.resolve(),
     setOwnerState: async (_s, state) => {
       blob = { ...blob, state };
       return session();

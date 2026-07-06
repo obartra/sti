@@ -41,6 +41,7 @@ import {
   wrapGroupKey,
   type GroupKey,
 } from "./groupCrypto.ts";
+import { applyFreshness } from "./publicCard.ts";
 import {
   parseGroupBlobForMember,
   parseGroupBlobWithKg,
@@ -466,7 +467,13 @@ async function readRosterCards(
       const bytes = await api.getAlias(entry.cardId).catch(() => null);
       return {
         cardId: entry.cardId,
-        card: bytes === null ? null : await openGroupCard(Kg, bytes),
+        // Fail a stale blue closed to gray at read time (doc 02), same as an alias
+        // resolve: a member's card is the same sealed snapshot, so a blue whose
+        // window has lapsed must render gray until that member republishes.
+        card:
+          bytes === null
+            ? null
+            : applyFreshness(await openGroupCard(Kg, bytes), todayEpochDay()),
         isAdmin: entry.cardId === obj.adminCardId,
         isSelf: entry.cardId === group.myCardId,
       };

@@ -25,11 +25,13 @@ function memoryStorage(): StorageLike {
   };
 }
 
+// A blue card carries a freshness deadline; a far-future one stays blue at read time.
 const view: ResolvedView = {
   state: "blue",
   labels: ["hiv"],
   route: "hiv",
   identity: { handle: "robin" },
+  freshUntil: 900000,
 };
 
 const GOOD_ID = "A".repeat(43);
@@ -87,6 +89,19 @@ describe("backend store resolveAlias", () => {
     const { payload, key } = await sealedFor(view);
     const store = createBackendStore(stubApi(() => Promise.resolve(payload)));
     expect(await store.resolveAlias({ id: GOOD_ID, key })).toEqual(view);
+  });
+
+  it("fails a stale blue closed to gray at read time (doc 02, never stale-blue)", async () => {
+    // A blue snapshot whose freshness deadline is long past must not render blue,
+    // even though it decrypts cleanly: the read-time gate downgrades it to gray.
+    const stale: ResolvedView = { ...view, freshUntil: 1 };
+    const { payload, key } = await sealedFor(stale);
+    const store = createBackendStore(stubApi(() => Promise.resolve(payload)));
+    const resolved = await store.resolveAlias({ id: GOOD_ID, key });
+    expect(resolved?.state).toBe("gray");
+    expect(resolved?.route).toBeNull();
+    // Identity is kept, so it reads like any other gray card of that person.
+    expect(resolved?.identity.handle).toBe("robin");
   });
 
   it("returns null for a miss (server returned a decoy)", async () => {

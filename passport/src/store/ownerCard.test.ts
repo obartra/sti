@@ -17,6 +17,9 @@ const tested = {
   exposedSitesCovered: true,
 };
 
+// A blue card carries its freshness deadline: last panel + the 90-day window.
+const FRESH_UNTIL = daysAgo(10) + 90;
+
 // Base: blue via PrEP, no public condom preference.
 function state(over: Partial<OwnerState> = {}): OwnerState {
   return {
@@ -44,6 +47,7 @@ describe("deriveOwnerCard", () => {
       labels: ["hiv"],
       route: "hiv",
       identity: { handle: "robin" },
+      freshUntil: FRESH_UNTIL,
     });
   });
 
@@ -71,6 +75,7 @@ describe("deriveOwnerCard", () => {
       labels: ["condoms_always"],
       route: "condoms_always",
       identity: { handle: "sam" },
+      freshUntil: FRESH_UNTIL,
     });
   });
 
@@ -193,6 +198,7 @@ describe("deriveAliasCard (badge + per-alias face)", () => {
       labels: ["hiv"],
       route: "hiv",
       identity: { handle: pseudonymFor(r.id) },
+      freshUntil: FRESH_UNTIL,
     });
   });
 
@@ -206,6 +212,7 @@ describe("deriveAliasCard (badge + per-alias face)", () => {
       identity: { handle: "meow" },
       avatar,
       avatarSrc: avatarSrc(avatar),
+      freshUntil: FRESH_UNTIL,
     });
   });
 });

@@ -5,7 +5,8 @@
 
 import type { ApiClient } from "../api/client.ts";
 import { importAesKey, openSized, base64urlToBytes } from "../crypto/index.ts";
-import { parsePublicCard } from "./publicCard.ts";
+import { parsePublicCard, applyFreshness } from "./publicCard.ts";
+import { todayEpochDay } from "../core/clock.ts";
 import { knock } from "./knock.ts";
 import { redeemGrant } from "./grant.ts";
 import { browserRequesterSecret } from "./requesterStore.ts";
@@ -37,7 +38,10 @@ export function createBackendStore(
       const payload = await api.getAlias(id);
       const aesKey = await importAesKey(base64urlToBytes(key));
       const plain = await openSized(aesKey, payload);
-      return parsePublicCard(plain);
+      // Fail a stale blue closed to gray at read time (doc 02): the sealed card is a
+      // snapshot from the owner's last publish, so a blue whose 90-day window has
+      // since lapsed must not render blue. Gray/null pass through unchanged.
+      return applyFreshness(parsePublicCard(plain), todayEpochDay());
     } catch {
       // Every failure path lands here and renders the same uniform null state:
       // an unreachable or shed server, a miss (the server returned a decoy), a

@@ -198,9 +198,16 @@
   alias and shows **no status** on the pass face (link carrier; resolution gates downstream).
   **Live-status format** shows blue/gray and auto-updates and is **public-aliases only** (it
   displays status + pings the wallet provider on a schedule).
-- **LOCKED. Fail closed to gray.** Blue is valid only on a fresh confirmed read; staleness or an
-  unreachable server → **gray, never stale-blue.** Staleness is **not** a distinct visible state
-  and there is **no** owner-facing "couldn't refresh" message (dropped as unnecessary).
+- **LOCKED, BUILT. Fail closed to gray.** Blue is valid only on a fresh confirmed read; staleness or
+  an unreachable server → **gray, never stale-blue.** The published card is a sealed snapshot whose
+  badge ages with the wall clock, so two mechanisms keep it honest. **Read-time recompute:** a blue
+  card carries the epoch day its freshness lapses (last panel + the 90-day window) inside the sealed
+  block; the viewer recomputes on resolve and downgrades a past-deadline blue to gray, so a passive
+  owner's card is never stale-blue even if never republished. **Republish-on-open:** the owner's app
+  re-seals every live link at today's day on open (once per day), so a snapshot that has aged into or
+  out of blue is brought current without waiting for the owner's next edit. Staleness is **not** a
+  distinct visible state (the deadline is read, never shown) and there is **no** owner-facing
+  "couldn't refresh" message. An unreachable/corrupt/expired-link read still fails closed to gray.
 - **LOCKED. All shareable artifacts inherit every badge rule** (two-state, handle+avatar never a
   name, logo, boolean precision, no dates/streak/stamp/count). Render the alias URL as text beside
   the QR for accessibility, public/QR-carrier passes only.

@@ -23,9 +23,13 @@ import {
 import { todayEpochDay, nowMs } from "../core/clock.ts";
 import { DEFAULT_AVATAR, isAvatarConfig } from "../lib/avatars.ts";
 import { createAccountSync, type AccountSync } from "./accountSync.ts";
-import { republishOwnerCard } from "./ownerCard.ts";
 import { revokeAlias } from "./publish.ts";
 import { isValidHandle } from "./codec.ts";
+import {
+  sweepExpired,
+  republishLiveLinks,
+  linkUpkeepMethods,
+} from "./accountLinks.ts";
 import { normalizeDisplayName } from "./displayName.ts";
 import {
   isSharingMode,
@@ -174,6 +178,12 @@ export interface AccountManager extends GroupMembershipAccounts {
    * gap so expiry no longer waits for the next setOwnerState.
    */
   sweepExpiredLinks(root: RootKey): Promise<AccountBlob>;
+  /**
+   * Re-seal every still-live link's card at TODAY's day (republish-on-open, doc 02),
+   * so a snapshot that has aged out of (or into) blue is brought current for viewers
+   * without the owner's next edit. Read-only on the blob (the badge is derived).
+   */
+  refreshLiveLinks(root: RootKey): Promise<void>;
 }
 
 // A brand-new account: empty links, default avatar, private (link) sharing. The
@@ -315,68 +325,6 @@ function withAddedFindable(
     ...withFindables(blob, findables),
     aliases: [...blob.aliases.filter((a) => a.id !== alias.id), alias],
   };
-}
-
-// A link with an expiry is expired once now reaches its instant; a null/absent
-// expiry (until-revoked) never is. Times are absolute epoch ms (doc 16). Shared by
-// the sweep and the republish-skip so an expired link is treated the same.
-function isExpired(expiresAt: number | null | undefined, now: number): boolean {
-  return expiresAt !== null && expiresAt !== undefined && now >= expiresAt;
-}
-
-// Sweep expired links: overwrite each expired alias / contact link to garbage
-// (revoke) so it stops resolving, then return the blob carrying only the live
-// links plus the new state. Revoke runs BEFORE the records are dropped so a link
-// always still has a capability to kill it; "expired" therefore means "no future
-// reads", enforced whenever the owner next acts. (A fully passive owner leaves
-// links live until a later app-load sweep; tracked as a follow-up.)
-async function sweepExpired(
-  api: ApiClient,
-  blob: AccountBlob,
-  state: OwnerState,
-  now: number,
-): Promise<AccountBlob> {
-  await Promise.all([
-    ...blob.contacts
-      .filter((c) => isExpired(c.expiresAt, now))
-      .map((c) => revokeAlias(api, c.alias)),
-    ...blob.aliases
-      .filter((a) => isExpired(a.expiresAt, now))
-      .map((a) => revokeAlias(api, a)),
-  ]);
-  return {
-    ...blob,
-    state,
-    contacts: blob.contacts.filter((c) => !isExpired(c.expiresAt, now)),
-    aliases: blob.aliases.filter((a) => !isExpired(a.expiresAt, now)),
-  };
-}
-
-/**
- * Republish the owner's current card (the current badge, plus each alias's own
- * per-alias display identity, doc 15) to every still-live shared link: every
- * non-expired alias plus every non-expired contact link. Shared by setOwnerState
- * (a badge change) and setProfile (an avatar/profile edit) so both re-seal via one
- * path. setOwnerState sweeps expired links first; setProfile does not, so this
- * helper also skips expired links itself, and a re-seal can never resurrect a dead
- * link. The decorrelation gap documented on republishOwnerCard applies to both.
- * Per-alias identity does not propagate from the account: an alias keeps its own
- * face, so a main-identity edit re-seals each card with that card's unchanged
- * identity (doc 15 non-goal).
- */
-async function republishLiveLinks(
-  api: ApiClient,
-  blob: AccountBlob,
-  nowDay: number,
-): Promise<void> {
-  // Expiry is absolute ms; the badge derivation still uses the day clock.
-  const now = nowMs();
-  const liveAliases = blob.aliases.filter((a) => !isExpired(a.expiresAt, now));
-  const liveContacts = blob.contacts.filter(
-    (c) => !isExpired(c.expiresAt, now),
-  );
-  const liveLinks = [...liveAliases, ...liveContacts.map((c) => c.alias)];
-  await republishOwnerCard(api, liveLinks, { state: blob.state, nowDay });
 }
 
 // A load-modify-save over the synced blob (the closure createAccountManager builds).
@@ -593,25 +541,7 @@ export function createAccountManager(
       }
     },
 
-    async sweepExpiredLinks(root) {
-      const blob = await sync.load(root);
-      if (blob === null) {
-        throw new Error("sweepExpiredLinks: no account exists for this key");
-      }
-      const now = nowMs();
-      const anyExpired =
-        blob.contacts.some((c) => isExpired(c.expiresAt, now)) ||
-        blob.aliases.some((a) => isExpired(a.expiresAt, now));
-      // Nothing to do: skip the revoke + write entirely so a clean load is a
-      // pure read.
-      if (!anyExpired) return blob;
-      // Reuse the same revoke + drop sweep as setOwnerState, with the state
-      // unchanged (a load does not move the badge), and no republish (the
-      // surviving links' cards are unchanged).
-      const next = await sweepExpired(api, blob, blob.state, now);
-      await sync.save(root, next);
-      return next;
-    },
+    ...linkUpkeepMethods(api, sync),
 
     async setProfile(root, profile) {
       // Guard at write time, symmetric to the strict read, so a bad profile

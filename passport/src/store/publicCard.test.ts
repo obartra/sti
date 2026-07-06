@@ -1,14 +1,21 @@
 import { describe, it, expect } from "vitest";
-import { serializePublicCard, parsePublicCard } from "./publicCard.ts";
+import {
+  serializePublicCard,
+  parsePublicCard,
+  applyFreshness,
+} from "./publicCard.ts";
 import { utf8ToBytes } from "../crypto/index.ts";
 import { avatarSrc, DEFAULT_AVATAR } from "../lib/avatars.ts";
 import type { ResolvedView } from "../ui/public/PublicResolution.tsx";
 
+// A blue card carries its freshness deadline (last panel + the 90-day window); a
+// real deriveOwnerCard blue always has one.
 const view: ResolvedView = {
   state: "blue",
   labels: ["hiv", "condoms_always"],
   route: "hiv",
   identity: { handle: "robin" },
+  freshUntil: 20000,
 };
 
 describe("public card codec", () => {
@@ -20,11 +27,13 @@ describe("public card codec", () => {
     // doc 02: per-site reasoning is NEVER transmitted; the viewer card carries
     // only the badge facts. Pin the exact wire key set so a future field that
     // smuggles internal state (exposed sites, panel detail, account ids) onto the
-    // wire fails this test.
+    // wire fails this test. freshUntil is the freshness deadline (epoch day), the
+    // one time field, and never a per-site reason.
     const decode = (b: Uint8Array): Record<string, unknown> =>
       JSON.parse(new TextDecoder().decode(b)) as Record<string, unknown>;
 
     expect(Object.keys(decode(serializePublicCard(view))).sort()).toEqual([
+      "freshUntil",
       "handle",
       "labels",
       "route",
@@ -40,6 +49,7 @@ describe("public card codec", () => {
     const wire = decode(serializePublicCard(withAvatar));
     expect(Object.keys(wire).sort()).toEqual([
       "avatar",
+      "freshUntil",
       "handle",
       "labels",
       "route",
@@ -65,6 +75,21 @@ describe("public card codec", () => {
     }
   });
 
+  it("carries freshUntil only on blue (gray is already fail-closed)", () => {
+    const decode = (b: Uint8Array): Record<string, unknown> =>
+      JSON.parse(new TextDecoder().decode(b)) as Record<string, unknown>;
+    // A gray card with a stray freshUntil never puts it on the wire.
+    const grayWithDeadline: ResolvedView = {
+      state: "gray",
+      labels: ["hiv"],
+      identity: { handle: "sam" },
+      freshUntil: 20000,
+    };
+    expect("freshUntil" in decode(serializePublicCard(grayWithDeadline))).toBe(
+      false,
+    );
+  });
+
   it("round-trips a card with an avatar and reconstructs its rendered src", () => {
     const withAvatar: ResolvedView = {
       ...view,
@@ -80,16 +105,32 @@ describe("public card codec", () => {
 
   it("parses a card with the avatar field omitted (falls back to no avatar)", () => {
     const noAvatar = {
-      v: 2,
+      v: 3,
       state: "blue",
       labels: ["hiv"],
       route: "hiv",
       handle: "robin",
+      freshUntil: 20000,
     };
     const parsed = parsePublicCard(utf8ToBytes(JSON.stringify(noAvatar)));
     expect(parsed.avatar).toBeUndefined();
     expect(parsed.avatarSrc).toBeUndefined();
     expect(parsed.identity.handle).toBe("robin");
+  });
+
+  it("ignores a malformed freshUntil (fail-safe: parses without a deadline)", () => {
+    const badDeadline = {
+      v: 3,
+      state: "blue",
+      labels: ["hiv"],
+      route: "hiv",
+      handle: "robin",
+      freshUntil: "soon",
+    };
+    const parsed = parsePublicCard(utf8ToBytes(JSON.stringify(badDeadline)));
+    expect(parsed.freshUntil).toBeUndefined();
+    // A blue card with no usable deadline fails closed to gray at read time.
+    expect(applyFreshness(parsed, 20000)?.state).toBe("gray");
   });
 
   it("falls back to no avatar for an old-shape or corrupt avatar (doc 19 migration)", () => {
@@ -100,11 +141,12 @@ describe("public card codec", () => {
       "garbage",
     ]) {
       const json = {
-        v: 2,
+        v: 3,
         state: "blue",
         labels: ["hiv"],
         route: "hiv",
         handle: "robin",
+        freshUntil: 20000,
         avatar: bad,
       };
       const parsed = parsePublicCard(utf8ToBytes(JSON.stringify(json)));
@@ -147,15 +189,16 @@ describe("public card codec", () => {
 
   reject("non-object", 42);
   reject("a future version", {
-    v: 3,
+    v: 4,
     state: "blue",
     labels: [],
     route: null,
     handle: "x",
   });
-  // Back-compat is intentionally dropped: the pre-avatar v1 shape no longer parses.
-  reject("a now-unsupported v1 card", {
-    v: 1,
+  // Back-compat is intentionally dropped: the pre-freshness v2 (and pre-avatar v1)
+  // shapes no longer parse; an older link resolves gray until the owner republishes.
+  reject("a now-unsupported v2 card", {
+    v: 2,
     state: "blue",
     labels: ["hiv"],
     route: "hiv",
@@ -169,28 +212,28 @@ describe("public card codec", () => {
     handle: "x",
   });
   reject("an invalid state", {
-    v: 2,
+    v: 3,
     state: "platinum",
     labels: [],
     route: null,
     handle: "x",
   });
   reject("an empty handle", {
-    v: 2,
+    v: 3,
     state: "blue",
     labels: [],
     route: null,
     handle: "",
   });
   reject("an invalid label", {
-    v: 2,
+    v: 3,
     state: "blue",
     labels: ["diagnosis"],
     route: null,
     handle: "x",
   });
   reject("an invalid route", {
-    v: 2,
+    v: 3,
     state: "blue",
     labels: [],
     route: "secret",
@@ -199,5 +242,51 @@ describe("public card codec", () => {
 
   it("rejects non-JSON bytes", () => {
     expect(() => parsePublicCard(utf8ToBytes("not json {"))).toThrow();
+  });
+});
+
+describe("applyFreshness (read-time stale-blue fail-closed, doc 02)", () => {
+  const blue: ResolvedView = {
+    state: "blue",
+    labels: ["hiv"],
+    route: "hiv",
+    identity: { handle: "robin" },
+    avatar: DEFAULT_AVATAR,
+    avatarSrc: avatarSrc(DEFAULT_AVATAR),
+    freshUntil: 20000,
+  };
+
+  it("keeps a blue card blue on and before its deadline", () => {
+    expect(applyFreshness(blue, 20000)).toEqual(blue);
+    expect(applyFreshness(blue, 19999)?.state).toBe("blue");
+  });
+
+  it("fails a blue card closed to gray the day after its deadline", () => {
+    const gray = applyFreshness(blue, 20001);
+    expect(gray).toEqual({
+      state: "gray",
+      route: null,
+      identity: { handle: "robin" },
+      labels: ["hiv"],
+      avatar: DEFAULT_AVATAR,
+      avatarSrc: avatarSrc(DEFAULT_AVATAR),
+    });
+    // The blue-only headline route and the deadline are gone; it reads like any gray.
+    expect(gray?.route).toBeNull();
+    expect("freshUntil" in (gray ?? {})).toBe(false);
+  });
+
+  it("fails a blue card with no deadline closed to gray", () => {
+    const noDeadline: ResolvedView = {
+      state: "blue",
+      identity: { handle: "x" },
+    };
+    expect(applyFreshness(noDeadline, 20000)?.state).toBe("gray");
+  });
+
+  it("passes gray and null through unchanged", () => {
+    const gray: ResolvedView = { state: "gray", identity: { handle: "x" } };
+    expect(applyFreshness(gray, 99999)).toBe(gray);
+    expect(applyFreshness(null, 99999)).toBeNull();
   });
 });

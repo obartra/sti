@@ -81,6 +81,7 @@ function fakeBackend() {
       if (!blob) throw new Error("no account");
       return blob;
     },
+    refreshLiveLinks: () => Promise.resolve(),
   };
   const sync: AccountSync = {
     load: async (root) => byId.get(await deriveAccountId(root)) ?? null,
