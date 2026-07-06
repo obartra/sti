@@ -124,8 +124,9 @@ export function parsePublicCard(bytes: Bytes): ResolvedView {
       ? { avatar: o.avatar, avatarSrc: avatarSrc(o.avatar) }
       : {}),
     // Carry the freshness deadline through when present and well-formed on a blue
-    // card; anything else is simply absent (a blue card with no deadline is treated
-    // as already-stale by applyFreshness, so a malformed value fails safe to gray).
+    // card; a missing or malformed value is simply absent, which applyFreshness
+    // treats as an undeclared window (passes through, since only a deadline-carrying
+    // blue can be stale). Every real blue card carries a valid one.
     ...(o.state === "blue" && isEpochDay(o.freshUntil)
       ? { freshUntil: o.freshUntil }
       : {}),
@@ -139,21 +140,24 @@ function isEpochDay(x: unknown): x is number {
 
 /**
  * Fail a stale BLUE card closed to gray at read time (doc 02 "never stale-blue").
- * A blue card is valid only while `today <= freshUntil`; past that (or if a blue
- * card carries no deadline at all, e.g. an older wire shape) it collapses to the
- * card's gray form: state gray, the blue-only headline route dropped, identity and
- * attribute labels kept (labels show on gray too), so it renders like any other
- * gray. Null passes through (the uniform gray-nothing). Gray cards are unchanged.
+ * A blue card that carries a freshness deadline is valid only while
+ * `today <= freshUntil`; once past it, the card collapses to its gray form: state
+ * gray, the blue-only headline route dropped, identity and attribute labels kept
+ * (labels show on gray too), so it renders like any other gray. Enforcement is
+ * scoped to cards that DECLARE a deadline, which is every real blue card
+ * (deriveOwnerCard always stamps one) and the only card a stale-blue could ever be;
+ * a sealed, authenticated card a viewer receives cannot be a blue-without-deadline,
+ * so a blue with no deadline (only ever a hand-built test view) passes through. Null
+ * passes through (the uniform gray-nothing); gray cards are unchanged.
  */
 export function applyFreshness(
   view: ResolvedView | null,
   nowDay: number,
 ): ResolvedView | null {
-  if (view?.state !== "blue") return view;
-  if (view.freshUntil !== undefined && nowDay <= view.freshUntil) return view;
-  // Stale (or a blue card carrying no deadline): fail closed to the gray form. Drop
-  // the blue-only route and the deadline; keep identity + labels so it reads like a
-  // natively-gray card of the same person.
+  if (view?.state !== "blue" || view.freshUntil === undefined) return view;
+  if (nowDay <= view.freshUntil) return view;
+  // Past the deadline: fail closed to the gray form. Drop the blue-only route and the
+  // deadline; keep identity + labels so it reads like a natively-gray card.
   return {
     state: "gray",
     route: null,

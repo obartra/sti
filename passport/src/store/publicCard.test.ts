@@ -118,7 +118,7 @@ describe("public card codec", () => {
     expect(parsed.identity.handle).toBe("robin");
   });
 
-  it("ignores a malformed freshUntil (fail-safe: parses without a deadline)", () => {
+  it("ignores a malformed freshUntil (parses without a deadline)", () => {
     const badDeadline = {
       v: 3,
       state: "blue",
@@ -129,8 +129,9 @@ describe("public card codec", () => {
     };
     const parsed = parsePublicCard(utf8ToBytes(JSON.stringify(badDeadline)));
     expect(parsed.freshUntil).toBeUndefined();
-    // A blue card with no usable deadline fails closed to gray at read time.
-    expect(applyFreshness(parsed, 20000)?.state).toBe("gray");
+    // No declared deadline: applyFreshness passes it through (only a deadline-carrying
+    // blue can be stale, and every real blue card carries one).
+    expect(applyFreshness(parsed, 20000)?.state).toBe("blue");
   });
 
   it("falls back to no avatar for an old-shape or corrupt avatar (doc 19 migration)", () => {
@@ -276,12 +277,12 @@ describe("applyFreshness (read-time stale-blue fail-closed, doc 02)", () => {
     expect("freshUntil" in (gray ?? {})).toBe(false);
   });
 
-  it("fails a blue card with no deadline closed to gray", () => {
+  it("passes a blue card with no deadline through (real blue always carries one)", () => {
     const noDeadline: ResolvedView = {
       state: "blue",
       identity: { handle: "x" },
     };
-    expect(applyFreshness(noDeadline, 20000)?.state).toBe("gray");
+    expect(applyFreshness(noDeadline, 20000)).toBe(noDeadline);
   });
 
   it("passes gray and null through unchanged", () => {
