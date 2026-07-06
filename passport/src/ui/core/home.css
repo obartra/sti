@@ -12,6 +12,25 @@
   max-width: 600px;
 }
 
+/* A quiet link under the status: the owner-only "something feel off?" entry (doc
+   02). Discoverable, not alarmist, so it reads as a hairline text link, not a
+   button. Sits just below the standing line; pulled up snug against it. */
+.hm__feeloff {
+  align-self: flex-start;
+  margin-top: -8px;
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .hm__head {
   display: flex;
   align-items: center;

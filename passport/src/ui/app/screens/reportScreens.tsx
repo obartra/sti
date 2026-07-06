@@ -11,6 +11,7 @@ export const reportRenderers: ScreenRenderers = {
       onSavedPositive={() => nav.go("report-saved")}
       onSavedHome={() => nav.jump("home")}
       onLearn={(id) => openResource(infoUrl(`/${id}`))}
+      onFeelOff={() => nav.go("feel-off")}
       onApply={onReport}
       ownerState={ownerState}
       onSetOwnerState={setOwnerState}

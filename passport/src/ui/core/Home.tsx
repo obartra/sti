@@ -79,6 +79,9 @@ export interface HomeProps {
   clearBy?: Date;
   onShare?: (() => void) | undefined;
   onReport?: (() => void) | undefined;
+  // Open the owner-only "something feel off?" pause-and-get-seen surface (doc 02).
+  // A quiet link under the status; never shown to a viewer.
+  onFeelOff?: (() => void) | undefined;
   // Preview the viewer's-eye card (routes to the self public view).
   onViewAs?: (() => void) | undefined;
   onPrivacy?: (() => void) | undefined;
@@ -126,6 +129,7 @@ export function Home(props: HomeProps) {
     tested,
     onShare,
     onReport,
+    onFeelOff,
     onViewAs,
     onPrivacy,
     onFindTesting,
@@ -147,6 +151,12 @@ export function Home(props: HomeProps) {
       <Greeting handle={handle} avatar={avatar} />
 
       <StandingLine standing={status} />
+
+      {onFeelOff && (
+        <button type="button" className="hm__feeloff" onClick={onFeelOff}>
+          Something feel off?
+        </button>
+      )}
 
       {continuityNudge && onNudgeSettings && onNudgeDismiss && (
         <ContinuityNudgeCard
