@@ -7,13 +7,16 @@
 
 import {
   MAX_CONTACT_LABEL,
+  MAX_PUBLIC_NAMES,
   type AccountBlob,
   type ContactRecord,
+  type FindableRegistration,
 } from "../accountBlob.ts";
 import type { OwnerSession, SessionController } from "../session.ts";
 import { demoSharedAlias, demoTwoWay } from "./demoPeerSeed.ts";
 import { randomAliasId, randomWriteToken } from "../../crypto/keys.ts";
 import { todayEpochDay } from "../../core/clock.ts";
+import { normalizeVanityName } from "../vanityName.ts";
 
 type GetBlob = () => AccountBlob;
 type SetBlob = (b: AccountBlob) => void;
@@ -183,6 +186,60 @@ export function demoCircleMethods(
       setBlob({
         ...getBlob(),
         circles: (getBlob().circles ?? []).filter((c) => c.id !== circleId),
+      });
+      return session();
+    },
+  };
+}
+
+// Names the demo answers "taken" for, so the as-you-type check shows both paths:
+// the demo's own reserved handle and a couple of common examples. Everything else
+// is free, so a reviewer can actually claim a public name and watch its /u/ link
+// appear.
+const DEMO_TAKEN_NAMES = new Set(["demo", "sam", "alex", "admin"]);
+
+// The public-name demo methods (doc 17). No server, so the demo keeps its own
+// findables list in the local blob: a check answers from that list plus the small
+// reserved set, a claim appends a registration (so its /u/ link shows up on the
+// Links tab), and a release drops it. This makes public names actually work in the
+// demo instead of every name reporting "unavailable".
+export function demoVanityNames(
+  getBlob: GetBlob,
+  setBlob: SetBlob,
+  session: Session,
+): Pick<
+  SessionController,
+  "registerVanityName" | "checkVanityName" | "releaseVanityName"
+> {
+  const held = (name: string) =>
+    (getBlob().findables ?? []).some((f) => f.name === name);
+  const isTaken = (name: string) => held(name) || DEMO_TAKEN_NAMES.has(name);
+  return {
+    checkVanityName: (name) =>
+      Promise.resolve(isTaken(normalizeVanityName(name)) ? "taken" : "free"),
+    registerVanityName: async (_s, name) => {
+      const normalized = normalizeVanityName(name);
+      const atCap = (getBlob().findables ?? []).length >= MAX_PUBLIC_NAMES;
+      if (atCap || isTaken(normalized)) {
+        return { session: await session(), result: "unavailable" as const };
+      }
+      const reg: FindableRegistration = {
+        name: normalized,
+        aliasId: randomAliasId(),
+      };
+      setBlob({
+        ...getBlob(),
+        findables: [...(getBlob().findables ?? []), reg],
+      });
+      return { session: await session(), result: "registered" as const };
+    },
+    releaseVanityName: async (_s, name) => {
+      const normalized = normalizeVanityName(name);
+      setBlob({
+        ...getBlob(),
+        findables: (getBlob().findables ?? []).filter(
+          (f) => f.name !== normalized,
+        ),
       });
       return session();
     },

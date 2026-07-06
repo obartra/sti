@@ -144,6 +144,25 @@ async function walkKnocks(
   expect(cleared.pending).toEqual([]);
 }
 
+// The public-name surface (doc 17): a free name checks free and claims into the
+// blob findables; the demo's reserved handle checks taken and refuses; a second
+// claim of a now-held name is "unavailable"; releasing a held name drops it. Split
+// out to keep walkController under the complexity ceiling.
+async function walkFindables(
+  controller: SessionController,
+  session: OwnerSession,
+): Promise<void> {
+  expect(await controller.checkVanityName("robin")).toBe("free");
+  expect(await controller.checkVanityName("demo")).toBe("taken");
+  const vanity = await controller.registerVanityName(session, "robin");
+  expect(vanity.result).toBe("registered");
+  expect(vanity.session.blob.findables?.map((f) => f.name)).toContain("robin");
+  const again = await controller.registerVanityName(vanity.session, "robin");
+  expect(again.result).toBe("unavailable");
+  const released = await controller.releaseVanityName(vanity.session, "robin");
+  expect(released.blob.findables?.map((f) => f.name)).not.toContain("robin");
+}
+
 // Walk the whole SessionController surface in one realistic owner journey,
 // asserting the mutate-and-persist contract: every owner action returns a session
 // whose blob reflects the change, so the demo can never drift into a hollow
@@ -256,11 +275,9 @@ async function walkController(controller: SessionController): Promise<void> {
   const dropped = await controller.removeCircle(renamed, circle.circleId);
   expect(dropped.blob.circles?.map((c) => c.id)).not.toContain(circle.circleId);
 
-  // Findable: registration always reports "unavailable" (the demo claims no public
-  // name); release is a no-op that returns a session.
-  const vanity = await controller.registerVanityName(dropped, "robin");
-  expect(vanity.result).toBe("unavailable");
-  expect(await controller.releaseVanityName(dropped, "robin")).not.toBeNull();
+  // Findable (doc 17), walked in its own helper: a free name claims into the blob,
+  // a reserved name is "unavailable", releasing drops it. Public names really work.
+  await walkFindables(controller, dropped);
 
   // Shared groups (doc 33): create records a group in the local blob and reports
   // the create outcome (a public handle "registered", a private one "created").
