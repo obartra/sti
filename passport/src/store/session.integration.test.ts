@@ -14,6 +14,7 @@ import { resolveCircleRoster } from "./circles.ts";
 import { deriveOwnerCard } from "./ownerCard.ts";
 import { pseudonymFor } from "../lib/avatars.ts";
 import { redeemGrant } from "./grant.ts";
+import { parsePublicCard } from "./publicCard.ts";
 import { requesterHash } from "./knock.ts";
 import { parseContactInvite } from "./contactInvite.ts";
 import { lockNotifyDraft, parsePartnerPing } from "./partnerNotify.ts";
@@ -547,12 +548,61 @@ describe("owner session against a live blind store", () => {
     expect(review.pending[0]?.alias.id).toBe(aliasId);
     expect(review.pending[0]?.pending.pubKey).toBe(kp.publicKey);
 
-    // Approving seals the alias key to the requester; they redeem it and the
-    // status resolves to the owner's real card.
-    expect(await ctl.approveKnocks(shared.session, review.pending)).toBe(1);
-    const key = await redeemGrant(api, aliasId, requesterSecret, kp.privateKey);
-    if (key === null) throw new Error("expected a granted key");
-    expect(await store.resolveAlias({ id: aliasId, key })).toEqual(
+    // A standing approve seals the alias key to the requester; they redeem it and
+    // the status resolves to the owner's real card, and stays re-checkable.
+    expect(
+      await ctl.approveKnocks(shared.session, review.pending, "standing"),
+    ).toBe(1);
+    const grant = await redeemGrant(
+      api,
+      aliasId,
+      requesterSecret,
+      kp.privateKey,
+    );
+    if (grant?.kind !== "key") throw new Error("expected a granted key");
+    expect(await store.resolveAlias({ id: aliasId, key: grant.key })).toEqual(
+      deriveOwnerCard(
+        session.blob.state,
+        pseudonymFor(aliasId),
+        todayEpochDay(),
+      ),
+    );
+  });
+
+  it("a one-time approve delivers a card snapshot, not the key (no live access)", async () => {
+    const { ctl, api } = controller(fakePasskey());
+    const { session } = await ctl.signUp("juno");
+
+    const shared = await ctl.shareLink(session);
+    const aliasId = shared.session.blob.aliases[0]?.id ?? "";
+    const requesterSecret = bytesToBase64url(
+      crypto.getRandomValues(new Uint8Array(32)),
+    );
+    const kp = await generateGrantKeyPair();
+    await api.knock(
+      aliasId,
+      await requesterHash(requesterSecret, aliasId),
+      kp.publicKey,
+    );
+
+    const review = await ctl.reviewKnocks(shared.session);
+    // A one-time approve seals a frozen snapshot of the owner's current card.
+    expect(
+      await ctl.approveKnocks(shared.session, review.pending, "once"),
+    ).toBe(1);
+
+    // The requester gets a card snapshot, never the alias key: no live access.
+    const grant = await redeemGrant(
+      api,
+      aliasId,
+      requesterSecret,
+      kp.privateKey,
+    );
+    if (grant?.kind !== "card") throw new Error("expected a card snapshot");
+
+    // The frozen snapshot parses back to the owner's current card (the same one a
+    // keyed link would resolve to), so the viewer sees the status once.
+    expect(parsePublicCard(grant.card)).toEqual(
       deriveOwnerCard(
         session.blob.state,
         pseudonymFor(aliasId),

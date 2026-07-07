@@ -53,7 +53,7 @@ import {
 import type { ContactInvite } from "./contactInvite.ts";
 import type { NotifyLockResult } from "./partnerNotify.ts";
 import { notifyPositive, pollPartnerNudge } from "./notifyOps.ts";
-import { gatherKnocks, grantPending } from "./knockOps.ts";
+import { gatherKnocks, grantPending, type GrantMode } from "./knockOps.ts";
 import type { OwnerState } from "../core/badge.ts";
 import { revokeAlias } from "./publish.ts";
 import type { AliasIdentity } from "./ownerCard.ts";
@@ -118,6 +118,7 @@ export interface SignUpResult {
 }
 
 export type { ResumeFailure } from "./passkeyUnlock.ts";
+export type { GrantMode } from "./knockOps.ts";
 
 export type ResumeResult =
   | { readonly ok: true; readonly session: OwnerSession }
@@ -254,14 +255,17 @@ export interface SessionController extends GroupMembershipController {
    */
   reviewKnocks(session: OwnerSession): Promise<OwnerKnocks>;
   /**
-   * Approve grantable knocks: seal each alias's read key to the waiting requester
-   * via the in-app grant slot (doc 13). Idempotent and re-runnable; a partial
-   * failure leaves the rest granted and the failed one still pending for a retry.
-   * Returns how many grants were written.
+   * Approve grantable knocks via the in-app grant slot (doc 13). `mode` chooses what
+   * each requester gets: "standing" seals the alias key so they keep re-checking the
+   * owner's live status until it is revoked; "once" seals a frozen snapshot of the
+   * current card so they see the status this once with no live access. Idempotent and
+   * re-runnable; a partial failure leaves the rest granted and the failed one still
+   * pending for a retry. Returns how many grants were written.
    */
   approveKnocks(
     session: OwnerSession,
     approvals: PendingApproval[],
+    mode: GrantMode,
   ): Promise<number>;
   /**
    * Mint a fresh PRIVATE link for one specific contact (a named, individually
@@ -640,10 +644,10 @@ export function createSessionController(deps: SessionDeps): SessionController {
       return gatherKnocks(api, session);
     },
 
-    // The approvals already carry their alias + key, so the session is only in the
-    // signature for symmetry with the other owner actions.
-    approveKnocks(_session, approvals) {
-      return grantPending(api, approvals);
+    // The session carries the owner's live state, needed to build a card snapshot for
+    // a one-time grant; a standing grant seals only the alias key.
+    approveKnocks(session, approvals, mode) {
+      return grantPending(api, session, approvals, mode);
     },
 
     createContactLink(session, label, opts = {}) {

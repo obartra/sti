@@ -72,6 +72,9 @@ export function demoKnocks(): Pick<
               pending: [{ alias, pending: { requesterHash, pubKey } }],
             },
       ),
+    // The grant mode (show once / keep checking) is faithful no-op detail in the
+    // demo: it has no server, so either choice just clears the row and reports the
+    // count. The typed signature still accepts the mode; it is simply not read.
     approveKnocks: (_s, approvals) => {
       granted = true;
       return Promise.resolve(approvals.length);

@@ -138,7 +138,9 @@ async function walkKnocks(
   expect(knocks.count).toBe(1);
   expect(knocks.pending).toHaveLength(1);
   expect(knocks.pending[0]?.pending.pubKey).toBeTruthy();
-  expect(await controller.approveKnocks(session, knocks.pending)).toBe(1);
+  expect(
+    await controller.approveKnocks(session, knocks.pending, "standing"),
+  ).toBe(1);
   const cleared = await controller.reviewKnocks(session);
   expect(cleared.count).toBe(0);
   expect(cleared.pending).toEqual([]);

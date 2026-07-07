@@ -58,7 +58,7 @@ export interface ChromeProps extends GroupJoinActions {
   refreshKnocks: () => void;
   canApproveKnocks: boolean;
   showKnockInfo: boolean;
-  approveKnocks: () => void;
+  approveKnocks: ScreenCtx["approveKnocks"];
   approvingKnocks: boolean;
   showPartnerNudge: boolean;
   dismissPartnerNudge: () => void;
