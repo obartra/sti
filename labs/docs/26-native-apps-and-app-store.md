@@ -55,7 +55,7 @@ change. The cost lives in five edges.
 | **Passkeys (WebAuthn + PRF)** | `navigator.credentials` with the PRF extension wrapping the account root ([passport/src/auth/passkey.ts](../../passport/src/auth/passkey.ts)) | iOS WKWebView WebAuthn is unreliable and PRF is bleeding-edge, so this needs a custom native plugin: ASAuthorization (iOS) and Credential Manager (Android), plus a native way to derive a PRF-equivalent secret to wrap the root key. May need a distinct native key-wrapping scheme. | **High. Spike this first.** |
 | **Push** | Web Push / VAPID, with the service worker doing the contentless inbox-poll wake (doc 13) | Replace with APNs (iOS) and FCM (Android) via a push plugin. The contentless cover-broadcast design survives; the wake-then-poll logic moves from the worker into native push handlers. New key infra and Apple/Google config. | **Medium-high.** |
 | **Service worker / offline** | Precache + offline shell (doc 22 slices 1 to 3) | Mostly deleted. The native shell bundles assets, so the offline-shell role goes away. The worker's **push** role migrates to native (above). The encrypted-blob and outbound-queue (doc 22 slice 4) logic is plain JS and stays. | **Low-medium.** |
-| **QR camera scan** | `getUserMedia` + jsQR ([passport/src/ui/connect/QrScanner.tsx](../../passport/src/ui/connect/QrScanner.tsx)) | Works in the WebView with a camera permission string, or swap to a native scanner plugin for a better viewfinder. Add `NSCameraUsageDescription` and the Android camera permission. | **Low.** |
+| **QR camera scan** | `getUserMedia` + jsQR ([passport/src/ui/connect/QrScanner.tsx](../../passport/src/ui/connect/QrScanner.tsx)) | The WebView scanner works now that both shells declare camera access (`NSCameraUsageDescription` on iOS, the `CAMERA` permission on Android; slice 1). A native scanner plugin is an optional viewfinder upgrade (slice 6). | **Low.** |
 | **Secure storage** | `localStorage` (credential id, wrapped root) plus IndexedDB | Move the wrapped root and any write tokens into iOS Keychain and Android Keystore instead of WebView storage, which is unencrypted at rest (the one caveat doc 09 already names). Higher bar matters more for a store app. | **Low-medium.** |
 
 Everything else (clipboard, QR generation, the recovery-phrase flow, all the screens) is free.
@@ -312,9 +312,23 @@ polish.
 Each slice leaves a shippable, correct app, mirroring the doc 22 discipline. Slices 1 to 3 are the
 spike and the skeleton; 4 to 6 are the substance; 7 is store submission.
 
-1. **Capacitor skeleton.** Add Capacitor, generate `ios/` and `android/`, load the existing build,
-   wire `vite build` to `cap sync`. Outcome: the current app runs in both native shells, online, with
-   no edge work yet. Cheap, and it de-risks the toolchain.
+1. **Capacitor skeleton (shipped).** Capacitor wraps the built web app as `care.sti.app`. The
+   generated `ios/` and `android/` projects live in `passport/` and load the bundled `dist/`, never a
+   remote URL (D1); `npm run cap:sync` copies each fresh web build into both. Both shells launch to
+   the real app on a simulator and an emulator, and the demo flow runs end to end inside the native
+   WebView. Server-backed flows are already unblocked: the native WebView origins
+   (`capacitor://localhost` on iOS, `https://localhost` on Android) are fixed constants of the shell,
+   so the server allows them directly (in `cors.go`, unioned with each deployment's configured web
+   origins) rather than needing them added to `STI_ALLOWED_ORIGINS` per environment. A store build
+   reaches `api.sti.care` with no per-deploy CORS config, and a test pins that the origins stay
+   allowed even when the configured list omits them. Two device-fit details land with the skeleton so
+   the shipped screens work fullscreen. The chrome respects the safe-area insets: a `viewport-fit=cover`
+   shell plus `env(safe-area-inset-*)` on the top and tab bars and the public canvas, and the demo
+   banner sits in flow rather than floating, so nothing draws under the notch or the home indicator.
+   Each inset is 0 in a normal browser and on desktop, so the web and the visual baselines are
+   unchanged. And both shells declare camera access for the in-person scan (`NSCameraUsageDescription`
+   on iOS, the `CAMERA` permission on Android), since the scanner's `getUserMedia` is denied on device
+   without it; a test pins both declarations so a project regen cannot silently drop them.
 2. **Passkey/PRF native spike (do this before committing a timeline).** Prove a WebAuthn-PRF-equivalent
    key-wrap works natively on iOS (ASAuthorization) and Android (Credential Manager). If clean, the
    rest is mechanical. If not, fall back to passphrase-unlock plus platform biometric-gated Keychain
@@ -342,6 +356,20 @@ spike and the skeleton; 4 to 6 are the substance; 7 is store submission.
 Slices 1 to 3 prove feasibility. The honest critical path is slice 2 (passkey/PRF) and slice 8 (the
 review gauntlet), not the UI, which is already done. Slice 4 is the cross-device UX and is worth
 shipping on web ahead of the native work.
+
+### Building and running the native shells
+
+The native build is not a CI gate (it needs the platform SDKs); the web gates stay the source of
+truth. From `passport/`:
+
+- `npm run cap:sync` rebuilds the web app and copies it into `ios/` and `android/`.
+- `npm run cap:ios` and `npm run cap:android` build the web app and launch it on a booted simulator
+  or emulator (or a connected device).
+- `npx cap open ios` and `npx cap open android` open the projects in Xcode and Android Studio.
+
+iOS needs Xcode and a simulator. Android needs Android Studio with the SDK (compile and target 36)
+and an emulator, with `ANDROID_HOME` and `JAVA_HOME` set; the JBR bundled with Android Studio works
+as `JAVA_HOME`. iOS uses Swift Package Manager, so no CocoaPods step is required.
 
 ## G. Pre-submission checklist (priority order)
 
@@ -374,9 +402,12 @@ shipping on web ahead of the native work.
   Native packaging gives a strong reason to ship it in the first store release (the 4.2 anchor).
   Worth a decision-log line confirming that pull-forward, and reaffirming the public-only live-update
   boundary so a private user's pass never becomes a scheduled beacon.
-- **Two install stories at once.** We would then offer both an installable PWA (doc 22) and store
-  apps. Decide whether they coexist or the store apps supersede the PWA on mobile, and keep them from
-  implying different freshness or privacy rules to the user.
+- **One install story per platform (decided).** Once the store apps ship, an iPhone or Android
+  visitor who wants the app gets the store app; the quiet PWA install row (doc 22, F) shows only on
+  platforms with no store app, in practice desktop-class browsers. Its value there is unproven, so it
+  survives only as long as it stays one quiet row. The PWA runtime itself (the offline shell, the web
+  app every shared link opens in) is unchanged, and both install stories carry identical freshness
+  and privacy rules.
 - **PRF parity across platforms.** If the native PRF-equivalent secret differs in shape from the web
   PRF output, the key-wrap scheme may diverge per platform. Keep the passphrase-derived root as the
   single cross-platform root so a passkey is always only a local convenience, never a second root of

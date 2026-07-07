@@ -333,8 +333,11 @@ you operate, it is how the product works, so it does not need a control panel na
 after it. The one place the owner manages their account holds:
 
 - **The few real toggles** - sharing default, push notifications, pause sharing,
-  install the app. The HIV-protection and condom attributes that feed the badge live
-  with the result you report, not here.
+  install the app (one install story per platform: on iPhone and Android this points
+  at the store app once those ship, and the PWA install shows only elsewhere, see
+  [26-native-apps-and-app-store.md](26-native-apps-and-app-store.md)). The
+  HIV-protection and condom attributes that feed the badge live with the result you
+  report, not here.
 - **Your name** - the name we call you by, editable here.
 - **Sign out** - plainly available, not hunted for. (It is not even wired into the
   running app today; it should be.)

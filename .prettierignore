@@ -27,3 +27,9 @@ passport/src/design
 
 # Vitest html reporter output (written by test:cov locally and in CI).
 passport/html
+
+# Generated native shells (Capacitor, doc 26): Xcode and Gradle projects plus the
+# copied web bundle and generated config under them. Not hand-edited, not ours to
+# format.
+passport/ios
+passport/android

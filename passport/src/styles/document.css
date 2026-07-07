@@ -14,3 +14,28 @@ body {
   margin: 0;
   background: var(--surface-app);
 }
+
+/* The app owns the full screen, so it is a flex column: the demo banner (when
+   present) sits in flow at the top and the routed content fills the rest. In a
+   browser this is just a full-height wrapper with no banner. The native shell
+   loads this fullscreen, so the safe-area insets on the chrome below matter.
+   These live here (the app-only frame) so Storybook, which skips this file,
+   never forces its bare AppShell stories into the app's full-height layout. */
+.app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+/* The positioning context the routed screens fill. Screens that lay themselves
+   out absolutely (sub-screens, the public canvas, the desktop shell) fill this
+   box, which sits below the demo banner, so they never slide under it. */
+.app-root__content {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+/* The tab shell's matching in-frame override lives in app-shell.css next to the
+   base rule: that file is imported unlayered by the component, so an override
+   here in the layout layer would always lose the cascade to it. */

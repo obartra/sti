@@ -8,7 +8,12 @@
     "src/design/components/index.ts",
     "src/api/contract.ts"
   ],
-  "ignore": ["src/design/icons.tsx", "lostpixel.config.cjs"],
+  "ignore": [
+    "src/design/icons.tsx",
+    "lostpixel.config.cjs",
+    "ios/**",
+    "android/**"
+  ],
   "ignoreBinaries": ["go"],
   "rules": {
     "files": "error",

@@ -2,13 +2,12 @@
    app-only document frame lives in document.css. Grid vocabulary joins as
    screens migrate. */
 
-/* A full-viewport scroll surface: mobile sub-screens and the public canvas. In
-   demo mode the fixed banner reserves --demo-inset at the top, so the surface
-   starts below it (default 0: no banner, no offset). */
+/* A full-viewport scroll surface: mobile sub-screens and the public canvas. It
+   fills the .app-root content box, which already sits below the in-flow demo
+   banner (document.css), so no banner offset is needed here. */
 .l-surface {
   position: absolute;
   inset: 0;
-  top: var(--demo-inset, 0px);
   overflow-y: auto;
   background: var(--surface-app);
 }
@@ -54,7 +53,12 @@
 .l-canvas-main {
   max-width: 600px;
   margin: 0 auto;
-  padding: 24px 20px 40px;
+  /* On mobile the public canvas owns the full screen in the native shell and an
+     installed PWA, so clear the notch and the home indicator. env() is 0 in a
+     normal browser, and the desktop variant overrides padding, so neither
+     changes. */
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 20px
+    calc(40px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   align-items: center;

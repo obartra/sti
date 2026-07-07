@@ -6,13 +6,22 @@
 .app-shell {
   display: flex;
   flex-direction: column;
-  /* In demo mode the fixed banner reserves --demo-inset at the top: shift the
-     column down by it and shrink the min-height to match, so the bottom tab bar
-     stays on screen (default 0: no banner, no offset). */
-  margin: var(--demo-inset, 0px) auto 0;
-  min-height: calc(100dvh - var(--demo-inset, 0px));
+  /* The standalone default (Storybook's bare AppShell stories); the app frame
+     overrides it below. */
+  min-height: 100dvh;
   max-width: 480px;
+  margin: 0 auto;
   background: var(--surface-app);
+}
+
+/* Inside .app-root the shell fills the content box, which already sits below
+   the in-flow demo banner (document.css), so the banner is never overlapped and
+   the tab bar stays on screen. Lives here, not in document.css: this file is
+   imported unlayered by the component, so a layered override would lose to the
+   min-height above. */
+.app-root .app-shell {
+  min-height: 0;
+  height: 100%;
 }
 .app-shell__content {
   flex: 1;
@@ -25,7 +34,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px 10px;
+  /* Clear the status bar / notch when loaded fullscreen in the native shell or
+     an installed PWA; env() is 0 in a normal browser, so the web is unchanged. */
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 10px;
   flex: none;
   border-bottom: var(--hairline);
 }
@@ -59,7 +70,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px 8px;
+  padding: calc(6px + env(safe-area-inset-top, 0px)) 12px 8px;
   flex: none;
 }
 .app-backbar__title {
@@ -70,10 +81,22 @@
 
 .app-tabbar {
   display: flex;
-  padding: 8px 10px 12px;
+  /* Keep the tabs above the home indicator on a gesture-nav device. */
+  padding: 8px 10px calc(12px + env(safe-area-inset-bottom, 0px));
   flex: none;
   background: var(--surface-app);
   border-top: var(--hairline);
+}
+
+/* In demo mode the banner sits in flow at the top and already clears the status
+   bar, so the bars beneath it must not add the top inset again, which would
+   leave a gap the height of the notch. Each bar drops back to its own base top
+   padding (the topbar and backbar differ). The bottom tab inset still applies. */
+.app-root--demo .app-topbar {
+  padding-top: 8px;
+}
+.app-root--demo .app-backbar {
+  padding-top: 6px;
 }
 .app-tab {
   appearance: none;

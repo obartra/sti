@@ -60,6 +60,20 @@ func (s *Server) cors(next http.Handler) http.Handler {
 	})
 }
 
+// The native app shells (doc 26) load the web build fullscreen from a fixed
+// origin the system WebView assigns: capacitor://localhost on iOS and
+// https://localhost on Android. These are constants of the shell, not of any one
+// deployment, so the server allows them directly rather than having every
+// environment remember to add them to STI_ALLOWED_ORIGINS (which stays for the
+// deployment-specific web origins). No credentials are involved, so allowing a
+// fixed extra origin only lets that WebView read the same uniform, opaque bytes
+// any client already can.
+var nativeShellOrigins = []string{
+	"capacitor://localhost",
+	"https://localhost",
+}
+
 func (s *Server) originAllowed(origin string) bool {
-	return slices.Contains(s.cfg.AllowedOrigins, origin)
+	return slices.Contains(s.cfg.AllowedOrigins, origin) ||
+		slices.Contains(nativeShellOrigins, origin)
 }

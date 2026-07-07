@@ -6,11 +6,10 @@
    and the share rail is an .e-card action callout instead of a shadowed card. */
 
 .desk-shell {
+  /* Fills the .app-root content box, which already sits below the in-flow demo
+     banner (document.css), so no banner offset is needed here. */
   position: absolute;
   inset: 0;
-  /* In demo mode the fixed banner reserves --demo-inset at the top; start the
-     shell below it (default 0: no banner, no offset). */
-  top: var(--demo-inset, 0px);
   display: flex;
   background: var(--surface-app);
   color: var(--text-body);
