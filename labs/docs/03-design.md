@@ -305,9 +305,11 @@ encode an **alias** (opaque, or a public vanity handle), never a cross-linking a
 a baked-in status image.** The primary shareable for an on-profile context is the **link/QR that
 resolves live on tap**, so there is no status snapshot to go stale in someone's profile or chat
 history (a screenshot of a QR is just the same working QR). A status *image* may be offered but is
-explicitly framed as a snapshot ("scan for current"); it is never the default. This is what lets a
-**private** user advertise on a public profile without going public: the link resolves to gated/
-knock for strangers, full for the authorized; the badge is never scraped or frozen into an image.
+explicitly framed as a snapshot ("scan for current"); it is never the default. To advertise where
+strangers will open it (a dating profile, a bio) without exposing the status itself, the ask-first
+`/u/` handle is the surface: strangers can find you and ask, seeing the status only once you grant
+it. A private keyed link opens straight to the status, so it is for people you hand it to. Either
+way the badge is a live-resolving link, never scraped or frozen into an image.
 
 **Wallet presentation (framing).** The wallet is not a three-way "pick a pass type" menu. It is
 **one pass concept** whose face simply reflects **what the alias surfaces**: a private (or any)
