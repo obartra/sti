@@ -15,8 +15,8 @@ export type {
   BadgeVariant,
 } from "./surfaces.tsx";
 
-export { Input, Field, Switch, Segmented } from "./forms.tsx";
-export type { InputProps, FieldProps, SwitchProps, SegmentedOption, SegmentedProps } from "./forms.tsx";
+export { Input, PasswordInput, Field, Switch, Segmented } from "./forms.tsx";
+export type { InputProps, PasswordInputProps, FieldProps, SwitchProps, SegmentedOption, SegmentedProps } from "./forms.tsx";
 
 export { Row } from "./row.tsx";
 export type { RowProps } from "./row.tsx";

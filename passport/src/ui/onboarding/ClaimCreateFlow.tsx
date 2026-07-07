@@ -5,6 +5,7 @@ import {
   Field,
   IconButton,
   Input,
+  PasswordInput,
 } from "../../design/components/index.ts";
 import { Dice, ArrowRight, Chevron } from "../../design/icons.tsx";
 import { cx } from "../../lib/cx.ts";
@@ -160,9 +161,8 @@ function PasswordCard({
         text={nameBad ? COPY.pwNameBad : nameTaken ? COPY.pwNameTaken : null}
       />
       <Field label={COPY.pwPasswordLabel} htmlFor={pwId}>
-        <Input
+        <PasswordInput
           id={pwId}
-          type="password"
           value={fields.password}
           error={weak !== null}
           disabled={disabled}
@@ -172,9 +172,8 @@ function PasswordCard({
       </Field>
       <ErrorLine text={fields.password === "" ? null : weak} />
       <Field label={COPY.pwConfirmLabel} htmlFor={confirmId}>
-        <Input
+        <PasswordInput
           id={confirmId}
-          type="password"
           value={fields.confirm}
           error={mismatch}
           disabled={disabled}

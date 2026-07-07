@@ -1,6 +1,11 @@
 import { useCallback, useState } from "react";
 import { usePasswordStrength } from "../../auth/usePasswordStrength.ts";
-import { Button, Field, Input } from "../../design/components/index.ts";
+import {
+  Button,
+  Field,
+  Input,
+  PasswordInput,
+} from "../../design/components/index.ts";
 import "../core/settings.css";
 import { Lock } from "../../design/icons.tsx";
 import {
@@ -233,9 +238,8 @@ function SetupFields({
         />
       </Field>
       <Field label={COPY.passwordLabel} htmlFor="recovery-password">
-        <Input
+        <PasswordInput
           id="recovery-password"
-          type="password"
           value={s.password}
           error={weak !== null}
           disabled={s.busy}
@@ -248,9 +252,8 @@ function SetupFields({
       </Field>
       <ErrorLine text={s.password === "" ? null : weak} />
       <Field label={COPY.confirmLabel} htmlFor="recovery-confirm">
-        <Input
+        <PasswordInput
           id="recovery-confirm"
-          type="password"
           value={s.confirm}
           error={mismatch}
           disabled={s.busy}
