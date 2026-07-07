@@ -69,7 +69,10 @@ approves each viewer through the blind grant.
   registered. That is the opted-into cost of being findable, disclosed before the name is claimed.
 - **Knock for everyone.** There is no "public live" mode where a viewer sees the status without an
   explicit grant. Every visitor to a public link must knock and be approved. The blind-store
-  invariant is unbroken: the server never sees the key or the card content.
+  invariant is unbroken: the server never sees the key or the card content. An approval is
+  **one-time** (a single point-in-time reveal) or **standing** (until revoked); a timed per-viewer
+  window (grant for 30 days, then lapse) is deferred, since expiring one viewer needs a re-key
+  (doc 02).
 - **Cap: 5 active public links per account.** One per real public context (e.g. "BigD" on Grindr,
   "David" on Tinder). Bounds server-side resource use (knock queues, grant slots) without affecting
   normal use. Private links have no meaningful cap.
@@ -122,14 +125,13 @@ In both modes, the server never sees the status, the AES key, the handle, or the
 
 Duration is a property of the link/capability, not a per-viewer timer.
 
-- **The private link is expirable; the public profile and public name are durable.** The owner picks
-  how long the private `/a/` link keeps working (a preset lifetime, or until they turn it off), so a
-  link handed to one person can sensibly lapse. The public surfaces never carry a server expiry: the
-  opaque public profile and the named `/u/` public profile stay live until revoked (or until the
-  public name is released), because a standing public link that silently lapses is a trap. Per-contact
-  one-off links, the individually addressed links the owner mints for a single person, carry an
-  expiry the same way. (Enforced in the publish layer: any public alias is always written with no
-  expiry, so a private lifetime never leaks onto a public link. See doc 31.)
+- **The private link is expirable; the public `/u/` handle is durable.** The owner picks how long a
+  private `/a/` link keeps working (a preset lifetime, or until they turn it off), so a link handed to
+  one person can sensibly lapse. The public handle never carries a server expiry: it stays live until
+  revoked (or until the name is released), because a standing public link that silently lapses is a
+  trap. Per-contact one-off links, the individually addressed links the owner mints for a single
+  person, carry an expiry the same way. (Enforced in the publish layer: a public alias is always
+  written with no expiry, so a private lifetime never leaks onto a public link. See doc 31.)
 - **v1 supports an updatable lifetime + immediate revoke.** The owner can extend or shorten a link's
   lifetime at any time and can revoke immediately (overwrite the payload to garbage, drop the
   record). Nothing is immutable.
@@ -178,6 +180,12 @@ passport they are requesting). A private link defaults to a pseudonym but can be
   (vanity + request) becomes **Public link**. The intermediate Gated mode (opaque + request) is
   removed: if you want viewers to knock and be approved, give them a findable handle; if you want
   immediate access, use a private link.
+- **One public surface: the `/u/` handle.** The share sheet's separate keyed "public profile" option
+  (a durable `/a/…#key` link, "anyone who scans sees this status") is removed: it was a third mode
+  the two-mode model never sanctioned, and its `/a/…#key` shape read as identical to a private link,
+  blurring the public/private line. A durable keyed link is simply a private link with no expiry. So
+  public sharing is exclusively the findable, ask-first handle, and the Links tab shows two things:
+  public handles and private per-person links.
 - **Public link cap: 5 per account.** Multiple public handles are allowed (up to 5), one per
   public context. Replaces the prior one-per-account limit. Built: the owner manages the list from
   the Public names section on the Links tab (not Settings), each name backed by its own dedicated

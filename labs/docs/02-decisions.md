@@ -92,6 +92,12 @@
   that would put a readable status on the server. **Multiple public handles per account: up to 5**
   (one per public context, e.g. one for Grindr, one for Tinder). Handle is set at link creation in
   the share sheet, not at account creation.
+- **LOCKED. Exactly two link kinds; no separate keyed "public profile" mode.** Public sharing is
+  always the findable, ask-first `/u/` handle; a durable keyed link is just a private link with no
+  expiry, not a third mode. The share surface and the Links tab present two things only: your public
+  handles (findable, ask-first) and your private per-person links. This drops the leftover keyed
+  public-profile option, whose `/a/…#key` shape read as identical to a private link and so blurred
+  the public/private line.
 - **LOCKED. Shared name is a one-time copy, not a live field.** A sharer may
   optionally attach a name to a face (default off). The receiver gets it once as the starting value
   of their own editable label and owns it from then on; it never re-syncs if the sharer later changes
@@ -130,7 +136,7 @@
 
 ## Time-bound & revocable sharing
 
-- **LOCKED. Grants can be point-in-time, durational, or until-revoked, for individuals or groups.** "Revoke" = no future reads, not "unsee."
+- **LOCKED. A grant is one-time (point-in-time reveal) or standing (until revoked), for individuals or groups.** "Revoke" = no future reads, not "unsee." **DEFERRED. Timed per-viewer windows** (grant one person access for 30 days, then it lapses on its own): expiring a single viewer without re-keying the one shared ciphertext isn't free, so timed windows wait; until then the link-level lifetime is the durational tool and standing-plus-manual-revoke covers the rest.
 - **LOCKED. Visibility and revocation are per-token / per-capability; there is NO global access state.** What a viewer sees depends on which token/alias they hold. If you're linked to someone through two paths (a group token and a separate alias) and you leave the group, they still see whatever the other token grants. Leaving one path doesn't touch the others. Removal from one path just makes that path go dark; it says nothing about the rest.
 - **LOCKED. Status and access are orthogonal** (pause changes what you show; revoke changes who sees via that path; nothing auto-rejoins).
 - **LOCKED. Access changes are visible to the affected person, indistinguishable to others.** You can tell your own access ended (a group stops resolving for you); to other members, "left" and "was removed" look identical (no public removal mark). The app never states a reason and never auto-revokes from a health event.
