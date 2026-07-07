@@ -102,18 +102,21 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
     // this; return the current blob unchanged for completeness.
     sweepExpiredLinks: () => Promise.resolve({ root, blob } as OwnerSession),
     refreshLiveLinks: () => Promise.resolve(),
-    // The share sheet hands out the private opaque link (a bare /a/{id}); its key
-    // is delivered at share time, never in the URL.
+    // The share sheet hands out the private link: /a/{id}#k={key}, its key in the
+    // fragment so it opens straight to the status (no knock).
     shareLink: (session) => {
       const id = "z".repeat(43);
       return Promise.resolve({
         session,
-        url: `https://sti.care/a/${id}`,
+        url: `https://sti.care/a/${id}#k=${"k".repeat(43)}`,
       });
     },
     // Revoke & renew: a distinct id, so the surfaced link visibly changes.
     renewLink: (session) =>
-      Promise.resolve({ session, url: `https://sti.care/a/${"w".repeat(43)}` }),
+      Promise.resolve({
+        session,
+        url: `https://sti.care/a/${"w".repeat(43)}#k=${"k".repeat(43)}`,
+      }),
     setShareLinkExpiry: (session) => Promise.resolve(session),
     deleteAccount: () => Promise.resolve(),
     reviewKnocks: () => Promise.resolve({ count: 0, pending: [] }),
@@ -322,7 +325,7 @@ describe("App onboarding flow", () => {
     );
     await user.click(screen.getByRole("button", { name: /saved it/i }));
     // A new account is private by default; there is no reach choice at setup, and
-    // the share sheet always hands out the bare /a/{id} link (no key in the URL).
+    // the share sheet always hands out the keyed private /a/{id}#k= link.
     await user.click(
       await screen.findByRole("button", { name: /Enter my passport/ }),
     );
@@ -361,20 +364,20 @@ describe("App onboarding flow", () => {
     await user.click(
       await screen.findByRole("button", { name: /Send a private link/ }),
     );
-    // The surfaced link is the bare /a/{id} with no key in the fragment, not the
-    // Storybook placeholder.
-    expect(
-      await screen.findByText(`sti.care/a/${"z".repeat(43)}`),
-    ).toBeInTheDocument();
+    // The surfaced link is the keyed private /a/{id}#k= link (opens with no knock),
+    // not the Storybook placeholder.
+    const keyedShareLink = `sti.care/a/${"z".repeat(43)}#k=${"k".repeat(43)}`;
+    expect(await screen.findByText(keyedShareLink)).toBeInTheDocument();
     expect(screen.queryByText(/a7f3k9q2/)).toBeNull();
-    expect(screen.queryByText(/#k=/)).toBeNull();
 
     // Revoke & renew swaps the displayed link for the freshly-minted one.
     await user.click(screen.getByRole("button", { name: /Revoke and renew/ }));
     expect(
-      await screen.findByText(`sti.care/a/${"w".repeat(43)}`),
+      await screen.findByText(
+        `sti.care/a/${"w".repeat(43)}#k=${"k".repeat(43)}`,
+      ),
     ).toBeInTheDocument();
-    expect(screen.queryByText(`sti.care/a/${"z".repeat(43)}`)).toBeNull();
+    expect(screen.queryByText(keyedShareLink)).toBeNull();
   });
 
   it("deleting the account from the danger zone logs out to the landing", async () => {
