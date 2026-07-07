@@ -1,5 +1,10 @@
 import { useId, useState } from "react";
-import { Button, Field, Input } from "../../design/components/index.ts";
+import {
+  Button,
+  Field,
+  Input,
+  PasswordInput,
+} from "../../design/components/index.ts";
 import { Chevron } from "../../design/icons.tsx";
 import { COPY } from "./claimCopy.ts";
 import "./onboarding.css";
@@ -99,9 +104,8 @@ export function PasswordLogin({
         />
       </Field>
       <Field label={COPY.recoverPwPasswordLabel} htmlFor={passwordId}>
-        <Input
+        <PasswordInput
           id={passwordId}
-          type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"

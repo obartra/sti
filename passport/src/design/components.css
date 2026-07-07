@@ -89,6 +89,14 @@
 .sti-input--error:focus { box-shadow: 0 0 0 3px var(--expired-100); }
 textarea.sti-input { height: auto; min-height: 96px; padding: var(--space-3) var(--space-4); line-height: var(--leading-normal); resize: vertical; }
 
+/* A password input beside its show/hide toggle. The toggle stays outside the
+   input's box on purpose: password-manager fill icons anchor inside the input,
+   so an overlaid eye would sit underneath them. */
+.sti-password { display: flex; align-items: center; gap: var(--space-1); }
+.sti-password .sti-input { flex: 1; min-width: 0; }
+.sti-password__toggle { flex: none; color: var(--text-muted); }
+.sti-password__toggle:disabled { cursor: default; background: transparent; color: var(--text-subtle); }
+
 /* ---------------------------------------------------------------- Switch --- */
 .sti-switch { display: inline-flex; align-items: center; gap: var(--space-3); cursor: pointer; user-select: none; }
 .sti-switch__track {

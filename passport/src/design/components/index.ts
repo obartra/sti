@@ -7,5 +7,5 @@ export type { ButtonProps, ButtonVariant, ButtonSize, IconButtonProps, IconButto
 export { Avatar } from "./surfaces.tsx";
 export type { AvatarProps, AvatarSize } from "./surfaces.tsx";
 
-export { Input, Field, Switch, Segmented } from "./forms.tsx";
-export type { InputProps, FieldProps, SwitchProps, SegmentedOption, SegmentedProps } from "./forms.tsx";
+export { Input, PasswordInput, Field, Switch, Segmented } from "./forms.tsx";
+export type { InputProps, PasswordInputProps, FieldProps, SwitchProps, SegmentedOption, SegmentedProps } from "./forms.tsx";

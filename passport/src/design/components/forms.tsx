@@ -1,4 +1,6 @@
-import type { InputHTMLAttributes, ReactNode } from "react";
+import { useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { IconButton } from "./buttons.tsx";
+import { Eye, EyeOff } from "../icons.tsx";
 
 const cx = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(" ");
 
@@ -8,6 +10,30 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export function Input({ error = false, className, ...rest }: InputProps) {
   return <input className={cx("sti-input", error && "sti-input--error", className)} {...rest} />;
+}
+
+export type PasswordInputProps = Omit<InputProps, "type">;
+
+// A password field with a show/hide toggle. The toggle is a sibling of the
+// input, never an overlay inside it: password managers (1Password, Bitwarden,
+// the browser's own key icon) anchor their fill buttons inside the input's own
+// box, so an in-field eye ends up underneath them. Keeping the eye outside
+// that box sidesteps the collision without any extension sniffing.
+export function PasswordInput({ disabled, ...rest }: PasswordInputProps) {
+  const [shown, setShown] = useState(false);
+  return (
+    <div className="sti-password">
+      <Input type={shown ? "text" : "password"} disabled={disabled} {...rest} />
+      <IconButton
+        className="sti-password__toggle"
+        aria-label={shown ? "Hide password" : "Show password"}
+        disabled={disabled}
+        onClick={() => setShown((v) => !v)}
+      >
+        {shown ? <EyeOff /> : <Eye />}
+      </IconButton>
+    </div>
+  );
 }
 
 export interface FieldProps {
