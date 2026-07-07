@@ -53,7 +53,7 @@ import {
   publishCard,
   republishCard,
   revokeAlias,
-  aliasLinkUrl,
+  keyedAliasLinkUrl,
 } from "./publish.ts";
 import type {
   OwnerSession,
@@ -326,15 +326,22 @@ export async function shareLinkFor(
       existing,
       deriveAliasCard(session.blob.state, existing, nowDay),
     );
-    return { session, url: aliasLinkUrl(existing) };
+    return { session, url: keyedAliasLinkUrl(existing) };
   }
   const stamp = (rec: AliasRecord): AliasRecord =>
     withIdentity(rec, identity, faceFor(session.blob, avatarOverride));
-  const { link, record } = await publishCard(
+  // A private link opens straight to the status (no knock): the key rides in the
+  // `#k=` fragment, like a per-contact link. isPublic stays false so it is
+  // unadvertised and can carry a lifetime. Public sharing is the /u/ handle, which
+  // is the only ask-first surface (doc 16).
+  const { record } = await publishCard(
     api,
     (rec) => deriveAliasCard(session.blob.state, stamp(rec), nowDay),
     { isPublic: false },
   );
   const blob = await accounts.addAlias(session.root, stamp(record));
-  return { session: { root: session.root, blob }, url: link };
+  return {
+    session: { root: session.root, blob },
+    url: keyedAliasLinkUrl(record),
+  };
 }

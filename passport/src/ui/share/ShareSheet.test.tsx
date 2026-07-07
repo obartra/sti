@@ -45,7 +45,7 @@ describe("ShareSheet link wiring", () => {
 
   it("falls back to a placeholder link only when no link is wired (undefined, Storybook)", () => {
     render(<ShareSheet {...base} />);
-    expect(screen.getByText("sti.care/a/a7f3k9q2")).toBeInTheDocument();
+    expect(screen.getByText("sti.care/a/a7f3k9q2#k=Zr8")).toBeInTheDocument();
   });
 
   it("while the link is preparing (null url) it shows no fake link, just a status", () => {

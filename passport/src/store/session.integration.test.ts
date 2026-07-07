@@ -561,15 +561,15 @@ describe("owner session against a live blind store", () => {
     );
   });
 
-  it("the share link is the keyless private /a/ link, reused across shares", async () => {
+  it("the share link is the keyed private /a/ link, reused across shares", async () => {
     const { ctl } = controller(fakePasskey());
     const created = await ctl.signUp("pat");
 
-    // The share sheet mints one private link: the bare /a/{id}, its key never in
-    // the URL, isPublic false. Public sharing is the /u/ handle, never this path
-    // (doc 16), so there is no keyed public share alias here.
+    // The share sheet mints one private link: /a/{id}#k=, its key in the fragment so
+    // it opens straight to the status (no knock). isPublic stays false (unadvertised,
+    // expirable). Public sharing is the /u/ handle, never this path (doc 16).
     const linkShare = await ctl.shareLink(created.session);
-    expect(linkShare.url).not.toContain("#k=");
+    expect(linkShare.url).toContain("#k=");
     expect(linkShare.session.blob.aliases).toHaveLength(1);
     expect(linkShare.session.blob.aliases[0]?.isPublic).toBe(false);
 
@@ -577,7 +577,7 @@ describe("owner session against a live blind store", () => {
     // card, never minting a second one.
     const again = await ctl.shareLink(linkShare.session);
     expect(again.url).toBe(linkShare.url);
-    expect(again.url).not.toContain("#k=");
+    expect(again.url).toContain("#k=");
     expect(again.session.blob.aliases).toHaveLength(1);
   });
 

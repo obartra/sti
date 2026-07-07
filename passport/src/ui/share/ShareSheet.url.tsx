@@ -24,9 +24,9 @@ const COPY = {
   retry: "Try again",
 } as const;
 
-// The canonical opaque private link: the bare /a/{id}; its key is handed at
-// share time, never shown in the demo placeholder.
-const URL_LINK = "sti.care/a/a7f3k9q2";
+// The canonical private link: /a/{id} with the key in the `#k=` fragment, so it
+// opens straight to the status (no knock). Storybook placeholder only.
+const URL_LINK = "sti.care/a/a7f3k9q2#k=Zr8";
 
 // The URL block has four states, driven by `realUrl` plus the prepare error flag:
 //   string  -> "ready": the owner's real link + a scannable QR of it.
