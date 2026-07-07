@@ -13,7 +13,6 @@ import {
   renameContactLabel,
   shareLinkFor,
 } from "./shareOps.ts";
-import { publicProfileUrl } from "./publish.ts";
 import { parseContactInvite, type ContactInvite } from "./contactInvite.ts";
 import { mintNotify } from "./notifyInbox.ts";
 import { randomAliasId } from "../crypto/index.ts";
@@ -72,7 +71,6 @@ function blobWithContact(contact: ContactRecord): AccountBlob {
     contacts: [contact],
     state: INITIAL_OWNER_STATE,
     avatar: DEFAULT_AVATAR,
-    sharingMode: "link",
   };
 }
 
@@ -102,7 +100,6 @@ function freshOwner(handle: string | undefined): {
     contacts: [],
     state: INITIAL_OWNER_STATE,
     avatar: DEFAULT_AVATAR,
-    sharingMode: "link",
   };
   const { accounts } = fakeAccounts(blob);
   return {
@@ -190,17 +187,17 @@ function shareAccounts(blob: AccountBlob): AccountManager {
   });
 }
 
-function shareSession(
-  sharingMode: "public" | "link",
-  findableName: string | null,
-): { api: ApiClient; accounts: AccountManager; session: OwnerSession } {
+function shareSession(findableName: string | null = null): {
+  api: ApiClient;
+  accounts: AccountManager;
+  session: OwnerSession;
+} {
   const blob: AccountBlob = {
     handle: "robin",
     aliases: [],
     contacts: [],
     state: INITIAL_OWNER_STATE,
     avatar: DEFAULT_AVATAR,
-    sharingMode,
     ...(findableName !== null
       ? { findables: [{ name: findableName, aliasId: "f".repeat(43) }] }
       : {}),
@@ -212,18 +209,20 @@ function shareSession(
   };
 }
 
-describe("shareLinkFor public name vs opaque link (doc 17)", () => {
-  it("hands out the /u/{name} link when sharing publicly as yourself", async () => {
-    const { api, accounts, session } = shareSession("public", "meow");
+describe("shareLinkFor always hands out the private opaque link (doc 16)", () => {
+  it("uses the opaque /a/ link, never a /u/ name, even as yourself", async () => {
+    // Public sharing is the findable name, managed from the Public names section;
+    // the share sheet only ever mints the private keyed /a/ link.
+    const { api, accounts, session } = shareSession("meow");
     const { url } = await shareLinkFor(api, accounts, session, {
       identity: "main",
     });
-    expect(url).toBe(publicProfileUrl("meow"));
-    expect(url).toBe("https://sti.care/u/meow");
+    expect(url).toContain("/a/");
+    expect(url).not.toContain("/u/");
   });
 
-  it("uses the opaque /a/ link when sharing publicly but anonymously", async () => {
-    const { api, accounts, session } = shareSession("public", "meow");
+  it("uses the opaque /a/ link when sharing anonymously", async () => {
+    const { api, accounts, session } = shareSession("meow");
     const { url } = await shareLinkFor(api, accounts, session, {
       identity: "anonymous",
     });
@@ -231,17 +230,8 @@ describe("shareLinkFor public name vs opaque link (doc 17)", () => {
     expect(url).not.toContain("/u/");
   });
 
-  it("never uses /u/ for a private (link-mode) share, even as yourself", async () => {
-    const { api, accounts, session } = shareSession("link", "meow");
-    const { url } = await shareLinkFor(api, accounts, session, {
-      identity: "main",
-    });
-    expect(url).toContain("/a/");
-    expect(url).not.toContain("/u/");
-  });
-
-  it("falls back to the opaque link when no public name is claimed", async () => {
-    const { api, accounts, session } = shareSession("public", null);
+  it("uses the opaque link when no public name is claimed", async () => {
+    const { api, accounts, session } = shareSession(null);
     const { url } = await shareLinkFor(api, accounts, session, {
       identity: "main",
     });
@@ -254,7 +244,7 @@ describe("per-link avatar override (doc 15)", () => {
   const face = { hair: 2, mood: 1, skin: 4, hairColor: 3, beard: 1 };
 
   it("stamps a chosen face onto a revealed share alias, not the account default", async () => {
-    const { api, accounts, session } = shareSession("link", null);
+    const { api, accounts, session } = shareSession();
     const { session: next } = await shareLinkFor(api, accounts, session, {
       identity: "main",
       avatarOverride: face,
@@ -267,7 +257,7 @@ describe("per-link avatar override (doc 15)", () => {
   });
 
   it("falls back to the account default face when no override is passed", async () => {
-    const { api, accounts, session } = shareSession("link", null);
+    const { api, accounts, session } = shareSession();
     const { session: next } = await shareLinkFor(api, accounts, session, {
       identity: "main",
     });
@@ -275,7 +265,7 @@ describe("per-link avatar override (doc 15)", () => {
   });
 
   it("never stamps a face on an anonymous link (id-derived face stays)", async () => {
-    const { api, accounts, session } = shareSession("link", null);
+    const { api, accounts, session } = shareSession();
     const { session: next } = await shareLinkFor(api, accounts, session, {
       identity: "anonymous",
       avatarOverride: face,
@@ -403,7 +393,6 @@ describe("mintContactLink per-contact decorrelation (doc 13)", () => {
       contacts: [],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
-      sharingMode: "link",
     };
     const { accounts } = fakeAccounts(blob);
     const session = { root: {} as CryptoKey, blob } as OwnerSession;

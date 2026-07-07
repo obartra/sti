@@ -16,10 +16,9 @@ import "./groups.css";
 // A real link is always "ready"; copy hands off the full https link.
 function InviteLinkCard({ url }: { url: string }) {
   const state = urlStateOf(url, false);
-  const { url: display, seed } = displayLink(url, true);
+  const { url: display, seed } = displayLink(url);
   return (
     <UrlCard
-      link
       state={state}
       url={display}
       seed={seed}

@@ -29,7 +29,6 @@ export const reportRenderers: ScreenRenderers = {
   ),
   wallet: ({ owner }) => (
     <Wallet
-      sharingMode={owner.sharingMode}
       viewerBadge={owner.viewerBadge}
       labels={owner.labels}
       blueRoute={owner.blueRoute}

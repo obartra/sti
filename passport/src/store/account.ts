@@ -32,14 +32,12 @@ import {
 } from "./accountLinks.ts";
 import { normalizeDisplayName } from "./displayName.ts";
 import {
-  isSharingMode,
   type AccountBlob,
   type AliasRecord,
   type ContactRecord,
   type CircleRecord,
   type FindableRegistration,
   type GroupRecord,
-  type SharingMode,
 } from "./accountBlob.ts";
 import { normalizeCircleMembers } from "./circles.ts";
 import {
@@ -48,10 +46,9 @@ import {
   type GroupMembershipAccounts,
 } from "./accountGroups.ts";
 
-/** The owner's presentation profile: avatar plus the account sharing default. */
+/** The owner's presentation profile: avatar plus the local display name. */
 export interface OwnerProfile {
   readonly avatar: AccountBlob["avatar"];
-  readonly sharingMode: SharingMode;
   /**
    * The owner's local display name (the account `handle`), edited from Settings.
    * Omit the key to leave the existing name untouched (the avatar-only edit path);
@@ -186,11 +183,11 @@ export interface AccountManager extends GroupMembershipAccounts {
   refreshLiveLinks(root: RootKey): Promise<void>;
 }
 
-// A brand-new account: empty links, default avatar, private (link) sharing. The
-// notify inbox is no longer account-level; each contact gets its own at link time
-// (doc 13). Onboarding updates the avatar and sharing default via setProfile. The
-// recovery phrase is stored in the (encrypted) blob so Settings can re-view it later
-// (doc 32); it is the same phrase shown once at sign-up, kept only inside this vault.
+// A brand-new account: empty links, default avatar. The notify inbox is no longer
+// account-level; each contact gets its own at link time (doc 13). Onboarding updates
+// the avatar via setProfile. The recovery phrase is stored in the (encrypted) blob so
+// Settings can re-view it later (doc 32); it is the same phrase shown once at sign-up,
+// kept only inside this vault.
 function freshBlob(recoveryPhrase: string, handle?: string): AccountBlob {
   return {
     ...(handle ? { handle: normalizeDisplayName(handle) } : {}),
@@ -198,7 +195,6 @@ function freshBlob(recoveryPhrase: string, handle?: string): AccountBlob {
     contacts: [],
     state: INITIAL_OWNER_STATE,
     avatar: DEFAULT_AVATAR,
-    sharingMode: "link",
     recoveryPhrase,
   };
 }
@@ -549,9 +545,6 @@ export function createAccountManager(
       if (!isAvatarConfig(profile.avatar)) {
         throw new Error("setProfile: invalid avatar");
       }
-      if (!isSharingMode(profile.sharingMode)) {
-        throw new Error("setProfile: invalid sharingMode");
-      }
       const blob = await sync.load(root);
       if (blob === null) {
         throw new Error("setProfile: no account exists for this key");
@@ -559,7 +552,6 @@ export function createAccountManager(
       const next: AccountBlob = {
         ...applyProfileName(blob, profile.handle),
         avatar: profile.avatar,
-        sharingMode: profile.sharingMode,
         ...(profile.homeDefaultView !== undefined
           ? { homeDefaultView: profile.homeDefaultView }
           : {}),

@@ -285,24 +285,19 @@ describe("releaseVanityName", () => {
 // The findable alias must never be treated as the share-sheet link by ANY share
 // path; setShareLinkExpiry re-PUTs the share alias's card (which would reset the
 // findable alias's expiry + identity), so pin that it excludes it.
-describe("share-link expiry excludes the findable alias", () => {
-  it("is a no-op when the only public alias is the findable one", async () => {
+describe("share-link expiry has no private share alias to change", () => {
+  it("is a no-op when the only alias is the findable public one", async () => {
     const { api, putAlias } = fakeApi({ registerResult: "registered" });
     const { accounts, session } = await freshSession(api);
     const claimed = (await registerVanityName(api, accounts, session, "robin"))
       .session;
-    // A public-mode owner whose only public alias is the dedicated findable one.
-    const pub: OwnerSession = {
-      ...claimed,
-      blob: { ...claimed.blob, sharingMode: "public" },
-    };
     putAlias.mockClear();
 
-    const next = await setShareLinkExpiry(api, accounts, pub, 1000);
+    const next = await setShareLinkExpiry(api, accounts, claimed, 1000);
 
-    // No share alias exists (the findable one is excluded), so nothing is re-PUT:
-    // the findable card's expiry/identity stays untouched.
-    expect(next).toBe(pub);
+    // No private share alias exists (the findable one is excluded), so nothing is
+    // re-PUT: the findable card's expiry/identity stays untouched.
+    expect(next).toBe(claimed);
     expect(putAlias).not.toHaveBeenCalled();
   });
 });
@@ -315,34 +310,27 @@ describe("primaryShareAlias", () => {
     isPublic,
   });
 
-  it("excludes every findable alias when picking the share alias", () => {
-    const findableA = mk("F", true);
-    const findableB = mk("G", true);
-    const share = mk("S", true);
+  it("picks the private alias, skipping public and findable ones", () => {
+    const findable = mk("F", true);
+    const publicShare = mk("P", true);
+    const share = mk("S", false);
     const blob = {
-      aliases: [findableA, findableB, share],
-      findables: [
-        { name: "robin", aliasId: findableA.id },
-        { name: "wren", aliasId: findableB.id },
-      ],
+      aliases: [findable, publicShare, share],
+      findables: [{ name: "robin", aliasId: findable.id }],
     } as unknown as AccountBlob;
 
-    // All findable aliases are public, but none may be returned as the share link,
-    // so the OTHER public alias is chosen.
-    expect(primaryShareAlias(blob, true)?.id).toBe(share.id);
+    // The share link is always the private alias (a keyed /a/ link), never a
+    // public or a findable alias.
+    expect(primaryShareAlias(blob)?.id).toBe(share.id);
   });
 
-  it("returns undefined when the only public aliases are findable ones", () => {
-    const findableA = mk("F", true);
-    const findableB = mk("G", true);
+  it("returns undefined when there is no private share alias", () => {
+    const findable = mk("F", true);
     const blob = {
-      aliases: [findableA, findableB],
-      findables: [
-        { name: "robin", aliasId: findableA.id },
-        { name: "wren", aliasId: findableB.id },
-      ],
+      aliases: [findable],
+      findables: [{ name: "robin", aliasId: findable.id }],
     } as unknown as AccountBlob;
 
-    expect(primaryShareAlias(blob, true)).toBeUndefined();
+    expect(primaryShareAlias(blob)).toBeUndefined();
   });
 });

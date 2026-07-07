@@ -43,7 +43,6 @@ describe("account sync against a live blind store", () => {
       contacts: [],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
-      sharingMode: "link",
     };
 
     expect(await sync.load(root)).toBeNull(); // no account yet

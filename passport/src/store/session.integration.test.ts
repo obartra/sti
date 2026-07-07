@@ -14,6 +14,7 @@ import { resolveCircleRoster } from "./circles.ts";
 import { deriveOwnerCard } from "./ownerCard.ts";
 import { pseudonymFor } from "../lib/avatars.ts";
 import { redeemGrant } from "./grant.ts";
+import { parsePublicCard } from "./publicCard.ts";
 import { requesterHash } from "./knock.ts";
 import { parseContactInvite } from "./contactInvite.ts";
 import { lockNotifyDraft, parsePartnerPing } from "./partnerNotify.ts";
@@ -547,12 +548,19 @@ describe("owner session against a live blind store", () => {
     expect(review.pending[0]?.alias.id).toBe(aliasId);
     expect(review.pending[0]?.pending.pubKey).toBe(kp.publicKey);
 
-    // Approving seals the alias key to the requester; they redeem it and the
-    // status resolves to the owner's real card.
-    expect(await ctl.approveKnocks(shared.session, review.pending)).toBe(1);
-    const key = await redeemGrant(api, aliasId, requesterSecret, kp.privateKey);
-    if (key === null) throw new Error("expected a granted key");
-    expect(await store.resolveAlias({ id: aliasId, key })).toEqual(
+    // A standing approve seals the alias key to the requester; they redeem it and
+    // the status resolves to the owner's real card, and stays re-checkable.
+    expect(
+      await ctl.approveKnocks(shared.session, review.pending, "standing"),
+    ).toBe(1);
+    const grant = await redeemGrant(
+      api,
+      aliasId,
+      requesterSecret,
+      kp.privateKey,
+    );
+    if (grant?.kind !== "key") throw new Error("expected a granted key");
+    expect(await store.resolveAlias({ id: aliasId, key: grant.key })).toEqual(
       deriveOwnerCard(
         session.blob.state,
         pseudonymFor(aliasId),
@@ -561,37 +569,66 @@ describe("owner session against a live blind store", () => {
     );
   });
 
-  it("share link's key-presence tracks the current sharing mode, not the first share", async () => {
+  it("a one-time approve delivers a card snapshot, not the key (no live access)", async () => {
+    const { ctl, api } = controller(fakePasskey());
+    const { session } = await ctl.signUp("juno");
+
+    const shared = await ctl.shareLink(session);
+    const aliasId = shared.session.blob.aliases[0]?.id ?? "";
+    const requesterSecret = bytesToBase64url(
+      crypto.getRandomValues(new Uint8Array(32)),
+    );
+    const kp = await generateGrantKeyPair();
+    await api.knock(
+      aliasId,
+      await requesterHash(requesterSecret, aliasId),
+      kp.publicKey,
+    );
+
+    const review = await ctl.reviewKnocks(shared.session);
+    // A one-time approve seals a frozen snapshot of the owner's current card.
+    expect(
+      await ctl.approveKnocks(shared.session, review.pending, "once"),
+    ).toBe(1);
+
+    // The requester gets a card snapshot, never the alias key: no live access.
+    const grant = await redeemGrant(
+      api,
+      aliasId,
+      requesterSecret,
+      kp.privateKey,
+    );
+    if (grant?.kind !== "card") throw new Error("expected a card snapshot");
+
+    // The frozen snapshot parses back to the owner's current card (the same one a
+    // keyed link would resolve to), so the viewer sees the status once.
+    expect(parsePublicCard(grant.card)).toEqual(
+      deriveOwnerCard(
+        session.blob.state,
+        pseudonymFor(aliasId),
+        todayEpochDay(),
+      ),
+    );
+  });
+
+  it("the share link is the keyed private /a/ link, reused across shares", async () => {
     const { ctl } = controller(fakePasskey());
-    const created = await ctl.signUp("pat"); // accounts default to link (private)
+    const created = await ctl.signUp("pat");
 
-    // A private link is the bare /a/{id}: the key is never in the URL.
+    // The share sheet mints one private link: /a/{id}#k=, its key in the fragment so
+    // it opens straight to the status (no knock). isPublic stays false (unadvertised,
+    // expirable). Public sharing is the /u/ handle, never this path (doc 16).
     const linkShare = await ctl.shareLink(created.session);
-    expect(linkShare.url).not.toContain("#k=");
-    const linkAlias = linkShare.session.blob.aliases[0];
-    expect(linkAlias?.isPublic).toBe(false);
+    expect(linkShare.url).toContain("#k=");
+    expect(linkShare.session.blob.aliases).toHaveLength(1);
+    expect(linkShare.session.blob.aliases[0]?.isPublic).toBe(false);
 
-    // Switch the account to public, then share: now the link must carry the key
-    // in its fragment, and it is a DISTINCT alias (not the private one re-dressed).
-    const pub = await ctl.setProfile(linkShare.session, {
-      avatar: created.session.blob.avatar,
-      sharingMode: "public",
-    });
-    const pubShare = await ctl.shareLink(pub);
-    expect(pubShare.url).toContain("#k=");
-    expect(pubShare.session.blob.aliases).toHaveLength(2);
-    const pubAlias = pubShare.session.blob.aliases.find((a) => a.isPublic);
-    expect(pubAlias?.id).not.toBe(linkAlias?.id);
-
-    // Switching back to private reuses the ORIGINAL private alias (same link),
-    // and crucially never surfaces the public alias's key under a private sheet.
-    const back = await ctl.setProfile(pubShare.session, {
-      avatar: created.session.blob.avatar,
-      sharingMode: "link",
-    });
-    const backShare = await ctl.shareLink(back);
-    expect(backShare.url).toBe(linkShare.url);
-    expect(backShare.url).not.toContain("#k=");
+    // Sharing again reuses the SAME private alias (same link) and refreshes its
+    // card, never minting a second one.
+    const again = await ctl.shareLink(linkShare.session);
+    expect(again.url).toBe(linkShare.url);
+    expect(again.url).toContain("#k=");
+    expect(again.session.blob.aliases).toHaveLength(1);
   });
 
   it("renewLink revokes the old link (no future reads) and mints a working fresh one", async () => {

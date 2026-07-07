@@ -152,11 +152,6 @@ export function mergeAccountBlobs(
     ),
     state: pickScalar(base.state, mine.state, theirs.state),
     avatar: pickScalar(base.avatar, mine.avatar, theirs.avatar),
-    sharingMode: pickScalar(
-      base.sharingMode,
-      mine.sharingMode,
-      theirs.sharingMode,
-    ),
     // Optional fields are omitted when empty/absent, matching serializeAccountBlob.
     ...(circles.length > 0 ? { circles } : {}),
     ...(findables.length > 0 ? { findables } : {}),

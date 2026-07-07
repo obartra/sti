@@ -19,7 +19,7 @@ type Story = StoryObj<typeof Wallet>;
 // Default: a public, blue owner on the QR-carrier format.
 export const Screen: Story = {
   args: {
-    sharingMode: "public",
+    isPublic: true,
     viewerBadge: "blue",
     labels: ["hiv"],
     blueRoute: "hiv",
@@ -30,7 +30,7 @@ export const Screen: Story = {
 // Public owner who has switched to the Live status pass, fresh read → blue.
 export const ScreenLive: Story = {
   args: {
-    sharingMode: "public",
+    isPublic: true,
     viewerBadge: "blue",
     labels: ["hiv"],
     blueRoute: "hiv",
@@ -42,7 +42,7 @@ export const ScreenLive: Story = {
 // Live pass that cannot refresh / is stale: fails closed to gray.
 export const ScreenLiveStale: Story = {
   args: {
-    sharingMode: "public",
+    isPublic: true,
     viewerBadge: "blue",
     labels: ["hiv"],
     blueRoute: "hiv",
@@ -51,11 +51,11 @@ export const ScreenLiveStale: Story = {
   },
 };
 
-// Private alias: the Live option is disabled and explained; only the QR-carrier
-// is available.
+// Private link: the Live option is disabled and explained; only the QR-carrier
+// is available. This is the wallet's default (a private passport link).
 export const ScreenPrivate: Story = {
   args: {
-    sharingMode: "link",
+    isPublic: false,
     viewerBadge: "blue",
     labels: ["hiv"],
     blueRoute: "hiv",

@@ -82,7 +82,18 @@ From the [Decisions log](02-decisions.md) and [Design](03-design.md):
      a not-yet-granted or declined request just stays gray-nothing.
    - The server stores an opaque sealed blob at an opaque id and routes nothing readable; it never
      learns who knocked, who was approved, or the key. Decline = the owner does nothing (no slot is
-     written; indistinguishable from not-yet-reviewed). Revoke later = the existing alias revoke.
+     written; indistinguishable from not-yet-reviewed).
+   - Approving offers **one-time** or **standing** access, sealed into the same slot the same way:
+     - **standing** seals the alias read key, so the viewer keeps re-checking the owner's live
+       status until it is revoked (revoke = the existing alias revoke).
+     - **one-time** seals a frozen SNAPSHOT of the owner's current card instead of the key. The
+       viewer decrypts and sees the status once and never receives the key, so they get no live or
+       re-checkable access. The snapshot carries the card's freshness deadline, so a stale-blue
+       snapshot fails closed to gray at read time exactly like a live resolve. Honest limit: the
+       viewer can still screenshot what they saw, so "one-time" means no live access, not "unsee".
+     Both ride a tiny versioned envelope (`{kind: "key" | "card"}`) so the requester knows which it
+     opened; the server still moves only opaque fixed-size bytes either way. Timed per-viewer
+     windows (an auto-expiring standing grant) remain deferred.
    This is more surface than an out-of-band grant, but it is fully blind and is the chosen UX.
 
 2. **Decorrelation cover-wake: scheduled full broadcast (DECIDED).** The server fires a contentless

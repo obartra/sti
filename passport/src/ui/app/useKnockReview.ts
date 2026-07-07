@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type {
+  GrantMode,
   OwnerSession,
   PendingApproval,
   SessionController,
@@ -20,7 +21,7 @@ export function useKnockReview(
   knockCount: number;
   canApprove: boolean;
   showInfo: boolean;
-  approve: () => void;
+  approve: (mode: GrantMode) => void;
   approving: boolean;
   refresh: () => void;
 } {
@@ -68,22 +69,25 @@ export function useKnockReview(
   // The knocks still worth showing an Approve for: not yet granted this session.
   const ungranted = pending.filter((p) => !granted.has(approvalKey(p)));
 
-  const approve = useCallback(() => {
-    if (session === null || approving) return;
-    const toGrant = pending.filter((p) => !granted.has(approvalKey(p)));
-    if (toGrant.length === 0) return;
-    const grantedKeys = toGrant.map(approvalKey);
-    setApproving(true);
-    void controller
-      .approveKnocks(session, toGrant)
-      // Only on full success: a rejection marks none, so the owner retries all.
-      .then(() => setGranted((prev) => new Set([...prev, ...grantedKeys])))
-      .catch(noop)
-      .finally(() => {
-        setApproving(false);
-        refresh();
-      });
-  }, [controller, session, pending, granted, approving, refresh]);
+  const approve = useCallback(
+    (mode: GrantMode) => {
+      if (session === null || approving) return;
+      const toGrant = pending.filter((p) => !granted.has(approvalKey(p)));
+      if (toGrant.length === 0) return;
+      const grantedKeys = toGrant.map(approvalKey);
+      setApproving(true);
+      void controller
+        .approveKnocks(session, toGrant, mode)
+        // Only on full success: a rejection marks none, so the owner retries all.
+        .then(() => setGranted((prev) => new Set([...prev, ...grantedKeys])))
+        .catch(noop)
+        .finally(() => {
+          setApproving(false);
+          refresh();
+        });
+    },
+    [controller, session, pending, granted, approving, refresh],
+  );
 
   return {
     knockCount,

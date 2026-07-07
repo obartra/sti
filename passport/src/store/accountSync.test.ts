@@ -21,7 +21,6 @@ const blob: AccountBlob = {
   contacts: [],
   state: INITIAL_OWNER_STATE,
   avatar: DEFAULT_AVATAR,
-  sharingMode: "link",
 };
 
 // A stateful fake of the account endpoints over a Map; everything else throws.

@@ -25,6 +25,7 @@ import {
   type ContactRecord,
 } from "./index.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
+import { todayEpochDay } from "../core/clock.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
 import { utf8ToBytes, bytesToUtf8 } from "../crypto/index.ts";
 import type { StorageLike } from "../auth/deviceStore.ts";
@@ -182,21 +183,21 @@ describe("public resolution against a live blind store", () => {
     const pending = review.pending.find((p) => p.requesterHash === hash);
     expect(pending?.pubKey).toBe(grantKeys.publicKey);
     if (!pending) throw new Error("expected the pending knock to be present");
-    await grantAccess(api, aliasRecord, pending);
+    await grantAccess(api, aliasRecord, pending, { kind: "key" });
     // Still exactly 4096 bytes once granted (no length tell vs the decoy).
     expect((await api.getAlias(slotId)).length).toBe(ALIAS_PAYLOAD_SIZE);
 
     // The requester redeems the alias key and resolves the real card with it.
-    const redeemedKey = await redeemGrant(
+    const redeemed = await redeemGrant(
       api,
       aliasId,
       requesterSecret,
       grantKeys.privateKey,
     );
-    if (redeemedKey === null) throw new Error("expected a granted key");
-    expect(await store.resolveAlias({ id: aliasId, key: redeemedKey })).toEqual(
-      view,
-    );
+    if (redeemed?.kind !== "key") throw new Error("expected a granted key");
+    expect(
+      await store.resolveAlias({ id: aliasId, key: redeemed.key }),
+    ).toEqual(view);
   });
 
   it("the viewer store knocks, the owner approves, and redeemGrant returns the card", async () => {
@@ -242,10 +243,61 @@ describe("public resolution against a live blind store", () => {
     const review = await api.knockReview(aliasId, writeToken);
     const pending = review.pending.find((p) => p.requesterHash === hash);
     if (!pending) throw new Error("expected the viewer's knock to be pending");
-    await grantAccess(api, aliasRecord, pending);
+    await grantAccess(api, aliasRecord, pending, { kind: "key" });
 
     // The viewer's store now redeems the grant into the real card.
     expect(await viewer.redeemGrant(aliasId)).toEqual(view);
+  });
+
+  it("a one-time grant seals a card snapshot: the viewer sees the status once, with no live key", async () => {
+    // The owner's live card. A one-time approve seals a FROZEN copy of this into the
+    // grant slot, so the viewer never receives the alias key.
+    const view: ResolvedView = {
+      state: "blue",
+      labels: ["hiv"],
+      route: "hiv",
+      identity: { handle: "max" },
+      freshUntil: todayEpochDay() + 30,
+    };
+    const raw = crypto.getRandomValues(new Uint8Array(32));
+    const key = await importAesKey(raw);
+    const aliasId = randomAliasId();
+    const writeToken = randomWriteToken();
+    await api.putAlias(
+      aliasId,
+      await sealToSize(key, serializePublicCard(view), ALIAS_PAYLOAD_SIZE),
+      writeToken,
+    );
+    const aliasRecord = {
+      id: aliasId,
+      writeToken,
+      key: bytesToBase64url(raw),
+      isPublic: false,
+    };
+
+    const secret = bytesToBase64url(crypto.getRandomValues(new Uint8Array(32)));
+    const grantKeys = createGrantKeyStore(memoryStorage());
+    const viewer = createBackendStore(api, secret, grantKeys);
+    await viewer.knock(aliasId);
+
+    const hash = await requesterHash(secret, aliasId);
+    const review = await api.knockReview(aliasId, writeToken);
+    const pending = review.pending.find((p) => p.requesterHash === hash);
+    if (!pending) throw new Error("expected the viewer's knock to be pending");
+    // Seal a snapshot of the current card, not the key.
+    await grantAccess(api, aliasRecord, pending, {
+      kind: "card",
+      card: serializePublicCard(view),
+    });
+
+    // The viewer's store redeems the snapshot into the same card the key would give.
+    expect(await viewer.redeemGrant(aliasId)).toEqual(view);
+    // But it got a snapshot, not the key: the raw grant is a card envelope, so there
+    // is no alias key to resolve the alias live with.
+    const priv = grantKeys.privateKey(aliasId);
+    if (priv === null) throw new Error("expected a stored grant key");
+    const raw2 = await redeemGrant(api, aliasId, secret, priv);
+    expect(raw2?.kind).toBe("card");
   });
 
   it("locks a partner-notify batch: a ping lands in the contact's inbox and decodes", async () => {
@@ -271,7 +323,6 @@ describe("public resolution against a live blind store", () => {
       contacts: [contact],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
-      sharingMode: "link",
     };
 
     // Before locking, the contact's inbox is an existence-uniform decoy: no ping.

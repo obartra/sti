@@ -370,8 +370,7 @@ function useProfileActions(
     (avatar: AvatarConfig) => {
       const current = sessionRef.current;
       if (current === null) return;
-      // Keep the current sharing mode; only the avatar changes.
-      persist({ avatar, sharingMode: current.blob.sharingMode });
+      persist({ avatar });
     },
     [persist, sessionRef],
   );
@@ -379,12 +378,8 @@ function useProfileActions(
     (name: string | null) => {
       const current = sessionRef.current;
       if (current === null) return;
-      // Keep avatar + sharing mode; only the local display name changes.
-      persist({
-        avatar: current.blob.avatar,
-        sharingMode: current.blob.sharingMode,
-        handle: name,
-      });
+      // Keep the avatar; only the local display name changes.
+      persist({ avatar: current.blob.avatar, handle: name });
     },
     [persist, sessionRef],
   );

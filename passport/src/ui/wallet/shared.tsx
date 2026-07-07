@@ -145,7 +145,6 @@ export const LOGO_WORDMARK = "/assets/logo/logo-wordmark.svg";
 export const LOGO_WORDMARK_LIGHT = "/assets/logo/logo-wordmark-light.svg";
 
 export type WalletFormat = "qr" | "live";
-export type SharingMode = "public" | "link";
 
 /* ── Shared pass parts ────────────────────────────────────────────────── */
 

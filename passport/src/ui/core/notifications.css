@@ -33,6 +33,25 @@
   flex-direction: column;
 }
 
+/* A grouped ask: the header row plus its choice buttons, kept together as one
+   quiet block. */
+.ntf__group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Each choice sits under the ask, indented past the header's lead icon so it reads
+   as belonging to it. It rides the interactive .e-row grammar (a quiet action row),
+   never a tinted card. */
+.ntf__choice {
+  padding-left: calc(18px + var(--space-4));
+}
+
+.ntf__choice:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .ntf__foot {
   font-size: 12.5px;
   color: var(--text-subtle);

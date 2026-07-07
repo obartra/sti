@@ -25,7 +25,6 @@ function sessionWith(expiresAt: number | null): OwnerSession {
       contacts: [],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
-      sharingMode: "public",
     },
   };
 }

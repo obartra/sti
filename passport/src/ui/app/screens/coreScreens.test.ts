@@ -66,18 +66,25 @@ describe("notificationItems (inbox privacy contract)", () => {
     }
   });
 
-  it("a grantable knock carries an Approve action; an info-only one carries none", () => {
-    let approved = false;
+  it("a grantable knock offers a one-time and a standing choice; an info-only one carries none", () => {
+    let mode: string | null = null;
     const grantable = notificationItems(
-      inbox({ canApprove: true, approve: () => (approved = true) }),
+      inbox({ canApprove: true, approve: (m) => (mode = m) }),
       nudge(),
       retest(),
       () => undefined,
     ).find((i) => i.icon === "users");
-    expect(grantable?.action?.label).toBe("Approve");
-    grantable?.action?.onAct();
-    expect(approved).toBe(true);
-    // It is an action, not a navigation, so it never routes away to settings.
+    // Two choices: show once (a point-in-time snapshot) and keep checking (live).
+    const choices = grantable?.choices ?? [];
+    expect(choices.map((c) => c.label)).toEqual([
+      "Show once",
+      "Let them keep checking",
+    ]);
+    choices[0]?.onAct();
+    expect(mode).toBe("once");
+    choices[1]?.onAct();
+    expect(mode).toBe("standing");
+    // They are actions, not a navigation, so the row never routes away to settings.
     expect(grantable?.onOpen).toBeUndefined();
 
     const infoOnly = notificationItems(
@@ -86,7 +93,7 @@ describe("notificationItems (inbox privacy contract)", () => {
       retest(),
       () => undefined,
     ).find((i) => i.icon === "users");
-    expect(infoOnly?.action).toBeUndefined();
+    expect(infoOnly?.choices).toBeUndefined();
     expect(infoOnly?.onOpen).toBeDefined();
   });
 
@@ -98,7 +105,7 @@ describe("notificationItems (inbox privacy contract)", () => {
       () => undefined,
     ).filter((i) => i.icon === "users");
     expect(items).toHaveLength(1);
-    expect(items[0]?.action?.label).toBe("Approve");
+    expect(items[0]?.choices).toHaveLength(2);
   });
 
   it("once nothing is grantable or info-worthy, the knock entry disappears", () => {
@@ -113,14 +120,14 @@ describe("notificationItems (inbox privacy contract)", () => {
     expect(items.some((i) => i.icon === "users")).toBe(false);
   });
 
-  it("the busy flag flows into the action so the button can disable", () => {
+  it("the busy flag flows into each choice so the buttons can disable", () => {
     const item = notificationItems(
       inbox({ canApprove: true, approving: true }),
       nudge(),
       retest(),
       () => undefined,
     ).find((i) => i.icon === "users");
-    expect(item?.action?.busy).toBe(true);
+    expect(item?.choices?.every((c) => c.busy)).toBe(true);
   });
 
   it("hides the re-test row for a freshly-tested owner (plenty of days left)", () => {

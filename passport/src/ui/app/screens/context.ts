@@ -9,6 +9,7 @@ import type {
   ContactRecord,
   CreateGroupInput,
   CreateGroupResult,
+  GrantMode,
   GroupRecord,
   OwnerView,
   PassportStore,
@@ -64,8 +65,9 @@ export interface ScreenCtx extends GroupJoinActions {
   canApproveKnocks: boolean;
   /** Whether to show the contentless "someone asked" row (knocks with no key). */
   showKnockInfo: boolean;
-  /** Grant every waiting knock (seals each alias key to its requester). */
-  approveKnocks: () => void;
+  /** Grant every waiting knock. "standing" seals each alias key (live access);
+   * "once" seals a frozen card snapshot (seen once, no live access). */
+  approveKnocks: (mode: GrantMode) => void;
   /** An approve is in flight (disable the control). */
   approvingKnocks: boolean;
   /** A linked contact reported a positive: show the contentless "get tested" row. */

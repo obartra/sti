@@ -111,7 +111,7 @@ describe("grant slot id derivation", () => {
 });
 
 describe("grantAccess / redeemGrant round trip", () => {
-  it("the approved requester redeems exactly the alias read key", async () => {
+  it("a standing grant seals the alias key: the requester redeems exactly it", async () => {
     const api = fakeApi();
     const alias = aliasRecord();
     const secret = bytesToBase64url(crypto.getRandomValues(new Uint8Array(32)));
@@ -124,10 +124,33 @@ describe("grantAccess / redeemGrant round trip", () => {
     // Before approval the slot is a decoy, so redeem is null (still pending).
     expect(await redeemGrant(api, alias.id, secret, kp.privateKey)).toBeNull();
 
-    await grantAccess(api, alias, pending);
+    await grantAccess(api, alias, pending, { kind: "key" });
 
     const redeemed = await redeemGrant(api, alias.id, secret, kp.privateKey);
-    expect(redeemed).toBe(alias.key);
+    expect(redeemed).toEqual({ kind: "key", key: alias.key });
+  });
+
+  it("a one-time grant seals card bytes: the requester redeems exactly those bytes", async () => {
+    const api = fakeApi();
+    const alias = aliasRecord();
+    const secret = bytesToBase64url(crypto.getRandomValues(new Uint8Array(32)));
+    const kp = await generateGrantKeyPair();
+    const pending: PendingKnock = {
+      requesterHash: await requesterHash(secret, alias.id),
+      pubKey: kp.publicKey,
+    };
+    const card = utf8ToBytes("a-frozen-card-snapshot");
+
+    await grantAccess(api, alias, pending, { kind: "card", card });
+
+    const redeemed = await redeemGrant(api, alias.id, secret, kp.privateKey);
+    expect(redeemed?.kind).toBe("card");
+    if (redeemed?.kind !== "card") throw new Error("expected a card grant");
+    expect(new TextDecoder().decode(redeemed.card)).toBe(
+      "a-frozen-card-snapshot",
+    );
+    // A one-time grant never carries the alias key, so no live access is delivered.
+    expect(new TextDecoder().decode(redeemed.card)).not.toContain(alias.key);
   });
 
   it("a different device's private key cannot redeem the grant", async () => {
@@ -135,10 +158,15 @@ describe("grantAccess / redeemGrant round trip", () => {
     const alias = aliasRecord();
     const secret = bytesToBase64url(crypto.getRandomValues(new Uint8Array(32)));
     const kp = await generateGrantKeyPair();
-    await grantAccess(api, alias, {
-      requesterHash: await requesterHash(secret, alias.id),
-      pubKey: kp.publicKey,
-    });
+    await grantAccess(
+      api,
+      alias,
+      {
+        requesterHash: await requesterHash(secret, alias.id),
+        pubKey: kp.publicKey,
+      },
+      { kind: "key" },
+    );
 
     const stranger = await generateGrantKeyPair();
     expect(
@@ -155,12 +183,15 @@ describe("grantAccess / redeemGrant round trip", () => {
       requesterHash: await requesterHash(secret, alias.id),
       pubKey: kp.publicKey,
     };
-    await grantAccess(api, alias, pending);
+    await grantAccess(api, alias, pending, { kind: "key" });
     // A second approve must not 403 on the existing slot.
-    await expect(grantAccess(api, alias, pending)).resolves.toBeUndefined();
-    expect(await redeemGrant(api, alias.id, secret, kp.privateKey)).toBe(
-      alias.key,
-    );
+    await expect(
+      grantAccess(api, alias, pending, { kind: "key" }),
+    ).resolves.toBeUndefined();
+    expect(await redeemGrant(api, alias.id, secret, kp.privateKey)).toEqual({
+      kind: "key",
+      key: alias.key,
+    });
   });
 
   it("re-approving to a NEW key replaces the grant: the old key stops working", async () => {
@@ -171,32 +202,38 @@ describe("grantAccess / redeemGrant round trip", () => {
     const kp1 = await generateGrantKeyPair();
     const kp2 = await generateGrantKeyPair();
 
-    await grantAccess(api, alias, {
-      requesterHash: hash,
-      pubKey: kp1.publicKey,
-    });
-    expect(await redeemGrant(api, alias.id, secret, kp1.privateKey)).toBe(
-      alias.key,
+    await grantAccess(
+      api,
+      alias,
+      { requesterHash: hash, pubKey: kp1.publicKey },
+      { kind: "key" },
     );
+    expect(await redeemGrant(api, alias.id, secret, kp1.privateKey)).toEqual({
+      kind: "key",
+      key: alias.key,
+    });
 
     // Owner re-approves the same requester slot to a rotated key. The slot id and
     // write token are unchanged (both derive from the requesterHash), so this
     // overwrites in place; the old private key can no longer open it.
-    await grantAccess(api, alias, {
-      requesterHash: hash,
-      pubKey: kp2.publicKey,
-    });
-    expect(await redeemGrant(api, alias.id, secret, kp1.privateKey)).toBeNull();
-    expect(await redeemGrant(api, alias.id, secret, kp2.privateKey)).toBe(
-      alias.key,
+    await grantAccess(
+      api,
+      alias,
+      { requesterHash: hash, pubKey: kp2.publicKey },
+      { kind: "key" },
     );
+    expect(await redeemGrant(api, alias.id, secret, kp1.privateKey)).toBeNull();
+    expect(await redeemGrant(api, alias.id, secret, kp2.privateKey)).toEqual({
+      kind: "key",
+      key: alias.key,
+    });
   });
 
   it("throws if the pending knock carried no key to seal to", async () => {
     const api = fakeApi();
     const alias = aliasRecord();
     await expect(
-      grantAccess(api, alias, { requesterHash: "r" }),
+      grantAccess(api, alias, { requesterHash: "r" }, { kind: "key" }),
     ).rejects.toThrow();
   });
 });

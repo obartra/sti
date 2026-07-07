@@ -33,6 +33,7 @@ import { ALIAS_PAYLOAD_SIZE } from "../api/contract.ts";
 import {
   sha256Base64url,
   utf8ToBytes,
+  bytesToUtf8,
   base64urlToBytes,
   bytesToBase64url,
   sealToPublicKeySized,
@@ -81,15 +82,74 @@ function deriveGrantWriteToken(
   );
 }
 
+// A tiny versioned envelope wrapping what an approve delivers, so the requester
+// knows what it opened. Approving a knock seals EITHER the alias read key (STANDING:
+// the viewer keeps re-checking the owner's live status until revoked) OR a frozen
+// card SNAPSHOT (ONE-TIME: the viewer decrypts the status once and never receives the
+// key, so they get no live/re-checkable access). The envelope is sealed to the
+// requester's pubkey exactly like the bare key was, so the server still moves only
+// opaque bytes; it never learns which kind, the key, or the card.
+const GRANT_ENVELOPE_VERSION = 1;
+
+/** What the owner seals on approve: the alias read key (standing/live access) or a
+ * frozen card snapshot (one-time). The caller serializes the snapshot bytes. */
+export type GrantPayload =
+  | { readonly kind: "key" }
+  | { readonly kind: "card"; readonly card: Bytes };
+
+/** What the requester opens on redeem: the alias read key to resolve live, or the
+ * snapshot card bytes to render once. A decoy / not-for-me / malformed slot stays
+ * null (never an error), exactly as before. */
+export type RedeemedGrant =
+  | { readonly kind: "key"; readonly key: string }
+  | { readonly kind: "card"; readonly card: Bytes };
+
+function encodeGrantEnvelope(grant: GrantPayload, aliasKey: string): Bytes {
+  const body =
+    grant.kind === "key"
+      ? { v: GRANT_ENVELOPE_VERSION, kind: "key", key: aliasKey }
+      : {
+          v: GRANT_ENVELOPE_VERSION,
+          kind: "card",
+          card: bytesToBase64url(grant.card),
+        };
+  return utf8ToBytes(JSON.stringify(body));
+}
+
+// Parse an opened envelope back to its discriminated form, or null on any structural
+// surprise (an unknown version, a missing/ill-typed field). Never throws for those:
+// a malformed grant is treated like a decoy, "no access for me".
+function decodeGrantEnvelope(bytes: Bytes): RedeemedGrant | null {
+  const raw: unknown = JSON.parse(bytesToUtf8(bytes));
+  if (typeof raw !== "object" || raw === null) return null;
+  const o = raw as {
+    v?: unknown;
+    kind?: unknown;
+    key?: unknown;
+    card?: unknown;
+  };
+  if (o.v !== GRANT_ENVELOPE_VERSION) return null;
+  if (o.kind === "key" && typeof o.key === "string") {
+    return { kind: "key", key: o.key };
+  }
+  if (o.kind === "card" && typeof o.card === "string") {
+    return { kind: "card", card: base64urlToBytes(o.card) };
+  }
+  return null;
+}
+
 /**
- * Owner side: seal `alias`'s read key to a pending requester's ephemeral key and
- * write it to the grant slot. The requester can then open it and resolve `alias`.
- * Throws if the pending knock carried no key (nothing to seal to).
+ * Owner side: seal a grant to a pending requester's ephemeral key and write it to the
+ * grant slot. `grant` chooses what the requester receives: `{ kind: "key" }` seals the
+ * alias read key so they get standing live access; `{ kind: "card", card }` seals a
+ * frozen snapshot of the owner's current card so they see the status once with no live
+ * access. Throws if the pending knock carried no key (nothing to seal to).
  */
 export async function grantAccess(
   api: ApiClient,
   alias: AliasRecord,
   pending: PendingKnock,
+  grant: GrantPayload,
 ): Promise<void> {
   if (!pending.pubKey) {
     throw new Error("grant: requester sent no key to seal to");
@@ -100,7 +160,7 @@ export async function grantAccess(
     pending.requesterHash,
   );
   const sealed = await sealToPublicKeySized(
-    base64urlToBytes(alias.key),
+    encodeGrantEnvelope(grant, alias.key),
     pending.pubKey,
     ALIAS_PAYLOAD_SIZE,
   );
@@ -108,17 +168,18 @@ export async function grantAccess(
 }
 
 /**
- * Requester side: poll the grant slot for `aliasId`. Returns the alias read key
- * (base64url, ready for resolveAlias) once the owner has approved, or null while
- * it is still pending or if the slot is not a grant meant for this device. The
- * caller supplies the private key it kept when it knocked.
+ * Requester side: poll the grant slot for `aliasId`. Returns the opened grant (a
+ * discriminated `{ kind: "key", key }` for standing access or `{ kind: "card", card }`
+ * for a one-time snapshot) once the owner has approved, or null while it is still
+ * pending, if the slot is not a grant meant for this device, or if it is malformed.
+ * The caller supplies the private key it kept when it knocked.
  */
 export async function redeemGrant(
   api: ApiClient,
   aliasId: string,
   requesterSecret: string,
   grantPrivateKey: string,
-): Promise<string | null> {
+): Promise<RedeemedGrant | null> {
   const hash = await requesterHash(requesterSecret, aliasId);
   const slotId = await deriveGrantSlotId(aliasId, hash);
   // getAlias always returns a fixed-size payload (a decoy when nothing is there),
@@ -127,12 +188,12 @@ export async function redeemGrant(
   // mistaken for "pending".
   const sealed = await api.getAlias(slotId);
   try {
-    return bytesToBase64url(
+    return decodeGrantEnvelope(
       await openFromPrivateKeySized(sealed, grantPrivateKey),
     );
   } catch {
     // The only failures here are crypto: a decoy (not yet granted) or a grant
-    // sealed to someone else. Both mean "no key for me" -> null, never an error.
+    // sealed to someone else. Both mean "no access for me" -> null, never an error.
     return null;
   }
 }

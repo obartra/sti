@@ -22,7 +22,6 @@ function sessionWithAlias(aliasId: string): OwnerSession {
       contacts: [],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
-      sharingMode: "link",
     },
   };
 }
@@ -116,7 +115,7 @@ describe("useKnockReview granted-set clearing", () => {
 
     // Approve: the server is blind to the grant, so the next review still returns
     // the same knock, but the hook hides it -> canApprove goes false.
-    act(() => result.current.approve());
+    act(() => result.current.approve("standing"));
     expect(approveKnocks).toHaveBeenCalledOnce();
     await waitFor(() => expect(result.current.canApprove).toBe(false));
 
@@ -135,7 +134,7 @@ describe("useKnockReview granted-set clearing", () => {
 
     const { result } = renderHook(() => useKnockReview(controller, session));
     await waitFor(() => expect(result.current.canApprove).toBe(true));
-    act(() => result.current.approve());
+    act(() => result.current.approve("standing"));
     await waitFor(() => expect(result.current.canApprove).toBe(false));
 
     // A different requester knocks; it is NOT in the granted set, so it shows.
@@ -156,7 +155,7 @@ describe("useKnockReview granted-set clearing", () => {
       { initialProps: { s: first } },
     );
     await waitFor(() => expect(result.current.canApprove).toBe(true));
-    act(() => result.current.approve());
+    act(() => result.current.approve("standing"));
     await waitFor(() => expect(result.current.canApprove).toBe(false));
 
     // A different account logs in (new alias id). The granted memory must clear,

@@ -80,7 +80,6 @@ describe("account manager", () => {
       contacts: [],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
-      sharingMode: "link",
       recoveryPhrase: created.recoveryPhrase,
     });
     expect(recovered?.blob).toEqual(created.blob);
@@ -376,28 +375,19 @@ describe("account manager", () => {
     await expect(accounts.setOwnerState(created.root, bad)).rejects.toThrow();
   });
 
-  it("setProfile persists avatar + sharing and guards invalid input", async () => {
+  it("setProfile persists avatar and guards invalid input", async () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
     const avatar = { hair: 1, mood: 2, skin: 2, hairColor: 4, beard: 0 };
     const next = await accounts.setProfile(created.root, {
       avatar,
-      sharingMode: "public",
     });
     expect(next.avatar).toEqual(avatar);
-    expect(next.sharingMode).toBe("public");
 
-    // A bad avatar or sharing mode is rejected at write time, not persisted.
+    // A bad avatar is rejected at write time, not persisted.
     await expect(
       accounts.setProfile(created.root, {
         avatar: { ...avatar, hair: 999 },
-        sharingMode: "public",
-      }),
-    ).rejects.toThrow();
-    await expect(
-      accounts.setProfile(created.root, {
-        avatar,
-        sharingMode: "secret" as never,
       }),
     ).rejects.toThrow();
   });
@@ -406,19 +396,16 @@ describe("account manager", () => {
     const accounts = createAccountManager(fakeAccountApi());
     const created = await accounts.create("robin");
     const avatar = created.blob.avatar;
-    const sharingMode = created.blob.sharingMode;
 
     // No handle key: the name is left untouched (the avatar-only edit path).
     const kept = await accounts.setProfile(created.root, {
       avatar,
-      sharingMode,
     });
     expect(kept.handle).toBe("robin");
 
     // A string sets it.
     const renamed = await accounts.setProfile(created.root, {
       avatar,
-      sharingMode,
       handle: "robin2",
     });
     expect(renamed.handle).toBe("robin2");
@@ -426,7 +413,6 @@ describe("account manager", () => {
     // null clears it back to no name, omitting the key (never storing "").
     const cleared = await accounts.setProfile(created.root, {
       avatar,
-      sharingMode,
       handle: null,
     });
     expect(cleared.handle).toBeUndefined();
@@ -435,12 +421,10 @@ describe("account manager", () => {
     // "" clears it too.
     await accounts.setProfile(created.root, {
       avatar,
-      sharingMode,
       handle: "x",
     });
     const clearedEmpty = await accounts.setProfile(created.root, {
       avatar,
-      sharingMode,
       handle: "",
     });
     expect("handle" in clearedEmpty).toBe(false);
@@ -450,7 +434,6 @@ describe("account manager", () => {
     // a bad value can never seal fine and then throw on the next parse.
     const capped = await accounts.setProfile(created.root, {
       avatar,
-      sharingMode,
       handle: "x".repeat(65),
     });
     expect(capped.handle).toBe("x".repeat(40));

@@ -71,7 +71,9 @@ describe("demo runtime", () => {
     expect(knocks.pending[0]?.pending.pubKey).toBeTruthy();
 
     // Approving the grant clears the row: a re-review returns nothing.
-    expect(await controller.approveKnocks(session, knocks.pending)).toBe(1);
+    expect(
+      await controller.approveKnocks(session, knocks.pending, "standing"),
+    ).toBe(1);
     const after = await controller.reviewKnocks(session);
     expect(after.count).toBe(0);
     expect(after.pending).toEqual([]);

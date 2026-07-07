@@ -138,7 +138,9 @@ async function walkKnocks(
   expect(knocks.count).toBe(1);
   expect(knocks.pending).toHaveLength(1);
   expect(knocks.pending[0]?.pending.pubKey).toBeTruthy();
-  expect(await controller.approveKnocks(session, knocks.pending)).toBe(1);
+  expect(
+    await controller.approveKnocks(session, knocks.pending, "standing"),
+  ).toBe(1);
   const cleared = await controller.reviewKnocks(session);
   expect(cleared.count).toBe(0);
   expect(cleared.pending).toEqual([]);
@@ -195,9 +197,8 @@ async function walkController(controller: SessionController): Promise<void> {
   // Profile + state: each hands back a session whose blob carries the change.
   const profiled = await controller.setProfile(booted, {
     avatar: booted.blob.avatar,
-    sharingMode: "public",
   });
-  expect(profiled.blob.sharingMode).toBe("public");
+  expect(profiled.blob.avatar).toEqual(booted.blob.avatar);
   const paused = await controller.setOwnerState(profiled, {
     ...profiled.blob.state,
     paused: true,
