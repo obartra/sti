@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, IconButton, Card, Avatar, Badge, Input, Field, Switch, Segmented, Row } from "./components/index.ts";
+import { Button, IconButton, Card, Avatar, Badge, Input, PasswordInput, Field, Switch, Segmented, Row } from "./components/index.ts";
 
 // Living styleguide for the design-system primitives. Each story shows a
 // component family's variants so a CSS/token change is caught in snapshots.
@@ -107,6 +107,9 @@ export const Forms: Story = {
         </Field>
         <Field label="Recovery phrase" error="That phrase doesn't match." htmlFor="r">
           <Input id="r" error defaultValue="wrong words" />
+        </Field>
+        <Field label="Password" htmlFor="pw">
+          <PasswordInput id="pw" defaultValue="correct-horse-battery" />
         </Field>
         <Switch checked={on} onChange={setOn} label="Make my card public" />
         <Segmented
