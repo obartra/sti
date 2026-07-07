@@ -8,7 +8,8 @@ generated in Google's Gemini and stitched together with no design work left over
    ~35s hero: the finished beats play, and the Gemini shots are labeled placeholder frames.
    Use it to feel the pacing before spending any generation credits.
 1. `ASSEMBLY.md` — the timeline and step-by-step stitch guide. Read this first.
-2. `prompts/` — paste each `.txt` into Gemini to generate the 4 shots (16:9 and 9:16).
+2. `prompts/` — paste each `.txt` into Gemini to generate the shots (Shots 1, 2, 3, and
+   three diverse Shot 5 cast variants), in 16:9 and 9:16.
 3. `build/clips/` — finished animated clips (beats 4, 6, 7). Drop in as-is.
 4. `build/overlays/` — transparent text cards to lay over the generated footage.
 5. `music-prompt.txt` — paste into your music generator.

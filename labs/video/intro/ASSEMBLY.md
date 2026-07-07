@@ -7,7 +7,8 @@ the brand fonts and colors, so there is no design work left, only stitching.
 
 ## What's in the kit
 
-- `prompts/` — 8 paste-ready Gemini/Veo prompt files (4 shots x 16:9 and 9:16).
+- `prompts/` — paste-ready Gemini/Veo prompt files (Shots 1, 2, 3, and three diverse Shot 5
+  cast variants a/b/c), each in 16:9 and 9:16.
 - `build/clips/` — finished animated clips, ready to place as-is:
   - `beat4-card-turns-blue--{16x9,9x16}.webm` (the blue card resolving, ~5.2s)
   - `beat6-values--{16x9,9x16}.webm` (the values line + teal hairline, ~3.8s)
@@ -30,7 +31,7 @@ directly. If your editor wants MP4, transcode locally with a standard ffmpeg:
 | 2 | 0:03-0:08 | Gemini `shot2-encryption--16x9` | `beat2-encrypted--16x9.png` | |
 | 3 | 0:08-0:14 | Gemini `shot3-blind-store--16x9` | `beat3a-...` (0:08-0:11), then `beat3b-...` (0:11-0:14) | cross-fade the two overlays |
 | 4 | 0:14-0:19 | `build/clips/beat4-card-turns-blue--16x9.webm` | (none; the card speaks) | chime lands ~0:15 with the teal bloom |
-| 5 | 0:19-0:26 | Gemini `shot5-human-beat--16x9` | `beat5-conversation--16x9.png` | |
+| 5 | 0:19-0:26 | Gemini `shot5-human-beat-{a,b,c}--16x9` (intercut or pick) | `beat5-conversation--16x9.png` | diverse cast variants; keep faces out |
 | 6 | 0:26-0:30 | `build/clips/beat6-values--16x9.webm` | (baked in) | |
 | 7 | 0:30-0:34 | `build/clips/beat7-lockup--16x9.webm` | (baked in) | hold the final wordmark, music resolves |
 
@@ -48,7 +49,7 @@ drop-shadow or box is needed.
 |---|------|-------------|--------------------|
 | 1 | 0:00-0:06 | `shot2-encryption--9x16` into `shot3-blind-store--9x16` | `beat3b-cant-read--9x16.png` |
 | 2 | 0:06-0:11 | `build/clips/beat4-card-turns-blue--9x16.webm` | (none) |
-| 3 | 0:11-0:14 | tail of `shot5-human-beat--9x16` | `beat5-conversation--9x16.png` |
+| 3 | 0:11-0:14 | tail of `shot5-human-beat-a--9x16` (or another variant) | `beat5-conversation--9x16.png` |
 | 4 | 0:14-0:18 | `build/clips/beat7-lockup--9x16.webm` | (baked in) |
 
 ## Audio

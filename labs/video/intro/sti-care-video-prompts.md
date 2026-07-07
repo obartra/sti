@@ -21,34 +21,65 @@ case, no em dashes, no exclamation points, teal as an accent only.
 > teal accent (#2F9BB3); no other saturated colors, not dark, not neon. Motion is slow and
 > understated, no fast moves, no bounce, no whip pans. Quiet, reassuring, intimate mood.
 
+For the **human shots (1 and 5)** use this variant instead, so wardrobe and skin tones stay
+varied rather than flattened to the graphic palette:
+
+> Style: calm, warm, editorial, cinematic. Soft natural daylight, a warm and lived-in
+> setting, a single calm teal accent (#2F9BB3) on the phone screens. Skin tones and clothing
+> are varied and natural, never stylized to one look. Shallow depth of field, 50mm look,
+> subtle film grain. Motion is slow and understated. Quiet, reassuring, welcoming mood.
+
 ## Global negative prompt (append to every shot)
 
-> Avoid: text, letters, words, numbers, characters, calligraphy, writing, or symbols of any
-> language, on a screen or anywhere in frame; any visible human faces or recognizable
-> people; UI, app screenshots, logos, watermarks, brand marks; fast motion, camera shake,
-> lens flares, neon, high saturation, dark or moody grading, clinical or hospital setting,
-> stock-ad cheerfulness, dramatic lighting.
+> Avoid: any visible human face or part of a face (no chin, jaw, mouth, nose or eyes);
+> recognizable people; text, letters, words, numbers, characters, calligraphy, writing, or
+> symbols of any language, on a screen or anywhere in frame; UI, app screenshots, logos,
+> watermarks, brand marks; fast motion, camera shake, lens flares, neon, high saturation,
+> dark or moody grading, clinical or hospital setting, stock-ad cheerfulness, dramatic
+> lighting.
 
-Calibration note: a first test of Shot 2 came back with the model rendering glowing
-foreign-language calligraphy on the phone screen. The cause was the phrase "written marks"
-plus a negative that only said "text" (the model did not treat non-English glyphs as
-"text"). The fix, validated on a re-run, is baked in above and into the shots: describe a
-screen as an "abstract glow," never as "written marks" or anything that implies writing,
-and ban characters/glyphs of any language explicitly. If your Gemini interface has a
-separate negative-prompt field, paste the Avoid list there; it is enforced more strongly.
+For the human shots (1 and 5) also append: avoid a uniform white or Scandinavian aesthetic,
+everyone in matching beige knitwear, or a single default ethnicity.
+
+## Casting and inclusivity (applies to every human shot)
+
+sti.care is for everyone, and the voice guide's rule is to assume inclusivity, not perform
+it. Left to its defaults the model produces a white, Scandinavian, matching-knitwear
+monoculture, which is off-brand. Because the film is deliberately faceless, we carry
+representation through the levers we can see, and we never let the model default:
+
+- Specify varied, richer skin tones explicitly (the model defaults to white otherwise), and
+  vary them across shots so the film shows a range, not one look.
+- Vary wardrobe: contemporary, everyday, lived-in. No matching beige knitwear.
+- Do not gender-code the pairing. Faces-out helps: it reads as any two people, so anyone can
+  see themselves in it.
+- The human beat (Shot 5) is generated as several cast variants (see below) to intercut or
+  choose from, so it spans people rather than settling on one default couple.
+
+## Calibration notes (learned from test generations)
+
+- Shot 2 first came back with glowing foreign-language calligraphy on the screen. Cause: the
+  phrase "written marks" plus a negative that only said "text" (the model did not treat
+  non-English glyphs as "text"). Fix, validated on a re-run: describe a screen as an
+  "abstract glow," never "written marks," and ban characters of any language explicitly.
+- Shot 5 first came back white and Scandinavian, and the man's chin and jaw crept into the
+  top of frame. Fix: the casting guidance above, plus framing "from the shoulders and chest
+  downward" with faces entirely above the top edge, and a negative that bans face parts.
+- If your Gemini interface has a separate negative-prompt field, paste the Avoid list there;
+  it is enforced more strongly.
 
 ---
 
 ## SHOT 1 — cold open (beat 1, ~3s, 16:9 and 9:16)
 
 **Prompt:**
-> Extreme close-up of one hand holding a modern smartphone, a thumb slowly and gently moving
-> over the glass. Framed over the shoulder from a high angle so that no face is ever visible,
-> only the hand and the phone. Cozy home interior softly blurred behind, warm morning
-> daylight through a window just out of frame. The screen shows only a soft, indistinct warm
-> glow, with no interface, no icons and no writing of any kind. The camera pushes in a few
-> centimeters, very slowly. Calm, private, unhurried. [Global style block] [Global negative
-> prompt]
+> Extreme close-up of one hand with warm deep-brown skin holding a modern smartphone, a thumb
+> slowly and gently moving over the glass. Framed over the shoulder from a high angle so that
+> no face is ever visible, only the hand and the phone. Cozy, lived-in home interior softly
+> blurred behind, warm morning daylight through a window just out of frame. The screen shows
+> only a soft, indistinct warm glow, with no interface, no icons and no writing of any kind.
+> The camera pushes in a few centimeters, very slowly. Calm, private, unhurried. [Human style
+> block] [Global negative prompt + human avoid]
 >
 > Audio: soft key taps, quiet room tone, a distant bird. No music.
 
@@ -83,16 +114,29 @@ separate negative-prompt field, paste the Avoid list there; it is enforced more 
 
 ## SHOT 5 — the ordinary human beat (beat 5, ~7s, 16:9; reframe for 9:16)
 
-**Prompt:**
-> Two people sitting close together on a couch in a warm, cozy living room at golden hour,
-> filmed from chest height downward so that no faces are visible, only hands, laps,
-> shoulders and relaxed body language. Each person holds up a smartphone toward the other's
-> phone, the two screens facing each other as if quietly scanning. The screens glow softly,
-> one with a gentle teal tone. An easy, comfortable, everyday moment, a slight relaxed
-> lean-in, unhurried. Warm soft light, shallow depth of field, intimate but casual.
-> [Global style block] [Global negative prompt]
+Generated as three diverse cast variants (`prompts/shot5-human-beat-{a,b,c}`) to intercut or
+choose from. The body below is shared; only the opening cast clause changes per variant.
+
+**Prompt (variant a shown):**
+> Two adults with different skin tones, one with deep brown skin and one with warm
+> medium-brown skin, sitting close together on a couch in a warm, lived-in living room.
+> Filmed from the shoulders and chest downward, with both faces entirely above the top edge
+> of the frame and never visible, not even a chin or jaw. Only hands, forearms, laps and
+> relaxed body language. Contemporary, everyday, varied casual clothing, not matching
+> knitwear and not a uniform beige palette. Each person holds up a smartphone and turns it
+> toward the other's phone, the two screens facing each other close together as if quietly
+> scanning. The screens glow softly, one with a gentle teal tone. An easy, comfortable,
+> unhurried moment. [Human style block] [Global negative prompt + human avoid]
 >
 > Audio: soft room tone, a quiet warm ambient, faint easy laughter off to the side. No music.
+
+Cast clauses for the variants:
+- **a**: one with deep brown skin and one with warm medium-brown skin
+- **b**: one with deep brown skin and one with light olive skin
+- **c**: two adults with warm tan and rich brown skin tones
+
+Keep the pairing non-gender-coded, and vary the wardrobe between takes. Faces stay out in
+every variant.
 
 ---
 
