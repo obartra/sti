@@ -86,7 +86,7 @@ export const onboardRenderers: ScreenRenderers = {
       busy={onboarding.busy}
       error={onboarding.error}
       onBack={nav.back}
-      onEnter={(sharingMode) => void onboarding.finish(sharingMode)}
+      onEnter={() => void onboarding.finish()}
       keepSignedIn={keepSignedIn}
       onKeepSignedInChange={onKeepSignedInChange}
       onViewPrivacyPolicy={() => nav.go("privacy-policy")}

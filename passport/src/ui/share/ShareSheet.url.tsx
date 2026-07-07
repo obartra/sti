@@ -1,30 +1,20 @@
 import { useState, type ReactElement } from "react";
 import { Button } from "../../design/components/index.ts";
-import {
-  Link,
-  Globe,
-  Copy,
-  Check,
-  Download,
-  Refresh,
-} from "../../design/icons.tsx";
+import { Link, Copy, Check, Download, Refresh } from "../../design/icons.tsx";
 import { Matrix, downloadPNG } from "../../lib/qr.tsx";
 import { cx } from "../../lib/cx.ts";
 import "./share-sheet.css";
 
 /* The share sheet's URL block: the QR thumbnail, the link text, and the
-   copy/save actions, plus its pending/error states. Lifted out of ShareSheet so
-   that file stays under its size/complexity caps. On the editorial grammar
-   (doc 37) it is the sheet's one action callout (.e-card), not a shadowed
-   card. */
+   copy/save actions, plus its pending/error states. The sheet hands out the
+   owner's private keyed link only; public sharing is the findable name, managed
+   from the Public names section. Lifted out of ShareSheet so that file stays
+   under its size/complexity caps. On the editorial grammar (doc 37) it is the
+   sheet's one action callout (.e-card), not a shadowed card. */
 
 const COPY = {
-  labelPublic: "Public profile",
   labelLink: "Private link",
-  labelName: "Public name",
-  notePublic: "Anyone who scans sees just this status.",
   noteLink: "Only people you send this private link to can open it.",
-  noteName: "People find you by name and ask before they see your status.",
   copyLink: "Copy link",
   copied: "Copied",
   saveQr: "Save QR image",
@@ -34,9 +24,8 @@ const COPY = {
   retry: "Try again",
 } as const;
 
-// Canonical opaque alias. Public carries the #fragment key; the private (link)
-// form is the bare /a/{id}, its key is handed at share time.
-const URL_PUBLIC = "sti.care/a/a7f3k9q2#k=Zr8";
+// The canonical opaque private link: the bare /a/{id}; its key is handed at
+// share time, never shown in the demo placeholder.
 const URL_LINK = "sti.care/a/a7f3k9q2";
 
 // The URL block has four states, driven by `realUrl` plus the prepare error flag:
@@ -70,15 +59,15 @@ export function urlReady(state: UrlState): state is "ready" | "placeholder" {
 // seed tracks the alias id so it varies per link (the matrix is stylized). For
 // pending/error there is no link to show, so the url is blank and the seed is the
 // stable default (the decorative matrix only needs a seed).
-export function displayLink(
-  realUrl: string | null | undefined,
-  link: boolean,
-): { url: string; seed: string } {
+export function displayLink(realUrl: string | null | undefined): {
+  url: string;
+  seed: string;
+} {
   const display =
     typeof realUrl === "string" && realUrl !== ""
       ? realUrl
       : realUrl === undefined
-        ? `https://${link ? URL_LINK : URL_PUBLIC}`
+        ? `https://${URL_LINK}`
         : "";
   const url = display.replace(/^https?:\/\//, "");
   const seed = url.split("/a/")[1]?.split(/[#?]/)[0] ?? "a7f3k9q2";
@@ -106,28 +95,10 @@ function UrlThumb({
   );
 }
 
-// The three link kinds the block can show: a private one-off link, the durable
-// anonymous public link, or the findable public-name (/u/) link.
-function cardLabel(link: boolean, named: boolean): string {
-  if (named) return COPY.labelName;
-  return link ? COPY.labelLink : COPY.labelPublic;
-}
-
-function cardNote(link: boolean, named: boolean): string {
-  if (named) return COPY.noteName;
-  return link ? COPY.noteLink : COPY.notePublic;
-}
-
-function CardLabel({
-  link,
-  named,
-}: {
-  link: boolean;
-  named: boolean;
-}): ReactElement {
+function CardLabel(): ReactElement {
   return (
     <div className="sh__url-label">
-      {link ? <Link size={13} /> : <Globe size={13} />} {cardLabel(link, named)}
+      <Link size={13} /> {COPY.labelLink}
     </div>
   );
 }
@@ -135,19 +106,15 @@ function CardLabel({
 // The pending/error body: no link or copy/save, just a calm status and (on
 // failure) a retry. Keeps the same row footprint so the sheet doesn't jump.
 function UrlStatusBody({
-  link,
-  named,
   state,
   onRetry,
 }: {
-  link: boolean;
-  named: boolean;
   state: "pending" | "error";
   onRetry: (() => void) | undefined;
 }): ReactElement {
   return (
     <div className="sh__url-body">
-      <CardLabel link={link} named={named} />
+      <CardLabel />
       <div className="sh__url-status">
         {state === "error" ? COPY.prepareFailed : COPY.preparing}
       </div>
@@ -166,14 +133,10 @@ function UrlStatusBody({
 }
 
 function UrlReadyBody({
-  link,
-  named,
   url,
   seed,
   onCopy,
 }: {
-  link: boolean;
-  named: boolean;
   url: string;
   seed: string;
   onCopy: (() => boolean) | undefined;
@@ -188,9 +151,9 @@ function UrlReadyBody({
   };
   return (
     <div className="sh__url-body">
-      <CardLabel link={link} named={named} />
+      <CardLabel />
       <div className="sh__url-link">{url}</div>
-      <div className="sh__url-note">{cardNote(link, named)}</div>
+      <div className="sh__url-note">{COPY.noteLink}</div>
       <div className="sh__url-actions">
         <Button
           variant="secondary"
@@ -215,46 +178,26 @@ function UrlReadyBody({
   );
 }
 
-// Whether a ready display URL is the findable public-name link (`/u/{name}`), as
-// opposed to an opaque `/a/{id}` alias link. The scheme is already stripped.
-function isNamedLink(url: string): boolean {
-  return /(^|\/)u\//.test(url);
-}
-
 export function UrlCard({
-  link,
   state,
   url,
   seed,
   onCopy,
   onRetry,
 }: {
-  link: boolean;
   state: UrlState;
   url: string;
   seed: string;
   onCopy: (() => boolean) | undefined;
   onRetry: (() => void) | undefined;
 }): ReactElement {
-  const named = urlReady(state) && isNamedLink(url);
   return (
     <div className={cx("e-card", "sh__url")}>
       <UrlThumb state={state} url={url} seed={seed} />
       {urlReady(state) ? (
-        <UrlReadyBody
-          link={link}
-          named={named}
-          url={url}
-          seed={seed}
-          onCopy={onCopy}
-        />
+        <UrlReadyBody url={url} seed={seed} onCopy={onCopy} />
       ) : (
-        <UrlStatusBody
-          link={link}
-          named={named}
-          state={state}
-          onRetry={onRetry}
-        />
+        <UrlStatusBody state={state} onRetry={onRetry} />
       )}
     </div>
   );

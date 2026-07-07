@@ -29,7 +29,6 @@ const BLOB: AccountBlob = {
   contacts: [],
   state: INITIAL_OWNER_STATE,
   avatar: DEFAULT_AVATAR,
-  sharingMode: "link",
 };
 
 function fakeApi() {

@@ -63,7 +63,6 @@ export type {
   GroupMemberSecret,
   PendingGroupInvite,
   StatusAlias,
-  SharingMode,
 } from "./accountBlob.ts";
 export {
   contactInviteUrl,
@@ -126,11 +125,7 @@ export {
   type PendingRequest,
   type JoinRequesterDeps,
 } from "./groupJoinOps.ts";
-export {
-  serializeAccountBlob,
-  parseAccountBlob,
-  isSharingMode,
-} from "./accountBlob.ts";
+export { serializeAccountBlob, parseAccountBlob } from "./accountBlob.ts";
 export type { OwnerView } from "./ownerView.ts";
 export { deriveOwnerView } from "./ownerView.ts";
 export type { PublishedAlias } from "./publish.ts";

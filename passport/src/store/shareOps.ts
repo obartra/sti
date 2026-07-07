@@ -54,7 +54,6 @@ import {
   republishCard,
   revokeAlias,
   aliasLinkUrl,
-  publicProfileUrl,
 } from "./publish.ts";
 import type {
   OwnerSession,
@@ -265,23 +264,17 @@ function expiryFor(durationMs: number | null): number | null {
   return durationMs === null ? null : nowMs() + durationMs;
 }
 
-// Change the share-sheet link's lifetime in place (doc 16): the primary alias for
-// the current sharing mode keeps resolving, only its expiry moves. `durationMs` is
-// counted from now; null means until-revoked. A no-op if no such alias exists yet.
-// Re-PUTs the card with the new expiry so the server enforces it.
+// Change the share-sheet link's lifetime in place (doc 16): the primary private
+// alias keeps resolving, only its expiry moves. `durationMs` is counted from now;
+// null means until-revoked. A no-op if no such alias exists yet. Re-PUTs the card
+// with the new expiry so the server enforces it.
 export async function setShareLinkExpiry(
   api: ApiClient,
   accounts: AccountManager,
   session: OwnerSession,
   durationMs: number | null,
 ): Promise<OwnerSession> {
-  // Expiry is a private-link affordance only (doc 16): a public profile is durable
-  // and never lapses, so setting a lifetime in public mode is a no-op. The publish
-  // layer also drops expiry on any public alias, so this is the matching guard at
-  // the entry point (it keeps the blob from recording an expiry the link won't carry).
-  const wantPublic = session.blob.sharingMode === "public";
-  if (wantPublic) return session;
-  const alias = primaryShareAlias(session.blob, wantPublic);
+  const alias = primaryShareAlias(session.blob);
   if (alias === undefined) return session;
   const expiresAt = expiryFor(durationMs);
   const nowDay = todayEpochDay();
@@ -311,14 +304,11 @@ export async function revokeAliasLink(
   return { root: session.root, blob };
 }
 
-// Produce a link for the owner's current sharing mode. Shared by shareLink and
-// renewLink. One alias per visibility: reuse the alias whose visibility matches the
-// CURRENT sharing mode (republishing the current card so an already-shared link
-// reflects the latest badge), or mint one on first share in this mode. Selecting by
-// visibility, not array position, keeps the link's key-presence aligned with the
-// mode the sheet shows: a public link carries the AES key in its `#k=` fragment, a
-// private link never does. Reusing by position would otherwise hand out a
-// key-bearing URL under a "private link" sheet after a public -> link switch.
+// Produce the owner's private keyed share link (`/a/{id}#k=`). Shared by shareLink
+// and renewLink. One private share alias: reuse it (republishing the current card so
+// an already-shared link reflects the latest badge), or mint one on first share.
+// Public sharing is the findable `/u/` handle, managed from the Public names section,
+// never this path (doc 16).
 export async function shareLinkFor(
   api: ApiClient,
   accounts: AccountManager,
@@ -327,19 +317,7 @@ export async function shareLinkFor(
 ): Promise<ShareLinkResult> {
   const { identity, avatarOverride } = reveal;
   const nowDay = todayEpochDay();
-  const wantPublic = session.blob.sharingMode === "public";
-  // Sharing publicly AS yourself, with a claimed public name, hands out the
-  // findable /u/{name} link (doc 17): the recognizable, name-bearing link rather
-  // than an opaque /a/{id}. It resolves by name to the keyless findable alias the
-  // claim already published, so there is nothing to mint here, and a stranger still
-  // has to ask before seeing status. Anonymous public sharing keeps the direct
-  // /a/{id}#k link below (no name, opens straight to the status). With several names
-  // claimed, the first is the default main-share link; the Links tab copies any one.
-  const findable = session.blob.findables?.[0];
-  if (wantPublic && identity === "main" && findable !== undefined) {
-    return { session, url: publicProfileUrl(findable.name) };
-  }
-  const existing = primaryShareAlias(session.blob, wantPublic);
+  const existing = primaryShareAlias(session.blob);
   if (existing !== undefined) {
     // Reuse keeps the existing alias's own identity (changing it = renewLink with a
     // fresh choice); only its badge is refreshed.
@@ -355,7 +333,7 @@ export async function shareLinkFor(
   const { link, record } = await publishCard(
     api,
     (rec) => deriveAliasCard(session.blob.state, stamp(rec), nowDay),
-    { isPublic: wantPublic },
+    { isPublic: false },
   );
   const blob = await accounts.addAlias(session.root, stamp(record));
   return { session: { root: session.root, blob }, url: link };

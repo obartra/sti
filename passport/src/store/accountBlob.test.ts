@@ -28,7 +28,6 @@ const blob: AccountBlob = {
   ],
   state: INITIAL_OWNER_STATE,
   avatar: DEFAULT_AVATAR,
-  sharingMode: "link",
 };
 
 describe("account blob codec", () => {
@@ -100,7 +99,6 @@ describe("account blob codec", () => {
       ],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
-      sharingMode: "link",
     };
     expect(parseAccountBlob(serializeAccountBlob(withNotify))).toEqual(
       withNotify,
@@ -114,7 +112,6 @@ describe("account blob codec", () => {
       contacts: [],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
-      sharingMode: "link",
       circles: [
         {
           id: "H".repeat(43),
@@ -145,7 +142,6 @@ describe("account blob codec", () => {
       contacts: [],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
-      sharingMode: "public",
     };
     expect(parseAccountBlob(serializeAccountBlob(withOverride))).toEqual(
       withOverride,
@@ -174,7 +170,6 @@ describe("account blob codec", () => {
       contacts: [],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
-      sharingMode: "link",
     };
     expect(parseAccountBlob(serializeAccountBlob(withExpiry))).toEqual(
       withExpiry,
@@ -188,7 +183,6 @@ describe("account blob codec", () => {
       contacts: [],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
-      sharingMode: "public",
     };
     expect(parseAccountBlob(serializeAccountBlob(empty))).toEqual(empty);
   });
@@ -214,7 +208,6 @@ describe("account blob codec", () => {
         clearUntilDay: null,
       },
       avatar: { hair: 2, mood: 3, skin: 1, hairColor: 5, beard: 1 },
-      sharingMode: "public",
     };
     expect(parseAccountBlob(serializeAccountBlob(populated))).toEqual(
       populated,
@@ -235,7 +228,6 @@ describe("account blob codec", () => {
       contacts: [],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
-      sharingMode: "public",
       findables: [
         { name: "robin", aliasId: "G".repeat(43) },
         { name: "wren", aliasId: "J".repeat(43) },
@@ -259,7 +251,6 @@ describe("account blob codec", () => {
       contacts: [],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
-      sharingMode: "public",
       findables,
     };
     expect(
@@ -396,13 +387,12 @@ describe("account blob codec", () => {
     // A group record whose myAvatar is an old/corrupt shape: parse must drop just
     // the avatar (fall back to id-derived), never invalidate the whole account.
     const wire = {
-      v: 19,
+      v: 20,
       handle: "robin",
       aliases: [],
       contacts: [],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
-      sharingMode: "link",
       groups: [
         {
           groupId: "G".repeat(43),
@@ -480,7 +470,7 @@ describe("account blob codec", () => {
     avatar: A,
   };
   reject("a non-object", 7);
-  reject("an unknown version", { ...base, v: 20, sharingMode: "link" });
+  reject("an unknown version", { ...base, v: 21 });
   reject("a prior version (v6 is no longer accepted)", {
     v: 6,
     handle: "x",
@@ -488,12 +478,10 @@ describe("account blob codec", () => {
     contacts: [],
     state: S,
     avatar: A,
-    sharingMode: "link",
   });
   reject("a non-array contacts", {
     ...base,
     contacts: {},
-    sharingMode: "link",
   });
   reject("a contact with a malformed alias", {
     ...base,
@@ -506,18 +494,16 @@ describe("account blob codec", () => {
         alias: { id: "short" },
       },
     ],
-    sharingMode: "link",
   });
   // A real current-version wire so these reach the findables validator (not the
   // version gate, which `base`'s v7 trips first).
   const vCurrent = {
-    v: 19,
+    v: 20,
     handle: "x",
     aliases: [],
     contacts: [],
     state: S,
     avatar: A,
-    sharingMode: "link" as const,
   };
   reject("a findable with a malformed alias id", {
     ...vCurrent,
@@ -551,29 +537,25 @@ describe("account blob codec", () => {
   reject("a negative passwordSetAt", { ...vCurrent, passwordSetAt: -1 });
   reject("a null passwordSetAt", { ...vCurrent, passwordSetAt: null });
   reject("a non-number passwordSetAt", { ...vCurrent, passwordSetAt: "soon" });
-  reject("an empty handle", { ...base, handle: "", sharingMode: "link" });
-  reject("a non-array aliases", { ...base, aliases: {}, sharingMode: "link" });
+  reject("an empty handle", { ...base, handle: "" });
+  reject("a non-array aliases", { ...base, aliases: {} });
   reject("an alias with a malformed id", {
     ...base,
     aliases: [{ id: "short", writeToken: ID, key: ID, isPublic: true }],
-    sharingMode: "link",
   });
   reject("an alias with a non-numeric expiry", {
     ...base,
     aliases: [
       { id: ID, writeToken: ID, key: ID, isPublic: true, expiresAt: "soon" },
     ],
-    sharingMode: "link",
   });
   reject("an alias missing isPublic", {
     ...base,
     aliases: [{ id: ID, writeToken: ID, key: ID }],
-    sharingMode: "link",
   });
   reject("an alias with an empty handle override", {
     ...base,
     aliases: [{ id: ID, writeToken: ID, key: ID, isPublic: true, handle: "" }],
-    sharingMode: "link",
   });
   reject("a missing state", {
     v: 7,
@@ -585,10 +567,7 @@ describe("account blob codec", () => {
   reject("an invalid hiv status", {
     ...base,
     state: { ...S, hiv: "maybe" },
-    sharingMode: "link",
   });
-  reject("a missing sharingMode", base);
-  reject("an invalid sharingMode", { ...base, sharingMode: "secret" });
   // A current-version wire (vCurrent) so these reach the contact validator rather
   // than the version gate that base's v7 trips first.
   const contactWith = (extra: Record<string, unknown>) => ({
@@ -618,12 +597,10 @@ describe("account blob codec", () => {
   );
   reject("a circle with a non-array members", {
     ...base,
-    sharingMode: "link",
     circles: [{ id: ID, name: "x", memberContactIds: "nope" }],
   });
   reject("a circle with a malformed member id", {
     ...base,
-    sharingMode: "link",
     circles: [{ id: ID, name: "x", memberContactIds: ["short"] }],
   });
   // A group record: every capability id-shaped, handle well-shaped, visibility and
@@ -787,7 +764,6 @@ describe("avatar migration on read (doc 19)", () => {
     ],
     state: INITIAL_OWNER_STATE,
     avatar: DEFAULT_AVATAR,
-    sharingMode: "link",
   };
 
   for (const bad of [

@@ -18,57 +18,38 @@ afterEach(() => {
 describe("ShareSheet link wiring", () => {
   it("shows the real shareable link (scheme stripped), not the placeholder", () => {
     const id = "z".repeat(43);
-    render(
-      <ShareSheet
-        {...base}
-        sharingMode="link"
-        url={`https://sti.care/a/${id}`}
-      />,
-    );
+    render(<ShareSheet {...base} url={`https://sti.care/a/${id}`} />);
     expect(screen.getByText(`sti.care/a/${id}`)).toBeInTheDocument();
     // The hardcoded placeholder must not leak through once a real link exists.
     expect(screen.queryByText(/a7f3k9q2/)).toBeNull();
   });
 
-  it("frames a public name link (/u/) as findable + ask-first, not direct view", () => {
-    render(
-      <ShareSheet
-        {...base}
-        sharingMode="public"
-        url="https://sti.care/u/meow"
-      />,
-    );
-    expect(screen.getByText("sti.care/u/meow")).toBeInTheDocument();
-    // The card calls it a public name and is honest that it is knock-gated, never
-    // the "anyone who scans sees this status" line used for the direct /a/ link.
-    expect(screen.getByText("Public name")).toBeInTheDocument();
+  it("frames the link as a private link only people you send it to can open", () => {
+    render(<ShareSheet {...base} url="https://sti.care/a/abc" />);
+    expect(screen.getByText("Private link")).toBeInTheDocument();
     expect(
-      screen.getByText(/find you by name and ask before they see your status/i),
+      screen.getByText(
+        /Only people you send this private link to can open it/i,
+      ),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/Anyone who scans/)).toBeNull();
   });
 
   it("Copy link invokes the real-link copy handler", () => {
     const onCopy = vi.fn();
     render(
-      <ShareSheet
-        {...base}
-        sharingMode="link"
-        url="https://sti.care/a/abc"
-        onCopy={onCopy}
-      />,
+      <ShareSheet {...base} url="https://sti.care/a/abc" onCopy={onCopy} />,
     );
     fireEvent.click(screen.getByText("Copy link"));
     expect(onCopy).toHaveBeenCalledOnce();
   });
 
   it("falls back to a placeholder link only when no link is wired (undefined, Storybook)", () => {
-    render(<ShareSheet {...base} sharingMode="link" />);
+    render(<ShareSheet {...base} />);
     expect(screen.getByText("sti.care/a/a7f3k9q2")).toBeInTheDocument();
   });
 
   it("while the link is preparing (null url) it shows no fake link, just a status", () => {
-    render(<ShareSheet {...base} sharingMode="public" url={null} />);
+    render(<ShareSheet {...base} url={null} />);
     // The hardcoded placeholder must never stand in for a real, not-yet-minted link.
     expect(screen.queryByText(/a7f3k9q2/)).toBeNull();
     expect(screen.getByText("Getting your link ready")).toBeInTheDocument();
@@ -78,42 +59,25 @@ describe("ShareSheet link wiring", () => {
 
   it("when the prepare fails it shows a failure message and a working retry", () => {
     const onRetry = vi.fn();
-    render(
-      <ShareSheet
-        {...base}
-        sharingMode="public"
-        url={null}
-        error
-        onRetry={onRetry}
-      />,
-    );
+    render(<ShareSheet {...base} url={null} error onRetry={onRetry} />);
     expect(screen.queryByText(/a7f3k9q2/)).toBeNull();
     expect(screen.getByText(/We couldn't make your link/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
-  it("offers a lifetime control on the private link, not the public profile (doc 16)", () => {
+  it("offers a lifetime control on the private link when a handler is wired (doc 16)", () => {
     // The private link can be given a lifetime (a link you hand to one person can
-    // sensibly lapse); the public profile is durable, so it has no such control.
+    // sensibly lapse). With no handler wired (Storybook) the control hides itself.
     const { rerender } = render(
       <ShareSheet
         {...base}
-        sharingMode="link"
         url="https://sti.care/a/abc"
         onLifetimeChange={() => undefined}
       />,
     );
     expect(screen.getByText("Link lasts")).toBeInTheDocument();
-    rerender(
-      <ShareSheet
-        {...base}
-        sharingMode="public"
-        url="https://sti.care/a/abc"
-        onLifetimeChange={() => undefined}
-      />,
-    );
-    // Even with a handler wired, public mode never surfaces the control.
+    rerender(<ShareSheet {...base} url="https://sti.care/a/abc" />);
     expect(screen.queryByText("Link lasts")).toBeNull();
   });
 
@@ -122,7 +86,6 @@ describe("ShareSheet link wiring", () => {
     render(
       <ShareSheet
         {...base}
-        sharingMode="link"
         url="https://sti.care/a/abc"
         onLifetimeChange={onLifetimeChange}
       />,
@@ -158,7 +121,7 @@ describe("ShareSheet link wiring", () => {
   });
 
   it("Copy link confirms with a Copied state when the copy succeeds", () => {
-    render(<ShareSheet {...base} sharingMode="link" onCopy={() => true} />);
+    render(<ShareSheet {...base} onCopy={() => true} />);
     fireEvent.click(screen.getByText("Copy link"));
     expect(screen.getByText("Copied")).toBeInTheDocument();
   });
@@ -183,7 +146,6 @@ describe("ShareSheet link wiring", () => {
     render(
       <ShareSheet
         {...base}
-        sharingMode="link"
         url={`https://sti.care/a/${id}`}
         onClose={onClose}
       />,

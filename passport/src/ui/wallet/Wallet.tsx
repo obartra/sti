@@ -6,7 +6,7 @@ import {
 } from "../../lib/avatars.ts";
 import type { BadgeState, ProtectionLabel, Route } from "../badge-card.tsx";
 import { COPY, HANDLE, WALLET_FRESH_HOURS, livePassState } from "./shared.tsx";
-import type { SharingMode, WalletFormat } from "./shared.tsx";
+import type { WalletFormat } from "./shared.tsx";
 import { ApplePass, GooglePass } from "./passes.tsx";
 import { ConfirmPublic, WalletAction } from "./controls.tsx";
 import {
@@ -24,7 +24,10 @@ export { ShareCard } from "./share-card.tsx";
 
 /* ── The Wallet screen ───────────────────────────────────────────────── */
 export interface WalletProps {
-  sharingMode?: SharingMode;
+  // Whether this passport link is public. Defaults to private: the wallet
+  // reflects a private passport link (a keyed /a/ link), so Live is off by
+  // default. Public sharing is the findable name, managed elsewhere (doc 16).
+  isPublic?: boolean;
   // The owner's viewer-facing badge (already gray when paused). Live applies
   // the fail-closed resolver on top; QR-carrier never shows status at all.
   viewerBadge?: BadgeState;
@@ -53,14 +56,13 @@ interface WalletDerived {
 }
 
 function useWalletDerived({
-  sharingMode = "public",
+  isPublic = false,
   viewerBadge = "blue",
   avatar = 2,
   walletFormat = "qr",
   walletFresh = "fresh",
   onSetTweak,
 }: WalletProps): WalletDerived {
-  const isPublic = sharingMode === "public";
   // Format + Live freshness are driven by walletFormat / walletFresh so a
   // reviewer can reach the QR-carrier, Live-fresh, and Live-stale→gray faces;
   // the in-screen controls write back.
@@ -188,7 +190,6 @@ export function Wallet(props: WalletProps) {
           handle={handle}
           onKeep={() => setConfirm(false)}
           onConfirm={() => {
-            props.onSetTweak?.("sharing", "public");
             setFormat("live");
             setReachable(true);
             setConfirm(false);

@@ -66,7 +66,6 @@ export interface HomeProps {
   avatar?: AvatarConfigInput;
   paused?: boolean;
   autoPaused?: boolean;
-  sharingMode?: "public" | "link";
   // Days left in the 90-day freshness window (0 when untested or lapsed).
   daysLeft?: number;
   // The owner-only "what blue needs" breakdown (the three requirements plus

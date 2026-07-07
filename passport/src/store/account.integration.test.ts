@@ -23,7 +23,6 @@ const FRESH = {
   contacts: [],
   state: INITIAL_OWNER_STATE,
   avatar: DEFAULT_AVATAR,
-  sharingMode: "link" as const,
 };
 
 const record: AliasRecord = {
@@ -63,17 +62,15 @@ describe("account lifecycle against a live blind store", () => {
     expect(recovered?.blob).toEqual(created.blob);
   });
 
-  it("persists a profile change (avatar + sharing) across recovery", async () => {
+  it("persists a profile change (avatar) across recovery", async () => {
     const created = await accounts.create("robin");
     const avatar = { hair: 2, mood: 1, skin: 1, hairColor: 5, beard: 1 };
     await accounts.setProfile(created.root, {
       avatar,
-      sharingMode: "public",
     });
 
     const recovered = await accounts.recover(created.recoveryPhrase);
     expect(recovered?.blob.avatar).toEqual(avatar);
-    expect(recovered?.blob.sharingMode).toBe("public");
     // The badge inputs are untouched by a profile change.
     expect(recovered?.blob.state).toEqual(INITIAL_OWNER_STATE);
   });
@@ -128,7 +125,6 @@ describe("account lifecycle against a live blind store", () => {
     // Edit the main identity's avatar (and sharing default). The badge is untouched.
     await accounts.setProfile(created.root, {
       avatar: newAvatar,
-      sharingMode: "public",
     });
 
     // Both links are UNCHANGED: a main-identity edit does not reach an alias's

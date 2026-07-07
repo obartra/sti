@@ -195,9 +195,8 @@ async function walkController(controller: SessionController): Promise<void> {
   // Profile + state: each hands back a session whose blob carries the change.
   const profiled = await controller.setProfile(booted, {
     avatar: booted.blob.avatar,
-    sharingMode: "public",
   });
-  expect(profiled.blob.sharingMode).toBe("public");
+  expect(profiled.blob.avatar).toEqual(booted.blob.avatar);
   const paused = await controller.setOwnerState(profiled, {
     ...profiled.blob.state,
     paused: true,

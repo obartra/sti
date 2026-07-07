@@ -22,7 +22,6 @@ function sessionWithAlias(aliasId: string): OwnerSession {
       contacts: [],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
-      sharingMode: "link",
     },
   };
 }

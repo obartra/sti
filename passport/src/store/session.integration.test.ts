@@ -575,7 +575,6 @@ describe("owner session against a live blind store", () => {
     // in its fragment, and it is a DISTINCT alias (not the private one re-dressed).
     const pub = await ctl.setProfile(linkShare.session, {
       avatar: created.session.blob.avatar,
-      sharingMode: "public",
     });
     const pubShare = await ctl.shareLink(pub);
     expect(pubShare.url).toContain("#k=");
@@ -587,7 +586,6 @@ describe("owner session against a live blind store", () => {
     // and crucially never surfaces the public alias's key under a private sheet.
     const back = await ctl.setProfile(pubShare.session, {
       avatar: created.session.blob.avatar,
-      sharingMode: "link",
     });
     const backShare = await ctl.shareLink(back);
     expect(backShare.url).toBe(linkShare.url);

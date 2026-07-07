@@ -23,7 +23,6 @@ const BASE: AccountBlob = {
   contacts: [contact("c1")],
   state: INITIAL_OWNER_STATE,
   avatar: DEFAULT_AVATAR,
-  sharingMode: "link",
 };
 
 describe("deepEqual", () => {

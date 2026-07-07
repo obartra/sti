@@ -14,7 +14,6 @@ function blob(state: OwnerState, over: Partial<AccountBlob> = {}): AccountBlob {
     contacts: [],
     state,
     avatar: DEFAULT_AVATAR,
-    sharingMode: "link",
     ...over,
   };
 }
@@ -46,19 +45,17 @@ describe("deriveOwnerView", () => {
     expect(v.lastTestedLabel).toBe("Never tested");
   });
 
-  it("carries handle, avatar, and sharing mode straight through", () => {
+  it("carries handle and avatar straight through", () => {
     const avatar = { hair: 1, mood: 2, skin: 2, hairColor: 4, beard: 0 };
     const v = deriveOwnerView(
       blob(INITIAL_OWNER_STATE, {
         handle: "sam",
         avatar,
-        sharingMode: "public",
       }),
       NOW_DAY,
     );
     expect(v.handle).toBe("sam");
     expect(v.avatar).toEqual(avatar);
-    expect(v.sharingMode).toBe("public");
   });
 
   it("omits handle when none is set (no display name chosen at signup)", () => {
@@ -67,7 +64,6 @@ describe("deriveOwnerView", () => {
       contacts: [],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
-      sharingMode: "link",
     };
     const v = deriveOwnerView(noHandle, NOW_DAY);
     expect(v.handle).toBeUndefined();

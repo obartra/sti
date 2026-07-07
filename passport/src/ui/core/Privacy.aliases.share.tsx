@@ -39,7 +39,6 @@ export function useLinkShare(
       <ShareSheet
         open
         onClose={() => setUrl(null)}
-        sharingMode="link"
         state={ctx.state}
         labels={ctx.labels}
         route={ctx.route}

@@ -93,7 +93,6 @@ function demoBlob(): AccountBlob {
     contacts: [demoContact("Sam", 12), demoContact("Alex", 30)],
     state: demoBlueState(),
     avatar: DEFAULT_AVATAR,
-    sharingMode: "link",
     groups: [demoGroup()],
   };
 }
@@ -431,7 +430,6 @@ export function createDemoController(): SessionController {
       blob = {
         ...blob,
         avatar: profile.avatar,
-        sharingMode: profile.sharingMode,
       };
       return session();
     },

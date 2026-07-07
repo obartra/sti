@@ -61,7 +61,6 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
     // report-turns-blue path (a clear panel + a route earns blue).
     state: { ...INITIAL_OWNER_STATE, onPrep: opts.onPrep ?? false },
     avatar: DEFAULT_AVATAR,
-    sharingMode: "link",
   };
   return {
     signUp: (handle) => {
@@ -92,7 +91,6 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       blob = {
         ...blob,
         avatar: profile.avatar,
-        sharingMode: profile.sharingMode,
       };
       return Promise.resolve({ root, blob } as OwnerSession);
     },
@@ -104,17 +102,13 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
     // this; return the current blob unchanged for completeness.
     sweepExpiredLinks: () => Promise.resolve({ root, blob } as OwnerSession),
     refreshLiveLinks: () => Promise.resolve(),
-    // Faithful to the controller contract: a public account's link carries the
-    // key in the fragment, a private ("link") account's does not.
+    // The share sheet hands out the private opaque link (a bare /a/{id}); its key
+    // is delivered at share time, never in the URL.
     shareLink: (session) => {
       const id = "z".repeat(43);
-      const base = `https://sti.care/a/${id}`;
       return Promise.resolve({
         session,
-        url:
-          session.blob.sharingMode === "public"
-            ? `${base}#k=${"y".repeat(43)}`
-            : base,
+        url: `https://sti.care/a/${id}`,
       });
     },
     // Revoke & renew: a distinct id, so the surfaced link visibly changes.
@@ -327,9 +321,8 @@ describe("App onboarding flow", () => {
       await screen.findByRole("button", { name: /Reveal your phrase/ }),
     );
     await user.click(screen.getByRole("button", { name: /saved it/i }));
-    // Choose Gated ("Ask first") so this account's links are bare /a/{id} (no key
-    // in the fragment); the default is now Direct, which would carry the key.
-    await user.click(await screen.findByRole("radio", { name: "Ask first" }));
+    // A new account is private by default; there is no reach choice at setup, and
+    // the share sheet always hands out the bare /a/{id} link (no key in the URL).
     await user.click(
       await screen.findByRole("button", { name: /Enter my passport/ }),
     );
@@ -357,15 +350,19 @@ describe("App onboarding flow", () => {
       (await screen.findAllByText("Tested & on HIV prevention")).length,
     ).toBeGreaterThan(0);
 
-    // Opening the share sheet asks the controller for the real link and surfaces
-    // it (scheme stripped), rather than the hardcoded placeholder.
+    // "Share my passport" opens the chooser first; picking "Send a private link"
+    // then asks the controller for the real link and surfaces it (scheme
+    // stripped), rather than the hardcoded placeholder.
     const [share] = await screen.findAllByRole("button", {
       name: /Share my passport/,
     });
     if (!share) throw new Error("no 'Share my passport' action on home");
     await user.click(share);
-    // This is a private ("link") account, so the surfaced link is the bare
-    // /a/{id} with no key in the fragment, not the Storybook placeholder.
+    await user.click(
+      await screen.findByRole("button", { name: /Send a private link/ }),
+    );
+    // The surfaced link is the bare /a/{id} with no key in the fragment, not the
+    // Storybook placeholder.
     expect(
       await screen.findByText(`sti.care/a/${"z".repeat(43)}`),
     ).toBeInTheDocument();

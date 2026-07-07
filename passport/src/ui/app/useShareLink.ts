@@ -270,7 +270,7 @@ function useShareLifetime(
 // reads; isolated so the sync effect can key on it.
 function privateAliasExpiry(session: OwnerSession | null): number | null {
   if (session === null) return null;
-  return primaryShareAlias(session.blob, false)?.expiresAt ?? null;
+  return primaryShareAlias(session.blob)?.expiresAt ?? null;
 }
 
 // The lifetime selection for the current session: the private-link alias's expiry
