@@ -85,15 +85,23 @@ export function createBackendStore(
       try {
         const privateKey = grantKeys.privateKey(aliasId);
         if (privateKey === null) return null;
-        const key = await redeemGrant(
+        const grant = await redeemGrant(
           api,
           aliasId,
           requesterSecret,
           privateKey,
         );
-        if (key === null) return null;
-        // Approved: open the now-readable alias into the card a keyed link gives.
-        return await resolveAlias({ id: aliasId, key });
+        if (grant === null) return null;
+        // Standing: open the now-readable alias into the card a keyed link gives, so
+        // the viewer re-checks the owner's live status on each redeem.
+        if (grant.kind === "key") {
+          return await resolveAlias({ id: aliasId, key: grant.key });
+        }
+        // One-time: parse the frozen snapshot with the SAME codec published cards use
+        // and apply the read-time freshness gate, so a stale-blue snapshot fails
+        // closed to gray exactly like a live resolve would. No live/re-checkable
+        // access: the viewer never received the alias key.
+        return applyFreshness(parsePublicCard(grant.card), todayEpochDay());
       } catch {
         return null;
       }

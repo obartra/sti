@@ -3,6 +3,7 @@ import { Care } from "../../core/Care.tsx";
 import { FeelOff } from "../../core/FeelOff.tsx";
 import { Notifications } from "../../core/Notifications.tsx";
 import type { NotificationItem } from "../../core/Notifications.tsx";
+import type { GrantMode } from "../../../store/index.ts";
 import { Privacy } from "../../core/Privacy.tsx";
 import { RESOURCES, openResource } from "../../../lib/resources.ts";
 import { infoUrl } from "../../../lib/info.ts";
@@ -18,7 +19,7 @@ import { PARTNER_NOTIFY_PROMPT } from "../../../copy/canonical.ts";
 export interface KnockInbox {
   canApprove: boolean;
   showInfo: boolean;
-  approve: () => void;
+  approve: (mode: GrantMode) => void;
   approving: boolean;
 }
 
@@ -99,12 +100,21 @@ export function notificationItems(
     items.push({
       icon: "users",
       title: "Someone with your link asked to see your status",
-      sub: "Approve to let them see your current status",
-      action: {
-        label: "Approve",
-        onAct: knocks.approve,
-        busy: knocks.approving,
-      },
+      sub: "Choose how much they get to see.",
+      choices: [
+        {
+          label: "Show once",
+          sub: "They see your status now, this once.",
+          onAct: () => knocks.approve("once"),
+          busy: knocks.approving,
+        },
+        {
+          label: "Let them keep checking",
+          sub: "They can check your status until you turn it off.",
+          onAct: () => knocks.approve("standing"),
+          busy: knocks.approving,
+        },
+      ],
     });
   } else if (knocks.showInfo) {
     items.push({

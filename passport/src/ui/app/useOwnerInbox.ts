@@ -1,5 +1,9 @@
 import { useCallback } from "react";
-import type { OwnerSession, SessionController } from "../../store/index.ts";
+import type {
+  GrantMode,
+  OwnerSession,
+  SessionController,
+} from "../../store/index.ts";
 import { useKnockReview } from "./useKnockReview.ts";
 import { usePartnerNudge } from "./usePartnerNudge.ts";
 import { useCatchup } from "./useCatchup.ts";
@@ -29,7 +33,7 @@ export function useOwnerInbox(
   knockCount: number;
   canApproveKnocks: boolean;
   showKnockInfo: boolean;
-  approveKnocks: () => void;
+  approveKnocks: (mode: GrantMode) => void;
   approvingKnocks: boolean;
   showPartnerNudge: boolean;
   dismissPartnerNudge: () => void;

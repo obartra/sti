@@ -182,6 +182,7 @@ export type {
   ContactLinkResult,
   PendingApproval,
   OwnerKnocks,
+  GrantMode,
   ResumeResult,
   ResumeFailure,
 } from "./session.ts";

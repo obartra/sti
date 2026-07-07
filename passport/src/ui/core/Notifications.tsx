@@ -43,6 +43,14 @@ const COPY = {
 
 type NotifIcon = "bell" | "users" | "circle" | "heart";
 
+/** One labelled choice on a row, with a short line saying what it does. */
+interface NotifChoice {
+  label: string;
+  sub: string;
+  onAct: () => void;
+  busy?: boolean | undefined;
+}
+
 export interface NotificationItem {
   icon: NotifIcon;
   title: string;
@@ -55,6 +63,10 @@ export interface NotificationItem {
   action?:
     | { label: string; onAct: () => void; busy?: boolean | undefined }
     | undefined;
+  /** Two-or-more labelled choices (e.g. show a knock once vs let them keep
+   * checking), each its own quiet action row beneath the title. Takes precedence
+   * over a single `action` when present. */
+  choices?: NotifChoice[] | undefined;
 }
 
 function iconFor(k: NotifIcon): ReactNode {
@@ -86,6 +98,32 @@ function InboxRow({ item }: { item: NotificationItem }) {
       </span>
     </>
   );
+  // Two-or-more choices: a header row (the ask) with each choice as its own quiet
+  // button beneath it. The wrapper is a div, so the choice buttons don't nest inside
+  // a button. Takes precedence over a single inline action.
+  if (item.choices && item.choices.length > 0) {
+    return (
+      <div className="ntf__group">
+        <div className="e-row">{body}</div>
+        {item.choices.map((c, i) => (
+          <button
+            key={i}
+            type="button"
+            className={cx("e-row", "e-row--action", "ntf__choice")}
+            disabled={c.busy}
+            onClick={c.onAct}
+          >
+            <span className="e-row__body">
+              <span className="e-row__title">
+                {c.busy ? `${c.label}…` : c.label}
+              </span>
+              <span className="e-row__sub">{c.sub}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    );
+  }
   if (act) {
     return (
       <div className="e-row">
