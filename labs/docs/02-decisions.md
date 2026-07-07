@@ -132,7 +132,7 @@
     alias (owner-pull, no per-knock push/buzz).
   - **Auto-expiry ~4 days + "clear all"** bulk-dismiss; knocks **contentless + rate-limited** per
     requester/id.
-- **LOCKED. Public-profile shareable = resolving link/QR, not a baked-in status image.** Tap resolves live; no status snapshot to go stale. A status image may be offered but is framed "scan for current," never the default. This lets a PRIVATE user advertise on a public profile without going public.
+- **LOCKED. A shareable is a resolving link/QR, not a baked-in status image.** Tap resolves live; no status snapshot to go stale. A status image may be offered but is framed "scan for current," never the default. To be findable where strangers will open it (a dating profile, a bio) without exposing the status itself, the ask-first `/u/` handle is the surface; a private keyed link opens straight to the status, so it is for people you hand it to.
 
 ## Time-bound & revocable sharing
 
