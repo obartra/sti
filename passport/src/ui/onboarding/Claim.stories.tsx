@@ -51,13 +51,41 @@ export const LogIn: Story = {
   args: loginArgs,
 };
 
-// Login variant with "other ways to log in" expanded: the recovery phrase and the
-// handle + password forms revealed behind the disclosure.
+// The "other ways to log in" chooser: one quiet row per way (phrase, password).
+// Picking a row swaps in that way's form; no form shows here.
 export const LogInOtherWays: Story = {
   args: loginArgs,
   play: ({ canvasElement }) => {
     Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button"))
       .find((b) => b.textContent.includes("Other ways to log in"))
       ?.click();
+  },
+};
+
+// A way's own stage shows exactly that way: the recovery-phrase form alone.
+export const LogInWithPhrase: Story = {
+  args: loginArgs,
+  play: async ({ canvasElement }) => {
+    const click = (label: string) =>
+      Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button"))
+        .find((b) => b.textContent.includes(label))
+        ?.click();
+    click("Other ways to log in");
+    await Promise.resolve();
+    click("Recovery phrase");
+  },
+};
+
+// The username + password stage, same one-way-per-screen rule.
+export const LogInWithPassword: Story = {
+  args: loginArgs,
+  play: async ({ canvasElement }) => {
+    const click = (label: string) =>
+      Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button"))
+        .find((b) => b.textContent.includes(label))
+        ?.click();
+    click("Other ways to log in");
+    await Promise.resolve();
+    click("Username and password");
   },
 };

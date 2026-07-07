@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { Button } from "../../design/components/index.ts";
-import { Fingerprint } from "../../design/icons.tsx";
+import { Chevron, Fingerprint } from "../../design/icons.tsx";
 import { TopBack } from "./TopBack.tsx";
 import { KeepSignedInToggle } from "./KeepSignedInToggle.tsx";
-import { OtherWaysToLogIn } from "./OtherWaysToLogIn.tsx";
+import { PhraseLogin, PasswordLogin, WayRow } from "./OtherWaysToLogIn.tsx";
 import { SwitchAuthMode } from "./SwitchAuthMode.tsx";
 import { CreateFlow } from "./ClaimCreateFlow.tsx";
 import { COPY } from "./claimCopy.ts";
@@ -60,39 +61,49 @@ function ErrorLine({ error }: { error: string | null }) {
   );
 }
 
-// The step title, worded for whichever variant is showing.
+// The login stages, one way to log in per screen (never two forms at once):
+// "main" leads with the passkey, "choose" lists the other ways, and "phrase" /
+// "password" each show only that way's form. Back unwinds one stage at a time.
+type LoginStage = "main" | "choose" | "phrase" | "password";
+
+const STAGE_TITLE: Record<LoginStage, string> = {
+  main: COPY.loginTitle,
+  choose: COPY.otherWaysLabel,
+  phrase: COPY.phraseStageTitle,
+  password: COPY.passwordStageTitle,
+};
+
+// The step title, worded for whichever variant and login stage is showing.
 function ClaimHeader({
-  isLogin,
+  title,
   onBack,
 }: {
-  isLogin: boolean;
+  title: string;
   onBack?: (() => void) | undefined;
 }) {
   return (
     <>
       <TopBack title="" onBack={onBack} />
-      <h1 className="onb__title">{isLogin ? COPY.loginTitle : COPY.title}</h1>
+      <h1 className="onb__title">{title}</h1>
     </>
   );
 }
 
-// The login variant's body: the passkey button leads, the keep-signed-in choice
-// stays visible, then the shared error line, then the collapsed "other ways in"
-// disclosure holding the phrase and handle + password paths.
-function LoginBody({
+// The main login stage: the passkey button leads, the keep-signed-in choice
+// stays visible, then the shared error line, then the forward row into the
+// other ways.
+function LoginMain({
   busy,
   error,
   onLogin,
-  onRecover,
-  onRecoverPassword,
+  onOtherWays,
   keepSignedIn,
   onKeepSignedInChange,
 }: {
   busy: boolean;
   error: string | null;
   onLogin?: (() => void) | undefined;
-  onRecover?: ((phrase: string) => void) | undefined;
-  onRecoverPassword?: ((name: string, password: string) => void) | undefined;
+  onOtherWays: () => void;
   keepSignedIn: boolean;
   onKeepSignedInChange?: ((v: boolean) => void) | undefined;
 }) {
@@ -113,10 +124,95 @@ function LoginBody({
         onChange={onKeepSignedInChange}
       />
       <ErrorLine error={error} />
-      <OtherWaysToLogIn
+      <button type="button" className="onb__disclose" onClick={onOtherWays}>
+        {COPY.otherWaysLabel}
+        <span className="onb__disclose-icon" aria-hidden="true">
+          <Chevron size={18} />
+        </span>
+      </button>
+    </>
+  );
+}
+
+// The chooser stage: one quiet row per remaining way in. Picking one swaps in
+// that way's form; nothing here logs in by itself.
+function LoginChooser({
+  onPick,
+  hasPassword,
+}: {
+  onPick: (stage: LoginStage) => void;
+  hasPassword: boolean;
+}) {
+  return (
+    <div className="onb__ways">
+      <WayRow
+        title={COPY.wayPhraseTitle}
+        sub={COPY.wayPhraseSub}
+        onPick={() => onPick("phrase")}
+      />
+      {hasPassword && (
+        <WayRow
+          title={COPY.wayPasswordTitle}
+          sub={COPY.wayPasswordSub}
+          onPick={() => onPick("password")}
+        />
+      )}
+    </div>
+  );
+}
+
+// The login variant's body, staged. The keep-signed-in choice rides every stage
+// that can actually log in (it applies to whichever way is used).
+function LoginBody({
+  stage,
+  onStage,
+  busy,
+  error,
+  onLogin,
+  onRecover,
+  onRecoverPassword,
+  keepSignedIn,
+  onKeepSignedInChange,
+}: {
+  stage: LoginStage;
+  onStage: (stage: LoginStage) => void;
+  busy: boolean;
+  error: string | null;
+  onLogin?: (() => void) | undefined;
+  onRecover?: ((phrase: string) => void) | undefined;
+  onRecoverPassword?: ((name: string, password: string) => void) | undefined;
+  keepSignedIn: boolean;
+  onKeepSignedInChange?: ((v: boolean) => void) | undefined;
+}) {
+  if (stage === "main") {
+    return (
+      <LoginMain
         busy={busy}
-        onRecover={onRecover}
-        onRecoverPassword={onRecoverPassword}
+        error={error}
+        onLogin={onLogin}
+        // With no password path there is only one other way; skip the chooser.
+        onOtherWays={() => onStage(onRecoverPassword ? "choose" : "phrase")}
+        keepSignedIn={keepSignedIn}
+        onKeepSignedInChange={onKeepSignedInChange}
+      />
+    );
+  }
+  if (stage === "choose") {
+    return <LoginChooser onPick={onStage} hasPassword={!!onRecoverPassword} />;
+  }
+  return (
+    <>
+      {stage === "phrase" ? (
+        <PhraseLogin busy={busy} onRecover={onRecover} />
+      ) : (
+        onRecoverPassword && (
+          <PasswordLogin busy={busy} onRecoverPassword={onRecoverPassword} />
+        )
+      )}
+      <ErrorLine error={error} />
+      <KeepSignedInToggle
+        checked={keepSignedIn}
+        onChange={onKeepSignedInChange}
       />
     </>
   );
@@ -135,11 +231,28 @@ export function Claim({
   onKeepSignedInChange,
   onSwitchMode,
 }: ClaimProps) {
+  const [stage, setStage] = useState<LoginStage>("main");
+  // Back unwinds one login stage at a time; only the main stage leaves the
+  // screen. A form stage returns to wherever it was entered from: the chooser
+  // when a password path exists, else straight to main.
+  const stageBack = (): void => {
+    if (stage === "phrase" || stage === "password") {
+      setStage(onRecoverPassword ? "choose" : "main");
+    } else {
+      setStage("main");
+    }
+  };
+  const staged = isLogin && stage !== "main";
   return (
     <div className="onb">
-      <ClaimHeader isLogin={isLogin} onBack={onBack} />
+      <ClaimHeader
+        title={isLogin ? STAGE_TITLE[stage] : COPY.title}
+        onBack={staged ? stageBack : onBack}
+      />
       {isLogin ? (
         <LoginBody
+          stage={stage}
+          onStage={setStage}
           busy={busy}
           error={error}
           onLogin={onLogin}
@@ -154,7 +267,11 @@ export function Claim({
           <CreateFlow busy={busy} onClaim={onClaim} />
         </>
       )}
-      <SwitchAuthMode isLogin={isLogin} onSwitch={onSwitchMode} />
+      {/* The one-tap variant switch stays off the form stages, so a way's screen
+          holds exactly that way. */}
+      {!staged || stage === "choose" ? (
+        <SwitchAuthMode isLogin={isLogin} onSwitch={onSwitchMode} />
+      ) : null}
     </div>
   );
 }

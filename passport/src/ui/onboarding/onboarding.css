@@ -138,25 +138,64 @@
   padding-left: 14px;
 }
 
-/* The quiet "or" between the two no-passkey ways in: small caps between
-   hairlines, so the alternatives read as separate paths, not one long form. */
-.onb__or {
+/* The "other ways to log in" chooser: one quiet hairline-opened row per way,
+   name over a one-line explanation, forward chevron. Picking a row swaps in
+   that way's form (one way per screen). */
+.onb__ways {
+  display: flex;
+  flex-direction: column;
+}
+
+.onb__way {
+  appearance: none;
+  background: none;
+  border: none;
+  border-top: var(--hairline);
+  width: 100%;
+  padding: 14px 2px;
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 2px 0;
-  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.onb__way:last-child {
+  border-bottom: var(--hairline);
+}
+
+.onb__way-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.onb__way-title {
+  display: block;
+  font-size: 15px;
   font-weight: var(--weight-bold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  color: var(--text-strong);
+}
+
+.onb__way-sub {
+  display: block;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.onb__way-icon {
+  display: inline-flex;
+  flex: none;
   color: var(--text-subtle);
 }
 
-.onb__or::before,
-.onb__or::after {
-  content: "";
-  flex: 1;
-  border-top: var(--hairline);
+/* A single way's form on its own stage: the field(s) and the one action. */
+.onb__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .onb__group-note {

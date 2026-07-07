@@ -532,21 +532,22 @@ describe("App onboarding flow", () => {
     const user = userEvent.setup();
     render(<App store={stubStore(null)} controller={fakeController()} />);
 
-    // From the landing, take the login route, open "other ways to log in," then
-    // recover with the phrase.
+    // From the landing, take the login route, open the "other ways" chooser,
+    // pick the phrase way (only that form shows), then recover with the phrase.
     await user.click(await screen.findByRole("button", { name: "Log in" }));
     await user.click(
       await screen.findByRole("button", { name: /Other ways to log in/ }),
     );
-    // The disclosure offers both no-passkey paths; target the phrase field by its
-    // label (the handle + password card is the other one).
+    await user.click(
+      await screen.findByRole("button", { name: /^Recovery phrase/ }),
+    );
+    // One way per screen: the password form is not on this stage.
+    expect(screen.queryByRole("textbox", { name: "Username" })).toBeNull();
     await user.type(
       await screen.findByRole("textbox", { name: "Recovery phrase" }),
       "RECOVER-ME-PHRASE",
     );
-    await user.click(
-      await screen.findByRole("button", { name: "Log in with your phrase" }),
-    );
+    await user.click(await screen.findByRole("button", { name: "Log in" }));
 
     // The recovered account drives the app (its handle, not the fixture's).
     expect((await screen.findAllByText(/Hi, rosa/)).length).toBeGreaterThan(0);
@@ -558,12 +559,19 @@ describe("App onboarding flow", () => {
     const user = userEvent.setup();
     render(<App store={stubStore(null)} controller={fakeController()} />);
 
-    // Take the login route, open "other ways to log in," then use the username +
-    // password path.
+    // Take the login route, open the "other ways" chooser, pick the username +
+    // password way (only that form shows), then sign in with it.
     await user.click(await screen.findByRole("button", { name: "Log in" }));
     await user.click(
       await screen.findByRole("button", { name: /Other ways to log in/ }),
     );
+    await user.click(
+      await screen.findByRole("button", { name: /^Username and password/ }),
+    );
+    // One way per screen: the phrase form is not on this stage.
+    expect(
+      screen.queryByRole("textbox", { name: "Recovery phrase" }),
+    ).toBeNull();
     await user.type(
       await screen.findByRole("textbox", { name: "Username" }),
       "meow",
@@ -572,9 +580,7 @@ describe("App onboarding flow", () => {
       await screen.findByLabelText("Password"),
       "correct-horse-battery-staple",
     );
-    await user.click(
-      await screen.findByRole("button", { name: "Log in with your password" }),
-    );
+    await user.click(await screen.findByRole("button", { name: "Log in" }));
 
     // The recovered account drives the app (its handle, not the fixture's).
     expect((await screen.findAllByText(/Hi, rosa/)).length).toBeGreaterThan(0);
