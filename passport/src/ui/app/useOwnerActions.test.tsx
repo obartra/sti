@@ -20,7 +20,6 @@ const session: OwnerSession = {
     contacts: [],
     state: INITIAL_OWNER_STATE,
     avatar: DEFAULT_AVATAR,
-    sharingMode: "public",
   },
 };
 
@@ -169,7 +168,6 @@ describe("useOwnerActions.onSetAvatar", () => {
 
     expect(setProfile).toHaveBeenCalledWith(session, {
       avatar: next,
-      sharingMode: "public",
     });
     expect(setSession).toHaveBeenCalledWith(updated);
     expect(ref.current).toBe(updated);

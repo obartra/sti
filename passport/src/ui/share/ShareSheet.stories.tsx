@@ -3,10 +3,11 @@ import { ShareSheet } from "./ShareSheet.tsx";
 import type { ShareSheetProps } from "./ShareSheet.tsx";
 import { DEFAULT_AVATAR } from "../../lib/avatars.ts";
 
-// The share modal opened by "Share my passport" and the share-rail buttons.
-// Stories render it open inside a relative container so the sheet is visible for
-// the visual baseline (the component positions itself against that container for
-// the mobile bottom-sheet variant; the desktop variant uses a fixed overlay).
+// The private-link share modal, opened from the share chooser's "Send a private
+// link" choice and the share-rail buttons. Stories render it open inside a
+// relative container so the sheet is visible for the visual baseline (the
+// component positions itself against that container for the mobile bottom-sheet
+// variant; the desktop variant uses a fixed overlay).
 const meta: Meta<typeof ShareSheet> = {
   title: "Passport/Share sheet",
   component: ShareSheet,
@@ -29,16 +30,12 @@ const base: ShareSheetProps = {
   identity: { handle: "robin" },
 };
 
-export const MobilePublic: Story = {
-  args: { ...base, sharingMode: "public", desktop: false },
-};
-
-export const MobilePrivate: Story = {
-  args: { ...base, sharingMode: "link", desktop: false },
+export const Mobile: Story = {
+  args: { ...base, desktop: false },
 };
 
 export const Desktop: Story = {
-  args: { ...base, sharingMode: "public", desktop: true },
+  args: { ...base, desktop: true },
 };
 
 // The per-alias identity choice (doc 15). Wiring onIdentityChange surfaces the
@@ -47,7 +44,6 @@ export const Desktop: Story = {
 export const IdentityAnonymous: Story = {
   args: {
     ...base,
-    sharingMode: "link",
     desktop: false,
     identityChoice: "anonymous",
     onIdentityChange: () => undefined,
@@ -57,7 +53,6 @@ export const IdentityAnonymous: Story = {
 export const IdentityMain: Story = {
   args: {
     ...base,
-    sharingMode: "link",
     desktop: false,
     identityChoice: "main",
     onIdentityChange: () => undefined,
@@ -70,7 +65,6 @@ export const IdentityMain: Story = {
 export const IdentityMainWithFace: Story = {
   args: {
     ...base,
-    sharingMode: "link",
     desktop: false,
     identityChoice: "main",
     onIdentityChange: () => undefined,
@@ -85,7 +79,6 @@ export const IdentityMainWithFace: Story = {
 export const WithLifetime: Story = {
   args: {
     ...base,
-    sharingMode: "link",
     desktop: false,
     lifetime: 7 * 24 * 60 * 60 * 1000,
     onLifetimeChange: () => undefined,

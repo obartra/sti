@@ -24,21 +24,19 @@ import {
 import { cx } from "../../lib/cx.ts";
 import "./share-sheet.css";
 
-/* ShareSheet, the share modal opened by "Share my passport" and the share-rail
-   buttons. It shows the badge card, the share URL + QR, a copy / save action,
-   an add-to-wallet row, and (for private links) a revoke action. Two layouts:
-   a centered desktop modal and a mobile bottom sheet with a grabber handle.
-   The panel is a control surface (doc 37): it keeps radius and elevation;
+/* ShareSheet, the private-link share modal opened by "Send a private link" and
+   the share-rail buttons. It shows the badge card, the private share URL + QR, a
+   copy / save action, an add-to-wallet row, and a revoke action. Public sharing
+   is the findable name, managed from the Public names section, not this sheet.
+   Two layouts: a centered desktop modal and a mobile bottom sheet with a grabber
+   handle. The panel is a control surface (doc 37): it keeps radius and elevation;
    its interior sits on the editorial grammar (share-sheet.css). */
-
-type SharingMode = "public" | "link";
 
 // Copy strings live inline in the prototype (not in copy.js), so they are kept
 // here verbatim rather than threaded through the shared copy module. The URL
 // block's own strings live with it in ShareSheet.url.tsx.
 const COPY = {
-  titlePublic: "Share your passport",
-  titleLink: "Share private link",
+  title: "Share private link",
   reassurance: "Just your status, nothing else.",
   revoke: "Revoke and renew",
   share: "Share",
@@ -59,7 +57,6 @@ function canNativeShare(): boolean {
 export interface ShareSheetProps {
   open: boolean;
   onClose?: (() => void) | undefined;
-  sharingMode?: SharingMode | undefined;
   state: BadgeState;
   labels?: ProtectionLabel[] | undefined;
   route?: Route | undefined;
@@ -106,23 +103,19 @@ export interface ShareSheetProps {
   /** How long the private link keeps working (doc 16): a duration in ms, or null
    * for until the owner turns it off. Only read when the lifetime control shows. */
   lifetime?: number | null | undefined;
-  /** Set the private link's lifetime. When absent (public mode, or Storybook), the
-   * lifetime control is hidden: only a private link lapses, a profile never does. */
+  /** Set the private link's lifetime. When absent (Storybook), the lifetime
+   * control is hidden. */
   onLifetimeChange?: ((durationMs: number | null) => void) | undefined;
 }
 
 function SheetHeader({
-  link,
   onClose,
 }: {
-  link: boolean;
   onClose: (() => void) | undefined;
 }): ReactElement {
   return (
     <div className="sh__head">
-      <div className="sh__title">
-        {link ? COPY.titleLink : COPY.titlePublic}
-      </div>
+      <div className="sh__title">{COPY.title}</div>
       <button
         type="button"
         onClick={onClose}
@@ -153,32 +146,28 @@ function nativeShareOrClose(
     .catch(() => undefined);
 }
 
-// The revoke (private links only) + primary button row. The primary reads
-// "Share" and opens the OS share sheet where available, else "Done" (close).
+// The revoke + primary button row. The primary reads "Share" and opens the OS
+// share sheet where available, else "Done" (close).
 function SheetActions({
-  link,
   nativeShare,
   onShare,
   onRevoke,
 }: {
-  link: boolean;
   nativeShare: boolean;
   onShare: () => void;
   onRevoke: (() => void) | undefined;
 }): ReactElement {
   return (
     <div className="sh__actions">
-      {link && (
-        <Button
-          variant="quiet"
-          size="lg"
-          block
-          icon={<Refresh size={17} />}
-          onClick={onRevoke}
-        >
-          {COPY.revoke}
-        </Button>
-      )}
+      <Button
+        variant="quiet"
+        size="lg"
+        block
+        icon={<Refresh size={17} />}
+        onClick={onRevoke}
+      >
+        {COPY.revoke}
+      </Button>
       <Button
         variant="primary"
         size="lg"
@@ -213,7 +202,6 @@ function panelClassFor(desktop: boolean): string {
 function SheetPanel(props: ShareSheetProps): ReactElement {
   const {
     onClose,
-    sharingMode = "public",
     state,
     labels = [],
     route = null,
@@ -235,13 +223,8 @@ function SheetPanel(props: ShareSheetProps): ReactElement {
     error,
     onRetry,
   } = props;
-  const link = sharingMode === "link";
-  // The lifetime control belongs to the private link only (doc 16): a public
-  // profile and a public name never lapse, so the handler is dropped outside
-  // link mode and LifetimeRow then hides itself.
-  const onLifetime = link ? onLifetimeChange : undefined;
   const urlState = urlStateOf(realUrl, error);
-  const { url, seed } = displayLink(realUrl, link);
+  const { url, seed } = displayLink(realUrl);
   const overrideSrc =
     avatarOverride !== undefined ? renderAvatar(avatarOverride) : undefined;
   // The preview shows the viewer's actual face for this link (see previewFace). A
@@ -264,7 +247,7 @@ function SheetPanel(props: ShareSheetProps): ReactElement {
   return (
     <div className={panelClassFor(desktop)}>
       <Grabber desktop={desktop} />
-      <SheetHeader link={link} onClose={onClose} />
+      <SheetHeader onClose={onClose} />
       <BadgeCard
         state={state}
         labels={labels}
@@ -285,9 +268,8 @@ function SheetPanel(props: ShareSheetProps): ReactElement {
         fallback={avatar}
         onChange={onAvatarOverrideChange}
       />
-      <LifetimeRow choice={lifetime} onChange={onLifetime} />
+      <LifetimeRow choice={lifetime} onChange={onLifetimeChange} />
       <UrlCard
-        link={link}
         state={urlState}
         url={url}
         seed={seed}
@@ -296,7 +278,6 @@ function SheetPanel(props: ShareSheetProps): ReactElement {
       />
       <WalletRow show={showWallet} onWallet={onWallet} />
       <SheetActions
-        link={link}
         nativeShare={nativeShare}
         onShare={onShare}
         onRevoke={onRevoke}

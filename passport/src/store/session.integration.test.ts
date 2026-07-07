@@ -561,37 +561,24 @@ describe("owner session against a live blind store", () => {
     );
   });
 
-  it("share link's key-presence tracks the current sharing mode, not the first share", async () => {
+  it("the share link is the keyed private /a/ link, reused across shares", async () => {
     const { ctl } = controller(fakePasskey());
-    const created = await ctl.signUp("pat"); // accounts default to link (private)
+    const created = await ctl.signUp("pat");
 
-    // A private link is the bare /a/{id}: the key is never in the URL.
+    // The share sheet mints one private link: /a/{id}#k=, its key in the fragment so
+    // it opens straight to the status (no knock). isPublic stays false (unadvertised,
+    // expirable). Public sharing is the /u/ handle, never this path (doc 16).
     const linkShare = await ctl.shareLink(created.session);
-    expect(linkShare.url).not.toContain("#k=");
-    const linkAlias = linkShare.session.blob.aliases[0];
-    expect(linkAlias?.isPublic).toBe(false);
+    expect(linkShare.url).toContain("#k=");
+    expect(linkShare.session.blob.aliases).toHaveLength(1);
+    expect(linkShare.session.blob.aliases[0]?.isPublic).toBe(false);
 
-    // Switch the account to public, then share: now the link must carry the key
-    // in its fragment, and it is a DISTINCT alias (not the private one re-dressed).
-    const pub = await ctl.setProfile(linkShare.session, {
-      avatar: created.session.blob.avatar,
-      sharingMode: "public",
-    });
-    const pubShare = await ctl.shareLink(pub);
-    expect(pubShare.url).toContain("#k=");
-    expect(pubShare.session.blob.aliases).toHaveLength(2);
-    const pubAlias = pubShare.session.blob.aliases.find((a) => a.isPublic);
-    expect(pubAlias?.id).not.toBe(linkAlias?.id);
-
-    // Switching back to private reuses the ORIGINAL private alias (same link),
-    // and crucially never surfaces the public alias's key under a private sheet.
-    const back = await ctl.setProfile(pubShare.session, {
-      avatar: created.session.blob.avatar,
-      sharingMode: "link",
-    });
-    const backShare = await ctl.shareLink(back);
-    expect(backShare.url).toBe(linkShare.url);
-    expect(backShare.url).not.toContain("#k=");
+    // Sharing again reuses the SAME private alias (same link) and refreshes its
+    // card, never minting a second one.
+    const again = await ctl.shareLink(linkShare.session);
+    expect(again.url).toBe(linkShare.url);
+    expect(again.url).toContain("#k=");
+    expect(again.session.blob.aliases).toHaveLength(1);
   });
 
   it("renewLink revokes the old link (no future reads) and mints a working fresh one", async () => {

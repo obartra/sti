@@ -601,8 +601,7 @@ export function createSessionController(deps: SessionDeps): SessionController {
     },
 
     async renewLink(session, identity = "anonymous", avatarOverride) {
-      const wantPublic = session.blob.sharingMode === "public";
-      const existing = primaryShareAlias(session.blob, wantPublic);
+      const existing = primaryShareAlias(session.blob);
       let working = session;
       if (existing !== undefined) {
         // Kill the old payload first, then drop the record. Order matters: if the

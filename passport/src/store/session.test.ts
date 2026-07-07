@@ -37,7 +37,6 @@ function fakeBackend() {
         contacts: [],
         state: INITIAL_OWNER_STATE,
         avatar: DEFAULT_AVATAR,
-        sharingMode: "link",
         // The phrase is stored in the (encrypted) blob so Settings can re-view it
         // (doc 32), mirroring the real AccountManager.
         recoveryPhrase,

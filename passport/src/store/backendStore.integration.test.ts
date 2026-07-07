@@ -271,7 +271,6 @@ describe("public resolution against a live blind store", () => {
       contacts: [contact],
       state: INITIAL_OWNER_STATE,
       avatar: DEFAULT_AVATAR,
-      sharingMode: "link",
     };
 
     // Before locking, the contact's inbox is an existence-uniform decoy: no ping.

@@ -2,7 +2,6 @@ import { useCallback, useRef, useState } from "react";
 import type {
   OwnerSession,
   SessionController,
-  SharingMode,
   SignUpRecovery,
   SignUpRecoveryOutcome,
 } from "../../store/index.ts";
@@ -49,7 +48,7 @@ export interface OnboardingActions {
     recovery?: SignUpRecovery,
   ): Promise<ClaimResult>;
   /** b3: persist the profile, bind a passkey (best-effort), and enter. */
-  finish(sharingMode: SharingMode): Promise<void>;
+  finish(): Promise<void>;
   /** Login variant: unlock this device's passkey. Returns true on success. */
   loginPasskey(): Promise<boolean>;
   /**
@@ -289,41 +288,37 @@ export function useOnboarding(
     [runClaim],
   );
 
-  const finish = useCallback(
-    async (sharingMode: SharingMode) => {
-      const current = draft.current;
-      if (current === null || inFlight.current) return;
-      inFlight.current = true;
-      setBusy(true);
-      setError(null);
+  const finish = useCallback(async () => {
+    const current = draft.current;
+    if (current === null || inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await controller.setProfile(current.session, {
+        avatar: current.avatar,
+      });
+      // Bind a passkey so reload can resume without the phrase. Best-effort:
+      // a declined or unavailable passkey still enters (the phrase recovers).
+      // enrollPasskey re-derives the wrap key from the phrase (doc 24), so pass
+      // the in-memory phrase rather than the session's non-extractable root.
       try {
-        const updated = await controller.setProfile(current.session, {
-          avatar: current.avatar,
-          sharingMode,
-        });
-        // Bind a passkey so reload can resume without the phrase. Best-effort:
-        // a declined or unavailable passkey still enters (the phrase recovers).
-        // enrollPasskey re-derives the wrap key from the phrase (doc 24), so pass
-        // the in-memory phrase rather than the session's non-extractable root.
-        try {
-          await controller.enrollPasskey(
-            current.recoveryPhrase,
-            updated.blob.handle ?? "",
-          );
-        } catch {
-          // keep going; the account is already created and phrase-recoverable.
-        }
-        onSession(updated);
+        await controller.enrollPasskey(
+          current.recoveryPhrase,
+          updated.blob.handle ?? "",
+        );
       } catch {
-        // The account exists (created at b1); only the profile write failed.
-        setError("Could not finish setup. Please try again.");
-      } finally {
-        setBusy(false);
-        inFlight.current = false;
+        // keep going; the account is already created and phrase-recoverable.
       }
-    },
-    [controller, onSession],
-  );
+      onSession(updated);
+    } catch {
+      // The account exists (created at b1); only the profile write failed.
+      setError("Could not finish setup. Please try again.");
+    } finally {
+      setBusy(false);
+      inFlight.current = false;
+    }
+  }, [controller, onSession]);
 
   const { loginPasskey, recoverPhrase, recoverPassword } = useLoginActions(
     controller,

@@ -1,0 +1,15 @@
+/* The share chooser (doc 16 + 37). It reuses the share sheet's overlay shell
+   (share-sheet.css) and only adds the intro line and the spacing around its two
+   action rows, which sit on the editorial .e-row grammar. Tokens only. */
+
+.shc__intro {
+  margin: 0 0 14px;
+  color: var(--text-subtle);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.shc__rows {
+  display: flex;
+  flex-direction: column;
+}

@@ -8,11 +8,7 @@ import {
   Share as ShareIcon,
 } from "../../design/icons.tsx";
 import type { AliasRecord, ContactRecord } from "../../store/index.ts";
-import {
-  aliasLinkUrl,
-  contactInviteUrl,
-  keyedAliasLinkUrl,
-} from "../../store/index.ts";
+import { contactInviteUrl, keyedAliasLinkUrl } from "../../store/index.ts";
 import {
   useLinkShare,
   type LinkShareContext,
@@ -145,7 +141,9 @@ export function LiveLinks({
                   : withExpiry("Link-only, unlisted", a.expiresAt)
               }
               onShare={
-                canShare ? () => linkShare.open(aliasLinkUrl(a)) : undefined
+                canShare
+                  ? () => linkShare.open(keyedAliasLinkUrl(a))
+                  : undefined
               }
               onRevoke={() => onRevokeAlias(a.id)}
             />

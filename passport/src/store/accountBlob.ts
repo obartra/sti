@@ -115,7 +115,13 @@ import type { GroupVisibility, MeetingKind } from "./groupObject.ts";
 // account holds unlimited aliases); v19 only lifts the client's one-per-account
 // structural cap. No migration path: there are no real accounts in the wild yet, so a
 // pre-v19 blob fails the strict version check exactly like any older version.
-const SCHEMA_VERSION = 19;
+//
+// v20 drops the account-level `sharingMode` field (doc 16): public sharing is now
+// exclusively the findable `/u/` handle and private sharing the keyed `/a/` link, so
+// there is no account-wide public/private default to store. No migration path: there
+// are no real accounts in the wild yet, so a pre-v20 blob fails the strict version
+// check exactly like any older version.
+const SCHEMA_VERSION = 20;
 
 /**
  * The most public names one account may hold at once (doc 17). A client-side cap: the
@@ -303,13 +309,6 @@ export interface GroupRecord {
   readonly lifecycleInbox?: InboxCapability;
 }
 
-/** The account-level sharing default: a public profile, or link-only (private). */
-export type SharingMode = "public" | "link";
-
-export function isSharingMode(x: unknown): x is SharingMode {
-  return x === "public" || x === "link";
-}
-
 export interface AccountBlob {
   /** The owner's local display name, owner-facing only, never sent to the server. Optional. */
   readonly handle?: string;
@@ -320,8 +319,6 @@ export interface AccountBlob {
   readonly state: OwnerState;
   /** The owner's chosen avatar (rendered in-app and on shared cards). */
   readonly avatar: AvatarConfig;
-  /** The account-level sharing default chosen at onboarding. */
-  readonly sharingMode: SharingMode;
   /**
    * Which face the Home hero opens on: "criteria" (the owner-only breakdown,
    * the default) or "shared" (what a viewer resolves). Owner-facing UI preference
@@ -667,7 +664,6 @@ export function serializeAccountBlob(blob: AccountBlob): Bytes {
     contacts: blob.contacts,
     state: blob.state,
     avatar: blob.avatar,
-    sharingMode: blob.sharingMode,
     ...(blob.homeDefaultView !== undefined
       ? { homeDefaultView: blob.homeDefaultView }
       : {}),
@@ -705,9 +701,6 @@ function assertValidBlob(o: Record<string, unknown>): void {
   // The avatar is not gated here: it is cosmetic and migrates to the default on
   // read (see parseAccountBlob), so an old-shape or corrupt avatar must not brick
   // the whole account (doc 19).
-  if (!isSharingMode(o.sharingMode)) {
-    throw new Error("account blob: invalid sharingMode");
-  }
   assertValidOptionalFields(o);
 }
 
@@ -751,7 +744,6 @@ export function parseAccountBlob(bytes: Bytes): AccountBlob {
     contacts: (o.contacts as ContactRecord[]).map(migrateContactAvatar),
     state: o.state as AccountBlob["state"],
     avatar: migrateAvatar(o.avatar),
-    sharingMode: o.sharingMode as AccountBlob["sharingMode"],
     ...(o.homeDefaultView === "criteria" || o.homeDefaultView === "shared"
       ? { homeDefaultView: o.homeDefaultView }
       : {}),

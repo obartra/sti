@@ -50,16 +50,6 @@ export function keyedAliasLinkUrl(record: AliasRecord): string {
   return `${SHARE_ORIGIN}${PATHS.aliasPrefix}${record.id}#k=${record.key}`;
 }
 
-/**
- * The owner's findable public link (doc 17): `/u/{name}`. Unlike an alias link it
- * carries no id and no key, just the chosen public name, so it is the recognizable
- * thing to hand out once a name is claimed. It resolves by name lookup to the
- * keyless findable alias, so a stranger still has to ask before seeing any status.
- */
-export function publicProfileUrl(name: string): string {
-  return `${SHARE_ORIGIN}${PATHS.vanityPrefix}${encodeURIComponent(name)}`;
-}
-
 // Seal `view` under `key` and write it to the alias. Shared by publish (new key)
 // and republish (the existing key), so both encode a card identically. The
 // record's own `expiresAt` rides the PUT (doc 16) and is sent every time, so the

@@ -6,8 +6,7 @@
  *
  * The badge, labels, and headline route reuse deriveOwnerCard exactly, so the
  * owner's own view can never disagree with what a viewer resolves. The remaining
- * fields are owner-only context (freshness, pause reason, sharing default) that
- * never reach a viewer.
+ * fields are owner-only context (freshness, pause reason) that never reach a viewer.
  */
 
 import {
@@ -19,7 +18,7 @@ import {
 import { epochDayToDate } from "../core/clock.ts";
 import type { AvatarConfig } from "../lib/avatars.ts";
 import type { BadgeState, ProtectionLabel, Route } from "../ui/badge-card.tsx";
-import type { AccountBlob, SharingMode } from "./accountBlob.ts";
+import type { AccountBlob } from "./accountBlob.ts";
 import { deriveOwnerCard } from "./ownerCard.ts";
 
 /** The owner-facing view: badge plus owner-only context, never sent to a viewer. */
@@ -30,7 +29,6 @@ export interface OwnerView {
   readonly viewerBadge: BadgeState;
   readonly labels: ProtectionLabel[];
   readonly blueRoute: Route;
-  readonly sharingMode: SharingMode;
   /** Which face the Home hero opens on; absent means "criteria" (the default). */
   readonly homeDefaultView?: "criteria" | "shared";
   /** Manually paused (forces gray). */
@@ -69,7 +67,6 @@ export function deriveOwnerView(blob: AccountBlob, nowDay: number): OwnerView {
     viewerBadge: card.state,
     labels: card.labels ?? [],
     blueRoute: card.route ?? null,
-    sharingMode: blob.sharingMode,
     ...(blob.homeDefaultView !== undefined
       ? { homeDefaultView: blob.homeDefaultView }
       : {}),

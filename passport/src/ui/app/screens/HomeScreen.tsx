@@ -30,7 +30,6 @@ export function HomeScreen({
       paused={owner.paused}
       autoPaused={owner.autoPaused}
       clearBy={owner.clearBy}
-      sharingMode={owner.sharingMode}
       daysLeft={owner.daysLeft}
       standing={blueChecklist(ownerState, todayEpochDay())}
       tested={ownerState.testing.lastPanelDay !== null}

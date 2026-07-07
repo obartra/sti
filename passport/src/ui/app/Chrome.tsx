@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { AppShell, BackBar } from "../shell/AppShell.tsx";
 import { DesktopShell, DesktopLanding } from "../desktop/Desktop.tsx";
 import { ShareSheet } from "../share/ShareSheet.tsx";
+import { ShareChooser } from "../share/ShareChooser.tsx";
 import { WALLET_ENABLED } from "../../features.ts";
 import { avatarSrc } from "../../lib/avatars.ts";
 import { CanvasWrap } from "./CanvasWrap.tsx";
@@ -123,16 +124,10 @@ function ShareOverlay({
   shareLifetime,
   onShareLifetimeChange,
 }: ChromeProps) {
-  // The lifetime control is a private-link affordance only (doc 16): a public
-  // profile never lapses, so the handler is passed only in "link" mode, and the
-  // sheet hides the row when it has no handler.
-  const onLifetimeChange =
-    owner.sharingMode === "link" ? onShareLifetimeChange : undefined;
   return (
     <ShareSheet
       open={shareOpen}
       onClose={() => setShareOpen(false)}
-      sharingMode={owner.sharingMode}
       state={owner.viewerBadge}
       labels={owner.labels}
       route={owner.blueRoute}
@@ -147,7 +142,7 @@ function ShareOverlay({
       avatarOverride={shareAvatarOverride}
       onAvatarOverrideChange={onShareAvatarOverrideChange}
       lifetime={shareLifetime}
-      onLifetimeChange={onLifetimeChange}
+      onLifetimeChange={onShareLifetimeChange}
       onCopy={onCopyShareLink}
       onRevoke={onRevokeShareLink}
       onWallet={() => {
@@ -161,9 +156,14 @@ function ShareOverlay({
 }
 
 // The routed-screen context is identical for the app and public shells; build it
-// once from the props so neither shell drifts as ScreenCtx grows.
-function buildCtx(props: ChromeProps): ScreenCtx {
-  const { route, setShareOpen } = props;
+// once from the props so neither shell drifts as ScreenCtx grows. `openShare` is
+// the "Share my passport" entry point; the app shell routes it through the chooser
+// first, so it is passed in rather than hardcoded to open the sheet directly.
+function buildCtx(
+  props: ChromeProps,
+  openShare: () => void = () => props.setShareOpen(true),
+): ScreenCtx {
+  const { route } = props;
   return {
     nav: props.nav,
     owner: props.owner,
@@ -171,7 +171,7 @@ function buildCtx(props: ChromeProps): ScreenCtx {
     onboarding: props.onboarding,
     onReport: props.onReport,
     setOwnerState: props.setOwnerState,
-    openShare: () => setShareOpen(true),
+    openShare,
     onDeleteAccount: props.onDeleteAccount,
     onLogOut: props.onLogOut,
     keepSignedIn: props.keepSignedIn,
@@ -234,10 +234,52 @@ function buildCtx(props: ChromeProps): ScreenCtx {
   };
 }
 
+// The share surfaces for the app shell: the chooser (which "Share my passport"
+// opens first) and, behind it, the private-link share sheet. Kept together so the
+// chooser's private-link choice hands straight off to the sheet, and its public
+// choice jumps to the Public names section on the Links tab.
+function ShareSurfaces({
+  chrome,
+  chooserOpen,
+  setChooserOpen,
+}: {
+  chrome: ChromeProps;
+  chooserOpen: boolean;
+  setChooserOpen: (open: boolean) => void;
+}) {
+  return (
+    <>
+      <ShareChooser
+        open={chooserOpen}
+        onClose={() => setChooserOpen(false)}
+        desktop={chrome.desktop}
+        onPrivateLink={() => {
+          setChooserOpen(false);
+          chrome.setShareOpen(true);
+        }}
+        onPublicName={() => {
+          setChooserOpen(false);
+          chrome.nav.jump("links");
+        }}
+      />
+      <ShareOverlay {...chrome} />
+    </>
+  );
+}
+
 function AppChrome(props: ChromeProps) {
-  const { route, nav, owner, desktop, setShareOpen, knockCount } = props;
+  const { route, nav, owner, desktop, knockCount } = props;
   const tab: Tab = sectionOf(route.screen);
-  const ctx: ScreenCtx = buildCtx(props);
+  const [chooserOpen, setChooserOpen] = useState(false);
+  const openChooser = () => setChooserOpen(true);
+  const ctx: ScreenCtx = buildCtx(props, openChooser);
+  const shareSurfaces = (
+    <ShareSurfaces
+      chrome={props}
+      chooserOpen={chooserOpen}
+      setChooserOpen={setChooserOpen}
+    />
+  );
   const content = (
     <>
       <ScreenView screen={route.screen} ctx={ctx} />
@@ -253,7 +295,7 @@ function AppChrome(props: ChromeProps) {
           onTab={(t) => nav.jump(t)}
           sub={!isTab(route.screen)}
           onBack={nav.back}
-          onShare={() => setShareOpen(true)}
+          onShare={openChooser}
           onBell={() => nav.go("notifications")}
           onReport={() => nav.go("report")}
           onViewAs={() => nav.go("a2-public", { self: true })}
@@ -262,7 +304,7 @@ function AppChrome(props: ChromeProps) {
         >
           {content}
         </DesktopShell>
-        <ShareOverlay {...props} />
+        {shareSurfaces}
       </>
     );
   }
@@ -282,7 +324,7 @@ function AppChrome(props: ChromeProps) {
         >
           {content}
         </AppShell>
-        <ShareOverlay {...props} />
+        {shareSurfaces}
       </>
     );
   }
@@ -290,7 +332,7 @@ function AppChrome(props: ChromeProps) {
   return (
     <>
       <MobileSub nav={nav}>{content}</MobileSub>
-      <ShareOverlay {...props} />
+      {shareSurfaces}
     </>
   );
 }

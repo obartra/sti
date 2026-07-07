@@ -31,20 +31,15 @@ export interface VanityRegisterOutcome {
 }
 
 /**
- * The owner's primary SHARE alias for a visibility, excluding the dedicated findable
- * alias. The share sheet keeps "one alias per visibility"; the findable alias shares
- * a visibility (public) but must never be picked as the share link (reusing it would
- * republish over it and hand out its key-bearing URL). Selecting by visibility AND
- * not-the-findable-id keeps the two independent.
+ * The owner's primary private SHARE alias, excluding the dedicated findable aliases.
+ * The share sheet hands out one private keyed `/a/` link; a findable alias is public
+ * and managed solely from the Public names section, so it must never be picked as the
+ * share link (reusing it would republish over it and hand out its key-bearing URL).
+ * Selecting the private alias that is not a findable alias keeps the two independent.
  */
-export function primaryShareAlias(
-  blob: AccountBlob,
-  wantPublic: boolean,
-): AliasRecord | undefined {
+export function primaryShareAlias(blob: AccountBlob): AliasRecord | undefined {
   const findableIds = new Set((blob.findables ?? []).map((f) => f.aliasId));
-  return blob.aliases.find(
-    (a) => a.isPublic === wantPublic && !findableIds.has(a.id),
-  );
+  return blob.aliases.find((a) => !a.isPublic && !findableIds.has(a.id));
 }
 
 // Mint a dedicated public alias backing a findable name and publish the current
