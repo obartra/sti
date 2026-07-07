@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, IconButton, Card, Avatar, Badge, Input, Field, Switch, Segmented, Row } from "./components/index.ts";
+import { Button, IconButton, Avatar, Input, Field, Switch, Segmented } from "./components/index.ts";
 
 // Living styleguide for the design-system primitives. Each story shows a
 // component family's variants so a CSS/token change is caught in snapshots.
@@ -63,36 +63,15 @@ export const Buttons: Story = {
   ),
 };
 
-export const Cards: Story = {
+export const Avatars: Story = {
   render: () => (
-    <Stack gap={20}>
-      <Card style={{ width: 200 }}>Default</Card>
-      <Card variant="flat" style={{ width: 200 }}>Flat</Card>
-      <Card variant="raised" style={{ width: 200 }}>Raised</Card>
-      <Card variant="tint" style={{ width: 200 }}>Tint</Card>
-      <Card variant="interactive" style={{ width: 200 }}>Interactive (hover)</Card>
-    </Stack>
-  ),
-};
-
-export const AvatarsAndBadges: Story = {
-  render: () => (
-    <div>
-      <Panel title="Avatars">
-        <Stack>
-          <Avatar size="sm" initials="RB" />
-          <Avatar size="md" initials="KA" />
-          <Avatar size="lg" initials="SM" />
-        </Stack>
-      </Panel>
-      <Panel title="Badges">
-        <Stack>
-          <Badge>Default</Badge>
-          <Badge variant="accent">Accent</Badge>
-          <Badge variant="count">3</Badge>
-        </Stack>
-      </Panel>
-    </div>
+    <Panel title="Avatars">
+      <Stack>
+        <Avatar size="sm" initials="RB" />
+        <Avatar size="md" initials="KA" />
+        <Avatar size="lg" initials="SM" />
+      </Stack>
+    </Panel>
   ),
 };
 
@@ -101,7 +80,7 @@ export const Forms: Story = {
     const [on, setOn] = useState(true);
     const [seg, setSeg] = useState<"always" | "sometimes" | "never">("always");
     return (
-      <Card variant="flat" pad="lg" style={{ maxWidth: 380, display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
+      <div style={{ maxWidth: 380, display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
         <Field label="Display handle" hint="Shown inside your encrypted card, not in any URL." htmlFor="h">
           <Input id="h" placeholder="robin" defaultValue="robin" />
         </Field>
@@ -119,17 +98,7 @@ export const Forms: Story = {
             { value: "never", label: "Never" },
           ]}
         />
-      </Card>
+      </div>
     );
   },
-};
-
-export const Rows: Story = {
-  render: () => (
-    <Card pad="sm" style={{ maxWidth: 420, display: "flex", flexDirection: "column", gap: 4 }}>
-      <Row lead={<Avatar size="sm" initials="KA" />} title="Kai" sub="Linked 3 days ago" trail={<Dot />} />
-      <Row lead={<Avatar size="sm" initials="SM" />} title="Sam" sub="Linked last week" trail={<Dot />} />
-      <Row interactive={false} lead={<Dot />} title="Static row" sub="Not tappable" />
-    </Card>
-  ),
 };

@@ -102,11 +102,11 @@ describe("continuity nudge cadence", () => {
     expect(dueNudge(store, { passwordSetAt: reSet, now: reSet })).toBeNull();
   });
 
-  it("does not nag a legacy password with no set date (missing-timestamp fallback)", () => {
+  it("never fires the password nudge without a set date (no password set)", () => {
     const store = memory();
     dismissNudge(store, "phrase", T0);
-    // A password set before passwordSetAt existed has no timestamp: treated as not
-    // yet due even far in the future, so it never nags immediately.
+    // No passwordSetAt means no password: the yearly reminder is never due, even
+    // far in the future.
     const far = T0 + PASSWORD_REFRESH_AGE_MS * 3;
     dismissNudge(store, "phrase", far);
     expect(dueNudge(store, { now: far })).toBeNull();

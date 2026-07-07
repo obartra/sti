@@ -249,7 +249,7 @@ describe("notify, knock, health", () => {
     expect(m.last().init?.body).toBe(
       JSON.stringify({ requesterHash: "req123", pubKey: "ephemeralPub" }),
     );
-    // No pubKey -> the legacy, contentless body shape (no empty field).
+    // No pubKey -> the contentless body shape (no empty field).
     await api.knock(GOOD_ID, "req123");
     expect(m.last().init?.body).toBe(
       JSON.stringify({ requesterHash: "req123" }),

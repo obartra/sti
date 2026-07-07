@@ -50,7 +50,8 @@ export function findableNameFromPath(pathname: string): string | null {
 // The fixed clean path each non-parameterized screen owns. The id-carrying screens
 // are not here; they build a path param from route data (`paramPath`): `a2-public`
 // (`/a/{id}#k=`), `u-resolve` (`/u/{name}`), `group-detail` (`/groups/{id}`),
-// `group-create` edit (`/groups/{id}/edit`).
+// `group-create` edit (`/groups/{id}/edit`), and `b1-claim` in its login variant
+// (`/login`; the table entry is the create variant's `/signup`).
 // The two "privacy" surfaces resolve their old naming clash here: the Settings
 // screen (id `privacy`) is `/settings`, the privacy POLICY page (id
 // `privacy-policy`) is `/privacy`.
@@ -65,7 +66,7 @@ const SCREEN_PATH: Partial<Record<Screen, string>> = {
   "a3-alert": "/alert",
   exposed: "/exposed",
   requests: "/requests",
-  "b1-claim": "/claim",
+  "b1-claim": "/signup",
   "b2-recovery": "/recovery",
   "b3-setup": "/setup",
   home: "/",
@@ -103,9 +104,12 @@ PATH_SCREEN["/"] = "home";
 
 // The path an id-carrying screen builds from its route data, or null when the screen
 // has no param (or the datum is missing): `/u/{name}`, `/groups/{id}`,
-// `/groups/{id}/edit`.
+// `/groups/{id}/edit`. b1-claim's login variant belongs here too: the one screen
+// renders create or log-in on the `isLogin` route datum, so the login mode owns
+// `/login` while the create mode keeps the table's `/signup`.
 function paramPath(screen: Screen, data: RouteData | null): string | null {
   if (data === null) return null;
+  if (screen === "b1-claim" && data.isLogin) return "/login";
   if (screen === "u-resolve" && data.name) {
     return `/u/${encodeURIComponent(data.name)}`;
   }
@@ -134,17 +138,6 @@ const COLD_REDIRECT: Record<string, Screen> = {
   "/recovery": "b1-claim",
   "/setup": "b1-claim",
   "/report/saved": "home",
-};
-
-// Legacy paths kept working so an installed PWA (or an old shortcut/bookmark) never
-// strands: the old Connect tab and its sub-paths now live under People / Links, and
-// Home moved from `/home` to the root `/`. A cold hit resolves to the new screen and
-// mount normalizes the URL.
-const LEGACY_REDIRECT: Record<string, Screen> = {
-  "/home": "home",
-  "/connect": "people",
-  "/connect/scan": "scan",
-  "/connect/share": "alias-share",
 };
 
 // The id-carrying app paths: `/groups/{id}`, `/groups/{id}/edit`. Checked after the
@@ -239,12 +232,11 @@ function demoPath(canonical: string): string {
 }
 
 // Derive the current route from the URL, in priority order: an id-carrying link
-// (above), then the clean-path table (every non-parameterized screen). Every screen
-// now owns a clean path, so a legacy `/#screen` hash is no longer read: a stale
-// `/#home` bookmark falls through to the bare-root entry (the landing) and mount
-// normalization strips the hash. The `#k=` fragment on an alias link is handled by
-// parameterizedRoute above, not here, so dropping the hash read never touches it. The
-// `/demo` prefix (demo mode) is stripped first so the demo shares this same table.
+// (above), then the clean-path table (every non-parameterized screen). The route
+// derives from the path alone: a bare `/#screen` hash is inert (it falls through to
+// the bare-root entry and mount normalization strips it). The `#k=` fragment on an
+// alias link is handled by parameterizedRoute above, not here. The `/demo` prefix
+// (demo mode) is stripped first so the demo shares this same table.
 export function routeFromLocation(): Route | null {
   if (typeof window === "undefined") return null;
   const pathname = stripDemo(window.location.pathname);
@@ -252,9 +244,18 @@ export function routeFromLocation(): Route | null {
   const param = parameterizedRoute(pathname, hash);
   if (param) return param;
   const cleanPath = pathname.replace(/\/$/, "") || "/";
-  const redirect = COLD_REDIRECT[cleanPath] ?? LEGACY_REDIRECT[cleanPath];
+  const redirect = COLD_REDIRECT[cleanPath];
   if (redirect)
     return { screen: redirect, group: groupOf(redirect), data: null };
+  // The login variant of b1-claim: the URL is the only cold-boot carrier of the
+  // `isLogin` flag, so `/login` re-derives with it set (the create variant is the
+  // plain `/signup` table entry below).
+  if (cleanPath === "/login")
+    return {
+      screen: "b1-claim",
+      group: groupOf("b1-claim"),
+      data: { isLogin: true },
+    };
   const screen = PATH_SCREEN[cleanPath];
   if (screen !== undefined)
     return { screen, group: groupOf(screen), data: null };
@@ -307,8 +308,8 @@ export function useAppRouter(initial: Route = START): Router {
   const depth = useRef(0);
 
   // Mount-only URL normalization: replace the URL the app loaded at (e.g. a stale
-  // `/#a1-landing`, or a legacy `/home`) with its canonical form, never pushing, so the
-  // user is never one extra Back press from leaving. Owned-URL screens are left
+  // `/#a1-landing` hash, or a trailing slash) with its canonical form, never pushing,
+  // so the user is never one extra Back press from leaving. Owned-URL screens are left
   // exactly as loaded. After mount, `go`/`jump` own every URL write directly, so this
   // never runs again (guarded on firstUrlSync).
   const firstUrlSync = useRef(true);

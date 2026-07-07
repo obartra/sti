@@ -515,9 +515,9 @@ export function createApiClient(
     },
 
     async knock(id, requesterHash, pubKey) {
-      // Omit pubKey entirely when absent, so a contentless knock is byte-for-byte
-      // the legacy shape and carries no empty field. The body is uniform; a
-      // transport failure still surfaces as unreachable.
+      // Omit pubKey entirely when absent, so a contentless knock carries no empty
+      // field. The body is uniform; a transport failure still surfaces as
+      // unreachable.
       const body = pubKey ? { requesterHash, pubKey } : { requesterHash };
       await postJson(call, PATHS.knockPrefix + id, body, "knock");
     },

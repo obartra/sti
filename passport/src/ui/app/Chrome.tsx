@@ -326,6 +326,7 @@ function PublicChrome(props: ChromeProps) {
     <CanvasWrap
       desktop={desktop}
       full={isTrust}
+      focus={route.group === "onboard"}
       onHome={() => nav.jump("a1-landing", "public")}
     >
       <ScreenView screen={route.screen} ctx={ctx} />

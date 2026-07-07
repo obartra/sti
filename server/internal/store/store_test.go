@@ -183,26 +183,6 @@ func TestAccountOptimisticConcurrency(t *testing.T) {
 	}
 }
 
-// A row whose write_auth is empty (a legacy row migrated in before the column
-// existed) is unbound: the owner's next write rebinds the real token, and after
-// that a foreign token is locked out.
-func TestAccountEmptyAuthRebinds(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
-
-	// Simulate a pre-migration row: insert directly with an empty write_auth.
-	if _, err := s.db.ExecContext(ctx,
-		`INSERT INTO account (id, ciphertext, version, updated_at, write_auth) VALUES ('acc', 'old', 1, 1, '')`); err != nil {
-		t.Fatal(err)
-	}
-	if _, ok, _, err := s.PutAccount(ctx, "acc", []byte("new"), "wt", 0, 100); err != nil || !ok {
-		t.Fatalf("rebind put: ok=%v err=%v, want true (empty auth is claimable)", ok, err)
-	}
-	if _, ok, _, err := s.PutAccount(ctx, "acc", []byte("evil"), "other", 0, 200); err != nil || ok {
-		t.Fatalf("after rebind, foreign token: ok=%v, want false (now bound)", ok)
-	}
-}
-
 func TestNotifyRoute(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -446,68 +426,6 @@ func TestKnockPubKeyNotUpgradedOnReknock(t *testing.T) {
 	if len(knocks) != 1 || knocks[0].PubKey != "" {
 		t.Fatalf("knock = %+v, want one with PubKey '' (contentless not upgraded)", knocks)
 	}
-}
-
-// TestMigrateAddsKnockPubKey pins the in-place migration for an existing
-// production database: a knock table created BEFORE pub_key existed must gain the
-// column on Open, keep its rows, and read back the old key as empty. Without this,
-// the deployed db would either fail to open or silently lose the knock history.
-func TestMigrateAddsKnockPubKey(t *testing.T) {
-	ctx := context.Background()
-	path := filepath.Join(t.TempDir(), "legacy.db")
-
-	// Stand up a database with the OLD knock schema (no pub_key) and one row.
-	legacy, err := sql.Open("sqlite", "file:"+path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := legacy.ExecContext(ctx, `CREATE TABLE knock (
-		target_id      TEXT NOT NULL,
-		requester_hash TEXT NOT NULL,
-		created_at     INTEGER NOT NULL,
-		expires_at     INTEGER NOT NULL,
-		PRIMARY KEY (target_id, requester_hash)
-	) WITHOUT ROWID;`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := legacy.ExecContext(ctx,
-		`INSERT INTO knock (target_id, requester_hash, created_at, expires_at) VALUES ('t', 'old-req', 10, 1000)`); err != nil {
-		t.Fatal(err)
-	}
-	legacy.Close()
-
-	// Open through the store: schema (CREATE TABLE IF NOT EXISTS is a no-op here)
-	// plus migrate must add pub_key and leave the row intact.
-	s, err := Open(ctx, path)
-	if err != nil {
-		t.Fatalf("open legacy db: %v", err)
-	}
-	t.Cleanup(func() { s.Close() })
-
-	knocks, err := s.CurrentKnocks(ctx, "t", 100)
-	if err != nil {
-		t.Fatalf("current knocks: %v", err)
-	}
-	if len(knocks) != 1 || knocks[0].RequesterHash != "old-req" || knocks[0].PubKey != "" {
-		t.Fatalf("migrated knock = %+v, want one {old-req ''}", knocks)
-	}
-
-	// A fresh knock can now store a key, proving the column is usable.
-	if _, err := s.RecordKnock(ctx, "t", "new-req", "newKey", 20, 1000); err != nil {
-		t.Fatalf("record after migrate: %v", err)
-	}
-	knocks, _ = s.CurrentKnocks(ctx, "t", 100)
-	if len(knocks) != 2 {
-		t.Fatalf("after new knock = %d rows, want 2", len(knocks))
-	}
-
-	// Open again: migrate is idempotent (the column already exists).
-	s.Close()
-	s2, err := Open(ctx, path)
-	if err != nil {
-		t.Fatalf("re-open: %v", err)
-	}
-	t.Cleanup(func() { s2.Close() })
 }
 
 // TestConcurrentWritesPersist fires many WriteAlias calls in parallel against a

@@ -87,8 +87,7 @@ function save(storage: StorageLike, state: ContinuityState): void {
 
 /** Inputs to the "is a nudge due?" decision. `passwordSetAt` is when the account's
  * password was set or changed (the synced blob's `passwordSetAt`, doc 32), or
- * undefined when no password is set OR the password predates that field. Either way
- * the yearly reminder does not fire, so a legacy account is never nagged immediately.
+ * undefined when no password is set, in which case the yearly reminder never fires.
  * `now` is injected. */
 export interface ContinuityInputs {
   readonly passwordSetAt?: number;
@@ -102,14 +101,12 @@ function phraseDue(state: ContinuityState, now: number): boolean {
   return last === undefined || now - last >= PHRASE_REHEARSAL_INTERVAL_MS;
 }
 
-// Whether the yearly password suggestion is due: a password is set with a known
+// Whether the yearly password suggestion is due: a password is set with its
 // set/changed date (`passwordSetAt`), that date is a full year old, and the nudge was
-// not dismissed within the re-dismiss window. Never fires when no password is set,
-// and never fires when `passwordSetAt` is absent (a password set before that field
-// existed): a missing date is treated as "not yet due" so a legacy account is never
-// nagged immediately. The date rides the synced blob, so turning the password off and
-// on (or changing it) writes a fresh `passwordSetAt` and the year restarts on every
-// device.
+// not dismissed within the re-dismiss window. An absent `passwordSetAt` means no
+// password is set, so the reminder is never due. The date rides the synced blob, so
+// turning the password off and on (or changing it) writes a fresh `passwordSetAt`
+// and the year restarts on every device.
 function passwordDue(
   state: ContinuityState,
   passwordSetAt: number | undefined,

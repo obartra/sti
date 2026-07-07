@@ -56,8 +56,7 @@ smoke). Prefer these targets over running pieces by hand: `lint:styles` and `kni
 the two easiest to forget, and they only fail once CI runs after you have pushed.
 
 - New user-facing UI follows the editorial grammar (doc 37): the passport style-lint
-  ratchet rejects any new inline `style={}`, raw hex color, or use of the stranded
-  `Card` / `Badge` / `Row` / `Segmented` components. Build new screens with the `.e-*`
+  rejects any new inline `style={}` or raw hex color. Build new screens with the `.e-*`
   classes and a co-located CSS file (tokens only, no raw hex), never inline styles.
 - No em dashes anywhere (code, copy, docs, commits). Visual/baseline changes regenerate
   via the `screenshot:update` PR label, never hand-edited.

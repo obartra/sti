@@ -245,6 +245,27 @@
   padding-left: 14px;
 }
 
+/* The quiet "or" between the two no-passkey ways in: small caps between
+   hairlines, so the alternatives read as separate paths, not one long form. */
+.onb__or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 2px 0;
+  font-size: 11.5px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.onb__or::before,
+.onb__or::after {
+  content: "";
+  flex: 1;
+  border-top: var(--hairline);
+}
+
 .onb__group-note {
   font-size: 12.5px;
   line-height: 1.5;

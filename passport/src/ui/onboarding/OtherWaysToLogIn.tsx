@@ -19,7 +19,11 @@ function RecoverFlow({
   const ok = phrase.trim().length > 0;
   return (
     <div className="onb__group">
-      <Field label={COPY.recoverLabel} htmlFor={phraseId}>
+      <Field
+        label={COPY.recoverLabel}
+        hint={COPY.recoverHint}
+        htmlFor={phraseId}
+      >
         <Input
           id={phraseId}
           value={phrase}
@@ -63,7 +67,8 @@ function RecoverPasswordFlow({
           id={nameId}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          autoComplete="off"
+          autoComplete="username"
+          autoCapitalize="none"
           spellCheck={false}
         />
       </Field>
@@ -73,7 +78,7 @@ function RecoverPasswordFlow({
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          autoComplete="off"
+          autoComplete="current-password"
         />
       </Field>
       <Button
@@ -126,10 +131,15 @@ export function OtherWaysToLogIn({
         <div id={regionId} className="onb__disclosure">
           <RecoverFlow busy={busy} onRecover={onRecover} />
           {onRecoverPassword && (
-            <RecoverPasswordFlow
-              busy={busy}
-              onRecoverPassword={onRecoverPassword}
-            />
+            <>
+              <div className="onb__or" aria-hidden="true">
+                {COPY.otherWaysOr}
+              </div>
+              <RecoverPasswordFlow
+                busy={busy}
+                onRecoverPassword={onRecoverPassword}
+              />
+            </>
           )}
         </div>
       )}
