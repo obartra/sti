@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button, Switch, Field, Input } from "../../design/components/index.ts";
 import { BadgeCard } from "../badge-card.tsx";
 import type { BadgeState, ProtectionLabel, Route } from "../badge-card.tsx";
@@ -120,13 +120,17 @@ function ReportFooter({
   onSave: () => void;
 }) {
   const c = COPY;
+  const dateId = useId();
+  const passportId = useId();
   return (
     <>
       <Field
         label={<span className="rp__field-label">{c.dateLabel}</span>}
         hint={c.dateHint}
+        htmlFor={dateId}
       >
         <Input
+          id={dateId}
           type="date"
           value={epochDayToISODate(state.panelDay)}
           max={epochDayToISODate(today)}
@@ -138,10 +142,16 @@ function ReportFooter({
       </Field>
       <div className="rp__passport">
         <div className="rp__passport-body">
-          <div className="rp__passport-title">{c.onPassportTitle}</div>
+          <label className="rp__passport-title" htmlFor={passportId}>
+            {c.onPassportTitle}
+          </label>
           <div className="rp__passport-sub">{c.onPassportSub}</div>
         </div>
-        <Switch checked={state.onPassport} onChange={state.setOnPassport} />
+        <Switch
+          id={passportId}
+          checked={state.onPassport}
+          onChange={state.setOnPassport}
+        />
       </div>
       <div className="rp__actions">
         <Button variant="quiet" size="lg" onClick={onBack}>

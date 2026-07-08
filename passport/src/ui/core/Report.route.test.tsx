@@ -7,32 +7,30 @@ import { COPY } from "./Report.parts.tsx";
 // association runs through htmlFor/id: the visible words must name the checkbox
 // for assistive tech and toggle it when tapped.
 describe("RouteControls", () => {
-  function renderControls(over?: {
-    onPrep?: (v: boolean) => void;
-    onCondoms?: (v: boolean) => void;
-  }) {
+  it("names each switch by its visible label", () => {
     render(
       <RouteControls
         prep={false}
         condoms={true}
-        onPrep={over?.onPrep ?? (() => undefined)}
-        onCondoms={over?.onCondoms ?? (() => undefined)}
+        onPrep={() => undefined}
+        onCondoms={() => undefined}
       />,
     );
-  }
-
-  it("names each switch by its visible label", () => {
-    renderControls();
     expect(screen.getByLabelText(COPY.prepLabel)).not.toBeChecked();
-    expect(
-      screen.getByRole("checkbox", { name: COPY.condomsLabel }),
-    ).toBeChecked();
+    expect(screen.getByLabelText(COPY.condomsLabel)).toBeChecked();
   });
 
   it("toggles when the label text itself is clicked", () => {
     const onPrep = vi.fn();
     const onCondoms = vi.fn();
-    renderControls({ onPrep, onCondoms });
+    render(
+      <RouteControls
+        prep={false}
+        condoms={true}
+        onPrep={onPrep}
+        onCondoms={onCondoms}
+      />,
+    );
 
     screen.getByText(COPY.prepLabel).click();
     expect(onPrep).toHaveBeenCalledWith(true);

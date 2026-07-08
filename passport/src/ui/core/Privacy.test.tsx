@@ -8,7 +8,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, it, expect, vi, type Mock } from "vitest";
 import { Privacy } from "./Privacy.tsx";
-import { usePrivacyState, keepUntilLabel } from "./Privacy.parts.tsx";
+import { COPY, usePrivacyState, keepUntilLabel } from "./Privacy.parts.tsx";
 import {
   INITIAL_OWNER_STATE,
   computeBadge,
@@ -228,6 +228,58 @@ describe("usePrivacyState card-attribute wiring", () => {
     const afterBoth = applyLast(set, afterPrep);
     expect(afterBoth.onPrep).toBe(true);
     expect(afterBoth.onDoxyPep).toBe(true);
+  });
+});
+
+// Each settings switch keeps its title outside the Switch for the row layout, so
+// the association runs through htmlFor/id: the visible title must name the
+// checkbox for assistive tech and toggle it when tapped.
+describe("Privacy switches are named by their row titles", () => {
+  const workingPush = {
+    supported: true,
+    ready: true,
+    enabled: false,
+    busy: false,
+    error: null,
+    enable: () => undefined,
+    disable: () => undefined,
+  };
+
+  it("exposes every switch under its visible title", () => {
+    render(
+      <Privacy
+        ownerState={INITIAL_OWNER_STATE}
+        setOwnerState={() => undefined}
+        push={workingPush}
+      />,
+    );
+    expect(screen.getByLabelText(COPY.hivLabel)).not.toBeChecked();
+    expect(screen.getByLabelText(COPY.doxyLabel)).not.toBeChecked();
+    expect(screen.getByLabelText(COPY.pushRow)).not.toBeChecked();
+    expect(screen.getByLabelText(COPY.pauseRow)).not.toBeChecked();
+  });
+
+  it("toggles the switch when the title text itself is clicked", async () => {
+    const set = vi.fn();
+    render(<Privacy ownerState={INITIAL_OWNER_STATE} setOwnerState={set} />);
+    await userEvent.click(screen.getByText(COPY.pauseRow));
+    expect(applyLast(set, INITIAL_OWNER_STATE)).toEqual({
+      ...INITIAL_OWNER_STATE,
+      paused: true,
+    });
+  });
+
+  it("announces a push failure as an alert", () => {
+    render(
+      <Privacy
+        ownerState={INITIAL_OWNER_STATE}
+        setOwnerState={() => undefined}
+        push={{ ...workingPush, error: "Could not turn this on." }}
+      />,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Could not turn this on.",
+    );
   });
 });
 

@@ -358,6 +358,8 @@
   font-size: 15px;
   font-weight: var(--weight-semibold);
   color: var(--text-strong);
+  cursor: pointer;
+  user-select: none;
 }
 
 .rp__toggle-hint {
@@ -386,9 +388,12 @@
 }
 
 .rp__passport-title {
+  display: block;
   font-size: 15px;
   font-weight: var(--weight-semibold);
   color: var(--text-strong);
+  cursor: pointer;
+  user-select: none;
 }
 
 .rp__passport-sub {

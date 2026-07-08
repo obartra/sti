@@ -1,3 +1,4 @@
+import { useId, type ReactNode } from "react";
 import { Button, Switch, Avatar } from "../../design/components/index.ts";
 import { EyeOff, Users, Bell } from "../../design/icons.tsx";
 import { COPY, Chip } from "./Privacy.parts.tsx";
@@ -31,6 +32,48 @@ export function FaceCard({
   );
 }
 
+// A settings row that is a single switch: optional icon, a title, a one-line
+// sub, and the Switch on the right. The title is a real label wired to the
+// switch's checkbox, so the visible words name the control and toggle it.
+function SwitchRow({
+  icon,
+  title,
+  sub,
+  checked,
+  onChange,
+  disabled = false,
+}: {
+  icon?: ReactNode;
+  title: string;
+  sub: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+}) {
+  const id = useId();
+  return (
+    <div className="st__row">
+      {icon ? (
+        <span aria-hidden className="st__row-icon">
+          {icon}
+        </span>
+      ) : null}
+      <div className="st__row-body">
+        <label className="st__row-title" htmlFor={id}>
+          {title}
+        </label>
+        <div className="st__row-sub">{sub}</div>
+      </div>
+      <Switch
+        id={id}
+        checked={checked}
+        onChange={onChange}
+        disabled={disabled}
+      />
+    </div>
+  );
+}
+
 // What rides on the card besides the status, self-declared, optional. Toggle
 // rows separated by hairlines; the condom preference as editorial chips.
 export function AttributesCard({ state }: { state: PrivacyState }) {
@@ -46,20 +89,18 @@ export function AttributesCard({ state }: { state: PrivacyState }) {
         <div className="st__row-title">{COPY.attrsTitle}</div>
         <div className="st__row-sub">{COPY.attrsSub}</div>
       </div>
-      <div className="st__row">
-        <div className="st__row-body">
-          <div className="st__row-title">{COPY.hivLabel}</div>
-          <div className="st__row-sub">{COPY.hivLabelSub}</div>
-        </div>
-        <Switch checked={state.labelHiv} onChange={state.setLabelHiv} />
-      </div>
-      <div className="st__row">
-        <div className="st__row-body">
-          <div className="st__row-title">{COPY.doxyLabel}</div>
-          <div className="st__row-sub">{COPY.doxyLabelSub}</div>
-        </div>
-        <Switch checked={state.doxy} onChange={state.setDoxy} />
-      </div>
+      <SwitchRow
+        title={COPY.hivLabel}
+        sub={COPY.hivLabelSub}
+        checked={state.labelHiv}
+        onChange={state.setLabelHiv}
+      />
+      <SwitchRow
+        title={COPY.doxyLabel}
+        sub={COPY.doxyLabelSub}
+        checked={state.doxy}
+        onChange={state.setDoxy}
+      />
       <div className="st__row st__row--top">
         <div className="st__row-body">
           <div className="st__row-title">{COPY.condomTitle}</div>
@@ -97,21 +138,19 @@ function pushSub(push: PushControls): string {
 function PushRow({ push }: { push: PushControls }) {
   return (
     <>
-      <div className="st__row">
-        <span aria-hidden className="st__row-icon">
-          <Bell size={18} />
-        </span>
-        <div className="st__row-body">
-          <div className="st__row-title">{COPY.pushRow}</div>
-          <div className="st__row-sub">{pushSub(push)}</div>
+      <SwitchRow
+        icon={<Bell size={18} />}
+        title={COPY.pushRow}
+        sub={pushSub(push)}
+        checked={push.enabled}
+        disabled={!push.supported || !push.ready || push.busy}
+        onChange={(on) => (on ? push.enable() : push.disable())}
+      />
+      {push.error !== null && (
+        <div role="alert" className="st__row-error">
+          {push.error}
         </div>
-        <Switch
-          checked={push.enabled}
-          disabled={!push.supported || !push.ready || push.busy}
-          onChange={(on) => (on ? push.enable() : push.disable())}
-        />
-      </div>
-      {push.error !== null && <div className="st__row-error">{push.error}</div>}
+      )}
     </>
   );
 }
@@ -142,16 +181,13 @@ export function ControlsCard({
       {push && <PushRow push={push} />}
       <InstallRow />
       {/* Manual pause: show plain gray to everyone (CtrlRow). */}
-      <div className="st__row">
-        <span aria-hidden className="st__row-icon">
-          <EyeOff size={18} />
-        </span>
-        <div className="st__row-body">
-          <div className="st__row-title">{COPY.pauseRow}</div>
-          <div className="st__row-sub">{COPY.pauseRowSub}</div>
-        </div>
-        <Switch checked={state.paused} onChange={state.setPaused} />
-      </div>
+      <SwitchRow
+        icon={<EyeOff size={18} />}
+        title={COPY.pauseRow}
+        sub={COPY.pauseRowSub}
+        checked={state.paused}
+        onChange={state.setPaused}
+      />
     </div>
   );
 }
