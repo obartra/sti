@@ -11,11 +11,11 @@
  * one. Onboarding must never create a passkey-only account (an unrecoverable
  * lockout on passkey loss).
  *
- * The `navigator.credentials` calls are browser-only and cannot run in the test
- * harness; they are isolated behind {@link PasskeyAuth} so callers (and tests)
- * depend on the interface, and the byte handling and PRF→key derivation are the
- * unit-tested parts. The concrete adapter needs verification in a real browser
- * with an authenticator.
+ * The `navigator.credentials` calls are browser-only and cannot run in jsdom;
+ * they are isolated behind {@link PasskeyAuth} so callers (and tests) depend on
+ * the interface, and the byte handling and PRF→key derivation are the
+ * unit-tested parts. The concrete adapter is proven end to end against a real
+ * (virtual) authenticator by e2e/auth.pw.spec.ts (doc 38).
  */
 
 import {

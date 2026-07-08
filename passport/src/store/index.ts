@@ -67,7 +67,9 @@ export type {
 export {
   contactInviteUrl,
   parseContactInvite,
+  parseScannedCode,
   type ContactInvite,
+  type ScannedCode,
 } from "./contactInvite.ts";
 export { normalizeCircleMembers } from "./circles.ts";
 export {

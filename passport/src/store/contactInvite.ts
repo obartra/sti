@@ -21,7 +21,8 @@ import { validId } from "../api/contract.ts";
 import { isValidHandle } from "./codec.ts";
 import type { AliasRecord, StatusAlias } from "./accountBlob.ts";
 import type { NotifyCapability } from "./notifyInbox.ts";
-import { parseAliasLink } from "./aliasLink.ts";
+import type { AliasLink } from "./passportStore.ts";
+import { parseAliasLink, parseScannedLink } from "./aliasLink.ts";
 import { keyedAliasLinkUrl } from "./publish.ts";
 
 /**
@@ -101,6 +102,28 @@ export function contactInviteUrl(
     url += `&sn=${encodeName(extras.sharedName)}`;
   }
   return url;
+}
+
+/**
+ * What a scanned QR decoded to: always a resolvable alias link, plus the contact
+ * invite riding it when the code was an invite. Scanning a code must behave like
+ * OPENING the same link (the scan screen's contract), so this parses the scanned
+ * text the way the router parses an opened URL: the strict alias-link shape via
+ * parseScannedLink (untrusted input, doc 16: never a host to navigate to, junk and
+ * keyless links fail closed to null), then the invite payload when present (a
+ * malformed payload fails closed to a plain link, exactly like opening that URL).
+ */
+export interface ScannedCode {
+  readonly link: AliasLink;
+  readonly invite?: ContactInvite;
+}
+
+export function parseScannedCode(text: string): ScannedCode | null {
+  const link = parseScannedLink(text);
+  if (link === null) return null;
+  const url = new URL(text.trim()); // parseScannedLink proved it parses
+  const invite = parseContactInvite(url.pathname, url.hash);
+  return { link, ...(invite !== null ? { invite } : {}) };
 }
 
 /**

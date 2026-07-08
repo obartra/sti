@@ -2,6 +2,7 @@ import { Connect } from "../../connect/Connect.tsx";
 import { PrivacySection } from "../../connect/parts.tsx";
 import { QrScanner } from "../../connect/QrScanner.tsx";
 import { DemoScanner } from "../../connect/DemoScanner.tsx";
+import type { ScannedCode } from "../../../store/index.ts";
 import { GroupsSlot } from "./groupScreens.tsx";
 import { todayEpochDay } from "../../../core/clock.ts";
 import type { ScreenRenderers } from "./context.ts";
@@ -29,15 +30,22 @@ export const peopleRenderers: ScreenRenderers = {
       <PrivacySection />
     </div>
   ),
-  // Scan someone's QR to open their passport: a decoded alias link routes to the
-  // public resolution screen (the same flow as opening the link in a browser). The
-  // demo has no camera and nothing real to point at, so it simulates the scan and
-  // hands back the seeded peer instead of opening a dead viewfinder (doc 28).
+  // Scan someone's QR to open their passport: a decoded code routes to the public
+  // resolution screen exactly like opening the same link in a browser, so a
+  // scanned contact invite keeps its notify capability (and a return leg its ref)
+  // and offers the add/connect affordance there. The demo has no camera and
+  // nothing real to point at, so it simulates the scan and hands back the seeded
+  // peer instead of opening a dead viewfinder (doc 28).
   scan: ({ nav, demoMode }) => {
-    const onResult = (link: { id: string; key: string }) =>
-      nav.go("a2-public", { id: link.id, key: link.key });
+    const onResult = ({ link, invite }: ScannedCode) =>
+      nav.go("a2-public", {
+        id: link.id,
+        key: link.key,
+        ...(invite !== undefined ? { notify: invite.notify } : {}),
+        ...(invite?.ref !== undefined ? { ref: invite.ref } : {}),
+      });
     return demoMode ? (
-      <DemoScanner onResult={onResult} onBack={nav.back} />
+      <DemoScanner onResult={(link) => onResult({ link })} onBack={nav.back} />
     ) : (
       <QrScanner onResult={onResult} onBack={nav.back} />
     );
