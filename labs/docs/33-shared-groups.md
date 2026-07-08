@@ -48,6 +48,21 @@ So there are two ways in, and both are consented on both sides:
 - **Request (member-initiated).** Someone finds a public group and requests to join;
   an admin accepts or rejects the request.
 
+An invite link admits ONE person. Each link carries its own answer channel (a
+lifecycle inbox), and that channel holds a single sealed answer, so a forwarded link
+cannot let two people in: whoever answers first takes it. The accept path enforces
+this honestly rather than silently. Before writing its answer, the app opens the
+channel with the key the link itself carries (no new oracle); if an answer from
+someone else is already there, it refuses and tells the person the link was used, so
+they ask for a fresh one instead of seeing a false "you're in" while their join is
+lost. A person's own earlier answer does not spend the link for them (a retry after
+a partial run still lands), and a decline through a spent link is a silent no-op.
+Two limits are accepted by design: two answers written in the same moment can still
+race (last write wins, the loser's join never lands), and a revoked link reads as
+unused (the revoke overwrite is uniform random), so someone who accepts through a
+revoked link waits on a join that never completes. Both are the fail-closed cost of
+a channel nobody, including the server, can inspect.
+
 And two ways out, which look the same to everyone else:
 
 - **Leave (self).** A member leaves whenever they want.

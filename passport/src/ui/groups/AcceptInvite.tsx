@@ -8,10 +8,11 @@ import { useState } from "react";
 import { Button } from "../../design/components/index.ts";
 import { Lock, Users } from "../../design/icons.tsx";
 import { cx } from "../../lib/cx.ts";
-import type {
-  AliasIdentity,
-  GroupInvite,
-  MeetingKind,
+import {
+  GroupInviteSpentError,
+  type AliasIdentity,
+  type GroupInvite,
+  type MeetingKind,
 } from "../../store/index.ts";
 import { GROUPS_COPY as C, acceptTitle, disclosureFor } from "./groupsCopy.ts";
 import { GroupFaceChoice } from "./GroupFaceChoice.tsx";
@@ -67,14 +68,18 @@ export function AcceptInvite({
 }: AcceptInviteProps) {
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [fail, setFail] = useState<"spent" | "error" | null>(null);
   const [identity, setIdentity] = useState<AliasIdentity>("anonymous");
 
   const join = () => {
     if (busy) return;
     setBusy(true);
+    setFail(null);
     void onAccept(invite, identity)
       .then(() => setDone(true))
-      .catch(() => undefined)
+      .catch((e: unknown) =>
+        setFail(e instanceof GroupInviteSpentError ? "spent" : "error"),
+      )
       .finally(() => setBusy(false));
   };
 
@@ -97,6 +102,24 @@ export function AcceptInvite({
     );
   }
 
+  // The link was already answered by someone else (one link admits one person):
+  // say so and point at the fix (a new link), rather than a false "you're in".
+  if (fail === "spent") {
+    return (
+      <Shell>
+        <div className={cx("e-card", "gr__done")}>
+          <div className="gr__done-title">{C.acceptSpentTitle}</div>
+          <div className="gr__done-body">{C.acceptSpentBody}</div>
+        </div>
+        {onBack !== undefined && (
+          <Button variant="secondary" size="lg" block onClick={onBack}>
+            {C.acceptSpentBack}
+          </Button>
+        )}
+      </Shell>
+    );
+  }
+
   return (
     <Shell>
       <h1 className="gr__title">{acceptTitle(invite.handle)}</h1>
@@ -108,6 +131,7 @@ export function AcceptInvite({
             hasName={hasName}
             onChange={setIdentity}
           />
+          {fail === "error" && <div className="gr__note">{C.acceptError}</div>}
           <Button
             variant="primary"
             size="lg"

@@ -34,11 +34,11 @@ import {
   parseGroupBlobWithKg,
   GROUP_MEMBER_CAP,
 } from "./groupObject.ts";
-import { parseLifecyclePayload, type LifecycleAccept } from "./groupInvite.ts";
-import { pollInbox } from "./notifyInbox.ts";
+import type { LifecycleAccept } from "./groupInvite.ts";
 import {
   adminGroup,
   overwriteInbox,
+  pollLifecyclePayload,
   removeGroupMember,
 } from "./groupMembershipOps.ts";
 
@@ -109,8 +109,7 @@ async function ingestMemberLeave(
   );
   if (member === undefined) return session;
   try {
-    const raw = await pollInbox(api, member.lifecycleInbox);
-    const payload = raw === null ? null : parseLifecyclePayload(raw);
+    const payload = await pollLifecyclePayload(api, member.lifecycleInbox);
     if (payload?.kind !== "leave") return session;
     return await removeGroupMember(api, accounts, session, ref);
   } catch {
@@ -132,9 +131,7 @@ async function ingestPending(
   );
   if (group === undefined || invite === undefined) return session;
   try {
-    const raw = await pollInbox(api, invite.lifecycleInbox);
-    if (raw === null) return session;
-    const payload = parseLifecyclePayload(raw);
+    const payload = await pollLifecyclePayload(api, invite.lifecycleInbox);
     if (payload === null) return session;
     if (payload.kind === "reject") {
       return await rejectPending(api, accounts, session, { group, invite });

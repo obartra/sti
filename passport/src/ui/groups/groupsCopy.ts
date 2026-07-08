@@ -88,7 +88,7 @@ export const GROUPS_COPY = {
   inviteHeading: "Invite people",
   inviteCta: "Create an invite link",
   inviteShareNote:
-    "Send this link to someone you want in. They join by opening it.",
+    "Send this link to one person you want in. It works once, so make a new link for each person.",
   pendingHeading: "Invited, not joined yet",
   revokeCta: "Cancel invite",
 
@@ -115,6 +115,11 @@ export const GROUPS_COPY = {
   acceptNeedAccount:
     "You need an account to join. Make one, then open this link again.",
   acceptClaimCta: "Create an account",
+  acceptSpentTitle: "Someone already used this link.",
+  acceptSpentBody:
+    "A link lets one person in. Ask whoever sent it for a new one.",
+  acceptSpentBack: "Back",
+  acceptError: "Couldn't join right now. Try again.",
 
   // ── Request to join by name (member) ─────────────────────────────────────────
   requestTitle: "Join a group by name",

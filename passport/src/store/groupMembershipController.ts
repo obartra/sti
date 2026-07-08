@@ -63,7 +63,9 @@ export interface GroupMembershipController {
   /**
    * Accept a group invite: derive our member key, write the accept to the lifecycle
    * inbox, and record the member-side group locally. We publish our card only on the
-   * next roster poll, once the admin has added our slot and we hold `Kg`.
+   * next roster poll, once the admin has added our slot and we hold `Kg`. A link
+   * admits one person: if its inbox already carries someone else's answer, this
+   * throws GroupInviteSpentError instead of overwriting it.
    */
   acceptGroupInvite(
     session: OwnerSession,

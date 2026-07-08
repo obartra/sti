@@ -8,6 +8,7 @@ import {
   removeGroupMember,
   readGroupRoster,
   groupNotifyTargets,
+  GroupInviteSpentError,
 } from "./groupMembershipOps.ts";
 import { notifyPositive, pollPartnerNudge } from "./notifyOps.ts";
 import { parsePartnerPing } from "./partnerNotify.ts";
@@ -505,6 +506,108 @@ describe("group membership lifecycle (doc 33, slice 4a)", () => {
       revoked,
     );
     expect(membersOf(polled, admin.groupId)).toHaveLength(0);
+  });
+
+  it("a forwarded link admits one person: the second accept is refused, the first still lands", async () => {
+    const server = fakeServer();
+    const admin = await adminWithGroup(server.api);
+    const invited = await inviteToGroup(admin.accounts, admin.session, {
+      groupId: admin.groupId,
+    });
+    const invite = inviteFrom(invited.url);
+
+    // The first opener accepts; the link is now spent.
+    const first = await freshSession(server.api, "sam");
+    const firstAccepted = await acceptGroupInvite(
+      server.api,
+      first.accounts,
+      first.session,
+      { invite },
+    );
+
+    // A second person the link was forwarded to is refused (never overwrites) and
+    // records nothing locally.
+    const second = await freshSession(server.api, "kim");
+    await expect(
+      acceptGroupInvite(server.api, second.accounts, second.session, {
+        invite,
+      }),
+    ).rejects.toBeInstanceOf(GroupInviteSpentError);
+    expect(second.session.blob.groups ?? []).toHaveLength(0);
+
+    // The admin's ingest still lands the FIRST accept: sam becomes the member.
+    const ingested = await pollGroupLifecycle(
+      server.api,
+      admin.accounts,
+      invited.session,
+    );
+    const member = must(membersOf(ingested, admin.groupId)[0], "member");
+    expect(member.cardId).toBe(groupOf(firstAccepted, admin.groupId).myCardId);
+  });
+
+  it("a person's own accept does not spend the link for them: a retry still lands", async () => {
+    const server = fakeServer();
+    const admin = await adminWithGroup(server.api);
+    const invited = await inviteToGroup(admin.accounts, admin.session, {
+      groupId: admin.groupId,
+    });
+    const invite = inviteFrom(invited.url);
+
+    // First attempt wrote the accept; retry from a session that never saw the local
+    // record (the write landed but the record did not) must not read as "spent".
+    const invitee = await freshSession(server.api, "sam");
+    await acceptGroupInvite(server.api, invitee.accounts, invitee.session, {
+      invite,
+    });
+    const retried = await acceptGroupInvite(
+      server.api,
+      invitee.accounts,
+      invitee.session,
+      { invite },
+    );
+    expect(groupOf(retried, admin.groupId).isAdmin).toBe(false);
+
+    // And a session that already holds the group record short-circuits unchanged.
+    const again = await acceptGroupInvite(
+      server.api,
+      invitee.accounts,
+      retried,
+      { invite },
+    );
+    expect(again).toBe(retried);
+
+    // The admin ingests the accept and sam is in.
+    const ingested = await pollGroupLifecycle(
+      server.api,
+      admin.accounts,
+      invited.session,
+    );
+    expect(membersOf(ingested, admin.groupId)).toHaveLength(1);
+  });
+
+  it("a decline through a spent link is a no-op: the waiting accept is not clobbered", async () => {
+    const server = fakeServer();
+    const admin = await adminWithGroup(server.api);
+    const invited = await inviteToGroup(admin.accounts, admin.session, {
+      groupId: admin.groupId,
+    });
+    const invite = inviteFrom(invited.url);
+
+    // sam accepts; then kim, holding the forwarded link, declines.
+    const first = await freshSession(server.api, "sam");
+    await acceptGroupInvite(server.api, first.accounts, first.session, {
+      invite,
+    });
+    const second = await freshSession(server.api, "kim");
+    await rejectGroupInvite(server.api, second.session, invite);
+
+    // The decline did not overwrite the accept: the admin still ingests sam.
+    const ingested = await pollGroupLifecycle(
+      server.api,
+      admin.accounts,
+      invited.session,
+    );
+    expect(membersOf(ingested, admin.groupId)).toHaveLength(1);
   });
 
   it("remove drops the member's slot + roster entry", async () => {

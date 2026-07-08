@@ -106,6 +106,7 @@ export {
   revokeGroupInvite,
   acceptGroupInvite,
   rejectGroupInvite,
+  GroupInviteSpentError,
   removeGroupMember,
   readGroupRoster,
   type GroupInviteResult,

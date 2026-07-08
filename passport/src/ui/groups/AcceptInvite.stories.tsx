@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { userEvent, waitFor, within, expect } from "storybook/test";
 import { AcceptInvite } from "./AcceptInvite.tsx";
-import type { GroupInvite } from "../../store/index.ts";
+import { GroupInviteSpentError, type GroupInvite } from "../../store/index.ts";
 
 // The accept-invite screen a `/g#g=...` link lands on (doc 33, slice 7b): the group
 // handle, the join-time disclosure (event vs recurring), and join / no thanks. A
@@ -61,5 +62,25 @@ export const LoggedOut: Story = {
     invite: invite("thursday_run", "recurring"),
     isLoggedIn: false,
     ...actions,
+  },
+};
+
+// The link was already used (one link admits one person): joining lands on the
+// honest "already used" state instead of a false "you're in".
+export const Spent: Story = {
+  args: {
+    invite: invite("thursday_run", "recurring"),
+    isLoggedIn: true,
+    ...actions,
+    onAccept: () => Promise.reject(new GroupInviteSpentError()),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Join" }));
+    await waitFor(() =>
+      expect(
+        canvas.getByText("Someone already used this link."),
+      ).toBeInTheDocument(),
+    );
   },
 };

@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { AcceptInvite } from "./AcceptInvite.tsx";
-import type { GroupInvite } from "../../store/index.ts";
+import { GroupInviteSpentError, type GroupInvite } from "../../store/index.ts";
 
 function invite(kind: "event" | "recurring"): GroupInvite {
   return {
@@ -89,6 +89,43 @@ describe("AcceptInvite", () => {
     await user.click(screen.getByRole("button", { name: "No thanks" }));
     expect(onReject).toHaveBeenCalledWith(invite("recurring"));
     await waitFor(() => expect(onBack).toHaveBeenCalled());
+  });
+
+  it("spent link: says it was already used instead of a false you're-in", async () => {
+    const user = userEvent.setup();
+    const onAccept = vi.fn().mockRejectedValue(new GroupInviteSpentError());
+    render(
+      <AcceptInvite
+        {...noop}
+        invite={invite("recurring")}
+        isLoggedIn
+        onAccept={onAccept}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Join" }));
+    expect(
+      await screen.findByText("Someone already used this link."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("You're in.")).not.toBeInTheDocument();
+  });
+
+  it("a plain failure keeps the join screen and shows a retryable error", async () => {
+    const user = userEvent.setup();
+    const onAccept = vi.fn().mockRejectedValue(new Error("network"));
+    render(
+      <AcceptInvite
+        {...noop}
+        invite={invite("recurring")}
+        isLoggedIn
+        onAccept={onAccept}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Join" }));
+    expect(
+      await screen.findByText("Couldn't join right now. Try again."),
+    ).toBeInTheDocument();
+    // Join is still there for a retry.
+    expect(screen.getByRole("button", { name: "Join" })).toBeInTheDocument();
   });
 
   it("logged out: points to make an account instead of joining", async () => {

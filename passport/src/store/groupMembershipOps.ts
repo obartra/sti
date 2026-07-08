@@ -52,10 +52,13 @@ import {
   encodeLifecycleAccept,
   encodeLifecycleReject,
   groupInviteUrl,
+  parseLifecyclePayload,
   type GroupInvite,
+  type LifecyclePayload,
 } from "./groupInvite.ts";
 import {
   mintInbox,
+  pollInbox,
   writePing,
   type InboxCapability,
   type NotifyCapability,
@@ -177,12 +180,58 @@ export async function revokeGroupInvite(
 }
 
 /**
+ * A spent invite link: its lifecycle inbox already carries someone else's answer.
+ * Thrown by acceptGroupInvite so the accept screen can say the honest thing ("this
+ * link was already used") instead of silently overwriting the first person's accept.
+ */
+export class GroupInviteSpentError extends Error {
+  constructor() {
+    super("group invite link already used");
+    this.name = "GroupInviteSpentError";
+  }
+}
+
+/**
+ * Poll a lifecycle inbox and parse what it holds, or null on any surprise (an
+ * empty/decoy/unreachable inbox, or bytes that are not a lifecycle payload), all
+ * indistinguishable. The one composition every lifecycle reader uses: the spent-link
+ * guards here and the admin ingest (groupIngestOps).
+ */
+export async function pollLifecyclePayload(
+  api: ApiClient,
+  inbox: { inboxId: string; key: string },
+): Promise<LifecyclePayload | null> {
+  const raw = await pollInbox(api, inbox);
+  return raw === null ? null : parseLifecyclePayload(raw);
+}
+
+// Whether a lifecycle payload already sitting in the invite inbox is OUR OWN accept
+// (the member key is deterministic per root + group, so a retry of our own earlier
+// write matches). Anything else in there means another person answered first.
+function isOwnAccept(payload: LifecyclePayload, memberKey: Bytes): boolean {
+  return (
+    payload.kind === "accept" &&
+    payload.memberKey === bytesToBase64url(memberKey)
+  );
+}
+
+/**
  * ACCEPT (invitee): derive our member key (safe to hand the admin: HKDF is one-way
  * and the admin already holds `Kg`), mint a fresh card id + write token, seal + write
  * the accept to the INVITE inbox, and record a local member-side group record. We do
  * NOT publish a card yet (we have no `Kg`); the next roster poll does that once the
  * admin has added our slot. The card write token is NEVER shared, so only we can
  * overwrite our card.
+ *
+ * A link admits ONE person: the inbox holds a single answer, so a second accept
+ * through a forwarded link would silently overwrite (and strand) the first. Before
+ * writing we poll the inbox; a payload already there that is not our own earlier
+ * accept means the link is spent, and we throw {@link GroupInviteSpentError} instead
+ * of clobbering it. Our own accept (a retry after a partial run) proceeds, and a
+ * group we already recorded returns unchanged, so the accept stays idempotent. The
+ * poll uses only capabilities the link itself carries, so it adds no oracle; a
+ * revoked link reads as unused (the overwrite is uniform random), which is the
+ * fail-closed cost of a channel nobody can inspect.
  *
  * The ongoing LEAVE channel is a fresh inbox we mint here, NOT the invite inbox. The
  * invite inbox's write token rode in the shareable invite link, so anyone who ever
@@ -204,7 +253,14 @@ export async function acceptGroupInvite(
   opts: { invite: GroupInvite; identity?: AliasIdentity },
 ): Promise<OwnerSession> {
   const { invite, identity = "anonymous" } = opts;
+  if (session.blob.groups?.some((g) => g.groupId === invite.groupId)) {
+    return session;
+  }
   const memberKey = await deriveGroupMemberKey(session.root, invite.groupId);
+  const prior = await pollLifecyclePayload(api, invite.lifecycleInbox);
+  if (prior !== null && !isOwnAccept(prior, memberKey)) {
+    throw new GroupInviteSpentError();
+  }
   const cardId = randomAliasId();
   const cardWriteToken = randomWriteToken();
   const leaveInbox = mintInbox();
@@ -233,13 +289,19 @@ export async function acceptGroupInvite(
 /**
  * REJECT (invitee): write a reject to the lifecycle inbox so the admin drops the
  * pending invite. We recorded nothing locally on invite, so there is nothing to
- * clean up; the session is returned unchanged.
+ * clean up; the session is returned unchanged. A link someone else already answered
+ * through is spent (same single-answer inbox as accept), so a decline through a
+ * forwarded link is a silent no-op rather than a write that would clobber the first
+ * person's accept; the decliner needed no feedback anyway.
  */
 export async function rejectGroupInvite(
   api: ApiClient,
   session: OwnerSession,
   invite: GroupInvite,
 ): Promise<OwnerSession> {
+  if ((await pollLifecyclePayload(api, invite.lifecycleInbox)) !== null) {
+    return session;
+  }
   await writePing(api, invite.lifecycleInbox, encodeLifecycleReject());
   return session;
 }
