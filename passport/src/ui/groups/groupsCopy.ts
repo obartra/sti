@@ -88,7 +88,7 @@ export const GROUPS_COPY = {
   inviteHeading: "Invite people",
   inviteCta: "Create an invite link",
   inviteShareNote:
-    "Send this link to someone you want in. They join by opening it.",
+    "Send this link to one person you want in. It works once, so make a new link for each person.",
   pendingHeading: "Invited, not joined yet",
   revokeCta: "Cancel invite",
 
