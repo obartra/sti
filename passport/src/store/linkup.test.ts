@@ -6,11 +6,17 @@ import { describe, expect, it } from "vitest";
 
 import { contactInviteUrl } from "./contactInvite.ts";
 import {
+  doorUrl,
+  encodeDoorGrant,
+  encodeDoorReturn,
   freshSnapshotBadge,
   offerUrlWithBadge,
+  parseDoorGrant,
+  parseDoorReturn,
   parseScannedConnect,
 } from "./linkup.ts";
-import { mintNotify } from "./notifyInbox.ts";
+import { mintInbox, mintNotify } from "./notifyInbox.ts";
+import { utf8ToBytes } from "../crypto/index.ts";
 import { randomAliasId, randomWriteToken } from "../crypto/index.ts";
 import type { AliasRecord } from "./accountBlob.ts";
 
@@ -80,6 +86,42 @@ describe("parseScannedConnect", () => {
     expect(parseScannedConnect("not a url")).toBeNull();
     expect(parseScannedConnect("https://sti.care/g#g=zzz")).toBeNull();
     expect(parseScannedConnect("https://evil.example/a/short#k=x")).toBeNull();
+  });
+});
+
+describe("door codec", () => {
+  it("classifies a door code and rejects a malformed pointer", () => {
+    const pointerId = randomAliasId();
+    expect(parseScannedConnect(doorUrl(pointerId))).toEqual({
+      kind: "door",
+      pointerId,
+    });
+    expect(parseScannedConnect("https://sti.care/d#p=short")).toBeNull();
+    expect(parseScannedConnect("https://sti.care/d")).toBeNull();
+  });
+
+  it("round-trips a door grant and fails closed on garbage", () => {
+    const grant = {
+      invite: {
+        alias: { id: randomAliasId(), key: randomAliasId() },
+        notify: mintNotify(),
+        sharedName: "Sam",
+      },
+      returnInbox: mintInbox(),
+    };
+    expect(parseDoorGrant(encodeDoorGrant(grant))).toEqual(grant);
+    expect(parseDoorGrant(utf8ToBytes("junk"))).toBeNull();
+    expect(parseDoorGrant(utf8ToBytes(`{"alias":{"id":"x"}}`))).toBeNull();
+  });
+
+  it("accepts only a RETURN invite as a door answer", () => {
+    const ref = randomAliasId();
+    const ret = contactInviteUrl(record(), mintNotify(), { ref });
+    expect(parseDoorReturn(encodeDoorReturn(ret))?.ref).toBe(ref);
+    // An offer (no ref) or garbage written into the inbox is never ingested.
+    const bare = contactInviteUrl(record(), mintNotify());
+    expect(parseDoorReturn(encodeDoorReturn(bare))).toBeNull();
+    expect(parseDoorReturn(utf8ToBytes("junk"))).toBeNull();
   });
 });
 

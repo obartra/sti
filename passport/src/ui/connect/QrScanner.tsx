@@ -93,11 +93,14 @@ async function openCamera(media: MediaDevices): Promise<MediaStream> {
 // Open the camera and decode frames until `parse` accepts one. The effect runs
 // once; onResult and parse are read through refs so changing callbacks never
 // tear down and reopen the stream. Exported for the in-person linkup screen
-// (doc 25), which runs the same camera beside its own shown code.
+// (doc 25), which runs the same camera beside its own shown code; that screen
+// scans CONTINUOUSLY (a newcomer sweeps several open screens), so `continuous`
+// keeps decoding after a hit and fires once per distinct accepted code.
 export function useQrScan<T>(
   videoRef: RefObject<HTMLVideoElement | null>,
   parse: (text: string) => T | null,
   onResult: (result: T) => void,
+  continuous = false,
 ): Status {
   const [status, setStatus] = useState<Status>("scanning");
   const onResultRef = useRef(onResult);
@@ -122,21 +125,29 @@ export function useQrScan<T>(
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
+    // In continuous mode, each distinct accepted code fires once: the camera
+    // pointed at the same screen decodes it every frame, and re-firing would
+    // flood the consumer.
+    const accepted = new Set<string>();
+    const gatedParse = (text: string) => {
+      if (accepted.has(text)) return null;
+      const parsed = parseRef.current(text);
+      if (parsed !== null) accepted.add(text);
+      return parsed;
+    };
     const tick = () => {
       const video = videoRef.current;
       if (done || video === null || ctx === null || decode === null) {
         if (!done) raf = requestAnimationFrame(tick);
         return;
       }
-      const result = scanFrame(
-        video,
-        { canvas, ctx, decode },
-        parseRef.current,
-      );
+      const result = scanFrame(video, { canvas, ctx, decode }, gatedParse);
       if (result !== null) {
-        done = true;
         onResultRef.current(result);
-        return;
+        if (!continuous) {
+          done = true;
+          return;
+        }
       }
       raf = requestAnimationFrame(tick);
     };
@@ -174,7 +185,7 @@ export function useQrScan<T>(
       cancelAnimationFrame(raf);
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [videoRef]);
+  }, [videoRef, continuous]);
 
   return status;
 }

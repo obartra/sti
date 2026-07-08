@@ -46,31 +46,52 @@ describe("LinkupView", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the completion pair, named or not", () => {
+  it("shows every linked face, named or not", () => {
     view({
-      phase: { kind: "linked", peer: { label: "Sam", badge: "blue" } },
+      phase: {
+        kind: "linked",
+        peers: [
+          { key: "p1", label: "Sam", badge: "blue" },
+          { key: "p2", label: "", badge: null },
+        ],
+        doorUrl: null,
+      },
     });
     expect(screen.getByText("You're connected.")).toBeInTheDocument();
     expect(screen.getByText("Sam")).toBeInTheDocument();
-    expect(screen.getByText("You're both up to date.")).toBeInTheDocument();
-
-    view({
-      phase: { kind: "linked", peer: { label: "", badge: null } },
-    });
     expect(screen.getByText("Them")).toBeInTheDocument();
+  });
+
+  it("shows the door code and its one quiet line while open", () => {
+    view({
+      phase: {
+        kind: "linked",
+        peers: [{ key: "p1", label: "Sam", badge: "blue" }],
+        doorUrl: "https://sti.care/d#p=x",
+      },
+    });
+    expect(screen.getByTestId("lk-door")).toBeInTheDocument();
+    expect(
+      screen.getByText("While this is open, anyone who scans it joins you."),
+    ).toBeInTheDocument();
   });
 });
 
 describe("completionLine", () => {
-  it("is warm only when both badges are blue, neutral otherwise", () => {
-    expect(completionLine("blue", "blue")).toBe("You're both up to date.");
-    expect(completionLine("blue", "gray")).toBe(
+  const blue = { key: "a", label: "", badge: "blue" } as const;
+  const gray = { key: "b", label: "", badge: "gray" } as const;
+  const unknown = { key: "c", label: "", badge: null } as const;
+
+  it("is warm only when every badge is blue, neutral otherwise", () => {
+    expect(completionLine("blue", [blue])).toBe("You're all up to date.");
+    expect(completionLine("blue", [blue, blue])).toBe("You're all up to date.");
+    expect(completionLine("blue", [blue, gray])).toBe(
       "Free testing is easy to find when you want it.",
     );
-    expect(completionLine("gray", "blue")).toBe(
+    expect(completionLine("gray", [blue])).toBe(
       "Free testing is easy to find when you want it.",
     );
-    expect(completionLine("blue", null)).toBe(
+    expect(completionLine("blue", [unknown])).toBe(
       "Free testing is easy to find when you want it.",
     );
   });

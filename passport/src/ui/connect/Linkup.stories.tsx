@@ -43,15 +43,38 @@ export const PrepareFailed: Story = {
 export const LinkedBothBlue: Story = {
   args: {
     ...base,
-    phase: { kind: "linked", peer: { label: "Sam", badge: "blue" } },
-    scanStatus: "scanning",
+    phase: {
+      kind: "linked",
+      peers: [{ key: "p1", label: "Sam", badge: "blue" }],
+      doorUrl: "https://sti.care/d#p=a7f3k9q2",
+    },
+    scanStatus: "denied",
   },
 };
 
 export const LinkedOneGray: Story = {
   args: {
     ...base,
-    phase: { kind: "linked", peer: { label: "", badge: "gray" } },
-    scanStatus: "scanning",
+    phase: {
+      kind: "linked",
+      peers: [{ key: "p1", label: "", badge: "gray" }],
+      doorUrl: "https://sti.care/d#p=a7f3k9q2",
+    },
+    scanStatus: "denied",
+  },
+};
+
+export const LinkedThree: Story = {
+  args: {
+    ...base,
+    phase: {
+      kind: "linked",
+      peers: [
+        { key: "p1", label: "Sam", badge: "blue" },
+        { key: "p2", label: "", badge: "blue" },
+      ],
+      doorUrl: "https://sti.care/d#p=a7f3k9q2",
+    },
+    scanStatus: "denied",
   },
 };

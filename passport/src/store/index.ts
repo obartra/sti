@@ -75,9 +75,16 @@ export {
   offerUrlWithBadge,
   parseScannedConnect,
   freshSnapshotBadge,
+  doorUrl,
   type BadgeSnapshot,
+  type DoorGrant,
   type ScannedConnect,
 } from "./linkup.ts";
+export {
+  createDoorStore,
+  type DoorHandle,
+  type DoorStore,
+} from "./doorStore.ts";
 export { normalizeCircleMembers } from "./circles.ts";
 export {
   mintGroupKey,

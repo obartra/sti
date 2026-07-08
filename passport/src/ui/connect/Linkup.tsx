@@ -35,23 +35,24 @@ const COPY = {
     "We couldn't make your code. Check your connection and try again.",
   retry: "Try again",
   linked: "You're connected.",
-  bothBlue: "You're both up to date.",
+  allBlue: "You're all up to date.",
   oneGray: "Free testing is easy to find when you want it.",
+  doorLine: "While this is open, anyone who scans it joins you.",
   you: "You",
   them: "Them",
   done: "Done",
   close: "Close",
 } as const;
 
-// The line under a fresh connection: warm when both badges read blue, else the
+// The line under a fresh connection: warm when every badge reads blue, else the
 // single neutral routing-to-care line (doc 25 decision 3; never a verdict).
 export function completionLine(
   ownerBadge: BadgeState,
-  peerBadge: BadgeState | null,
+  peers: readonly PeerView[],
 ): string {
-  return ownerBadge === "blue" && peerBadge === "blue"
-    ? COPY.bothBlue
-    : COPY.oneGray;
+  const allBlue =
+    ownerBadge === "blue" && peers.every((p) => p.badge === "blue");
+  return allBlue ? COPY.allBlue : COPY.oneGray;
 }
 
 function MyCode({
@@ -110,13 +111,29 @@ function Person({ name, badge }: { name: string; badge: BadgeState | null }) {
   );
 }
 
+// The open door (doc 25): the completion's code changes meaning, from the
+// consumed offer to a bare knock pointer, with one quiet line saying what open
+// means. No key rides it; closing the screen kills it.
+function Door({ url }: { url: string }) {
+  return (
+    <>
+      <div className="lk__code lk__code--door" data-testid="lk-door">
+        <Matrix value={url} size={132} color="var(--ink-900)" />
+      </div>
+      <div className="lk__line">{COPY.doorLine}</div>
+    </>
+  );
+}
+
 function Linked({
   ownerBadge,
-  peer,
+  peers,
+  doorUrl,
   onDone,
 }: {
   ownerBadge: BadgeState;
-  peer: PeerView;
+  peers: readonly PeerView[];
+  doorUrl: string | null;
   onDone: () => void;
 }) {
   return (
@@ -124,12 +141,16 @@ function Linked({
       <div className="e-title">{COPY.linked}</div>
       <div className="lk__pair">
         <Person name={COPY.you} badge={ownerBadge} />
-        <Person
-          name={peer.label !== "" ? peer.label : COPY.them}
-          badge={peer.badge}
-        />
+        {peers.map((p) => (
+          <Person
+            key={p.key}
+            name={p.label !== "" ? p.label : COPY.them}
+            badge={p.badge}
+          />
+        ))}
       </div>
-      <div className="lk__line">{completionLine(ownerBadge, peer.badge)}</div>
+      <div className="lk__line">{completionLine(ownerBadge, peers)}</div>
+      {doorUrl !== null && <Door url={doorUrl} />}
       <Button variant="primary" size="lg" block onClick={onDone}>
         {COPY.done}
       </Button>
@@ -166,7 +187,17 @@ export function LinkupView({
         <X size={18} />
       </button>
       {phase.kind === "linked" ? (
-        <Linked ownerBadge={ownerBadge} peer={phase.peer} onDone={onClose} />
+        <>
+          <Linked
+            ownerBadge={ownerBadge}
+            peers={phase.peers}
+            doorUrl={phase.doorUrl}
+            onDone={onClose}
+          />
+          {/* the camera keeps running: this screen can still sweep other open
+              doors (the newcomer's own view of the same moment) */}
+          <Camera videoRef={videoRef} status={scanStatus} />
+        </>
       ) : (
         <>
           <div className="qrs__title">{COPY.title}</div>
@@ -187,7 +218,9 @@ export interface LinkupProps extends LinkupDeps {
 export function Linkup({ ownerBadge, ...deps }: LinkupProps) {
   const flow = useLinkupFlow(deps);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const status = useQrScan(videoRef, parseScannedConnect, flow.onScanned);
+  // Continuous: a person may sweep several open screens in one session, and the
+  // completion screen keeps scanning for exactly that.
+  const status = useQrScan(videoRef, parseScannedConnect, flow.onScanned, true);
 
   return (
     <LinkupView

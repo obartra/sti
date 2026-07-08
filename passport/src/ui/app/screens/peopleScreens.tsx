@@ -50,6 +50,12 @@ export const peopleRenderers: ScreenRenderers = {
         resolvePeer={(link) => ctx.store.resolveAlias(link)}
         onViewLink={onView}
         onExit={ctx.nav.back}
+        door={ctx.doorStore}
+        acceptGrant={async (invite) => {
+          const accepted = await ctx.onAcceptContactInvite(invite, "");
+          return { contactId: accepted.contact.id, url: accepted.url };
+        }}
+        ingestReturn={ctx.onIngestContactReturn}
       />
     );
   },

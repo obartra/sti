@@ -55,6 +55,11 @@
   line-height: 1.5;
 }
 
+/* The door code is a smaller tile: the moment's focus is the people. */
+.lk__code--door {
+  padding: 10px;
+}
+
 /* ── Completion ─────────────────────────────────────────────────────────── */
 
 .lk__done {

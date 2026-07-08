@@ -1,6 +1,6 @@
 # 25 - In-person connect (the linkup)
 
-## Status: the two-person gesture is BUILT (the unified show+scan screen, the symmetric offer exchange, the completion states, and the walk-away discard). Pending: the fully-offline offer mint, the back-datable encounter date, and the open door (more than two).
+## Status: the two-person gesture and the open door are BUILT (the unified show+scan screen, the symmetric offer exchange, the completion states, the walk-away discard, and the per-screen door legs). Pending: the fully-offline offer mint and the back-datable encounter date.
 
 Two people who are physically together connect in one shared gesture, instead of one
 of them texting a link later. Internally this is the "linkup" from
@@ -272,9 +272,9 @@ touches nothing), but the seamlessness ceiling is real and worth recording.
 - **Offline mint (pending):** the offer publish rides the offline queue so the
   whole gesture works with no signal; the "we don't know who you're connected to"
   promise ships at full strength with it.
+- **The open door (more than two, built):** the per-screen door legs over the
+  knock/grant primitives; it needs signal to listen.
 - **Enhancement:** NFC tap on Android as a progressive enhancement over the scan.
-- **The open door (more than two, pending):** it reuses the knock/grant
-  primitives and alias-shaped drops, and needs signal to listen.
 - **Out of scope (recorded above):** the native-only seamless paths.
 
 ## Validation
