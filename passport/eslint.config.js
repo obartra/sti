@@ -54,6 +54,20 @@ const QUALITY_RULES = {
   ],
 };
 
+// Files legitimately over the 400 effective-line ceiling, each PINNED at its
+// measured size with a stated reason. Function-level ceilings land on the code
+// being written and force decomposition of the new thing, which is the
+// productive kind of friction; the FILE ceiling lands on whoever edits an
+// accreted file last, and the cheapest fix is compressing untouched code,
+// which is diff noise, not quality. So the file ceiling gets this escape
+// valve: a pinned file still cannot grow past its pin (lower the pin when a
+// file shrinks), and adding a pin is an explicit, reviewed act with a reason.
+// Never satisfy a size gate by reformatting code you are not otherwise
+// touching; split what you are adding, or pin the file here.
+const PINNED_LINES = [
+  // { file: "src/example.ts", max: 430, reason: "why the length is inherent" },
+];
+
 export default tseslint.config(
   {
     ignores: [
@@ -117,6 +131,15 @@ export default tseslint.config(
       ...QUALITY_RULES,
     },
   },
+
+  // The pinned over-ceiling files (see PINNED_LINES above): each keeps the
+  // max-lines gate, just at its pinned size, so it cannot grow further.
+  ...PINNED_LINES.map(({ file, max }) => ({
+    files: [file],
+    rules: {
+      "max-lines": ["error", { max, skipBlankLines: true, skipComments: true }],
+    },
+  })),
 
   // Auto-generated from the design bundle: not hand-maintained, so length and
   // statement ceilings do not apply.

@@ -51,6 +51,9 @@ web: ## Run the Vite dev server pointed at the local API
 dev: ## Run backend + web together (interleaved output; two shells is cleaner)
 	$(MAKE) -j2 backend web
 
+fmt: ## Fix formatting everywhere (root prettier writes the whole repo)
+	npx prettier --write .
+
 ## --- Gates (CI calls these) ---
 
 check-root: ## Root: inclusive-language + prettier + eslint + node tests
