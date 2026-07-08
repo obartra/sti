@@ -1,62 +1,29 @@
-// The behavioral plane (doc 14 §2 / §6). It boots a throwaway blind store, seeds
-// a real public passport card through the production crypto, builds and previews
-// the real app pointed at that server, and drives a browser through the public
+// The behavioral plane (doc 14 §2 / §6). Against the run's shared blind store +
+// built preview (support/globalSetup.ts), it seeds a real public passport card
+// through the production crypto and drives a browser through the public
 // resolution journeys, asserting the rendered state and a clean console. Each
 // test is tagged with a catalog behavior id; a meta-test fails if a validated
 // browser behavior has no test here. Run with `npm run test:e2e`.
-import { test, expect, type Page } from "@playwright/test";
-import { execFileSync, spawn, type ChildProcess } from "node:child_process";
+import { test, expect } from "@playwright/test";
 
-import {
-  startApi,
-  freePort,
-  type Harness,
-} from "../src/test-support/serverHarness.ts";
 import { createApiClient } from "../src/api/client.ts";
 import { publishCard } from "../src/store/publish.ts";
 import { bytesToBase64url, randomAliasId } from "../src/crypto/index.ts";
-import { readFileSync } from "node:fs";
+import { previewOrigin as origin, apiBase as api } from "./support/env.ts";
+import { watchErrors } from "./support/journeys.ts";
+import { behaviorHarness } from "./support/catalog.ts";
 
-// Read the catalog as data (cwd is passport/), so this spec needs no JSON
-// import-attribute support from Playwright's loader.
-const E2E_PIN = "e2e/resolution.pw.spec.ts";
-const BEHAVIORS = JSON.parse(
-  readFileSync("src/loadlab/behaviors.json", "utf8"),
-) as {
-  id: string;
-  title: string;
-  status: string;
-  layer: string;
-  pin: string;
-}[];
-function behavior(id: string): { id: string; title: string } {
-  const b = BEHAVIORS.find((x) => x.id === id);
-  if (b === undefined) throw new Error(`unknown behavior id: ${id}`);
-  return b;
-}
+const { behaviorTest, coverageTest } = behaviorHarness(
+  "e2e/resolution.pw.spec.ts",
+);
 
 const HANDLE = "robin";
 const BLUE_HEADLINE = "Tested & on HIV prevention";
 const GRAY = "No status shared right now";
 
-let harness: Harness | undefined;
-let preview: ChildProcess | undefined;
 let previewOrigin = "";
 let apiBase = "";
 let cardPath = ""; // `/a/{id}#k={keyB64}` for the seeded blue card
-
-async function waitFor(url: string, attempts = 120): Promise<void> {
-  for (let i = 0; i < attempts; i++) {
-    try {
-      const r = await fetch(url);
-      if (r.ok) return;
-    } catch {
-      // not up yet
-    }
-    await new Promise((r) => setTimeout(r, 250));
-  }
-  throw new Error(`${url} never came up`);
-}
 
 // Seed one blue public card through the REAL publish path (publishCard mints the
 // id/token/key, seals the serialized card, and PUTs it), then return its
@@ -75,63 +42,13 @@ async function seedCard(): Promise<string> {
   return `/a/${record.id}#k=${record.key}`;
 }
 
-// Collect uncaught client errors (console errors + page errors) for an assertion.
-function watchErrors(page: Page): string[] {
-  const errs: string[] = [];
-  page.on("console", (m) => {
-    if (m.type() === "error") errs.push(`console: ${m.text()}`);
-  });
-  page.on("pageerror", (e) => errs.push(`pageerror: ${String(e)}`));
-  return errs;
-}
-
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(async () => {
-  const previewPort = await freePort();
-  previewOrigin = `http://localhost:${previewPort}`;
-  // The server must allowlist the exact browser origin, or the cross-origin
-  // resolution fetch is blocked (doc 11 CORS prerequisite).
-  harness = await startApi({
-    metrics: true,
-    env: { STI_ALLOWED_ORIGINS: previewOrigin },
-  });
-  apiBase = harness.baseUrl;
+  previewOrigin = origin();
+  apiBase = api();
   cardPath = await seedCard();
-
-  // Build + preview the REAL app, pointed at the throwaway server. A preview of a
-  // production build is quieter than dev (no HMR), so console assertions are stable.
-  // Use the full `build` (app + service worker), not just `vite build`: the app
-  // registers /sw.js on load (doc 22 slice 2), so a partial build would 404 it to
-  // the SPA fallback and log a "text/html" registration error the console gate catches.
-  const env = { ...process.env, VITE_API_BASE_URL: apiBase };
-  execFileSync("npm", ["run", "build"], { env, stdio: "inherit" });
-  preview = spawn(
-    "npx",
-    ["vite", "preview", "--port", String(previewPort), "--strictPort"],
-    { env, stdio: "ignore" },
-  );
-  await waitFor(previewOrigin + "/");
 });
-
-test.afterAll(() => {
-  preview?.kill("SIGKILL");
-  harness?.stop();
-});
-
-const covered = new Set<string>();
-function behaviorTest(
-  ids: string | readonly string[],
-  fn: (args: { page: Page }) => Promise<void>,
-): void {
-  const list = typeof ids === "string" ? [ids] : ids;
-  for (const id of list) {
-    behavior(id); // throws if the id is not in the catalog
-    covered.add(id);
-  }
-  const titles = list.map((id) => behavior(id).title).join(" + ");
-  test(`${titles} [${list.join(", ")}]`, fn);
-}
 
 behaviorTest(
   ["viewer-resolves-real-card", "client-no-console-errors"],
@@ -265,10 +182,4 @@ test("Chrome resolves a valid installable web app manifest (doc 22 C/K)", async 
   expect(sizes).toContain("512x512");
 });
 
-test("the Playwright suite covers every behavior it pins", () => {
-  const ownedHere = BEHAVIORS.filter((b) => b.pin === E2E_PIN);
-  for (const b of ownedHere) expect(covered.has(b.id)).toBe(true);
-  for (const id of covered) {
-    expect(BEHAVIORS.find((b) => b.id === id)?.pin).toBe(E2E_PIN);
-  }
-});
+coverageTest();

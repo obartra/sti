@@ -1,6 +1,10 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { contactInviteUrl, parseContactInvite } from "./contactInvite.ts";
+import {
+  contactInviteUrl,
+  parseContactInvite,
+  parseScannedCode,
+} from "./contactInvite.ts";
 import { keyedAliasLinkUrl } from "./publish.ts";
 import { mintNotify } from "./notifyInbox.ts";
 import type { AliasRecord } from "./accountBlob.ts";
@@ -100,5 +104,51 @@ describe("contact invite codec", () => {
     const url = `${contactInviteUrl(record, notify)}&ref=short`;
     const { pathname, hash } = parts(url);
     expect(parseContactInvite(pathname, hash)).toBeNull();
+  });
+});
+
+// Scanning a code must behave like OPENING the same link: the alias link always,
+// plus the invite payload when the code is one. Same fail-closed posture as
+// parseScannedLink for everything else (junk, non-links, keyless, group invites).
+describe("parseScannedCode", () => {
+  it("a plain alias link scans to a link with no invite", () => {
+    const record = aliasRecord();
+    expect(parseScannedCode(keyedAliasLinkUrl(record))).toEqual({
+      link: { id: record.id, key: record.key },
+    });
+  });
+
+  it("a contact invite scans with its notify capability intact", () => {
+    const record = aliasRecord();
+    const notify = mintNotify();
+    expect(parseScannedCode(contactInviteUrl(record, notify))).toEqual({
+      link: { id: record.id, key: record.key },
+      invite: { alias: { id: record.id, key: record.key }, notify },
+    });
+  });
+
+  it("a return invite scans with its ref intact", () => {
+    const record = aliasRecord();
+    const notify = mintNotify();
+    const ref = randomAliasId();
+    const scanned = parseScannedCode(contactInviteUrl(record, notify, { ref }));
+    expect(scanned?.invite?.ref).toBe(ref);
+  });
+
+  it("a malformed invite payload falls back to a plain link, like opening it", () => {
+    const record = aliasRecord();
+    const url = `${keyedAliasLinkUrl(record)}&n=@@@`;
+    expect(parseScannedCode(url)).toEqual({
+      link: { id: record.id, key: record.key },
+    });
+  });
+
+  it("fails closed on junk, non-links, keyless links, and group invites", () => {
+    expect(parseScannedCode("not a url")).toBeNull();
+    expect(parseScannedCode("https://sti.care/exposed")).toBeNull();
+    expect(
+      parseScannedCode(`https://sti.care/a/${randomAliasId()}`),
+    ).toBeNull();
+    expect(parseScannedCode("https://sti.care/g#g=abc")).toBeNull();
   });
 });

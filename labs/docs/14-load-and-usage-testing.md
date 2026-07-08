@@ -454,7 +454,9 @@ surface that erodes the blind story? Each concern, with its mitigation.
   `passport/src/api/` and `crypto/` directly, and setup/teardown reuse `test-support/serverHarness.ts`
   (extended with an opt-in loopback metrics listener and per-test env overrides). The behavioral plane
   is `passport/e2e/*.pw.spec.ts` (Playwright), kept outside `src/` so Playwright's own toolchain owns
-  it. Both read the one catalog (`src/loadlab/behaviors.json`).
+  it. Both read the one catalog (`src/loadlab/behaviors.json`). The behavioral plane covers
+  logged-in journeys too, via the virtual-authenticator and fake-camera fixtures of
+  [Headless e2e fixtures](38-headless-e2e-fixtures.md).
 - **Commands.** The wire/telemetry gates run via `npm run test:integration` (`*.integration.test.ts`);
   the browser gates via `npm run test:e2e` (Playwright, which boots a throwaway server, seeds a real
   card, builds + previews the app pointed at it, and drives a browser). The operator stress plane runs

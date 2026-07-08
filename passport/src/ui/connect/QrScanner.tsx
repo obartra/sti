@@ -1,19 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { parseScannedLink } from "../../store/index.ts";
-import type { AliasLink } from "../../store/index.ts";
+import { parseScannedCode } from "../../store/index.ts";
+import type { ScannedCode } from "../../store/index.ts";
 import { Button } from "../../design/components/index.ts";
 import { X } from "../../design/icons.tsx";
 import "./connect.css";
 
 /* The in-app QR scanner (doc 16). Opens the camera, samples frames, and decodes
-   with jsQR. A scanned code is untrusted: only a well-formed alias link resolves
-   (parseScannedLink), and we open the parsed id/key inside our own resolution
-   flow, never navigate to the scanned URL, so a malicious QR can't redirect the
-   viewer off-site; any other code is ignored and scanning continues. The camera
-   plumbing is browser-only and can't run in jsdom; the security-critical
-   decode-and-route decision lives in parseScannedLink, which is unit-tested, and
-   the camera-error mapping lives in cameraStatus, also unit-tested. */
+   with jsQR. A scanned code is untrusted: only a well-formed passport link
+   resolves (parseScannedCode: the strict alias-link shape, plus the contact
+   invite riding it when the code is one), and we open the parsed payload inside
+   our own resolution flow, never navigate to the scanned URL, so a malicious QR
+   can't redirect the viewer off-site; any other code is ignored and scanning
+   continues. The camera plumbing is browser-only and can't run in jsdom; the
+   security-critical decode-and-route decision lives in parseScannedCode, which
+   is unit-tested, and the camera-error mapping lives in cameraStatus, also
+   unit-tested. */
 
 const COPY = {
   title: "Scan a code",
@@ -48,21 +50,21 @@ export function cameraStatus(err: unknown): Exclude<Status, "scanning"> {
   return "unsupported";
 }
 
-// Sample one video frame and decode it: returns a valid passport link, or null
-// (frame not ready, no QR, or a QR that is not an alias link to our own site).
+// Sample one video frame and decode it: returns a valid passport code, or null
+// (frame not ready, no QR, or a QR that is not a passport link).
 function scanFrame(
   video: HTMLVideoElement,
   canvas: HTMLCanvasElement,
   ctx: CanvasRenderingContext2D,
   decode: Decoder,
-): AliasLink | null {
+): ScannedCode | null {
   if (video.readyState !== video.HAVE_ENOUGH_DATA) return null;
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
   const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const found = decode(frame.data, frame.width, frame.height);
-  return found === null ? null : parseScannedLink(found.data);
+  return found === null ? null : parseScannedCode(found.data);
 }
 
 // Open the camera, preferring the rear one but not requiring it. facingMode is a
@@ -86,7 +88,7 @@ async function openCamera(media: MediaDevices): Promise<MediaStream> {
 // tears down and reopens the stream.
 function useQrScan(
   videoRef: RefObject<HTMLVideoElement | null>,
-  onResult: (link: AliasLink) => void,
+  onResult: (code: ScannedCode) => void,
 ): Status {
   const [status, setStatus] = useState<Status>("scanning");
   const onResultRef = useRef(onResult);
@@ -115,10 +117,10 @@ function useQrScan(
         if (!done) raf = requestAnimationFrame(tick);
         return;
       }
-      const link = scanFrame(video, canvas, ctx, decode);
-      if (link !== null) {
+      const code = scanFrame(video, canvas, ctx, decode);
+      if (code !== null) {
         done = true;
-        onResultRef.current(link);
+        onResultRef.current(code);
         return;
       }
       raf = requestAnimationFrame(tick);
@@ -203,8 +205,8 @@ function ScanMessage({
 }
 
 export interface QrScannerProps {
-  /** Called once with the parsed link when a valid passport QR is decoded. */
-  onResult: (link: AliasLink) => void;
+  /** Called once with the parsed code when a valid passport QR is decoded. */
+  onResult: (code: ScannedCode) => void;
   onBack: () => void;
 }
 

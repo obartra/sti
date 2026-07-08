@@ -11,7 +11,7 @@ type lives at the right layer:
 | **Pure core** (badge, crypto) | The trust invariants hold for the whole input space, not just example rows | Gherkin `.feature` (readable invariants) + **fast-check** (exhaustive) + Vitest unit |
 | **Components**                | Each state renders correctly and doesn't visually regress                  | Storybook + Testing Library + **lost-pixel** visual regression                       |
 | **Backend**                   | The blind store behaves, and existence-uniformity holds                    | Integration tests against **real SQLite** + a size/timing decoy test                 |
-| **End to end** (later)        | Full flows across client + server                                          | Playwright                                                                           |
+| **End to end** (`e2e/`)       | Full flows across client + server, logged out and logged in                | Playwright + the virtual-authenticator and fake-camera fixtures (labs doc 38)        |
 
 ## Why this shape
 

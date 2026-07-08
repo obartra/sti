@@ -143,6 +143,39 @@
     "pin": "src/store/account.integration.test.ts"
   },
   {
+    "id": "scanned-invite-offers-connect",
+    "category": "Trust integrity & sharing",
+    "title": "A scanned contact code offers the add, exactly like the link",
+    "intent": "Scanning someone's code behaves like opening the same link: a contact invite keeps its notify capability through the camera, so the add-to-contacts affordance appears instead of a silent read-only downgrade.",
+    "check": "A second browser with a fake camera playing the app-minted invite QR lands on the card with 'Add to contacts', accepts, and receives the return link.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "38",
+    "pin": "e2e/connect.pw.spec.ts"
+  },
+  {
+    "id": "contact-handshake-links-both-ways",
+    "category": "Trust integrity & sharing",
+    "title": "The shown-code handshake ends linked both ways",
+    "intent": "One person shows a code, the other scans and sends the return link back; after the one-tap connect, both devices agree the link reads both ways.",
+    "check": "Across two browsers and real accounts, the full scan, accept, send-back, connect sequence leaves 'Linked both ways' on both rosters.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "13",
+    "pin": "e2e/connect.pw.spec.ts"
+  },
+  {
+    "id": "group-invite-links-three",
+    "category": "Trust integrity & sharing",
+    "title": "Per-person group invites grow the group to three",
+    "intent": "Each invite link admits the one person it was sent to through the real disclosure screen, and after everyone's catch-up all members see the same three-person group.",
+    "check": "An admin mints one invite link per person; two other real accounts join through theirs; after catch-up rounds every member's Groups list shows the group at three people.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "33",
+    "pin": "e2e/connect.pw.spec.ts"
+  },
+  {
     "id": "scanned-qr-alias-shape-only",
     "category": "Trust integrity & sharing",
     "title": "A scanned QR only ever yields an alias id and key, never a host to navigate to",
@@ -218,6 +251,39 @@
     "layer": "crypto",
     "docRef": "11",
     "pin": "src/auth/keyVault.test.ts"
+  },
+  {
+    "id": "signup-completes-to-home",
+    "category": "Account & recovery",
+    "title": "Sign-up ends in a working passport, not a dead end",
+    "intent": "A new person walks name, phrase, and setup in a browser and lands on a home whose actions are live, with the passkey enrolled along the way.",
+    "check": "Drive /signup through b1-b3 with a virtual platform authenticator (CDP, PRF-capable); home renders its standing actions with a clean console.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "38",
+    "pin": "e2e/auth.pw.spec.ts"
+  },
+  {
+    "id": "passkey-login-round-trip",
+    "category": "Account & recovery",
+    "title": "A passkey logs the owner back in on this device",
+    "intent": "With keep-signed-in off, a return visit needs a real login, and the enrolled passkey alone unlocks it (the PRF wrap round-trips through the real WebAuthn flow).",
+    "check": "Reload after sign-up with keep-signed-in off, tap Log in, tap the passkey button; home renders without phrase or password.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "38",
+    "pin": "e2e/auth.pw.spec.ts"
+  },
+  {
+    "id": "phrase-login-new-device",
+    "category": "Account & recovery",
+    "title": "The phrase alone signs in on a fresh browser",
+    "intent": "The phrase captured at sign-up is a complete way back in where no passkey exists, through the real login screens.",
+    "check": "A fresh context with no authenticator opens /login, picks the recovery-phrase way, enters the phrase, and lands on home.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "38",
+    "pin": "e2e/auth.pw.spec.ts"
   },
   {
     "id": "no-lost-writes",
@@ -537,6 +603,39 @@
     "layer": "wire",
     "docRef": "14 §8",
     "pin": "src/loadlab/loadlab.integration.test.ts"
+  },
+  {
+    "id": "report-updates-home",
+    "category": "Client behavior",
+    "title": "Reporting a clean panel turns the owner's card blue",
+    "intent": "The add-results form, filled the way it asks (full core panel plus a route), agrees it will show blue and the save returns to a working home.",
+    "check": "Drive the report form through a clean core panel + PrEP in a real browser; the blue-readiness line confirms before save and home renders after.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "38",
+    "pin": "e2e/smoke.pw.spec.ts"
+  },
+  {
+    "id": "owner-minted-link-resolves",
+    "category": "Client behavior",
+    "title": "A link minted in the app resolves for a logged-out viewer",
+    "intent": "The share loop closes end to end from the owner's own UI: mint a per-contact link, open it with no session, and see the just-reported status, never gray and never an account wall.",
+    "check": "Create a link on the Links tab, open its path in a fresh logged-out context, and assert the blue status renders with a clean console.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "38",
+    "pin": "e2e/smoke.pw.spec.ts"
+  },
+  {
+    "id": "scan-degrades-honestly",
+    "category": "Client behavior",
+    "title": "The scan screen degrades honestly with no camera",
+    "intent": "Where no camera exists the scanner lands on one of its honest fallback messages and Close walks back out; never a dead viewfinder or a stuck screen.",
+    "check": "Open the scan screen in a camera-less browser; a known fallback message renders and Close returns to People.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "38",
+    "pin": "e2e/smoke.pw.spec.ts"
   },
   {
     "id": "viewer-resolves-real-card",
