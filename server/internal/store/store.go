@@ -61,128 +61,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("apply schema: %w", err)
 	}
-	if err := migrate(ctx, db); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("migrate: %w", err)
-	}
 	return &Store{db: db}, nil
-}
-
-// migrate applies additive schema changes that CREATE TABLE IF NOT EXISTS can't
-// reach on an already-created table. Each step is idempotent (guarded by a column
-// check) so it is safe to run on every Open, including a fresh database where the
-// embedded schema already has the final shape.
-func migrate(ctx context.Context, db *sql.DB) error {
-	// knock.pub_key: the opaque ephemeral grant key carried on a knock (doc 13).
-	// Older databases have a knock table without it; add it in place.
-	has, err := hasColumn(ctx, db, "knock", "pub_key")
-	if err != nil {
-		return err
-	}
-	if !has {
-		if _, err := db.ExecContext(ctx,
-			`ALTER TABLE knock ADD COLUMN pub_key TEXT NOT NULL DEFAULT ''`); err != nil {
-			return fmt.Errorf("add knock.pub_key: %w", err)
-		}
-	}
-	// alias.expires_at: server-enforced link expiry (doc 16). Older databases have
-	// an alias table without it; add it in place (NULL = no expiry).
-	hasExpiry, err := hasColumn(ctx, db, "alias", "expires_at")
-	if err != nil {
-		return err
-	}
-	if !hasExpiry {
-		if _, err := db.ExecContext(ctx,
-			`ALTER TABLE alias ADD COLUMN expires_at INTEGER`); err != nil {
-			return fmt.Errorf("add alias.expires_at: %w", err)
-		}
-	}
-	// vanity_name.locked_until: the post-release 24h lock (doc 17, Findable F2).
-	// Older databases have the F1 vanity_name without it; add it in place (0 = not
-	// locked).
-	hasLock, err := hasColumn(ctx, db, "vanity_name", "locked_until")
-	if err != nil {
-		return err
-	}
-	if !hasLock {
-		if _, err := db.ExecContext(ctx,
-			`ALTER TABLE vanity_name ADD COLUMN locked_until INTEGER NOT NULL DEFAULT 0`); err != nil {
-			return fmt.Errorf("add vanity_name.locked_until: %w", err)
-		}
-	}
-	// account.write_auth: the account write-token hash that gates overwrite/delete,
-	// making account writes symmetric with aliases (holding the on-wire id no longer
-	// authorizes a write). Older databases have an account table without it; add it
-	// in place. Existing rows default to '' (the empty capability), so the owner's
-	// next write rebinds the real token via PutAccount's first-write path.
-	hasAcctAuth, err := hasColumn(ctx, db, "account", "write_auth")
-	if err != nil {
-		return err
-	}
-	if !hasAcctAuth {
-		if _, err := db.ExecContext(ctx,
-			`ALTER TABLE account ADD COLUMN write_auth TEXT NOT NULL DEFAULT ''`); err != nil {
-			return fmt.Errorf("add account.write_auth: %w", err)
-		}
-	}
-	// account.last_seen_at: the epoch ms of the last read or write, so the janitor
-	// can delete a backup left untouched past the inactivity window (data
-	// minimization, disclosed in Privacy). Older databases have the account table
-	// without it; add it in place and backfill to updated_at so an existing account
-	// is aged from its last write, not deleted at the moment of upgrade.
-	hasLastSeen, err := hasColumn(ctx, db, "account", "last_seen_at")
-	if err != nil {
-		return err
-	}
-	if !hasLastSeen {
-		if _, err := db.ExecContext(ctx,
-			`ALTER TABLE account ADD COLUMN last_seen_at INTEGER NOT NULL DEFAULT 0`); err != nil {
-			return fmt.Errorf("add account.last_seen_at: %w", err)
-		}
-		if _, err := db.ExecContext(ctx,
-			`UPDATE account SET last_seen_at = updated_at WHERE last_seen_at = 0`); err != nil {
-			return fmt.Errorf("backfill account.last_seen_at: %w", err)
-		}
-	}
-	// feedback.topic: which open question a "question" response addresses (doc 35),
-	// a fixed validated code like reason. Older databases have the feedback table
-	// without it; add it in place ('' = no topic).
-	hasTopic, err := hasColumn(ctx, db, "feedback", "topic")
-	if err != nil {
-		return err
-	}
-	if !hasTopic {
-		if _, err := db.ExecContext(ctx,
-			`ALTER TABLE feedback ADD COLUMN topic TEXT NOT NULL DEFAULT ''`); err != nil {
-			return fmt.Errorf("add feedback.topic: %w", err)
-		}
-	}
-	return nil
-}
-
-// hasColumn reports whether table has a column named col, via PRAGMA table_info.
-func hasColumn(ctx context.Context, db *sql.DB, table, col string) (bool, error) {
-	rows, err := db.QueryContext(ctx, fmt.Sprintf("PRAGMA table_info(%s)", table))
-	if err != nil {
-		return false, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var (
-			cid        int
-			name, typ  string
-			notNull    int
-			dflt       sql.NullString
-			primaryKey int
-		)
-		if err := rows.Scan(&cid, &name, &typ, &notNull, &dflt, &primaryKey); err != nil {
-			return false, err
-		}
-		if name == col {
-			return true, rows.Err()
-		}
-	}
-	return false, rows.Err()
 }
 
 // Close releases the database handle.
@@ -333,16 +212,14 @@ func (s *Store) GetInbox(ctx context.Context, id string) (ciphertext []byte, fou
 // token, so the caller (who only knows the id) is not the owner.
 //
 // expectedVersion gates the write for optimistic concurrency (doc 22 S8). Zero means
-// UNCONDITIONAL (last-write-wins, the legacy behavior for a client that sends no
-// X-Version). A positive value asserts the caller based its edit on that stored
+// UNCONDITIONAL: last-write-wins, for a client that sends no X-Version (a first
+// create, or a conflict resolution that has no ancestor to merge over).
+// A positive value asserts the caller based its edit on that stored
 // version: if the row has moved on (another device wrote first) or no longer exists,
 // the write is refused with conflict=true and the stored blob is left untouched
 // (returning the current version), so the caller can reload, merge, and retry rather
 // than clobber. Authorization is checked before the version, so a wrong-token caller
 // always gets the uniform not-authorized result and never learns the version.
-//
-// An empty stored write_auth is treated as UNBOUND and rebinds to writeAuth, so a
-// row migrated in before this column existed is claimable by its owner's next write.
 func (s *Store) PutAccount(ctx context.Context, id string, ciphertext []byte, writeAuth string, expectedVersion, now int64) (version int64, authorized, conflict bool, err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -379,8 +256,8 @@ func (s *Store) PutAccount(ctx context.Context, id string, ciphertext []byte, wr
 	case err != nil:
 		return 0, false, false, err
 	default:
-		// A non-empty stored token must match; an empty one is unbound and rebinds.
-		if stored != "" && subtle.ConstantTimeCompare([]byte(stored), []byte(writeAuth)) != 1 {
+		// Constant-time compare of the stored vs candidate token hash.
+		if subtle.ConstantTimeCompare([]byte(stored), []byte(writeAuth)) != 1 {
 			return 0, false, false, nil
 		}
 		// Optimistic-concurrency precondition: refuse a write based on a stale
@@ -411,8 +288,7 @@ func (s *Store) DeleteAccount(ctx context.Context, id string) error {
 
 // DeleteAccountAuthorized removes the account blob only when writeAuth matches the
 // row's bound capability (the owner path). authorized=false means the row exists
-// under a different token. A missing row is authorized=true (idempotent no-op), and
-// an empty stored token is unbound and accepts any writeAuth, mirroring PutAccount.
+// under a different token. A missing row is authorized=true (idempotent no-op).
 func (s *Store) DeleteAccountAuthorized(ctx context.Context, id, writeAuth string) (authorized bool, err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -427,7 +303,7 @@ func (s *Store) DeleteAccountAuthorized(ctx context.Context, id, writeAuth strin
 	case err != nil:
 		return false, err
 	default:
-		if stored != "" && subtle.ConstantTimeCompare([]byte(stored), []byte(writeAuth)) != 1 {
+		if subtle.ConstantTimeCompare([]byte(stored), []byte(writeAuth)) != 1 {
 			return false, nil
 		}
 		if _, err := tx.ExecContext(ctx, `DELETE FROM account WHERE id = ?`, id); err != nil {

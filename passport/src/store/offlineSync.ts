@@ -78,7 +78,7 @@ function createPush(api: ApiClient, local: LocalBlobStore, status: SyncStatus) {
   // Resolve a 409: reload the server's current blob, 3-way merge our edits onto it
   // over the cached ancestor, and re-push against the server's version. Without an
   // ancestor (a device that never recorded a base) we fall back to an unconditional
-  // overwrite, i.e. the legacy last-write-wins, rather than getting stuck. Any
+  // last-write-wins overwrite rather than getting stuck. Any
   // further error (a third concurrent write, or going offline mid-resolution) leaves
   // the account pending so the next reconnect retries from the new state.
   const resolveConflict = async (

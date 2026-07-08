@@ -22,12 +22,12 @@ purpose: unlayered beats every layer, so a component always wins over globals.
 
 Rules that hold everywhere:
 
-- **`src/design` is read-only.** It is the vendored design bundle and is never
-  edited. The app layers over it: `styles/passport.css` is a skip-fonts barrel
-  that imports the same files as `design/index.css` minus its Google Fonts
-  loader, and a test pins that parity so a design-bundle sync cannot silently
-  diverge. Token overrides happen in the `theme` layer, which beats the
-  `passport` layer by declaration order.
+- **`src/design` is layered over, never restyled.** It is the vendored design
+  bundle: `styles/passport.css` is a skip-fonts barrel that imports the same
+  files as `design/index.css` minus its Google Fonts loader, and a test pins
+  that parity. Token overrides happen in the `theme` layer, which beats the
+  `passport` layer by declaration order. A component the app stops using is
+  deleted from the bundle outright, never left stranded.
 - **Fonts are self-hosted.** Hanken Grotesk ships as one variable-weight latin
   woff2, Source Serif 4 SemiBold as another (the same file info serves), both
   under `public/fonts/` with capsize-computed metric fallbacks so the swap
@@ -50,13 +50,12 @@ interactive product needs:
   frame: a double printed rule, flat, never a glow), the wallet passes
   (depictions of physical objects), and overlays such as the share sheet
   (control surfaces keep radius and elevation). Everything else is
-  hairline-structured page. Tinted cards, glow shadows, icon tiles, and pill
-  chips retired from app markup; their classes stay in the vendored CSS,
-  unused.
-- **Stranded design components.** From `design/components`, the app keeps
-  `Button`, `IconButton`, `Segmented` (a control surface), and the form
-  controls. `Card`, `Badge`, and `Row` are stranded: never restyled, never
-  wrapped; no screen uses them. The style lint bans them outright.
+  hairline-structured page: no tinted cards, glow shadows, icon tiles, or pill
+  chips anywhere in app markup.
+- **Design components.** `design/components` holds only what the app uses:
+  `Button`, `IconButton`, `Avatar`, `Segmented` (a control surface), and the
+  form controls. Generic surface components (a Card, a Badge, a list Row) do
+  not exist; surfaces come from the `.e-*` grammar.
 - **Status vocabulary.** Status renders as the uppercase word plus the heart
   glyph in a derived AA-safe ink (info's StatusLabel), never a colored pill,
   and never color alone.
@@ -71,11 +70,9 @@ interactive product needs:
 
 ## The style lint
 
-`passport/scripts/style-lint.mjs` enforces the language absolutely (the
-migration burn-down ratchet it started as is retired): no inline `style={}`
-blocks, no raw hex outside `styles/theme.css`, no stranded surface components
-(`Card`/`Badge`/`Row`), and no viewport `@media` beyond the 900px chrome
-breakpoint. A short explicit allowlist in the script covers what a class or
+`passport/scripts/style-lint.mjs` enforces the language absolutely: no inline
+`style={}` blocks, no raw hex outside `styles/theme.css`, and no viewport
+`@media` beyond the 900px chrome breakpoint. A short explicit allowlist in the script covers what a class or
 token cannot express: data-driven inline values (medallion and pass sizes,
 avatar swatch colors, QR geometry, NavLink's style passthrough), the wallet
 pass depictions with their platforms' own colors, QR/PNG paint colors, and

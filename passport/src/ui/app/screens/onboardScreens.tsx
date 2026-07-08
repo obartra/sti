@@ -40,6 +40,8 @@ export const onboardRenderers: ScreenRenderers = {
     onKeepSignedInChange,
   }) => (
     <Claim
+      // Remount on a variant switch so the login stage state starts over.
+      key={data?.isLogin ? "login" : "create"}
       isLogin={data?.isLogin ?? false}
       busy={onboarding.busy}
       error={onboarding.error}

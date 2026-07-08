@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 // and, via the router's `/demo` prefix, stays in the URL as a person moves around, so
 // a reload keeps them in the demo and leaving does not strand the real app on it. Boot
 // reads the URL at module load, so each case sets it, resets modules, and imports Root
-// fresh. There is no legacy entry: `/demo` is the only route in.
+// fresh. `/demo` is the only route in.
 const BANNER = "Demo. Nothing here is saved or sent.";
 
 async function mountRoot(url: string) {

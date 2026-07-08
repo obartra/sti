@@ -1,7 +1,6 @@
-// Style lint for the passport app's editorial language (doc 37). The
-// migration is complete, so the rules are ABSOLUTE (the burn-down ratchet and
-// its baseline file are gone), with one explicit allowlist for the styling
-// that legitimately stays inline or hex:
+// Style lint for the passport app's editorial language (doc 37). The rules
+// are ABSOLUTE, with one explicit allowlist for the styling that legitimately
+// stays inline or hex:
 //
 //   - data-driven inline styles: values computed from data (medallion and
 //     pass sizes, avatar swatch colors, QR geometry) that a class cannot
@@ -17,10 +16,7 @@
 //   1. no inline style={ props in .tsx outside the allowlist;
 //   2. no raw hex colors in .tsx/.ts/.css outside styles/theme.css and the
 //      allowlist (color decisions live in tokens);
-//   3. no stranded surface components <Card>, <Badge>, <Row> (their
-//      editorial replacements are the .e-* grammar; Button, forms, Avatar,
-//      and Segmented stay);
-//   4. no @media in src css except the 900px chrome breakpoint and
+//   3. no @media in src css except the 900px chrome breakpoint and
 //      prefers-*/print feature queries; content responds to its container.
 //
 // src/design/** is the vendored design system and exempt from everything.
@@ -44,7 +40,6 @@ function walk(dir) {
 
 const HEX = /#[0-9a-fA-F]{3,8}\b/g;
 const INLINE_STYLE = /style=\{/g;
-const LEGACY_SURFACE = /<(?:Card|Badge|Row)\b/g;
 const MEDIA = /@media\b([^{]*)/;
 const ALLOWED_MEDIA = /min-width:\s*900px|prefers-|print/;
 
@@ -86,13 +81,6 @@ for (const file of walk(SRC)) {
       if (n > 0) {
         fail(rel, `inline style={} block (${n}); use a class and the tokens`);
       }
-    }
-    const legacy = (text.match(LEGACY_SURFACE) ?? []).length;
-    if (legacy > 0) {
-      fail(
-        rel,
-        `stranded surface component (Card/Badge/Row, ${legacy}); use the .e-* grammar`,
-      );
     }
   }
 

@@ -4,8 +4,17 @@ export const COPY = {
   title: "Create your account",
   loginTitle: "Log in",
   usePasskeyLogin: "Log in with a passkey",
+  // The login stages: the main screen shows only the passkey; "other ways" is a
+  // chooser, and picking a way shows that one way's form (one way per screen).
   otherWaysLabel: "Other ways to log in",
+  wayPhraseTitle: "Recovery phrase",
+  wayPhraseSub: "The words you saved when you created your account.",
+  wayPasswordTitle: "Username and password",
+  wayPasswordSub: "If you added one to your account.",
+  phraseStageTitle: "Enter your recovery phrase",
+  passwordStageTitle: "Enter your username and password",
   recoverLabel: "Recovery phrase",
+  recoverHint: "The words you saved when you created your account.",
   recoverCta: "Log in",
   recoverPwNameLabel: "Username",
   recoverPwPasswordLabel: "Password",

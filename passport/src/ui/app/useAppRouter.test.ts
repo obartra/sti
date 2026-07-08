@@ -283,18 +283,37 @@ describe("every screen owns a clean path", () => {
     expect(routeAt("/wallet")?.screen).toBe("wallet");
   });
 
-  it("redirects the legacy Connect paths to People / Links (installed PWAs)", () => {
-    // The old `home / connect / groups / care` bar became `home / links / people /
-    // care`; an installed shortcut or bookmark must still land somewhere sensible.
-    expect(routeAt("/connect")?.screen).toBe("people");
-    expect(routeAt("/connect/scan")?.screen).toBe("scan");
-    expect(routeAt("/connect/share")?.screen).toBe("alias-share");
+  it("splits the account screen into /signup and /login on the isLogin flag", () => {
+    // One screen (b1-claim) renders both variants; the path is the only cold-boot
+    // carrier of which one, so /login must re-derive with the flag set.
+    expect(routeAt("/signup")).toMatchObject({
+      screen: "b1-claim",
+      group: "onboard",
+      data: null,
+    });
+    expect(routeAt("/login")).toMatchObject({
+      screen: "b1-claim",
+      group: "onboard",
+      data: { isLogin: true },
+    });
   });
 
-  it("redirects the legacy /home path to Home at the root (old bookmarks)", () => {
-    // Home moved from `/home` to the root `/`; an old shortcut or bookmark still
-    // resolves to Home, and mount normalizes the URL back to `/`.
-    expect(routeAt("/home")?.screen).toBe("home");
+  it("normalizes the login navigation to /login and the create one to /signup", async () => {
+    window.history.replaceState(null, "", "/");
+    try {
+      const { result } = renderHook(() => useAppRouter());
+      act(() => result.current.nav.go("b1-claim", { isLogin: true }));
+      await waitFor(() => {
+        expect(window.location.pathname).toBe("/login");
+      });
+      // The one-tap mode switch flips the URL too, not just the screen body.
+      act(() => result.current.nav.go("b1-claim", { isLogin: false }));
+      await waitFor(() => {
+        expect(window.location.pathname).toBe("/signup");
+      });
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
   });
 
   it("keeps the Settings screen (/settings) distinct from the privacy POLICY (/privacy)", () => {
@@ -320,10 +339,10 @@ describe("every screen owns a clean path", () => {
     }
   });
 
-  it("no longer honors a legacy /#home bookmark (the transitional reader is gone)", async () => {
-    // Every screen owns a clean path now, so the `/#screen` hash is not read: a
-    // stale bookmark falls through to the bare-root entry (Home) and the hash is
-    // stripped on mount, rather than deep-linking to a `/#home` fragment.
+  it("ignores a bare /#screen hash (routes derive from the path alone)", async () => {
+    // The `/#screen` hash is not read: a `/#home` fragment falls through to the
+    // bare-root entry (Home) and the hash is stripped on mount, rather than
+    // deep-linking anywhere.
     window.history.replaceState(null, "", "/#home");
     try {
       const { result } = renderHook(() => useAppRouter());

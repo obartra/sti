@@ -10,6 +10,7 @@ export function CanvasWrap({
   desktop,
   wide = false,
   full = false,
+  focus = false,
   onHome,
   children,
 }: {
@@ -20,6 +21,10 @@ export function CanvasWrap({
   /** Hand the full canvas width to the child and let it own its own centering
    * (the trust pages' "trust center" layout). Overrides `wide`. */
   full?: boolean;
+  /** Desktop-only: compose a short form (the onboarding steps) in the viewport
+   * height on a narrow column, instead of hugging the top of the reading
+   * measure. No effect on mobile. */
+  focus?: boolean;
   onHome?: (() => void) | undefined;
   children: ReactNode;
 }) {
@@ -46,6 +51,7 @@ export function CanvasWrap({
           full
             ? "l-canvas-main--full"
             : wide && desktop && "l-canvas-main--wide",
+          focus && desktop && "l-canvas-main--focus",
         )}
       >
         {children}

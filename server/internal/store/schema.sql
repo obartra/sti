@@ -23,9 +23,9 @@ CREATE TABLE IF NOT EXISTS notify_inbox (
 CREATE TABLE IF NOT EXISTS account (
     id          TEXT PRIMARY KEY,   -- opaque, derived from the owner's own key
     ciphertext  BLOB NOT NULL,
-    version     INTEGER NOT NULL,   -- bumped on every write (reserved for later If-Match)
+    version     INTEGER NOT NULL,   -- bumped on every write; gates the X-Version precondition
     updated_at  INTEGER NOT NULL,
-    write_auth  TEXT NOT NULL DEFAULT '', -- hash(account write token); gates overwrite/delete
+    write_auth  TEXT NOT NULL,      -- hash(account write token); gates overwrite/delete
     last_seen_at INTEGER NOT NULL DEFAULT 0 -- epoch ms of the last read OR write; the janitor
                                             -- deletes a backup left untouched past the inactivity
                                             -- window (data minimization; disclosed in Privacy)

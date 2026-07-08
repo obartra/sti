@@ -68,6 +68,18 @@
   max-width: 760px;
 }
 
+/* Desktop onboarding: a short form on a big screen. Narrower than the reading
+   column so the controls hold together, and centered in the height left under
+   the wordmark header (the reserve is slightly larger than the real chrome, so
+   the block sits a touch above true center). min-height, not height: a tall
+   step (the create form with the password section open) grows past it and
+   scrolls normally. */
+.l-canvas-main--focus {
+  max-width: 480px;
+  min-height: calc(100vh - 220px);
+  justify-content: center;
+}
+
 .l-canvas-main--full {
   max-width: 1160px;
 }

@@ -71,33 +71,6 @@
 .sti-iconbtn--accent { background: var(--accent-soft); color: var(--text-accent); }
 .sti-iconbtn svg { width: 20px; height: 20px; }
 
-/* ------------------------------------------------------------------ Card --- */
-.sti-card {
-  background: var(--surface-card);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  padding: var(--pad-card);
-}
-.sti-card--flat { box-shadow: none; border: 1px solid var(--border-card); }
-.sti-card--raised { box-shadow: var(--shadow-lg); }
-.sti-card--tint { background: var(--surface-tint); box-shadow: none; }
-.sti-card--pad-sm { padding: var(--space-4); }
-.sti-card--pad-lg { padding: var(--space-7); }
-.sti-card--interactive { cursor: pointer; transition: box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out); }
-.sti-card--interactive:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
-.sti-card--interactive:active { transform: translateY(0); }
-
-/* ----------------------------------------------------------------- Badge --- */
-.sti-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: var(--text-xs); font-weight: var(--weight-semibold);
-  padding: 3px 9px; border-radius: var(--radius-pill);
-  background: var(--surface-sunken); color: var(--text-muted);
-}
-.sti-badge--accent { background: var(--accent-soft); color: var(--text-accent); }
-.sti-badge--count { min-width: 20px; height: 20px; padding: 0 6px; justify-content: center;
-  background: var(--accent); color: var(--white); font-size: var(--text-2xs); }
-
 /* ----------------------------------------------------------------- Input --- */
 .sti-field { display: flex; flex-direction: column; gap: 6px; }
 .sti-field__label { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--text-body); }
@@ -166,24 +139,3 @@ textarea.sti-input { height: auto; min-height: 96px; padding: var(--space-3) var
 .sti-segmented__item:hover { color: var(--text-strong); }
 .sti-segmented__item--active { background: var(--surface-card); color: var(--text-accent); box-shadow: var(--shadow-sm); }
 .sti-segmented__item:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-
-/* --------------------------------------------------------------- ListRow --- */
-.sti-row {
-  display: flex; align-items: center; gap: var(--space-4);
-  width: 100%; padding: var(--space-4); text-align: left;
-  background: var(--surface-card); border: none; border-radius: var(--radius-md);
-  cursor: pointer; transition: background var(--dur-fast) var(--ease-gentle);
-}
-.sti-row:hover { background: var(--surface-sunken); }
-.sti-row:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.sti-row--static { cursor: default; }
-.sti-row--static:hover { background: var(--surface-card); }
-.sti-row__lead { display: inline-flex; align-items: center; justify-content: center;
-  width: 40px; height: 40px; flex: none; border-radius: var(--radius-sm);
-  background: var(--accent-soft); color: var(--text-accent); }
-.sti-row__lead svg { width: 20px; height: 20px; }
-.sti-row__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.sti-row__title { font-size: var(--text-base); font-weight: var(--weight-semibold); color: var(--text-strong); }
-.sti-row__sub { font-size: var(--text-sm); color: var(--text-muted); }
-.sti-row__trail { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text-subtle); }
-.sti-row__trail svg { width: 18px; height: 18px; }

@@ -920,8 +920,8 @@ func (s *Server) handleAccountPut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Optional optimistic-concurrency precondition (doc 22 S8). Absent means an
-	// unconditional last-write-wins overwrite, exactly as before; present asserts the
-	// version the edit was based on, so a stale write is refused rather than clobbering.
+	// unconditional last-write-wins overwrite; present asserts the version the edit
+	// was based on, so a stale write is refused rather than clobbering.
 	expectedVersion, err := parseExpectedVersion(r.Header.Get(contract.HeaderVersion))
 	if err != nil {
 		s.writeError(w, http.StatusBadRequest, contract.ErrBadRequest, "malformed version")

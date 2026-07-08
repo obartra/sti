@@ -276,7 +276,7 @@ async function onboard(
 describe("App onboarding flow", () => {
   it("creates a real account and enters the app as the derived owner", async () => {
     // Start at b1-claim (the landing's claim target).
-    window.history.pushState({}, "", "/claim");
+    window.history.pushState({}, "", "/signup");
     const user = userEvent.setup();
     render(<App store={stubStore(null)} controller={fakeController()} />);
 
@@ -290,7 +290,7 @@ describe("App onboarding flow", () => {
   });
 
   it("enters even when binding a passkey fails (phrase stays the way back)", async () => {
-    window.history.pushState({}, "", "/claim");
+    window.history.pushState({}, "", "/signup");
     const user = userEvent.setup();
     const controller = fakeController();
     // The authenticator declines: enrollment must not block entry.
@@ -304,7 +304,7 @@ describe("App onboarding flow", () => {
   });
 
   it("reports a result and the home badge turns blue (report -> setOwnerState -> derive)", async () => {
-    window.history.pushState({}, "", "/claim");
+    window.history.pushState({}, "", "/signup");
     const user = userEvent.setup();
     // A PrEP user: a clear, complete panel then earns blue (the route exists).
     render(
@@ -381,7 +381,7 @@ describe("App onboarding flow", () => {
   });
 
   it("deleting the account from the danger zone logs out to the landing", async () => {
-    window.history.pushState({}, "", "/claim");
+    window.history.pushState({}, "", "/signup");
     const user = userEvent.setup();
     const controller = fakeController();
     const deleteAccount = vi.fn(() => Promise.resolve());
@@ -409,7 +409,7 @@ describe("App onboarding flow", () => {
   });
 
   it("shows a contentless knock entry in the inbox only when someone knocked", async () => {
-    window.history.pushState({}, "", "/claim");
+    window.history.pushState({}, "", "/signup");
     const user = userEvent.setup();
     const controller = fakeController();
     // Two viewers knocked, neither with a grant key (contentless info row).
@@ -432,7 +432,7 @@ describe("App onboarding flow", () => {
   });
 
   it("a partner-notify ping lights the bell and leads the inbox with a contentless row", async () => {
-    window.history.pushState({}, "", "/claim");
+    window.history.pushState({}, "", "/signup");
     const user = userEvent.setup();
     const controller = fakeController();
     // No knocks: the bell dot here is driven solely by the partner-notify nudge.
@@ -460,7 +460,7 @@ describe("App onboarding flow", () => {
   });
 
   it("creates and revokes a per-contact link from the Links screen", async () => {
-    window.history.pushState({}, "", "/claim");
+    window.history.pushState({}, "", "/signup");
     const user = userEvent.setup();
     render(<App store={stubStore(null)} controller={fakeController()} />);
 
@@ -487,7 +487,7 @@ describe("App onboarding flow", () => {
   });
 
   it("links both ways by opening the return link, no paste (doc 13 path A)", async () => {
-    window.history.pushState({}, "", "/claim");
+    window.history.pushState({}, "", "/signup");
     const user = userEvent.setup();
     const controller = fakeController();
     const ingest = vi.fn((session: OwnerSession) => Promise.resolve(session));
@@ -532,25 +532,22 @@ describe("App onboarding flow", () => {
     const user = userEvent.setup();
     render(<App store={stubStore(null)} controller={fakeController()} />);
 
-    // From the landing, take the login route, open "other ways to log in," then
-    // recover with the phrase.
+    // From the landing, take the login route, open the "other ways" chooser,
+    // pick the phrase way (only that form shows), then recover with the phrase.
     await user.click(await screen.findByRole("button", { name: "Log in" }));
     await user.click(
       await screen.findByRole("button", { name: /Other ways to log in/ }),
     );
-    // The disclosure offers both no-passkey paths; target the phrase field by its
-    // label (the handle + password card is the other one).
+    await user.click(
+      await screen.findByRole("button", { name: /^Recovery phrase/ }),
+    );
+    // One way per screen: the password form is not on this stage.
+    expect(screen.queryByRole("textbox", { name: "Username" })).toBeNull();
     await user.type(
       await screen.findByRole("textbox", { name: "Recovery phrase" }),
       "RECOVER-ME-PHRASE",
     );
-    // Both forms use a "Log in" button; only the phrase one is enabled now
-    // (the password fields are empty), so the enabled one is the phrase form's.
-    const logIns = await screen.findAllByRole("button", { name: "Log in" });
-    const phraseLogIn = logIns.find((b) => !(b as HTMLButtonElement).disabled);
-    if (!phraseLogIn)
-      throw new Error("no enabled 'Log in' for the phrase form");
-    await user.click(phraseLogIn);
+    await user.click(await screen.findByRole("button", { name: "Log in" }));
 
     // The recovered account drives the app (its handle, not the fixture's).
     expect((await screen.findAllByText(/Hi, rosa/)).length).toBeGreaterThan(0);
@@ -562,12 +559,19 @@ describe("App onboarding flow", () => {
     const user = userEvent.setup();
     render(<App store={stubStore(null)} controller={fakeController()} />);
 
-    // Take the login route, open "other ways to log in," then use the username +
-    // password path.
+    // Take the login route, open the "other ways" chooser, pick the username +
+    // password way (only that form shows), then sign in with it.
     await user.click(await screen.findByRole("button", { name: "Log in" }));
     await user.click(
       await screen.findByRole("button", { name: /Other ways to log in/ }),
     );
+    await user.click(
+      await screen.findByRole("button", { name: /^Username and password/ }),
+    );
+    // One way per screen: the phrase form is not on this stage.
+    expect(
+      screen.queryByRole("textbox", { name: "Recovery phrase" }),
+    ).toBeNull();
     await user.type(
       await screen.findByRole("textbox", { name: "Username" }),
       "meow",
@@ -576,12 +580,7 @@ describe("App onboarding flow", () => {
       await screen.findByLabelText("Password"),
       "correct-horse-battery-staple",
     );
-    // Both forms use a "Log in" button; only the password one is enabled now
-    // (the phrase field is empty), so the enabled one is the password form's.
-    const logIns = await screen.findAllByRole("button", { name: "Log in" });
-    const pwLogIn = logIns.find((b) => !(b as HTMLButtonElement).disabled);
-    if (!pwLogIn) throw new Error("no enabled 'Log in' for the password form");
-    await user.click(pwLogIn);
+    await user.click(await screen.findByRole("button", { name: "Log in" }));
 
     // The recovered account drives the app (its handle, not the fixture's).
     expect((await screen.findAllByText(/Hi, rosa/)).length).toBeGreaterThan(0);
