@@ -54,6 +54,13 @@ pre-push gate and runs strictly more than any hand-rolled subset:
 `make ci` mirrors everything CI runs on top of that (integration, e2e, vulncheck,
 smoke). Prefer these targets over running pieces by hand: `lint:styles` and `knip` are
 the two easiest to forget, and they only fail once CI runs after you have pushed.
+Run `make fmt` first when in doubt; formatting drift is the most common `check-root`
+failure and it fixes the whole repo in one pass.
+
+- Size ceilings: never satisfy a length or complexity cap by reformatting or
+  compressing code you are not otherwise touching (that is diff noise, not quality).
+  Decompose the thing you are adding; if a FILE is legitimately over the ceiling, pin
+  it in `passport/eslint.config.js` (`PINNED_LINES`) with a stated reason instead.
 
 - New user-facing UI follows the editorial grammar (doc 37): the passport style-lint
   rejects any new inline `style={}` or raw hex color. Build new screens with the `.e-*`
