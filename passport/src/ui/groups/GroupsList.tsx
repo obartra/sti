@@ -5,7 +5,12 @@
 // and the contact list (doc 31).
 import { Button } from "../../design/components/index.ts";
 import { Plus, Chevron, Lock, Users } from "../../design/icons.tsx";
-import type { GroupRecord, RequestResult } from "../../store/index.ts";
+import {
+  joinStalled,
+  type GroupRecord,
+  type RequestResult,
+} from "../../store/index.ts";
+import { todayEpochDay } from "../../core/clock.ts";
 import { RequestToJoin } from "./RequestToJoin.tsx";
 import {
   GROUPS_COPY as C,
@@ -45,6 +50,9 @@ function GroupRow({
   group: GroupRecord;
   onOpenGroup?: ((id: string) => void) | undefined;
 }) {
+  // A join that never opened (doc 33): the count slot quietly says so instead of
+  // an untrue "Just you"; the detail screen carries the ask-for-a-new-link nudge.
+  const stalled = joinStalled(group, todayEpochDay());
   return (
     <button
       type="button"
@@ -65,7 +73,7 @@ function GroupRow({
           <span aria-hidden className="gr__meta-dot">
             ·
           </span>
-          <span>{memberCount(countOf(group))}</span>
+          <span>{stalled ? C.stillWaiting : memberCount(countOf(group))}</span>
         </span>
       </span>
       <span aria-hidden className="gr__row-trail">

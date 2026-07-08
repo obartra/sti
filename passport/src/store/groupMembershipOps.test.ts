@@ -8,6 +8,8 @@ import {
   removeGroupMember,
   readGroupRoster,
   groupNotifyTargets,
+  joinStalled,
+  GROUP_JOIN_WAIT_DAYS,
 } from "./groupMembershipOps.ts";
 import { notifyPositive, pollPartnerNudge } from "./notifyOps.ts";
 import { parsePartnerPing } from "./partnerNotify.ts";
@@ -27,8 +29,10 @@ import { pseudonymFor } from "../lib/avatars.ts";
 import {
   parseGroupInvite,
   encodeLifecycleLeave,
+  parseLifecyclePayload,
   type GroupInvite,
 } from "./groupInvite.ts";
+import { todayEpochDay } from "../core/clock.ts";
 import { writePing, pollInbox } from "./notifyInbox.ts";
 import { createAccountManager, type AccountManager } from "./account.ts";
 import { createGrantKeyStore } from "./grantKeyStore.ts";
@@ -289,7 +293,7 @@ describe("group membership lifecycle (doc 33, slice 4a)", () => {
     // ACCEPT (a separate account): writes the accept to the lifecycle inbox and
     // records a member-side group with no write token and no Kg yet.
     const invitee = await freshSession(server.api, "sam");
-    const accepted = await acceptGroupInvite(
+    const { session: accepted } = await acceptGroupInvite(
       server.api,
       invitee.accounts,
       invitee.session,
@@ -354,7 +358,7 @@ describe("group membership lifecycle (doc 33, slice 4a)", () => {
     // ACCEPT as main: the chosen face is snapshotted onto the member record now,
     // before any card is published (that waits for the first roster read + Kg).
     const invitee = await freshSession(server.api, "sam");
-    const accepted = await acceptGroupInvite(
+    const { session: accepted } = await acceptGroupInvite(
       server.api,
       invitee.accounts,
       invitee.session,
@@ -391,7 +395,7 @@ describe("group membership lifecycle (doc 33, slice 4a)", () => {
 
     const invitee = await freshSession(server.api, "sam");
     // No identity arg: the default is anonymous, so nothing is snapshotted.
-    const accepted = await acceptGroupInvite(
+    const { session: accepted } = await acceptGroupInvite(
       server.api,
       invitee.accounts,
       invitee.session,
@@ -724,7 +728,7 @@ describe("group request lifecycle (doc 33, slice 4b)", () => {
     });
     const invite = inviteFrom(invited.url);
     const member = await freshSession(server.api, "sam");
-    const accepted = await acceptGroupInvite(
+    const { session: accepted } = await acceptGroupInvite(
       server.api,
       member.accounts,
       member.session,
@@ -773,7 +777,7 @@ describe("group leave hardening: member-minted leave channel (doc 33)", () => {
     });
     const invite = inviteFrom(invited.url);
     const member = await freshSession(server.api, "sam");
-    const accepted = await acceptGroupInvite(
+    const { session: accepted } = await acceptGroupInvite(
       server.api,
       member.accounts,
       member.session,
@@ -833,6 +837,208 @@ describe("group leave hardening: member-minted leave channel (doc 33)", () => {
   });
 });
 
+// One admin with one outstanding invite, parsed and ready to hand to accepters.
+async function invitedGroup(api: ApiClient): Promise<{
+  accounts: AccountManager;
+  session: OwnerSession;
+  groupId: string;
+  invite: GroupInvite;
+}> {
+  const admin = await adminWithGroup(api);
+  const invited = await inviteToGroup(admin.accounts, admin.session, {
+    groupId: admin.groupId,
+  });
+  return {
+    accounts: admin.accounts,
+    session: invited.session,
+    groupId: admin.groupId,
+    invite: inviteFrom(invited.url),
+  };
+}
+
+// The lifecycle payload currently sitting in an invite's inbox, or null when it is
+// empty/wiped, read exactly as the guard and the admin ingest read it.
+async function inboxPayload(api: ApiClient, invite: GroupInvite) {
+  const raw = await pollInbox(api, invite.lifecycleInbox);
+  return raw === null ? null : parseLifecyclePayload(raw);
+}
+
+describe("an invite link admits ONE person (doc 33)", () => {
+  it("accept stamps joinedDay on the member record", async () => {
+    const server = fakeServer();
+    const g = await invitedGroup(server.api);
+    const invitee = await freshSession(server.api, "sam");
+    const accepted = await acceptGroupInvite(
+      server.api,
+      invitee.accounts,
+      invitee.session,
+      { invite: g.invite },
+    );
+    expect(accepted.outcome).toBe("joined");
+    expect(groupOf(accepted.session, g.groupId).joinedDay).toBe(
+      todayEpochDay(),
+    );
+  });
+
+  it("a second accept through the same link is refused: link-used, nothing recorded or clobbered", async () => {
+    const server = fakeServer();
+    const g = await invitedGroup(server.api);
+    const first = await freshSession(server.api, "sam");
+    const { session: firstIn } = await acceptGroupInvite(
+      server.api,
+      first.accounts,
+      first.session,
+      { invite: g.invite },
+    );
+    const firstCardId = groupOf(firstIn, g.groupId).myCardId;
+
+    // A second person opens the same link: refused up front, no record, and the
+    // first accept still sits in the inbox untouched.
+    const second = await freshSession(server.api, "alex");
+    const refused = await acceptGroupInvite(
+      server.api,
+      second.accounts,
+      second.session,
+      { invite: g.invite },
+    );
+    expect(refused.outcome).toBe("link-used");
+    expect(refused.session.blob.groups ?? []).toHaveLength(0);
+    const payload = await inboxPayload(server.api, g.invite);
+    expect(payload?.kind).toBe("accept");
+    expect(payload?.kind === "accept" && payload.cardId).toBe(firstCardId);
+
+    // The admin's ingest therefore admits the FIRST accepter.
+    const ingested = await pollGroupLifecycle(
+      server.api,
+      g.accounts,
+      g.session,
+    );
+    expect(membersOf(ingested, g.groupId).map((m) => m.cardId)).toEqual([
+      firstCardId,
+    ]);
+  });
+
+  it("re-opening a link for a group already joined is an idempotent no-op", async () => {
+    const server = fakeServer();
+    const g = await invitedGroup(server.api);
+    const invitee = await freshSession(server.api, "sam");
+    const { session: joined } = await acceptGroupInvite(
+      server.api,
+      invitee.accounts,
+      invitee.session,
+      { invite: g.invite },
+    );
+    const again = await acceptGroupInvite(
+      server.api,
+      invitee.accounts,
+      joined,
+      {
+        invite: g.invite,
+      },
+    );
+    expect(again.outcome).toBe("joined");
+    expect(again.session.blob.groups).toHaveLength(1);
+    expect(groupOf(again.session, g.groupId).myCardId).toBe(
+      groupOf(joined, g.groupId).myCardId,
+    );
+  });
+
+  it("a bystander's reject does not clobber an un-ingested accept", async () => {
+    const server = fakeServer();
+    const g = await invitedGroup(server.api);
+    const invitee = await freshSession(server.api, "sam");
+    const { session: joined } = await acceptGroupInvite(
+      server.api,
+      invitee.accounts,
+      invitee.session,
+      { invite: g.invite },
+    );
+
+    // Someone else opens the shared link and taps "no thanks": the reject is NOT
+    // written over the waiting accept, so the joiner still gets in.
+    const bystander = await freshSession(server.api, "alex");
+    await rejectGroupInvite(server.api, bystander.session, g.invite);
+    expect((await inboxPayload(server.api, g.invite))?.kind).toBe("accept");
+    const ingested = await pollGroupLifecycle(
+      server.api,
+      g.accounts,
+      g.session,
+    );
+    expect(membersOf(ingested, g.groupId).map((m) => m.cardId)).toEqual([
+      groupOf(joined, g.groupId).myCardId,
+    ]);
+  });
+
+  it("residual: an accept through a revoked link lands dead and reads as stalled after the wait", async () => {
+    const server = fakeServer();
+    const g = await invitedGroup(server.api);
+    const pending = must(pendingOf(g.session, g.groupId)[0], "invite");
+    const revoked = await revokeGroupInvite(server.api, g.accounts, g.session, {
+      groupId: g.groupId,
+      inviteId: pending.inviteId,
+    });
+
+    // The revoke wipe reads exactly like an unused inbox, so the guard fails open
+    // and the accept goes through, into a channel no admin polls (doc 33).
+    const invitee = await freshSession(server.api, "sam");
+    const accepted = await acceptGroupInvite(
+      server.api,
+      invitee.accounts,
+      invitee.session,
+      { invite: g.invite },
+    );
+    expect(accepted.outcome).toBe("joined");
+    const polled = await pollGroupLifecycle(server.api, g.accounts, revoked);
+    expect(membersOf(polled, g.groupId)).toHaveLength(0);
+
+    // The member record is exactly the stalled shape the recovery keys on: not yet
+    // at the wait window on join day, stalled once it passes.
+    const record = groupOf(accepted.session, g.groupId);
+    const joinedDay = must(record.joinedDay, "joinedDay");
+    expect(joinStalled(record, joinedDay)).toBe(false);
+    expect(joinStalled(record, joinedDay + GROUP_JOIN_WAIT_DAYS - 1)).toBe(
+      false,
+    );
+    expect(joinStalled(record, joinedDay + GROUP_JOIN_WAIT_DAYS)).toBe(true);
+  });
+
+  it("joinStalled never fires for an admin, an opened group, or a pre-stamp record", async () => {
+    const server = fakeServer();
+    const g = await invitedGroup(server.api);
+    const invitee = await freshSession(server.api, "sam");
+    const accepted = await acceptGroupInvite(
+      server.api,
+      invitee.accounts,
+      invitee.session,
+      { invite: g.invite },
+    );
+    const record = groupOf(accepted.session, g.groupId);
+    const { joinedDay, ...unstamped } = record;
+    const past = must(joinedDay, "joinedDay") + GROUP_JOIN_WAIT_DAYS;
+
+    // The admin's own record never stalls, however old.
+    expect(joinStalled(groupOf(g.session, g.groupId), past)).toBe(false);
+    // A record without the stamp (nothing to measure from) never stalls.
+    expect(joinStalled(unstamped, past)).toBe(false);
+
+    // Once the group opens (the roster read caches Kg), the stall clears for good.
+    const ingested = await pollGroupLifecycle(
+      server.api,
+      g.accounts,
+      g.session,
+    );
+    expect(membersOf(ingested, g.groupId)).toHaveLength(1);
+    const view = await readGroupRoster(
+      server.api,
+      invitee.accounts,
+      accepted.session,
+      g.groupId,
+    );
+    expect(groupOf(view.session, g.groupId).kg).toBeDefined();
+    expect(joinStalled(groupOf(view.session, g.groupId), past)).toBe(false);
+  });
+});
+
 // One joined member: their own account manager + accepted session, and the card id
 // their group record publishes to. Bundled so a test can read + remove them.
 interface JoinedMember {
@@ -863,9 +1069,12 @@ async function setupWithMembers(
     });
     adminSession = invited.session;
     const m = await freshSession(api, handle);
-    const accepted = await acceptGroupInvite(api, m.accounts, m.session, {
-      invite: inviteFrom(invited.url),
-    });
+    const { session: accepted } = await acceptGroupInvite(
+      api,
+      m.accounts,
+      m.session,
+      { invite: inviteFrom(invited.url) },
+    );
     members.push({
       accounts: m.accounts,
       session: accepted,
@@ -1270,7 +1479,7 @@ describe("group admin disband (doc 33, deleteGroup)", () => {
     });
     const invite = inviteFrom(invited.url);
     const member = await freshSession(server.api, "sam");
-    const accepted = await acceptGroupInvite(
+    const { session: accepted } = await acceptGroupInvite(
       server.api,
       member.accounts,
       member.session,

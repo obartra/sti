@@ -9,6 +9,7 @@ import { Button } from "../../design/components/index.ts";
 import { Lock, Users } from "../../design/icons.tsx";
 import { cx } from "../../lib/cx.ts";
 import type {
+  AcceptInviteOutcome,
   AliasIdentity,
   GroupInvite,
   MeetingKind,
@@ -41,9 +42,13 @@ function Shell({ children }: { children: React.ReactNode }) {
 export interface AcceptInviteProps {
   invite: GroupInvite;
   isLoggedIn: boolean;
-  /** Accept the invite (folds the session); resolves when recorded. `identity` is
-   * the face the joiner appears under to members (doc 33 "show as you"). */
-  onAccept: (invite: GroupInvite, identity?: AliasIdentity) => Promise<void>;
+  /** Accept the invite (folds the session); resolves with how it landed: `joined`,
+   * or `link-used` when the link already admitted someone else (nothing recorded).
+   * `identity` is the face the joiner appears under (doc 33 "show as you"). */
+  onAccept: (
+    invite: GroupInvite,
+    identity?: AliasIdentity,
+  ) => Promise<AcceptInviteOutcome>;
   /** Decline the invite (tells the admin to drop it). */
   onReject: (invite: GroupInvite) => Promise<void>;
   /** After joining, open People to see the roster. */
@@ -65,7 +70,7 @@ export function AcceptInvite({
   hasName = false,
   onBack,
 }: AcceptInviteProps) {
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<AcceptInviteOutcome | null>(null);
   const [busy, setBusy] = useState(false);
   const [identity, setIdentity] = useState<AliasIdentity>("anonymous");
 
@@ -73,7 +78,7 @@ export function AcceptInvite({
     if (busy) return;
     setBusy(true);
     void onAccept(invite, identity)
-      .then(() => setDone(true))
+      .then((outcome) => setDone(outcome))
       .catch(() => undefined)
       .finally(() => setBusy(false));
   };
@@ -83,7 +88,7 @@ export function AcceptInvite({
     onBack?.();
   };
 
-  if (done) {
+  if (done === "joined") {
     return (
       <Shell>
         <div className={cx("e-card", "gr__done")}>
@@ -93,6 +98,24 @@ export function AcceptInvite({
         <Button variant="primary" size="lg" block onClick={onJoined}>
           {C.title}
         </Button>
+      </Shell>
+    );
+  }
+
+  // The link already admitted someone else (doc 33 "an invite link admits ONE
+  // person"): say so plainly and point at the fix, a fresh link. Nothing joined.
+  if (done === "link-used") {
+    return (
+      <Shell>
+        <div className={cx("e-card", "gr__done")}>
+          <div className="gr__done-title">{C.linkUsedTitle}</div>
+          <div className="gr__done-body">{C.linkUsedBody}</div>
+        </div>
+        {onBack && (
+          <Button variant="ghost" size="md" block onClick={onBack}>
+            {C.linkUsedBack}
+          </Button>
+        )}
       </Shell>
     );
   }

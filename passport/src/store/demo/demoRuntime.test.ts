@@ -111,7 +111,9 @@ describe("demo runtime", () => {
       visibility: "public",
       meetingKind: "recurring",
     };
-    const joined = await controller.acceptGroupInvite(session, invite);
+    const accepted = await controller.acceptGroupInvite(session, invite);
+    expect(accepted.outcome).toBe("joined");
+    const joined = accepted.session;
     const group = joined.blob.groups?.find((g) => g.groupId === "g-invite");
     expect(group?.isAdmin).toBe(false);
     expect(group?.handle).toBe("sunday_ride");
@@ -120,7 +122,7 @@ describe("demo runtime", () => {
     expect(joined.blob.groups?.length).toBe(before + 1);
     // Idempotent: accepting the same invite again adds nothing.
     const again = await controller.acceptGroupInvite(joined, invite);
-    expect(again.blob.groups?.length).toBe(before + 1);
+    expect(again.session.blob.groups?.length).toBe(before + 1);
   });
 
   it("requests to join the discoverable group and is joined on redeem", async () => {

@@ -115,6 +115,15 @@ export const GROUPS_COPY = {
   acceptNeedAccount:
     "You need an account to join. Make one, then open this link again.",
   acceptClaimCta: "Create an account",
+  linkUsedTitle: "This link was already used.",
+  linkUsedBody: "An invite link lets one person in. Ask for a new one.",
+  linkUsedBack: "Back",
+
+  // ── A join that never opened (doc 33): a quiet nudge, no promised cause. A slow
+  // admin and a dead link look identical from here, so neither line says which. ──
+  stillWaiting: "Still waiting",
+  stalledNote: "This group hasn't opened yet. Ask for a new invite link.",
+  stalledClearCta: "Remove from your list",
 
   // ── Request to join by name (member) ─────────────────────────────────────────
   requestTitle: "Join a group by name",

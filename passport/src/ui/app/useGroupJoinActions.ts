@@ -1,5 +1,6 @@
 import { useCallback, type RefObject } from "react";
 import type {
+  AcceptInviteOutcome,
   AliasIdentity,
   GroupInvite,
   OwnerSession,
@@ -35,7 +36,7 @@ export interface GroupJoinActions {
   onAcceptGroupInvite: (
     invite: GroupInvite,
     identity?: AliasIdentity,
-  ) => Promise<void>;
+  ) => Promise<AcceptInviteOutcome>;
   onRejectGroupInvite: (invite: GroupInvite) => Promise<void>;
   onRequestToJoin: (handle: string) => Promise<RequestResult>;
 }
@@ -165,16 +166,22 @@ function useGroupJoinerActions({
   "onAcceptGroupInvite" | "onRejectGroupInvite" | "onRequestToJoin"
 > {
   const onAcceptGroupInvite = useCallback(
-    async (invite: GroupInvite, identity?: AliasIdentity) => {
+    async (
+      invite: GroupInvite,
+      identity?: AliasIdentity,
+    ): Promise<AcceptInviteOutcome> => {
       const current = sessionRef.current;
-      if (current === null) return;
-      const updated = await controller.acceptGroupInvite(
+      // Unreachable while logged out (the screen gates on isLoggedIn); "joined"
+      // keeps the no-op harmless if it ever fires.
+      if (current === null) return "joined";
+      const { session, outcome } = await controller.acceptGroupInvite(
         current,
         invite,
         identity,
       );
-      sessionRef.current = updated;
-      setSession(updated);
+      sessionRef.current = session;
+      setSession(session);
+      return outcome;
     },
     [controller, sessionRef, setSession],
   );

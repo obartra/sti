@@ -23,7 +23,7 @@ function invite(handle: string, kind: "event" | "recurring"): GroupInvite {
 }
 
 const actions = {
-  onAccept: () => Promise.resolve(),
+  onAccept: () => Promise.resolve("joined" as const),
   onReject: () => Promise.resolve(),
   onJoined: () => undefined,
   onClaim: () => undefined,
@@ -61,5 +61,22 @@ export const LoggedOut: Story = {
     invite: invite("thursday_run", "recurring"),
     isLoggedIn: false,
     ...actions,
+  },
+};
+
+// The link already admitted someone else (doc 33 "an invite link admits ONE
+// person"): joining lands on the used-link state, with a pointer to a fresh link.
+export const LinkUsed: Story = {
+  args: {
+    invite: invite("thursday_run", "recurring"),
+    isLoggedIn: true,
+    ...actions,
+    onAccept: () => Promise.resolve("link-used" as const),
+  },
+  play: async ({ canvasElement }) => {
+    Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button"))
+      .find((b) => b.textContent.includes("Join"))
+      ?.click();
+    await Promise.resolve();
   },
 };

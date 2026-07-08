@@ -48,6 +48,30 @@ So there are two ways in, and both are consented on both sides:
 - **Request (member-initiated).** Someone finds a public group and requests to join;
   an admin accepts or rejects the request.
 
+**An invite link admits ONE person.** Each invite carries its own one-shot reply
+channel, so a link lets exactly one person in. The client enforces the common case up
+front: accepting a link whose channel already holds a legible reply is refused
+without writing, and the accepter is told the link was used and to ask for a fresh
+one; declining such a link writes nothing (so a bystander's "no thanks" never
+overwrites a waiting accept); re-opening a link for a group you are already in is an
+idempotent no-op.
+Two residual failure modes slip past that guard, and both are invisible at accept
+time: two people accepting the same link in the same moment (the later write wins and
+the earlier accept is never seen), and an accept through a link revoked after it was
+sent (the revoke wipes the channel, the wipe is indistinguishable from an unused
+channel, so the accept lands where no admin is listening). Either way the joiner is
+left waiting on a join the admin will never ingest.
+
+The recovery is member-side. A member's record stamps the day they accepted, and when
+the group still has not opened for them seven days later (GROUP_JOIN_WAIT_DAYS), the
+group row and detail quietly say the group has not opened yet, suggest asking for a
+new invite link, and offer to remove the record. Removing it is a leave: if the join
+was merely slow rather than lost, the admin's eventual ingest finds the leave and
+drops the ghost slot, so the two cases converge cleanly. An admin who simply has not
+opened the app is indistinguishable from a lost join, by design (the channel read is
+existence-uniform), so the copy promises neither cause; it only offers the way
+forward.
+
 And two ways out, which look the same to everyone else:
 
 - **Leave (self).** A member leaves whenever they want.
@@ -189,7 +213,9 @@ The model above is live on both tiers. The pieces:
   visibility; a public handle resolves to an opaque join pointer, the way a findable name
   does (doc 17).
 - **Membership lifecycle:** invite / accept / reject / revoke and request / approve /
-  reject, plus remove and leave, with the roster propagating through the blob.
+  reject, plus remove and leave, with the roster propagating through the blob. An
+  already-used invite link is refused at accept, and a join that never opens surfaces
+  the quiet ask-for-a-new-link recovery above after seven days.
 - **Remove + key rotation:** a remove or leave mints `Kg'`, re-wraps it to the remaining
   members, and everyone republishes; the removed member's reads go uniform, and leave and
   remove are indistinguishable to everyone else.

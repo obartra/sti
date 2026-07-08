@@ -52,10 +52,12 @@ import {
   encodeLifecycleAccept,
   encodeLifecycleReject,
   groupInviteUrl,
+  parseLifecyclePayload,
   type GroupInvite,
 } from "./groupInvite.ts";
 import {
   mintInbox,
+  pollInbox,
   writePing,
   type InboxCapability,
   type NotifyCapability,
@@ -176,13 +178,47 @@ export async function revokeGroupInvite(
   return { root: session.root, blob };
 }
 
+/** How an accept landed: `joined` (the accept was written and the member record
+ * recorded, or we were already in this group, an idempotent re-open), or
+ * `link-used` (the invite channel already carried a legible reply, so the link
+ * admitted someone else; nothing was written or recorded, ask for a fresh link). */
+export type AcceptInviteOutcome = "joined" | "link-used";
+
+/** The session after an accept plus how it landed (doc 33). */
+export interface AcceptGroupInviteResult {
+  readonly session: OwnerSession;
+  readonly outcome: AcceptInviteOutcome;
+}
+
+// The spent-link guard (doc 33 "an invite link admits ONE person"): a legible
+// lifecycle payload already sitting in the invite inbox means the link was used (an
+// accept or reject not yet ingested, or a consumed accept the admin leaves behind).
+// A null read is indistinguishable across empty, decoy, REVOKED (overwritten with
+// random bytes), and unreachable, so the guard fails OPEN there: an accept through a
+// revoked link still writes into a dead channel. That residual mode, and two accepts
+// racing past this guard in the same moment (last write wins, the loser is never
+// ingested), are what the member-side `joinedDay` recovery exists for (joinStalled).
+async function inviteLinkSpent(
+  api: ApiClient,
+  invite: GroupInvite,
+): Promise<boolean> {
+  const prior = await pollInbox(api, invite.lifecycleInbox);
+  return prior !== null && parseLifecyclePayload(prior) !== null;
+}
+
 /**
  * ACCEPT (invitee): derive our member key (safe to hand the admin: HKDF is one-way
  * and the admin already holds `Kg`), mint a fresh card id + write token, seal + write
- * the accept to the INVITE inbox, and record a local member-side group record. We do
+ * the accept to the INVITE inbox, and record a local member-side group record (with
+ * `joinedDay` stamped, so a join the admin never ingests can be noticed later). We do
  * NOT publish a card yet (we have no `Kg`); the next roster poll does that once the
  * admin has added our slot. The card write token is NEVER shared, so only we can
  * overwrite our card.
+ *
+ * Guarded (doc 33): a group we already hold a record for returns `joined` without
+ * writing (an idempotent re-open never duplicates the record or clobbers the
+ * channel), and a link whose inbox already carries a legible reply returns
+ * `link-used` without writing (the link admitted someone else).
  *
  * The ongoing LEAVE channel is a fresh inbox we mint here, NOT the invite inbox. The
  * invite inbox's write token rode in the shareable invite link, so anyone who ever
@@ -202,8 +238,14 @@ export async function acceptGroupInvite(
   accounts: AccountManager,
   session: OwnerSession,
   opts: { invite: GroupInvite; identity?: AliasIdentity },
-): Promise<OwnerSession> {
+): Promise<AcceptGroupInviteResult> {
   const { invite, identity = "anonymous" } = opts;
+  if (session.blob.groups?.some((g) => g.groupId === invite.groupId)) {
+    return { session, outcome: "joined" };
+  }
+  if (await inviteLinkSpent(api, invite)) {
+    return { session, outcome: "link-used" };
+  }
   const memberKey = await deriveGroupMemberKey(session.root, invite.groupId);
   const cardId = randomAliasId();
   const cardWriteToken = randomWriteToken();
@@ -223,25 +265,54 @@ export async function acceptGroupInvite(
     visibility: invite.visibility,
     meetingKind: invite.meetingKind,
     isAdmin: false,
+    joinedDay: todayEpochDay(),
     ...(face.handle !== undefined ? { myHandle: face.handle } : {}),
     ...(face.avatar !== undefined ? { myAvatar: face.avatar } : {}),
   };
   const blob = await accounts.recordJoinedGroup(session.root, group);
-  return { root: session.root, blob };
+  return { session: { root: session.root, blob }, outcome: "joined" };
 }
 
 /**
  * REJECT (invitee): write a reject to the lifecycle inbox so the admin drops the
  * pending invite. We recorded nothing locally on invite, so there is nothing to
- * clean up; the session is returned unchanged.
+ * clean up; the session is returned unchanged. Spent-guarded like accept: a link
+ * whose inbox already carries a legible reply is left alone, so a shared link
+ * opened twice never lets a bystander's "no thanks" overwrite the un-ingested
+ * accept of whoever joined first.
  */
 export async function rejectGroupInvite(
   api: ApiClient,
   session: OwnerSession,
   invite: GroupInvite,
 ): Promise<OwnerSession> {
+  if (await inviteLinkSpent(api, invite)) return session;
   await writePing(api, invite.lifecycleInbox, encodeLifecycleReject());
   return session;
+}
+
+/**
+ * How long a member-side join may sit unopened before the app suggests asking for
+ * a fresh invite link (doc 33). Chosen to sit clearly past "the admin just has not
+ * opened the app this week" while not leaving a dead join lingering for good.
+ */
+export const GROUP_JOIN_WAIT_DAYS = 7;
+
+/**
+ * A member-side join that has waited too long (doc 33): we accepted (`joinedDay`),
+ * the group has never opened for us (no cached `kg`), and the wait has passed
+ * GROUP_JOIN_WAIT_DAYS. A raced or dead invite link and an admin who simply has not
+ * opened the app land here identically, so a true positive cannot be told from a
+ * slow admin; the UI copy must promise neither, only offer a fresh link and a way
+ * to clear the record.
+ */
+export function joinStalled(group: GroupRecord, today: number): boolean {
+  return (
+    !group.isAdmin &&
+    group.kg === undefined &&
+    group.joinedDay !== undefined &&
+    today - group.joinedDay >= GROUP_JOIN_WAIT_DAYS
+  );
 }
 
 /**
