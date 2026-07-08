@@ -262,9 +262,9 @@ mode toggle, no role choice. Scanning a plain shared link from the same screen
 still just opens it, as before.
 
 More than two people connecting at once is the same surface, not a mode: after a
-link completes the screen stays open as a disclosed door, anyone else present
-scans one of the open screens, and every pair links (the open door, doc 25). Two
-people stay the zero-tap default; walking away closes the door.
+link completes each screen stays open as its holder's disclosed door, anyone else
+present sweeps the open screens, and every pair links (the open door, doc 25).
+Two people stay the zero-tap default; walking away closes the door.
 
 ## Groups
 

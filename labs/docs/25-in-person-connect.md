@@ -98,31 +98,29 @@ encounter is links.
 
 How it works:
 
-- **Every connect code carries a dormant room seed.** Beside the personal payload,
-  the shown QR carries an opaque rendezvous pointer and a fresh room key. Between
-  two people the seed is never used: the exchange completes optically and nothing
-  about it is ever sent, so the fully-offline path and the "the pairing never
-  reached us at all" promise are untouched.
-- **The completion screen is a door, open while it is up.** After a link completes
-  the screen stays live: the warm completion, the code still showing, and a plain
-  line saying what the open state means (below). While it is open, and there is
-  signal, the device quietly polls the pointer. Leaving the screen or tapping
-  **Done** closes the door and revokes the pointer, so a photographed code knocks
-  into nothing later.
-- **A third person scans either open screen.** The two-QR exchange means each
-  partner holds the other's seed, so both open screens are the same door. The
-  scanner's phone knocks at the pointer with an ephemeral key (knocks are stored
-  per requester, so simultaneous arrivals cannot collide); the door-holder's
-  device seals the arrived set under the room key at a derived slot; and every
-  device with the door open mints, for the newcomer, the same fresh per-contact
-  bundle the two-person QR carries (per-contact alias and key, per-contact inbox,
-  the signed badge snapshot), seals it to their key, and drops it at a derived,
-  alias-shaped slot. The newcomer does the same for each of them. Pairs already
-  linked in this session are skipped (no duplicate contact between the first
-  two). Each pair completes independently, and each screen fills in the others as
-  they land: a face and a badge per person, the shared encounter date (default
-  today, back-datable). Nothing new for the server: knocks, grants, and
+- **Every open completion screen is its own door.** After a link completes the
+  screen stays live and its code changes meaning: it now shows a door code, an
+  opaque knock pointer and nothing else (no key, no capability, not the consumed
+  offer). While the screen is up, and there is signal, the device quietly polls
+  the pointer. Leaving the screen or tapping **Done** closes the door and revokes
+  the pointer, so a photographed code knocks into nothing later. The two-person
+  exchange itself is untouched: the offer code and its optical, fully-offline
+  swap are exactly what they were.
+- **A newcomer sweeps the open screens.** For a threesome that is two quick scans
+  of screens already held up. Each scan is one leg: the newcomer's phone knocks
+  at that screen's pointer with an ephemeral key (knocks are stored per
+  requester, so simultaneous arrivals cannot collide); the holder's device,
+  because its screen is open, answers by minting the same fresh per-contact
+  bundle the two-person exchange mints (a fresh alias and key, a fresh
+  per-contact inbox) plus a fresh one-shot return channel, sealing it all to the
+  newcomer's key over the existing grant channel; the newcomer completes its side
+  and writes its own bundle back through the return channel, and the holder's
+  side completes. Every leg is an ordinary pairwise link with fresh capabilities;
+  nothing that crosses is readable by anyone but that pair, there is no shared
+  room key, and nothing new exists for the server: knocks, sealed grants, and
   alias-shaped existence-uniform blobs, all shapes it already stores blind.
+- **Each screen fills in as legs land**: a face and a badge per person, the
+  encounter recorded on each fresh link, every one individually revocable.
 
 **Holding the door open is the consent, and one quiet line says so.** The open
 screen carries a single short sentence (a doc-21 copy pass sets it; the direction
@@ -133,7 +131,9 @@ open state, not by a per-arrival tap. This is the in-person shape of the locked
 "a scan proposes, both sides confirm, it never silently binds" rule: nothing
 links while your screen is closed, the open state is deliberate and yours to
 end, and the moment it covers is one you physically chose, among people you
-chose to be with. Every link it forms is as revocable as any contact.
+chose to be with. Because each door is one person's own screen, holding it open
+only ever consents to links with YOU: nobody's open door admits links between
+two other people. Every link it forms is as revocable as any contact.
 
 Values, unchanged from the two-person gesture: linking is never conditional on
 status, all-blue is a warm acknowledgement and never a certificate, and a gray in
@@ -151,8 +151,8 @@ quadratic in links by design); a big set that wants one shared thing is a group
 (doc 33).
 
 Nothing pins the code to a room: pasted into the chat where the night is being
-planned, the same rendezvous links the same people ahead of time, for as long as
-the sharer keeps their door open. The in-person gesture is the designed surface;
+planned, the same door links the same people ahead of time, for as long as the
+sharer keeps their screen open. The in-person gesture is the designed surface;
 the remote use simply falls out of the mechanism.
 
 ## What crosses in the QR
@@ -170,14 +170,10 @@ in-person extras in the fragment:
   day it was asserted, so a replayed or stale code never shows an old blue. Always
   included: status is shown at the moment of connecting, and the snapshot crossing
   optically between two people standing together is what makes it trustworthy,
-- the dormant room seed (an opaque rendezvous pointer and a fresh room key) that
-  lets a third person join while the door is open (see "the door stays open").
-  Unused between two people, and nothing about it is sent anywhere unless someone
-  actually joins. Pending, with the open door.
-
 The encounter is recorded as the link's created day (today); letting the pair
 back-date it is a pending piece. A few hundred bytes, comfortably inside a
-scannable QR.
+scannable QR. The completion screen's DOOR code (see "the door stays open") is a
+separate, smaller payload: an opaque knock pointer and nothing else.
 
 ## Completion: warm if both blue, neutral if one is gray (values)
 
