@@ -1,21 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { parseScannedCode } from "../../store/index.ts";
-import type { ScannedCode } from "../../store/index.ts";
+import { parseScannedLink } from "../../store/index.ts";
+import type { AliasLink } from "../../store/index.ts";
 import { Button } from "../../design/components/index.ts";
 import { X } from "../../design/icons.tsx";
 import "./connect.css";
 
 /* The in-app QR scanner (doc 16). Opens the camera, samples frames, and decodes
-   with jsQR. A scanned code is untrusted: only a well-formed passport link
-   resolves (parseScannedCode: the strict alias-link shape, plus the contact
-   invite riding it when the code is one), and we open the parsed payload inside
-   our own resolution flow, never navigate to the scanned URL, so a malicious QR
-   can't redirect the viewer off-site; any other code is ignored and scanning
-   continues. The camera plumbing is browser-only and can't run in jsdom; the
-   security-critical decode-and-route decision lives in parseScannedCode, which
-   is unit-tested, and the camera-error mapping lives in cameraStatus, also
-   unit-tested. */
+   with jsQR. A scanned code is untrusted: only a well-formed alias link resolves
+   (parseScannedLink), and we open the parsed id/key inside our own resolution
+   flow, never navigate to the scanned URL, so a malicious QR can't redirect the
+   viewer off-site; any other code is ignored and scanning continues. The camera
+   plumbing is browser-only and can't run in jsdom; the security-critical
+   decode-and-route decision lives in parseScannedLink, which is unit-tested, and
+   the camera-error mapping lives in cameraStatus, also unit-tested. */
 
 const COPY = {
   title: "Scan a code",
@@ -29,7 +27,9 @@ const COPY = {
   close: "Close",
 } as const;
 
-type Status = "scanning" | "denied" | "no-camera" | "unsupported";
+/** The scanner's lifecycle: live, or one of the honest camera-failure states. */
+export type ScanStatus = "scanning" | "denied" | "no-camera" | "unsupported";
+type Status = ScanStatus;
 type Decoder = (typeof import("jsqr"))["default"];
 
 // Map a getUserMedia rejection to the status the viewer should see. A permission
@@ -50,21 +50,28 @@ export function cameraStatus(err: unknown): Exclude<Status, "scanning"> {
   return "unsupported";
 }
 
-// Sample one video frame and decode it: returns a valid passport code, or null
-// (frame not ready, no QR, or a QR that is not a passport link).
-function scanFrame(
+// One frame-sampling rig: the offscreen canvas the video is drawn into and the
+// lazily-loaded decoder, bundled so scanFrame stays within the parameter cap.
+interface FrameRig {
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  decode: Decoder;
+}
+
+// Sample one video frame and decode it: returns whatever `parse` accepts, or
+// null (frame not ready, no QR, or a QR the parser rejects).
+function scanFrame<T>(
   video: HTMLVideoElement,
-  canvas: HTMLCanvasElement,
-  ctx: CanvasRenderingContext2D,
-  decode: Decoder,
-): ScannedCode | null {
+  rig: FrameRig,
+  parse: (text: string) => T | null,
+): T | null {
   if (video.readyState !== video.HAVE_ENOUGH_DATA) return null;
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const found = decode(frame.data, frame.width, frame.height);
-  return found === null ? null : parseScannedCode(found.data);
+  rig.canvas.width = video.videoWidth;
+  rig.canvas.height = video.videoHeight;
+  rig.ctx.drawImage(video, 0, 0, rig.canvas.width, rig.canvas.height);
+  const frame = rig.ctx.getImageData(0, 0, rig.canvas.width, rig.canvas.height);
+  const found = rig.decode(frame.data, frame.width, frame.height);
+  return found === null ? null : parse(found.data);
 }
 
 // Open the camera, preferring the rear one but not requiring it. facingMode is a
@@ -83,16 +90,20 @@ async function openCamera(media: MediaDevices): Promise<MediaStream> {
   }
 }
 
-// Open the camera and decode frames until a valid passport link is found. The
-// effect runs once; onResult is read through a ref so a changing callback never
-// tears down and reopens the stream.
-function useQrScan(
+// Open the camera and decode frames until `parse` accepts one. The effect runs
+// once; onResult and parse are read through refs so changing callbacks never
+// tear down and reopen the stream. Exported for the in-person linkup screen
+// (doc 25), which runs the same camera beside its own shown code.
+export function useQrScan<T>(
   videoRef: RefObject<HTMLVideoElement | null>,
-  onResult: (code: ScannedCode) => void,
+  parse: (text: string) => T | null,
+  onResult: (result: T) => void,
 ): Status {
   const [status, setStatus] = useState<Status>("scanning");
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
+  const parseRef = useRef(parse);
+  parseRef.current = parse;
 
   useEffect(() => {
     // `mediaDevices` is absent in insecure contexts / old browsers; the DOM
@@ -117,10 +128,14 @@ function useQrScan(
         if (!done) raf = requestAnimationFrame(tick);
         return;
       }
-      const code = scanFrame(video, canvas, ctx, decode);
-      if (code !== null) {
+      const result = scanFrame(
+        video,
+        { canvas, ctx, decode },
+        parseRef.current,
+      );
+      if (result !== null) {
         done = true;
-        onResultRef.current(code);
+        onResultRef.current(result);
         return;
       }
       raf = requestAnimationFrame(tick);
@@ -180,7 +195,8 @@ function Viewfinder({
   );
 }
 
-function messageFor(status: Exclude<Status, "scanning">): string {
+/** The honest one-liner for a camera-failure state (shared with the linkup). */
+export function cameraMessage(status: Exclude<ScanStatus, "scanning">): string {
   if (status === "denied") return COPY.denied;
   if (status === "no-camera") return COPY.noCamera;
   return COPY.unsupported;
@@ -196,7 +212,7 @@ function ScanMessage({
   return (
     <>
       <div className="qrs__title">{COPY.title}</div>
-      <div className="qrs__hint">{messageFor(status)}</div>
+      <div className="qrs__hint">{cameraMessage(status)}</div>
       <Button variant="secondary" size="lg" onClick={onBack}>
         {COPY.close}
       </Button>
@@ -205,14 +221,14 @@ function ScanMessage({
 }
 
 export interface QrScannerProps {
-  /** Called once with the parsed code when a valid passport QR is decoded. */
-  onResult: (code: ScannedCode) => void;
+  /** Called once with the parsed link when a valid passport QR is decoded. */
+  onResult: (link: AliasLink) => void;
   onBack: () => void;
 }
 
 export function QrScanner({ onResult, onBack }: QrScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const status = useQrScan(videoRef, onResult);
+  const status = useQrScan(videoRef, parseScannedLink, onResult);
 
   return (
     <div className="qrs">

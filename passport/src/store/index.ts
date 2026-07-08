@@ -71,6 +71,13 @@ export {
   type ContactInvite,
   type ScannedCode,
 } from "./contactInvite.ts";
+export {
+  offerUrlWithBadge,
+  parseScannedConnect,
+  freshSnapshotBadge,
+  type BadgeSnapshot,
+  type ScannedConnect,
+} from "./linkup.ts";
 export { normalizeCircleMembers } from "./circles.ts";
 export {
   mintGroupKey,

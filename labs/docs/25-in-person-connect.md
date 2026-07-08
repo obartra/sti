@@ -1,6 +1,6 @@
 # 25 - In-person connect (the linkup)
 
-## Status: PROPOSED (design)
+## Status: the two-person gesture is BUILT (the unified show+scan screen, the symmetric offer exchange, the completion states, and the walk-away discard). Pending: the fully-offline offer mint, the back-datable encounter date, and the open door (more than two).
 
 Two people who are physically together connect in one shared gesture, instead of one
 of them texting a link later. Internally this is the "linkup" from
@@ -54,6 +54,10 @@ connection sooner, and could support an optional one-scan variant. We auto-detec
 connectivity with the signals we already use (the reconnect/catch-up path), but the
 default is always the QR exchange, so there is no jarring mode switch.
 
+As built, minting the offer is still an online publish (the screen is honest
+about it and offers a retry); making that mint ride the offline queue, so the
+whole gesture works with no signal, is the pending piece of this section.
+
 ## The connect screen (simultaneous show + scan, zero taps)
 
 A single unified component does BOTH at once: it displays your QR code and runs the
@@ -77,23 +81,103 @@ Camera + QR are the only cross-platform, offline proximity primitive a web app h
 (see "Native" below), and we already have a scanner (`QrScanner`) and QR generation
 (the share sheet), so this reuses existing pieces.
 
+## More than two: the door stays open
+
+Two is the common case and keeps its zero taps: point cameras, done, walk away.
+More than two is not a mode and has no upfront question; it is the same gesture
+left open a moment longer, and every pair present ends up holding exactly what the
+two-person exchange gives (the mutual contact link and the shared encounter date,
+which is what makes a later positive report quietly reach the right people).
+
+What it deliberately is NOT: a group (doc 33). Nothing is named, nothing persists,
+there is no admin and no roster afterward. The open moment evaporates and leaves
+only the pairwise links, each one an ordinary contact: individually revocable,
+renameable, expiring per the usual defaults, notifying over its own per-contact
+channels. A standing set of people who want a shared surface is a group; an
+encounter is links.
+
+How it works:
+
+- **Every connect code carries a dormant room seed.** Beside the personal payload,
+  the shown QR carries an opaque rendezvous pointer and a fresh room key. Between
+  two people the seed is never used: the exchange completes optically and nothing
+  about it is ever sent, so the fully-offline path and the "the pairing never
+  reached us at all" promise are untouched.
+- **The completion screen is a door, open while it is up.** After a link completes
+  the screen stays live: the warm completion, the code still showing, and a plain
+  line saying what the open state means (below). While it is open, and there is
+  signal, the device quietly polls the pointer. Leaving the screen or tapping
+  **Done** closes the door and revokes the pointer, so a photographed code knocks
+  into nothing later.
+- **A third person scans either open screen.** The two-QR exchange means each
+  partner holds the other's seed, so both open screens are the same door. The
+  scanner's phone knocks at the pointer with an ephemeral key (knocks are stored
+  per requester, so simultaneous arrivals cannot collide); the door-holder's
+  device seals the arrived set under the room key at a derived slot; and every
+  device with the door open mints, for the newcomer, the same fresh per-contact
+  bundle the two-person QR carries (per-contact alias and key, per-contact inbox,
+  the signed badge snapshot), seals it to their key, and drops it at a derived,
+  alias-shaped slot. The newcomer does the same for each of them. Pairs already
+  linked in this session are skipped (no duplicate contact between the first
+  two). Each pair completes independently, and each screen fills in the others as
+  they land: a face and a badge per person, the shared encounter date (default
+  today, back-datable). Nothing new for the server: knocks, grants, and
+  alias-shaped existence-uniform blobs, all shapes it already stores blind.
+
+**Holding the door open is the consent, and one quiet line says so.** The open
+screen carries a single short sentence (a doc-21 copy pass sets it; the direction
+is "anyone who scans this joins you"), never a stacked explainer: the product
+makes the right call and does not tax the moment with disclosures. The scanner
+confirms once on their side; the people already present consent by holding the
+open state, not by a per-arrival tap. This is the in-person shape of the locked
+"a scan proposes, both sides confirm, it never silently binds" rule: nothing
+links while your screen is closed, the open state is deliberate and yours to
+end, and the moment it covers is one you physically chose, among people you
+chose to be with. Every link it forms is as revocable as any contact.
+
+Values, unchanged from the two-person gesture: linking is never conditional on
+status, all-blue is a warm acknowledgement and never a certificate, and a gray in
+the room gets the same single neutral routing-to-care line, never a verdict and
+never a count.
+
+Honesty about the trade: the two-person exchange is optical, so the pairing never
+reaches the server at all; a late joiner's bundles cross the server sealed, at
+opaque ids, but they do cross it, so the open door does not get to borrow the
+"never sent to us" promise and its copy must not claim it. The door also needs
+signal to listen; with no signal it simply is not listening (the screen stays
+calm about it) and people link in pairs, which stays fully offline. And it is
+sized for an encounter (a handful of people,
+quadratic in links by design); a big set that wants one shared thing is a group
+(doc 33).
+
+Nothing pins the code to a room: pasted into the chat where the night is being
+planned, the same rendezvous links the same people ahead of time, for as long as
+the sharer keeps their door open. The in-person gesture is the designed surface;
+the remote use simply falls out of the mechanism.
+
 ## What crosses in the QR
 
 NOT the 4096-byte server blob (too big to scan, and it is padded for existence-
-uniformity on the server, which an in-person transfer does not need). Instead a
-compact payload the owner's device builds from data it already holds:
+uniformity on the server, which an in-person transfer does not need). The offer
+IS a contact-invite URL (doc 13 path A, one codec for both carriers) plus the
+in-person extras in the fragment:
 
-- the alias id and the read key (or capability) for this connection,
+- the alias id and the read key for this connection,
 - the per-contact inbox / notify capability, so the other side can later send a
   contentless nudge (per-contact, so two of your connections still cannot correlate
   you),
-- an ephemeral grant public key (the existing knock/grant primitive),
-- the encounter date (default today, back-datable),
-- a compact, signed current-badge assertion (blue/gray + labels, signed by the alias
-  key). Always included: status is shown at the moment of connecting. The snapshot is
-  correct because the two people are standing in front of each other right now.
+- a compact badge snapshot (blue/gray plus the day it held), honored only on the
+  day it was asserted, so a replayed or stale code never shows an old blue. Always
+  included: status is shown at the moment of connecting, and the snapshot crossing
+  optically between two people standing together is what makes it trustworthy,
+- the dormant room seed (an opaque rendezvous pointer and a fresh room key) that
+  lets a third person join while the door is open (see "the door stays open").
+  Unused between two people, and nothing about it is sent anywhere unless someone
+  actually joins. Pending, with the open door.
 
-A few hundred bytes, comfortably inside a scannable QR.
+The encounter is recorded as the link's created day (today); letting the pair
+back-date it is a pending piece. A few hundred bytes, comfortably inside a
+scannable QR.
 
 ## Completion: warm if both blue, neutral if one is gray (values)
 
@@ -118,9 +202,9 @@ This is the most values-sensitive surface in the product. Guardrails, non-negoti
   variant of the same handshake.
 - `aliasLink`, `QrScanner` (camera), the `Connect` screen, the share-sheet QR
   generator, the per-contact inboxes, and the offline-sync queue are all reused.
-- New: the unified show/scan component, the completion screen, encounter-date capture,
-  the compact in-person payload format, and wiring the link + encounter to land
-  atomically and offline.
+- Built on top: the unified show/scan component (the linkup screen), its
+  completion states, and the offer codec (the contact-invite URL plus the badge
+  snapshot). Encounter back-dating and the offline-queued mint are pending.
 
 ## How a NATIVE app would make this materially better (flag)
 
@@ -174,12 +258,27 @@ touches nothing), but the seamlessness ceiling is real and worth recording.
    doc-21 copy pass before ship, but the direction is settled: "There is free testing
    nearby" tone, pointing to care resources. Not a verdict, not a risk signal.
 
+4. **More than two rides an open door, and holding it open is the consent.** No
+   upfront "how many people?" question and no per-arrival confirm tap for the
+   people already linked: the completion screen stays open as a disclosed door,
+   and keeping it open is the standing confirm (the scanner still confirms
+   explicitly). Chosen over a per-arrival tap because the door is open exactly at
+   a moment the person physically chose, among people they chose to be with; a
+   confirm tap would tax precisely the moment the gesture exists for. The
+   trade-off is a standing rather than per-link confirm for the present parties,
+   bounded by the plain disclosure, the one-gesture close, and every formed link
+   being individually revocable.
+
 ## Phasing
 
-- **v1:** offline two-QR exchange, simultaneous show+scan screen, status shown at
-  completion (badge snapshot always in QR). Ship the "we don't know who you're
-  connected to" promise with it.
+- **v1 (built):** the two-QR exchange, the simultaneous show+scan screen, status
+  shown at completion (badge snapshot always in QR), and the walk-away discard.
+- **Offline mint (pending):** the offer publish rides the offline queue so the
+  whole gesture works with no signal; the "we don't know who you're connected to"
+  promise ships at full strength with it.
 - **Enhancement:** NFC tap on Android as a progressive enhancement over the scan.
+- **The open door (more than two, pending):** it reuses the knock/grant
+  primitives and alias-shaped drops, and needs signal to listen.
 - **Out of scope (recorded above):** the native-only seamless paths.
 
 ## Validation

@@ -4,8 +4,8 @@ The app does more than it needs to. This doc fixes the shape: the handful of job
 the product actually does, the navigation that exposes them, and the simplifications
 that get us there. It is the owner for the app's top-level information architecture.
 The Home / Links / People / Care bar it describes has shipped; the parts still pending
-are called out inline where they come up (the biggest are the Privacy-to-Settings
-rename and the "be scanned" half of the in-person gesture).
+are called out inline where they come up (the biggest is the Privacy-to-Settings
+rename).
 Where it touches areas other docs already plan, it folds those plans in and says so,
 rather than restating them: it sets the current navigation and the People/Groups
 shape (folding in the earlier Connect/Circles plans), and it builds on the
@@ -255,12 +255,16 @@ handle search and no way to be looked up.
 
 ## Scan, and be scanned
 
-Today the app can scan a code but cannot *show* one to be scanned. Finish the
-symmetric gesture from [25-in-person-connect](25-in-person-connect.md): one screen
-shows your code and runs the scanner at once, both people point cameras, the first
-read completes the two-way link silently. No "show vs scan" mode toggle, no role
-choice. It works fully offline (the card bytes can cross in the QR), which makes it
-the more private path, not a degraded one.
+The symmetric gesture from [25-in-person-connect](25-in-person-connect.md) is
+built: one screen shows your code and runs the scanner at once, both people point
+cameras, the first read completes the two-way link silently. No "show vs scan"
+mode toggle, no role choice. Scanning a plain shared link from the same screen
+still just opens it, as before.
+
+More than two people connecting at once is the same surface, not a mode: after a
+link completes the screen stays open as a disclosed door, anyone else present
+scans one of the open screens, and every pair links (the open door, doc 25). Two
+people stay the zero-tap default; walking away closes the door.
 
 ## Groups
 

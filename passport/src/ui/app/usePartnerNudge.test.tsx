@@ -69,6 +69,7 @@ function stubController(
     revokeAlias: unused,
     acceptContactInvite: unused,
     ingestContactReturn: unused,
+    completeInPersonLinkup: unused,
     notifyContactsOfPositive: unused,
     hasPartnerNudge,
     createCircle: unused,

@@ -17,6 +17,7 @@ import { redeemGrant } from "./grant.ts";
 import { parsePublicCard } from "./publicCard.ts";
 import { requesterHash } from "./knock.ts";
 import { parseContactInvite } from "./contactInvite.ts";
+import { offerUrlWithBadge, parseScannedConnect } from "./linkup.ts";
 import { lockNotifyDraft, parsePartnerPing } from "./partnerNotify.ts";
 import { pollInbox, mintNotify } from "./notifyInbox.ts";
 import { todayEpochDay, nowMs } from "../core/clock.ts";
@@ -197,6 +198,89 @@ describe("owner session against a live blind store", () => {
     const ping = await pollInbox(b.api, bInboxForA);
     if (ping === null) throw new Error("expected B to receive the ping");
     expect(parsePartnerPing(ping)?.kind).toBe("partner-notify");
+  });
+
+  it("the in-person linkup completes both sides from their own scans (doc 25)", async () => {
+    const store = createBackendStore(createApiClient(baseUrl));
+    const nowDay = todayEpochDay();
+    const a = controller(fakePasskey());
+    const { session: aSession } = await a.ctl.signUp("alex");
+    const b = controller(fakePasskey());
+    const { session: bSession } = await b.ctl.signUp("blair");
+
+    // Each device mints its own offer (what its shown QR carries): a pending
+    // contact + the invite URL, with the badge snapshot appended.
+    const aOffer = await a.ctl.createContactLink(aSession, "");
+    const bOffer = await b.ctl.createContactLink(bSession, "");
+    const aUrl = offerUrlWithBadge(aOffer.url, { badge: "gray", day: nowDay });
+    const bUrl = offerUrlWithBadge(bOffer.url, { badge: "blue", day: nowDay });
+
+    // A's camera catches B's screen and vice versa; each side classifies the
+    // scan and completes its OWN pending contact, in whatever order.
+    const aScan = parseScannedConnect(bUrl);
+    const bScan = parseScannedConnect(aUrl);
+    if (aScan?.kind !== "offer" || bScan?.kind !== "offer") {
+      throw new Error("expected both scans to classify as offers");
+    }
+    expect(aScan.snapshot).toEqual({ badge: "blue", day: nowDay });
+    expect(bScan.snapshot).toEqual({ badge: "gray", day: nowDay });
+    const aDone = await a.ctl.completeInPersonLinkup(
+      aOffer.session,
+      aOffer.contact.id,
+      aScan.invite,
+    );
+    const bDone = await b.ctl.completeInPersonLinkup(
+      bOffer.session,
+      bOffer.contact.id,
+      bScan.invite,
+    );
+
+    const aContact = aDone.blob.contacts[0];
+    const bContact = bDone.blob.contacts[0];
+    if (aContact?.theirStatusAlias === undefined) {
+      throw new Error("A's linkup did not complete");
+    }
+    if (bContact?.theirStatusAlias === undefined) {
+      throw new Error("B's linkup did not complete");
+    }
+
+    // Each side reads the other's live status through the exchanged alias.
+    expect(await store.resolveAlias(aContact.theirStatusAlias)).toEqual(
+      deriveOwnerCard(
+        bSession.blob.state,
+        pseudonymFor(aContact.theirStatusAlias.id),
+        nowDay,
+      ),
+    );
+    expect(await store.resolveAlias(bContact.theirStatusAlias)).toEqual(
+      deriveOwnerCard(
+        aSession.blob.state,
+        pseudonymFor(bContact.theirStatusAlias.id),
+        nowDay,
+      ),
+    );
+
+    // The notify channels exchanged exactly like a remote link: each side holds
+    // the other's per-contact inbox, so the partner-notify loop works here too.
+    expect(aContact.theirNotify).toEqual(bContact.myInbox);
+    expect(bContact.theirNotify).toEqual(aContact.myInbox);
+  });
+
+  it("walking away discards the offer: the shown code stops resolving", async () => {
+    const store = createBackendStore(createApiClient(baseUrl));
+    const a = controller(fakePasskey());
+    const { session } = await a.ctl.signUp("alex");
+    const offer = await a.ctl.createContactLink(session, "");
+    const link = caps(offer.contact.alias);
+
+    // Until discarded, the shown offer resolves (the other side may scan first).
+    expect(await store.resolveAlias(link)).not.toBeNull();
+
+    // Closing the screen before this side's scan landed revokes + drops it, so
+    // a half-gesture leaves nothing behind and the code goes uniformly dark.
+    const after = await a.ctl.revokeContact(offer.session, offer.contact.id);
+    expect(after.blob.contacts).toHaveLength(0);
+    expect(await store.resolveAlias(link)).toBeNull();
   });
 
   it("ingest and accept guard the exchange edges (no-match, no-ref, double, return)", async () => {

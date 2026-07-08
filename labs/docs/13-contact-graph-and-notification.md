@@ -200,6 +200,13 @@ scan UI behind a real-device check.
 **C. capability handoff (remote persistent mutual).** A convenience wrapper over A for an ongoing
 mutual link; deferred until A is solid.
 
+**D. the open door (in person, more than two).** Not a fourth kind of link: it batches the same
+exchange. The in-person completion screen stays open as a disclosed door; a late scanner knocks at
+a rendezvous carried in the shown code, and blind drops run the A/B capability swap between every
+pair present, each pair ending up with exactly the pairwise result (mutual link, per-contact
+channels, shared encounter date). Consent shape and mechanics owned by
+[25-in-person-connect](25-in-person-connect.md); no new server surface, no group object.
+
 ## Partner notification loop
 
 1. **Report a positive** (already wired to owner state). The client composes a **draft batch**: the

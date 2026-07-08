@@ -1,11 +1,11 @@
 import { Connect } from "../../connect/Connect.tsx";
 import { PrivacySection } from "../../connect/parts.tsx";
-import { QrScanner } from "../../connect/QrScanner.tsx";
+import { Linkup } from "../../connect/Linkup.tsx";
 import { DemoScanner } from "../../connect/DemoScanner.tsx";
-import type { ScannedCode } from "../../../store/index.ts";
 import { GroupsSlot } from "./groupScreens.tsx";
 import { todayEpochDay } from "../../../core/clock.ts";
-import type { ScreenRenderers } from "./context.ts";
+import { offerUrlWithBadge } from "../../../store/index.ts";
+import type { ScreenCtx, ScreenRenderers } from "./context.ts";
 import "../../connect/connect.css";
 
 export const peopleRenderers: ScreenRenderers = {
@@ -30,24 +30,41 @@ export const peopleRenderers: ScreenRenderers = {
       <PrivacySection />
     </div>
   ),
-  // Scan someone's QR to open their passport: a decoded code routes to the public
-  // resolution screen exactly like opening the same link in a browser, so a
-  // scanned contact invite keeps its notify capability (and a return leg its ref)
-  // and offers the add/connect affordance there. The demo has no camera and
-  // nothing real to point at, so it simulates the scan and hands back the seeded
-  // peer instead of opening a dead viewfinder (doc 28).
-  scan: ({ nav, demoMode }) => {
-    const onResult = ({ link, invite }: ScannedCode) =>
-      nav.go("a2-public", {
-        id: link.id,
-        key: link.key,
-        ...(invite !== undefined ? { notify: invite.notify } : {}),
-        ...(invite?.ref !== undefined ? { ref: invite.ref } : {}),
-      });
-    return demoMode ? (
-      <DemoScanner onResult={(link) => onResult({ link })} onBack={nav.back} />
+  // Connect in person (doc 25): one screen shows your code and runs the camera
+  // at once. Scanning another connect screen completes the two-way link on this
+  // side; scanning a plain shared link still routes to the public resolution
+  // screen, exactly what scanning did before the gesture existed. The demo has
+  // no camera and nothing real to point at, so it simulates the scan and hands
+  // back the seeded peer instead of opening a dead viewfinder (doc 28).
+  scan: (ctx) => {
+    const onView = (link: { id: string; key: string }) =>
+      ctx.nav.go("a2-public", { id: link.id, key: link.key });
+    return ctx.demoMode ? (
+      <DemoScanner onResult={onView} onBack={ctx.nav.back} />
     ) : (
-      <QrScanner onResult={onResult} onBack={nav.back} />
+      <Linkup
+        ownerBadge={ctx.owner.viewerBadge}
+        createOffer={() => mintOffer(ctx)}
+        complete={ctx.onCompleteLinkup}
+        discard={ctx.onRevokeContact}
+        resolvePeer={(link) => ctx.store.resolveAlias(link)}
+        onViewLink={onView}
+        onExit={ctx.nav.back}
+      />
     );
   },
 };
+
+// This device's offer: a fresh anonymous per-contact link (the standard path-A
+// mint; the person can rename it in People afterward) with today's badge
+// snapshot appended, so status crosses in the QR even with no signal (doc 25).
+async function mintOffer(
+  ctx: ScreenCtx,
+): Promise<{ contactId: string; url: string }> {
+  const minted = await ctx.onCreateContactLink("", "anonymous", null);
+  const url = offerUrlWithBadge(minted.url, {
+    badge: ctx.owner.viewerBadge,
+    day: todayEpochDay(),
+  });
+  return { contactId: minted.contact.id, url };
+}
