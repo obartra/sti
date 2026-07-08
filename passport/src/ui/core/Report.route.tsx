@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { Switch } from "../../design/components/index.ts";
 import { Check, ShieldCheck } from "../../design/icons.tsx";
 import { cx } from "../../lib/cx.ts";
@@ -86,11 +86,14 @@ function RouteToggle({
   label: string;
   hint?: ReactNode;
 }) {
+  const id = useId();
   return (
     <div className="rp__toggle">
       <div className="rp__toggle-row">
-        <div className="rp__toggle-label">{label}</div>
-        <Switch checked={checked} onChange={onChange} />
+        <label className="rp__toggle-label" htmlFor={id}>
+          {label}
+        </label>
+        <Switch id={id} checked={checked} onChange={onChange} />
       </div>
       {hint ? <div className="rp__toggle-hint">{hint}</div> : null}
     </div>
