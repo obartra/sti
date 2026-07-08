@@ -2,6 +2,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { GroupDetail } from "./GroupDetail.tsx";
+import { GROUP_JOIN_WAIT_DAYS } from "../../store/index.ts";
+import { todayEpochDay } from "../../core/clock.ts";
 import type { GroupRecord, RosterMemberView } from "../../store/index.ts";
 
 function group(extra: Partial<GroupRecord>): GroupRecord {
@@ -16,6 +18,21 @@ function group(extra: Partial<GroupRecord>): GroupRecord {
     meetingKind: "recurring",
     isAdmin: true,
     ...extra,
+  };
+}
+
+// A member-side record exactly as accept leaves it: no admin write token and no
+// `kg` yet (the fields are OMITTED, matching the stalled-join shape).
+function memberGroup(joinedDay: number): GroupRecord {
+  return {
+    groupId: "g1",
+    myCardId: "self-card",
+    myCardWriteToken: "w",
+    handle: "thursday_run",
+    visibility: "public",
+    meetingKind: "recurring",
+    isAdmin: false,
+    joinedDay,
   };
 }
 
@@ -132,5 +149,50 @@ describe("GroupDetail", () => {
     await screen.findByText("Leave this group?");
     await user.click(screen.getByRole("button", { name: "Leave" }));
     await waitFor(() => expect(onLeave).toHaveBeenCalled());
+  });
+
+  it("member: a join that never opened shows the quiet recovery, not an empty roster", async () => {
+    const user = userEvent.setup();
+    const onLeave = vi.fn();
+    render(
+      <GroupDetail
+        group={memberGroup(todayEpochDay() - GROUP_JOIN_WAIT_DAYS)}
+        // A never-opened group can only fail closed to an empty roster.
+        onReadRoster={() => Promise.resolve([])}
+        onLeave={onLeave}
+        onDisband={vi.fn()}
+      />,
+    );
+    expect(
+      await screen.findByText(/This group hasn't opened yet/),
+    ).toBeInTheDocument();
+    // No empty "Who's here", and no leave confirm (nothing was ever shared here).
+    expect(screen.queryByText("Who's here")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Leave group" }),
+    ).not.toBeInTheDocument();
+    // Clearing the dead record is one quiet tap.
+    await user.click(
+      screen.getByRole("button", { name: "Remove from your list" }),
+    );
+    expect(onLeave).toHaveBeenCalled();
+  });
+
+  it("member: a fresh join inside the wait window shows the roster path, not the recovery", async () => {
+    render(
+      <GroupDetail
+        group={memberGroup(todayEpochDay())}
+        onReadRoster={() => Promise.resolve([])}
+        onLeave={vi.fn()}
+        onDisband={vi.fn()}
+      />,
+    );
+    expect(await screen.findByText("Who's here")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/This group hasn't opened yet/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Leave group" }),
+    ).toBeInTheDocument();
   });
 });

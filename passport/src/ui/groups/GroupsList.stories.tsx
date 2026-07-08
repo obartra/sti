@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { GroupsList } from "./GroupsList.tsx";
+import { GROUP_JOIN_WAIT_DAYS } from "../../store/index.ts";
+import { todayEpochDay } from "../../core/clock.ts";
 import type {
   GroupMemberSecret,
   GroupRecord,
@@ -57,3 +59,27 @@ export const Populated: Story = { args: { groups } };
 
 // Empty: no groups yet, so the empty-state card with a Create CTA shows.
 export const Empty: Story = { args: { groups: [] } };
+
+// A member-side join that never opened (doc 33): the count slot quietly reads
+// "Still waiting" instead of an untrue "Just you".
+export const StalledJoin: Story = {
+  args: {
+    groups: [
+      group("g1", "thursday_run", {
+        members: [member("a"), member("b")],
+      }),
+      // A member-side record exactly as accept leaves it: no admin write token
+      // and no `kg` (the fields are omitted), past the wait window.
+      {
+        groupId: "g3",
+        myCardId: "g3-card",
+        myCardWriteToken: "w",
+        handle: "sunday_ride",
+        visibility: "public",
+        meetingKind: "recurring",
+        isAdmin: false,
+        joinedDay: todayEpochDay() - GROUP_JOIN_WAIT_DAYS,
+      },
+    ],
+  },
+};

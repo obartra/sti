@@ -8,11 +8,13 @@
 import { useEffect, useState } from "react";
 import { Button } from "../../design/components/index.ts";
 import { Medallion } from "../badge-card.tsx";
-import type {
-  GroupRecord,
-  PendingRequest,
-  RosterMemberView,
+import {
+  joinStalled,
+  type GroupRecord,
+  type PendingRequest,
+  type RosterMemberView,
 } from "../../store/index.ts";
+import { todayEpochDay } from "../../core/clock.ts";
 import {
   AdminControls,
   RemoveControl,
@@ -82,6 +84,22 @@ function Roster({
         ))}
       </div>
       {hasAbsent && <div className="gr__note">{C.absentNote}</div>}
+    </div>
+  );
+}
+
+// A join that never opened (doc 33): we accepted, the group has not opened for
+// GROUP_JOIN_WAIT_DAYS, and whether the admin is just slow or the invite link was
+// already dead is unknowable from here, so the note promises neither. It offers
+// the two ways forward: ask for a fresh link, or clear the record (a leave, so a
+// late ingest by the admin cleans itself up).
+function StalledJoin({ onClear }: { onClear: () => void }) {
+  return (
+    <div>
+      <div className="gr__note">{C.stalledNote}</div>
+      <Button variant="secondary" size="md" block onClick={onClear}>
+        {C.stalledClearCta}
+      </Button>
     </div>
   );
 }
@@ -194,6 +212,12 @@ export function GroupDetail(props: GroupDetailProps) {
   const { group, onReadRoster, onLeave, onDisband } = props;
   const [roster, setRoster] = useState<RosterState>("loading");
   const admin = adminControlsFor(props);
+  // A member whose join never opened (doc 33): the roster read below can only fail
+  // closed to empty, so show the quiet recovery instead of an empty "Who's here".
+  // Clearing it IS a leave (retracts the join if the admin ever ingests it), but
+  // framed for a group that never opened, without the leave confirm's "you stop
+  // sharing" wording (nothing was ever shared here).
+  const stalled = joinStalled(group, todayEpochDay());
 
   useEffect(() => {
     let live = true;
@@ -251,10 +275,17 @@ export function GroupDetail(props: GroupDetailProps) {
         </div>
       </div>
 
-      <div className="gr__note">{C.membershipIsSharing}</div>
-
-      {roster === "loading" ? null : (
-        <Roster members={roster.members} onRemoveMember={removeMember} />
+      {/* One quiet line, never two: the sharing disclosure describes a group that
+          works, so the stalled recovery replaces it rather than stacking under it. */}
+      {stalled ? (
+        <StalledJoin onClear={onLeave} />
+      ) : (
+        <>
+          <div className="gr__note">{C.membershipIsSharing}</div>
+          {roster === "loading" ? null : (
+            <Roster members={roster.members} onRemoveMember={removeMember} />
+          )}
+        </>
       )}
 
       {/* Admin controls (doc 33, slice 7b): invite link + pending invites, and, for a
@@ -270,7 +301,7 @@ export function GroupDetail(props: GroupDetailProps) {
           confirm={C.disbandConfirm}
           onConfirm={onDisband}
         />
-      ) : (
+      ) : stalled ? null : (
         <DangerAction
           cta={C.leaveCta}
           title={C.leaveConfirmTitle}

@@ -18,6 +18,7 @@ import {
   rejectGroupInvite,
   removeGroupMember,
   readGroupRoster,
+  type AcceptGroupInviteResult,
   type GroupInviteResult,
   type GroupRosterView,
 } from "./groupMembershipOps.ts";
@@ -62,14 +63,17 @@ export interface GroupMembershipController {
   ): Promise<OwnerSession>;
   /**
    * Accept a group invite: derive our member key, write the accept to the lifecycle
-   * inbox, and record the member-side group locally. We publish our card only on the
-   * next roster poll, once the admin has added our slot and we hold `Kg`.
+   * inbox, and record the member-side group locally (stamping `joinedDay`). We
+   * publish our card only on the next roster poll, once the admin has added our slot
+   * and we hold `Kg`. `link-used` (nothing written) when the invite channel already
+   * carries a legible reply, i.e. the link admitted someone else; a group we are
+   * already in returns `joined` idempotently.
    */
   acceptGroupInvite(
     session: OwnerSession,
     invite: GroupInvite,
     identity?: AliasIdentity,
-  ): Promise<OwnerSession>;
+  ): Promise<AcceptGroupInviteResult>;
   /** Reject a group invite: tell the admin to drop it; the session is unchanged. */
   rejectGroupInvite(
     session: OwnerSession,

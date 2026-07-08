@@ -34,7 +34,29 @@ import type {
   ContactRecord,
   CircleRecord,
   FindableRegistration,
+  GroupRecord,
 } from "./accountBlob.ts";
+
+// Every AccountBlob field must be handled by mergeAccountBlobs below: the merge
+// REBUILDS the blob, so a field missing here is silently DROPPED on every 409
+// conflict resolution (how `groups` and the recovery fields were once lost). This
+// map makes that a compile error instead: adding a field to AccountBlob fails to
+// build until the merge handles it.
+const MERGED_FIELDS: Record<keyof AccountBlob, true> = {
+  handle: true,
+  aliases: true,
+  contacts: true,
+  state: true,
+  avatar: true,
+  homeDefaultView: true,
+  circles: true,
+  findables: true,
+  groups: true,
+  recoveryName: true,
+  recoveryPhrase: true,
+  passwordSetAt: true,
+};
+void MERGED_FIELDS;
 
 /** Structural equality for the plain JSON values a blob is built from. */
 export function deepEqual(a: unknown, b: unknown): boolean {
@@ -118,32 +140,69 @@ function mergeById<T extends { readonly id: string }>(
   return mergeByKey(base, mine, theirs, (x) => x.id);
 }
 
+// One optional field as a spreadable fragment: `{ key: value }` when set, `{}` when
+// undefined, so the merged blob omits absent optionals exactly like
+// serializeAccountBlob does.
+function optional<K extends string, T>(
+  key: K,
+  value: T | undefined,
+): Partial<Record<K, T>> {
+  return value === undefined ? {} : ({ [key]: value } as Record<K, T>);
+}
+
+// The optional record lists, merged with the same add-or-both / DELETE-WINS rules as
+// the required ones and each returned as a spreadable fragment (omitted when empty,
+// matching serializeAccountBlob). An absent list reads as empty.
+//  - findables merge by NAME: two devices that each claimed a different name offline
+//    both survive. Names are unique (the server rejects a duplicate claim), so a name
+//    is never on both sides with a different alias. A rare offline race can union
+//    past MAX_PUBLIC_NAMES; that stays a valid blob (the cap is a claim-time rule,
+//    not a storage invariant) and self-heals as the owner removes one.
+//  - groups merge by groupId; delete wins matters doubly here, since a resurrected
+//    record would revive dead capabilities (`Kg` and the write tokens, doc 33) after
+//    a leave or disband.
+function mergeOptionalLists(
+  base: AccountBlob,
+  mine: AccountBlob,
+  theirs: AccountBlob,
+): Pick<AccountBlob, "circles" | "findables" | "groups"> {
+  const orEmpty = <T>(xs: readonly T[] | undefined): readonly T[] => xs ?? [];
+  const circles = mergeById<CircleRecord>(
+    orEmpty(base.circles),
+    orEmpty(mine.circles),
+    orEmpty(theirs.circles),
+  );
+  const findables = mergeByKey<FindableRegistration>(
+    orEmpty(base.findables),
+    orEmpty(mine.findables),
+    orEmpty(theirs.findables),
+    (f) => f.name,
+  );
+  const groups = mergeByKey<GroupRecord>(
+    orEmpty(base.groups),
+    orEmpty(mine.groups),
+    orEmpty(theirs.groups),
+    (g) => g.groupId,
+  );
+  return {
+    ...(circles.length > 0 ? { circles } : {}),
+    ...(findables.length > 0 ? { findables } : {}),
+    ...(groups.length > 0 ? { groups } : {}),
+  };
+}
+
 /** Merge `mine` onto `theirs` over their common ancestor `base` (doc 22 S8). */
 export function mergeAccountBlobs(
   base: AccountBlob,
   mine: AccountBlob,
   theirs: AccountBlob,
 ): AccountBlob {
-  const circles = mergeById<CircleRecord>(
-    base.circles ?? [],
-    mine.circles ?? [],
-    theirs.circles ?? [],
-  );
-  // Public names merge by name like any add-or-both list (delete wins): two devices
-  // that each claimed a different name offline both survive. Names are unique (the
-  // server rejects a duplicate claim), so a name is never on both sides with a
-  // different alias. A rare offline race can union past MAX_PUBLIC_NAMES; that stays a
-  // valid blob (the cap is a claim-time rule, not a storage invariant) and self-heals
-  // as the owner removes one, so no live public name is silently orphaned here.
-  const findables = mergeByKey<FindableRegistration>(
-    base.findables ?? [],
-    mine.findables ?? [],
-    theirs.findables ?? [],
-    (f) => f.name,
-  );
-  const handle = pickScalar(base.handle, mine.handle, theirs.handle);
+  // Optional scalars three-way picked like any field; `optional` omits the absent
+  // ones, matching serializeAccountBlob.
+  const pick = <K extends keyof AccountBlob>(k: K) =>
+    optional(k, pickScalar(base[k], mine[k], theirs[k]));
   return {
-    ...(handle !== undefined ? { handle } : {}),
+    ...pick("handle"),
     aliases: mergeById<AliasRecord>(base.aliases, mine.aliases, theirs.aliases),
     contacts: mergeById<ContactRecord>(
       base.contacts,
@@ -152,8 +211,10 @@ export function mergeAccountBlobs(
     ),
     state: pickScalar(base.state, mine.state, theirs.state),
     avatar: pickScalar(base.avatar, mine.avatar, theirs.avatar),
-    // Optional fields are omitted when empty/absent, matching serializeAccountBlob.
-    ...(circles.length > 0 ? { circles } : {}),
-    ...(findables.length > 0 ? { findables } : {}),
+    ...pick("homeDefaultView"),
+    ...mergeOptionalLists(base, mine, theirs),
+    ...pick("recoveryName"),
+    ...pick("recoveryPhrase"),
+    ...pick("passwordSetAt"),
   };
 }

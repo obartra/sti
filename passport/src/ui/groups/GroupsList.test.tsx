@@ -2,6 +2,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { GroupsList } from "./GroupsList.tsx";
+import { GROUP_JOIN_WAIT_DAYS } from "../../store/index.ts";
+import { todayEpochDay } from "../../core/clock.ts";
 import type {
   GroupMemberSecret,
   GroupRecord,
@@ -63,5 +65,33 @@ describe("GroupsList", () => {
 
     await user.click(screen.getByText("thursday_run"));
     expect(onOpenGroup).toHaveBeenCalledWith("g1");
+  });
+
+  it("a join that never opened reads 'Still waiting', not an untrue count", () => {
+    const today = todayEpochDay();
+    // Member-side records exactly as accept leaves them: no admin write token and
+    // no `kg` (the fields are omitted). One is past the wait window (stalled), one
+    // is fresh and still shows the count.
+    const memberGroup = (
+      groupId: string,
+      handle: string,
+      joinedDay: number,
+    ): GroupRecord => ({
+      groupId,
+      myCardId: `${groupId}-card`,
+      myCardWriteToken: "w",
+      handle,
+      visibility: "public",
+      meetingKind: "recurring",
+      isAdmin: false,
+      joinedDay,
+    });
+    const groups = [
+      memberGroup("g1", "thursday_run", today - GROUP_JOIN_WAIT_DAYS),
+      memberGroup("g2", "fern_house", today),
+    ];
+    render(<GroupsList groups={groups} />);
+    expect(screen.getByText("Still waiting")).toBeInTheDocument();
+    expect(screen.getByText("Just you")).toBeInTheDocument();
   });
 });

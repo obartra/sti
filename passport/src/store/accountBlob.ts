@@ -121,7 +121,14 @@ import type { GroupVisibility, MeetingKind } from "./groupObject.ts";
 // there is no account-wide public/private default to store. No migration path: there
 // are no real accounts in the wild yet, so a pre-v20 blob fails the strict version
 // check exactly like any older version.
-const SCHEMA_VERSION = 20;
+//
+// v21 adds the optional member-side `joinedDay` on GroupRecord (doc 33): the epoch
+// day the owner accepted a group invite, stamped at accept so the app can spot a
+// join the admin never ingested (a raced or dead invite link) and quietly offer a
+// fresh link once GROUP_JOIN_WAIT_DAYS have passed without the group opening. No
+// migration path: there are no real accounts in the wild yet, so a pre-v21 blob
+// fails the strict version check exactly like any older version.
+const SCHEMA_VERSION = 21;
 
 /**
  * The most public names one account may hold at once (doc 17). A client-side cap: the
@@ -307,6 +314,13 @@ export interface GroupRecord {
   readonly pendingInvites?: PendingGroupInvite[];
   /** Member-only: the admin<->member channel this member accepted through. */
   readonly lifecycleInbox?: InboxCapability;
+  /**
+   * Member-only: the epoch day the owner accepted the invite (doc 33). A join the
+   * admin never ingests (a raced or dead invite link) leaves the record without
+   * `kg` forever; this stamp is what lets the app notice and offer a fresh link
+   * (joinStalled) instead of waiting silently.
+   */
+  readonly joinedDay?: number;
 }
 
 export interface AccountBlob {
@@ -575,9 +589,9 @@ function isPendingGroupInvite(x: unknown): x is PendingGroupInvite {
   );
 }
 
-// The admin-only roster + pending invites and the member-only lifecycle inbox, each
-// optional (a fresh group, or a record for the other role, omits the ones it does
-// not use) and strictly shaped when present.
+// The admin-only roster + pending invites and the member-only lifecycle inbox and
+// accept-day stamp, each optional (a fresh group, or a record for the other role,
+// omits the ones it does not use) and strictly shaped when present.
 function hasGroupMembership(r: Record<string, unknown>): boolean {
   return (
     (r.members === undefined ||
@@ -585,7 +599,11 @@ function hasGroupMembership(r: Record<string, unknown>): boolean {
     (r.pendingInvites === undefined ||
       (Array.isArray(r.pendingInvites) &&
         r.pendingInvites.every(isPendingGroupInvite))) &&
-    (r.lifecycleInbox === undefined || isInboxCapability(r.lifecycleInbox))
+    (r.lifecycleInbox === undefined || isInboxCapability(r.lifecycleInbox)) &&
+    (r.joinedDay === undefined ||
+      (typeof r.joinedDay === "number" &&
+        Number.isInteger(r.joinedDay) &&
+        r.joinedDay >= 0))
   );
 }
 

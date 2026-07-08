@@ -387,7 +387,7 @@ describe("account blob codec", () => {
     // A group record whose myAvatar is an old/corrupt shape: parse must drop just
     // the avatar (fall back to id-derived), never invalidate the whole account.
     const wire = {
-      v: 20,
+      v: 21,
       handle: "robin",
       aliases: [],
       contacts: [],
@@ -470,7 +470,7 @@ describe("account blob codec", () => {
     avatar: A,
   };
   reject("a non-object", 7);
-  reject("an unknown version", { ...base, v: 21 });
+  reject("an unknown version", { ...base, v: 22 });
   reject("a prior version (v6 is no longer accepted)", {
     v: 6,
     handle: "x",
@@ -498,7 +498,7 @@ describe("account blob codec", () => {
   // A real current-version wire so these reach the findables validator (not the
   // version gate, which `base`'s v7 trips first).
   const vCurrent = {
-    v: 20,
+    v: 21,
     handle: "x",
     aliases: [],
     contacts: [],

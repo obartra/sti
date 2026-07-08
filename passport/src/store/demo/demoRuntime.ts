@@ -262,10 +262,11 @@ function demoGroupMembership(
           meetingKind: invite.meetingKind,
           isAdmin: false,
           lifecycleInbox: invite.lifecycleInbox,
+          joinedDay: todayEpochDay(),
         };
         setBlob({ ...getBlob(), groups: [...(getBlob().groups ?? []), group] });
       }
-      return session();
+      return { session: await session(), outcome: "joined" };
     },
     rejectGroupInvite: () => session(),
     pollGroupLifecycle: () => session(),

@@ -1,7 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
-import type { AccountBlob, AliasRecord, ContactRecord } from "./accountBlob.ts";
+import type {
+  AccountBlob,
+  AliasRecord,
+  ContactRecord,
+  GroupRecord,
+} from "./accountBlob.ts";
 import { mergeAccountBlobs, deepEqual } from "./blobMerge.ts";
 
 function alias(id: string): AliasRecord {
@@ -165,6 +170,67 @@ describe("mergeAccountBlobs (doc 22 S8, 3-way)", () => {
     // Both sides dropped every name back to none: the field is omitted entirely.
     const emptied = mergeAccountBlobs(base, BASE, BASE);
     expect("findables" in emptied).toBe(false);
+  });
+
+  // Regression: the merge REBUILDS the blob, and its field list once lagged the
+  // schema, so a 409 resolution silently dropped groups (an admin's Kg + write
+  // tokens, unrecoverable) and the recovery fields. These pin every such field
+  // through an unrelated conflict merge; MERGED_FIELDS in blobMerge.ts makes the
+  // next lag a compile error.
+  it("groups survive an unrelated conflict merge, on either side", () => {
+    const g = (groupId: string): GroupRecord => ({
+      groupId,
+      groupWriteToken: "w",
+      kg: "k",
+      myCardId: `${groupId}-card`,
+      myCardWriteToken: "w",
+      handle: "book_club",
+      visibility: "private",
+      meetingKind: "event",
+      isAdmin: true,
+    });
+    // I hold a group; they concurrently changed the handle: the group survives.
+    const mine: AccountBlob = { ...BASE, groups: [g("g1")] };
+    const theirs: AccountBlob = { ...BASE, handle: "wren" };
+    const merged = mergeAccountBlobs(BASE, mine, theirs);
+    expect(merged.groups?.map((x) => x.groupId)).toEqual(["g1"]);
+    expect(merged.handle).toBe("wren");
+
+    // A group joined on the OTHER device arrives here through the merge.
+    const fromTheirs = mergeAccountBlobs(BASE, BASE, {
+      ...BASE,
+      groups: [g("g2")],
+    });
+    expect(fromTheirs.groups?.map((x) => x.groupId)).toEqual(["g2"]);
+
+    // Delete wins: a group I left while offline stays gone despite their edit
+    // to it (a resurrected admin record would revive dead capabilities).
+    const withGroup: AccountBlob = { ...BASE, groups: [g("g1")] };
+    const left = mergeAccountBlobs(withGroup, BASE, withGroup);
+    expect("groups" in left).toBe(false);
+  });
+
+  it("recovery fields and the home view preference survive a conflict merge", () => {
+    const mine: AccountBlob = {
+      ...BASE,
+      homeDefaultView: "shared",
+      recoveryName: "robin",
+      recoveryPhrase: "abcdefghijklmnopqrstuvwxyz0123456789-_ABCDE",
+      passwordSetAt: 1_700_000_000_000,
+    };
+    const theirs: AccountBlob = {
+      ...BASE,
+      contacts: [contact("c1"), contact("c2")],
+    };
+    const merged = mergeAccountBlobs(BASE, mine, theirs);
+    expect(merged.homeDefaultView).toBe("shared");
+    expect(merged.recoveryName).toBe("robin");
+    expect(merged.recoveryPhrase).toBe(mine.recoveryPhrase);
+    expect(merged.passwordSetAt).toBe(1_700_000_000_000);
+    expect(merged.contacts.map((c) => c.id).sort()).toEqual(["c1", "c2"]);
+    // Absent on both sides stays omitted, matching serializeAccountBlob.
+    const untouched = mergeAccountBlobs(BASE, BASE, BASE);
+    expect("recoveryPhrase" in untouched).toBe(false);
   });
 
   it("is a no-op when neither side diverged from the ancestor", () => {

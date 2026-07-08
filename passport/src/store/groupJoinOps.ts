@@ -253,7 +253,10 @@ interface RedeemCtx {
 
 // Poll and act on one pending join. A device that never knocked this pointer has no
 // stored key (null private key), so it is skipped; a null redeem (still pending or
-// not sealed to us) or a null parse (garbage) leaves the request pending.
+// not sealed to us) or a null parse (garbage) leaves the request pending. The pending
+// join is cleared on EITHER accept outcome: a `link-used` grant channel was consumed
+// (e.g. this account accepted from another device), so retrying it forever would
+// never land differently.
 async function redeemOnePending(
   ctx: RedeemCtx,
   session: OwnerSession,
@@ -271,11 +274,11 @@ async function redeemOnePending(
     if (sealed === null) return session;
     const invite = parseJoinGrant(sealed);
     if (invite === null) return session;
-    const next = await acceptGroupInvite(ctx.api, ctx.accounts, session, {
+    const accepted = await acceptGroupInvite(ctx.api, ctx.accounts, session, {
       invite,
     });
     ctx.deps.joinStore.removePending(pointerId);
-    return next;
+    return accepted.session;
   } catch {
     return session;
   }

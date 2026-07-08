@@ -15,7 +15,7 @@ function invite(kind: "event" | "recurring"): GroupInvite {
 }
 
 const noop = {
-  onAccept: vi.fn().mockResolvedValue(undefined),
+  onAccept: vi.fn().mockResolvedValue("joined" as const),
   onReject: vi.fn().mockResolvedValue(undefined),
   onJoined: vi.fn(),
   onClaim: vi.fn(),
@@ -25,7 +25,7 @@ const noop = {
 describe("AcceptInvite", () => {
   it("shows the event disclosure and joins", async () => {
     const user = userEvent.setup();
-    const onAccept = vi.fn().mockResolvedValue(undefined);
+    const onAccept = vi.fn().mockResolvedValue("joined" as const);
     render(
       <AcceptInvite
         {...noop}
@@ -49,7 +49,7 @@ describe("AcceptInvite", () => {
 
   it("show-as-you: joins as main when the owner picks their name", async () => {
     const user = userEvent.setup();
-    const onAccept = vi.fn().mockResolvedValue(undefined);
+    const onAccept = vi.fn().mockResolvedValue("joined" as const);
     render(
       <AcceptInvite
         {...noop}
@@ -64,6 +64,29 @@ describe("AcceptInvite", () => {
     await user.click(screen.getByRole("tab", { name: "Your name" }));
     await user.click(screen.getByRole("button", { name: "Join" }));
     expect(onAccept).toHaveBeenCalledWith(invite("recurring"), "main");
+  });
+
+  it("a used link is refused plainly: no join, ask for a new one", async () => {
+    const user = userEvent.setup();
+    const onAccept = vi.fn().mockResolvedValue("link-used" as const);
+    const onBack = vi.fn();
+    render(
+      <AcceptInvite
+        {...noop}
+        invite={invite("event")}
+        isLoggedIn
+        onAccept={onAccept}
+        onBack={onBack}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Join" }));
+    // The used-link state shows instead of "you're in", and Back goes back.
+    expect(
+      await screen.findByText("This link was already used."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("You're in.")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(onBack).toHaveBeenCalled();
   });
 
   it("shows the recurring disclosure", () => {
