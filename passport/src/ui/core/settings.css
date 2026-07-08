@@ -245,9 +245,17 @@
 }
 
 .st__row-title {
+  display: block;
   font-size: 15px;
   font-weight: var(--weight-semibold);
   color: var(--text-strong);
+}
+
+/* When the title labels a switch it is tappable; show it (and match the
+   switch's own no-select behavior so a fast double tap can't select text). */
+label.st__row-title {
+  cursor: pointer;
+  user-select: none;
 }
 
 .st__row-title-line {

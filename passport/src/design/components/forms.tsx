@@ -63,13 +63,18 @@ export function Field({ label, hint, error, htmlFor, children }: FieldProps) {
   );
 }
 
-export interface SwitchProps {
+// Every switch must carry an accessible name: either the inline `label` (rendered
+// beside the track) or an `id` that an external <label htmlFor> points at. The
+// union keeps the two exclusive, since a checkbox with both labels would announce
+// their concatenation.
+export type SwitchProps = {
   checked: boolean;
   onChange: (checked: boolean) => void;
-  label?: ReactNode;
   disabled?: boolean;
-  id?: string;
-}
+} & (
+  | { label: ReactNode; id?: never }
+  | { label?: never; id: string }
+);
 
 // The CSS drives the visual on-state from the `--on` class and keeps a real
 // hidden checkbox for keyboard focus (`:focus-within`) and assistive tech.
