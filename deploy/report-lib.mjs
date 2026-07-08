@@ -59,12 +59,9 @@ function sanitizeBranch(name) {
 export function version() {
   let described;
   try {
-    // --long always prints `tag-distance-gsha` (even at distance 0). The
-    // match/exclude pair selects a vMAJOR.MINOR tag and skips any legacy
-    // vMAJOR.MINOR.PATCH tag, so the distance is the patch.
-    described = git(
-      'describe --tags --long --match "v[0-9]*.[0-9]*" --exclude "v[0-9]*.[0-9]*.[0-9]*"',
-    );
+    // --long always prints `tag-distance-gsha` (even at distance 0). The match
+    // selects the vMAJOR.MINOR tag, so the distance is the patch.
+    described = git('describe --tags --long --match "v[0-9]*.[0-9]*"');
   } catch {
     const ref = process.env.COMMIT_REF || process.env.GITHUB_SHA;
     if (ref) return ref.slice(0, 7);
