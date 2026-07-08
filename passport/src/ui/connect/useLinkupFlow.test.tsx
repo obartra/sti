@@ -63,7 +63,7 @@ function deps(over: Partial<LinkupDeps> = {}): LinkupDeps {
     complete: vi.fn(() => Promise.resolve()),
     discard: vi.fn(),
     resolvePeer: () => new Promise<ResolvedView | null>(() => undefined),
-    onViewLink: vi.fn(),
+    onViewCode: vi.fn(),
     onExit: vi.fn(),
     pollMs: 5,
     ...over,
@@ -183,15 +183,22 @@ describe("useLinkupFlow", () => {
     );
   });
 
-  it("routes a scanned plain link to the view flow", async () => {
-    const onViewLink = vi.fn();
-    const { result } = renderHook(() => useLinkupFlow(deps({ onViewLink })));
-    await waitFor(() => expect(result.current.phase.kind).toBe("showing"));
-    act(() =>
-      result.current.onScanned({ kind: "link", link: { id: "a", key: "b" } }),
+  it("routes a scanned code like opening it, discarding the pending offer", async () => {
+    const onViewCode = vi.fn();
+    const discard = vi.fn();
+    const { result } = renderHook(() =>
+      useLinkupFlow(deps({ onViewCode, discard })),
     );
-    expect(onViewLink).toHaveBeenCalledWith({ id: "a", key: "b" });
-    expect(result.current.phase.kind).toBe("showing");
+    await waitFor(() => expect(result.current.phase.kind).toBe("showing"));
+    const code = {
+      link: { id: "a", key: "b" },
+      invite: { alias: { id: "a", key: "b" }, notify: NOTIFY },
+    };
+    act(() => result.current.onScanned({ kind: "code", code }));
+    expect(onViewCode).toHaveBeenCalledWith(code);
+    // Routing away ends the gesture: the unconsumed offer is discarded, the
+    // same walk-away semantics as closing the screen.
+    expect(discard).toHaveBeenCalledWith("c1");
   });
 
   it("closing before a link discards the offer; after, it keeps it", async () => {

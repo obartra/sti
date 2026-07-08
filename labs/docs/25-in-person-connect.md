@@ -169,7 +169,12 @@ in-person extras in the fragment:
 - a compact badge snapshot (blue/gray plus the day it held), honored only on the
   day it was asserted, so a replayed or stale code never shows an old blue. Always
   included: status is shown at the moment of connecting, and the snapshot crossing
-  optically between two people standing together is what makes it trustworthy,
+  optically between two people standing together is what makes it trustworthy.
+  The snapshot is also the offer DISCRIMINATOR: only this screen mints codes
+  carrying one, so a scanned invite without it is a remote link someone printed
+  or messaged, and it routes exactly like opening that link (the accept flow,
+  which sends a return), never silently half-linking.
+
 The encounter is recorded as the link's created day (today); letting the pair
 back-date it is a pending piece. A few hundred bytes, comfortably inside a
 scannable QR. The completion screen's DOOR code (see "the door stays open") is a

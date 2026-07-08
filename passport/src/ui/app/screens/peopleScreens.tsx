@@ -1,12 +1,19 @@
+import { Suspense, lazy } from "react";
 import { Connect } from "../../connect/Connect.tsx";
 import { PrivacySection } from "../../connect/parts.tsx";
-import { Linkup } from "../../connect/Linkup.tsx";
 import { DemoScanner } from "../../connect/DemoScanner.tsx";
 import { GroupsSlot } from "./groupScreens.tsx";
 import { todayEpochDay } from "../../../core/clock.ts";
-import { offerUrlWithBadge } from "../../../store/index.ts";
+import { offerUrlWithBadge, type ScannedCode } from "../../../store/index.ts";
 import type { ScreenCtx, ScreenRenderers } from "./context.ts";
 import "../../connect/connect.css";
+
+// The connect screen loads lazily, like the jsQR decoder it wraps: it sits
+// behind a tap, and keeping it out of the entry chunk keeps the offline-shell
+// precache inside its budget (doc 22 N).
+const Linkup = lazy(() =>
+  import("../../connect/Linkup.tsx").then((m) => ({ default: m.Linkup })),
+);
 
 export const peopleRenderers: ScreenRenderers = {
   // People, top to bottom: scan tile, starred people, groups, then the full contact
@@ -31,32 +38,43 @@ export const peopleRenderers: ScreenRenderers = {
     </div>
   ),
   // Connect in person (doc 25): one screen shows your code and runs the camera
-  // at once. Scanning another connect screen completes the two-way link on this
-  // side; scanning a plain shared link still routes to the public resolution
-  // screen, exactly what scanning did before the gesture existed. The demo has
-  // no camera and nothing real to point at, so it simulates the scan and hands
-  // back the seeded peer instead of opening a dead viewfinder (doc 28).
+  // at once. Scanning another connect screen's offer completes the two-way link
+  // on this side; scanning any other passport code routes exactly like OPENING
+  // the same link (a remote invite keeps its notify capability and its accept
+  // flow, a return leg its ref). The demo has no camera and nothing real to
+  // point at, so it simulates the scan and hands back the seeded peer instead
+  // of opening a dead viewfinder (doc 28).
   scan: (ctx) => {
-    const onView = (link: { id: string; key: string }) =>
-      ctx.nav.go("a2-public", { id: link.id, key: link.key });
+    const onView = ({ link, invite }: ScannedCode) =>
+      ctx.nav.go("a2-public", {
+        id: link.id,
+        key: link.key,
+        ...(invite !== undefined ? { notify: invite.notify } : {}),
+        ...(invite?.ref !== undefined ? { ref: invite.ref } : {}),
+      });
     return ctx.demoMode ? (
-      <DemoScanner onResult={onView} onBack={ctx.nav.back} />
-    ) : (
-      <Linkup
-        ownerBadge={ctx.owner.viewerBadge}
-        createOffer={() => mintOffer(ctx)}
-        complete={ctx.onCompleteLinkup}
-        discard={ctx.onRevokeContact}
-        resolvePeer={(link) => ctx.store.resolveAlias(link)}
-        onViewLink={onView}
-        onExit={ctx.nav.back}
-        door={ctx.doorStore}
-        acceptGrant={async (invite) => {
-          const accepted = await ctx.onAcceptContactInvite(invite, "");
-          return { contactId: accepted.contact.id, url: accepted.url };
-        }}
-        ingestReturn={ctx.onIngestContactReturn}
+      <DemoScanner
+        onResult={(link) => onView({ link })}
+        onBack={ctx.nav.back}
       />
+    ) : (
+      <Suspense fallback={null}>
+        <Linkup
+          ownerBadge={ctx.owner.viewerBadge}
+          createOffer={() => mintOffer(ctx)}
+          complete={ctx.onCompleteLinkup}
+          discard={ctx.onRevokeContact}
+          resolvePeer={(link) => ctx.store.resolveAlias(link)}
+          onViewCode={onView}
+          onExit={ctx.nav.back}
+          door={ctx.doorStore}
+          acceptGrant={async (invite) => {
+            const accepted = await ctx.onAcceptContactInvite(invite, "");
+            return { contactId: accepted.contact.id, url: accepted.url };
+          }}
+          ingestReturn={ctx.onIngestContactReturn}
+        />
+      </Suspense>
     );
   },
 };

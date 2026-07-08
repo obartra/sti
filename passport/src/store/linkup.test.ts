@@ -59,27 +59,40 @@ describe("parseScannedConnect", () => {
     expect(scanned?.kind === "offer" && scanned.invite.sharedName).toBe("Sam");
   });
 
-  it("treats an offer with a malformed snapshot as an offer without one", () => {
-    const url = `${contactInviteUrl(record(), mintNotify())}&b=blue.later`;
-    const scanned = parseScannedConnect(url);
-    expect(scanned?.kind).toBe("offer");
-    expect(scanned?.kind === "offer" && scanned.snapshot).toBeNull();
+  it("the snapshot is the discriminator: a remote invite routes as a code", () => {
+    // A contact invite without `b=` was printed or messaged, not shown in
+    // person: it must route exactly like OPENING the link (the accept flow,
+    // which sends a return), never silently half-link as an offer.
+    const rec = record();
+    const notify = mintNotify();
+    const scanned = parseScannedConnect(contactInviteUrl(rec, notify));
+    expect(scanned?.kind).toBe("code");
+    if (scanned?.kind !== "code") return;
+    expect(scanned.code.link).toEqual({ id: rec.id, key: rec.key });
+    expect(scanned.code.invite?.notify).toEqual(notify);
+    // A malformed snapshot is not a snapshot: same routing.
+    const malformed = parseScannedConnect(
+      `${contactInviteUrl(record(), mintNotify())}&b=blue.later`,
+    );
+    expect(malformed?.kind).toBe("code");
   });
 
-  it("classifies a plain keyed alias link as viewable, not an offer", () => {
+  it("classifies a plain keyed alias link as a viewable code", () => {
     const rec = record();
     const scanned = parseScannedConnect(
       `https://sti.care/a/${rec.id}#k=${rec.key}`,
     );
     expect(scanned).toEqual({
-      kind: "link",
-      link: { id: rec.id, key: rec.key },
+      kind: "code",
+      code: { link: { id: rec.id, key: rec.key } },
     });
   });
 
-  it("routes a RETURN invite (ref set) to the view flow, never an offer", () => {
-    const scanned = parseScannedConnect(offerUrl({ ref: randomAliasId() }));
-    expect(scanned?.kind).toBe("link");
+  it("routes a RETURN invite (ref set) as a code carrying its ref", () => {
+    const ref = randomAliasId();
+    const scanned = parseScannedConnect(offerUrl({ ref }));
+    expect(scanned?.kind).toBe("code");
+    expect(scanned?.kind === "code" && scanned.code.invite?.ref).toBe(ref);
   });
 
   it("fails closed on junk, non-URLs, and non-passport links", () => {

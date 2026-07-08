@@ -298,10 +298,13 @@ describe("owner session against a live blind store", () => {
     const arrival = arrivals[0];
     if (arrival === undefined) throw new Error("expected one arrival");
 
-    // The holder admits: a fresh bundle (the same offer mint), a fresh return
+    // The holder admits: a fresh bundle (the same offer mint, carrying the
+    // badge snapshot that marks it as an in-person offer), a fresh return
     // channel, sealed to the arrival's key over the grant channel.
     const minted = await a.ctl.createContactLink(aSession, "");
-    const parsed = parseScannedConnect(minted.url);
+    const parsed = parseScannedConnect(
+      offerUrlWithBadge(minted.url, { badge: "gray", day: nowDay }),
+    );
     if (parsed?.kind !== "offer") throw new Error("expected the minted offer");
     const returnInbox = mintInbox();
     await aDoor.admit(door, arrival, { invite: parsed.invite, returnInbox });

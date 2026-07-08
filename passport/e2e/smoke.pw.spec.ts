@@ -102,15 +102,16 @@ behaviorTest("scan-degrades-honestly", async () => {
   // its honest fallbacks (never a dead viewfinder) and Close must walk back out.
   await o.goto(previewOrigin() + "/people");
   await sweepNonsense(o);
-  await o.getByText("Scan a code").click();
+  await o.getByText("Connect in person").first().click();
   await expect(
     o.getByText(
       /Camera access is off|We couldn't find a camera|This device can't open the camera/,
     ),
   ).toBeVisible();
-  // Both the X and the fallback's own button read "Close"; either walks out.
+  // The show half stays useful without a camera (your code still renders for
+  // the other person to scan); Close walks back out to People.
   await o.getByRole("button", { name: "Close", exact: true }).last().click();
-  await expect(o.getByText("Scan a code")).toBeVisible();
+  await expect(o.getByText("Show your code and scan theirs")).toBeVisible();
   await sweepNonsense(o);
   expect(errors).toEqual([]);
 });

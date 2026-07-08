@@ -32,6 +32,7 @@ import {
   type ContactInvite,
   type DoorHandle,
   type DoorStore,
+  type ScannedCode,
   type ScannedConnect,
 } from "../../store/index.ts";
 import type { AliasLink, InboxCapability } from "../../store/index.ts";
@@ -83,8 +84,10 @@ export interface LinkupDeps {
   readonly discard: (contactId: string) => void;
   /** Resolve a peer's live card (fills the completion when online). */
   readonly resolvePeer: (link: AliasLink) => Promise<ResolvedView | null>;
-  /** A scanned plain link is a view, not a linkup: route it as before. */
-  readonly onViewLink: (link: AliasLink) => void;
+  /** A scanned non-offer code routes exactly like OPENING the same link (a
+   * remote invite keeps its accept flow and return leg); the gesture ends, so
+   * the flow discards its unfinished state before handing over. */
+  readonly onViewCode: (code: ScannedCode) => void;
   /** Leave the screen (both the cancel and the Done paths end here). */
   readonly onExit: () => void;
   /** The door plumbing (doc 25); absent means the door simply never opens. */
@@ -368,10 +371,21 @@ export function useLinkupFlow(deps: LinkupDeps): LinkupFlow {
     completeWith(offer.contactId, held);
   }, [offer, held, completeWith]);
 
+  // Unfinished legs die with the gesture: the unconsumed offer, and every
+  // admitted leg whose joiner never answered. Completed links stay. Shared by
+  // closing the screen and routing away to a scanned code's own flow.
+  const cleanup = useCallback(() => {
+    if (offer !== null && !offerConsumed.current) {
+      depsRef.current.discard(offer.contactId);
+    }
+    doorLegs.closeDoor();
+  }, [offer, doorLegs]);
+
   const onScanned = useCallback(
     (scanned: ScannedConnect) => {
-      if (scanned.kind === "link") {
-        depsRef.current.onViewLink(scanned.link);
+      if (scanned.kind === "code") {
+        cleanup();
+        depsRef.current.onViewCode(scanned.code);
         return;
       }
       if (scanned.kind === "door") {
@@ -385,18 +399,13 @@ export function useLinkupFlow(deps: LinkupDeps): LinkupFlow {
       }
       completeWith(offer.contactId, scanned);
     },
-    [offer, completeWith, doorLegs],
+    [offer, completeWith, doorLegs, cleanup],
   );
 
   const onClose = useCallback(() => {
-    // Unfinished legs die with the screen: the unconsumed offer, and every
-    // admitted leg whose joiner never answered. Completed links stay.
-    if (offer !== null && !offerConsumed.current) {
-      depsRef.current.discard(offer.contactId);
-    }
-    doorLegs.closeDoor();
+    cleanup();
     depsRef.current.onExit();
-  }, [offer, doorLegs]);
+  }, [cleanup]);
 
   const phase: LinkupPhase =
     peers.length > 0

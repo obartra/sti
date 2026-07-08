@@ -2,8 +2,8 @@
 export const COPY = {
   title: "People",
   sub: "Connections stay private and live only on your device. There’s no search. You connect by sharing or scanning a link.",
-  scanTile: "Scan a code",
-  scanTileSub: "Open someone’s passport by scanning their code",
+  scanTile: "Connect in person",
+  scanTileSub: "Show your code and scan theirs",
   favesTitle: "Starred",
   favesSub: "Star anyone to keep them at the top",
   pruneNote: "These live on your device until you delete them.",

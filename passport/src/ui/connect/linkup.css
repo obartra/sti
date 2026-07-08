@@ -5,6 +5,9 @@
 .lk {
   position: absolute;
   inset: 0;
+  /* Immersive camera mode: above the desktop shell's sticky header (z 5), or
+     the header's own controls intercept the close button's corner. */
+  z-index: 6;
   background: var(--ink-900);
   display: flex;
   flex-direction: column;

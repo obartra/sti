@@ -17,10 +17,13 @@
 import type { BadgeState } from "../ui/badge-card.tsx";
 import { bytesToUtf8, utf8ToBytes, type Bytes } from "../crypto/index.ts";
 import { validId } from "../api/contract.ts";
-import { parseAliasLink } from "./aliasLink.ts";
-import { parseContactInvite, type ContactInvite } from "./contactInvite.ts";
+import {
+  parseContactInvite,
+  parseScannedCode,
+  type ContactInvite,
+  type ScannedCode,
+} from "./contactInvite.ts";
 import type { InboxCapability } from "./notifyInbox.ts";
-import type { AliasLink } from "./passportStore.ts";
 
 /** The badge asserted at the moment of connecting: a color and the day it held. */
 export interface BadgeSnapshot {
@@ -73,21 +76,25 @@ export function doorUrl(pointerId: string): string {
 }
 
 /** What a scanned code turned out to be: an in-person offer, an open door to
- * knock at, or a viewable link. */
+ * knock at, or any other passport code, which routes exactly like OPENING the
+ * same link (the {@link ScannedCode} contract). */
 export type ScannedConnect =
   | {
       readonly kind: "offer";
       readonly invite: ContactInvite;
-      readonly snapshot: BadgeSnapshot | null;
+      readonly snapshot: BadgeSnapshot;
     }
   | { readonly kind: "door"; readonly pointerId: string }
-  | { readonly kind: "link"; readonly link: AliasLink };
+  | { readonly kind: "code"; readonly code: ScannedCode };
 
 /**
- * Classify the text decoded from a scanned QR. A contact invite with no `ref` is
- * an in-person offer (a RETURN invite is someone answering a remote link, not an
- * offer, so it falls through to the view flow its alias link supports). Anything
- * that is neither an offer nor a well-formed alias link is null, and the caller
+ * Classify the text decoded from a scanned QR. The badge snapshot is the offer
+ * DISCRIMINATOR: only the in-person connect screen mints codes carrying one, so
+ * an invite with a well-formed `b=` is an offer (this side completes silently),
+ * while an invite without one is a remote link someone printed or messaged and
+ * routes exactly like opening it (the accept flow, so its sender still gets a
+ * return and never silently half-links). Anything else that is a well-formed
+ * passport code routes the same open-the-link way; junk is null and the caller
  * keeps scanning. Pure and total; a scanned code is untrusted input throughout.
  */
 export function parseScannedConnect(text: string): ScannedConnect | null {
@@ -98,15 +105,16 @@ export function parseScannedConnect(text: string): ScannedConnect | null {
     return null;
   }
   const invite = parseContactInvite(url.pathname, url.hash);
-  if (invite !== null && invite.ref === undefined) {
-    return { kind: "offer", invite, snapshot: parseBadgeSnapshot(url.hash) };
+  const snapshot = parseBadgeSnapshot(url.hash);
+  if (invite !== null && invite.ref === undefined && snapshot !== null) {
+    return { kind: "offer", invite, snapshot };
   }
   if (DOOR_PATH.test(url.pathname)) {
     const p = new URLSearchParams(url.hash.replace(/^#/, "")).get("p");
     return p !== null && validId(p) ? { kind: "door", pointerId: p } : null;
   }
-  const link = parseAliasLink(url.pathname, url.hash);
-  return link === null ? null : { kind: "link", link };
+  const code = parseScannedCode(text);
+  return code === null ? null : { kind: "code", code };
 }
 
 /**

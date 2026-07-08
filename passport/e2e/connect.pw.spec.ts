@@ -76,9 +76,10 @@ behaviorTest("scanned-invite-offers-connect", async ({ browser }) => {
   await attachVirtualAuthenticator(pageB);
   await signUp(pageB, origin, { name: "Blair" });
 
-  // B scans: the code must land exactly like opening the link, offering the add.
+  // B scans from the connect screen: a remote invite carries no badge snapshot,
+  // so it must land exactly like opening the link, offering the add.
   await pageB.goto(origin + "/people");
-  await pageB.getByText("Scan a code").click();
+  await pageB.getByText("Connect in person").click();
   await expect(pageB.locator(".pres__knock-title")).toHaveText(
     /Add @\S+ to your contacts/,
   );
