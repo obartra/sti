@@ -72,11 +72,12 @@ check-web: ## Passport: lint + style lint + typecheck + unused-code (knip) + uni
 	cd passport && npm run knip
 	cd passport && npm run test:cov
 
-check-info: ## Info site: astro check + voice lint + style lint + static build (doc 34)
+check-info: ## Info site: astro check + voice lint + style lint + static build + clean-URL test (doc 34)
 	cd info && npm run check
 	cd info && npm run lint:voice
 	cd info && npm run lint:styles
 	cd info && npm run build
+	cd info && npm run test:build
 
 test-integration: ## Passport API client against a real Go store
 	cd passport && npm run test:integration
