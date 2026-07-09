@@ -264,8 +264,8 @@ privacy policy's strength is that it can be read aloud and is simply true.
    user-facing copy.
 4. **Marketing surface:** the published site's root IS the landing, so the
    `TrustFooter` on the landing already serves the marketing surface. The
-   standalone static promises report (`build-promises.mjs`) gets the same small
-   link row for consistency.
+   promises live in the app at the in-app promises page (reached from Settings),
+   a single source with a CI gate binding each promise to a real test.
 
 ## Residual for a real launch (not blockers for this build)
 
