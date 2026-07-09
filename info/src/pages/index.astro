@@ -96,7 +96,7 @@ const sections = SECTIONS.filter(
             )}
             {bySection(section.id).map((g) => (
               <GuideRow
-                href={`/${g.slug}`}
+                href={`/${g.id}`}
                 title={g.data.title}
                 tag={g.data.tag}
               />

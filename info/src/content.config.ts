@@ -1,5 +1,6 @@
 import { defineCollection, z } from "astro:content";
-import { SECTION_IDS } from "../data/sections.ts";
+import { glob } from "astro/loaders";
+import { SECTION_IDS } from "./data/sections.ts";
 
 // Outbound source links rendered as the quiet "sources" block on a page. Always
 // public health agencies ("based on", never "reviewed by").
@@ -14,7 +15,7 @@ const sources = z
 // the sort order on the index, the one-line "how to test", the intro, and the
 // source links. The body is the question-and-answer copy.
 const conditions = defineCollection({
-  type: "content",
+  loader: glob({ pattern: "**/*.md", base: "./src/content/conditions" }),
   schema: z.object({
     name: z.string(),
     label: z.string(),
@@ -37,7 +38,7 @@ const conditions = defineCollection({
 // card, the sort order within its topic, an optional extra aside action, the
 // intro, and the source links. The body is plain markdown sections.
 const guides = defineCollection({
-  type: "content",
+  loader: glob({ pattern: "**/*.md", base: "./src/content/guides" }),
   schema: z.object({
     title: z.string(),
     topic: z.enum(SECTION_IDS),

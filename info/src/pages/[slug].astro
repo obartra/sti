@@ -1,6 +1,6 @@
 ---
 import type { GetStaticPaths, InferGetStaticPropsType } from "astro";
-import { getCollection } from "astro:content";
+import { getCollection, render } from "astro:content";
 import Base from "../layouts/Base.astro";
 import Icon from "../components/Icon.astro";
 import StatusLabel from "../components/StatusLabel.astro";
@@ -25,19 +25,19 @@ export const getStaticPaths = (async () => {
   // so a clash can never ship silently (doc 34).
   const seen = new Set(["uu", "styleguide"]);
   for (const entry of [...conditions, ...guides]) {
-    if (seen.has(entry.slug)) {
-      throw new Error(`info route collision on /${entry.slug}`);
+    if (seen.has(entry.id)) {
+      throw new Error(`info route collision on /${entry.id}`);
     }
-    seen.add(entry.slug);
+    seen.add(entry.id);
   }
 
   return [
     ...conditions.map((entry) => ({
-      params: { slug: entry.slug },
+      params: { slug: entry.id },
       props: { kind: "condition" as const, entry },
     })),
     ...guides.map((entry) => ({
-      params: { slug: entry.slug },
+      params: { slug: entry.id },
       props: { kind: "guide" as const, entry },
     })),
   ];
@@ -48,7 +48,7 @@ const props = Astro.props as Props;
 
 const cond = props.kind === "condition" ? props.entry : undefined;
 const guide = props.kind === "guide" ? props.entry : undefined;
-const { Content } = await props.entry.render();
+const { Content } = await render(props.entry);
 
 const pageTitle = cond?.data.name ?? guide?.data.title ?? "";
 const intro = cond?.data.intro ?? guide?.data.intro ?? "";
