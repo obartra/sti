@@ -287,6 +287,9 @@ touches nothing), but the seamlessness ceiling is real and worth recording.
 - Unit + integration (real server) for the link + encounter + capability exchange and
   the offline-then-sync path.
 - A story for the unified show/scan screen and the completion states.
-- The camera/QR path needs a real-device manual pass before ship (cannot run
-  headless).
+- The camera/QR path is driven headless by the doc 38 fixtures: the fake camera
+  plays app-minted offer and door QRs through the real scanner, covering the
+  silent completion, the snapshot badge with all alias reads answered by decoys,
+  the open-door admission, and the walk-away revoke. A real-device pass still
+  covers what no fixture can: optics, lighting, and two physical screens.
 - Values review of the one-gray line before it ships.

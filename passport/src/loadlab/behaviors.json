@@ -176,6 +176,94 @@
     "pin": "e2e/connect.pw.spec.ts"
   },
   {
+    "id": "linkup-offer-scan-links-silently",
+    "category": "Trust integrity & sharing",
+    "title": "Scanning a connect-screen offer completes this side silently",
+    "intent": "Two people at the connect screen link in one shared gesture: the first decoded offer completes this side with no tap, landing on the completion instead of a form.",
+    "check": "A second browser's fake camera plays the offer QR read off the first browser's connect screen; the scanning side lands on 'You're connected.' without tapping anything.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "25",
+    "pin": "e2e/linkup.pw.spec.ts"
+  },
+  {
+    "id": "linkup-snapshot-badge-offline",
+    "category": "Trust integrity & sharing",
+    "title": "The badge crosses inside the offer QR, no server read needed",
+    "intent": "Status is shown at the moment of connecting even with no signal: the same-day badge snapshot rides the QR, so the completion can show a true blue while the network answers nothing.",
+    "check": "With every alias read answered by decoy bytes, the completion still shows the offerer's blue face; the snapshot in the scanned URL is the only possible source.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "25",
+    "pin": "e2e/linkup.pw.spec.ts"
+  },
+  {
+    "id": "linkup-walkaway-discards-offer",
+    "category": "Trust integrity & sharing",
+    "title": "Walking away from the connect screen leaves nothing behind",
+    "intent": "Closing the connect screen without scanning anyone revokes the shown offer's alias, so a code someone photographed or scanned one-sidedly goes uniformly dark.",
+    "check": "After the offerer closes unscanned, the offer's bare link resolves on the other browser to the same gray as never-existed.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "25",
+    "pin": "e2e/linkup.pw.spec.ts"
+  },
+  {
+    "id": "door-admits-third-hands-free",
+    "category": "Trust integrity & sharing",
+    "title": "The open door admits a newcomer with one scan, hands-free",
+    "intent": "After a pairwise link the completion opens a door; a third person scanning it is admitted while the screen stays open (knock, sealed grant, return), ending with two-way contacts on both sides and no camera pointing back.",
+    "check": "A third browser's fake camera plays the door QR; both that browser and the holder end on completions, and both rosters read 'Linked both ways'.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "25",
+    "pin": "e2e/linkup.pw.spec.ts"
+  },
+  {
+    "id": "revoked-contact-reads-gray",
+    "category": "Trust integrity & sharing",
+    "title": "A revoked contact link reads gray to its holder, not broken",
+    "intent": "Revoke means no future reads as the viewer experiences it: the held link resolves to the uniform gray-nothing, indistinguishable from never-existed, with no error to probe.",
+    "check": "After the owner revokes the link from the Links tab, opening the held invite URL shows the gray no-status screen with no face to add and a clean console.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "13",
+    "pin": "e2e/notify.pw.spec.ts"
+  },
+  {
+    "id": "member-removal-rotates-key",
+    "category": "Trust integrity & sharing",
+    "title": "Removing a member rotates the key and the rosters agree",
+    "intent": "An admin removal re-keys the group so the removed member is cut off; the remaining members converge to the same shrunken roster on their next open.",
+    "check": "Across three browsers, the admin removes one member through the row menu; the admin's and the surviving member's rosters both settle at two with the removed name gone.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "33",
+    "pin": "e2e/groups.pw.spec.ts"
+  },
+  {
+    "id": "removed-member-view-goes-quiet",
+    "category": "Trust integrity & sharing",
+    "title": "A removed member's group view goes quietly empty",
+    "intent": "Removal is silent by design ('They won't be told why'): the removed member sees an empty roster, never an error and never an accusation.",
+    "check": "After removal, the removed member's group detail renders zero members with no error wording anywhere and a clean console.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "33",
+    "pin": "e2e/groups.pw.spec.ts"
+  },
+  {
+    "id": "stalled-join-recoverable",
+    "category": "Trust integrity & sharing",
+    "title": "A join that never opens says so and can be cleared",
+    "intent": "When an accept is never ingested (dead link or gone admin), the list says 'Still waiting' after the wait window and the detail offers one honest way out that removes the record.",
+    "check": "A member joins through a link whose admin never returns; eight device-days later the list shows 'Still waiting' and 'Remove from your list' clears the group.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "33",
+    "pin": "e2e/groups.pw.spec.ts"
+  },
+  {
     "id": "scanned-qr-alias-shape-only",
     "category": "Trust integrity & sharing",
     "title": "A scanned QR only ever yields an alias id and key, never a host to navigate to",
@@ -548,6 +636,28 @@
     "layer": "wire",
     "docRef": "13",
     "pin": "../server/internal/server/webpush_test.go"
+  },
+  {
+    "id": "positive-report-nudges-partner",
+    "category": "Notifications & wakes",
+    "title": "A reported positive quietly nudges linked contacts",
+    "intent": "The product's core promise: report a positive and the people you're linked with get a contentless suggestion to test, with nothing extra to tap at the report moment.",
+    "check": "Two accounts link through the real handshake; one saves a positive result; the other's notifications show 'A recent contact suggests getting tested'.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "13",
+    "pin": "e2e/notify.pw.spec.ts"
+  },
+  {
+    "id": "partner-nudge-contentless",
+    "category": "Notifications & wakes",
+    "title": "The nudge never says who",
+    "intent": "The nudge is contentless end to end: no name, no date, no condition; the recipient's screen must not name the reporter anywhere, not even by the recipient's own nickname for them.",
+    "check": "The notifications screen carrying the nudge row contains neither the reporter's display name nor the recipient's private nickname for them.",
+    "status": "validated",
+    "layer": "browser",
+    "docRef": "13",
+    "pin": "e2e/notify.pw.spec.ts"
   },
   {
     "id": "inbox-read-uniform",

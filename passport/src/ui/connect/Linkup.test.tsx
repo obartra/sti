@@ -24,7 +24,12 @@ function view(over: Partial<LinkupViewProps> = {}) {
 describe("LinkupView", () => {
   it("shows my code and the one-line instruction while live", () => {
     view();
-    expect(screen.getByTestId("lk-code")).toBeInTheDocument();
+    // data-url mirrors the QR payload so a headless test can read the screen
+    // the way a camera would; drifting from the QR would break the e2e journeys.
+    expect(screen.getByTestId("lk-code")).toHaveAttribute(
+      "data-url",
+      "https://sti.care/a/x#k=y",
+    );
     expect(
       screen.getByText("Point cameras at each other's screens."),
     ).toBeInTheDocument();
@@ -70,7 +75,10 @@ describe("LinkupView", () => {
         doorUrl: "https://sti.care/d#p=x",
       },
     });
-    expect(screen.getByTestId("lk-door")).toBeInTheDocument();
+    expect(screen.getByTestId("lk-door")).toHaveAttribute(
+      "data-url",
+      "https://sti.care/d#p=x",
+    );
     expect(
       screen.getByText("While this is open, anyone who scans it joins you."),
     ).toBeInTheDocument();
