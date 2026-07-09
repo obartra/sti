@@ -62,6 +62,7 @@ import {
   mintContactLink,
   acceptContactInvite,
   ingestContactReturn,
+  completeInPersonContact,
   renameContactLabel,
   revokeContactLink,
   revokeAliasLink,
@@ -320,6 +321,13 @@ export interface SessionController extends GroupMembershipController {
   ingestContactReturn(
     session: OwnerSession,
     ret: ContactInvite,
+  ): Promise<OwnerSession>;
+  /** Complete the in-person linkup's pending contact with the scanned offer
+   * (doc 25). A no-op when the contact is unknown or already complete. */
+  completeInPersonLinkup(
+    session: OwnerSession,
+    contactId: string,
+    invite: ContactInvite,
   ): Promise<OwnerSession>;
   /**
    * Silently notify everyone a reported positive implies was exposed: every linked
@@ -640,19 +648,15 @@ export function createSessionController(deps: SessionDeps): SessionController {
       await accounts.deleteAccount(session.root);
     },
 
-    reviewKnocks(session) {
-      return gatherKnocks(api, session);
-    },
+    reviewKnocks: (session) => gatherKnocks(api, session),
 
     // The session carries the owner's live state, needed to build a card snapshot for
     // a one-time grant; a standing grant seals only the alias key.
-    approveKnocks(session, approvals, mode) {
-      return grantPending(api, session, approvals, mode);
-    },
+    approveKnocks: (session, approvals, mode) =>
+      grantPending(api, session, approvals, mode),
 
-    createContactLink(session, label, opts = {}) {
-      return mintContactLink(api, accounts, session, { label, ...opts });
-    },
+    createContactLink: (session, label, opts = {}) =>
+      mintContactLink(api, accounts, session, { label, ...opts }),
 
     renameContact: (session, contactId, label) =>
       renameContactLabel(accounts, session, { contactId, label }),
@@ -672,9 +676,11 @@ export function createSessionController(deps: SessionDeps): SessionController {
       });
     },
 
-    ingestContactReturn(session, ret) {
-      return ingestContactReturn(accounts, session, ret);
-    },
+    ingestContactReturn: (session, ret) =>
+      ingestContactReturn(accounts, session, ret),
+
+    completeInPersonLinkup: (session, contactId, invite) =>
+      completeInPersonContact(accounts, session, { contactId, invite }),
 
     notifyContactsOfPositive: (session) =>
       notifyPositive(api, accounts, session),

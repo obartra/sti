@@ -77,6 +77,8 @@ export interface ChromeProps extends GroupJoinActions {
   onTryDemo: ScreenCtx["onTryDemo"];
   onAcceptContactInvite: ScreenCtx["onAcceptContactInvite"];
   onIngestContactReturn: ScreenCtx["onIngestContactReturn"];
+  onCompleteLinkup: ScreenCtx["onCompleteLinkup"];
+  doorStore?: ScreenCtx["doorStore"];
   groups: ScreenCtx["groups"];
   onCreateGroup: ScreenCtx["onCreateGroup"];
   onReadGroupRoster: ScreenCtx["onReadGroupRoster"];
@@ -201,6 +203,8 @@ function buildCtx(
     onTryDemo: props.onTryDemo,
     onAcceptContactInvite: props.onAcceptContactInvite,
     onIngestContactReturn: props.onIngestContactReturn,
+    onCompleteLinkup: props.onCompleteLinkup,
+    ...(props.doorStore !== undefined ? { doorStore: props.doorStore } : {}),
     ownerHasName: (props.owner.handle ?? "").length > 0,
     groups: props.groups,
     onCreateGroup: props.onCreateGroup,

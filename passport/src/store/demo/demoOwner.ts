@@ -97,6 +97,7 @@ export function demoContactMethods(
   | "revokeAlias"
   | "acceptContactInvite"
   | "ingestContactReturn"
+  | "completeInPersonLinkup"
 > {
   return {
     createContactLink: async (_s, label, opts) => {
@@ -139,6 +140,23 @@ export function demoContactMethods(
       };
       setBlob({ ...getBlob(), contacts: [...getBlob().contacts, contact] });
       return { session: await session(), contact, url: demoUrl() };
+    },
+    // The in-person completion leg (doc 25): fill in the gesture's own pending
+    // contact from the scanned offer, exactly like the real completeInPersonContact.
+    completeInPersonLinkup: async (_s, contactId, invite) => {
+      setBlob({
+        ...getBlob(),
+        contacts: getBlob().contacts.map((c) =>
+          c.id === contactId && c.theirStatusAlias === undefined
+            ? {
+                ...c,
+                theirStatusAlias: invite.alias,
+                theirNotify: invite.notify,
+              }
+            : c,
+        ),
+      });
+      return session();
     },
     // The inviter's completion leg: fill in a still-pending contact (one this device
     // shared with but has not yet seen back) from the returned invite, flipping it to

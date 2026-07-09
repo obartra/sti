@@ -1,0 +1,105 @@
+/* The in-person linkup (doc 25): the unified show + scan surface and its
+   completion. Rides the .qrs full-screen dark treatment (connect.css, same
+   folder) so scanning and being scanned are one visual moment. Tokens only. */
+
+.lk {
+  position: absolute;
+  inset: 0;
+  /* Immersive camera mode: above the desktop shell's sticky header (z 5), or
+     the header's own controls intercept the close button's corner. */
+  z-index: 6;
+  background: var(--ink-900);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+  gap: 18px;
+  padding: 24px;
+  text-align: center;
+}
+
+/* Your code rides a white tile so the other camera can actually read it. */
+.lk__code {
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lk__code--waiting {
+  width: 224px;
+  height: 224px;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.lk__status {
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.8);
+  max-width: 240px;
+  line-height: 1.5;
+}
+
+/* The camera half sits under the code; smaller than the standalone scanner so
+   both halves fit one screen with no scrolling mid-gesture. */
+.lk__viewport {
+  width: 180px;
+  height: 180px;
+}
+
+.lk__camera-note {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  max-width: 300px;
+  line-height: 1.5;
+}
+
+/* The door code is a smaller tile: the moment's focus is the people. */
+.lk__code--door {
+  padding: 10px;
+}
+
+/* ── Completion ─────────────────────────────────────────────────────────── */
+
+.lk__done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.lk__done .e-title {
+  color: var(--white);
+}
+
+.lk__pair {
+  display: flex;
+  gap: 32px;
+}
+
+.lk__person {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.lk__person-name {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lk__line {
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.8);
+  max-width: 300px;
+  line-height: 1.5;
+}

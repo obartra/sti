@@ -224,6 +224,30 @@ export async function ingestContactReturn(
   return { root: session.root, blob };
 }
 
+// Complete the in-person linkup's pending contact (doc 25). Each side of the
+// gesture minted an offer first (mintContactLink) and completes its OWN pending
+// record when its scan of the other's offer lands, so no `ref` matching is
+// needed: the device knows which contact this gesture created. A no-op when the
+// contact is unknown or already complete (a double-decode of the same code).
+export async function completeInPersonContact(
+  accounts: AccountManager,
+  session: OwnerSession,
+  opts: { contactId: string; invite: ContactInvite },
+): Promise<OwnerSession> {
+  const pending = session.blob.contacts.find(
+    (c) => c.id === opts.contactId && c.theirStatusAlias === undefined,
+  );
+  if (pending === undefined) return session;
+  const completed: ContactRecord = {
+    ...pending,
+    label: seedLabel(pending.label, opts.invite.sharedName),
+    theirNotify: opts.invite.notify,
+    theirStatusAlias: opts.invite.alias,
+  };
+  const blob = await accounts.addContact(session.root, completed);
+  return { root: session.root, blob };
+}
+
 // Rename one contact's local label (the owner-only nickname this device shows for
 // the link). Purely local: it never touches the alias or any published card and
 // never leaves the device, so there's no network call here. A no-op for an unknown

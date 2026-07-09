@@ -52,6 +52,7 @@ function stubController(over: Partial<SessionController>): SessionController {
     revokeAlias: unused,
     acceptContactInvite: unused,
     ingestContactReturn: unused,
+    completeInPersonLinkup: unused,
     notifyContactsOfPositive: unused,
     hasPartnerNudge: unused,
     createCircle: unused,

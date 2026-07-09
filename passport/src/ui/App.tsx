@@ -19,6 +19,7 @@ import {
   browserRequesterSecret,
   createAccountManager,
   createBackendStore,
+  createDoorStore,
   createSessionController,
   createLocalBlobStore,
   createSyncStatus,
@@ -53,6 +54,9 @@ import { API_BASE_URL } from "../config.ts";
 // viewer's stable per-device requester secret so knocks dedupe across sessions.
 const api = createApiClient(API_BASE_URL);
 const backendStore = createBackendStore(api, browserRequesterSecret());
+// The open door's plumbing (doc 25): session-free like the store above, sharing
+// the device's knock secret so door joins ride the same grant machinery.
+const backendDoorStore = createDoorStore(api, browserRequesterSecret());
 
 // A volatile device store for environments where localStorage is unavailable
 // (private mode). The passkey binding then lives only for the tab's lifetime;
@@ -105,6 +109,17 @@ function liveLinkAliases(session: OwnerSession | null): AliasRecord[] {
 // out or none claimed. Hoisted so the App component stays under its complexity ceiling.
 function findableNames(session: OwnerSession | null): string[] {
   return (session?.blob.findables ?? []).map((f) => f.name);
+}
+
+// The session-derived collections Chrome lists (all empty logged out), passed
+// through as one group so the App component stays under its length ceiling.
+function sessionCollections(session: OwnerSession | null) {
+  return {
+    aliases: liveLinkAliases(session),
+    contacts: session ? session.blob.contacts : [],
+    groups: session ? (session.blob.groups ?? []) : [],
+    vanityNames: findableNames(session),
+  };
 }
 
 // The owner's recovery name, or null (logged out, or no password factor set, doc 32).
@@ -340,8 +355,7 @@ export function App({
         approvingKnocks={approvingKnocks}
         showPartnerNudge={showPartnerNudge}
         dismissPartnerNudge={dismissPartnerNudge}
-        aliases={liveLinkAliases(session)}
-        contacts={session ? session.blob.contacts : []}
+        {...sessionCollections(session)}
         faves={faves}
         onToggleFave={toggleFave}
         pendingRequests={requests}
@@ -349,9 +363,8 @@ export function App({
         isLoggedIn={session !== null}
         demoMode={demo.mode}
         onTryDemo={demo.onTry}
-        groups={session ? (session.blob.groups ?? []) : []}
+        doorStore={demo.mode ? undefined : backendDoorStore}
         onGroupCatchup={groupRefresh}
-        vanityNames={findableNames(session)}
         {...recoveryProps(session, controller)}
         push={push}
         {...actions}

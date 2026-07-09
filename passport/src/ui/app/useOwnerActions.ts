@@ -61,6 +61,9 @@ export interface OwnerActions extends GroupJoinActions {
   ) => Promise<ContactLinkResult>;
   /** Ingest a return invite, completing the matching pending contact (no-op if none). */
   onIngestContactReturn: (ret: ContactInvite) => void;
+  /** Complete the in-person linkup's pending contact with the scanned offer
+   * (doc 25); resolves once the two-way link is recorded. */
+  onCompleteLinkup: (contactId: string, invite: ContactInvite) => Promise<void>;
   /** Create a shared group (doc 33); resolves the outcome + new group id so the
    * form can navigate on success, or show a taken-name message. Folds the session. */
   onCreateGroup: (
@@ -220,15 +223,18 @@ export function useOwnerActions(
   };
 }
 
-// The fire-and-fold per-contact link mutations (rename / revoke / set lifetime),
+// The per-contact link mutations (rename / revoke / the in-person completion),
 // split out so useOwnerActions stays within its length ceiling. Each reads the
 // latest session, runs the controller op, and folds the result back; a no-op while
-// logged out, and a failure leaves the session as-is.
+// logged out, and a fire-and-fold failure leaves the session as-is.
 function useContactActions(
   controller: SessionController,
   sessionRef: RefObject<OwnerSession | null>,
   setSession: (s: OwnerSession | null) => void,
-): Pick<OwnerActions, "onRenameContact" | "onRevokeContact"> {
+): Pick<
+  OwnerActions,
+  "onRenameContact" | "onRevokeContact" | "onCompleteLinkup"
+> {
   const onRenameContact = useCallback(
     (id: string, label: string) => {
       const current = sessionRef.current;
@@ -259,7 +265,22 @@ function useContactActions(
     [controller, sessionRef, setSession],
   );
 
-  return { onRenameContact, onRevokeContact };
+  const onCompleteLinkup = useCallback(
+    async (contactId: string, invite: ContactInvite) => {
+      const current = sessionRef.current;
+      if (current === null) throw new Error("not signed in");
+      const updated = await controller.completeInPersonLinkup(
+        current,
+        contactId,
+        invite,
+      );
+      sessionRef.current = updated;
+      setSession(updated);
+    },
+    [controller, sessionRef, setSession],
+  );
+
+  return { onRenameContact, onRevokeContact, onCompleteLinkup };
 }
 
 // The findable (vanity-name) mutations (claim / release), split out so

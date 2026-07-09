@@ -17,6 +17,10 @@ import { redeemGrant } from "./grant.ts";
 import { parsePublicCard } from "./publicCard.ts";
 import { requesterHash } from "./knock.ts";
 import { parseContactInvite } from "./contactInvite.ts";
+import { offerUrlWithBadge, parseScannedConnect } from "./linkup.ts";
+import { createDoorStore } from "./doorStore.ts";
+import { createGrantKeyStore } from "./grantKeyStore.ts";
+import { mintInbox } from "./notifyInbox.ts";
 import { lockNotifyDraft, parsePartnerPing } from "./partnerNotify.ts";
 import { pollInbox, mintNotify } from "./notifyInbox.ts";
 import { todayEpochDay, nowMs } from "../core/clock.ts";
@@ -197,6 +201,171 @@ describe("owner session against a live blind store", () => {
     const ping = await pollInbox(b.api, bInboxForA);
     if (ping === null) throw new Error("expected B to receive the ping");
     expect(parsePartnerPing(ping)?.kind).toBe("partner-notify");
+  });
+
+  it("the in-person linkup completes both sides from their own scans (doc 25)", async () => {
+    const store = createBackendStore(createApiClient(baseUrl));
+    const nowDay = todayEpochDay();
+    const a = controller(fakePasskey());
+    const { session: aSession } = await a.ctl.signUp("alex");
+    const b = controller(fakePasskey());
+    const { session: bSession } = await b.ctl.signUp("blair");
+
+    // Each device mints its own offer (what its shown QR carries): a pending
+    // contact + the invite URL, with the badge snapshot appended.
+    const aOffer = await a.ctl.createContactLink(aSession, "");
+    const bOffer = await b.ctl.createContactLink(bSession, "");
+    const aUrl = offerUrlWithBadge(aOffer.url, { badge: "gray", day: nowDay });
+    const bUrl = offerUrlWithBadge(bOffer.url, { badge: "blue", day: nowDay });
+
+    // A's camera catches B's screen and vice versa; each side classifies the
+    // scan and completes its OWN pending contact, in whatever order.
+    const aScan = parseScannedConnect(bUrl);
+    const bScan = parseScannedConnect(aUrl);
+    if (aScan?.kind !== "offer" || bScan?.kind !== "offer") {
+      throw new Error("expected both scans to classify as offers");
+    }
+    expect(aScan.snapshot).toEqual({ badge: "blue", day: nowDay });
+    expect(bScan.snapshot).toEqual({ badge: "gray", day: nowDay });
+    const aDone = await a.ctl.completeInPersonLinkup(
+      aOffer.session,
+      aOffer.contact.id,
+      aScan.invite,
+    );
+    const bDone = await b.ctl.completeInPersonLinkup(
+      bOffer.session,
+      bOffer.contact.id,
+      bScan.invite,
+    );
+
+    const aContact = aDone.blob.contacts[0];
+    const bContact = bDone.blob.contacts[0];
+    if (aContact?.theirStatusAlias === undefined) {
+      throw new Error("A's linkup did not complete");
+    }
+    if (bContact?.theirStatusAlias === undefined) {
+      throw new Error("B's linkup did not complete");
+    }
+
+    // Each side reads the other's live status through the exchanged alias.
+    expect(await store.resolveAlias(aContact.theirStatusAlias)).toEqual(
+      deriveOwnerCard(
+        bSession.blob.state,
+        pseudonymFor(aContact.theirStatusAlias.id),
+        nowDay,
+      ),
+    );
+    expect(await store.resolveAlias(bContact.theirStatusAlias)).toEqual(
+      deriveOwnerCard(
+        aSession.blob.state,
+        pseudonymFor(bContact.theirStatusAlias.id),
+        nowDay,
+      ),
+    );
+
+    // The notify channels exchanged exactly like a remote link: each side holds
+    // the other's per-contact inbox, so the partner-notify loop works here too.
+    expect(aContact.theirNotify).toEqual(bContact.myInbox);
+    expect(bContact.theirNotify).toEqual(aContact.myInbox);
+  });
+
+  it("the open door links a newcomer to a holder end to end (doc 25)", async () => {
+    const store = createBackendStore(createApiClient(baseUrl));
+    const nowDay = todayEpochDay();
+    const a = controller(fakePasskey());
+    const { session: aSession } = await a.ctl.signUp("alex");
+    const c = controller(fakePasskey());
+    const { session: cSession } = await c.ctl.signUp("casey");
+    const aDoor = createDoorStore(
+      a.api,
+      randomWriteToken(),
+      createGrantKeyStore(memoryStorage()),
+    );
+    const cDoor = createDoorStore(
+      c.api,
+      randomWriteToken(),
+      createGrantKeyStore(memoryStorage()),
+    );
+
+    // The holder's completion screen opens its door; the newcomer scans the
+    // door code and knocks. The pointer itself resolves to nothing.
+    const door = await aDoor.open();
+    expect(await store.resolveAlias({ id: door.pointerId, key: "x" })).toBe(
+      null,
+    );
+    await cDoor.knock(door.pointerId);
+    const arrivals = await aDoor.arrivals(door);
+    const arrival = arrivals[0];
+    if (arrival === undefined) throw new Error("expected one arrival");
+
+    // The holder admits: a fresh bundle (the same offer mint, carrying the
+    // badge snapshot that marks it as an in-person offer), a fresh return
+    // channel, sealed to the arrival's key over the grant channel.
+    const minted = await a.ctl.createContactLink(aSession, "");
+    const parsed = parseScannedConnect(
+      offerUrlWithBadge(minted.url, { badge: "gray", day: nowDay }),
+    );
+    if (parsed?.kind !== "offer") throw new Error("expected the minted offer");
+    const returnInbox = mintInbox();
+    await aDoor.admit(door, arrival, { invite: parsed.invite, returnInbox });
+
+    // The joiner redeems, accepts (minting its own side), and answers.
+    const grant = await cDoor.redeem(door.pointerId);
+    if (grant === null) throw new Error("expected the sealed grant");
+    expect(grant.invite.alias.id).toBe(minted.contact.alias.id);
+    const accepted = await c.ctl.acceptContactInvite(
+      cSession,
+      grant.invite,
+      "",
+    );
+    await cDoor.sendReturn(grant.returnInbox, accepted.url);
+
+    // The holder polls the return and completes its pending side.
+    const ret = await aDoor.pollReturn(returnInbox);
+    if (ret === null) throw new Error("expected the joiner's return");
+    const aDone = await a.ctl.ingestContactReturn(minted.session, ret);
+
+    const aContact = aDone.blob.contacts[0];
+    const cContact = accepted.session.blob.contacts[0];
+    if (aContact?.theirStatusAlias === undefined) {
+      throw new Error("the holder's leg did not complete");
+    }
+    if (cContact?.theirStatusAlias === undefined) {
+      throw new Error("the joiner's leg did not complete");
+    }
+    expect(await store.resolveAlias(aContact.theirStatusAlias)).toEqual(
+      deriveOwnerCard(
+        cSession.blob.state,
+        pseudonymFor(aContact.theirStatusAlias.id),
+        nowDay,
+      ),
+    );
+    expect(await store.resolveAlias(cContact.theirStatusAlias)).toEqual(
+      deriveOwnerCard(
+        aSession.blob.state,
+        pseudonymFor(cContact.theirStatusAlias.id),
+        nowDay,
+      ),
+    );
+    expect(aContact.theirNotify).toEqual(cContact.myInbox);
+    expect(cContact.theirNotify).toEqual(aContact.myInbox);
+  });
+
+  it("walking away discards the offer: the shown code stops resolving", async () => {
+    const store = createBackendStore(createApiClient(baseUrl));
+    const a = controller(fakePasskey());
+    const { session } = await a.ctl.signUp("alex");
+    const offer = await a.ctl.createContactLink(session, "");
+    const link = caps(offer.contact.alias);
+
+    // Until discarded, the shown offer resolves (the other side may scan first).
+    expect(await store.resolveAlias(link)).not.toBeNull();
+
+    // Closing the screen before this side's scan landed revokes + drops it, so
+    // a half-gesture leaves nothing behind and the code goes uniformly dark.
+    const after = await a.ctl.revokeContact(offer.session, offer.contact.id);
+    expect(after.blob.contacts).toHaveLength(0);
+    expect(await store.resolveAlias(link)).toBeNull();
   });
 
   it("ingest and accept guard the exchange edges (no-match, no-ref, double, return)", async () => {

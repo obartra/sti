@@ -12,6 +12,7 @@ import type {
   GrantMode,
   GroupRecord,
   OwnerView,
+  DoorStore,
   PassportStore,
   PendingKnock,
   RosterMemberView,
@@ -120,6 +121,12 @@ export interface ScreenCtx extends GroupJoinActions {
   ) => Promise<ContactLinkResult>;
   /** Ingest a return invite a contact sent back, completing the pending link. */
   onIngestContactReturn: (ret: ContactInvite) => void;
+  /** Complete the in-person linkup's pending contact with the scanned offer
+   * (doc 25); resolves once the two-way link is recorded. */
+  onCompleteLinkup: (contactId: string, invite: ContactInvite) => Promise<void>;
+  /** The open door's server plumbing (doc 25); absent in fixture/demo contexts,
+   * where the door simply never opens. */
+  doorStore?: DoorStore;
   /** Whether the owner set a display name, so the group "show as you" choice is
    * offered (doc 33); with no name there is nothing to show. Optional so non-app ctx
    * builders (demo, stories) may omit it (treated as no name). */
