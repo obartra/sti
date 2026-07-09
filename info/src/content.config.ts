@@ -1,11 +1,12 @@
-import { defineCollection, z } from "astro:content";
+import { defineCollection } from "astro:content";
+import { z } from "astro/zod";
 import { glob } from "astro/loaders";
 import { SECTION_IDS } from "./data/sections.ts";
 
 // Outbound source links rendered as the quiet "sources" block on a page. Always
 // public health agencies ("based on", never "reviewed by").
 const sources = z
-  .array(z.object({ label: z.string(), href: z.string().url() }))
+  .array(z.object({ label: z.string(), href: z.url() }))
   .optional();
 
 // The condition explainers (doc 34). One markdown file per condition under

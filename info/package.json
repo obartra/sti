@@ -12,6 +12,7 @@
     "lint:voice": "node scripts/voice-lint.mjs",
     "lint:styles": "node scripts/style-lint.mjs",
     "test": "npm run check && npm run lint:voice && npm run lint:styles",
+    "test:build": "node --test test/build.test.mjs",
     "test:visual": "./scripts/visual-regression.sh",
     "test:visual:update": "./scripts/visual-regression.sh --update"
   },
