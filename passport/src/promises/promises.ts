@@ -156,7 +156,7 @@ export const PROMISES: readonly UserPromise[] = [
       },
       {
         claim:
-          "Connecting in person needs no signal: the code is shown and scanned with nothing sent, so a connection can form without us seeing it happen; your encrypted card syncs only later.",
+          "Connecting in person happens phone to phone, not through us: nothing is sent when you connect, so we never learn that you connected or who with.",
         backedBy: {
           kind: "test",
           file: "src/store/session.integration.test.ts",
