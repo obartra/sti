@@ -98,8 +98,7 @@ export interface ShareSheetProps {
   /** Pick a different face for this link, or undefined to fall back to the default.
    * Absent hides the per-link face control (Storybook). */
   onAvatarOverrideChange?:
-    | ((avatar: AvatarConfig | undefined) => void)
-    | undefined;
+    ((avatar: AvatarConfig | undefined) => void) | undefined;
   /** How long the private link keeps working (doc 16): a duration in ms, or null
    * for until the owner turns it off. Only read when the lifetime control shows. */
   lifetime?: number | null | undefined;

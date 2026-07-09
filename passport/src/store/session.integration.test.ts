@@ -590,15 +590,13 @@ describe("owner session against a live blind store", () => {
         alias: { id: "m0", writeToken: "w", key: "k", isPublic: false },
         theirStatusAlias: blueStatus,
       },
-      ...["m1", "m2", "m3", "m4"].map(
-        (id): ContactRecord => ({
-          id,
-          label: id,
-          createdDay: 1,
-          expiresAt: null,
-          alias: { id, writeToken: "w", key: "k", isPublic: false },
-        }),
-      ),
+      ...["m1", "m2", "m3", "m4"].map((id): ContactRecord => ({
+        id,
+        label: id,
+        createdDay: 1,
+        expiresAt: null,
+        alias: { id, writeToken: "w", key: "k", isPublic: false },
+      })),
     ];
     const ids = ["m0", "m1", "m2", "m3", "m4"];
     const roster = await resolveCircleRoster(

@@ -59,8 +59,7 @@ export interface PublicResolutionProps {
   // carrying the accepter's own reveal choice (anonymous by default, doc 15).
   canAccept?: boolean;
   onAccept?:
-    | ((label: string, reveal: AcceptReveal) => Promise<string>)
-    | undefined;
+    ((label: string, reveal: AcceptReveal) => Promise<string>) | undefined;
   // The accepter's own name + face for the reveal choice (doc 15): whether they have
   // a name to show and the fallback face for the per-link picker. Never the inviter's.
   accepterName?: string | undefined;

@@ -13,11 +13,7 @@ import "./badge-card.css";
 
 export type BadgeState = "blue" | "gray";
 export type ProtectionLabel =
-  | "hiv"
-  | "condoms_always"
-  | "condoms_either"
-  | "condoms_raw"
-  | "doxy_pep";
+  "hiv" | "condoms_always" | "condoms_either" | "condoms_raw" | "doxy_pep";
 export type Route = ProtectionLabel | null;
 
 // Blue = the DS teal accent family; gray = the DS neutral family, kept soft so

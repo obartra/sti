@@ -83,10 +83,7 @@ export function normalizeVanityName(input: string): string {
  * registration), so the client only judges charset, length, and the reserved set.
  */
 export type VanityNameError =
-  | "too-short"
-  | "too-long"
-  | "bad-chars"
-  | "reserved";
+  "too-short" | "too-long" | "bad-chars" | "reserved";
 
 /**
  * The instant client check: returns the first failing reason or null. Operates on the

@@ -32,10 +32,7 @@ export interface AvatarConfig {
 }
 
 export type AvatarConfigInput =
-  | number
-  | Partial<AvatarConfig>
-  | null
-  | undefined;
+  number | Partial<AvatarConfig> | null | undefined;
 
 // One palette swatch. Hex is without the leading '#', as DiceBear's color options
 // expect, and every value mirrors a colors.css token so avatars stay on brand.

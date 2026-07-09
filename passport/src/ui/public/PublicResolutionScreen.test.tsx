@@ -159,13 +159,12 @@ describe("PublicResolutionScreen", () => {
       identity: { handle: "alex" },
     };
     const returnUrl = `https://sti.care/a/${"R".repeat(43)}#k=${"S".repeat(43)}&n=abc`;
-    const onAcceptInvite = vi.fn(
-      (): Promise<ContactLinkResult> =>
-        Promise.resolve({
-          session: { root: fakeRootKey(), blob: {} as never },
-          contact: {} as never,
-          url: returnUrl,
-        }),
+    const onAcceptInvite = vi.fn((): Promise<ContactLinkResult> =>
+      Promise.resolve({
+        session: { root: fakeRootKey(), blob: {} as never },
+        contact: {} as never,
+        url: returnUrl,
+      }),
     );
     render(
       <PublicResolutionScreen
@@ -253,13 +252,12 @@ describe("PublicResolutionScreen", () => {
       identity: { handle: "alex" },
     };
     const returnUrl = `https://sti.care/a/${"R".repeat(43)}#k=${"S".repeat(43)}&n=abc`;
-    const onAcceptInvite = vi.fn(
-      (): Promise<ContactLinkResult> =>
-        Promise.resolve({
-          session: { root: fakeRootKey(), blob: {} as never },
-          contact: {} as never,
-          url: returnUrl,
-        }),
+    const onAcceptInvite = vi.fn((): Promise<ContactLinkResult> =>
+      Promise.resolve({
+        session: { root: fakeRootKey(), blob: {} as never },
+        contact: {} as never,
+        url: returnUrl,
+      }),
     );
     render(
       <PublicResolutionScreen

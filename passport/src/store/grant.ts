@@ -94,8 +94,7 @@ const GRANT_ENVELOPE_VERSION = 1;
 /** What the owner seals on approve: the alias read key (standing/live access) or a
  * frozen card snapshot (one-time). The caller serializes the snapshot bytes. */
 export type GrantPayload =
-  | { readonly kind: "key" }
-  | { readonly kind: "card"; readonly card: Bytes };
+  { readonly kind: "key" } | { readonly kind: "card"; readonly card: Bytes };
 
 /** What the requester opens on redeem: the alias read key to resolve live, or the
  * snapshot card bytes to render once. A decoy / not-for-me / malformed slot stays

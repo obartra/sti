@@ -28,11 +28,10 @@ function fakeApi(opts: {
     throw new Error("not used in this test");
   };
   const putAlias = vi.fn(() => Promise.resolve());
-  const register = vi.fn(
-    (): Promise<VanityRegisterResult> =>
-      typeof opts.registerResult === "function"
-        ? opts.registerResult()
-        : Promise.resolve(opts.registerResult ?? "registered"),
+  const register = vi.fn((): Promise<VanityRegisterResult> =>
+    typeof opts.registerResult === "function"
+      ? opts.registerResult()
+      : Promise.resolve(opts.registerResult ?? "registered"),
   );
   const release = vi.fn(() => Promise.resolve());
   const api: ApiClient = {

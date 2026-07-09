@@ -92,9 +92,8 @@ function fakeDoor() {
         Promise.resolve(state.returns.get(inbox.inboxId) ?? null),
     ),
     knock: vi.fn(() => Promise.resolve()),
-    redeem: vi.fn(
-      (pointerId: string): Promise<DoorGrant | null> =>
-        Promise.resolve(state.grants.get(pointerId) ?? null),
+    redeem: vi.fn((pointerId: string): Promise<DoorGrant | null> =>
+      Promise.resolve(state.grants.get(pointerId) ?? null),
     ),
     sendReturn: vi.fn(() => Promise.resolve()),
   };

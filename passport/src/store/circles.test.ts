@@ -13,15 +13,13 @@ function members(n: number): string[] {
 
 // A blob whose contacts are exactly the given ids (only .id matters here).
 function blobWithContacts(ids: string[]): AccountBlob {
-  const contacts = ids.map(
-    (id): ContactRecord => ({
-      id,
-      label: "",
-      createdDay: 1,
-      expiresAt: null,
-      alias: { id, writeToken: id, key: id, isPublic: false },
-    }),
-  );
+  const contacts = ids.map((id): ContactRecord => ({
+    id,
+    label: "",
+    createdDay: 1,
+    expiresAt: null,
+    alias: { id, writeToken: id, key: id, isPublic: false },
+  }));
   return {
     handle: "robin",
     aliases: [],

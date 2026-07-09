@@ -31,9 +31,8 @@ function fakeApi(opts: { registerResult?: VanityRegisterResult } = {}): {
   };
   const putAlias: PutAliasCall[] = [];
   const putGroupBlob = vi.fn(() => Promise.resolve());
-  const register = vi.fn(
-    (): Promise<VanityRegisterResult> =>
-      Promise.resolve(opts.registerResult ?? "registered"),
+  const register = vi.fn((): Promise<VanityRegisterResult> =>
+    Promise.resolve(opts.registerResult ?? "registered"),
   );
   const api: ApiClient = {
     getAlias: unused,
