@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { serializeAccountBlob, parseAccountBlob } from "./accountBlob.ts";
+import {
+  serializeAccountBlob,
+  parseAccountBlob,
+  encounterDayOf,
+} from "./accountBlob.ts";
 import { utf8ToBytes, bytesToUtf8 } from "../crypto/index.ts";
 import { INITIAL_OWNER_STATE } from "../core/badge.ts";
 import { DEFAULT_AVATAR } from "../lib/avatars.ts";
@@ -103,6 +107,51 @@ describe("account blob codec", () => {
     expect(parseAccountBlob(serializeAccountBlob(withNotify))).toEqual(
       withNotify,
     );
+  });
+
+  it("round-trips a back-dated encounterDay, and reads it back via encounterDayOf", () => {
+    const backDated: AccountBlob = {
+      handle: "robin",
+      aliases: [],
+      contacts: [
+        {
+          id: "D".repeat(43),
+          label: "Sam",
+          createdDay: 19_000,
+          encounterDay: 18_995,
+          expiresAt: null,
+          alias: {
+            id: "E".repeat(43),
+            writeToken: "F".repeat(43),
+            key: "G".repeat(43),
+            isPublic: false,
+          },
+        },
+      ],
+      state: INITIAL_OWNER_STATE,
+      avatar: DEFAULT_AVATAR,
+    };
+    const parsed = parseAccountBlob(serializeAccountBlob(backDated));
+    expect(parsed).toEqual(backDated);
+    const [c] = parsed.contacts;
+    if (c === undefined) throw new Error("expected the round-tripped contact");
+    expect(encounterDayOf(c)).toBe(18_995);
+
+    // Absent encounterDay is backward-compatible and falls back to createdDay.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { encounterDay: _drop, ...noEncounter } = c;
+    expect(encounterDayOf(noEncounter)).toBe(19_000);
+
+    // A negative encounterDay fails the strict parse, like any malformed field.
+    const wire = JSON.parse(bytesToUtf8(serializeAccountBlob(backDated))) as {
+      contacts: { encounterDay: number }[];
+    };
+    const [wc] = wire.contacts;
+    if (wc === undefined) throw new Error("expected a wire contact");
+    wc.encounterDay = -1;
+    expect(() =>
+      parseAccountBlob(new TextEncoder().encode(JSON.stringify(wire))),
+    ).toThrow();
   });
 
   it("round-trips v7 circles (client-side bundles)", () => {

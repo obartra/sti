@@ -54,6 +54,7 @@ export const Default: Story = {
     faves: new Set(["a".padEnd(43, "0"), "c".padEnd(43, "0")]),
     onToggleFave: noop,
     onRemoveContact: noop,
+    onSetEncounterDay: noop,
   },
 };
 
@@ -65,6 +66,7 @@ export const NoFaves: Story = {
     faves: new Set<string>(),
     onToggleFave: noop,
     onRemoveContact: noop,
+    onSetEncounterDay: noop,
   },
 };
 
@@ -76,6 +78,7 @@ export const Empty: Story = {
     faves: new Set<string>(),
     onToggleFave: noop,
     onRemoveContact: noop,
+    onSetEncounterDay: noop,
   },
 };
 
@@ -87,6 +90,7 @@ export const FewLinkups: Story = {
     faves: new Set<string>(),
     onToggleFave: noop,
     onRemoveContact: noop,
+    onSetEncounterDay: noop,
   },
 };
 
@@ -137,6 +141,7 @@ export const WithGroups: Story = {
     faves: new Set(["a".padEnd(43, "0"), "c".padEnd(43, "0")]),
     onToggleFave: noop,
     onRemoveContact: noop,
+    onSetEncounterDay: noop,
     groupsSlot: <GroupsList groups={groups} />,
   },
 };

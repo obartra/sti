@@ -70,6 +70,7 @@ function stubController(
     acceptContactInvite: unused,
     ingestContactReturn: unused,
     completeInPersonLinkup: unused,
+    setContactEncounterDay: unused,
     notifyContactsOfPositive: unused,
     hasPartnerNudge,
     createCircle: unused,

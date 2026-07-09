@@ -26,6 +26,8 @@ export interface ConnectProps {
   onToggleFave: (contactId: string) => void;
   /** Delete a contact link (the "delete connection" row action). */
   onRemoveContact: (contactId: string) => void;
+  /** Back-date the day you met this contact (doc 25); seeds partner-notify. */
+  onSetEncounterDay: (contactId: string, day: number) => void;
   /** Open the in-app QR scanner to read someone's code. */
   onScan?: (() => void) | undefined;
   /** Rendered between starred and the full contact list (the People page threads
@@ -39,6 +41,7 @@ export function Connect({
   faves,
   onToggleFave,
   onRemoveContact,
+  onSetEncounterDay,
   onScan,
   groupsSlot,
 }: ConnectProps) {
@@ -83,6 +86,7 @@ export function Connect({
             onRemoveContact(id);
             setMenuFor(null);
           }}
+          onSetEncounterDay={onSetEncounterDay}
           onShowMore={() => setVisible((v) => v + RECENT_PAGE)}
         />
       </div>

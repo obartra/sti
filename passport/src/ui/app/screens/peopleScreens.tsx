@@ -30,6 +30,7 @@ export const peopleRenderers: ScreenRenderers = {
         faves={ctx.faves}
         onToggleFave={ctx.onToggleFave}
         onRemoveContact={ctx.onRevokeContact}
+        onSetEncounterDay={ctx.onSetEncounterDay}
         onScan={() => ctx.nav.go("scan")}
         groupsSlot={<GroupsSlot ctx={ctx} />}
       />

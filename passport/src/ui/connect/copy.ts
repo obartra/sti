@@ -7,6 +7,7 @@ export const COPY = {
   favesTitle: "Starred",
   favesSub: "Star anyone to keep them at the top",
   pruneNote: "These live on your device until you delete them.",
+  menuMetOn: "Met on",
   menuDelete: "Delete connection",
   showMore: "Show more",
   recentTitle: "Recent connections",

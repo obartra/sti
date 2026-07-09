@@ -91,6 +91,8 @@ export interface ScreenCtx extends GroupJoinActions {
   ) => Promise<ContactLinkResult>;
   /** Rename one contact link's local label (owner-only nickname; never shared). */
   onRenameContact: (id: string, label: string) => void;
+  /** Back-date the day you met a contact (doc 25); seeds partner-notify. */
+  onSetEncounterDay: (id: string, day: number) => void;
   /** Revoke one contact link by id. */
   onRevokeContact: (id: string) => void;
   /** Starred contact ids (device-local display preference); empty logged out. */

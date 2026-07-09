@@ -33,11 +33,13 @@ function contact(
   label: string,
   createdDay: number,
   notifiable: boolean,
+  encounterDay?: number,
 ): ContactRecord {
   const base = {
     id: randomAliasId(),
     label,
     createdDay,
+    ...(encounterDay !== undefined ? { encounterDay } : {}),
     expiresAt: null,
     alias: aliasRecord(),
   };
@@ -177,6 +179,23 @@ describe("composeNotifyDraft", () => {
     ]);
     expect(composeNotifyDraft(blob, 100).entries.map((e) => e.label)).toEqual([
       "in",
+    ]);
+  });
+
+  it("seeds on the encounter day, not when the record was made (doc 25)", () => {
+    const blob = blobWith([
+      // recorded today, but the encounter was months ago -> OUT of the window
+      contact("late-logged-old", 100, true, 40),
+      // recorded long ago, but back-dated into the window -> IN, and it sorts by
+      // encounter day, so it comes before a genuinely older encounter
+      contact("back-dated-in", 20, true, 95),
+      contact("plain-recent", 90, true),
+    ]);
+    const draft = composeNotifyDraft(blob, 100, 30); // window: encounter >= 70
+
+    expect(draft.entries.map((e) => e.label)).toEqual([
+      "back-dated-in",
+      "plain-recent",
     ]);
   });
 });

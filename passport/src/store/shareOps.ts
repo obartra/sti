@@ -268,6 +268,31 @@ export async function renameContactLabel(
   return { root: session.root, blob };
 }
 
+// Back-date (or reset) a contact's encounter day (doc 25): the day the meeting
+// actually happened, which seeds the partner-notify lookback. Purely local, like
+// the rename: no alias or card is touched and nothing leaves the device. A no-op
+// for an unknown id; a day equal to createdDay clears the override (stored as
+// absent, so the record round-trips to its pre-back-date shape). Clamped to
+// [0, today]: an encounter is never in the future, and never before the epoch.
+export async function setContactEncounterDay(
+  accounts: AccountManager,
+  session: OwnerSession,
+  opts: { contactId: string; encounterDay: number; today: number },
+): Promise<OwnerSession> {
+  const { contactId, encounterDay, today } = opts;
+  const contact = session.blob.contacts.find((c) => c.id === contactId);
+  if (contact === undefined) return session;
+  const clamped = Math.max(0, Math.min(Math.trunc(encounterDay), today));
+  // Store the override only when it actually differs from createdDay; equal means
+  // "no back-date", kept absent so the field stays truly optional.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { encounterDay: _drop, ...rest } = contact;
+  const next =
+    clamped === contact.createdDay ? rest : { ...rest, encounterDay: clamped };
+  const blob = await accounts.addContact(session.root, next);
+  return { root: session.root, blob };
+}
+
 // Revoke one contact link: kill the payload first (overwrite to garbage), then
 // drop the record. Fail-safe order: a failed revoke leaves the record for a retry.
 export async function revokeContactLink(

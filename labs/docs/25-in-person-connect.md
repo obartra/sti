@@ -1,6 +1,6 @@
 # 25 - In-person connect (the linkup)
 
-## Status: the two-person gesture and the open door are BUILT (the unified show+scan screen, the symmetric offer exchange, the completion states, the walk-away discard, and the per-screen door legs). Pending: the fully-offline offer mint and the back-datable encounter date.
+## Status: the two-person gesture, the open door, and back-dating an encounter are BUILT (the unified show+scan screen, the symmetric offer exchange, the completion states, the walk-away discard, the per-screen door legs, and editing the day you met from a contact's row). Pending: the fully-offline offer mint.
 
 Two people who are physically together connect in one shared gesture, instead of one
 of them texting a link later. Internally this is the "linkup" from
@@ -175,10 +175,15 @@ in-person extras in the fragment:
   or messaged, and it routes exactly like opening that link (the accept flow,
   which sends a return), never silently half-linking.
 
-The encounter is recorded as the link's created day (today); letting the pair
-back-date it is a pending piece. A few hundred bytes, comfortably inside a
-scannable QR. The completion screen's DOOR code (see "the door stays open") is a
-separate, smaller payload: an opaque knock pointer and nothing else.
+The encounter is recorded as the link's created day (today). A meeting logged
+after the fact can be back-dated from the contact's row in People ("Met on"),
+which is what the partner-notify lookback seeds on (doc 13), so a hookup entered
+a week late still reaches the right people and one recorded today for a
+months-old meeting does not. The back-date is a device-local edit, never sent
+and never touching the alias, clamped to no later than today; the QR carries no
+date field of its own. A few hundred bytes, comfortably inside a scannable QR.
+The completion screen's DOOR code (see "the door stays open") is a separate,
+smaller payload: an opaque knock pointer and nothing else.
 
 ## Completion: warm if both blue, neutral if one is gray (values)
 
@@ -204,8 +209,10 @@ This is the most values-sensitive surface in the product. Guardrails, non-negoti
 - `aliasLink`, `QrScanner` (camera), the `Connect` screen, the share-sheet QR
   generator, the per-contact inboxes, and the offline-sync queue are all reused.
 - Built on top: the unified show/scan component (the linkup screen), its
-  completion states, and the offer codec (the contact-invite URL plus the badge
-  snapshot). Encounter back-dating and the offline-queued mint are pending.
+  completion states, the offer codec (the contact-invite URL plus the badge
+  snapshot), and back-dating an encounter (the optional `encounterDay` on a
+  contact, editable from its row, seeding the partner-notify lookback). The
+  offline-queued mint is the one pending piece.
 
 ## How a NATIVE app would make this materially better (flag)
 
@@ -274,6 +281,8 @@ touches nothing), but the seamlessness ceiling is real and worth recording.
 
 - **v1 (built):** the two-QR exchange, the simultaneous show+scan screen, status
   shown at completion (badge snapshot always in QR), and the walk-away discard.
+- **Back-dating (built):** editing the day you met from a contact's row, seeding
+  the partner-notify lookback (doc 13).
 - **Offline mint (pending):** the offer publish rides the offline queue so the
   whole gesture works with no signal; the "we don't know who you're connected to"
   promise ships at full strength with it.

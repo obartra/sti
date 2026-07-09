@@ -93,6 +93,7 @@ export function demoContactMethods(
   SessionController,
   | "createContactLink"
   | "renameContact"
+  | "setContactEncounterDay"
   | "revokeContact"
   | "revokeAlias"
   | "acceptContactInvite"
@@ -112,6 +113,16 @@ export function demoContactMethods(
           c.id === contactId
             ? { ...c, label: label.trim().slice(0, MAX_CONTACT_LABEL) }
             : c,
+        ),
+      });
+      return session();
+    },
+    setContactEncounterDay: async (_s, contactId, encounterDay, today) => {
+      const clamped = Math.max(0, Math.min(Math.trunc(encounterDay), today));
+      setBlob({
+        ...getBlob(),
+        contacts: getBlob().contacts.map((c) =>
+          c.id === contactId ? { ...c, encounterDay: clamped } : c,
         ),
       });
       return session();
