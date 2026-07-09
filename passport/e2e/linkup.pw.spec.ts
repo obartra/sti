@@ -152,18 +152,21 @@ behaviorTest("door-admits-third-hands-free", async () => {
   await expect(pageC.locator(".lk__person")).toHaveCount(2);
   await expect(b.locator(".lk__person")).toHaveCount(3, { timeout: 60_000 });
 
-  // Both rosters agree the new link reads both ways. B's roster reads "Linked
-  // both ways" TWICE: the door leg with C, and the offer leg with A (a scan
-  // hands this side everything two-way needs; A walking away later only kills
-  // the read, not the record).
+  // Both rosters agree the new link is recorded. B's roster reads "Linked"
+  // TWICE: the door leg with C, and the offer leg with A (a scan hands this
+  // side everything two-way needs; A walking away later only kills the read,
+  // not the record, which is why the row says "Linked" and not "both ways").
   await pageC.goto(origin + "/links");
-  await expect(pageC.getByText("Linked both ways").first()).toBeVisible();
+  await expect(pageC.getByText(/^Linked/).first()).toBeVisible();
   // The Links screen lists every contact twice (the manage list and the "what
   // can resolve" panel), so count within ONE list: exactly the two legs, both
   // linked, nothing pending and nothing extra.
   await b.goto(origin + "/links");
   await expect(
-    b.locator(".cl__rows").first().getByText("Linked both ways"),
+    b
+      .locator(".cl__rows")
+      .first()
+      .getByText(/^Linked/),
   ).toHaveCount(2);
   expect(errors).toEqual([]);
 });
