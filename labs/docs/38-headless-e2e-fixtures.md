@@ -1,12 +1,12 @@
 # 38 - Headless logged-in e2e: the passkey and camera fixtures
 
-*How the Playwright suite signs into real accounts and scans real codes with no human, no
+_How the Playwright suite signs into real accounts and scans real codes with no human, no
 hardware, and no test-mode backdoors in the app. Extends the behavioral plane of
 [Load & Usage Testing](14-load-and-usage-testing.md) from logged-out journeys to the whole
 product. Pairs with [Stay signed in](24-stay-signed-in.md) and
 [Account recovery](32-account-recovery-and-unlock.md) (the passkey model being exercised) and
-[In-person connect](25-in-person-connect.md) (the design-stage flow this deliberately does not
-build).*
+[In-person connect](25-in-person-connect.md) (the camera-driven gesture these fixtures
+prove)._
 
 ---
 
@@ -132,16 +132,32 @@ loses its test. Console errors and page errors are gated in every journey.
   fallback, never a dead viewfinder). Every visited screen is swept for nonsense: raw
   placeholder artifacts (`undefined`, `NaN`, `[object Object]`, unfilled templates) and
   walked CTAs that go nowhere.
+- **`e2e/linkup.pw.spec.ts`**: the in-person gesture (doc 25) across three browsers. One
+  account turns blue and shows the connect screen; a second scans the offer through the
+  fake camera and completes silently, with its alias reads answered by decoy bytes so the
+  blue face on its completion can only have come from the snapshot that crossed in the QR.
+  A third then scans the completion's open door and is admitted hands-free (knock, sealed
+  grant, return), both rosters agreeing. Finally the first account closes unscanned and
+  the offer's link reads the uniform gray on the other side (the walk-away rule). The QR
+  tiles mirror their payload in a `data-url` attribute so the harness reads the screen the
+  way a camera would; the QR IS the URL, so the attribute exposes nothing new.
+- **`e2e/notify.pw.spec.ts`**: the partner-notify loop (doc 13). Two accounts link through
+  the remote handshake; one saves a positive result (the save is the trigger, nothing to
+  tap); the other's notifications show the contentless nudge, and the screen never names
+  the reporter, not even by the recipient's own nickname for them. Then the owner revokes
+  the link and the holder's view of them resolves to the uniform gray-nothing.
+- **`e2e/groups.pw.spec.ts`**: group churn (doc 33). An admin removes a member across three
+  browsers; the survivors' rosters agree after the key rotation and the removed member's
+  view goes quietly empty, with no error and no why. A separate pair drives the stalled
+  join: an accept whose admin never ingests shows "Still waiting" once the device clock
+  passes the wait window, and clearing it removes the record.
 
-The camera-driven mutual link lives only in the connect spec; the smoke keeps the
+The camera-driven legs live in the connect and linkup specs; the smoke keeps the
 camera-less degradation, so both sides of the scan screen's reality are pinned.
 
 ## 7. What this deliberately does not do
 
 - **No app test modes.** The app has no flag, env var, or injected fake for any of this;
   the fixtures answer the production WebAuthn and getUserMedia calls.
-- **No doc 25 build-out.** The two-QR simultaneous in-person connect is still design-stage;
-  the return leg here completes the way the shipped product instructs (send the link back).
-  When doc 25 lands, these fixtures are the harness it will be proven with.
 - **No load-plane changes.** The wire/load lab of doc 14 is untouched; these specs join the
   same `npm run test:e2e` gate.

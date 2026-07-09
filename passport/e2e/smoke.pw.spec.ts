@@ -6,7 +6,12 @@ import { test, expect, type Page } from "@playwright/test";
 
 import { previewOrigin } from "./support/env.ts";
 import { attachVirtualAuthenticator } from "./support/webauthn.ts";
-import { signUp, expectHome, watchErrors } from "./support/journeys.ts";
+import {
+  signUp,
+  expectHome,
+  fillCleanPanel,
+  watchErrors,
+} from "./support/journeys.ts";
 import { behaviorHarness } from "./support/catalog.ts";
 
 const { behaviorTest, coverageTest } = behaviorHarness("e2e/smoke.pw.spec.ts");
@@ -37,33 +42,11 @@ behaviorTest("report-updates-home", async ({ browser }) => {
   await signUp(owner, previewOrigin(), { name: "Sam" });
   await sweepNonsense(owner);
 
-  // Add a full clean core panel + a route, the way the form asks for it.
+  // Add a full clean core panel + a route, the way the form asks for it (the
+  // shared journey helper; other specs need the same blue-card report).
   await owner.getByRole("button", { name: "Add a result" }).first().click();
   await sweepNonsense(owner);
-  const inf = (name: string) => owner!.locator(".rp__inf", { hasText: name });
-  await inf("HIV").getByRole("button", { name: "Negative" }).click();
-  await inf("Syphilis").getByRole("button", { name: "Negative" }).click();
-  for (const name of ["Chlamydia", "Gonorrhoea"]) {
-    const site = (label: string) =>
-      inf(name).locator(".rp__site", { hasText: label });
-    await site("Genital / urine")
-      .getByRole("button", { name: "Negative" })
-      .click();
-    await site("Throat")
-      .getByRole("button", { name: "Not a site I use" })
-      .click();
-    await site("Rectal")
-      .getByRole("button", { name: "Not a site I use" })
-      .click();
-  }
-  // The route switch carries no label association (the text is a sibling), so
-  // tap the switch control in the row that names it.
-  await owner
-    .locator(".rp__toggle-row", { hasText: "I’m on PrEP" })
-    .locator(".sti-switch")
-    .click();
-  // The form itself must agree this is a blue card before we trust the save.
-  await expect(owner.getByText("This will show a blue card.")).toBeVisible();
+  await fillCleanPanel(owner);
   await owner.getByRole("button", { name: "Save results" }).click();
   await expectHome(owner);
   await sweepNonsense(owner);

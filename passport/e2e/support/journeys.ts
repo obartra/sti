@@ -62,6 +62,37 @@ export async function signUp(
   return { phrase };
 }
 
+/** Fill the OPEN add-results form with a full clean core panel plus PrEP, the
+ * way the form asks for it: the canonical blue-card report. Stops at the form's
+ * own blue-readiness line, leaving the save to the caller (specs differ in what
+ * they sweep and await around it). */
+export async function fillCleanPanel(page: Page): Promise<void> {
+  const inf = (name: string) => page.locator(".rp__inf", { hasText: name });
+  await inf("HIV").getByRole("button", { name: "Negative" }).click();
+  await inf("Syphilis").getByRole("button", { name: "Negative" }).click();
+  for (const name of ["Chlamydia", "Gonorrhoea"]) {
+    const site = (label: string) =>
+      inf(name).locator(".rp__site", { hasText: label });
+    await site("Genital / urine")
+      .getByRole("button", { name: "Negative" })
+      .click();
+    await site("Throat")
+      .getByRole("button", { name: "Not a site I use" })
+      .click();
+    await site("Rectal")
+      .getByRole("button", { name: "Not a site I use" })
+      .click();
+  }
+  // The route switch carries no label association (the text is a sibling), so
+  // tap the switch control in the row that names it.
+  await page
+    .locator(".rp__toggle-row", { hasText: "I’m on PrEP" })
+    .locator(".sti-switch")
+    .click();
+  // The form itself must agree this is a blue card before anyone trusts the save.
+  await expect(page.getByText("This will show a blue card.")).toBeVisible();
+}
+
 /** The signed-in home is up: its two standing actions are on screen (each can
  * render more than once across the responsive chrome, hence first()). */
 export async function expectHome(page: Page): Promise<void> {

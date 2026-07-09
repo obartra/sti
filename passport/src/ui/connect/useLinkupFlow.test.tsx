@@ -224,6 +224,52 @@ describe("useLinkupFlow", () => {
     expect(onExit).toHaveBeenCalledTimes(2);
   });
 
+  it("discards the unconsumed offer when the screen unmounts without Close", async () => {
+    // On desktop the tab bar can unmount the screen directly; the walk-away
+    // rule must hold there too (the offer's alias must not stay live).
+    const d = deps();
+    const { result, unmount } = renderHook(() => useLinkupFlow(d));
+    await waitFor(() => expect(result.current.phase.kind).toBe("showing"));
+    unmount();
+    await waitFor(() => expect(d.discard).toHaveBeenCalledWith("c1"));
+  });
+
+  it("keeps a completed link when the screen unmounts, and never doubles the Close discard", async () => {
+    const linked = deps();
+    const flow = renderHook(() => useLinkupFlow(linked));
+    await waitFor(() => expect(flow.result.current.phase.kind).toBe("showing"));
+    act(() => flow.result.current.onScanned(offer()));
+    flow.unmount();
+    await new Promise((r) => setTimeout(r, 5));
+    expect(linked.discard).not.toHaveBeenCalled();
+
+    const closed = deps();
+    const again = renderHook(() => useLinkupFlow(closed));
+    await waitFor(() =>
+      expect(again.result.current.phase.kind).toBe("showing"),
+    );
+    act(() => again.result.current.onClose());
+    again.unmount();
+    await new Promise((r) => setTimeout(r, 5));
+    expect(closed.discard).toHaveBeenCalledTimes(1);
+  });
+
+  it("discards a mint that lands after the gesture already ended", async () => {
+    let lateMint: (v: { contactId: string; url: string }) => void = () =>
+      undefined;
+    const d = deps({
+      createOffer: () =>
+        new Promise((resolve) => {
+          lateMint = resolve;
+        }),
+    });
+    const { result, unmount } = renderHook(() => useLinkupFlow(d));
+    expect(result.current.phase.kind).toBe("pending");
+    unmount();
+    lateMint({ contactId: "late", url: "https://x/a/1#k=2" });
+    await waitFor(() => expect(d.discard).toHaveBeenCalledWith("late"));
+  });
+
   it("opens its door once linked and shows the door code", async () => {
     const { door } = fakeDoor();
     const { result } = renderHook(() => useLinkupFlow(deps({ door })));

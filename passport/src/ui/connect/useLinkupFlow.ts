@@ -3,9 +3,10 @@
  * the markup so it is testable without either. On mount it mints this device's
  * OFFER (a pending contact + the URL the shown QR carries); when the camera
  * decodes the other person's offer it completes that pending contact, and the
- * screen advances to its completion, independent of the other phone. Closing
- * before anything linked discards the offer (revoking its alias), so walking
- * away means nothing happened; closing after completion keeps the links.
+ * screen advances to its completion, independent of the other phone. Leaving
+ * before anything linked (Close, or any navigation that unmounts the screen)
+ * discards the offer (revoking its alias), so walking away means nothing
+ * happened; leaving after completion keeps the links.
  *
  * More than two rides the OPEN DOOR (doc 25): once linked, this screen opens its
  * own door (a knock pointer shown as the new QR) and, while open, admits each
@@ -297,6 +298,24 @@ function useDoorLegs(
   return { doorHandle: door, joinDoor, closeDoor };
 }
 
+// Walking away is not always the Close button: on desktop the tab bar can
+// unmount the screen directly, and the walk-away rule (doc 25) must hold there
+// too, or the shown offer's alias stays live forever. The cleanup is deferred
+// one tick so StrictMode's synchronous dev unmount/remount never kills a live
+// gesture; a real unmount fires it.
+function useCleanupOnUnmount(cleanup: () => void): void {
+  const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latest = useRef(cleanup);
+  latest.current = cleanup;
+  useEffect(() => {
+    if (pending.current !== null) clearTimeout(pending.current);
+    pending.current = null;
+    return () => {
+      pending.current = setTimeout(() => latest.current(), 0);
+    };
+  }, []);
+}
+
 export function useLinkupFlow(deps: LinkupDeps): LinkupFlow {
   const [offer, setOffer] = useState<{
     contactId: string;
@@ -318,7 +337,11 @@ export function useLinkupFlow(deps: LinkupDeps): LinkupFlow {
     depsRef.current
       .createOffer()
       .then((minted) => {
+        // A mint that lands after this attempt ended (the screen closed, or a
+        // retry superseded it) is already a real contact; discard it, or it
+        // lingers as a ghost "waiting" row with a live alias.
         if (!stale) setOffer(minted);
+        else depsRef.current.discard(minted.contactId);
       })
       .catch(() => {
         if (!stale) setFailed(true);
@@ -373,13 +396,19 @@ export function useLinkupFlow(deps: LinkupDeps): LinkupFlow {
 
   // Unfinished legs die with the gesture: the unconsumed offer, and every
   // admitted leg whose joiner never answered. Completed links stay. Shared by
-  // closing the screen and routing away to a scanned code's own flow.
+  // closing the screen, routing away to a scanned code's own flow, and the
+  // unmount below; runs at most once (Close also ends in an unmount).
+  const cleaned = useRef(false);
   const cleanup = useCallback(() => {
+    if (cleaned.current) return;
+    cleaned.current = true;
     if (offer !== null && !offerConsumed.current) {
       depsRef.current.discard(offer.contactId);
     }
     doorLegs.closeDoor();
   }, [offer, doorLegs]);
+
+  useCleanupOnUnmount(cleanup);
 
   const onScanned = useCallback(
     (scanned: ScannedConnect) => {

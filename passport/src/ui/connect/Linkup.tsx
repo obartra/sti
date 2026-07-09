@@ -63,8 +63,10 @@ function MyCode({
   onRetry: () => void;
 }) {
   if (phase.kind === "showing") {
+    // data-url mirrors the QR's payload (the QR IS the URL), so a headless
+    // test can harvest what a phone camera would read off this screen.
     return (
-      <div className="lk__code" data-testid="lk-code">
+      <div className="lk__code" data-testid="lk-code" data-url={phase.url}>
         <Matrix value={phase.url} size={196} color="var(--ink-900)" />
       </div>
     );
@@ -117,7 +119,12 @@ function Person({ name, badge }: { name: string; badge: BadgeState | null }) {
 function Door({ url }: { url: string }) {
   return (
     <>
-      <div className="lk__code lk__code--door" data-testid="lk-door">
+      {/* data-url mirrors the QR's payload, same as lk-code: what a camera reads */}
+      <div
+        className="lk__code lk__code--door"
+        data-testid="lk-door"
+        data-url={url}
+      >
         <Matrix value={url} size={132} color="var(--ink-900)" />
       </div>
       <div className="lk__line">{COPY.doorLine}</div>
