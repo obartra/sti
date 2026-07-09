@@ -29,10 +29,7 @@ import type { DeviceStore } from "../auth/deviceStore.ts";
  * {@link PasskeyFailureCode}.
  */
 export type ResumeFailure =
-  | "no-binding"
-  | "no-account"
-  | "mismatch"
-  | PasskeyFailureCode;
+  "no-binding" | "no-account" | "mismatch" | PasskeyFailureCode;
 
 export type UnlockResult =
   | { readonly ok: true; readonly root: RootKey }

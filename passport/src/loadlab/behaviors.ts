@@ -25,11 +25,7 @@ import data from "./behaviors.json";
 
 export type BehaviorStatus = "validated" | "characterized" | "planned";
 export type BehaviorLayer =
-  | "wire"
-  | "crypto"
-  | "telemetry"
-  | "lifecycle"
-  | "browser";
+  "wire" | "crypto" | "telemetry" | "lifecycle" | "browser";
 
 export interface Behavior {
   readonly id: string;

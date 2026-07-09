@@ -45,11 +45,7 @@ import type { OwnerSession, SessionController } from "./session.ts";
  * - `error`: a transport or unexpected failure.
  */
 export type SetRecoveryPasswordOutcome =
-  | "set"
-  | "wrongPhrase"
-  | "weakPassword"
-  | "nameUnavailable"
-  | "error";
+  "set" | "wrongPhrase" | "weakPassword" | "nameUnavailable" | "error";
 
 /**
  * How wrapping + storing the envelope resolved, shared by the Settings path (which
@@ -59,10 +55,7 @@ export type SetRecoveryPasswordOutcome =
  * concern, not this helper's.
  */
 type StoreRecoveryEnvelopeOutcome =
-  | "stored"
-  | "weakPassword"
-  | "nameUnavailable"
-  | "error";
+  "stored" | "weakPassword" | "nameUnavailable" | "error";
 
 /**
  * The optional password factor chosen AT sign-up (doc 32): a public handle
@@ -87,10 +80,7 @@ export interface SignUpRecovery {
  * - `"error"`: a transport or unexpected failure wrapping/storing the envelope.
  */
 export type SignUpRecoveryOutcome =
-  | "set"
-  | "nameUnavailable"
-  | "weakPassword"
-  | "error";
+  "set" | "nameUnavailable" | "weakPassword" | "error";
 
 export interface SetRecoveryPasswordResult {
   readonly session: OwnerSession;

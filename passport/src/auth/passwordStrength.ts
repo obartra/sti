@@ -48,8 +48,7 @@ export const REQUIRED_ZXCVBN_SCORE = 4;
  * 21) ready to show under the field; on a pass there is nothing to say.
  */
 export type PasswordGrade =
-  | { readonly ok: true }
-  | { readonly ok: false; readonly reason: string };
+  { readonly ok: true } | { readonly ok: false; readonly reason: string };
 
 // One factory for the module, seeded once with our dictionary. zxcvbn lowercases,
 // reverses, and l33t-matches against it, so the list need only hold base forms.

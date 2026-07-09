@@ -43,8 +43,7 @@ export interface ReportProps {
   ownerState?: OwnerState;
   /** Persist a route toggle (PrEP / condoms-always) to the owner state. */
   onSetOwnerState?:
-    | ((update: (prev: OwnerState) => OwnerState) => void)
-    | undefined;
+    ((update: (prev: OwnerState) => OwnerState) => void) | undefined;
   /** The clock edge as an epoch day. Defaults to the device's today; stories
    * and tests pin it so dated renders (the "Date tested" default) stay
    * deterministic instead of drifting with the wall clock. */

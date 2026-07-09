@@ -167,20 +167,16 @@ export interface GroupDetailProps {
   onRevokeInvite?: ((groupId: string, inviteId: string) => void) | undefined;
   /** Admin (public groups): read the waiting join requests. */
   onReviewRequests?:
-    | ((groupId: string) => Promise<PendingRequest[]>)
-    | undefined;
+    ((groupId: string) => Promise<PendingRequest[]>) | undefined;
   /** Admin (public groups): approve one join request. */
   onApproveRequest?:
-    | ((groupId: string, request: PendingRequest) => Promise<void>)
-    | undefined;
+    ((groupId: string, request: PendingRequest) => Promise<void>) | undefined;
   /** Admin (public groups): reject one join request. */
   onRejectRequest?:
-    | ((groupId: string, request: PendingRequest) => Promise<void>)
-    | undefined;
+    ((groupId: string, request: PendingRequest) => Promise<void>) | undefined;
   /** Admin: remove a member (rotates the key); the roster is re-read after. */
   onRemoveMember?:
-    | ((groupId: string, cardId: string) => Promise<void>)
-    | undefined;
+    ((groupId: string, cardId: string) => Promise<void>) | undefined;
 }
 
 // The admin-controls bundle for this detail, or null when the reader is not an admin

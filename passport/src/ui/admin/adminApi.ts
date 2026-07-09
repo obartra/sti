@@ -144,9 +144,7 @@ export async function listAdminAudit(
 // each of those becomes a bind-and-default one-liner. A 401 stays distinct so the page
 // can re-lock; any other non-200, a network failure, or a malformed body is an error.
 export type GetJsonResult<T> =
-  | { kind: "ok"; body: T }
-  | { kind: "unauthorized" }
-  | { kind: "error" };
+  { kind: "ok"; body: T } | { kind: "unauthorized" } | { kind: "error" };
 
 export async function adminGetJson<T>(
   url: string,

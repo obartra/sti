@@ -164,9 +164,7 @@ interface LifecycleLeave {
 /** The lifecycle messages a member writes back through the inbox: an accept or
  * reject on the way in, a leave on the way out. */
 export type LifecyclePayload =
-  | LifecycleAccept
-  | LifecycleReject
-  | LifecycleLeave;
+  LifecycleAccept | LifecycleReject | LifecycleLeave;
 
 /** Encode an accept payload (plaintext bytes) to hand to writePing. Carries the
  * invitee-minted `leaveInbox` (the ongoing leave channel) so it reaches the admin only

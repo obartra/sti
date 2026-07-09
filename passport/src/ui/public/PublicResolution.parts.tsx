@@ -197,8 +197,7 @@ export function ResolutionActions({
   knockSent: boolean;
   canAccept: boolean;
   onAccept?:
-    | ((label: string, reveal: AcceptReveal) => Promise<string>)
-    | undefined;
+    ((label: string, reveal: AcceptReveal) => Promise<string>) | undefined;
   // The accepter's own name + face (doc 15): whether they have a name to reveal and
   // the fallback face for the per-link picker. Never the inviter's.
   accepterName?: string | undefined;

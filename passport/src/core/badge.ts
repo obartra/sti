@@ -16,9 +16,7 @@
  */
 
 export type HivStatus =
-  | "negative"
-  | "positive_undetectable"
-  | "positive_detectable";
+  "negative" | "positive_undetectable" | "positive_detectable";
 
 /**
  * Displayed "No condoms" / "Condoms optional" / "Condoms always" + an

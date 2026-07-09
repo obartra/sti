@@ -45,8 +45,7 @@ export interface PublicResolutionScreenProps {
   // the name plus the report transport enable the "report this name" affordance.
   name?: string | undefined;
   reportName?:
-    | ((name: string, reason: VanityReportReason) => Promise<void>)
-    | undefined;
+    ((name: string, reason: VanityReportReason) => Promise<void>) | undefined;
 }
 
 const noop = (): void => undefined;
@@ -69,8 +68,7 @@ function inviteActions(
 ): {
   canAccept: boolean;
   onAccept:
-    | ((label: string, reveal: AcceptReveal) => Promise<string>)
-    | undefined;
+    ((label: string, reveal: AcceptReveal) => Promise<string>) | undefined;
   canConnect: boolean;
   onConnect: (() => void) | undefined;
 } {

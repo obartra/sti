@@ -173,11 +173,7 @@ export type VanityRegisterResult = "registered" | "unavailable" | "error";
 
 /** The fixed report reason codes (doc 17); mirrors the server's set. */
 export type VanityReportReason =
-  | "impersonation"
-  | "abuse"
-  | "slur"
-  | "spam"
-  | "other";
+  "impersonation" | "abuse" | "slur" | "spam" | "other";
 
 export const OCTET_STREAM = "application/octet-stream";
 
