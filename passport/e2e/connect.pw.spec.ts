@@ -115,11 +115,11 @@ behaviorTest("contact-handshake-links-both-ways", async () => {
   ).toBeVisible();
   await ingested;
 
-  // Both rosters agree: the link reads both ways on each device.
+  // Both rosters agree: the link is recorded on each device.
   await a.goto(origin + "/links");
-  await expect(a.getByText("Linked both ways").first()).toBeVisible();
+  await expect(a.getByText(/^Linked/).first()).toBeVisible();
   await b.goto(origin + "/links");
-  await expect(b.getByText("Linked both ways").first()).toBeVisible();
+  await expect(b.getByText(/^Linked/).first()).toBeVisible();
   expect(errors).toEqual([]);
 });
 

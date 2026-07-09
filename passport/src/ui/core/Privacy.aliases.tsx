@@ -154,9 +154,7 @@ export function LiveLinks({
               icon={<LinkIcon size={18} />}
               title={c.label || "Unnamed link"}
               sub={withExpiry(
-                c.theirStatusAlias !== undefined
-                  ? "Linked both ways"
-                  : "Private link",
+                c.theirStatusAlias !== undefined ? "Linked" : "Private link",
                 c.expiresAt,
               )}
               onShare={

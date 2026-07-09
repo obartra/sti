@@ -50,7 +50,7 @@ describe("ContactLinks", () => {
         onRevoke={noop}
       />,
     );
-    expect(screen.getByText(/Linked both ways/)).toBeInTheDocument();
+    expect(screen.getByText(/^Linked/)).toBeInTheDocument();
     expect(screen.getByText(/Waiting for their link/)).toBeInTheDocument();
   });
 

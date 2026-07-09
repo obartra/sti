@@ -272,9 +272,12 @@ function ContactRow({
   onRename: ((label: string) => void) | undefined;
 }): React.ReactElement {
   const [open, setOpen] = useState(false);
+  // "Linked" describes the exchanged capabilities; whether their status
+  // currently resolves is a live read the viewer sees on open, not a claim the
+  // row makes (they may have since walked away, doc 25).
   const linked =
     contact.theirStatusAlias !== undefined
-      ? "Linked both ways"
+      ? "Linked"
       : "Waiting for their link";
   const expiry = expiryLabel(contact.expiresAt, nowMs());
   const status = expiry === null ? linked : `${linked} · ${expiry}`;
