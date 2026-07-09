@@ -95,6 +95,9 @@ export interface ScreenCtx extends GroupJoinActions {
   onSetEncounterDay: (id: string, day: number) => void;
   /** Revoke one contact link by id. */
   onRevokeContact: (id: string) => void;
+  /** Discard a just-made connect offer walked away from (doc 25); drops even
+   * offline so an unpublished offer is never republished. */
+  onDiscardOffer: (id: string) => void;
   /** Starred contact ids (device-local display preference); empty logged out. */
   faves: ReadonlySet<string>;
   /** Toggle one contact's star. */

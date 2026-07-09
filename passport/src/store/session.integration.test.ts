@@ -5,7 +5,7 @@
 // GET/PUT /acct, not just that the wiring compiles.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { createApiClient } from "../api/client.ts";
+import { createApiClient, type ApiClient } from "../api/client.ts";
 import { createAccountManager } from "./account.ts";
 import { createAccountSync } from "./accountSync.ts";
 import { createBackendStore } from "./backendStore.ts";
@@ -366,6 +366,50 @@ describe("owner session against a live blind store", () => {
     const after = await a.ctl.revokeContact(offer.session, offer.contact.id);
     expect(after.blob.contacts).toHaveLength(0);
     expect(await store.resolveAlias(link)).toBeNull();
+  });
+
+  it("offline mint records the contact; the reconnect republish publishes its card (doc 25)", async () => {
+    const store = createBackendStore(createApiClient(baseUrl));
+    const real = createApiClient(baseUrl);
+    let online = false;
+    // A flaky api: putAlias fails while offline (the in-person moment with no
+    // signal), every other method passes through to the real server.
+    const flaky: ApiClient = {
+      ...real,
+      putAlias: (...args: Parameters<typeof real.putAlias>) =>
+        online ? real.putAlias(...args) : Promise.reject(new Error("offline")),
+    };
+    const ctl = createSessionController({
+      accounts: createAccountManager(flaky),
+      sync: createAccountSync(flaky),
+      devices: createDeviceStore(memoryStorage()),
+      passkey: fakePasskey(),
+      keys: createVolatileRootKeyStore(),
+      api: flaky,
+    });
+    // Blue, so the published card is distinguishable from a decoy.
+    const { session: s0 } = await ctl.signUp("alex");
+    const s1 = await ctl.setOwnerState(s0, { ...s0.blob.state, onPrep: true });
+
+    // Offline mint: the card PUT fails, but the offer completes and the contact
+    // is recorded, so its QR could have shown with no signal.
+    const offer = await ctl.createContactLink(s1, "");
+    const link = caps(offer.contact.alias);
+    expect(offer.session.blob.contacts).toHaveLength(1);
+    // The peer cannot resolve it yet: nothing reached the server.
+    expect(await store.resolveAlias(link)).toBeNull();
+
+    // Reconnect: re-applying owner state republishes every live link (contacts
+    // included), exactly what the reconnect drain does; the offer's card lands.
+    online = true;
+    await ctl.setOwnerState(offer.session, offer.session.blob.state);
+    expect(await store.resolveAlias(link)).toEqual(
+      deriveOwnerCard(
+        offer.session.blob.state,
+        pseudonymFor(link.id),
+        todayEpochDay(),
+      ),
+    );
   });
 
   it("ingest and accept guard the exchange edges (no-match, no-ref, double, return)", async () => {

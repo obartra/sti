@@ -64,7 +64,7 @@ export const peopleRenderers: ScreenRenderers = {
           ownerBadge={ctx.owner.viewerBadge}
           createOffer={() => mintOffer(ctx)}
           complete={ctx.onCompleteLinkup}
-          discard={ctx.onRevokeContact}
+          discard={ctx.onDiscardOffer}
           resolvePeer={(link) => ctx.store.resolveAlias(link)}
           onViewCode={onView}
           onExit={ctx.nav.back}

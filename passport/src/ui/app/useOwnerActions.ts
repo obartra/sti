@@ -17,13 +17,13 @@ import type {
 } from "../../store/recoveryOps.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
 import { disablePush } from "../../store/push.ts";
-import { todayEpochDay } from "../../core/clock.ts";
 import {
   browserForgetRequesterSecret,
   browserForgetGrantKeys,
   browserForgetPendingKnocks,
   browserForgetGroupJoins,
 } from "../../store/index.ts";
+import { useContactActions } from "./useContactActions.ts";
 import {
   useGroupJoinActions,
   type GroupJoinActions,
@@ -51,6 +51,9 @@ export interface OwnerActions extends GroupJoinActions {
   onSetEncounterDay: (id: string, day: number) => void;
   /** Revoke one contact link by id. */
   onRevokeContact: (id: string) => void;
+  /** Discard a just-made connect offer walked away from (doc 25); drops even
+   * offline so an unpublished offer never gets republished. */
+  onDiscardOffer: (id: string) => void;
   /** Revoke one published alias (public/casual link) by id. */
   onRevokeAlias: (id: string) => void;
   /** Accept a contact invite; resolves with the return invite to send back.
@@ -223,89 +226,6 @@ export function useOwnerActions(
     ...groupJoin,
     ...findable,
     ...recovery,
-  };
-}
-
-// The per-contact link mutations (rename / revoke / the in-person completion),
-// split out so useOwnerActions stays within its length ceiling. Each reads the
-// latest session, runs the controller op, and folds the result back; a no-op while
-// logged out, and a fire-and-fold failure leaves the session as-is.
-function useContactActions(
-  controller: SessionController,
-  sessionRef: RefObject<OwnerSession | null>,
-  setSession: (s: OwnerSession | null) => void,
-): Pick<
-  OwnerActions,
-  | "onRenameContact"
-  | "onSetEncounterDay"
-  | "onRevokeContact"
-  | "onCompleteLinkup"
-> {
-  const onRenameContact = useCallback(
-    (id: string, label: string) => {
-      const current = sessionRef.current;
-      if (current === null) return;
-      void controller
-        .renameContact(current, id, label)
-        .then((updated) => {
-          sessionRef.current = updated;
-          setSession(updated);
-        })
-        .catch(() => undefined);
-    },
-    [controller, sessionRef, setSession],
-  );
-
-  const onSetEncounterDay = useCallback(
-    (id: string, day: number) => {
-      const current = sessionRef.current;
-      if (current === null) return;
-      void controller
-        .setContactEncounterDay(current, id, day, todayEpochDay())
-        .then((updated) => {
-          sessionRef.current = updated;
-          setSession(updated);
-        })
-        .catch(() => undefined);
-    },
-    [controller, sessionRef, setSession],
-  );
-
-  const onRevokeContact = useCallback(
-    (id: string) => {
-      const current = sessionRef.current;
-      if (current === null) return;
-      void controller
-        .revokeContact(current, id)
-        .then((updated) => {
-          sessionRef.current = updated;
-          setSession(updated);
-        })
-        .catch(() => undefined);
-    },
-    [controller, sessionRef, setSession],
-  );
-
-  const onCompleteLinkup = useCallback(
-    async (contactId: string, invite: ContactInvite) => {
-      const current = sessionRef.current;
-      if (current === null) throw new Error("not signed in");
-      const updated = await controller.completeInPersonLinkup(
-        current,
-        contactId,
-        invite,
-      );
-      sessionRef.current = updated;
-      setSession(updated);
-    },
-    [controller, sessionRef, setSession],
-  );
-
-  return {
-    onRenameContact,
-    onSetEncounterDay,
-    onRevokeContact,
-    onCompleteLinkup,
   };
 }
 

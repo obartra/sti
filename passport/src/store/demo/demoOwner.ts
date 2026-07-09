@@ -95,6 +95,7 @@ export function demoContactMethods(
   | "renameContact"
   | "setContactEncounterDay"
   | "revokeContact"
+  | "discardOffer"
   | "revokeAlias"
   | "acceptContactInvite"
   | "ingestContactReturn"
@@ -128,6 +129,15 @@ export function demoContactMethods(
       return session();
     },
     revokeContact: async (_s, contactId) => {
+      setBlob({
+        ...getBlob(),
+        contacts: getBlob().contacts.filter((c) => c.id !== contactId),
+      });
+      return session();
+    },
+    // Walk-away discard (doc 25): the demo has no server, so it just drops the
+    // record, same as a revoke here.
+    discardOffer: async (_s, contactId) => {
       setBlob({
         ...getBlob(),
         contacts: getBlob().contacts.filter((c) => c.id !== contactId),

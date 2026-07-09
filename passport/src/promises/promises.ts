@@ -154,6 +154,15 @@ export const PROMISES: readonly UserPromise[] = [
           name: "is blue only when blue + reachable + fresh",
         },
       },
+      {
+        claim:
+          "Connecting in person needs no signal: the code is shown and scanned with nothing sent, so a connection can form without us seeing it happen; your encrypted card syncs only later.",
+        backedBy: {
+          kind: "test",
+          file: "src/store/session.integration.test.ts",
+          name: "offline mint records the contact; the reconnect republish publishes its card (doc 25)",
+        },
+      },
     ],
   },
   {

@@ -19,6 +19,7 @@ import {
   base64urlToBytes,
   randomAliasId,
   randomWriteToken,
+  type Bytes,
 } from "../crypto/index.ts";
 import { serializePublicCard } from "./publicCard.ts";
 import type { AliasRecord } from "./accountBlob.ts";
@@ -105,23 +106,60 @@ export async function publishCard(
   buildView: (record: AliasRecord) => ResolvedView,
   opts: { isPublic?: boolean; expiresAt?: number | null } = {},
 ): Promise<PublishedAlias> {
-  const raw = crypto.getRandomValues(new Uint8Array(32));
-  const isPublic = opts.isPublic ?? true;
-  // A public link is the durable "anyone who scans sees my status" surface, so it
-  // never carries a server expiry (doc 16): expiry is a private one-off-link
-  // affordance only. Taking a public profile down is done by revoking it (or
-  // releasing its public name), not by lapsing. So any expiresAt passed for a
-  // public alias is dropped here, guaranteeing public links never expire.
-  const expiresAt = isPublic ? null : (opts.expiresAt ?? null);
-  const record: AliasRecord = {
-    id: randomAliasId(),
-    writeToken: randomWriteToken(),
-    key: bytesToBase64url(raw),
-    isPublic,
-    expiresAt,
-  };
+  const { record, raw } = mintAliasRecord(opts);
   await sealAndPut(api, await importAesKey(raw), record, buildView(record));
   return { link: aliasLinkUrl(record), record };
+}
+
+/**
+ * Like {@link publishCard}, but the server write is BEST-EFFORT: a fresh alias is
+ * minted and its card PUT, and if the PUT fails (offline, transient) the mint
+ * still succeeds and reports `published: false`. This is the fully-offline connect
+ * gesture (doc 25): the offer's capabilities are all client-side, so the QR can be
+ * shown with no signal; the card lands later on the next republish (the reconnect
+ * drain re-seals every live link, contacts included, via republishLiveLinks). The
+ * caller records the contact regardless, so the account blob's own pending-push
+ * drain is what later triggers that republish.
+ */
+export async function publishCardBestEffort(
+  api: ApiClient,
+  buildView: (record: AliasRecord) => ResolvedView,
+  opts: { isPublic?: boolean; expiresAt?: number | null } = {},
+): Promise<PublishedAlias & { published: boolean }> {
+  const { record, raw } = mintAliasRecord(opts);
+  const published = await sealAndPut(
+    api,
+    await importAesKey(raw),
+    record,
+    buildView(record),
+  )
+    .then(() => true)
+    .catch(() => false);
+  return { link: aliasLinkUrl(record), record, published };
+}
+
+// Mint a fresh alias record (random id + write token + key). A public link never
+// carries a server expiry (doc 16): expiry is a private one-off-link affordance
+// only, so any expiresAt passed for a public alias is dropped here, guaranteeing
+// public links never expire. `raw` is the key bytes, returned so the caller can
+// seal without re-importing from base64url.
+function mintAliasRecord(opts: {
+  isPublic?: boolean;
+  expiresAt?: number | null;
+}): { record: AliasRecord; raw: Bytes } {
+  const raw = crypto.getRandomValues(new Uint8Array(32));
+  const isPublic = opts.isPublic ?? true;
+  const expiresAt = isPublic ? null : (opts.expiresAt ?? null);
+  return {
+    record: {
+      id: randomAliasId(),
+      writeToken: randomWriteToken(),
+      key: bytesToBase64url(raw),
+      isPublic,
+      expiresAt,
+    },
+    raw,
+  };
 }
 
 /**
