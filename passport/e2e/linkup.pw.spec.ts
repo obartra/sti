@@ -64,12 +64,19 @@ behaviorTest(
     await fillCleanPanel(pageA);
     await pageA.getByRole("button", { name: "Save results" }).click();
     await expectHome(pageA);
+    // Wait until A's card has actually gone blue before minting the offer: the
+    // whole point of this test is that A's BLUE crosses in the QR, so the badge
+    // must be settled first (else the snapshot is gray and the assertion below
+    // flakes under load).
+    await expect(pageA.getByText(BLUE_HEADLINE).first()).toBeVisible();
     await pageA.goto(origin + "/people");
     await pageA.getByText("Connect in person").first().click();
     const tile = pageA.getByTestId("lk-code");
     await expect(tile).toHaveAttribute("data-url", /\/a\//);
     const offerUrl = (await tile.getAttribute("data-url")) ?? "";
-    expect(offerUrl).toContain("&b="); // the badge snapshot rides the QR
+    // The blue snapshot rides the QR: assert the color, not just presence, so a
+    // gray-at-mint regression fails here with a clear cause, not downstream.
+    expect(offerUrl).toContain("&b=blue.");
     // The offer is an ordinary keyed link plus extras in the fragment; the bare
     // link is what B's device effectively holds for A after the gesture.
     const u = new URL(offerUrl);
