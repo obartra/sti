@@ -90,6 +90,23 @@ npx prettier --check .             # formatting gate (separate from ESLint)
 `labs.sti.care` (the design-docs site) is built from `labs/` and is independent
 of the app.
 
+### Dependency upgrades on hold
+
+Dependencies otherwise track their latest release. Three majors are pinned back
+because upstream does not support them yet; each unblocks on its own:
+
+- **ESLint 10.** `eslint-plugin-react` still caps its peer at ESLint 9;
+  `typescript-eslint` and the other lint plugins already allow 10. Bump once
+  `eslint-plugin-react` declares ESLint 10 support.
+- **TypeScript 7** (the native compiler). `typescript-eslint` caps its
+  TypeScript peer below 6.1, so the lint step would break on 7. Bump once
+  `typescript-eslint` ships TypeScript 7 support. The `info/` site carries a
+  second cap: `@astrojs/check` allows only TypeScript 5 or 6.
+- **@dicebear/core 10.** The `@dicebear/dylan` avatar style has no v10 release
+  and requires core v9, so core cannot move on its own. Bump the two together
+  once a v10 style exists, and refresh the visual baselines (avatar output can
+  shift) with the `screenshot:update` label.
+
 ## Deploying
 
 - **Frontend:** Netlify autodeploys every push to `main`. `netlify.toml` runs
