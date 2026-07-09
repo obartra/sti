@@ -24,7 +24,7 @@ const conditions = (await getCollection("conditions")).sort(
 const guides = (await getCollection("guides")).sort(
   (a, b) => a.data.order - b.data.order,
 );
-const hiv = conditions.find((x) => x.slug === "hiv");
+const hiv = conditions.find((x) => x.id === "hiv");
 const rowGuides = guides.slice(0, 4);
 ---
 
@@ -112,7 +112,7 @@ const rowGuides = guides.slice(0, 4);
       <div class="sg__rowgrid">
         {
           rowGuides.map((g) => (
-            <GuideRow href={`/${g.slug}`} title={g.data.title} tag={g.data.tag} />
+            <GuideRow href={`/${g.id}`} title={g.data.title} tag={g.data.tag} />
           ))
         }
       </div>

@@ -18,7 +18,7 @@ const { conditions, eyebrow } = Astro.props;
     {
       conditions.map((cond) => (
         <li class="ctable__item">
-          <a class="ctable__row" href={`/${cond.slug}`}>
+          <a class="ctable__row" href={`/${cond.id}`}>
             <span class="ctable__name">{cond.data.name}</span>
             <StatusLabel label={cond.data.label} tone={cond.data.tone} />
             <span class="ctable__go">
