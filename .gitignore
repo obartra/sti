@@ -14,3 +14,7 @@ reports/
 
 # Local SQLite dev database (created when the Go server runs locally).
 server/sti.db*
+
+# Playwright run artifacts (also ignored under passport/, but runs can drop
+# this at the repo root depending on cwd).
+test-results/
