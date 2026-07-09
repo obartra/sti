@@ -69,15 +69,15 @@
 }
 
 /* Desktop onboarding: a short form on a big screen. Narrower than the reading
-   column so the controls hold together, and centered in the height left under
-   the wordmark header (the reserve is slightly larger than the real chrome, so
-   the block sits a touch above true center). min-height, not height: a tall
-   step (the create form with the password section open) grows past it and
-   scrolls normally. */
+   column so the controls hold together, and anchored a fixed offset below the
+   wordmark header rather than vertically centered, so the back affordance and
+   step title hold their place as a step's content grows or shrinks (no
+   re-centering shift between stages). The offset scales with viewport height,
+   roomy on tall screens and tight on short ones; content flows top to bottom
+   and a tall step (the create form with the password section open) scrolls. */
 .l-canvas-main--focus {
   max-width: 480px;
-  min-height: calc(100vh - 220px);
-  justify-content: center;
+  padding-top: clamp(20px, 7vh, 64px);
 }
 
 .l-canvas-main--full {
