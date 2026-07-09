@@ -63,6 +63,7 @@ function stubController(over: Partial<SessionController>): SessionController {
     createContactLink: unused,
     renameContact: unused,
     revokeContact: unused,
+    discardOffer: unused,
     revokeAlias: unused,
     acceptContactInvite: unused,
     ingestContactReturn: unused,

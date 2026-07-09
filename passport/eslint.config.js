@@ -65,9 +65,10 @@ const QUALITY_RULES = {
 // Never satisfy a size gate by reformatting code you are not otherwise
 // touching; split what you are adding, or pin the file here.
 const PINNED_LINES = [
-  // Three aggregator files that grow one entry per contact feature (a schema
-  // field, a controller method, an owner action). The back-datable encounter
-  // (doc 25) adds one of each; the new code belongs in these files, not a split.
+  // Aggregator files that grow one entry per contact feature (a schema field, a
+  // controller method). The new code belongs in these files; the owner-actions
+  // hook was instead SPLIT (useContactActions.ts) when it grew, which is the
+  // preferred fix where a clean seam exists.
   {
     file: "src/store/accountBlob.ts",
     max: 401,
@@ -75,13 +76,8 @@ const PINNED_LINES = [
   },
   {
     file: "src/store/session.ts",
-    max: 412,
+    max: 419,
     reason: "the controller dispatch table; one thin method per capability",
-  },
-  {
-    file: "src/ui/app/useOwnerActions.ts",
-    max: 417,
-    reason: "the owner-actions hook; one fold-back callback per mutation",
   },
 ];
 

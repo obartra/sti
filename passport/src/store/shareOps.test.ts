@@ -12,6 +12,7 @@ import {
   acceptContactInvite,
   renameContactLabel,
   setContactEncounterDay,
+  discardOfferContact,
   shareLinkFor,
 } from "./shareOps.ts";
 import { parseContactInvite, type ContactInvite } from "./contactInvite.ts";
@@ -515,5 +516,106 @@ describe("mintContactLink per-contact decorrelation (doc 13)", () => {
     expect(pa.notify.routingToken).toBe(a.routingToken);
     expect(pb.notify.routingToken).toBe(b.routingToken);
     expect(pa.notify.routingToken).not.toBe(pb.notify.routingToken);
+  });
+});
+
+// An api whose putAlias always rejects (offline / transient). Everything else is
+// loud, so a stray call is caught rather than silently satisfied.
+function offlineApi(): ApiClient {
+  return new Proxy({} as ApiClient, {
+    get(_t, prop) {
+      if (prop === "putAlias") {
+        return () => Promise.reject(new Error("offline"));
+      }
+      return () => {
+        throw new Error("not used in offline mint test");
+      };
+    },
+  });
+}
+
+// An account manager supporting add + remove over an in-memory contact list.
+function mutableAccounts(): {
+  accounts: AccountManager;
+  contacts: () => ContactRecord[];
+} {
+  let list: ContactRecord[] = [];
+  const base: AccountBlob = {
+    handle: "robin",
+    aliases: [],
+    contacts: [],
+    state: INITIAL_OWNER_STATE,
+    avatar: DEFAULT_AVATAR,
+  };
+  const accounts = new Proxy({} as AccountManager, {
+    get(_t, prop) {
+      if (prop === "addContact") {
+        return (_r: unknown, c: ContactRecord) => {
+          list = [...list.filter((x) => x.id !== c.id), c];
+          return Promise.resolve({ ...base, contacts: list });
+        };
+      }
+      if (prop === "removeContact") {
+        return (_r: unknown, id: string) => {
+          list = list.filter((x) => x.id !== id);
+          return Promise.resolve({ ...base, contacts: list });
+        };
+      }
+      return () => Promise.reject(new Error("not used in offline mint test"));
+    },
+  });
+  return { accounts, contacts: () => list };
+}
+
+describe("fully-offline offer mint (doc 25)", () => {
+  it("records the contact and returns the offer URL even when the publish fails", async () => {
+    const api = offlineApi();
+    const { accounts, contacts } = mutableAccounts();
+    const blob: AccountBlob = {
+      handle: "robin",
+      aliases: [],
+      contacts: [],
+      state: INITIAL_OWNER_STATE,
+      avatar: DEFAULT_AVATAR,
+    };
+    const session = { root: {} as CryptoKey, blob } as OwnerSession;
+
+    // Offline: the card PUT rejects, but the mint still completes (the QR can
+    // show with no signal); the contact is recorded, so the reconnect republish
+    // will later publish its card.
+    const { url, contact } = await mintContactLink(api, accounts, session, {
+      label: "in person",
+      identity: "anonymous",
+    });
+    expect(url).toContain("/a/");
+    expect(contacts().map((c) => c.id)).toEqual([contact.id]);
+  });
+
+  it("discardOffer drops the record even offline, so a walked-away offer never republishes", async () => {
+    const api = offlineApi();
+    const { accounts, contacts } = mutableAccounts();
+    const blob: AccountBlob = {
+      handle: "robin",
+      aliases: [],
+      contacts: [],
+      state: INITIAL_OWNER_STATE,
+      avatar: DEFAULT_AVATAR,
+    };
+    let session = { root: {} as CryptoKey, blob } as OwnerSession;
+
+    const { contact } = await mintContactLink(api, accounts, session, {
+      label: "in person",
+      identity: "anonymous",
+    });
+    session = {
+      root: session.root,
+      blob: { ...blob, contacts: contacts() },
+    };
+    expect(contacts()).toHaveLength(1);
+
+    // Walk away while still offline: the best-effort revoke rejects, but the
+    // record is dropped anyway, so no later republish can resurrect the offer.
+    await discardOfferContact(api, accounts, session, contact.id);
+    expect(contacts()).toHaveLength(0);
   });
 });

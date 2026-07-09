@@ -69,6 +69,7 @@ export interface ChromeProps extends GroupJoinActions {
   onRenameContact: ScreenCtx["onRenameContact"];
   onSetEncounterDay: ScreenCtx["onSetEncounterDay"];
   onRevokeContact: ScreenCtx["onRevokeContact"];
+  onDiscardOffer: ScreenCtx["onDiscardOffer"];
   faves: ScreenCtx["faves"];
   onToggleFave: ScreenCtx["onToggleFave"];
   pendingRequests: ScreenCtx["pendingRequests"];
@@ -196,6 +197,7 @@ function buildCtx(
     onRenameContact: props.onRenameContact,
     onSetEncounterDay: props.onSetEncounterDay,
     onRevokeContact: props.onRevokeContact,
+    onDiscardOffer: props.onDiscardOffer,
     faves: props.faves,
     onToggleFave: props.onToggleFave,
     pendingRequests: props.pendingRequests,

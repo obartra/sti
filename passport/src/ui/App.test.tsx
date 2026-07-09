@@ -157,6 +157,13 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       };
       return Promise.resolve({ root, blob });
     },
+    discardOffer: (_session, contactId) => {
+      blob = {
+        ...blob,
+        contacts: blob.contacts.filter((c) => c.id !== contactId),
+      };
+      return Promise.resolve({ root, blob });
+    },
     revokeAlias: (_session, aliasId) => {
       blob = { ...blob, aliases: blob.aliases.filter((a) => a.id !== aliasId) };
       return Promise.resolve({ root, blob });

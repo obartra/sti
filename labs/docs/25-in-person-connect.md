@@ -1,6 +1,6 @@
 # 25 - In-person connect (the linkup)
 
-## Status: the two-person gesture, the open door, and back-dating an encounter are BUILT (the unified show+scan screen, the symmetric offer exchange, the completion states, the walk-away discard, the per-screen door legs, and editing the day you met from a contact's row). Pending: the fully-offline offer mint.
+## Status: BUILT. The unified show+scan screen, the symmetric offer exchange, the completion states, the walk-away discard, the per-screen door legs, editing the day you met from a contact's row, and the fully-offline offer mint (the offer's card publish is best-effort, so the QR shows with no signal and the card lands on the next reconnect republish). The remaining ceiling is native-only (NFC, zero-scan proximity), recorded at the end.
 
 Two people who are physically together connect in one shared gesture, instead of one
 of them texting a link later. Internally this is the "linkup" from
@@ -54,9 +54,16 @@ connection sooner, and could support an optional one-scan variant. We auto-detec
 connectivity with the signals we already use (the reconnect/catch-up path), but the
 default is always the QR exchange, so there is no jarring mode switch.
 
-As built, minting the offer is still an online publish (the screen is honest
-about it and offers a retry); making that mint ride the offline queue, so the
-whole gesture works with no signal, is the pending piece of this section.
+Minting the offer needs no signal. The offer's capabilities are all client-side,
+so the QR shows immediately; publishing the offer's card to the server (what lets
+the other side re-fetch a live card LATER) is best-effort, and a failed publish
+does not fail the gesture. The contact is recorded either way, which marks the
+account for the reconnect drain that already re-seals every live link (contacts
+included, via republishLiveLinks), so the card lands on the next reconnect with no
+special queue. Walking away before that drops the record, so a never-published
+offer is never resurrected. In-window status still crosses optically in the QR,
+so the completion is correct offline; only the later live re-fetch waits for
+signal, and that is convenience, not the connection.
 
 ## The connect screen (simultaneous show + scan, zero taps)
 
@@ -283,9 +290,10 @@ touches nothing), but the seamlessness ceiling is real and worth recording.
   shown at completion (badge snapshot always in QR), and the walk-away discard.
 - **Back-dating (built):** editing the day you met from a contact's row, seeding
   the partner-notify lookback (doc 13).
-- **Offline mint (pending):** the offer publish rides the offline queue so the
-  whole gesture works with no signal; the "we don't know who you're connected to"
-  promise ships at full strength with it.
+- **Offline mint (built):** the offer's card publish is best-effort, so the whole
+  gesture works with no signal and the card lands on the next reconnect republish;
+  the "we don't know who you're connected to" promise holds at full strength (the
+  in-person exchange touches the server only later, and only to move ciphertext).
 - **The open door (more than two, built):** the per-screen door legs over the
   knock/grant primitives; it needs signal to listen.
 - **Enhancement:** NFC tap on Android as a progressive enhancement over the scan.

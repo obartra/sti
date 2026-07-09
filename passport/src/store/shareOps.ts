@@ -51,6 +51,7 @@ import { todayEpochDay, nowMs } from "../core/clock.ts";
 import { randomAliasId } from "../crypto/index.ts";
 import {
   publishCard,
+  publishCardBestEffort,
   republishCard,
   revokeAlias,
   keyedAliasLinkUrl,
@@ -106,7 +107,12 @@ export async function mintContactLink(
   const face = faceFor(session.blob, avatarOverride);
   const stamp = (rec: AliasRecord): AliasRecord =>
     withIdentity(rec, identity, face);
-  const { record } = await publishCard(
+  // Best-effort publish (doc 25): the offer's capabilities are all client-side, so
+  // an in-person connect can complete with no signal; the card lands on the next
+  // republish (the reconnect drain re-seals every live link, contacts included).
+  // The contact is recorded either way, so the blob's own pending-push marks the
+  // account for that drain. Online, this is the same single PUT as before.
+  const { record } = await publishCardBestEffort(
     api,
     (rec) => deriveAliasCard(session.blob.state, stamp(rec), nowDay),
     { isPublic: false, expiresAt },
@@ -304,6 +310,27 @@ export async function revokeContactLink(
   const contact = session.blob.contacts.find((c) => c.id === contactId);
   if (contact === undefined) return session;
   await revokeAlias(api, contact.alias);
+  const blob = await accounts.removeContact(session.root, contactId);
+  return { root: session.root, blob };
+}
+
+// Discard a just-made connect offer the owner walked away from (doc 25). Unlike a
+// deliberate revoke, the record is DROPPED even offline: the alias may have been
+// minted best-effort and never published (offline), so removing it from the blob
+// is what guarantees "a queued-then-discarded offer never publishes" (the reconnect
+// republish only re-seals contacts still in the blob). The revoke is best-effort
+// and runs first so an ALREADY-published offer's card is killed when online; a
+// failed/offline revoke does not block the drop, because a never-published alias
+// has nothing on the server to leave behind.
+export async function discardOfferContact(
+  api: ApiClient,
+  accounts: AccountManager,
+  session: OwnerSession,
+  contactId: string,
+): Promise<OwnerSession> {
+  const contact = session.blob.contacts.find((c) => c.id === contactId);
+  if (contact === undefined) return session;
+  await revokeAlias(api, contact.alias).catch(() => undefined);
   const blob = await accounts.removeContact(session.root, contactId);
   return { root: session.root, blob };
 }

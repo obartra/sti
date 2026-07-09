@@ -66,6 +66,7 @@ import {
   renameContactLabel,
   setContactEncounterDay,
   revokeContactLink,
+  discardOfferContact,
   revokeAliasLink,
   setShareLinkExpiry,
   shareLinkFor,
@@ -310,6 +311,12 @@ export interface SessionController extends GroupMembershipController {
     session: OwnerSession,
     contactId: string,
   ): Promise<OwnerSession>;
+  /**
+   * Discard a just-made connect offer the owner walked away from (doc 25): drop the
+   * record even offline (best-effort revoke first), so an offer whose card was never
+   * published never gets republished on reconnect. A no-op if unknown.
+   */
+  discardOffer(session: OwnerSession, contactId: string): Promise<OwnerSession>;
   /**
    * Revoke one published alias (a public/casual link) by id: its URL stops
    * resolving and the record is dropped. A no-op if unknown. Returns the session.
@@ -682,6 +689,9 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
     revokeContact: (session, contactId) =>
       revokeContactLink(api, accounts, session, contactId),
+
+    discardOffer: (session, contactId) =>
+      discardOfferContact(api, accounts, session, contactId),
 
     revokeAlias: (session, aliasId) =>
       revokeAliasLink(api, accounts, session, aliasId),
