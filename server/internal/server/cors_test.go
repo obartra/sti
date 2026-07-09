@@ -69,6 +69,28 @@ func TestCORSAllowsEveryClientMethod(t *testing.T) {
 	}
 }
 
+// The native app shells (doc 26) load from a fixed WebView origin
+// (capacitor://localhost on iOS, https://localhost on Android). Those are baked
+// into the server, not set per-deployment in STI_ALLOWED_ORIGINS, so they must be
+// allowed even when the configured origins do not list them, or a store build can
+// never reach the api. Configure only the web origin here to pin that.
+func TestCORSAllowsNativeShellOrigins(t *testing.T) {
+	h := newTestServerWithOrigins(t, allowedOrigin)
+	for _, origin := range []string{"capacitor://localhost", "https://localhost"} {
+		req := httptest.NewRequest("OPTIONS", contract.PathAliasPrefix+randID(t), nil)
+		req.Header.Set("Origin", origin)
+		req.Header.Set("Access-Control-Request-Method", "PUT")
+		rec := do(h, req)
+
+		if rec.Code != http.StatusNoContent {
+			t.Fatalf("%s preflight status: %d", origin, rec.Code)
+		}
+		if got := rec.Header().Get("Access-Control-Allow-Origin"); got != origin {
+			t.Fatalf("%s allow-origin: %q, want it echoed back", origin, got)
+		}
+	}
+}
+
 func TestCORSDisallowedOriginGetsNoAllowHeaders(t *testing.T) {
 	h := newTestServerWithOrigins(t, allowedOrigin)
 	req := httptest.NewRequest("OPTIONS", contract.PathNotify, nil)

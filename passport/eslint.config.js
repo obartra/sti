@@ -98,6 +98,11 @@ export default tseslint.config(
       // by Playwright's own toolchain (npm run test:e2e), not this lint pass.
       "e2e/**",
       "playwright.config.ts",
+      // Generated native shells (Capacitor, doc 26): Xcode and Gradle projects
+      // plus the copied web bundle under their public dirs. Not our source to
+      // lint; they have their own toolchains (xcodebuild, gradle).
+      "ios/**",
+      "android/**",
     ],
   },
 

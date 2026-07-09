@@ -218,6 +218,15 @@
   name, logo, boolean precision, no dates/streak/stamp/count). Render the alias URL as text beside
   the QR for accessibility, public/QR-carrier passes only.
 
+## Apps & install
+
+- **LOCKED. One install story per platform: the store apps supersede the PWA install on phones.**
+  Once the iOS and Android apps ship (doc 26), an iPhone or Android visitor who wants the app gets
+  the store app; the quiet PWA install row (doc 22, F) shows only on platforms with no store app, in
+  practice desktop-class browsers, where its value is unproven and it survives only as long as it
+  stays one quiet row. The PWA runtime itself (the offline shell, the web app every shared link opens
+  in) is unchanged, and both install stories carry identical freshness and privacy rules.
+
 ## Scope
 
 - **MVP (build now):** self-reported badge (blue/gray), pause, flat attributes, circles, aliases, push+pull notification, reminders, US resources, passkey/passphrase.

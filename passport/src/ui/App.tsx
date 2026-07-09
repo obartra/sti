@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useAppRouter } from "./app/useAppRouter.ts";
 import type { Route } from "./app/routes.ts";
 import { useSyncedRef } from "./app/useSyncedRef.ts";
@@ -181,6 +182,13 @@ function renderedRoute(
   return { screen: "a1-landing", group: "public", data: null };
 }
 
+// The app-root class, with a demo modifier so the chrome below the banner can
+// drop its now-redundant top inset (the banner owns it). Hoisted to keep App
+// under its complexity ceiling.
+function appRootClass(demoMode: boolean): string {
+  return demoMode ? "app-root app-root--demo" : "app-root";
+}
+
 // Demo mode (doc 28) as one prop, so the App's parameter list and complexity do
 // not grow per demo concern: the mode flag plus the enter/leave callbacks.
 interface DemoControls {
@@ -209,6 +217,27 @@ function Banners({
       <DemoWatermark active={demo.mode} />
       <NotBackedUp pending={backupPending} demo={demo.mode} />
     </>
+  );
+}
+
+// The full-screen app frame (doc 26): a flex column whose banners sit in flow at
+// the top and whose routed content fills the rest, so the native shell's
+// safe-area insets land on the chrome, never under a floating banner. Extracted
+// so App's render stays within its size cap.
+function AppFrame({
+  demo,
+  backupPending,
+  children,
+}: {
+  demo: DemoControls;
+  backupPending: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className={appRootClass(demo.mode)}>
+      <Banners demo={demo} backupPending={backupPending} />
+      <div className="app-root__content">{children}</div>
+    </div>
   );
 }
 
@@ -319,8 +348,7 @@ export function App({
   );
 
   return (
-    <>
-      <Banners demo={demo} backupPending={backupPending} />
+    <AppFrame demo={demo} backupPending={backupPending}>
       <Chrome
         route={renderedRoute(route, session !== null, demo.mode)}
         nav={nav}
@@ -369,6 +397,6 @@ export function App({
         push={push}
         {...actions}
       />
-    </>
+    </AppFrame>
   );
 }

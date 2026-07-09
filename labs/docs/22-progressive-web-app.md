@@ -266,6 +266,11 @@ Copy is minimal and voice-compliant: lead with the benefit ("Keep your passport 
 works offline, and we still can't read it."), no preamble, no hype. Reviewed against
 [21-voice-and-tone.md](21-voice-and-tone.md) before merge.
 
+Once the native store apps ship ([26-native-apps-and-app-store.md](26-native-apps-and-app-store.md)),
+this affordance narrows to platforms with no store app: on iPhone and Android the install offer
+points at the store instead, one install story per platform. The PWA runtime (the offline shell, the
+web app every shared link opens in) is unaffected.
+
 ## G. Background capabilities (the "most capable" part), gated
 
 These make the install genuinely app-like. Each is **progressive** (absent gracefully when the

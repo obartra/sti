@@ -182,4 +182,59 @@ test("Chrome resolves a valid installable web app manifest (doc 22 C/K)", async 
   expect(sizes).toContain("512x512");
 });
 
+// The demo banner sits in flow at the top of the .app-root column (doc 26/28), so
+// the chrome below must start exactly at its bottom edge and the tab bar must stay
+// on screen. This overlap has regressed twice (the top bar's "+" hid under a fixed
+// banner, then a sub-screen's back bar did), each time caught by eye and fixed by
+// hand; pin the geometry instead. jsdom has no layout engine, so this lives here.
+test("the demo banner never overlaps the chrome, on any frame (doc 28)", async ({
+  page,
+}) => {
+  const edges = (selector: string) =>
+    page.evaluate((sel) => {
+      const el = document.querySelector(sel);
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { top: Math.round(r.top), bottom: Math.round(r.bottom) };
+    }, selector);
+
+  // Mobile tab frame: banner, then the top bar exactly below it, tab bar on screen.
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto(previewOrigin + "/", { waitUntil: "load" });
+  await page.getByRole("button", { name: /try the demo/i }).click();
+  await expect(page.locator(".demo-banner")).toBeVisible();
+  const banner = await edges(".demo-banner");
+  const topbar = await edges(".app-topbar");
+  expect(banner?.top).toBe(0);
+  expect(topbar?.top).toBe(banner?.bottom);
+  const tabbar = await edges(".app-tabbar");
+  expect(tabbar?.bottom).toBeLessThanOrEqual(812);
+
+  // Mobile sub-screen frame (.l-surface): the back bar sits below the banner and
+  // actually receives its click point (nothing floats over it).
+  await page.getByRole("button", { name: /add a result/i }).click();
+  const backbar = await edges(".app-backbar");
+  expect(backbar?.top).toBe(banner?.bottom);
+  const backHit = await page.evaluate(() => {
+    const btn = document.querySelector(".app-backbar button");
+    if (!btn) return false;
+    const r = btn.getBoundingClientRect();
+    const at = document.elementFromPoint(
+      r.left + r.width / 2,
+      r.top + r.height / 2,
+    );
+    return btn === at || btn.contains(at);
+  });
+  expect(backHit).toBe(true);
+
+  // Desktop frame (.desk-shell): below the banner, filling to the viewport bottom.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.reload({ waitUntil: "load" });
+  await expect(page.locator(".desk-shell")).toBeVisible();
+  const desk = await edges(".desk-shell");
+  const deskBanner = await edges(".demo-banner");
+  expect(desk?.top).toBe(deskBanner?.bottom);
+  expect(desk?.bottom).toBe(800);
+});
+
 coverageTest();
