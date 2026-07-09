@@ -25,7 +25,11 @@ import {
   base64urlToBytes,
   type Bytes,
 } from "../crypto/index.ts";
-import type { AccountBlob, ContactRecord } from "./accountBlob.ts";
+import {
+  encounterDayOf,
+  type AccountBlob,
+  type ContactRecord,
+} from "./accountBlob.ts";
 import { writePing, type NotifyCapability } from "./notifyInbox.ts";
 
 // A starting default for "linked within the relevant window": the owner edits the
@@ -121,9 +125,12 @@ function isNotifiable(c: ContactRecord): boolean {
 }
 
 /**
- * Seed a draft batch: the notifiable contacts linked within the lookback window,
- * newest first. The owner adds, removes, or clears entries before locking, so this
- * is only the starting selection, never the final set.
+ * Seed a draft batch: the notifiable contacts whose ENCOUNTER falls within the
+ * lookback window, newest first. Seeding on the encounter day (not when the record
+ * was made) is what makes back-dating meaningful (doc 25): a hookup logged a week
+ * late but back-dated still seeds, and one recorded today for a months-old meeting
+ * does not. The owner adds, removes, or clears entries before locking, so this is
+ * only the starting selection, never the final set.
  */
 export function composeNotifyDraft(
   blob: AccountBlob,
@@ -132,8 +139,8 @@ export function composeNotifyDraft(
 ): NotifyDraft {
   const since = nowDay - lookbackDays;
   const entries = blob.contacts
-    .filter((c) => isNotifiable(c) && c.createdDay >= since)
-    .sort((a, b) => b.createdDay - a.createdDay)
+    .filter((c) => isNotifiable(c) && encounterDayOf(c) >= since)
+    .sort((a, b) => encounterDayOf(b) - encounterDayOf(a))
     .map((c) => ({ contactId: c.id, label: c.label }));
   return { createdDay: nowDay, entries };
 }

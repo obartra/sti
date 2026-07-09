@@ -64,6 +64,7 @@ import {
   ingestContactReturn,
   completeInPersonContact,
   renameContactLabel,
+  setContactEncounterDay,
   revokeContactLink,
   revokeAliasLink,
   setShareLinkExpiry,
@@ -289,6 +290,17 @@ export interface SessionController extends GroupMembershipController {
     session: OwnerSession,
     contactId: string,
     label: string,
+  ): Promise<OwnerSession>;
+  /**
+   * Back-date (or reset) a contact's encounter day (doc 25): the day the meeting
+   * happened, which seeds the partner-notify lookback. Purely local; clamped to
+   * [epoch, today]; equal-to-createdDay clears the override. No-op if id unknown.
+   */
+  setContactEncounterDay(
+    session: OwnerSession,
+    contactId: string,
+    encounterDay: number,
+    today: number,
   ): Promise<OwnerSession>;
   /**
    * Revoke one contact's link (its old URL stops resolving) and drop the record.
@@ -660,6 +672,13 @@ export function createSessionController(deps: SessionDeps): SessionController {
 
     renameContact: (session, contactId, label) =>
       renameContactLabel(accounts, session, { contactId, label }),
+
+    setContactEncounterDay: (session, contactId, encounterDay, today) =>
+      setContactEncounterDay(accounts, session, {
+        contactId,
+        encounterDay,
+        today,
+      }),
 
     revokeContact: (session, contactId) =>
       revokeContactLink(api, accounts, session, contactId),

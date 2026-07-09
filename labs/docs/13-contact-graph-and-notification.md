@@ -144,7 +144,9 @@ contacts: [
   {
     id,                       // local opaque handle for this pairing
     label?,                   // owner's private nickname, never sent
-    linkedOn,                 // epoch day
+    linkedOn,                 // epoch day the record was made
+    encounterDay?,            // epoch day the meeting happened, if back-dated
+                              // (doc 25); absent = linkedOn. Seeds the lookback.
     expiresOn?,               // for durational grants
     // what THEY can see of me: a per-contact alias I publish my card to
     myAlias: { id, writeToken, key, isPublic: false },
@@ -210,8 +212,9 @@ capability swap for that pair with fresh capabilities, ending in exactly the pai
 ## Partner notification loop
 
 1. **Report a positive** (already wired to owner state). The client composes a **draft batch**: the
-   set of contacts to notify (default: contacts linked within the lookback window, ~183 days, a
-   seed only; the user adds, corrects, removes, or deletes the whole batch freely).
+   set of contacts to notify (default: contacts whose ENCOUNTER falls within the lookback window,
+   ~183 days, seeding on the back-datable encounter day, not when the record was made, doc 25; a
+   seed only, the user adds, corrects, removes, or deletes the whole batch freely).
 2. **Draft window (~30 min, one config constant).** Last-write-wins; the user is in full control.
 3. **Lock.** The last draft becomes immutable. For each contact in the batch, the client writes an
    encrypted ping to that contact's `theirNotify` inbox, and POSTs `hash(routingToken)` to the

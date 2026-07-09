@@ -11,6 +11,7 @@ import {
   mintContactLink,
   acceptContactInvite,
   renameContactLabel,
+  setContactEncounterDay,
   shareLinkFor,
 } from "./shareOps.ts";
 import { parseContactInvite, type ContactInvite } from "./contactInvite.ts";
@@ -381,6 +382,65 @@ describe("renameContactLabel (receiver-owned local label)", () => {
       label: "Ghost",
     });
     expect(next).toBe(session);
+  });
+});
+
+describe("setContactEncounterDay (back-date the meeting, doc 25)", () => {
+  const baseContact: ContactRecord = {
+    id: "c-1",
+    label: "Sam",
+    createdDay: 19_000,
+    expiresAt: null,
+    alias: {
+      id: "a".repeat(43),
+      writeToken: "w".repeat(43),
+      key: "k".repeat(43),
+      isPublic: false,
+    },
+  };
+  const session = () =>
+    ({
+      root: {} as CryptoKey,
+      blob: blobWithContact(baseContact),
+    }) as OwnerSession;
+
+  it("stores a back-dated day and leaves the alias untouched", async () => {
+    const next = await setContactEncounterDay(renamingAccounts(), session(), {
+      contactId: "c-1",
+      encounterDay: 18_990,
+      today: 19_010,
+    });
+    const updated = next.blob.contacts.find((c) => c.id === "c-1");
+    expect(updated?.encounterDay).toBe(18_990);
+    expect(updated?.alias).toEqual(baseContact.alias);
+  });
+
+  it("clamps to today (an encounter is never in the future)", async () => {
+    const next = await setContactEncounterDay(renamingAccounts(), session(), {
+      contactId: "c-1",
+      encounterDay: 99_999,
+      today: 19_010,
+    });
+    expect(next.blob.contacts[0]?.encounterDay).toBe(19_010);
+  });
+
+  it("clears the override when the day equals createdDay (stays absent)", async () => {
+    const next = await setContactEncounterDay(renamingAccounts(), session(), {
+      contactId: "c-1",
+      encounterDay: 19_000,
+      today: 19_010,
+    });
+    expect(next.blob.contacts[0]).not.toHaveProperty("encounterDay");
+  });
+
+  it("is a no-op (same session) for an unknown contact id", async () => {
+    const s = session();
+    const next = await setContactEncounterDay(renamingAccounts(), s, {
+      contactId: "nope",
+      encounterDay: 18_000,
+      today: 19_010,
+    });
+    expect(next).toBe(s);
   });
 });
 

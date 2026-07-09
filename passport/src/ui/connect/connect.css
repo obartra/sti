@@ -244,6 +244,15 @@
   color: var(--status-expired-fg);
 }
 
+/* The "Met on" row carries a date input, so it stacks label over control and is
+   not a pointer target itself (the input inside is). */
+.cn__menu-date {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  cursor: default;
+}
+
 /* ── The member-initiated privacy promise ───────────────────────────────── */
 .cn__privacy {
   border-top: var(--hairline);

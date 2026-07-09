@@ -1,28 +1,48 @@
-import { Button } from "../../design/components/index.ts";
+import { Button, Input } from "../../design/components/index.ts";
 import { Star, StarFill, Trash } from "../../design/icons.tsx";
-import { relativeDayLabel } from "../../core/clock.ts";
-import type { ContactRecord } from "../../store/accountBlob.ts";
+import {
+  relativeDayLabel,
+  epochDayToISODate,
+  isoDateToEpochDay,
+} from "../../core/clock.ts";
+import { encounterDayOf, type ContactRecord } from "../../store/accountBlob.ts";
 import { COPY, ContactAvatar, SectionHead, contactName } from "./parts.tsx";
 import "./connect.css";
 
-// The kebab popover for a recent-connection row: star/unstar and delete the link.
-// An overlay control, so it keeps its elevation (doc 37).
+// The kebab popover for a recent-connection row: set the day you met, star, and
+// delete the link. An overlay control, so it keeps its elevation (doc 37).
 function RecentRowMenu({
-  contactId,
+  contact,
+  nowDay,
   isFave,
   onToggleFave,
   onRemove,
+  onSetEncounterDay,
 }: {
-  contactId: string;
+  contact: ContactRecord;
+  nowDay: number;
   isFave: boolean;
   onToggleFave: (contactId: string) => void;
   onRemove: (contactId: string) => void;
+  onSetEncounterDay: (contactId: string, day: number) => void;
 }) {
   return (
     <div className="cn__menu">
+      <label className="cn__menu-item cn__menu-date">
+        {COPY.menuMetOn}
+        <Input
+          type="date"
+          value={epochDayToISODate(encounterDayOf(contact))}
+          max={epochDayToISODate(nowDay)}
+          onChange={(e) => {
+            const day = isoDateToEpochDay(e.target.value);
+            if (day !== null) onSetEncounterDay(contact.id, day);
+          }}
+        />
+      </label>
       <button
         type="button"
-        onClick={() => onToggleFave(contactId)}
+        onClick={() => onToggleFave(contact.id)}
         className="cn__menu-item"
       >
         {isFave ? <StarFill size={15} /> : <Star size={15} />}{" "}
@@ -30,7 +50,7 @@ function RecentRowMenu({
       </button>
       <button
         type="button"
-        onClick={() => onRemove(contactId)}
+        onClick={() => onRemove(contact.id)}
         className="cn__menu-item cn__menu-item--danger"
       >
         <Trash size={15} /> {COPY.menuDelete}
@@ -48,6 +68,7 @@ function RecentRow({
   onToggleMenu,
   onToggleFave,
   onRemove,
+  onSetEncounterDay,
 }: {
   contact: ContactRecord;
   nowDay: number;
@@ -56,6 +77,7 @@ function RecentRow({
   onToggleMenu: () => void;
   onToggleFave: (contactId: string) => void;
   onRemove: (contactId: string) => void;
+  onSetEncounterDay: (contactId: string, day: number) => void;
 }) {
   const name = contactName(contact);
   return (
@@ -69,7 +91,7 @@ function RecentRow({
           </span>
         )}
         <span className="cn__row-when">
-          {relativeDayLabel(contact.createdDay, nowDay)}
+          {relativeDayLabel(encounterDayOf(contact), nowDay)}
         </span>
       </div>
       <button
@@ -93,10 +115,12 @@ function RecentRow({
       </button>
       {menuOpen && (
         <RecentRowMenu
-          contactId={contact.id}
+          contact={contact}
+          nowDay={nowDay}
           isFave={isFave}
           onToggleFave={onToggleFave}
           onRemove={onRemove}
+          onSetEncounterDay={onSetEncounterDay}
         />
       )}
     </div>
@@ -112,6 +136,7 @@ export function RecentSection({
   onToggleMenu,
   onToggleFave,
   onRemove,
+  onSetEncounterDay,
   onShowMore,
 }: {
   recent: ContactRecord[];
@@ -122,6 +147,7 @@ export function RecentSection({
   onToggleMenu: (contactId: string) => void;
   onToggleFave: (contactId: string) => void;
   onRemove: (contactId: string) => void;
+  onSetEncounterDay: (contactId: string, day: number) => void;
   onShowMore: () => void;
 }) {
   return (
@@ -146,6 +172,7 @@ export function RecentSection({
               onToggleMenu={() => onToggleMenu(c.id)}
               onToggleFave={onToggleFave}
               onRemove={onRemove}
+              onSetEncounterDay={onSetEncounterDay}
             />
           ))}
           {recent.length > visible && (

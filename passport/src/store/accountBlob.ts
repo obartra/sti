@@ -184,6 +184,15 @@ export interface ContactRecord {
   readonly label: string;
   /** Epoch day the link was created. */
   readonly createdDay: number;
+  /**
+   * Epoch day the encounter happened, when it differs from `createdDay` (doc 25):
+   * the owner can back-date a connection they logged after the fact, and the
+   * partner-notify lookback seeds on this day, not on when the record was made.
+   * Optional and backward-compatible: absent means "same as createdDay", so an
+   * older blob reads unchanged and no version bump is needed. Read through
+   * {@link encounterDayOf}, never directly, so the fallback is always applied.
+   */
+  readonly encounterDay?: number;
   /** Absolute epoch-ms instant the link expires, or null for until-revoked (doc 16). */
   readonly expiresAt: number | null;
   /** The private alias this contact resolves; always isPublic=false. */
@@ -486,12 +495,33 @@ function isContactRecord(x: unknown): x is ContactRecord {
     validId(r.id) &&
     typeof r.label === "string" &&
     r.label.length <= MAX_CONTACT_LABEL &&
-    typeof r.createdDay === "number" &&
-    Number.isInteger(r.createdDay) &&
-    r.createdDay >= 0 &&
-    (r.expiresAt === undefined || isMsOrNull(r.expiresAt)) &&
+    isEpochDay(r.createdDay) &&
+    hasValidContactDates(r) &&
     hasValidContactAliases(r)
   );
+}
+
+/** A non-negative integer epoch day (the shape createdDay/encounterDay share). */
+function isEpochDay(x: unknown): x is number {
+  return typeof x === "number" && Number.isInteger(x) && x >= 0;
+}
+
+/** The optional dates on a contact: a back-dated encounter day and a link expiry,
+ * each valid-or-absent. Split out to keep isContactRecord under the complexity cap. */
+function hasValidContactDates(r: Record<string, unknown>): boolean {
+  return (
+    (r.encounterDay === undefined || isEpochDay(r.encounterDay)) &&
+    (r.expiresAt === undefined || isMsOrNull(r.expiresAt))
+  );
+}
+
+/**
+ * The day an encounter happened for notify/display: the back-dated `encounterDay`
+ * when set, else `createdDay`. The one place the optional field is resolved, so a
+ * pre-encounterDay blob and a same-day link both read as their createdDay.
+ */
+export function encounterDayOf(c: ContactRecord): number {
+  return c.encounterDay ?? c.createdDay;
 }
 
 function isCircleRecord(x: unknown): x is CircleRecord {

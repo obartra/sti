@@ -65,7 +65,24 @@ const QUALITY_RULES = {
 // Never satisfy a size gate by reformatting code you are not otherwise
 // touching; split what you are adding, or pin the file here.
 const PINNED_LINES = [
-  // { file: "src/example.ts", max: 430, reason: "why the length is inherent" },
+  // Three aggregator files that grow one entry per contact feature (a schema
+  // field, a controller method, an owner action). The back-datable encounter
+  // (doc 25) adds one of each; the new code belongs in these files, not a split.
+  {
+    file: "src/store/accountBlob.ts",
+    max: 401,
+    reason: "the account schema + codec; one field/validator per data slice",
+  },
+  {
+    file: "src/store/session.ts",
+    max: 412,
+    reason: "the controller dispatch table; one thin method per capability",
+  },
+  {
+    file: "src/ui/app/useOwnerActions.ts",
+    max: 417,
+    reason: "the owner-actions hook; one fold-back callback per mutation",
+  },
 ];
 
 export default tseslint.config(

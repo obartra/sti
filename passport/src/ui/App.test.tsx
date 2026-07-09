@@ -165,6 +165,7 @@ function fakeController(opts: { onPrep?: boolean } = {}): SessionController {
       Promise.reject(new Error("not used in this test")),
     ingestContactReturn: (session) => Promise.resolve(session),
     completeInPersonLinkup: (session) => Promise.resolve(session),
+    setContactEncounterDay: (session) => Promise.resolve(session),
     notifyContactsOfPositive: () =>
       Promise.resolve({ sent: [], skipped: [], failed: [] }),
     hasPartnerNudge: () => Promise.resolve(false),

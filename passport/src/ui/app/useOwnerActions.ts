@@ -17,6 +17,7 @@ import type {
 } from "../../store/recoveryOps.ts";
 import type { AvatarConfig } from "../../lib/avatars.ts";
 import { disablePush } from "../../store/push.ts";
+import { todayEpochDay } from "../../core/clock.ts";
 import {
   browserForgetRequesterSecret,
   browserForgetGrantKeys,
@@ -46,6 +47,8 @@ export interface OwnerActions extends GroupJoinActions {
   ) => Promise<ContactLinkResult>;
   /** Rename one contact link's local label (owner-only nickname; never shared). */
   onRenameContact: (id: string, label: string) => void;
+  /** Back-date the day you met a contact (doc 25); seeds partner-notify. */
+  onSetEncounterDay: (id: string, day: number) => void;
   /** Revoke one contact link by id. */
   onRevokeContact: (id: string) => void;
   /** Revoke one published alias (public/casual link) by id. */
@@ -233,7 +236,10 @@ function useContactActions(
   setSession: (s: OwnerSession | null) => void,
 ): Pick<
   OwnerActions,
-  "onRenameContact" | "onRevokeContact" | "onCompleteLinkup"
+  | "onRenameContact"
+  | "onSetEncounterDay"
+  | "onRevokeContact"
+  | "onCompleteLinkup"
 > {
   const onRenameContact = useCallback(
     (id: string, label: string) => {
@@ -241,6 +247,21 @@ function useContactActions(
       if (current === null) return;
       void controller
         .renameContact(current, id, label)
+        .then((updated) => {
+          sessionRef.current = updated;
+          setSession(updated);
+        })
+        .catch(() => undefined);
+    },
+    [controller, sessionRef, setSession],
+  );
+
+  const onSetEncounterDay = useCallback(
+    (id: string, day: number) => {
+      const current = sessionRef.current;
+      if (current === null) return;
+      void controller
+        .setContactEncounterDay(current, id, day, todayEpochDay())
         .then((updated) => {
           sessionRef.current = updated;
           setSession(updated);
@@ -280,7 +301,12 @@ function useContactActions(
     [controller, sessionRef, setSession],
   );
 
-  return { onRenameContact, onRevokeContact, onCompleteLinkup };
+  return {
+    onRenameContact,
+    onSetEncounterDay,
+    onRevokeContact,
+    onCompleteLinkup,
+  };
 }
 
 // The findable (vanity-name) mutations (claim / release), split out so
