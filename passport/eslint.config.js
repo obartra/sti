@@ -91,6 +91,10 @@ export default tseslint.config(
       ".lostpixel/**",
       "visual-baselines/**",
       "node_modules/**",
+      // Untracked Capacitor native platforms: generated build output, not our
+      // code to lint.
+      "android/**",
+      "ios/**",
       // Vendored verbatim copy of the prototype/design bundle, for reference
       // only; not our code to lint.
       "comps-reference/**",
