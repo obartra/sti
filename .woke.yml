@@ -19,3 +19,7 @@ ignore_files:
   - "**/*.snap"
   - storybook-static/**
   - passport/dist/**
+  # Untracked Capacitor native platforms: generated third-party build output
+  # (gradle caches, merged assets) trips matches like "dummy" that we do not own.
+  - passport/android/**
+  - passport/ios/**
