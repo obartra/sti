@@ -1,0 +1,23 @@
+# Music prompt (for Suno / Udio / MusicGen / a composer brief)
+
+A calm, warm, reassuring instrumental for a ~35 second brand film. One soft analog synth
+pad at the center, gentle and human, not cold or clinical. Slow tempo around 70 bpm. Warm
+major-key tonality with a tender, hopeful feeling, never triumphant or dramatic. No drums,
+no percussion build, no big swell, no "drop." A few sustained notes and a slow, simple
+motif that breathes. Add a faint, soft bell or glass tone once, near the two thirds mark,
+as a single quiet moment of arrival. End on one resolved, held chord that fades gently to
+silence. Intimate, unhurried, dignified. Think reassuring, not inspiring.
+
+Negative: no vocals, no lyrics, no heavy bass, no EDM, no drums, no orchestral crescendo,
+no tension, no minor-key sadness, no corporate-uplift stock-music energy.
+
+Length: 35 seconds (loopable is fine). Also export a 15-18 second version for the vertical
+cut with the same feel, resolving by the end.
+
+## Cue map (align to the edit)
+- 0:00-0:03  almost silent, one soft sustained note enters under the cold open.
+- 0:03       pad settles in, quiet and steady.
+- 0:14       an almost imperceptible lift as the card turns blue.
+- ~0:15      the single soft bell/glass tone lands with the teal bloom (the one chime).
+- 0:26       settle back, sparse.
+- 0:30-0:34  resolve on a held chord, fade to silence on the logo.

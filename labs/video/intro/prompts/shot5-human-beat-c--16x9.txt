@@ -1,0 +1,11 @@
+# shot5-human-beat-c  (~7s, 16x9)
+
+Two adults with warm tan and rich brown skin tones, sitting close together on a couch in a warm, lived-in living room. Filmed from the shoulders and chest downward, with both faces entirely above the top edge of the frame and never visible, not even a chin or jaw. Only hands, forearms, laps and relaxed body language. Contemporary, everyday, varied casual clothing, not matching knitwear and not a uniform beige palette. Each person holds up a smartphone and turns it toward the other's phone, the two screens facing each other close together as if quietly scanning. The screens glow softly, one with a gentle teal tone. An easy, comfortable, unhurried moment.
+
+FORMAT: aspect ratio 16:9, horizontal, cinematic widescreen framing.
+
+STYLE: calm, warm, editorial, cinematic. Soft natural daylight, a warm and lived-in setting, a single calm teal accent (#2F9BB3) on the phone screens. Skin tones and clothing are varied and natural, never stylized to one look. Shallow depth of field, 50mm look, subtle film grain. Motion is slow and understated. Quiet, reassuring, welcoming mood.
+
+AUDIO: soft room tone, a quiet warm ambient, faint easy laughter off to the side. No music.
+
+AVOID: any visible human face or part of a face (no chin, jaw, mouth, nose or eyes); recognizable people; text, letters, words, numbers, characters, calligraphy, writing, or symbols of any language, on a screen or anywhere in frame; UI, app screenshots, logos, watermarks, brand marks; fast motion, camera shake, lens flares, neon, high saturation, dark or moody grading, clinical or hospital setting, stock-ad cheerfulness, dramatic lighting. Also avoid a uniform white or Scandinavian aesthetic, everyone in matching beige knitwear, or a single default ethnicity.

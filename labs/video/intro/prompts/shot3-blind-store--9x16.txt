@@ -1,0 +1,11 @@
+# shot3-blind-store  (~6s, 9x16)
+
+Minimalist abstract scene in a calm, empty, warm off-white (#FBF9F4) space with soft studio light. A smooth matte monolithic form, a softly rounded standing slab in cool neutral gray, sits at center. A drifting cloud of glowing teal (#2F9BB3) particles floats toward the monolith and settles gently against its surface, but the monolith stays completely closed and seamless, no opening, no seam, revealing nothing and absorbing nothing. Serene and still. The camera drifts very slowly around it. Architectural, restrained, reassuring.
+
+FORMAT: aspect ratio 9:16, vertical, composed for a phone screen. Keep the subject centered and lower in frame, leaving clear negative space in the upper third for a caption added later.
+
+STYLE: calm, warm, editorial, cinematic, minimalist. Soft natural daylight, gentle and unhurried. Shallow depth of field, 50mm look, subtle film grain. Color palette dominated by a warm off-white (#FBF9F4) with near-black navy ink tones (#1B1B2F) and a single calm teal accent (#2F9BB3); no other saturated colors, not dark, not neon. Motion is slow and understated, no fast moves, no bounce, no whip pans. Quiet, reassuring, intimate mood.
+
+AUDIO: a low soft ambient hum, very quiet. No music.
+
+AVOID: any visible human face or part of a face (no chin, jaw, mouth, nose or eyes); recognizable people; text, letters, words, numbers, characters, calligraphy, writing, or symbols of any language, on a screen or anywhere in frame; UI, app screenshots, logos, watermarks, brand marks; fast motion, camera shake, lens flares, neon, high saturation, dark or moody grading, clinical or hospital setting, stock-ad cheerfulness, dramatic lighting.
