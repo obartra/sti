@@ -10,6 +10,16 @@ body,
   height: 100%;
 }
 
+/* The document never scrolls: every shell is exactly viewport-sized and owns
+   its own scrolling pane (the app frame's content area, the sub-screen body,
+   the public canvas, the desktop column). Without this a shell that overflows
+   hands its scroll to the page, which drags the fixed chrome (top bar, tab bar,
+   back bar) along with the content. */
+html,
+body {
+  overflow: hidden;
+}
+
 body {
   margin: 0;
   background: var(--surface-app);
