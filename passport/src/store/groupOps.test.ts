@@ -124,6 +124,75 @@ describe("createGroup", () => {
     expect(putGroupBlob.mock.calls[0]?.[0]).toBe(groupId);
   });
 
+  it("binds the join pointer before it claims the name", async () => {
+    const { api } = fakeApi({ registerResult: "registered" });
+    const { accounts, session } = await freshSession(api);
+    // The live server authorizes a vanity claim with the write token of the alias
+    // the name points at, so a claim that lands before the pointer carries that
+    // capability is refused and the name is never registered (the real-server half
+    // of this is groups.integration.test.ts). Order is the whole rule, so pin it.
+    const calls: string[] = [];
+    const ordered: ApiClient = {
+      ...api,
+      putAlias: (id, payload, writeToken) => {
+        calls.push(`bind:${id}`);
+        return api.putAlias(id, payload, writeToken);
+      },
+      registerVanityName: (name, aliasId, writeToken) => {
+        calls.push(`claim:${aliasId}`);
+        return api.registerVanityName(name, aliasId, writeToken);
+      },
+    };
+
+    const { session: next, groupId } = await createGroup(
+      ordered,
+      accounts,
+      session,
+      { handle: "book_club", visibility: "public", meetingKind: "recurring" },
+    );
+
+    const pointer = next.blob.groups?.find(
+      (g) => g.groupId === groupId,
+    )?.joinPointerId;
+    expect(pointer).toBeDefined();
+    expect(calls.indexOf(`bind:${pointer}`)).toBeGreaterThanOrEqual(0);
+    expect(calls.indexOf(`bind:${pointer}`)).toBeLessThan(
+      calls.indexOf(`claim:${pointer}`),
+    );
+  });
+
+  it("a pointer that cannot be bound fails the claim instead of sending it", async () => {
+    const { api, register } = fakeApi({ registerResult: "registered" });
+    const { accounts, session } = await freshSession(api);
+    // The creator's own group card is written first, so only the SECOND alias PUT
+    // (the join-pointer bind) fails here. An unbindable pointer can never be
+    // claimed, so the claim is not sent at all.
+    let puts = 0;
+    const failsToBind: ApiClient = {
+      ...api,
+      putAlias: (id, payload, writeToken) =>
+        ++puts > 1
+          ? Promise.reject(new Error("offline"))
+          : api.putAlias(id, payload, writeToken),
+    };
+
+    const {
+      session: next,
+      groupId,
+      result,
+    } = await createGroup(failsToBind, accounts, session, {
+      handle: "book_club",
+      visibility: "public",
+      meetingKind: "recurring",
+    });
+
+    expect(result).toBe("error");
+    expect(register).not.toHaveBeenCalled();
+    // The group itself still exists, private-until-named, with no join pointer.
+    const group = next.blob.groups?.find((g) => g.groupId === groupId);
+    expect(group?.joinPointerId).toBeUndefined();
+  });
+
   it("private path: never calls registerVanityName and records no join pointer", async () => {
     const { api, register } = fakeApi();
     const { accounts, session } = await freshSession(api);
