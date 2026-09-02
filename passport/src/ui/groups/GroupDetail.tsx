@@ -46,12 +46,18 @@ function MemberRow({
   // The app's real two-state status medallion; a member with no live card reads
   // gray (honest absent), never a wrong color.
   const state = member.card?.state === "blue" ? "blue" : "gray";
+  // A member whose card has not landed yet (they joined but have not opened the
+  // group, so there is nothing published to read) still gets a name: without one
+  // the row is a bare dot beside a menu, which reads as a broken row rather than
+  // as someone who is here.
   const name = member.card?.identity.handle ?? "";
   return (
     <div className="gr__member">
       <Medallion state={state} size={34} />
       <div className="gr__member-body">
-        {name !== "" && <div className="gr__member-name">{name}</div>}
+        <div className="gr__member-name">
+          {name === "" ? C.memberUnnamed : name}
+        </div>
       </div>
       <MemberTag member={member} />
       {onRemove && <RemoveControl onRemove={onRemove} />}
