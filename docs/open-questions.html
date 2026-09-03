@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Open questions · sti.care labs</title>
+    <meta name="description" content="The hard calls I want outside eyes on." />
+    <meta name="theme-color" content="#FBF9F4" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="/fonts/hanken-grotesk-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/labs.css" />
+  </head>
+  <body>
+    <div class="wrap doc">
+      <a class="back" href="/">← sti.care labs</a>
+      <article class="prose">
+<h1>Open questions</h1>
+<p><em>The honest calls I don&#39;t want to make alone. The first part is a quick description of what
+the thing is, so we&#39;re working from the same picture; the rest is the set of questions I most
+want outside eyes on. Take them as &quot;help me see what I can&#39;t,&quot; not &quot;approve my work.&quot; If any
+of this is your lived experience or your field, I&#39;d genuinely value your read. There&#39;s a
+feedback link at the bottom.</em></p>
+<hr>
+<h2 id="what-it-is-the-short-version">What it is (the short version)</h2>
+<p>An app that fights STI/HIV stigma in product form: make testing and disclosure ordinary, and
+help people make science-based decisions, without the clean/dirty framing. It is harm
+reduction, never a filter that sorts people or decides who may have sex. It is live at
+<a href="https://sti.care">sti.care</a>, which makes these questions more urgent, not less: some of the
+calls below are built and running, and I would still rather hear I got one wrong now than
+keep shipping on top of it.</p>
+<p>How it works:</p>
+<ul>
+<li>It&#39;s a shareable &quot;passport&quot; that shows <strong>one</strong> thing: whether someone is <strong>up to date on
+testing and actively protecting against HIV</strong>. Three honest ways to qualify: on PrEP,
+undetectable, or a public commitment to always using condoms.</li>
+<li><strong>U=U is built into the core.</strong> An undetectable person and a person on PrEP show the
+<strong>exact same label</strong> (&quot;on HIV prevention&quot;): you can never tell which is which, and the
+badge never shows anyone&#39;s actual status or method.</li>
+<li><strong>Two states only: blue (&quot;up to date&quot;) or gray.</strong> No green (reads as &quot;go&quot;), no yellow/red
+&quot;warning&quot; state: any &quot;be careful with this person&quot; signal would basically out that they
+have something. Gray is a wide bucket (overdue, never tested, taking a break, mid-
+treatment, in care but not yet undetectable) so a single look never decodes to a diagnosis.</li>
+<li>It protects people <strong>during treatment</strong> without exposing why: mid-treatment just shows
+gray, identical to every other reason for gray.</li>
+<li><strong>No &quot;verified&quot; badges.</strong> A verified tier next to a self-reported one re-creates the ranking
+this exists to dismantle, and trustworthy verification would mean linking a real medical
+record to your identity, which the privacy model forbids (and it would privilege documented
+healthcare over anonymous or at-home testing). Everyone&#39;s badge is the same kind, openly
+self-reported.</li>
+<li>It points people to <strong>free testing, free condoms, and free/low-cost PrEP</strong> nearby, and it&#39;s
+built so the server literally can&#39;t read anyone&#39;s health data or see who&#39;s connected to
+whom.</li>
+</ul>
+<p>The honest tension I&#39;m sitting with: rewarding active HIV protection is a mildly &quot;healthist&quot;
+choice. I think mid-epidemic it&#39;s worth it, and I keep it from becoming a serostatus gate by
+making the cheapest route (condoms) count and putting free PrEP/condoms/testing one tap away.
+But whether that line sits right is exactly what I want feedback on.</p>
+<hr>
+<h2 id="the-questions">The questions</h2>
+<h3 id="1-does-the-whole-thing-help-or-harm-poz-folks-gut-check">1. Does the whole thing help or harm poz folks: gut check</h3>
+<p>This is the meta-question, the one the others feed into. Intent is anti-stigma: U=U in the
+core, no clean/dirty framing, harm-reduction not moralizing. But intent and impact differ.</p>
+<p><strong>Question:</strong> sitting with the whole concept, does it <em>reduce</em> stigma, or does a status-
+sharing app, however carefully built, inevitably make poz people feel sorted and
+surveilled? Is this a tool you&#39;d want to exist?</p>
+<h3 id="2-who-cant-reach-blue-and-whether-that-redraws-a-clean-dirty-line">2. Who can&#39;t reach &quot;blue,&quot; and whether that redraws a clean/dirty line</h3>
+<p>Blue requires being actively protected against HIV (PrEP, undetectable, or public condom
+commitment), so some people can&#39;t reach it even if diligent:</p>
+<ul>
+<li><strong>Someone HIV-positive and in care but not yet undetectable</strong> (newly diagnosed, still
+getting to suppression) shows gray, same bucket as overdue. No single look outs them, but
+over time &quot;tests yet never blue&quot; could be inferred, and because almost everyone on these
+apps will qualify, <em>not</em> qualifying might stand out more, not less.</li>
+<li><strong>Someone who declines PrEP for their own reasons</strong> (side effects, autonomy) and won&#39;t
+publicly commit to condoms is gray even if they test constantly. A real PrEP-normative tilt.</li>
+</ul>
+<p><strong>Question:</strong> is rewarding active HIV protection the right call mid-epidemic, or does it throw
+the newly-diagnosed and the PrEP-decliners under the bus?</p>
+<p>The sharpest version of this is detectable HIV in care. Today detectable HIV is an active
+infection on the clearance axis, so no route reaches blue until suppressed. But the app already
+treats condoms as equal-tier HIV prevention (the next question), and blue is defined as
+&quot;actively protecting,&quot; not &quot;no transmissible virus&quot; and explicitly not &quot;clean.&quot; By that logic a
+detectable person who publicly commits to condoms is actively protecting, and the same condom
+route is already the only road to blue for the HIV-negative PrEP-decliner above. The condom
+preference is worn by a broad mixed population, so requiring it for this subgroup wouldn&#39;t out
+them; it&#39;s the same camouflage the PrEP-decliner already relies on. Allowing it would also erase
+the &quot;tests yet never blue&quot; inference above. So refusing it arguably puts the clean/dirty line
+back on the clearance axis, the one place blue can&#39;t be reached by behavior at all.</p>
+<p>The reason I lean no: U=U neutralizes the source biologically and continuously, while condoms
+over a detectable person leave live, uncontrolled virus behind a per-act barrier and a
+self-reported commitment. That&#39;s the largest difference of degree anywhere on the route axis,
+and it means blue would be sitting on top of uncontrolled live virus. There&#39;s also a knock-on
+cost: saying yes would force partner-notification (the receiving-end question below) to stop
+being uniformly gentle. A condom failure with a detectable partner is a real possible-HIV-
+exposure, which argues for a sharper, faster, less content-free &quot;get tested now, consider PEP&quot;
+alert, in direct tension with the calm, batched, anonymous design I chose there. So the badge
+change wouldn&#39;t stay contained to the badge.</p>
+<p><strong>Question:</strong> is treating detectable HIV as an absolute clearance blocker the right call, or is
+it the clean/dirty line sneaking back in? If condoms genuinely count as prevention, can the app
+justify accepting them for negatives but not for a detectable person in care? The blocker is
+what shipped (it is locked in the decisions log), but I want outside eyes on whether keeping it
+is principled or just fear; this is the decision I would most readily reopen for a strong
+argument.</p>
+<p>One more residual on the same axis: wearing &quot;condoms always&quot; <em>without</em> the HIV-prevention label
+weakly implies &quot;HIV-negative and not on PrEP.&quot; I&#39;ve accepted that as the lesser harm (the
+three-state condom preference softens it compared to a binary), but I&#39;d value a check on that
+acceptance.</p>
+<h3 id="3-grouping-condoms-with-prep-and-u-u">3. Grouping condoms with PrEP and U=U</h3>
+<p>The three routes share the <em>same</em> positive state: no ranking. Condoms are real, evidence-
+based prevention, but typical-use efficacy is lower than PrEP/U=U. I grouped them anyway,
+because a lower tier for condom users re-creates the sorting I&#39;m trying to kill, and I&#39;m
+committing the app to honest info pages on the differences instead of encoding a hierarchy.</p>
+<p><strong>Question:</strong> does &quot;publicly commits to condoms&quot; genuinely belong in the same tier as
+PrEP/U=U, or am I flattening a difference that matters? Does leaning on education-instead-of-
+ranking read as honest or as a dodge?</p>
+<h3 id="4-does-a-shareable-badge-become-a-gate">4. Does a shareable badge become a gate?</h3>
+<p>The product refuses to <em>be</em> a filter: it never sorts people, never decides who may have sex,
+and gray is a wide bucket precisely so a look can&#39;t decode to a diagnosis. But a thing I can
+share is a thing someone can ask me to show. I can build it so the app is never a gate and
+still watch &quot;can I see your passport?&quot; harden into an expected step before sex, blue as the
+price of admission. The product refuses to be a gate; it can still be <em>used</em> as one.</p>
+<p><strong>Question:</strong> is that social pressure a real risk, disclosure becoming demanded rather than
+offered? And is there anything in the design that would blunt it, or does a shareable blue
+badge inevitably invite being used as a checkpoint?</p>
+<h3 id="5-rewarding-access">5. Rewarding access</h3>
+<p>Rewarding PrEP and testing rewards people who can <em>get</em> to PrEP and testing, which tilts toward
+the insured and the well-resourced. I answer this inside the product: condoms count toward blue
+as a route that needs no clinic, and free testing, free condoms, and free/low-cost PrEP finders
+are one tap away. But that&#39;s my answer from where I sit.</p>
+<p><strong>Question:</strong> is counting condoms and putting free options one tap away actually <em>enough</em> to
+keep blue from privileging people with healthcare access, or does the reward still land hardest
+on those who already have the most? I&#39;d especially value this from someone who lives closer to
+the access barriers than I do.</p>
+<h3 id="6-the-partner-notification-feel">6. The partner-notification feel</h3>
+<p>If someone tests positive, their recent contacts get an <strong>anonymous, content-free</strong> nudge
+(&quot;a contact suggests getting tested&quot;), never who, when, or what. It&#39;s batched and delayed so
+timing can&#39;t out anyone, and it routes to free testing + PEP. The person controls who&#39;s on the
+list and can remove anyone easily before it sends. I kept removal <em>frictionless</em>, because
+making it hard just pushes people toward telling no one.</p>
+<p><strong>Question:</strong> does that feel supportive or accusatory on the <em>receiving</em> end? Could a content-
+free &quot;go get tested&quot; from an unknown source land as <em>more</em> alarming than a direct conversation?</p>
+<h3 id="7-what-counts-as-a-known-active-infection">7. What counts as a &quot;known active infection&quot;</h3>
+<p>This line is now decided and built: untreated gonorrhea/chlamydia/syphilis gray someone until
+treated; detectable HIV until suppressed; <strong>chronic lifelong conditions like HSV and HPV
+never gray anyone</strong> (almost every sexually active adult has been exposed to HPV, and graying
+someone forever over herpes would be cruel). Prior-treated syphilis serology doesn&#39;t break
+&quot;clear&quot; either; only a genuine reinfection does. For a transient high-transmission moment
+like a visible HSV outbreak, the answer is the ordinary pause: voluntarily gray, identical to
+every other gray, no reason shown, and the education teaches that pausing during an outbreak
+is the considerate move.</p>
+<p><strong>Question:</strong> does that built line feel right from the inside? Anything about how the app
+treats chronic vs. acute conditions, or about teaching &quot;pause during an outbreak&quot; as the
+considerate move, that would feel stigmatizing to people living with HSV/HPV?</p>
+<h3 id="8-groups-and-the-clean-club-risk">8. Groups, and the &quot;clean club&quot; risk</h3>
+<p>Groups are built and live: people share status within a trusted set and get anonymous &quot;go
+test&quot; nudges if someone tests positive. The shape that shipped is deliberately mutual-care,
+not exclusionary: no rankings, no counts, joining/leaving looks ordinary, being in a group is
+itself the sharing, you join under a handle you choose, and I rejected letting groups set a
+testing-cadence bar (&quot;tested within 30 days to belong&quot; implies a verifiable standard the
+system can&#39;t provide, and it&#39;s the door I don&#39;t want to exist).</p>
+<p><strong>Question:</strong> with the construct real, does it still drift toward &quot;you have to be blue to
+belong,&quot; a serosorting club, no matter how it&#39;s framed? If you&#39;ve seen group dynamics like
+this elsewhere (WhatsApp circles, party lists, PnP communities), what drift should I be
+watching for that the design doesn&#39;t already block?</p>
+<h3 id="9-for-a-clinical-reviewer-is-a-fresh-all-clear-too-frictionless-the-testing-window">9. For a clinical reviewer: is a fresh &quot;all clear&quot; too frictionless? (the testing window)</h3>
+<p>This one is a clinical question more than a lived-experience one, so it&#39;s really aimed at an
+epidemiologist or clinician. Blue wants a core-panel test (HIV, syphilis, gonorrhea, chlamydia)
+within 90 days, all clear, but the panel isn&#39;t one moment. Results land on different clocks, and
+every test has a <em>window period</em> where a recent infection won&#39;t show yet. Syphilis is the sharp
+case: you can truly know you&#39;re negative for HIV/gonorrhea/chlamydia today while the syphilis
+result is still pending, or test so soon after an exposure that &quot;clear&quot; is false reassurance. An
+<em>incomplete</em> panel already stays gray (you can log what&#39;s back and add syphilis when it arrives),
+but a <em>complete, just-tested</em> panel flips blue even when the slowest result hasn&#39;t had time to
+mean anything. Right now that residual is left to explainer copy, not the badge. Any sharper
+handling has to stay on-device and never show. A visible &quot;syphilis pending&quot; would be exactly the
+tell the two-state badge exists to prevent.</p>
+<p><strong>Question:</strong> is a frictionless &quot;all clear&quot; too generous? Should the testing <em>date</em> (and which
+result came back, and when) factor into blue more honestly (capture per-result dates or a &quot;not
+back yet&quot; input, and hold blue until the slowest-seroconverting piece is both in and past its
+window), or does that pile on friction and a leak surface for a nuance most people won&#39;t model
+correctly anyway? Today the residual is explainer-only and the decisions log carries this
+exact item as &quot;for outside review&quot;; any sharper handling would stay on-device and never show.</p>
+<h3 id="10-anything-im-not-seeing">10. Anything I&#39;m not seeing</h3>
+<p>If you live closer to this than I do, <strong>what&#39;s the question I haven&#39;t thought to ask?</strong></p>
+
+      </article>
+      <div class="feedbackcta" id="respond">
+        <p>Have a perspective on any of these? I'd genuinely value your read.</p>
+        <form class="ansform" id="ansform">
+          <label class="ansform-label" for="ans-topic">Which question?</label>
+          <select id="ans-topic"><option value="general">In general</option><option value="blue-equity">1 · Who can show blue</option><option value="condom-tier">2 · Condoms in the same tier</option><option value="language">3 · Language</option><option value="help-or-harm">4 · Help or harm</option><option value="groups">5 · Groups</option><option value="active-infection">6 · The active-infection line</option><option value="notification-feel">7 · Partner notification</option><option value="verification">8 · Verification</option><option value="testing-window">9 · The testing window</option><option value="detectable-hiv">10 · Detectable HIV and condoms</option><option value="missing">11 · Something I'm not seeing</option></select>
+          <label class="ansform-label" for="ans-body">Your read</label>
+          <textarea id="ans-body" rows="5" maxlength="2000" placeholder="What do you see that I don't?"></textarea>
+          <p class="feedback-note">It arrives with no name attached, and it's the one thing we keep, so we can read it. Please leave out anything identifying.</p>
+          <p class="feedback-note ansform-status" id="ans-status" role="status"></p>
+          <button class="feedbackbtn" id="ans-send" type="submit">Send</button>
+        </form>
+      </div>
+      <script>
+        (function () {
+          var form = document.getElementById("ansform");
+          var body = document.getElementById("ans-body");
+          var topic = document.getElementById("ans-topic");
+          var send = document.getElementById("ans-send");
+          var status = document.getElementById("ans-status");
+          form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            var text = body.value.trim();
+            if (!text) { status.textContent = "Write a line first."; return; }
+            send.disabled = true;
+            status.textContent = "Sending…";
+            fetch("https://api.sti.care/feedback", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ reason: "question", topic: topic.value, body: text }),
+            }).then(function (res) {
+              if (!res.ok) throw new Error(String(res.status));
+              form.reset();
+              send.disabled = false;
+              status.textContent = "Thanks. We read every one; we can't reply here.";
+            }).catch(function () {
+              send.disabled = false;
+              status.textContent = "Couldn't send that. Try again.";
+            });
+          });
+        })();
+      </script>
+      <nav class="crossnav">
+        <a href="https://sti.care">sti.care</a>
+        <a href="/docs/philosophy">Philosophy</a>
+        <a href="/docs/decisions">Decisions</a>
+        <a href="/docs/design">Design</a>
+        <a href="/docs/data">Data &amp; storage</a>
+        <a href="/docs/voice">Voice &amp; tone</a>
+        <a href="/docs/design-language">Design language</a>
+      </nav>
+      <footer>
+        <a href="https://sti.care">sti.care</a> · design notes · not medical
+        advice
+      </footer>
+    </div>
+  </body>
+</html>

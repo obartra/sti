@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Decisions · sti.care labs</title>
+    <meta name="description" content="The what. A scannable log of locked choices and rejected options." />
+    <meta name="theme-color" content="#FBF9F4" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="/fonts/hanken-grotesk-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/labs.css" />
+  </head>
+  <body>
+    <div class="wrap doc">
+      <a class="back" href="/">← sti.care labs</a>
+      <nav class="toc">
+        <div class="toc-h">On this page</div>
+        <ul>
+          <li><a href="#badge">Badge</a></li>
+          <li><a href="#pause">Pause</a></li>
+          <li><a href="#flat-attributes-protection-labels">Flat attributes &amp; protection labels</a></li>
+          <li><a href="#verification">Verification</a></li>
+          <li><a href="#circles-groups">Circles (groups)</a></li>
+          <li><a href="#identity-sharing-aliases">Identity &amp; sharing (aliases)</a></li>
+          <li><a href="#resolution-privacy">Resolution &amp; privacy</a></li>
+          <li><a href="#time-bound-revocable-sharing">Time-bound &amp; revocable sharing</a></li>
+          <li><a href="#linking">Linking</a></li>
+          <li><a href="#partner-notification">Partner notification</a></li>
+          <li><a href="#testing-reminders">Testing reminders</a></li>
+          <li><a href="#onboarding-identity-tech">Onboarding &amp; identity tech</a></li>
+          <li><a href="#resources-us-only-launch">Resources (US-only launch)</a></li>
+          <li><a href="#wallet-qr-shareable-card">Wallet, QR &amp; shareable card</a></li>
+          <li><a href="#scope">Scope</a></li>
+          <li><a href="#still-open">Still open</a></li>
+        </ul>
+      </nav>
+      <article class="prose">
+<h1>sti.care: Decisions Log</h1>
+<p><em>Scannable record of decisions, each tagged with a status. Open items at the bottom.</em></p>
+<p><strong>Status key:</strong> LOCKED = settled; REJECTED = considered and ruled out; DEFERRED = intentionally post-launch; OPEN = still unresolved.</p>
+<hr>
+      <aside class="legend" aria-label="What the status labels mean">
+        <div class="legend-h">Status key</div>
+        <div class="lg-row"><span class="pill pill-locked"><span class="pill-i" aria-hidden="true">🔒</span>Locked</span><span class="lg-def">Decided: won't reopen without a strong new reason.</span></div>
+        <div class="lg-row"><span class="pill pill-built"><span class="pill-i" aria-hidden="true">✅</span>Built</span><span class="lg-def">Locked and already implemented in the prototype.</span></div>
+        <div class="lg-row"><span class="pill pill-rejected"><span class="pill-i" aria-hidden="true">⛔</span>Rejected</span><span class="lg-def">Considered and deliberately ruled out.</span></div>
+        <div class="lg-row"><span class="pill pill-deferred"><span class="pill-i" aria-hidden="true">⏳</span>Deferred</span><span class="lg-def">Decided, but intentionally not in the MVP.</span></div>
+        <div class="lg-row"><span class="pill pill-open"><span class="pill-i" aria-hidden="true">❓</span>Open</span><span class="lg-def">Not yet decided: wants outside input.</span></div>
+        <div class="lg-row"><span class="pill pill-limit"><span class="pill-i" aria-hidden="true">⚖️</span>Limit</span><span class="lg-def">A known tradeoff we accept rather than solve.</span></div>
+      </aside>
+<h2 id="badge">Badge</h2>
+<ul>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Two visible states, blue (&quot;up to date&quot;) / gray only.</strong> No ranking, no tiers, no &quot;platinum.&quot;</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Blue requires ALL of:</strong> (1) tested within <strong>90 days</strong>, where &quot;tested&quot; = the <strong>standard core panel (HIV, syphilis, gonorrhea, chlamydia)</strong>, universally offered, so not an access tax, <strong>with every <em>exposed</em> site covered</strong> (per-site &quot;tested clear OR not exposed&quot;; see site rule below); (2) <strong>clear</strong>: no current active non-HIV STI, the <em>only</em> acceptable positive being <strong>syphilis serology from prior treated history</strong>, not current infection; (3) <strong>active HIV protection via at least one of three routes</strong>: on PrEP, undetectable, <strong>or</strong> a public commitment to condoms-always.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>&quot;Tested&quot; has a defined scope (closes the &quot;I don&#39;t test oral GC&quot; / &quot;my center skips syphilis&quot; gap).</strong> Infection floor = the standard core panel (every center offers it, so requiring it privileges no one). Site coverage = per-site <strong>&quot;tested clear OR not exposed there,&quot;</strong> computed <strong>on-device</strong>: no oral → pharyngeal satisfied by <em>not exposed</em> (no irrelevant swab forced); does oral → satisfied by <em>swabbed clear</em>. The per-site reasoning is <strong>NEVER displayed</strong>: surfacing tested sites leaks behavior (pharyngeal⇒oral, rectal⇒receptive anal). The site logic produces the badge, never a viewer-facing fact. Residual (window period, 30+ pathogens beyond the core) is handled by the explainer (&quot;good sign not a guarantee; fair to ask what and when&quot;), not by itemizing on the card.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Never-tested → always gray.</strong> Blue is earned from a real recent result, never inferred from low risk or &quot;no history&quot; (even a virgin can have HIV).</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Gray = everything else</strong> (overdue, never-tested, paused, current active infection, or no qualifying protection route). Wide mixed bucket.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Detectable HIV is a hard blocker on blue, independent of route.</strong> The &quot;clear&quot; axis is scoped to <em>non-HIV</em> STIs (HIV lives on the protection axis), so state it explicitly: if the owner&#39;s HIV status is positive and not undetectable, the badge is <strong>gray regardless of any route</strong>, condoms-always included. For an HIV-positive person the <strong>only</strong> path to blue is the <strong>undetectable</strong> route; the condoms-always and PrEP routes never override a detectable result. (Closes the gap where detectable-poz + condoms-always would otherwise compute blue. The <em>ethics</em> of this stays an OPEN values item below.)</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>The three routes surface via labels</strong> (see Flat attributes): PrEP and undetectable share one <strong>identical</strong> umbrella label; the condom route is the <strong>&quot;condoms always&quot;</strong> value of a 3-state condom preference, shown publicly.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Efficacy differences (condoms &lt; PrEP/U=U) are handled by EDUCATION, not ranking</strong>: a committed sex-ed-access responsibility, not a disclaimer.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Healthism named openly:</strong> a deliberate mid-epidemic choice to reward active HIV prevention, which refuses to become a serostatus gate (the positive state is reachable by the cheap, near-universal condom route, backed by access ramps).</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>The badge reflects CURRENT STATE, not DIAGNOSIS HISTORY (the general rule for &quot;what about condition X&quot;).</strong> Three axes, never conflated:<ul>
+<li><strong>Chronic / lifelong manageable diagnosis (HSV, HPV) → EDUCATION, never the badge.</strong> Never grays anyone, never a label, never a profile/attribute element. A lifelong gray for a common manageable condition is the permanent-sentence trap the project refuses. Their seriousness is honored by making prevention reachable (vaccination, screening) for everyone, tied to no one&#39;s status.</li>
+<li><strong>Transient active higher-transmission episode (e.g. an HSV outbreak, visible sores/prodrome) → PAUSE.</strong> This is exactly what the existing pause mechanism is for: the person pauses during the outbreak, the badge goes gray identically to every other gray (no &quot;outbreak&quot;/&quot;herpes&quot; tell, no reason shown), and un-pauses when it clears. The transient high-risk window grays; the chronic condition doesn&#39;t. Pause is voluntary (self-reported, like everything); education teaches that pausing during an outbreak is the considerate move and why.</li>
+<li><strong>Testing recency → the 90-day clock only.</strong> An outbreak is a symptom, not a test result; it is NOT folded into the testing window. Don&#39;t conflate &quot;when did you last get screened&quot; with &quot;is there a transient reason to hold my status.&quot;</li>
+</ul>
+</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>HPV specifically:</strong> out of the badge and attributes entirely; education/resources only (vaccination + screening ramps, universal, status-free). HPV causes <em>warts</em> (low acute-decision urgency) and a slow cancer risk managed by vaccine/screening; neither is a &quot;this week&quot; disclosure moment. (HPV does not cause sores; that&#39;s HSV, don&#39;t conflate.)</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Syphilis serofast vs reinfection:</strong> prior-treated syphilis serology (serofast) does NOT break &quot;clear&quot;; a genuine reinfection (rising titer) does. Captured as an input distinction at report time.</li>
+<li><span class="pill pill-rejected" title="Considered and deliberately ruled out."><span class="pill-i" aria-hidden="true">⛔</span>Rejected</span> <strong>Green</strong> (&quot;safe/go&quot;). <strong>Yellow/red</strong> (warning states decode to &quot;has something now&quot;). <strong>Platinum / any rank above blue</strong> (implies &quot;best,&quot; re-creates sorting, and a visible &quot;protected set&quot; tier leaks). <strong>A &quot;recently-tested ⇒ low viral load&quot; route</strong> (scientifically false: acute infection is the <em>highest</em> viral-load window).</li>
+<li><span class="pill pill-rejected" title="Considered and deliberately ruled out."><span class="pill-i" aria-hidden="true">⛔</span>Rejected</span> <strong>Gating blue on PrEP <em>adherence</em> (&quot;consistent PrEP&quot; vs &quot;sometimes PrEP&quot;).</strong> Tempting by analogy to &quot;condoms always,&quot; but wrong: (a) self-reported adherence is among the most biased measures in HIV research: gating the trust signal on an unverifiable, aspirational number makes blue mean <em>less</em>; (b) it collects a sensitive behavioral-adherence data point we can&#39;t verify and don&#39;t need; (c) &quot;condoms always&quot; is a <em>boundary/intention</em> a user can honestly declare, while &quot;doses missed&quot; is a <em>clinical-adherence claim</em> users can&#39;t correctly translate into protection (the math differs by exposure type); (d) it re-creates the within-umbrella <em>tier</em> the whole model rejects, and worse, splits the &quot;On HIV prevention&quot; umbrella that MUST stay uniform (undetectable sails through, PrEP-with-gaps fails, breaking the camouflage invariant). <strong>&quot;On PrEP&quot; qualifies, full stop</strong>, exactly as &quot;undetectable&quot; does. Both are the person&#39;s honest declaration; efficacy nuance is <strong>education</strong>. Adherence is used to <em>help</em> the user (PEP-relevance, optional on-device support), never to <em>rank</em> them.</li>
+<li><span class="pill pill-open" title="Not yet decided: wants outside input."><span class="pill-i" aria-hidden="true">❓</span>Open</span> <strong>For outside review:</strong> (a) detectable-poz-in-care can&#39;t reach blue until suppressed, and a near-universal positive state may make non-qualifiers <em>more</em> conspicuous; (b) PrEP-choice-normativity: someone who declines PrEP for autonomy reasons must use the condom route or be gray.</li>
+<li><span class="pill pill-open" title="Not yet decided: wants outside input."><span class="pill-i" aria-hidden="true">❓</span>Open</span> <strong>Label-display residual:</strong> showing &quot;condoms always&quot; without the umbrella weakly implies HIV-negative-not-on-PrEP, a negative-status inference, accepted as far less harmful than any positive leak; confirm.</li>
+</ul>
+<h2 id="pause">Pause</h2>
+<ul>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Manual pause anytime; auto-pause during treatment/clearance windows, computed on-device</strong> from the user&#39;s own recorded result + date.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Extend a pause yes; shorten below the minimum guideline no.</strong></li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Auto-pause, manual pause, never-tested, and didn&#39;t-share all render identically.</strong> No dated or labeled &quot;paused&quot; state.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Pause visibility is the user&#39;s choice</strong> (public, or revealed only via point-in-time access).</li>
+<li><strong>LOCKED, BUILT. Pausing for a transient episode is reachable, education-first.</strong> The badge stays honest between tests only when people pull it down when something changes (an outbreak, a new symptom, a scare), so a quiet &quot;something feel off?&quot; entry sits under the status, in the report flow, and in Care. It opens an owner-only surface with a one-tap pause, a link to the non-diagnostic guide on the learn site (what is worth getting checked, when to hold off), and the testing and PEP finders. <strong>Hard guardrail:</strong> it educates and points to &quot;go get seen,&quot; and it NEVER infers or names a condition from symptoms; the moment it would, it has become a symptom checker and is out of scope. Framed as the considerate, routine move and never as shame, discoverable rather than alarmist, and never shown to a logged-out visitor. It operationalizes the &quot;pausing during an outbreak is the considerate move&quot; line, and it adds no leak (a pause looks identical to every other gray) and no ranking.</li>
+</ul>
+<h2 id="flat-attributes-protection-labels">Flat attributes &amp; protection labels</h2>
+<ul>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>PrEP and undetectable surface ONLY under a single shared umbrella label, &quot;On HIV prevention,&quot; identical for both and never distinguishable</strong> (HARD INVARIANT). This camouflages undetectable people among the PrEP majority. &quot;Undetectable&quot; is <strong>never</strong> a viewer-visible attribute (it is HIV-positive disclosure); method is never shown.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Condom preference is a 3-state, optional, self-declared attribute</strong>, displayed as <strong>&quot;No condoms,&quot; &quot;Condoms optional,&quot; &quot;Condoms always&quot;</strong> (internal state keys <code>raw</code> / <code>either</code> / <code>condoms_always</code>), <strong>decoupled from how blue/gray is computed.</strong> All three are displayable flat attributes; <strong>only &quot;Condoms always,&quot; shown publicly,</strong> qualifies as the HIV-protection route for blue. Keeping all three displayable is required so &quot;Condoms always&quot; isn&#39;t a lone tell.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Umbrella and condom preference are independent and independently displayable</strong>; neither&#39;s presence/absence implies the other, so the umbrella&#39;s absence stays uninformative.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>The blue headline states the route the person made public to earn blue, never more.</strong> &quot;Tested &amp; on HIV prevention&quot; for the PrEP/undetectable umbrella (which <strong>always wins</strong> and never distinguishes the two); &quot;Tested &amp; always uses condoms&quot; <strong>only</strong> when condoms-always is the route, legitimate because that preference is already shown publicly, so the headline discloses nothing new. A PrEP/U=U person&#39;s condom use never changes the headline. Stating the already-public route is <strong>not</strong> a &quot;sharpening&quot; of the condom residual.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>&quot;uses condoms&quot; and &quot;on doxy-PEP&quot; remain optional self-declared flat attributes;</strong> never ranked or summed into a verdict.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>PrEP and undetectable are equivalent HIV-protection paths, but HIV-only</strong>, never &quot;fully safe&quot;; other-STI recency is a separate axis.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Attributes/labels show on gray too</strong> (most useful then) and are gated by <strong>authorization</strong>, never by badge color.</li>
+</ul>
+<h2 id="verification">Verification</h2>
+<ul>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span><span class="pill pill-scope" title="In the MVP build scope.">MVP</span> <strong>Entirely self-reported; NO &quot;verified&quot;/&quot;unverified&quot;/&quot;self-reported&quot; mark.</strong> Any mark implies a missing tier and is itself a status signal. Honesty is plain descriptive copy.</li>
+<li><span class="pill pill-rejected" title="Considered and deliberately ruled out."><span class="pill-i" aria-hidden="true">⛔</span>Rejected</span> <strong>Viewer-visible verification</strong> (encodes privilege via who has EHR-connected care; a sorting signal).</li>
+<li><span class="pill pill-deferred" title="Decided, but intentionally not in the MVP."><span class="pill-i" aria-hidden="true">⏳</span>Deferred</span> <strong>Verification as INPUT-ONLY:</strong> may improve the owner&#39;s own app (auto-pause accuracy, less data entry); must never change the viewer-facing output in any version.</li>
+</ul>
+<h2 id="circles-groups">Circles (groups)</h2>
+<ul>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>A convenience layer over pairwise links; not a live status feed, not a &quot;clean club.&quot;</strong> One kind of group.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Membership is the sharing:</strong> joining a group is consenting to show your blue/gray color to its members, so there is no minimum group size and no door. No counts, no leaderboards; joining/leaving/skipping looks ordinary.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>You appear under the handle you joined with</strong> (your identity, or a fresh anonymous handle); the roster is fully visible to members, so there is no hidden-membership and no &quot;additional private members&quot; notice.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Membership disclosure is per-person; revealing a group&#39;s existence never reveals its members.</strong></li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>The individual controls their own status disclosure in a group; the group never overrides it.</strong> No group-level switch makes members&#39; statuses visible (it would expose a member beyond their own choice). Each member&#39;s in-group visibility is the member&#39;s own setting; any group display preference operates only within what each member already shares (hides, never reveals). (There is no min-group floor; membership is the sharing, see above.)</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Group names carry no constraints.</strong> Anyone can name a group anything; we don&#39;t force descriptive names (a color in a group named for a place or event says more than a bare color) and we don&#39;t restrict them either.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Admins can add members.</strong> Joining is the consent; if you are not comfortable with a group&#39;s admins adding people, don&#39;t join. Leaving is easy and looks ordinary.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Discovery = member-initiated, link-scoped</strong> (only someone you&#39;ve already paired with can reveal a group). No open search, no stranger discovery, no contact intersection.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Anti-spam via consensual pull + sticky declines + outbound rate-limiting.</strong></li>
+<li><span class="pill pill-rejected" title="Considered and deliberately ruled out."><span class="pill-i" aria-hidden="true">⛔</span>Rejected</span> <strong>Max-group caps</strong> (punish legitimate organizers more than abusers).</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>No testing &quot;bar&quot; / cadence requirement for groups.</strong> A 14/30/90-day &quot;tested within X&quot; group requirement implies a <em>verifiable</em> testing standard the system cannot provide (everything is self-reported; blue already encodes testing recency). It&#39;s false rigor. Groups are simply <strong>mutually-linked shared spaces</strong>, not a gate that enforces a cadence.</li>
+<li><span class="pill pill-open" title="Not yet decided: wants outside input."><span class="pill-i" aria-hidden="true">❓</span>Open</span> <strong>Is the group construct a care tool or a serosorting gate?</strong> → for outside review.</li>
+</ul>
+<h2 id="identity-sharing-aliases">Identity &amp; sharing (aliases)</h2>
+<ul>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>No user-facing &quot;main handle.&quot;</strong> The only ids are <strong>aliases</strong>. The local account key (passkey/passphrase) is the anchor, never shown, never in a URL.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>No real names on a viewer surface.</strong> A card&#39;s display identity = handle/alias + avatar, never a first/last/legal name. The system holds two opt-in, never-server-seen names, neither of them a card field: the <strong>local display name</strong> (next item) and an optional <strong>shared label</strong> on a face (below). A face is anonymous by default.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Public vs private is a key-distribution choice, not server data.</strong> Private = key held by authorized contacts; public = key in the URL fragment. Server stores only <code>opaque_id → ciphertext</code> either way and never sees a handle.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Opaque-id aliases are the default (Private link); a public handle is an explicit
+opt-in</strong>, flagged at claim time as findable and not unlinkable.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>A local display name</strong> (entered at account creation, owner-facing only, never sent
+to the server) is the one name-like field in the system. It is NOT a public handle and does not
+seed link handles.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>The display name names the owner; handles are for sharing.</strong> The app refers to the owner
+only by their <strong>display name</strong>: a real name, so mixed case and spaces are welcome (capped, control
+and bidi characters stripped), greeted plainly and never <code>@</code>-prefixed. <strong>Handles</strong> are the
+identities used to share a profile: up to 5 public and unlimited private, none required. A public
+handle is required only for username/password sign-in, where it doubles as the sign-in username,
+and that factor is turned on or off in settings. The <code>@handle</code> styling belongs to handles alone
+(shared cards, wallet passes, a peer&#39;s handle), never to the owner&#39;s own name.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Reach and access are per-alias.</strong>
+The displayed face (handle + avatar) is per-alias and unlinkable by default, recognizable by
+opt-in. Reach and access split into <strong>two modes</strong>:
+<strong>Private link</strong> (opaque id + live key, immediate, default) and <strong>Public link</strong> (human handle +
+<code>/u/</code> directory + knock/grant, findable). <code>vanity + live</code> remains off the menu, the one config
+that would put a readable status on the server. <strong>Multiple public handles per account: up to 5</strong>
+(one per public context, e.g. one for Grindr, one for Tinder). Handle is set at link creation in
+the share sheet, not at account creation.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Exactly two link kinds; no separate keyed &quot;public profile&quot; mode.</strong> Public sharing is
+always the findable, ask-first <code>/u/</code> handle; a durable keyed link is just a private link with no
+expiry, not a third mode. The share surface and the Links tab present two things only: your public
+handles (findable, ask-first) and your private per-person links. This drops the leftover keyed
+public-profile option, whose <code>/a/…#key</code> shape read as identical to a private link and so blurred
+the public/private line.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Shared name is a one-time copy, not a live field.</strong> A sharer may
+optionally attach a name to a face (default off). The receiver gets it once as the starting value
+of their own editable label and owns it from then on; it never re-syncs if the sharer later changes
+their name. The handle underneath stays live and auto-updates; a shared name is a snapshot. So the
+shared name and the receiver&#39;s rename are the same editable label, just seeded differently.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Easy reclaim of your own released name during the 24h lock.</strong> The post-release
+lock blocks third-party watch-and-grab, not the account that just held the name: if you release or
+rename off a public handle and change your mind, you can re-claim it straight away while the window
+runs. Keyed to the same account, so it never helps an impersonator, and it never overrides a
+moderation takedown.</li>
+</ul>
+<h2 id="resolution-privacy">Resolution &amp; privacy</h2>
+<ul>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Two modes.</strong> Private link → anyone with the keyed
+URL sees immediately; everyone else sees uniform gray-nothing. Public link → anyone who visits
+<code>sti.care/u/{handle}</code> can knock; viewing requires an explicit grant from the owner. Existence is
+hidden for private links, disclosed for public links (the opted-into cost of findability). The
+two-state badge (blue/gray) is unchanged. <strong><code>vanity + live</code> remains permanently off the menu.</strong></li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Uniform responses in shape AND timing</strong> (existence-hiding can&#39;t leak via size/latency
+for private links; public link existence is intentionally revealed by the /u/ endpoint).</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Public profiles are scrapeable over time and can&#39;t be fully protected;</strong> mitigations:
+opt-in/default-off, rate-limiting on <code>/u/</code>, and an honest disclosure at handle registration.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Knock (for PUBLIC links only).</strong> Anyone who visits a public link&#39;s <code>/u/{handle}</code> can
+knock (request access). The owner approves each viewer via the blind grant.<ul>
+<li><strong>Existence-safe uniform response for private link knock paths:</strong> the knock endpoint returns
+the SAME &quot;if this passport exists, your request was sent&quot; for real / fake / guessed ids,
+presence-invariant. For public links, existence is already disclosed by the /u/ response.</li>
+<li><strong>Requester sees only that uniform confirmation;</strong> then status silently resolves (granted) or
+stays gray-nothing (not granted / nonexistent, indistinguishable). NO pending/granted/denied
+signal ever.</li>
+<li><strong>Always review, never auto-grant.</strong> Owner alerting = a <strong>quiet persistent indicator</strong> on the
+alias (owner-pull, no per-knock push/buzz).</li>
+<li><strong>Auto-expiry ~4 days + &quot;clear all&quot;</strong> bulk-dismiss; knocks <strong>contentless + rate-limited</strong> per
+requester/id.</li>
+</ul>
+</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>A shareable is a resolving link/QR, not a baked-in status image.</strong> Tap resolves live; no status snapshot to go stale. A status image may be offered but is framed &quot;scan for current,&quot; never the default. To be findable where strangers will open it (a dating profile, a bio) without exposing the status itself, the ask-first <code>/u/</code> handle is the surface; a private keyed link opens straight to the status, so it is for people you hand it to.</li>
+</ul>
+<h2 id="time-bound-revocable-sharing">Time-bound &amp; revocable sharing</h2>
+<ul>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>A grant is one-time (point-in-time reveal) or standing (until revoked), for individuals or groups.</strong> &quot;Revoke&quot; = no future reads, not &quot;unsee.&quot; <span class="pill pill-deferred" title="Decided, but intentionally not in the MVP."><span class="pill-i" aria-hidden="true">⏳</span>Deferred</span> <strong>Timed per-viewer windows</strong> (grant one person access for 30 days, then it lapses on its own): expiring a single viewer without re-keying the one shared ciphertext isn&#39;t free, so timed windows wait; until then the link-level lifetime is the durational tool and standing-plus-manual-revoke covers the rest.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Visibility and revocation are per-token / per-capability; there is NO global access state.</strong> What a viewer sees depends on which token/alias they hold. If you&#39;re linked to someone through two paths (a group token and a separate alias) and you leave the group, they still see whatever the other token grants. Leaving one path doesn&#39;t touch the others. Removal from one path just makes that path go dark; it says nothing about the rest.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Status and access are orthogonal</strong> (pause changes what you show; revoke changes who sees via that path; nothing auto-rejoins).</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Access changes are visible to the affected person, indistinguishable to others.</strong> You can tell your own access ended (a group stops resolving for you); to other members, &quot;left&quot; and &quot;was removed&quot; look identical (no public removal mark). The app never states a reason and never auto-revokes from a health event.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Prefer routine expiry as the default</strong> so a path going quiet is mundane background, not a pointed event.</li>
+</ul>
+<h2 id="linking">Linking</h2>
+<ul>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Encounter date defaults to today, fully customizable / back-datable;</strong> never leaves the device, never shown to the contact.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Three paths:</strong> link-in-chat/paste (remote default), <strong>scan-to-autolink</strong> (in-person QR/NFC, mutual-consent, shares an alias not the handle), capability handoff (remote persistent mutual).</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Most shares need no pairing</strong>, just send a link (key in fragment).</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span><span class="pill pill-built" title="Locked and already implemented in the prototype."><span class="pill-i" aria-hidden="true">✅</span>Built</span> <strong>Two distinct &quot;links,&quot; only one is the profile QR.</strong> (A) The
+<strong>profile link/QR</strong>, downloadable, shareable, opens the profile page (&quot;here is my passport&quot;).
+(B) The <strong>linkup handshake</strong>, an in-person, low-friction <strong>mutual proximity gesture</strong> (tap /
+NFC / local code, NOT the profile QR) that in one act <strong>links the two aliases AND logs a real
+encounter</strong> (&quot;we&#39;re hooking up&quot;). Rules: the mutual gesture <strong>is</strong> the consent (no extra confirm,
+but never zero-touch ambient, both must act, so the notify graph reflects real intended
+encounters); <strong>both blue → completes silently/warmly</strong>; <strong>one gray → the other sees a single
+neutral, non-alarming line</strong> (&quot;their testing isn&#39;t up to date right now,&quot; never why, can&#39;t
+decode, invariants 2/3), informs but never blocks/shames; already-linked → just logs the new
+encounter. The logged encounter is what creates the partner-notify edge (feeds the existing
+draft→lock→invisible flow). On-device, contentless, stores no status of the other person.
+<em>(Built and verified in code: the consent gate is real: only the both-acted commit writes; no
+one-sided/ambient/timer path. The gray heads-up cannot decode. The encounter writes the existing
+canonical {alias_ref, pairwise_notify_token, ts} row and feeds the existing partner flow.)</em></li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Wallet is one pass concept, not a format menu.</strong> The face reflects what the alias
+surfaces: QR-carrier (no status, any alias) or, for a <em>public</em> alias, an additional <strong>Live</strong> face
+(status on face, fail-closed gray at 24h). Only variable: &quot;does status appear on the face,&quot;
+gated by privacy mode. Present as &quot;what this pass shows,&quot; not &quot;pick a format.&quot;</li>
+<li><strong>Scope: Post-MVP (fast-follow, NOT in the handshake pass). Wallet/widget launch into the
+handshake.</strong> The wallet and a documented home/lock-screen <strong>quick-link widget recipe</strong> (iOS
+Shortcut/widget, Android equivalent) can offer a one-gesture launch into the in-person handshake,
+since that flow most needs lock-screen speed. Boundary: it only <strong>launches</strong> the handshake;
+mutual-gesture consent still gates the link+log in-app (never a passive lock-screen trigger).
+Sequenced AFTER the in-app handshake is proven.</li>
+</ul>
+<h2 id="partner-notification">Partner notification</h2>
+<ul>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Draft → lock → delivery.</strong> After committing a positive + recipient list, the batch sits in a <strong>draft window (~30 min, config constant)</strong> the user edits freely (add/correct/remove) and can <strong>delete entirely</strong>; each save replaces the prior draft (last-write-wins). At the window&#39;s end the batch <strong>locks</strong>, historical and immutable.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Removal during draft is FRICTIONLESS</strong> (delete-the-whole-report is the real safety valve; making it hard backfires into total silence). After lock, editing the result / removing a contact / un-linking does NOT touch the locked batch.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Post-lock mechanics are INVISIBLE to the user.</strong> No &quot;sending in X,&quot; no delivery status, no counts, ever. Notification is deliberately removed from the user&#39;s concern (it&#39;s about recipients&#39; health) and removing the readout also removes a leak surface. The locked batch enters the server-side send cycle.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Two separate timing jobs:</strong> the draft window = user-facing edit grace (deterministic); the post-lock send cycle = server-side anonymity timing (cross-user batching). Don&#39;t conflate; the send cycle is never surfaced.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Content: anonymous, contentless</strong> (&quot;a contact suggests getting tested&quot;); never who/when/what/count; never labeled 1:1-vs-circle. <strong>Batched, server controls timing.</strong></li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>A &quot;get screened&quot; nudge, not a real-time PEP alarm;</strong> PEP urgency via always-on education; every notification routes to immediate testing + PEP info.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Reachability (MVP scope): push (primary) + pull &quot;go get tested&quot; page (fallback),</strong> both identity-free. <strong>Accepted limit:</strong> a fully-disengaged recipient can&#39;t be force-notified. <span class="pill pill-deferred" title="Decided, but intentionally not in the MVP."><span class="pill-i" aria-hidden="true">⏳</span>Deferred</span> <strong>Opt-in, off-by-default, blind-routed email</strong> (content-free &quot;go check&quot;); phone banned.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Accepted tradeoffs, stated honestly:</strong> (a) targeted push reveals to the <em>server</em> which handles received an exposure ping. Mitigation direction is a generic broadcast/cover wake + a uniform &quot;anything for me?&quot; poll so recipients and non-recipients look identical [eng follow-up]; (b) notification anonymity is bounded by the <em>recipient&#39;s</em> in-window contact count and degrades toward deanonymizing at one contact, unfixable without not sending; distinct from the min-group-size-5 rule, which protects group status <em>viewing</em>.</li>
+</ul>
+<h2 id="testing-reminders">Testing reminders</h2>
+<ul>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Offer them: local/on-device only, supportive framing, no frequency gamification, pause-aware, discreet/disableable.</strong></li>
+</ul>
+<h2 id="onboarding-identity-tech">Onboarding &amp; identity tech</h2>
+<ul>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span><span class="pill pill-scope" title="In the MVP build scope.">MVP</span> <strong>Passkey / Face ID / fingerprint primary; passphrase (Argon2id) fallback.</strong> Key derived locally, never transmitted.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span><span class="pill pill-scope" title="In the MVP build scope.">MVP</span> <strong>A user-saved RECOVERY PASSPHRASE is REQUIRED, not optional</strong>: it is the only no-PII recovery path. With no email/phone and on-device encryption, a saved recovery phrase (shown once at signup, save-confirmed) is the sole way back into an account after losing the device. Framed honestly: &quot;the only way back in, we cannot recover it for you.&quot; A server-side reset is impossible by design. (The Signal / password-manager / crypto-wallet pattern.)</li>
+<li><span class="pill pill-deferred" title="Decided, but intentionally not in the MVP."><span class="pill-i" aria-hidden="true">⏳</span>Deferred</span> <strong>Apple SSO &gt; Google SSO</strong> as recovery anchors (<code>hash(sub) → ciphertext</code>, decryption still gated by the user&#39;s key).</li>
+<li><span class="pill pill-rejected" title="Considered and deliberately ruled out."><span class="pill-i" aria-hidden="true">⛔</span>Rejected</span> <strong>Phone as identity, permanently banned.</strong> (Smallest entropy, strongest real-identity link, universal cross-app join key.)</li>
+</ul>
+<h2 id="resources-us-only-launch">Resources (US-only launch)</h2>
+<ul>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Four first-class &quot;find near you&quot; ramps, framed as tools, not verdicts:</strong> <strong>free testing</strong> (Maps &quot;free STI testing near me&quot; + HeyMistr); <strong>free condoms</strong> (zip/Maps or CDC clinic-finder; no single national program exists, so no hardcoded link); <strong>free/low-cost PrEP</strong> (HeyMistr + PrEP assistance programs: manufacturer PAPs, &quot;Ready, Set, PrEP,&quot; etc.); and <strong>PEP</strong> (the CDC &quot;Let&#39;s Stop HIV Together&quot; services locator, which covers testing, PrEP, PEP, and condoms; HIV.gov locator as alternate). The PrEP ramp is load-bearing: because the badge rewards active HIV protection, the app is obligated to make PrEP reachable, or it would reward privilege. <strong>PEP urgency is contextual, not a standing label</strong>. The standing finder says only when it applies (&quot;after a possible HIV exposure&quot;); the 72-hour urgency lives in the post-exposure card and education, never as a permanent alarm.</li>
+</ul>
+<h2 id="wallet-qr-shareable-card">Wallet, QR &amp; shareable card</h2>
+<ul>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>Wallet format is a user choice, gated by privacy mode.</strong> <strong>QR format</strong> works for any
+alias and shows <strong>no status</strong> on the pass face (link carrier; resolution gates downstream).
+<strong>Live-status format</strong> shows blue/gray and auto-updates and is <strong>public-aliases only</strong> (it
+displays status + pings the wallet provider on a schedule).</li>
+<li><strong>LOCKED, BUILT. Fail closed to gray.</strong> Blue is valid only on a fresh confirmed read; staleness or
+an unreachable server → <strong>gray, never stale-blue.</strong> The published card is a sealed snapshot whose
+badge ages with the wall clock, so two mechanisms keep it honest. <strong>Read-time recompute:</strong> a blue
+card carries the epoch day its freshness lapses (last panel + the 90-day window) inside the sealed
+block; the viewer recomputes on resolve and downgrades a past-deadline blue to gray, so a passive
+owner&#39;s card is never stale-blue even if never republished. <strong>Republish-on-open:</strong> the owner&#39;s app
+re-seals every live link at today&#39;s day on open (once per day), so a snapshot that has aged into or
+out of blue is brought current without waiting for the owner&#39;s next edit. Staleness is <strong>not</strong> a
+distinct visible state (the deadline is read, never shown) and there is <strong>no</strong> owner-facing
+&quot;couldn&#39;t refresh&quot; message. An unreachable/corrupt/expired-link read still fails closed to gray.</li>
+<li><span class="pill pill-locked" title="Decided: won't reopen without a strong new reason."><span class="pill-i" aria-hidden="true">🔒</span>Locked</span> <strong>All shareable artifacts inherit every badge rule</strong> (two-state, handle+avatar never a
+name, logo, boolean precision, no dates/streak/stamp/count). Render the alias URL as text beside
+the QR for accessibility, public/QR-carrier passes only.</li>
+</ul>
+<h2 id="scope">Scope</h2>
+<ul>
+<li><strong>MVP (build now):</strong> self-reported badge (blue/gray), pause, flat attributes, circles, aliases, push+pull notification, reminders, US resources, passkey/passphrase.</li>
+<li><strong>Post-MVP (mark, don&#39;t build):</strong> verification (input-only), SSO, opt-in email channel.</li>
+<li><strong>Out:</strong> viewer-visible verification, EHR integration, stranger discovery, max-group caps, real-time exposure alerting, phone-as-identity.</li>
+</ul>
+<hr>
+<h2 id="still-open">Still open</h2>
+<ol>
+<li>Badge equity. <strong>For outside review:</strong> detectable-poz can&#39;t reach blue until suppressed (and a near-universal positive state may make non-qualifiers <em>more</em> conspicuous); and PrEP-choice-normativity (declining PrEP forces the condom route or gray).</li>
+<li>Label-display residual: &quot;condoms always&quot; without the umbrella weakly implies HIV-negative-not-on-PrEP; accepted as lesser harm (3-state softens it vs. a binary); confirm.</li>
+<li>Notification: push-recipient-set mitigation (broadcast wake + uniform poll); draft-window length (~30 min) and send-cycle cadence.</li>
+<li>Shared-view date granularity; scan-to-autolink auto-share default. (The minimum group-size question is closed: there is no floor, see Circles.)</li>
+<li>Knock endpoint timing: the production knock/notify endpoint must do constant-time work across the whole write/dedupe path (not just return a uniform string); the in-memory prototype mock doesn&#39;t model this.</li>
+<li>Account deletion and data export: a self-serve way to delete your account and everything tied to it, and to download what&#39;s held about you. Worth pinning down what (if anything) is personal enough to export, since the server holds only ciphertext and opaque tokens.</li>
+<li>Testing-window honesty: a complete, recently-tested panel earns blue even though syphilis (and the HIV early window) may not have had time to seroconvert; today that residual is explainer-only, not in the badge. Whether to factor per-result dates / a &quot;not back yet&quot; input into blue, on-device, never displayed, is <strong>for outside review</strong>.</li>
+</ol>
+
+      </article>
+      <nav class="crossnav">
+        <a href="https://sti.care">sti.care</a>
+        <a href="/docs/philosophy">Philosophy</a>
+        <a href="/docs/design">Design</a>
+        <a href="/docs/data">Data &amp; storage</a>
+        <a href="/docs/voice">Voice &amp; tone</a>
+        <a href="/docs/design-language">Design language</a>
+        <a href="/docs/open-questions">Open questions</a>
+      </nav>
+      <footer>
+        <a href="https://sti.care">sti.care</a> · design notes · not medical
+        advice
+      </footer>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,108 @@
+/* ===========================================================================
+   sti.care · Color tokens
+   Base palette + semantic aliases. Status colors are ALWAYS paired with an
+   icon + word in the UI so they read in grayscale and for color-blind users.
+   =========================================================================== */
+
+:root {
+  /* --- Surfaces / neutrals ------------------------------------------------ */
+  --warm-50:  #FBF9F4;  /* app background — warm off-white                    */
+  --warm-100: #F4F1E9;  /* subtle sunken panel / hover on bg                 */
+  --warm-200: #ECE7DB;  /* hairline dividers on warm bg                      */
+  --white:    #FFFFFF;  /* cards                                             */
+
+  /* --- Ink (near-black, never pure) -------------------------------------- */
+  --ink-900:  #1B1B2F;  /* primary text                                      */
+  --ink-700:  #3A3A4D;  /* strong secondary text                             */
+  --ink-500:  #5C5C6E;  /* secondary text / labels                           */
+  --ink-400:  #8A8A99;  /* tertiary / muted / placeholder                    */
+  --ink-300:  #B8B8C2;  /* disabled text                                     */
+  --ink-200:  #DEDDE4;  /* borders on white                                  */
+  --ink-100:  #EEEDF1;  /* faint fills                                       */
+
+  /* --- Primary · calm trustworthy teal/blue ------------------------------ */
+  --teal-700: #1F6E80;  /* pressed / text-on-light                           */
+  --teal-600: #277F94;  /* hover                                             */
+  --teal-500: #2F9BB3;  /* PRIMARY accent                                    */
+  --teal-300: #8FCAD6;  /* soft accent / focus ring base                     */
+  --teal-100: #DDF0F4;  /* tinted surface                                    */
+  --teal-50:  #EEF8FA;  /* faintest tint                                     */
+
+  /* --- Status · clear (green) -------------------------------------------- */
+  --clear-600: #248457;
+  --clear-500: #2E9E6B;
+  --clear-100: #DCF1E6;
+  --clear-50:  #EDF8F2;
+
+  /* --- Status · in treatment (amber) ------------------------------------- */
+  --treat-600: #BE8B00;
+  --treat-500: #E0A500;
+  --treat-100: #FBEFCC;
+  --treat-50:  #FDF7E6;
+
+  /* --- Status · out of date (red) ---------------------------------------- */
+  --expired-600: #B83A30;
+  --expired-500: #D7483B;
+  --expired-100: #FAE0DD;
+  --expired-50:  #FDF0EE;
+
+  /* --- Status · no status (neutral gray) --------------------------------- */
+  --neutral-600: #6C6C7A;
+  --neutral-500: #8A8A99;
+  --neutral-100: #EAEAEE;
+  --neutral-50:  #F4F4F6;
+
+  /* ======================================================================= */
+  /* Semantic aliases — reference these in components, not the raw scale.    */
+  /* ======================================================================= */
+
+  /* Surfaces */
+  --surface-app:      var(--warm-50);
+  --surface-card:     var(--white);
+  --surface-sunken:   var(--warm-100);
+  --surface-tint:     var(--teal-50);
+
+  /* Text */
+  --text-strong:      var(--ink-900);
+  --text-body:        var(--ink-700);
+  --text-muted:       var(--ink-500);
+  --text-subtle:      var(--ink-400);
+  --text-disabled:    var(--ink-300);
+  --text-on-accent:   var(--white);
+  --text-accent:      var(--teal-700);
+
+  /* Lines */
+  --border-card:      var(--ink-200);
+  --border-strong:    var(--ink-300);
+  --divider:          var(--warm-200);
+
+  /* Primary action */
+  --accent:           var(--teal-500);
+  --accent-hover:     var(--teal-600);
+  --accent-press:     var(--teal-700);
+  --accent-soft:      var(--teal-100);
+  --accent-ring:      var(--teal-300);
+
+  /* Status — clear */
+  --status-clear-fg:   var(--clear-600);
+  --status-clear-base: var(--clear-500);
+  --status-clear-bg:   var(--clear-100);
+
+  /* Status — in treatment */
+  --status-treat-fg:   var(--treat-600);
+  --status-treat-base: var(--treat-500);
+  --status-treat-bg:   var(--treat-100);
+
+  /* Status — out of date */
+  --status-expired-fg:   var(--expired-600);
+  --status-expired-base: var(--expired-500);
+  --status-expired-bg:   var(--expired-100);
+
+  /* Status — no status / neutral */
+  --status-none-fg:   var(--neutral-600);
+  --status-none-base: var(--neutral-500);
+  --status-none-bg:   var(--neutral-100);
+
+  /* Focus */
+  --focus-ring: 0 0 0 3px var(--teal-300);
+}

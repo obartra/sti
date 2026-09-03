@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Design · sti.care labs</title>
+    <meta name="description" content="The how. The full product and technical spec." />
+    <meta name="theme-color" content="#FBF9F4" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="/fonts/hanken-grotesk-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/labs.css" />
+  </head>
+  <body>
+    <div class="wrap doc">
+      <a class="back" href="/">← sti.care labs</a>
+      <nav class="toc">
+        <div class="toc-h">On this page</div>
+        <ul>
+          <li><a href="#1-the-badge">1. The badge</a></li>
+          <li><a href="#2-pause">2. Pause</a></li>
+          <li><a href="#3-protection-labels-flat-attributes">3. Protection labels &amp; flat attributes</a></li>
+          <li><a href="#4-groups">4. Groups</a></li>
+          <li><a href="#5-identity-aliases-the-canonical-unit">5. Identity &amp; aliases (the canonical unit)</a></li>
+          <li><a href="#6-public-vs-private-key-distribution">6. Public vs private = key distribution</a></li>
+          <li><a href="#7-resolution-existence-hiding">7. Resolution &amp; existence-hiding</a></li>
+          <li><a href="#8-time-bound-revocable-sharing">8. Time-bound &amp; revocable sharing</a></li>
+          <li><a href="#9-linking">9. Linking</a></li>
+          <li><a href="#10-partner-notification">10. Partner notification</a></li>
+          <li><a href="#11-testing-reminders">11. Testing reminders</a></li>
+          <li><a href="#12-resources-us-only">12. Resources (US-only)</a></li>
+          <li><a href="#12b-education-layer-the-product-implies-behaviors-education-has-to-teach-them">12b. Education layer: the product implies behaviors; education has to teach them</a></li>
+          <li><a href="#12c-the-stranger-explainer-what-a-logged-out-first-timer-sees">12c. The stranger explainer: what a logged-out first-timer sees</a></li>
+          <li><a href="#12a-wallet-passes-qr-shareable-card">12a. Wallet passes, QR &amp; shareable card</a></li>
+          <li><a href="#14-onboarding-scope">14. Onboarding &amp; scope</a></li>
+          <li><a href="#open-items">Open items</a></li>
+        </ul>
+      </nav>
+      <article class="prose">
+<h1>sti.care: Design Doc</h1>
+<p><em>The &quot;how.&quot; Complete product + technical spec for the MVP. Pairs with Philosophy (why) and Decisions (what). Not legal advice. Absorbs the earlier aliases/linking spec.</em></p>
+<hr>
+<h2 id="1-the-badge">1. The badge</h2>
+<p><strong>Canonical definition.</strong> <strong>Blue</strong> (&quot;up to date&quot;) requires <strong>all three</strong>: (1) <strong>tested within 90 days</strong>, and &quot;tested&quot; means the <strong>standard core panel: HIV, syphilis, gonorrhea, chlamydia</strong> (the set every testing center offers, so requiring it is not an access tax), <strong>with every <em>exposed</em> site actually covered</strong> (see the site rule below); (2) <strong>clear</strong>: no current active non-HIV STI, the <em>only</em> acceptable positive being <strong>syphilis serology from prior treated history</strong> (not current infection); (3) <strong>active HIV protection via at least one of three routes</strong>: on PrEP, undetectable, <strong>or</strong> a public commitment to condoms-always. <strong>Gray</strong> = everything else. <strong>Detectable HIV is a hard blocker, independent of route:</strong> because the &quot;clear&quot; axis above is scoped to <em>non-HIV</em> STIs, a positive and not-undetectable HIV status forces gray on its own, regardless of any route, condoms-always included. For an HIV-positive person the only route to blue is <strong>undetectable</strong>; condoms-always and PrEP never override a detectable result.</p>
+<p><strong>The site rule (why &quot;tested&quot; is honest, computed on-device, never displayed).</strong> Gonorrhea and chlamydia must be checked at each site a person is <em>exposed</em> at: pharyngeal (oral), rectal (receptive anal), urogenital. A urine test alone misses most extragenital infection. Blue therefore requires, <strong>per site, &quot;tested clear OR not exposed there.&quot;</strong> Someone who doesn&#39;t do oral satisfies the pharyngeal requirement by <em>not exposed</em> (no irrelevant swab forced); someone who does satisfies it by <em>swabbed and clear</em>. This keeps &quot;tested&quot; honest without paternalism (no test demanded for an unused site) and without privilege bias. <strong>Critically, the per-site reasoning is computed on-device and NEVER displayed</strong>: a viewer only ever sees blue/gray. Surfacing which sites were tested would leak behavior (testing pharyngeal implies oral sex, rectal implies receptive anal), re-creating exactly the inference the model fights. The site logic produces the badge; it never produces a viewer-facing fact.</p>
+<ul>
+<li><strong>Never-tested → always gray.</strong> Blue is earned from a real recent result, never inferred from low risk or &quot;no history&quot;; even a virgin can have HIV.</li>
+<li><strong>No rank above blue</strong>: one positive state. No green/yellow/red, no tiers, no &quot;platinum,&quot; no frequency ranking.</li>
+<li><strong>The three routes surface via labels</strong> (see §3): PrEP and undetectable share one <strong>identical</strong> umbrella label, &quot;On HIV prevention,&quot; that never distinguishes them; the condom route is the <strong>&quot;Condoms always&quot;</strong> value of a 3-state condom preference (displayed &quot;No condoms / Condoms optional / Condoms always&quot;), shown publicly.</li>
+<li><strong>Gray is a wide, mixed bucket:</strong> overdue, never-tested, paused, mid-treatment, HIV- detectable, and tested-but-no-qualifying-protection-route all sit in it together. That heterogeneity is what stops a single look at gray from decoding to HIV status.</li>
+</ul>
+<p><strong>Displayed labels (what a viewer actually reads).</strong> The blue headline <strong>states the route that
+earned blue, once</strong>, so &quot;HIV prevention&quot; appears in exactly one place and means exactly one thing
+(no title-vs-tag double meaning). It reads <strong>&quot;Tested &amp; on HIV prevention&quot;</strong> when the route is PrEP
+or undetectable (the umbrella, camouflaging which), or <strong>&quot;Tested &amp; always uses condoms&quot;</strong> when the
+route is the public condoms-always commitment. <strong>Precedence: if a person has both the
+PrEP/undetectable umbrella and condoms-always, the headline shows &quot;Tested &amp; on HIV prevention&quot;</strong>
+(the umbrella always wins; making the headline depend on a PrEP/U=U person&#39;s condom use would leak
+behavior). The route therefore does <strong>not</strong> also appear as a redundant tag; tags carry only the
+<em>optional</em> non-route attributes. The two non-route condom-preference values (&quot;No condoms,&quot;
+&quot;Condoms optional&quot;) stay as optional tags and never become a headline; only &quot;Condoms always&quot; can graduate to
+the headline, because it is the only condom value that is also a blue route. This discloses nothing
+new: the headline only ever states the route the person already made public to earn blue that way.
+The gray state reads <strong>&quot;No status shared right now&quot;</strong>: neutral, never a verdict, never
+&quot;expired/overdue/needs a test.&quot; (The labels still avoid &quot;protected/safe/clean/cleared&quot;; &quot;up to
+date&quot; remains an internal <em>concept</em> word only.)</p>
+<p><strong>Why active-protection-required (and why it&#39;s not a serostatus gate).</strong> Sex with someone who only has a ≤90-day negative test carries a different, higher risk profile than with someone actively protected (a test is a backward-looking snapshot with a window-period blind spot; PrEP/U=U protect continuously). Requiring active protection makes blue <em>mean</em> something. It does not gate on serostatus because the positive state is reachable by the cheapest, most universal route (public condom commitment) and the app carries PrEP/condom/testing access ramps (§12). The efficacy difference between condoms and PrEP/U=U is handled by <strong>education, not ranking</strong> (a core commitment, not a disclaimer).</p>
+<p><strong>Named costs (for outside review, not solved in code).</strong> Detectable-poz-in-care can&#39;t reach blue until suppressed, and a near-universal positive state can make non-qualifiers <em>more</em> conspicuous; someone who declines PrEP for autonomy must use the condom route or be gray (PrEP-normative tilt). No snapshot outs anyone (wide gray bucket); a &quot;tests yet never blue&quot; pattern is the residual over time.</p>
+<p><strong>Clinical model (resolved: the current-state-not-history rule).</strong> &quot;Clear&quot; means no <em>current active</em> non-HIV STI. The general rule for any &quot;what about condition X&quot;: the badge reflects <strong>current state, not diagnosis history</strong>, across three never-conflated axes. <strong>Chronic/lifelong manageable diagnoses (HSV, HPV) → education, never the badge</strong>: they never gray anyone, never appear as a label or attribute; a lifelong gray for a common manageable condition is the permanent-sentence trap the project refuses. <strong>A transient active higher-transmission episode (e.g. an HSV outbreak) → pause</strong> (§2): gray for the duration, identical to every other gray, un-paused when it clears. <strong>Testing recency → the 90-day clock only</strong>: an outbreak is a symptom, not a test result, and is never folded into the testing window. Untreated bacterial STIs gray until treated; detectable HIV until undetectable; <strong>prior-treated syphilis (serofast) keeps &quot;clear,&quot; a reinfection (rising titer) breaks it.</strong> HPV (out entirely: education/resources only) causes <em>warts</em> and a slow vaccine/screening-managed cancer risk, not sores; do not conflate it with HSV.</p>
+<h2 id="2-pause">2. Pause</h2>
+<p>How &quot;not ready&quot; is handled without a warning state.</p>
+<ul>
+<li><strong>Manual pause</strong> anytime (symptoms, new exposure, personal choice). <strong>An active HSV outbreak is the textbook case:</strong> the chronic diagnosis never grays (it&#39;s education-only), but the transient outbreak, when transmission risk is genuinely higher, is a &quot;this week&quot; reason to pause. Education teaches that pausing during an outbreak is the considerate move and why, without shaming anyone for having HSV.</li>
+<li><strong>Auto-pause</strong> during treatment/clearance windows: when a user records a positive result + treatment date, the app computes the standard clearance window <strong>on-device</strong> and pauses until it passes.</li>
+<li><strong>Extend</strong> a pause yes; <strong>shorten</strong> below the minimum recommended guideline no.</li>
+<li><strong>Visibility:</strong> pausing only ever changes the badge to gray (the user&#39;s choice is <em>whether</em>
+to pause, not a separate &quot;paused&quot; visibility). It renders identically to all other gray; there
+is no viewer-distinguishable pause state.</li>
+<li><strong>Invariant:</strong> auto-pause, manual pause, never-tested, and didn&#39;t-share all render identically as gray. Never a dated/labeled &quot;paused&quot; state.</li>
+</ul>
+<h2 id="3-protection-labels-flat-attributes">3. Protection labels &amp; flat attributes</h2>
+<ul>
+<li><strong>PrEP and undetectable surface ONLY under a single shared umbrella label, &quot;On HIV prevention,&quot; identical for both and never distinguishable</strong> (HARD INVARIANT), which lets an undetectable person blend in honestly among the PrEP majority. <strong>&quot;Undetectable&quot; is never a viewer-visible attribute</strong> (it discloses HIV-positive status); method is never shown.</li>
+<li><strong>The condom route surfaces as a 3-state preference</strong>, displayed as <strong>&quot;No condoms,&quot;
+&quot;Condoms optional,&quot; &quot;Condoms always&quot;</strong> (internal keys <code>raw</code> / <code>either</code> / <code>condoms_always</code>),
+optional and self-declared, <strong>decoupled from how blue/gray is
+computed.</strong> All three are displayable flat attributes (ordinary boundary/preference info). Only
+<strong>&quot;condoms always,&quot; shown publicly,</strong> qualifies as the HIV-protection route for blue; the other
+two never affect the badge. Keeping all three displayable is required so &quot;condoms always&quot; isn&#39;t
+a lone tell (a bare binary &quot;condoms required: yes/no&quot; would make the qualifying value
+conspicuous). A consent boundary, not a health fact, so showing it is fine.</li>
+<li><strong>The labels are independent and independently displayable</strong>: the umbrella and the condom
+preference can show in any combination. Neither&#39;s presence/absence implies the other, so the
+umbrella&#39;s absence stays uninformative. <em>Residual:</em> &quot;condoms always&quot; shown without the umbrella
+weakly implies HIV-negative-not-on-PrEP, a negative-status inference, accepted as far less
+harmful than any positive leak (open item to confirm); the 3-state preference softens this vs.
+a binary.</li>
+<li><strong>&quot;uses condoms&quot; and &quot;on doxy-PEP&quot;</strong> remain optional self-declared flat attributes; never summed into a verdict, never colored/ranked.</li>
+<li>PrEP and undetectable are equivalent HIV-protection paths, but <strong>HIV-only</strong>, never &quot;fully safe.&quot; Other-STI recency is a separate axis.</li>
+<li><strong>Labels/attributes show on gray too</strong> (most useful when testing reassurance is absent) and are gated by <strong>authorization</strong>, never by badge color.</li>
+</ul>
+<h2 id="4-groups">4. Groups</h2>
+<ul>
+<li>A <strong>convenience layer over pairwise links</strong>, not a real-time alerting feed and not a &quot;clean club.&quot; There is <strong>one kind of group.</strong> Whether it is a one-time <strong>event</strong> or a <strong>recurring</strong> meeting is only a cadence hint for partner-notify timing, never a second kind of group.</li>
+<li><strong>Membership is the sharing; there is no minimum size and no door.</strong> Joining a group is itself consenting to show your blue/gray color to its members, so a headcount protects nothing. No counts (&quot;3 of 5&quot; outs by elimination), no leaderboards, no join gate; joining, leaving, and skipping all look ordinary. The one residual to respect: a color in a group named for a specific place or event carries more than a bare color, so group names are never forced to be descriptive.</li>
+<li><strong>Everything inside a group is fully visible to its members.</strong> Every member sees the whole roster and each member&#39;s current color, refreshed on read. There are no hidden members, so there is no &quot;additional private members&quot; notice and no per-member visibility dial. You choose the <strong>face</strong> you appear under, your usual identity or a fresh handle, but you appear, visibly, as a member.</li>
+<li><strong>The member controls their own disclosure; the group never overrides it.</strong> Your color in a group is whatever your own status resolves to for the face you joined with; no group-level switch can reveal a member beyond what they chose by joining. Leaving and being removed are indistinguishable to the others: the roster just changes, with no mark and no reason shown, while the affected person can tell their own access ended.</li>
+<li><strong>Membership disclosure is per-person:</strong> revealing that a group exists never reveals who is in it; each member discloses only their own membership.</li>
+<li><strong>Discovery is member-initiated and link-scoped.</strong> A private group is reachable only through an invite an admin sends; a public group is reachable through its findable handle, which resolves to an opaque join pointer, never to the roster. No open search, no stranger discovery, no contact intersection.</li>
+<li><strong>Roles:</strong> the creator is the admin, and can invite people, revoke an invite before it is accepted, remove a member, and disband the group. A removal or a leave rotates the group key, so a removed member gets no future reads.</li>
+<li><strong>Anti-spam:</strong> consensual pull, sticky declines, and outbound rate-limiting, never max-group caps.</li>
+<li><strong>The server never learns the group.</strong> The group object (its handle, roster, and per-member wrapped key) is a sealed blob the server stores and serves exactly like a passport payload; only a member holding the group key can read the roster and the colors.</li>
+</ul>
+<h2 id="5-identity-aliases-the-canonical-unit">5. Identity &amp; aliases (the canonical unit)</h2>
+<p>A user has <strong>one real account</strong>, anchored by a local key (passkey/passphrase) that is <strong>never shown and never in a URL.</strong> There is <strong>no user-facing main handle.</strong> Everything shared is an <strong>alias.</strong></p>
+<p><strong>Each alias has:</strong> an opaque id (the only thing server-side), a display handle/avatar (inside the encrypted payload, obfuscating the account), a privacy mode (private/public), and validity/revocation (independent of other aliases).</p>
+<p><strong>Server-blind linkage:</strong> the account→aliases mapping lives only in the user&#39;s encrypted store. The server holds <code>opaque_id → ciphertext</code>, no handle, no avatar, no grouping, no public/private flag.</p>
+<p><strong>Opaque-id aliases are the default.</strong> A <strong>vanity/custom handle</strong> is an explicit <em>public</em> opt-in, taught at the choice point: &quot;this makes you findable and is not unlinkable from anywhere else you use this name, and it points at your status, so use it only where you&#39;d be fine being recognized.&quot;</p>
+<p><strong>No real names, anywhere.</strong> The display identity is a <strong>handle/alias + avatar, never a
+first/last/legal name.</strong> There is no name field in the system: not stored, not optional, not
+hidden. A name is a collection surface the product has no use for, so the field doesn&#39;t exist.
+The avatar + handle <em>is</em> the identity on every surface (cards, wallet passes, circles, shares).</p>
+<h2 id="6-public-vs-private-key-distribution">6. Public vs private = key distribution</h2>
+<p>The server&#39;s job is identical in both modes (store + serve opaque ciphertext). Only <strong>who holds the key</strong> differs.</p>
+<ul>
+<li><strong>Private alias:</strong> key held only by authorized contacts (handed over at link time). Anonymous viewers get ciphertext they can&#39;t decrypt → <strong>uniform gray-nothing</strong>, identical to a nonexistent id. Existence hidden; handle unreadable by server and strangers.</li>
+<li><strong>Public alias:</strong> key rides the URL fragment (<code>/p/&lt;id&gt;#&lt;key&gt;</code>), never reaching the server. Anyone with the link decrypts and sees badge + attributes. Server still never sees the handle.</li>
+</ul>
+<p><strong>Honesty calibration:</strong> &quot;we can&#39;t read it&quot; is strong for private aliases, weaker for public (anyone with the link can decrypt). A public link leaks only that alias to the user&#39;s chosen audience, categorically safer than a readable server that would leak everyone&#39;s data to one coercible party.</p>
+<h2 id="7-resolution-existence-hiding">7. Resolution &amp; existence-hiding</h2>
+<ul>
+<li>Within any alias a viewer sees only <strong>two badge renderings</strong> (blue or gray), never a leaky third, because each alias is one mode. (The &quot;gray-with-labels vs gray-without-labels&quot; third state only appears if you run both intents on one alias. Don&#39;t; mint separate aliases.) <strong>This counts badge renderings, not viewer outcomes:</strong> the knock affordance is not a third existence-state. Cold/anonymous/guessed resolution is uniform gray-nothing, and a knock affordance appears only to a link-holder with an existence-uniform response (see §Knock). The full outcome enumeration (blue, gray, uniform gray-nothing, link-holder-gated-plus-knock) lives in the State Space doc; the invariant here is narrower: cold viewers never get a distinct existence-confirming state.</li>
+<li><strong>Uniform responses in shape AND timing:</strong> &quot;can&#39;t decrypt&quot; and &quot;doesn&#39;t exist&quot; must be byte- and latency-indistinguishable. Serve plausible ciphertext-shaped bytes for misses; keep paths constant-time-ish.</li>
+<li><strong>Attributes gated by authorization, never by badge color.</strong></li>
+<li><strong>Public profiles can&#39;t be existence-hidden and are scrapeable over time</strong> (a scheduled scraper reconstructs cadence and gray episodes). Mitigations, not a full fix: opt-in, default-off, time-boxed; coarse temporal precision (&quot;as of [month]&quot;); transition hysteresis (blue→gray flips on a fuzzy/batched schedule, decorrelated from the health event); per-id/per-viewer rate-limiting; and an honest in-app warning that a public profile is watchable. <strong>Scrape resistance never requires an account: viewing a shared status stays account-free</strong> (a core principle, and a login would add the very identity/correlation surface the model avoids). Rate-limit anonymously (per-IP/per-id, optional proof-of-work or a challenge under load), not by gating reads behind sign-in.</li>
+</ul>
+<h3 id="knock-visitor-access-to-a-public-link-without-seeing-the-status">Knock: visitor access to a public link, without seeing the status</h3>
+<p>A <strong>public link</strong> (handle + <code>/u/</code> directory) keeps the <em>status</em> gated even though the handle is findable. Anyone who visits <code>sti.care/u/{handle}</code> can <strong>knock</strong> (request access) and the owner decides. Private links carry the AES key in the URL fragment and give immediate access; they have no knock step. Knock is the public link&#39;s gate: findable but not immediately readable.</p>
+<ul>
+<li><strong>Existence-safe by uniform response (the load-bearing rule).</strong> The knock endpoint returns the <strong>same</strong> &quot;if this passport exists, your request has been sent&quot; response <strong>regardless</strong> of whether the id is real, fake, guessed, or held via a shared link. Real id → owner gets a knock; fake/guessed id → identical message, nothing happens. Because the response is presence-invariant, the knock path <strong>reveals nothing about existence</strong>: invariant 6 stays fully intact even though a request affordance now exists. (This is the password-reset &quot;if an account matches, you&#39;ll get an email&quot; pattern.) <strong>Production timing note:</strong> &quot;no early-return branch&quot; is necessary but NOT sufficient: the real endpoint must equalize <em>total</em> response time including the write/dedupe/alert path (a real knock that writes a row + dedupes takes longer than a discarded no-op unless deliberately equalized). Constant-time means the <em>whole</em> path, not just the absence of an early return. The over-limit case also rides the uniform path, never a distinct 429.</li>
+<li><strong>The knock affordance is rendered client-side from the link, never a server query.</strong> A private alias is advertised as a link carrying a <strong>knock token in the URL fragment</strong> (<code>/p/&lt;id&gt;#k=&lt;knock_token&gt;</code>, the fragment never reaching the server, exactly like the public-key case). The client shows the knock button only when that token is present, so a <strong>link-holder</strong> sees it while a <strong>cold/guessed</strong> visitor (bare <code>/p/&lt;id&gt;</code>, no fragment) does not, with <strong>no server round-trip that could leak existence</strong>. The token authorizes nothing on its own (knocks stay reviewed and the server response stays existence-uniform); it only decides whether the button is offered.</li>
+<li><strong>The requester sees only that uniform confirmation</strong>: then the status either silently resolves to a badge later (granted) or stays gray-nothing forever (didn&#39;t exist, or not granted, indistinguishable). <strong>No pending/granted/denied signal ever.</strong> Their real-world confirmation is the conversation (&quot;I knocked on the app&quot;), not an app readout. A &quot;denied&quot; signal especially is never sent (socially costly, and a leak).</li>
+<li><strong>Always review, never auto-grant.</strong> A knock is a request, not an entitlement; the owner grants per-knock (consistent with all sharing being owner-decided).</li>
+<li><strong>Owner alerting is a quiet persistent indicator</strong> (a dot/badge on the alias in the Privacy surface), owner-pull, <strong>no per-knock push, no buzz.</strong> Discoverable when a requester says &quot;I knocked,&quot; ambient otherwise; volume can never spam or stress.</li>
+<li><strong>Auto-expiry ~4 days</strong> (one config constant) + a <strong>&quot;clear all&quot;</strong> bulk-dismiss. Stale knocks self-clean; a forwarded-link knock wave decays on its own; expiry sends the requester no signal.</li>
+<li><strong>Knocks are contentless and rate-limited</strong> per requester and per id, so a single prober or a forwarded link can&#39;t flood.</li>
+<li><strong>Forwarded-link caveat (documented, not solved):</strong> a private link is forwardable, so a stranger who gets a leaked link <em>can</em> knock. But since knocks are reviewed and contentless, a forwarded link only ever generates ignorable knocks, never status. The link reveals <em>existence</em> to whoever holds it; it never reveals <em>status</em> without a grant. Accepted.</li>
+</ul>
+<h2 id="8-time-bound-revocable-sharing">8. Time-bound &amp; revocable sharing</h2>
+<ul>
+<li>Grants: point-in-time, durational, or standing-until-revoked, for individuals or groups. Durational = periodically re-serve a freshly-rotated payload; expiry/revoke = stop issuing the next one.</li>
+<li><strong>&quot;Revoke&quot; = &quot;no future reads,&quot; not &quot;unsee.&quot;</strong></li>
+<li><strong>Visibility and revocation are per-token / per-capability: there is NO global access state.</strong> What a viewer sees depends on which token/alias they hold. If you&#39;re linked through two paths (a group token and a separate alias) and you leave the group, they still see whatever the other token grants; one path going dark says nothing about the others.</li>
+<li><strong>Status and access are orthogonal.</strong> Pause changes only <em>what you show</em> to your existing audience (unpause reverses it, nothing &quot;rejoins&quot;). Revoke/leave changes only <em>who can see you via that path</em> (re-grant/re-join reverses it, status untouched).</li>
+<li><strong>Access changes are visible to the affected person, indistinguishable to others.</strong> You can tell your own access ended (a group stops resolving for you); to other members, &quot;left&quot; and &quot;was removed&quot; look identical, no public removal mark, no reason ever stated. The app never auto-revokes from a health event.</li>
+<li><strong>Prefer routine expiry</strong> (short TTLs, re-sharing as the norm) so a path going quiet is mundane and timing-independent of any health state.</li>
+</ul>
+<h2 id="9-linking">9. Linking</h2>
+<ul>
+<li>A <strong>link</strong> records &quot;these two aliases encountered each other on [date],&quot; used on-device to compute exposure windows. Lives only in each user&#39;s encrypted store.</li>
+<li><strong>Encounter date</strong> defaults to <strong>today</strong>, fully customizable / back-datable; never leaves the device, never shown to the contact.</li>
+<li><strong>Paths:</strong> (a) <strong>link in chat/paste</strong> (remote default; key in fragment, one tap if chat-integrated); (b) <strong>scan-to-autolink</strong> (in-person QR/NFC: devices exchange alias refs + pairwise notify-tokens directly, auto-link with today&#39;s date, optional mutual auto-share; a scan <em>proposes</em> a link both confirm, never silently binds; shares an <strong>alias, not the handle</strong>); (c) <strong>capability handoff</strong> (remote persistent mutual; ride the app&#39;s chat so key handoff is one tap).</li>
+<li><strong>Most shares need no pairing</strong>, just send a link.</li>
+</ul>
+<h2 id="10-partner-notification">10. Partner notification</h2>
+<p><strong>Draft → lock → delivery (mechanics invisible after lock).</strong> The user controls the <em>facts</em> (who they linked with) during an editable draft window; then the batch locks and the rest is not the user&#39;s concern: it&#39;s about the recipients&#39; health.</p>
+<ol>
+<li><strong>Draft window (~30 min; one config constant):</strong> after the user commits a positive result + recipient list, the batch sits in draft. The user edits freely (add, correct, <strong>remove</strong>) and may <strong>delete the entire report</strong> at any time. Each save <strong>replaces</strong> the prior draft (keep only the latest; discard superseded drafts as they arrive: last-write-wins, no stack).</li>
+<li><strong>Lock (at window&#39;s end):</strong> the last draft standing becomes <strong>historical and immutable.</strong> Editing the result later, removing a contact later, or un-linking does <strong>not</strong> touch a locked batch.</li>
+<li><strong>Post-lock, invisible by design:</strong> the app tells the user <strong>nothing</strong> about notification timing, delivery, or recipients: no &quot;sending in X,&quot; no delivery status, no counts, ever. The locked batch enters the next server-side send cycle, where cross-user batching + timing provide anonymity. This is deliberately removed from the user&#39;s concern, and it is its own leak-reduction (no delivery readout that could become a count/timing signal).</li>
+</ol>
+<p>The user&#39;s real safety valve is <strong>deletion</strong>: anyone who feels exposed deletes the whole report during draft. So removal is frictionless on purpose, and anything left in is genuinely opt-in.</p>
+<p><strong>Two timing jobs, kept separate (this replaces the old single &quot;jitter&quot;):</strong> the <strong>draft window</strong> is the user-facing edit grace (deterministic, &quot;you have ~30 minutes&quot;); the <strong>send cycle</strong> after lock is the server-side anonymity timing (mixing this person&#39;s pings with everyone else&#39;s). Don&#39;t conflate them; nothing about the send cycle is surfaced to the user.</p>
+<p><strong>Content:</strong> anonymous, contentless: &quot;a recent contact suggests getting tested.&quot; Never who/when/what/how-many; never labeled 1:1-vs-circle (one large anonymity set). A &quot;get screened&quot; nudge, not a real-time PEP alarm; PEP&#39;s 72h urgency lives in always-on education <em>independent of when the nudge lands</em>; every notification routes to immediate testing + PEP info.</p>
+<p><strong>Server triggers, client composes (HARD RULE).</strong> The server&#39;s only job in delivery is to <em>wake</em>
+the recipient, the contentless &quot;there&#39;s something for you&quot; ping. <strong>All conditional rendering
+happens on the recipient&#39;s own device</strong> against locally-held status: which message variant shows,
+whether the PEP card appears or is suppressed, etc. The server never learns which variant
+rendered, so no status-correlated tell is created on an anonymous surface. Corollary: any surface
+without trustworthy local status (the anonymous pull &quot;go get tested&quot; page, opened via an opaque
+link with no app state) shows PEP/testing info <strong>unconditionally</strong>: it has nothing to gate on and
+gating would require a lookup that leaks.</p>
+<p><strong>Reachability (MVP scope):</strong></p>
+<ul>
+<li><strong>Push (primary):</strong> the push token is an opaque, rotating, device-scoped endpoint (not email/phone), and it <strong>wakes a closed app.</strong> Encourage keeping push on.</li>
+<li><strong>Pull &quot;go get tested&quot; page (fallback):</strong> recipient holds an opaque link to their own status inbox; opening it shows the nudge + resources. No stored identifier, works web-only or push-off, but only if they come back and check.</li>
+<li><strong>Accepted limit:</strong> a fully-disengaged recipient (uninstalled, push off, never checks) can&#39;t be force-notified, because the only channels that reach a non-app user are the identifiers we don&#39;t hold.</li>
+<li><strong>Deferred Post-MVP:</strong> optional, off-by-default, blind-routed <strong>email</strong> (hashed token, content-free &quot;go check&quot; only); phone stays banned.</li>
+<li><strong>Honest limits (don&#39;t overclaim):</strong> (a) targeted push reveals to the <em>server</em> which handles received an exposure ping; the mitigation direction is a generic broadcast/cover wake plus a uniform &quot;anything for me?&quot; poll, so recipients and non-recipients look identical [eng follow-up]. (b) Notification anonymity is bounded by the <em>recipient&#39;s</em> own in-window contact count: at one in-window contact it deanonymizes that contact, and no jitter fixes that. This is inherent to partner notification and is distinct from the min-group-size-5 rule (which protects group status <em>viewing</em>, a different mechanism).</li>
+</ul>
+<h2 id="11-testing-reminders">11. Testing reminders</h2>
+<ul>
+<li><strong>Local/on-device only</strong> (from the user&#39;s cadence + last-test date, both already on-device); the server never learns whose window is lapsing.</li>
+<li><strong>Supportive framing,</strong> routing to the testing finder; never nagging or shaming.</li>
+<li><strong>No frequency gamification</strong> (no &quot;monthly = better&quot;). v0 ships a single 3-month cadence (it matches the badge window); finer cadence options are a later refinement.</li>
+<li><strong>Pause-aware:</strong> suppressed during a treatment pause, resume after.</li>
+<li><strong>Optional, discreet, disableable</strong> (lock-screen privacy).</li>
+</ul>
+<h2 id="12-resources-us-only">12. Resources (US-only)</h2>
+<p>Four first-class &quot;find near you&quot; ramps, framed as tools, not verdicts:</p>
+<ul>
+<li>&quot;Find free testing near you&quot; via Google Maps &quot;free STI testing near me&quot; plus HeyMistr.</li>
+<li>&quot;Find free condoms near you&quot; via a zip/Maps finder or the CDC clinic-finder (no single national program exists, so no hardcoded link).</li>
+<li>&quot;Find free/low-cost PrEP near you&quot; via HeyMistr plus PrEP assistance programs (manufacturer PAPs, &quot;Ready, Set, PrEP,&quot; etc.). <strong>Load-bearing:</strong> because the badge rewards active HIV protection, the app is obligated to make PrEP reachable, otherwise it rewards privilege.</li>
+<li>&quot;Find PEP near you&quot; via the CDC &quot;Let&#39;s Stop HIV Together&quot; services locator (covers testing, PrEP, PEP, and condoms) or HIV.gov&#39;s locator.</li>
+</ul>
+<p><strong>PEP urgency is CONTEXTUAL, not a standing label (tone rule).</strong> PEP is only time-critical <em>if a person has had a possible HIV exposure and is not otherwise protected</em>. So the urgency framing (&quot;72 hours, the sooner the better, go now&quot;) belongs in the <strong>post-exposure context</strong> (the on-device-composed PEP card that appears after a possible exposure, and the always-on education). In the <strong>standing resource finder</strong>, &quot;Find PEP near you&quot; must be a NEUTRAL finder label like its siblings, not a permanent &quot;time-critical, go now&quot; alarm. A permanent urgency label is alarming and usually false for whoever is browsing, and it violates the project&#39;s normalize-don&#39;t-alarm tone. The standing subtitle states <em>when</em> PEP applies (&quot;after a possible HIV exposure&quot;) rather than shouting urgency at everyone.</p>
+<h2 id="12b-education-layer-the-product-implies-behaviors-education-has-to-teach-them">12b. Education layer: the product implies behaviors; education has to teach them</h2>
+<p>The product repeatedly <em>implies</em> expected actions without spelling them out, and several harm-
+reduction decisions only hold if education does the teaching. Education is not a static &quot;Learn&quot;
+tab to bury; it is <strong>load-bearing infrastructure</strong> that the rest of the model leans on (efficacy
+nuance, the clinical model, PEP urgency, and what blue does and doesn&#39;t mean are all discharged
+<em>here</em> rather than through labels or ranking). Treat it as a first-class surface.</p>
+<p>What it must carry, and <em>when</em> it should surface (contextual, not just a library):</p>
+<ul>
+<li><strong>What blue actually means (and doesn&#39;t).</strong> Blue is &quot;tested in window, clear of current active
+non-HIV STIs, HIV-protected, as this person reports it&quot;, <strong>not</strong> &quot;safe,&quot; &quot;disease-free,&quot; or a
+test result. Taught at onboarding and reachable from any badge.</li>
+<li><strong>The clinical model, de-stigmatized.</strong> Chronic HSV/HPV are common and manageable and <strong>do not
+belong on a badge</strong>: having them doesn&#39;t make a profile &quot;worse.&quot; This copy must be written so
+it never shames people who have these conditions while still teaching the transient-outbreak
+behavior. (This is a real writing responsibility, flagged for whoever drafts it.)</li>
+<li><strong>Pause-during-outbreak.</strong> That an active HSV outbreak is a higher-transmission window and
+pausing is the considerate move, taught as care, not punishment; surfaced near the pause
+control and in HSV education.</li>
+<li><strong>PEP urgency, always-on.</strong> The 72h window, what PEP is, and &quot;go now if you think you were
+exposed&quot;, available independent of any exposure event (so the exposure-alert card can stay calm
+and act as a reminder, not the sole source). Lead with the option, not the worry.</li>
+<li><strong>Efficacy nuance.</strong> That condoms, PrEP, and U=U are all real HIV protection but differ in
+efficacy and mechanism, the place the badge&#39;s deliberate flattening (one umbrella, condom route
+qualifies) is honestly explained rather than ranked.</li>
+<li><strong>Vaccination &amp; screening.</strong> HPV vaccine, cervical/anal screening, hep, etc.: the prevention
+actions for the conditions the badge deliberately leaves off, available to everyone, status-free.</li>
+<li><strong>What to do at each moment with the product</strong>, a light &quot;expected actions&quot; through-line: at
+onboarding (what this is / isn&#39;t), on a positive result (treat, the notify flow, auto-pause), on
+an exposure nudge (test, PEP if recent), on a lapse (re-test), during an outbreak (pause). The
+product&#39;s implied behaviors made explicit and supportive, never shaming.</li>
+</ul>
+<p>Tone rule for all of the above: supportive, non-shaming, non-clinical-policing; it informs so the
+person decides, consistent with the rest of the product. (U=U-style explainer copy already in the
+build is the model for this voice.)</p>
+<h2 id="12c-the-stranger-explainer-what-a-logged-out-first-timer-sees">12c. The stranger explainer: what a logged-out first-timer sees</h2>
+<p>The highest-traffic education surface is the <strong>resolved card a logged-out stranger lands on from a
+shared link</strong> (a Grindr/Sniffies profile, a DM). They have no account, no context, and will
+mostly not tap anything. If they misread the badge, the signal is worse than useless: blue
+misread as &quot;no condom needed,&quot; gray misread as &quot;this person is dirty.&quot; This explainer exists to
+prevent both misreads, at a low reading level, calmly. It lives <strong>on the resolution page itself,
+no account required</strong>, not buried in an in-app Learn tab they&#39;ll never open.</p>
+<p><strong>On the card (always visible): the label + one plain sentence.</strong> For blue:</p>
+<ul>
+<li>Label: <strong>&quot;Tested &amp; on HIV prevention.&quot;</strong></li>
+<li>Sentence (~6th to 8th grade, active voice, no jargon): e.g. <em>&quot;[handle] says they&#39;ve tested
+recently and take steps to prevent HIV. The tags show what they&#39;ve chosen to share. They&#39;re
+telling you themselves. It&#39;s not a lab result.&quot;</em> This carries both halves, sets the trust level
+(&quot;they&#39;re telling you,&quot; &quot;not a lab result&quot;), and avoids &quot;safe.&quot;</li>
+</ul>
+<p><strong>Every rendered card (blue OR gray) has the IDENTICAL &quot;What does this mean?&quot; affordance</strong>, same
+placement, same target, opening the same explainer. A gray card never gets a different or lesser
+explainer than a blue card: that asymmetry would itself be a viewer-distinguishable tell AND would
+re-stigmatize gray. (Gray-<em>nothing</em> = the private/unauthorized cold view is <strong>not a card</strong> (no
+handle, badge, or affordance, indistinguishable from nonexistent), so there is nothing to explain
+and no inconsistency; see §7. The explainer question only arises for a <em>rendered</em> card.)</p>
+<p><strong>The tap-through explainer covers, in plain words, in this order:</strong></p>
+<ul>
+<li><em>What blue means:</em> &quot;They&#39;ve had the standard STI test (HIV, syphilis, gonorrhea, chlamydia) in
+the last 3 months, it came back clear, and they&#39;re actively preventing HIV.&quot;</li>
+<li><em>What it does NOT mean:</em> &quot;It&#39;s a good sign, not a guarantee. No test catches everything, recent
+exposures can take time to show up, and things change. It doesn&#39;t mean &#39;no risk&#39;, and it&#39;s
+always fair to ask what they tested for and when. Keep doing what keeps you comfortable.&quot; (The
+critical anti-complacency + scope line: it teaches that &quot;tested&quot; has a scope and a window, so a
+partner knows it&#39;s reasonable to ask, without the badge having to itemize.)</li>
+<li><em>What gray means (de-stigmatized, equal airtime):</em> &quot;Gray just means there&#39;s no status to show
+right now. Lots of ordinary reasons: between tests, hasn&#39;t tested lately, or just keeps it
+private. <strong>It is not a red flag and does not mean they have an STI.</strong>&quot;</li>
+<li><em>What to do with it:</em> &quot;Use it to start a conversation, not to skip one.&quot;</li>
+</ul>
+<p><strong>Tone/legibility rules:</strong> lead with what things <em>are</em>, never with risk/warning; no red, no
+warning icons, no &quot;caution&quot; language; everyday words (&quot;tested&quot; not &quot;screened,&quot; &quot;prevent HIV&quot; not
+&quot;biomedical prophylaxis&quot;); short sentences; second person. Gray is explained with the <strong>same calm
+and equal weight</strong> as blue. Do not promise more granularity than the privacy model allows: a
+stranger sees &quot;On HIV prevention&quot; but can never tell PrEP from undetectable (§3 invariant), so the
+copy says &quot;the tags show what they share,&quot; never &quot;the tags tell you how they protect.&quot;</p>
+<h2 id="12a-wallet-passes-qr-shareable-card">12a. Wallet passes, QR &amp; shareable card</h2>
+<p>The shareable artifacts (Apple Wallet pass, Google Wallet pass, standalone shareable card image)
+all inherit every badge rule: two-state only, handle + avatar (never a name), sti.care logo,
+boolean precision (no dates/freshness/streak), no stamp, no count.</p>
+<p><strong>Format is a user choice, gated by privacy mode:</strong></p>
+<ul>
+<li><strong>QR format: works for ANY alias (public or private).</strong> The pass face shows <strong>no status</strong>:
+just the QR + handle + avatar + logo. It is a <em>link carrier</em>; downstream resolution gates
+everything (public → viewer sees the badge; private + authorized → sees it; private +
+unauthorized → uniform gray-nothing; a link-holder may <strong>knock</strong> per §7, but the anonymous/
+guessed view shows no knock affordance and the response is existence-uniform). This
+is how private users carry a pass safely: the pass leaks nothing, resolution does the gating.</li>
+<li><strong>Live-status format: PUBLIC aliases only.</strong> The pass face shows blue/gray and auto-updates.
+It can only be public because it (a) displays status on the face and (b) auto-update pings the
+wallet provider on a schedule (a metadata channel acceptable only for an already-public alias).
+Turning Live on forces/confirms public.</li>
+</ul>
+<p><strong>Fail closed to gray.</strong> Blue is valid only on a fresh, confirmed read. If the pass can&#39;t refresh,
+the server is unreachable, or the last sync is older than the <strong>freshness window (24h, one config
+constant)</strong>, the pass shows <strong>gray, never stale-blue</strong> (stale-blue would assert &quot;up to date&quot; the
+app can&#39;t confirm; the worst false positive). The 24h window is a <em>liveness</em> guard, not the 90-day
+clinical window: it only governs whether a Live pass can still vouch for its blue. Staleness is
+<strong>not</strong> a distinct visible state and there is <strong>no</strong> owner-facing &quot;couldn&#39;t refresh&quot; message:
+stale simply renders as ordinary gray (the owner opens the app to check).</p>
+<p><strong>Accessibility:</strong> render the alias URL as text beside the QR (screen-readers, manual entry), but
+only on QR-carrier / public passes; never as a private-status assertion on a pass face. The QR/URL
+encode an <strong>alias</strong> (opaque, or a public vanity handle), never a cross-linking account id.</p>
+<p><strong>Public-profile use (e.g. a status on a Grindr/Sniffies profile): share a resolving link/QR, not
+a baked-in status image.</strong> The primary shareable for an on-profile context is the <strong>link/QR that
+resolves live on tap</strong>, so there is no status snapshot to go stale in someone&#39;s profile or chat
+history (a screenshot of a QR is just the same working QR). A status <em>image</em> may be offered but is
+explicitly framed as a snapshot (&quot;scan for current&quot;); it is never the default. To advertise where
+strangers will open it (a dating profile, a bio) without exposing the status itself, the ask-first
+<code>/u/</code> handle is the surface: strangers can find you and ask, seeing the status only once you grant
+it. A private keyed link opens straight to the status, so it is for people you hand it to. Either
+way the badge is a live-resolving link, never scraped or frozen into an image.</p>
+<p><strong>Wallet presentation (framing).</strong> The wallet is not a three-way &quot;pick a pass type&quot; menu. It is
+<strong>one pass concept</strong> whose face simply reflects <strong>what the alias surfaces</strong>: a private (or any)
+alias surfaces a QR-carrier face (no status, link only); a <em>public</em> alias can additionally surface
+a <strong>Live</strong> face (status on the face, auto-updating, fail-closed to gray at 24h). So the only real
+variable is &quot;does status appear on the face,&quot; and that is gated by privacy mode (Live requires
+public). Present it as &quot;here is what this pass shows,&quot; not as a menu of formats.</p>
+<p><strong>Fast-follow (Scope: Post-MVP, NOT built in the wallet pass): a &quot;quick link&quot; launch into the
+linkup handshake.</strong> The wallet (and a documented home/lock-screen <strong>widget recipe</strong>) can offer a
+one-gesture launch into the in-person <strong>linkup handshake</strong> (§9 / its own pass), because that flow&#39;s
+whole value is lock-screen-speed, and opening the app is the friction it exists to remove. Crucial
+boundary: the wallet/widget only <strong>launches</strong> the handshake; the <strong>mutual-gesture-is-consent</strong> rule
+still gates the actual link+log in-app (never a passive lock-screen trigger, the pocket-tap risk).
+This is sequenced AFTER the handshake is proven on its own: build the in-app handshake first, then
+add the wallet/widget entry as a fast-follow. The widget recipe is a documented production pattern
+(an iOS Shortcut/widget, Android equivalent), not prototype code.</p>
+<p><strong>On device</strong> (inside a passphrase/passkey/biometric-derived encrypted blob; server stores only the ciphertext, for cross-device sync): diagnoses, test/treatment dates, badge + clearance math, the full contact graph (per-link opaque notify-tokens, link dates, group membership), alias definitions, visibility preferences.</p>
+<p><strong>On the server</strong> (cleartext but blind): <code>opaque_alias_id → ciphertext</code>; <code>hash(notify_token) → opaque_handle</code> for routing; push endpoints; the user&#39;s unreadable encrypted blob; a batched outbound send-cycle queue (cross-user timing for anonymity). The server <strong>triggers</strong> delivery (a contentless wake) but never composes content or learns which on-device variant rendered; all conditional rendering is client-side against local status.</p>
+<p><strong>Keys:</strong> derived locally via Argon2id (passphrase) or passkey/WebAuthn-PRF/biometric; never transmitted. A user-held recovery passphrase is REQUIRED (see below), never a server-side &quot;reset&quot; implying we hold the key.</p>
+<p><strong>Pairwise links</strong> are exchanged device-to-device (QR/NFC/private link); the server never sees the pairing, and a group is a client-side bundle of pairwise links; the server never learns a group exists or who&#39;s in it.</p>
+<p><strong>The server CAN learn:</strong> a handle/endpoint exists; that some tokens got pinged; ciphertext sizes. <strong>It CANNOT learn:</strong> the social graph, group membership, any diagnosis, any test/treatment date, or how many contacts anyone has. <strong>Caveat (honest):</strong> with naive <em>targeted</em> push, the server would observe <em>which</em> handles receive an exposure ping (a recipient set). Closing this requires the broadcast-wake + uniform-poll mitigation (§10); until that&#39;s built, &quot;who got notified&quot; is not fully blind, and the docs should not claim otherwise.</p>
+<p><strong>Decorrelation &amp; side channels:</strong> behavioral unlinkability between sibling aliases (no shared session/IP/push fingerprint); notify-token rotation; uniform timing/shape for resolution and delivery; silent/generic push (&quot;New update&quot;) so providers don&#39;t learn &quot;exposure.&quot;</p>
+<h2 id="14-onboarding-scope">14. Onboarding &amp; scope</h2>
+<ul>
+<li><strong>MVP (build now):</strong> passkey/biometric as the primary unlock, <strong>plus a user-saved recovery
+passphrase</strong> (see below). Self-reported badge, pause, attributes, circles, aliases, push+pull
+notification, reminders, US resources.</li>
+<li><strong>Account recovery is REQUIRED, not optional, and is the only no-PII recovery path.</strong> Because the
+system stores no email/phone/PII and the data is on-device-encrypted, the <em>only</em> way back into an
+account after losing the device/passkey is a recovery phrase the <strong>user saved themselves</strong>. So
+onboarding must generate a recovery passphrase, show it once, and make the user save/confirm it,
+framed as &quot;this is the only way back in, we cannot recover it for you&quot; (the Signal / password-
+manager / crypto-wallet pattern). A server-side &quot;reset&quot; is impossible by design (it would require
+PII to send to, and we hold no key). Passkey-only with no recovery = lose-device-lose-everything,
+which is unacceptable for a health passport. Email/magic-link as account identity stays BANNED
+(a correlation handle and PII honeypot); the recovery phrase is the substitute.</li>
+<li><strong>Post-MVP (mark, don&#39;t build):</strong> verification (input-only, never viewer-visible), Apple/Google
+SSO (<code>hash(sub) → ciphertext</code>), opt-in email channel.</li>
+<li><strong>Out:</strong> viewer-visible verification, EHR integration, stranger discovery, max-group caps,
+real-time exposure alerting, phone-as-identity.</li>
+</ul>
+<hr>
+<h2 id="open-items">Open items</h2>
+<ul>
+<li>Badge equity (for outside review): detectable-poz can&#39;t reach blue; PrEP-choice-normativity.</li>
+<li>&quot;Current active infection&quot; definition (clinical; HSV/HPV never permanently gray; syphilis serofast vs reinfection).</li>
+<li>Label-display residual (condoms-without-umbrella implies HIV-negative); confirm acceptable.</li>
+<li>Notification: push recipient-set mitigation (broadcast wake + uniform poll); draft-window length + send-cycle cadence.</li>
+<li>Shared-view date granularity; scan auto-share default. (Minimum group size is closed: no floor, see doc 31.)</li>
+</ul>
+
+      </article>
+      <nav class="crossnav">
+        <a href="https://sti.care">sti.care</a>
+        <a href="/docs/philosophy">Philosophy</a>
+        <a href="/docs/decisions">Decisions</a>
+        <a href="/docs/data">Data &amp; storage</a>
+        <a href="/docs/voice">Voice &amp; tone</a>
+        <a href="/docs/design-language">Design language</a>
+        <a href="/docs/open-questions">Open questions</a>
+      </nav>
+      <footer>
+        <a href="https://sti.care">sti.care</a> · design notes · not medical
+        advice
+      </footer>
+    </div>
+  </body>
+</html>

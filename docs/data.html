@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Data &amp; storage · sti.care labs</title>
+    <meta name="description" content="What we store, what we provably can't see, and the one place that isn't fully blind." />
+    <meta name="theme-color" content="#FBF9F4" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="/fonts/hanken-grotesk-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/labs.css" />
+  </head>
+  <body>
+    <div class="wrap doc">
+      <a class="back" href="/">← sti.care labs</a>
+      <nav class="toc">
+        <div class="toc-h">On this page</div>
+        <ul>
+          <li><a href="#in-one-line">In one line</a></li>
+          <li><a href="#what-lives-where">What lives where</a></li>
+          <li><a href="#what-we-can-and-cant-see">What we can, and can&#39;t, see</a></li>
+          <li><a href="#partner-notification-stays-blind">Partner notification stays blind</a></li>
+          <li><a href="#getting-back-in-and-getting-out">Getting back in, and getting out</a></li>
+        </ul>
+      </nav>
+      <article class="prose">
+<h1>Data &amp; storage</h1>
+<p><em>The plain answer to &quot;should I trust this with my status?&quot; What lives on your device, what
+reaches our server, and what we provably can&#39;t see. Not legal advice.</em></p>
+<hr>
+<h2 id="in-one-line">In one line</h2>
+<p>Everything sensitive (diagnoses, dates, who you&#39;re linked to, your groups, your handles) lives
+<strong>on your device</strong>, inside an encrypted blob whose key never reaches us. Our server stores
+<strong>ciphertext and opaque routing tokens, nothing else.</strong> It can&#39;t read your status, and the stored
+contact graph is unreadable to us. Even partner-notification routing, the hardest case, is now
+blind: the server cannot tell who was notified. The one thing we do not offer yet is self-serve
+deletion and export, called out in full below, not buried.</p>
+<h2 id="what-lives-where">What lives where</h2>
+<p><strong>On your device</strong> (inside a passkey- or passphrase-derived encrypted blob; the key never leaves
+the device):</p>
+<ul>
+<li>diagnoses, test and treatment dates;</li>
+<li>the badge and all clearance math (the 90-day clock, the per-site logic);</li>
+<li>your full contact graph: each link&#39;s opaque notify-token, link dates, group membership;</li>
+<li>your alias definitions: handle, avatar, privacy mode, validity/revocation;</li>
+<li>visibility preferences.</li>
+</ul>
+<p><strong>On our server</strong> (stored in the clear, but meaningless without your key):</p>
+<table>
+<thead>
+<tr>
+<th>Store</th>
+<th>Shape</th>
+<th>What it&#39;s for</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Alias payloads</td>
+<td><code>opaque_alias_id → ciphertext</code></td>
+<td>Serving a passport when someone opens a link. The id is random and meaningless, the only id we ever see. No handle, avatar, name, grouping, or even a public/private flag.</td>
+</tr>
+<tr>
+<td>Account blob</td>
+<td><code>opaque_account_id → ciphertext</code></td>
+<td>Syncing your encrypted store across your own devices. Addressed by an opaque id derived from your key; holds nothing readable.</td>
+</tr>
+<tr>
+<td>Recovery envelope</td>
+<td><code>locator → ciphertext</code></td>
+<td>Getting back in from a new device that has only your recovery name and password. The <strong>locator</strong> is a non-secret, owner-chosen public handle; the ciphertext is your account root wrapped by a memory-hard KDF of your password. There is one table, keyed only by the locator: no factor or account-id column. The server holds only the wrapped bytes, never the password or anything derived from it, and answers a uniform fixed-size decoy on a miss, so whether a given name has an envelope stays hidden (an existence-uniform read). The passkey unlock wraps the same root too, but that wrap stays on your device and never becomes a server envelope.</td>
+</tr>
+<tr>
+<td>Notify routing</td>
+<td><code>hash(notify_token) → opaque_handle</code></td>
+<td>Routing an anonymous &quot;go get tested&quot; nudge. The token is pairwise and was exchanged phone-to-phone, never through us.</td>
+</tr>
+<tr>
+<td>Push endpoints</td>
+<td><code>opaque_handle → push subscription</code></td>
+<td>Waking a device with a contentless ping.</td>
+</tr>
+<tr>
+<td>Send queue</td>
+<td>batched outbound jobs</td>
+<td>Holding nudges briefly so cross-user batching hides timing. We trigger the wake; your device decides what (if anything) is shown.</td>
+</tr>
+</tbody></table>
+<p>Post-MVP and optional: SSO as a recovery anchor (<code>hash(sub) → ciphertext</code>) and an opt-in,
+off-by-default, content-free email channel. Both still need your key to decrypt anything.</p>
+<p>For a miss (an id that doesn&#39;t exist, or one you can&#39;t decrypt), the server returns
+<strong>decoy, ciphertext-shaped bytes</strong>, uniform in both size and timing, so &quot;can&#39;t read this&quot; and
+&quot;doesn&#39;t exist&quot; are indistinguishable.</p>
+<h2 id="what-we-can-and-cant-see">What we can, and can&#39;t, see</h2>
+<p><strong>We can see:</strong> that an alias or a push endpoint exists, that some tokens got pinged, the size of
+a ciphertext, and <strong>aggregate operational telemetry about the service itself</strong> (request rates and
+latencies per endpoint, error and shed counts, queue depth, total row counts). The telemetry is
+system-level only: it carries no id, IP, request body, or token, no per-request trail, and nothing
+that links a request to a person or to another request. That&#39;s the list.</p>
+<p><strong>We can&#39;t see:</strong> your social graph, your group membership, any diagnosis, any test or treatment
+date, or how many contacts you have. None of it is readable without a key we never hold.</p>
+<h2 id="partner-notification-stays-blind">Partner notification stays blind</h2>
+<p>Partner notification is the hardest thing to keep private, so here is exactly how it holds. When
+someone reports a positive, the people they were linked with get a contentless &quot;go get tested&quot;
+nudge, and the server has to route it without learning who received it.</p>
+<p>Two things make that hold. First, a population-wide, contentless cover wake fires on a fixed
+schedule whether or not anyone reported, so a quiet window emits the identical broadcast as a busy
+one, and a real nudge rides the next scheduled wake as one anonymous member of the population.
+Second, every device checks for a waiting nudge on the same uniform cadence and reads it without
+writing anything back, so a recipient&#39;s check is byte- and timing-identical to a non-recipient&#39;s.
+Together they close the leak a naive <em>targeted</em> push would have opened, where the server could see
+<em>which</em> handles received a nudge.</p>
+<p>What the server still sees is only that nudges are enqueued at all, never who they reach.</p>
+<h2 id="getting-back-in-and-getting-out">Getting back in, and getting out</h2>
+<ul>
+<li><strong>Recovery is on you, by design.</strong> With no email or phone on file, a new device gets back in one
+of a few ways: a synced passkey, your @handle plus your password, or the recovery
+passphrase shown once at signup, which is the backstop rather than the only way. We can&#39;t reset
+any of them; a server-side reset is impossible when the server can&#39;t read anything.</li>
+<li><strong>Deletion and export</strong> is still an open item: a self-serve &quot;delete everything tied to me&quot; and
+&quot;download what&#39;s held about me.&quot; Since we hold only ciphertext and opaque tokens, what&#39;s even
+meaningful to export is part of that question.</li>
+</ul>
+
+      </article>
+      <nav class="crossnav">
+        <a href="https://sti.care">sti.care</a>
+        <a href="/docs/philosophy">Philosophy</a>
+        <a href="/docs/decisions">Decisions</a>
+        <a href="/docs/design">Design</a>
+        <a href="/docs/voice">Voice &amp; tone</a>
+        <a href="/docs/design-language">Design language</a>
+        <a href="/docs/open-questions">Open questions</a>
+      </nav>
+      <footer>
+        <a href="https://sti.care">sti.care</a> · design notes · not medical
+        advice
+      </footer>
+    </div>
+  </body>
+</html>

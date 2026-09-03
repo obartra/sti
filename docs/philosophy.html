@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Philosophy · sti.care labs</title>
+    <meta name="description" content="The why. What the product is for, and the lines it won't cross." />
+    <meta name="theme-color" content="#FBF9F4" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="/fonts/hanken-grotesk-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/labs.css" />
+  </head>
+  <body>
+    <div class="wrap doc">
+      <a class="back" href="/">← sti.care labs</a>
+      <nav class="toc">
+        <div class="toc-h">On this page</div>
+        <ul>
+          <li><a href="#north-star">North star</a></li>
+          <li><a href="#who-were-protecting-against">Who we&#39;re protecting against</a></li>
+          <li><a href="#core-principles">Core principles</a></li>
+          <li><a href="#the-signal-vs-verdict-tension-read-this-one-twice">The signal-vs-verdict tension (read this one twice)</a></li>
+          <li><a href="#the-through-line">The through-line</a></li>
+        </ul>
+      </nav>
+      <article class="prose">
+<h1>sti.care: Philosophy</h1>
+<p><em>The &quot;why&quot; behind the product. Pairs with the Decisions log (what we chose) and the Design doc (how it works). Not legal advice.</em></p>
+<hr>
+<h2 id="north-star">North star</h2>
+<p>The app exists to make testing and disclosure <strong>easier and more normal</strong>, and to help people make <strong>science-based decisions</strong>. It is a tool for support and harm reduction. It is <strong>never</strong> a filter that sorts people, a gate that decides who may have sex, or a record that can out anyone.</p>
+<p>Whenever a design choice could read as either <em>&quot;come in, here&#39;s how we look out for each other, here&#39;s free testing nearby&quot;</em> or <em>&quot;you don&#39;t belong here until you&#39;re compliant,&quot;</em> it takes the former. If it can&#39;t, we don&#39;t ship the feature.</p>
+<p>This is grounded in a reality poz folks routinely face: being treated as a risk to screen out rather than a person. The intervention isn&#39;t a safety certificate. It&#39;s making the disclosure conversation ordinary and giving people on-ramps to care.</p>
+<hr>
+<h2 id="who-were-protecting-against">Who we&#39;re protecting against</h2>
+<p>We design as if all of these are adversaries:</p>
+<ul>
+<li><strong>A viewer</strong> trying to infer someone&#39;s diagnosis from what they see.</li>
+<li><strong>Us / the server.</strong> We hold infrastructure, so we make ourselves <em>unable</em> to read the sensitive data rather than promising not to look.</li>
+<li><strong>A breach or subpoena.</strong> Anything we store can be stolen or compelled; the goal is that what we hold is useless if taken.</li>
+<li><strong>Other group members.</strong> A group shows only the color each member chose to share by joining it; being in a group is itself that choice, and a group never reveals a member who did not join.</li>
+<li><strong>An identity provider / carrier.</strong> We minimize what any third party learns.</li>
+<li><strong>A patient scraper.</strong> Someone polling a public badge over time to build a history.</li>
+</ul>
+<hr>
+<h2 id="core-principles">Core principles</h2>
+<p><strong>1. Diagnosis non-decodability against a snapshot.</strong> No single observation of someone&#39;s badge may decode to a diagnosis. Achieved by making &quot;gray&quot; a wide, heterogeneous bucket. This is a <em>snapshot</em> guarantee, not absolute (see the signal-vs-verdict note).</p>
+<p><strong>2. One positive state, reached three ways, with negative and undetectable identical (U=U).</strong> Blue (&quot;up to date&quot;) is a single positive state, no rank above it, reached by any of three evidence-based, status-blind routes: on PrEP, undetectable, or a public commitment to condoms-always. PrEP and undetectable surface only under <strong>one shared umbrella label (&quot;On HIV prevention&quot;) that is identical for both and never distinguishes them</strong> (a hard invariant), which lets an undetectable person blend in honestly among the PrEP majority instead of lying. The badge grouping treats protection methods of differing efficacy as &quot;close enough&quot;; we discharge the real difference through <strong>education, not ranking</strong> (see principle 11).</p>
+<p><strong>2a. Healthism, named.</strong> Requiring active HIV protection for the positive state is a deliberate, eyes-open choice to reward prevention <em>because</em> we&#39;re mid-epidemic. It is mildly healthist, and we accept that, while refusing to let it become a <strong>serostatus gate</strong>: the positive state is reachable by the cheapest, most universal route (condoms), and the app carries first-class access ramps for testing, condoms, and PrEP so the bar is reachable, not a class marker.</p>
+<p><strong>3. Status and access are separate, and access is yours.</strong> <em>Status</em> (what you show) is protected: gray never reveals a diagnosis. <em>Access</em> (who may see you, which groups you&#39;re in) is a <strong>social</strong> choice, not a health fact, and it stays in your hands: you can leave a group or change what you share whenever you want. Two rules hold that line. To everyone else, <strong>&quot;left&quot; and &quot;was removed&quot; look identical</strong>, so an access change never marks anyone. And the system <strong>never</strong> changes your access automatically in response to a health event; that decision is always yours.</p>
+<p><strong>4. Tools, not gates; facts, not verdicts.</strong> The app surfaces honest facts and points to resources; the human draws the conclusion. It never tells a viewer whether/how to have sex, and never tells a user they &quot;shouldn&#39;t be having sex.&quot; Higher risk → ramps (the four first-class finders: free testing, condoms, PrEP, PEP), never moral rulings. (Doxy-PEP is a flat attribute, not a finder ramp.)</p>
+<p><strong>5. The server is blind: to bodies <em>and</em> to the social graph.</strong> All sensitive logic and data (diagnoses, dates, badge math, the contact graph, group membership, handles) live on the user&#39;s device in an encrypted blob whose key never reaches us. The server stores only ciphertext and opaque routing tokens. No readable who-has-what, no readable who-knows-whom.</p>
+<p><strong>6. Data minimization.</strong> The best protection against losing data is not having it. No account to <em>view</em> a shared status. Per-context aliases, unlinkable across apps. <strong>No real names: display identity is a per-link handle + avatar, set at share time and never shared across links.</strong> A local display name lives in the owner&#39;s encrypted blob (for the app to address them) and never reaches the server. <strong>One allowed index:</strong> the public handle registry (<code>name → aliasId</code>), an explicit opt-in with clear consent that a short handle is findable at <code>sti.care/u/{handle}</code> and reveals the passport exists. Up to 5 handles per account; each is claimed deliberately at link-creation time, never at account creation. No analytics/ad SDKs near health surfaces. Consent at creation, working delete/revoke, minimal retention.</p>
+<p><strong>7. Honesty / no overclaiming.</strong> It&#39;s a <strong>self-reported, good-faith signal, not proof, not a medical test.</strong> Said plainly as description, never as a downgrade mark. &quot;Revoke&quot; means &quot;no future reads,&quot; never &quot;unsee.&quot; We don&#39;t market zero-knowledge on public aliases, where the key is in a link anyone can hold.</p>
+<p><strong>8. The safe choice is the default.</strong> Private-by-default everywhere. The lazy path is the protective path. Nobody is exposed because they forgot to flip a setting.</p>
+<p><strong>9. Harm reduction, never moralizing.</strong> Medical-recommended behavior is <em>one</em> valid path, not the only acceptable one. The app educates and equips; it does not judge who gets to be a sexual being.</p>
+<p><strong>10. Linkability is the user&#39;s choice, taught at the choice point.</strong> We can&#39;t make a human unlinkable across apps (reused photos, phrasing, and kinks already correlate people). So we don&#39;t promise prevention. We keep the <em>tool</em> from being the easiest correlation vector and teach the tradeoff <strong>at the moment it&#39;s live</strong> (e.g. when someone picks a memorable handle), not as abstract onboarding noise. Note a vanity handle&#39;s stakes are a notch higher than reused photos, because it resolves to a health badge.</p>
+<p><strong>11. Education is the equalizer, not ranking.</strong> The badge deliberately groups protection methods of different efficacy (condoms alongside PrEP/U=U) into one positive state. We don&#39;t encode that difference as a hierarchy. We owe users honest, accessible information about it. Clear, non-shaming info pages on what each method does and doesn&#39;t protect against are a <strong>core commitment</strong>. When the badge says less than the full truth, the education layer carries the rest.</p>
+<hr>
+<h2 id="the-signal-vs-verdict-tension-read-this-one-twice">The signal-vs-verdict tension (read this one twice)</h2>
+<p>The project&#39;s hardest, most recurring fork: is the badge a <strong>conscientiousness signal</strong> (it normalizes testing and opens conversation) or a <strong>risk verdict</strong> (it helps a viewer assess before sex)? Every privacy win we made was the same move, choosing signal over verdict, because anything specific enough to be a verdict leaks, ranks, and gates.</p>
+<p>We have landed <em>near the middle, deliberately</em>: blue means <strong>&quot;tested ≤90 days, clear, and actively protected against HIV&quot;</strong> by one of three routes (PrEP, undetectable, or public-condom-commitment). That carries real risk-relevant meaning, which is why it &quot;means enough&quot;, without ranking anyone, because the three routes share one positive state and the two biomedical routes share one indistinguishable label. The deliberate costs, named not hidden: an <strong>HIV-detectable-but-in-care person can&#39;t reach blue</strong> until suppressed (and a near-universal positive state may make non-qualifiers <em>more</em> conspicuous), and someone who <strong>declines PrEP</strong> for autonomy reasons must use the condom route or be gray (a PrEP-normative tilt). No single snapshot outs anyone (gray is a wide bucket), but a &quot;tests yet never blue&quot; pattern is inferable over time. Whether these costs are acceptable is a <strong>values call routed to outside review</strong>, not an engineering one (see the Questions doc).</p>
+<p>The strongest argument <em>for</em> this shape: an undetectable person reaches the same honest top <strong>indistinguishably from PrEP users</strong>, so no one is pushed to hide or misrepresent their status to belong. That is the most pro-U=U thing the product does.</p>
+<p>Where additional <em>meaning</em> may grow without re-leaking: the <strong>flat-attribute layer</strong> (PrEP, condoms, doxy-PEP), the <strong>surrounding experience</strong> (education, partner notification, the disclosure conversation itself), and the <strong>act of sharing</strong> as a signal of values. Not a richer badge. Every richer badge is the gate in disguise.</p>
+<hr>
+<h2 id="the-through-line">The through-line</h2>
+<p>Fewer distinguishable states, no verdicts, tools-not-gates, and a server kept blind to both <strong>bodies</strong> and the <strong>social graph</strong>. Every mechanism is built so the safe choice is the default and <strong>no diagnosis is ever decodable from a snapshot</strong>, while leaving people free to manage their social connections, and their own linkability, as openly as they choose. When in doubt, we say less, store less, and point people toward care.</p>
+
+      </article>
+      <nav class="crossnav">
+        <a href="https://sti.care">sti.care</a>
+        <a href="/docs/decisions">Decisions</a>
+        <a href="/docs/design">Design</a>
+        <a href="/docs/data">Data &amp; storage</a>
+        <a href="/docs/voice">Voice &amp; tone</a>
+        <a href="/docs/design-language">Design language</a>
+        <a href="/docs/open-questions">Open questions</a>
+      </nav>
+      <footer>
+        <a href="https://sti.care">sti.care</a> · design notes · not medical
+        advice
+      </footer>
+    </div>
+  </body>
+</html>
