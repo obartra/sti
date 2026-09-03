@@ -37,6 +37,13 @@ Rules that hold everywhere:
   (the only place raw color values may appear), layout vocabulary in
   `styles/layout.css`, editorial component classes (the `.e-*` grammar) in
   `styles/components.css`, single-purpose helpers in `styles/utilities.css`.
+- **Every frame is viewport-bounded and scrolls inside itself.** The mobile app
+  frame, the sub-screen frame, the public canvas and the desktop shell are each
+  exactly as tall as the viewport, each with one inner pane that scrolls; the
+  document never scrolls (`styles/document.css`). That is what keeps the top
+  bar, the tab bar and the back bar on screen however long a screen gets, and
+  it is what an installed app is judged on, where there is no browser chrome to
+  disguise a page that scrolls as a whole. `styles/frames.test.ts` pins it.
 
 ## The editorial grammar in an app
 

@@ -219,17 +219,38 @@ interface HandleClaim {
   readonly joinWriteToken?: string;
 }
 
+/**
+ * Bind a write token at a group's join pointer (doc 33, slice 4b): a pure decoy PUT
+ * under `writeToken`, so the server associates that capability with the pointer id.
+ * Two things need it: the vanity claim, which is authorized by the write token of
+ * the alias the name points at, and a later knockReview at the pointer, which 403s
+ * without it. Idempotent and self-healing (a fresh decoy under the same token
+ * re-binds it). The pointer stays keyless and statusless: the decoy is never a card,
+ * so a resolver who navigates to it sees gray-nothing (doc 33); this only binds the
+ * capability.
+ */
+export async function bindJoinPointer(
+  api: ApiClient,
+  pointerId: string,
+  writeToken: string,
+): Promise<void> {
+  await api.putAlias(
+    pointerId,
+    crypto.getRandomValues(new Uint8Array(ALIAS_PAYLOAD_SIZE)),
+    writeToken,
+  );
+}
+
 // A public group claims its handle to a DEDICATED join pointer (not the group blob
 // id, so the public handle stays unlinkable from the blob). A private group has no
 // handle to claim. A non-registered outcome records no join pointer (the group is
-// valid, private-until-named) and carries the reason back. On a successful claim we
-// also BIND a write token at the pointer (doc 33, slice 4b): a pure decoy PUT under
-// joinWriteToken, so the server associates that capability with the pointer and a
-// later knockReview(joinPointerId, joinWriteToken) can review join requests instead
-// of 403ing. The pointer stays keyless and statusless: the decoy is never a card, so
-// a resolver who navigates to it sees gray-nothing (doc 33); this only binds the
-// capability. Best-effort: a bind failure still leaves a usable, claimed public
-// group (the backfill in reviewJoinRequests binds it on first review).
+// valid, private-until-named) and carries the reason back.
+//
+// The pointer is BOUND BEFORE the claim, and that order is load-bearing: the server
+// authorizes a claim with the write token of the alias the name points at, so a
+// claim aimed at an id that carries no capability yet is refused and the name is
+// never registered. A bind that fails means the claim cannot be authorized, so it
+// is reported as the claim failing rather than sent anyway.
 async function claimGroupHandle(
   api: ApiClient,
   handle: string,
@@ -238,17 +259,15 @@ async function claimGroupHandle(
   if (visibility !== "public") return { result: "created" };
   const joinPointerId = randomAliasId();
   const joinWriteToken = randomWriteToken();
+  const bound = await bindJoinPointer(api, joinPointerId, joinWriteToken).then(
+    () => true,
+    () => false,
+  );
+  if (!bound) return { result: "error" };
   const result = await api
     .registerVanityName(handle, joinPointerId, joinWriteToken)
     .catch((): VanityRegisterResult => "error");
   if (result !== "registered") return { result };
-  await api
-    .putAlias(
-      joinPointerId,
-      crypto.getRandomValues(new Uint8Array(ALIAS_PAYLOAD_SIZE)),
-      joinWriteToken,
-    )
-    .catch(() => undefined);
   return { result, joinPointerId, joinWriteToken };
 }
 

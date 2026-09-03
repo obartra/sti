@@ -209,7 +209,16 @@
   flex: none;
 }
 
-/* The kebab popover: an overlay control, so it keeps its elevation. */
+/* The kebab popover: an overlay control, so it keeps its elevation. It sizes to
+   its content between a floor that keeps the short items reading as a menu and a
+   ceiling at the row, so it can never reach past the screen edge. The width is not
+   a fixed guess because the "Met on" row carries a native date control whose
+   intrinsic width is the platform's and the locale's, not ours: iOS lays out a
+   spelled "Sep 2, 2026" far wider than a desktop numeric field, and engines
+   disagree about whether such a control's own floor grows the box around it. The
+   floor is set to fit that control outright rather than leave it to that
+   negotiation, and the ceiling means the popover can never reach past the row and
+   push the page sideways. */
 .cn__menu {
   position: absolute;
   right: 6px;
@@ -219,7 +228,9 @@
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   padding: 6px;
-  min-width: 190px;
+  width: max-content;
+  min-width: 230px;
+  max-width: 100%;
 }
 
 .cn__menu-item {
@@ -251,6 +262,13 @@
   align-items: stretch;
   gap: 6px;
   cursor: default;
+}
+
+/* A native date control will not shrink below the width its own value needs, so
+   on a narrow screen it would otherwise hang out past the popover's right edge
+   instead of fitting inside it. */
+.cn__menu-date .sti-input {
+  min-width: 0;
 }
 
 /* ── The member-initiated privacy promise ───────────────────────────────── */

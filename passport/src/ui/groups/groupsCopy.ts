@@ -69,6 +69,10 @@ export const GROUPS_COPY = {
   rosterHeading: "Who's here",
   you: "you",
   admin: "admin",
+  // What a member is called before their card lands: they are on the roster, so
+  // they are here, but nothing about their face is known yet. Mirrors the "Contact"
+  // fallback an unlabeled connection gets; never a made-up name.
+  memberUnnamed: "Member",
   absentNote: "A gray dot means they haven't shared a color here yet.",
 
   // ── Leave (member) ──────────────────────────────────────────────────────────

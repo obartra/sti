@@ -37,6 +37,7 @@ import {
 } from "./groupInvite.ts";
 import { mintInbox, writePing } from "./notifyInbox.ts";
 import { acceptGroupInvite } from "./groupMembershipOps.ts";
+import { bindJoinPointer } from "./groupOps.ts";
 import { revokeAlias } from "./publish.ts";
 import {
   base64urlToBytes,
@@ -45,7 +46,6 @@ import {
 } from "../crypto/index.ts";
 import type { GroupKey } from "./groupCrypto.ts";
 import { parseGroupBlobWithKg, GROUP_MEMBER_CAP } from "./groupObject.ts";
-import { ALIAS_PAYLOAD_SIZE } from "../api/contract.ts";
 import { todayEpochDay } from "../core/clock.ts";
 import { normalizeVanityName } from "./vanityName.ts";
 
@@ -101,23 +101,6 @@ export async function requestToJoin(
   await knock(api, pointerId, deps.requesterSecret, kp.publicKey);
   deps.joinStore.addPending(pointerId, name);
   return "requested";
-}
-
-// Bind (or re-bind) a write token at the join pointer (doc 33, slice 4b touch-up):
-// a public group created before this bound no token there, so knockReview would
-// 403. A pure decoy PUT under joinWriteToken establishes the capability. Idempotent
-// and self-healing (re-binds a fresh decoy under the same token every review); the
-// pointer stays a keyless, statusless decoy, so a resolver still sees gray-nothing.
-async function bindJoinPointer(
-  api: ApiClient,
-  pointerId: string,
-  writeToken: string,
-): Promise<void> {
-  await api.putAlias(
-    pointerId,
-    crypto.getRandomValues(new Uint8Array(ALIAS_PAYLOAD_SIZE)),
-    writeToken,
-  );
 }
 
 /**

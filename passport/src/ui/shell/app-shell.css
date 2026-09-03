@@ -7,10 +7,19 @@
   display: flex;
   flex-direction: column;
   /* In demo mode the fixed banner reserves --demo-inset at the top: shift the
-     column down by it and shrink the min-height to match, so the bottom tab bar
+     column down by it and shrink the frame to match, so the bottom tab bar
      stays on screen (default 0: no banner, no offset). */
   margin: var(--demo-inset, 0px) auto 0;
-  min-height: calc(100dvh - var(--demo-inset, 0px));
+  /* The frame is exactly the visible area, never taller: the bars are flex
+     ends of a viewport-height column and only .app-shell__content scrolls, so
+     they stay put however long the screen is. A min-height here would let a
+     tall screen push the column past the viewport and hand the scroll to the
+     document, which scrolls the bars away with the content (most obvious in the
+     installed app, where there is no browser chrome to hide it). vh first for
+     browsers without dvh; dvh tracks the shrinking bars in a mobile browser. */
+  height: calc(100vh - var(--demo-inset, 0px));
+  height: calc(100dvh - var(--demo-inset, 0px));
+  overflow: hidden;
   max-width: 480px;
   background: var(--surface-app);
 }
@@ -18,6 +27,9 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* Keep an overscroll at either end inside the pane: on iOS it would
+     otherwise chain to the document and bounce the whole frame, bars included. */
+  overscroll-behavior-y: contain;
   padding: var(--space-5);
 }
 

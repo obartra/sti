@@ -72,6 +72,9 @@ describe("GroupDetail", () => {
     expect(
       screen.getByText(/gray dot means they haven't shared/),
     ).toBeInTheDocument();
+    // They are still named: someone who joined but whose card has not landed yet is
+    // a member with an unknown face, not a bare dot next to a menu.
+    expect(screen.getByText("Member")).toBeInTheDocument();
   });
 
   it("admin: shows disband (not leave), and confirm fires the controller", async () => {
